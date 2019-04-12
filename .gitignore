@@ -1,0 +1,127 @@
+# coverage stats
+*.gcov
+*.gcda
+
+# SkaleDeps specific
+SkaleDeps/build
+SkaleDeps/deps_inst
+SkaleDeps/*.tar.gz
+SkaleDeps/*.tar.xz
+SkaleDeps/*.zip
+SkaleDeps/saved_environment_on_startup.txt
+SkaleDeps/saved_environment_pre_configured.txt
+SkaleDeps/argtable2
+SkaleDeps/boost_1_68_0
+SkaleDeps/curl
+SkaleDeps/libiconv-1.15
+SkaleDeps/openssl
+SkaleDeps/libuv
+SkaleDeps/libwebsockets
+SkaleDeps/zlib
+SkaleDeps/nettle-2.0
+SkaleDeps/nettle-3.4.1
+SkaleDeps/libtasn1
+SkaleDeps/gnutls-3.6.5
+SkaleDeps/libmicrohttpd
+SkaleDeps/jsoncpp
+SkaleDeps/libjson-rpc-cpp
+SkaleDeps/libcryptopp
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# VS stuff
+build
+ipch
+*.sdf
+*.opensdf
+*.suo
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# VIM stuff
+*.swp
+
+# Xcode stuff
+build_xc
+
+*.user
+*.user.*
+*~
+
+# build system
+build.*/
+/deps/
+extdep/install
+extdep/download
+/cmake-build-*/
+
+*.pyc
+
+# MacOS Development
+.DS_Store
+# CocoaPods
+Pods/
+Podfile.lock
+# Xcode
+.DS_Store
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xcworkspace
+!default.xcworkspace
+xcuserdata
+*.xcuserstate
+profile
+*.moved-aside
+DerivedData
+project.pbxproj
+
+# JetBrains stuff
+.idea/
+bin/
+
+# Visual Studio Code
+browse.VC.db
+
+doc/html
+*.autosave
+node_modules/
+
+dependency_graph.svg
+
+#eclipse stuff
+.project
+.cproject
+.settings
+
+#qt creator project files in repo root, if any
+*cpp*.config
+*cpp*.creator
+*cpp*.creator.user
+*cpp*.files
+*cpp*.includes
+
+#selective test runner
+test_run/node_modules
+test_run/package-lock.json
+
+scripts/skale_build/executable/skaled

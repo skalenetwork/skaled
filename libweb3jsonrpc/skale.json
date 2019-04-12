@@ -1,0 +1,4 @@
+[
+  { "name": "skale_protocolVersion", "params": [], "order": [], "returns" : "" },
+  { "name": "skale_receiveTransaction", "params": [{}], "order": [], "returns": ""}
+]
