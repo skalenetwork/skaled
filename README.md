@@ -27,10 +27,14 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, t
 
 ### Install dependencies (Ubuntu)
 
-
 ```
 sudo apt-get update
 sudo apt-get install autoconf build-essential cmake libboost-all-dev texinfo wget
+```
+
+### Install internal dependencies
+
+```
 cd SkaleDeps
 ./build.sh
 ```
@@ -67,7 +71,7 @@ The SKALE Network uses Proof-of-Stake, therefore this project is **not suitable 
 To run the tests:
 
 ```
-cd test
+cd build/test
 ./testeth -- --all
 ```
 
