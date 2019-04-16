@@ -6,9 +6,11 @@
 
 # SKALED – SKALE C++ Client
 
+[![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
+
 The collection of C++ libraries and tools for [SKALE Network](https://skalelabs.com). This EVM-compatible client is forked from [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). It has been modified to work with the SKALE network.
 
-This respository is maintained by the SKALE Labs development team, and intended to be used for SKALE chains (elastic sidechains).
+This respository is maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
 
 ## Getting Started
 
@@ -77,7 +79,7 @@ cd build/test
 
 ## Documentation
 
-- TBD
+_in process_
 
 ## For more information
 * [SKALE Labs Website](https://skalelabs.com)
@@ -92,3 +94,7 @@ Learn more about the SKALE community over on [Discord](https://discord.gg/vvUtWJ
 [![License](https://img.shields.io/github/license/skalenetwork/skaled.svg)](LICENSE)
 
 All contributions are made under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html). See [LICENSE](LICENSE).
+
+All original cpp-ethereum code Copyright (C) Aleth Authors.
+All cpp-ethereum modifications Copyright (C) SKALE Labs.
+All skaled code Copyright (C) SKALE Labs.
