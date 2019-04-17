@@ -43,36 +43,57 @@ typedef intptr_t ssize_t;
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
 #include <map>
+#include <memory>
+#include <string>
 
-class HttpServerOverride : public jsonrpc::AbstractServerConnector {
+#include <skutils/console_colors.h>
+#include <skutils/http.h>
+#include <skutils/utils.h>
+#include <json.hpp>
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
 public:
-    HttpServerOverride( const std::string& address, int port );
+    SkaleServerOverride( const std::string& http_addr, int http_port,
+        const std::string& pathSslKey = "", const std::string& pathSslCert = "" );
+    ~SkaleServerOverride() override;
+
+private:
+    bool startListeningHTTP();
+    bool stopListeningHTTP();
+
+public:
     virtual bool StartListening() override;
     virtual bool StopListening() override;
-
-    bool virtual SendResponse( const std::string& response, void* addInfo = NULL );
-    bool virtual SendOptionsResponse( void* addInfo );
 
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
 private:
-    const std::string address;
+    void logTraceServerEvent(
+        bool isError, const char* strProtocol, const std::string& strMessage );
+    void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
+        const char* strOrigin, const std::string& strPayload );
+    const std::string address_http_;
+    int port_http_;
 
-    static int callback( void* cls, struct MHD_Connection* connection, const char* url,
-        const char* method, const char* version, const char* upload_data, size_t* upload_data_size,
-        void** con_cls );
-
-    // inherited:
-    int port;
-    int threads;
-    bool running;
-
-    struct MHD_Daemon* daemon;
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
 
 public:
-    bool bTraceHttpCalls;
-};
+    bool bTraceCalls_;
 
-#endif  // HTTPSERVEROVERRIDE_H
+private:
+    std::shared_ptr< skutils::http::server > pServerHTTP_;
+    std::string pathSslKey_, pathSslCert_;
+    bool bIsSSL_;
+
+public:
+    bool isSSL() const { return bIsSSL_; }
+};  /// class SkaleServerOverride
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif  ///(!defined __HTTP_SERVER_OVERRIDE_H)
