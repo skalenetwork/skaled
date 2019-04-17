@@ -1,3 +1,9 @@
+# QTCreator project files
+skaled.config
+skaled.creator
+skaled.files
+skaled.includes
+
 # spell checker dictionaries
 docs-dictionary-*
 
