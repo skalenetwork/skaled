@@ -30,16 +30,17 @@ using namespace std;
 
 #include <libdevcore/microprofile.h>
 
-#
-
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/HashingThreadSafeQueue.h>
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonJS.h>
+
 #include <libethereum/ChainParams.h>
 #include <libethereum/Client.h>
 #include <libethereum/CommonNet.h>
+#include <libethereum/Executive.h>
 #include <libethereum/TransactionQueue.h>
+
 #include <libweb3jsonrpc/JsonHelper.h>
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
@@ -52,6 +53,17 @@ using namespace dev::eth;
 #ifndef CONSENSUS
 #define CONSENSUS 1
 #endif
+
+std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
+    ConsensusExtFace& _extFace ) const {
+#if CONSENSUS
+    const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    auto ts = nfo.timestamp();
+    return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+#else
+    return make_unique< ConsensusStub >( _extFace );
+#endif
+}
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
@@ -84,7 +96,8 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT );
 }
 
-SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq )
+SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
+    const ConsensusFactory* _consFactory )
     : m_client( _client ), m_tq( _tq ), total_sent( 0 ), total_arrived( 0 ) {
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
@@ -92,13 +105,12 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq
     m_extFace.reset( new ConsensusExtImpl( *this ) );
 
     // set up consensus
-#if CONSENSUS
-    const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
-    auto ts = nfo.timestamp();
-    m_consensus.reset( new ConsensusEngine( *m_extFace, m_client.number(), ts ) );
-#else
-    m_consensus.reset( new ConsensusStub( *m_extFace ) );
-#endif
+    // XXX
+    if(!_consFactory)
+        m_consensus = DefaultConsensusFactory(m_client).create( *m_extFace );
+    else
+        m_consensus = _consFactory->create( *m_extFace );
+
     m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
 }
 
@@ -150,6 +162,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                                                                        // transition from q to q
             Transaction txn = m_broadcastedQueue.pop();
 
+            // re-verify transaction aginst current block
+            // throws in case of error
+            Executive::verifyTransaction( txn,
+                static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                m_client.state().startRead(), *m_client.sealEngine(), 0 );
+
             std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
             h256 sha = txn.sha3();
@@ -182,8 +200,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
         assert( out_vector.size() == 0 );
         return out_vector;  // they should detect abort themselves
         // TODO What if someone calls HashingThreadSafeQueue AFTER abort?!
+    } catch ( const exception& ex ) {
+        // usually this is tx validation exception
+        clog( VerbosityWarning, "skale-host" ) << ex.what();
     }
-
 
     total_sent += out_vector.size();
 
@@ -193,7 +213,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID ) {
+    uint64_t _timeStamp, uint64_t _blockID ) try {
     // convert bytes back to transactions (using caching), delete them from q and push results to
     // another q
     std::vector< Transaction > out_txns;  // resultant Transaction vector
@@ -231,11 +251,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
         // if new
         else {
-            // TODO Make function for Stan so he could check the transactions in consensus
-            Transaction t( data, CheckTransaction::None );
-            out_txns.push_back( t );
-            LOG( m_debugLogger ) << "Received consensus-born txn!" << std::endl;
-        }  // else
+            try {
+                Transaction t( data, CheckTransaction::Everything );
+                out_txns.push_back( t );
+                LOG( m_debugLogger ) << "Will import consensus-born txn!";
+            } catch ( const exception& ex ) {
+                penalizePeer();
+                clog( VerbosityWarning, "skale-host" )
+                    << "Dropped consensus-born txn!" << ex.what();
+            }  // catch
+        }      // else
 
         if ( m_tq.knownTransactions().count( sha ) != 0 ) {
             // TODO fix this!!?
@@ -248,17 +273,23 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     total_arrived += out_txns.size();
 
-    m_bq.push( {out_txns, _timeStamp, _blockID} );
+    assert( _blockID == m_client.number() + 1 );
+
+    size_t n_succeeded = m_client.syncTransactions( out_txns, _timeStamp );
+    if ( n_succeeded != out_txns.size() )
+        penalizePeer();
+
+    m_client.sealUnconditionally( false );
+    m_client.importWorkingBlock();
 
     logState();
-
-    LOG( m_debugLogger ) << "m_bq = " << m_bq.size() << std::endl;
+} catch ( const std::exception& ex ) {
+    cerror << "CRITICAL " << ex.what() << " (in createBlock)";
+} catch ( ... ) {
+    cerror << "CRITICAL unknown exception (in createBlock)";
 }
 
 void SkaleHost::startWorking() {
-    auto block_func = std::bind( &SkaleHost::blockImportFunc, this );
-    m_blockImportThread = std::thread( block_func );
-
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( bcast_func );
 
@@ -268,9 +299,7 @@ void SkaleHost::startWorking() {
         // cleanup
         m_exitNeeded = true;
         m_broadcastedQueue.abortWaiting();
-        m_bq.abortWaiting();
         m_broadcastThread.join();
-        m_blockImportThread.join();
         throw;
     }
 
@@ -298,10 +327,8 @@ void SkaleHost::stopWorking() {
     m_broadcastedQueue.abortWaiting();
     m_consensus->exitGracefully();
     m_consensusThread.join();
-    m_bq.abortWaiting();
 
     m_broadcastThread.join();
-    m_blockImportThread.join();
 }
 
 void SkaleHost::broadcastFunc() {
@@ -349,35 +376,6 @@ void SkaleHost::broadcastFunc() {
     }  // while
 
     m_broadcaster->stopService();
-}
-
-void SkaleHost::blockImportFunc() {
-    dev::setThreadName( "blockImportFunc" );
-    // import pending blocks
-
-    while ( !m_exitNeeded ) {
-        try {
-            SkaleHost::bq_item bqItem = m_bq.popSync();
-
-            LOG( m_debugLogger ) << "m_bq = " << m_bq.size() << std::endl;
-
-            assert( bqItem.block_id == m_client.number() + 1 );
-
-            m_client.syncTransactions( bqItem.transactions, bqItem.timestamp );
-            m_client.sealUnconditionally( false );
-            m_client.importWorkingBlock();
-        } catch ( const abort_exception& e ) {
-            LOG( m_debugLogger ) << e.what() << endl;
-            continue;
-        } catch ( const std::exception& ex ) {
-            cerror << "CRITICAL " << ex.what() << " (restarting blockImportFunc)";
-            sleep( 2 );
-        } catch ( ... ) {
-            cerror << "CRITICAL unknown exception (restarting blockImportFunc)";
-            sleep( 2 );
-        }
-
-    }  // while
 }
 
 void SkaleHost::noteNewTransactions() {}

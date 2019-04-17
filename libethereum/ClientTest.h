@@ -38,6 +38,7 @@ public:
     /// Trivial forwarding constructor.
     ClientTest( ChainParams const& _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
+        std::shared_ptr< SkaleHost > _skaleHost,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );

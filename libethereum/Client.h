@@ -70,6 +70,7 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
 class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
+        std::shared_ptr< SkaleHost > _skaleHost = nullptr,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
@@ -244,7 +245,8 @@ public:
     }
 
     /// As syncTransactionQueue - but get list of transactions explicitly
-    void syncTransactions(
+    /// returns number of successfullty executed transactions
+    size_t syncTransactions(
         const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
