@@ -188,6 +188,7 @@ int main( int argc, char** argv ) try {
 
     bool is_ipc = true;
     int explicit_http_port = -1;
+    int explicit_web_socket_port = -1;
     bool bTraceHttpCalls = false;
 
     string jsonAdmin;
@@ -293,7 +294,9 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 HTTP server on specified port" );
-    addClientOption( "web3-trace", "Log HTTP/HTTPS requests and responses" );
+    addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
+        "Run web3 WS server on specified port" );
+    addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
@@ -542,6 +545,14 @@ int main( int argc, char** argv ) try {
             explicit_http_port = atoi( strPort.c_str() );
             if ( !( 0 <= explicit_http_port && explicit_http_port <= 65535 ) )
                 explicit_http_port = -1;
+        }
+    }
+    if ( vm.count( "ws-port" ) ) {
+        std::string strPort = vm["ws-port"].as< string >();
+        if ( !strPort.empty() ) {
+            explicit_web_socket_port = atoi( strPort.c_str() );
+            if ( !( 0 <= explicit_web_socket_port && explicit_web_socket_port <= 65535 ) )
+                explicit_web_socket_port = -1;
         }
     }
     if ( vm.count( "web3-trace" ) )
@@ -1145,7 +1156,7 @@ int main( int argc, char** argv ) try {
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
         };
-    if ( is_ipc || explicit_http_port > 0 ) {
+    if ( is_ipc || explicit_http_port > 0 || explicit_web_socket_port > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,  /// skale
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
@@ -1196,8 +1207,21 @@ int main( int argc, char** argv ) try {
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
+        if ( explicit_web_socket_port >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
+        if ( explicit_http_port >= 0 && explicit_http_port == explicit_web_socket_port ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" )
+                << cc::error(
+                       " Please specify different port numbers for HTTP and WS servers to run" );
+            return EXIT_FAILURE;
+        }
 
-        if ( explicit_http_port > 0 ) {
+        if ( explicit_http_port > 0 || explicit_web_socket_port > 0 ) {
             std::string pathSslKey, pathSslCert;
             bool bIsSSL = false;
             if ( vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
@@ -1214,8 +1238,9 @@ int main( int argc, char** argv ) try {
             }
             //
             //
-            auto skale_server_connector = new SkaleServerOverride(
-                chainParams.nodeInfo.ip, explicit_http_port, pathSslKey, pathSslCert );
+            auto skale_server_connector =
+                new SkaleServerOverride( chainParams.nodeInfo.ip, explicit_http_port,
+                    chainParams.nodeInfo.ip, explicit_web_socket_port, pathSslKey, pathSslCert );
             skale_server_connector->bTraceCalls_ = bTraceHttpCalls;
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
@@ -1224,7 +1249,7 @@ int main( int argc, char** argv ) try {
             if ( bIsSSL )
                 clog( VerbosityInfo, "main" ) << "....SSL started............. "
                                               << ( skale_server_connector->isSSL() ? "YES" : "NO" );
-        }  // if ( explicit_http_port > 0 )
+        }  // if ( explicit_http_port > 0 || explicit_web_socket_port > 0 )
 
         if ( jsonAdmin.empty() )
             jsonAdmin =
@@ -1234,7 +1259,7 @@ int main( int argc, char** argv ) try {
                 jsonAdmin, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
         cout << "JSONRPC Admin Session Key: " << jsonAdmin << "\n";
-    }  // if ( is_ipc || explicit_http_port > 0 )
+    }  // if ( is_ipc || explicit_http_port > 0 || explicit_web_socket_port > 0 )
 
     // SKALE Disabled
     // TODO remove from options
