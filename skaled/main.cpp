@@ -157,6 +157,7 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }  // namespace
 
 int main( int argc, char** argv ) try {
+    cc::_on_ = true;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -185,8 +186,7 @@ int main( int argc, char** argv ) try {
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
 
-    bool ipc = true;
-    bool http = true;
+    bool is_ipc = true;
     int explicit_http_port = -1;
     bool bTraceHttpCalls = false;
 
@@ -271,6 +271,10 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "web3-shutdown",
         "Enable programmatic shutdown via \"skale_shutdownInstance\" web3 methd call" );
+    addClientOption( "ssl-key", po::value< std::string >()->value_name( "<path>" ),
+        "Specifies path to SSL key file" );
+    addClientOption( "ssl-cert", po::value< std::string >()->value_name( "<path>" ),
+        "Specifies path to SSL certificate file file" );
 
     /// skale
     addClientOption( "aa", po::value< string >()->value_name( "<yes/no/always>" ),
@@ -287,11 +291,9 @@ int main( int argc, char** argv ) try {
         "Set .ipc socket path (default: data directory)" );
     addClientOption( "no-ipc", "Disable IPC server" );
 
-    addClientOption( "http", "Enable HTTP server for json-rpc requests (default: on)" );
-    addClientOption( "no-http", "Disable HTTP server" );
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 http server on specified port (default is configuration base port + 3)" );
-    addClientOption( "http-trace", "Log HTTP requests and responses" );
+        "Run web3 HTTP server on specified port" );
+    addClientOption( "web3-trace", "Log HTTP/HTTPS requests and responses" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
@@ -435,6 +437,8 @@ int main( int argc, char** argv ) try {
             return -1;
         }
 
+    skutils::dispatch::default_domain( skutils::tools::cpu_count() );
+
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
         filename = vm["import-snapshot"].as< string >();
@@ -529,13 +533,9 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "admin" ) )
         jsonAdmin = vm["admin"].as< string >();
     if ( vm.count( "ipc" ) )
-        ipc = true;
+        is_ipc = true;
     if ( vm.count( "no-ipc" ) )
-        ipc = false;
-    if ( vm.count( "http" ) )
-        http = true;
-    if ( vm.count( "no-http" ) )
-        http = false;
+        is_ipc = false;
     if ( vm.count( "http-port" ) ) {
         std::string strPort = vm["http-port"].as< string >();
         if ( !strPort.empty() ) {
@@ -544,7 +544,7 @@ int main( int argc, char** argv ) try {
                 explicit_http_port = -1;
         }
     }
-    if ( vm.count( "http-trace" ) )
+    if ( vm.count( "web3-trace" ) )
         bTraceHttpCalls = true;
     if ( vm.count( "mining" ) ) {
         string m = vm["mining"].as< string >();
@@ -1128,7 +1128,8 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable( isProxy,
+                _t.userReadable(
+                    isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = web3.ethereum()->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )
@@ -1144,8 +1145,7 @@ int main( int argc, char** argv ) try {
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
         };
-
-    if ( ipc || http ) {
+    if ( is_ipc || explicit_http_port > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,  /// skale
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
@@ -1173,7 +1173,7 @@ int main( int argc, char** argv ) try {
             // SKALE new rpc::AdminNet(web3, *sessionManager.get()),
             new rpc::Debug( *web3.ethereum() ), testEth ) );
 
-        if ( ipc ) {
+        if ( is_ipc ) {
             try {
                 auto ipcConnector = new IpcServer( "geth" );
                 jsonrpcIpcServer->addConnector( ipcConnector );
@@ -1188,22 +1188,43 @@ int main( int argc, char** argv ) try {
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                 return EXIT_FAILURE;
             }  // catch
+        }      // if ( is_ipc )
+
+        if ( explicit_http_port >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
         }
 
-        if ( http ) {
-            int port = ( explicit_http_port >= 0 ) ?
-                           explicit_http_port :
-                           chainParams.nodeInfo.port + 3;  // HACK remove constant +3!!
-            auto httpConnector = new HttpServerOverride( chainParams.nodeInfo.ip, port );
-            httpConnector->bTraceHttpCalls = bTraceHttpCalls;
-            jsonrpcIpcServer->addConnector( httpConnector );
-            if ( !httpConnector->StartListening() ) {  // TODO Will it delete itself?
-                clog( VerbosityError, "main" )
-                    << "Cannot start listening for RPC requests on http port " << port << ": "
-                    << strerror( errno );
+        if ( explicit_http_port > 0 ) {
+            std::string pathSslKey, pathSslCert;
+            bool bIsSSL = false;
+            if ( vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
+                pathSslKey = vm["ssl-key"].as< std::string >();
+                pathSslCert = vm["ssl-cert"].as< std::string >();
+                if ( ( !pathSslKey.empty() ) && ( !pathSslCert.empty() ) )
+                    bIsSSL = true;
+            }
+            clog( VerbosityInfo, "main" )
+                << "SSL is...................... " << ( bIsSSL ? "ON" : "OFF" );
+            if ( bIsSSL ) {
+                clog( VerbosityInfo, "main" ) << "....SSL key is.............. " << pathSslKey;
+                clog( VerbosityInfo, "main" ) << "....SSL certificate is...... " << pathSslCert;
+            }
+            //
+            //
+            auto skale_server_connector = new SkaleServerOverride(
+                chainParams.nodeInfo.ip, explicit_http_port, pathSslKey, pathSslCert );
+            skale_server_connector->bTraceCalls_ = bTraceHttpCalls;
+            jsonrpcIpcServer->addConnector( skale_server_connector );
+            if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;
             }
-        }
+            if ( bIsSSL )
+                clog( VerbosityInfo, "main" ) << "....SSL started............. "
+                                              << ( skale_server_connector->isSSL() ? "YES" : "NO" );
+        }  // if ( explicit_http_port > 0 )
 
         if ( jsonAdmin.empty() )
             jsonAdmin =
@@ -1213,7 +1234,7 @@ int main( int argc, char** argv ) try {
                 jsonAdmin, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
         cout << "JSONRPC Admin Session Key: " << jsonAdmin << "\n";
-    }
+    }  // if ( is_ipc || explicit_http_port > 0 )
 
     // SKALE Disabled
     // TODO remove from options

@@ -80,6 +80,8 @@ public:
     bool eth_unregister( const std::string& param1 ) noexcept( false );
     Json::Value eth_fetchQueuedTransactions( const std::string& param1 ) noexcept( false );
     Json::Value eth_signTransaction( const Json::Value& param1 ) noexcept( false );
+    Json::Value eth_subscribe( const Json::Value& param1 ) noexcept( false );
+    Json::Value eth_unsubscribe( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_inspectTransaction( const std::string& param1 ) noexcept( false );
     std::string eth_sendRawTransaction( const std::string& param1 ) noexcept( false );
     bool eth_notePassword( const std::string& param1 ) noexcept( false );

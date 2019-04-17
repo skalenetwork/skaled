@@ -37,168 +37,194 @@
 
 #include <arpa/inet.h>
 
-struct mhd_coninfo {
-    struct MHD_PostProcessor* postprocessor;
-    MHD_Connection* connection;
-    std::stringstream request;
-    HttpServerOverride* server;
-    int code;
-};
+#include <stdio.h>
 
-HttpServerOverride::HttpServerOverride( const std::string& address_, int port_ )
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+SkaleServerOverride::SkaleServerOverride( const std::string& http_addr, int http_port,
+    const std::string& pathSslKey, const std::string& pathSslCert )
     : AbstractServerConnector(),
-      address( address_ ),
-      port( port_ ),
-      threads( 16 ),
-      running( false ),
-      daemon( NULL ),
-      bTraceHttpCalls( false ) {}
+      address_http_( http_addr ),
+      port_http_( http_port ),
+      bTraceCalls_( false ),
+      pathSslKey_( pathSslKey ),
+      pathSslCert_( pathSslCert ),
+      bIsSSL_( false ) {}
 
-jsonrpc::IClientConnectionHandler* HttpServerOverride::GetHandler( const std::string& url ) {
-    if ( jsonrpc::AbstractServerConnector::GetHandler() != NULL )
+SkaleServerOverride::~SkaleServerOverride() {
+    StopListening();
+}
+
+jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::string& url ) {
+    if ( jsonrpc::AbstractServerConnector::GetHandler() != nullptr )
         return AbstractServerConnector::GetHandler();
     std::map< std::string, jsonrpc::IClientConnectionHandler* >::iterator it =
         this->urlhandler.find( url );
     if ( it != this->urlhandler.end() )
         return it->second;
-    return NULL;
+    return nullptr;
 }
 
+void SkaleServerOverride::logTraceServerEvent(
+    bool isError, const char* strProtocol, const std::string& strMessage ) {
+    if ( strMessage.empty() )
+        return;
+    std::stringstream ssProtocol;
+    strProtocol = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
+    if ( isError )
+        ssProtocol << cc::fatal( strProtocol + std::string( " ERROR:" ) );
+    else
+        ssProtocol << cc::info( strProtocol + std::string( ":" ) );
+    if ( isError )
+        clog( dev::VerbosityError, ssProtocol.str() ) << strMessage;
+    else
+        clog( dev::VerbosityInfo, ssProtocol.str() ) << strMessage;
+}
 
-bool HttpServerOverride::StartListening() {
-    if ( !this->running ) {
-        const bool has_epoll = ( MHD_is_feature_supported( MHD_FEATURE_EPOLL ) == MHD_YES );
-        const bool has_poll = ( MHD_is_feature_supported( MHD_FEATURE_POLL ) == MHD_YES );
-        unsigned int mhd_flags = 0;
-        if ( has_epoll )
-// In MHD version 0.9.44 the flag is renamed to
-// MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY. In later versions both
-// are deprecated.
-#if defined( MHD_USE_EPOLL_INTERNALLY )
-            mhd_flags = MHD_USE_EPOLL_INTERNALLY;
-#else
-            mhd_flags = MHD_USE_EPOLL_INTERNALLY_LINUX_ONLY;
-#endif
-        else if ( has_poll )
-            mhd_flags = MHD_USE_POLL_INTERNALLY;
-        else
-            assert( false );
-
-        sockaddr_in sain;
-        sain.sin_family = AF_INET;
-        sain.sin_port = htons( ( uint16_t ) this->port );
-        sain.sin_addr.s_addr = inet_addr( address.c_str() );
-
-        this->daemon = MHD_start_daemon( mhd_flags, this->port, NULL, NULL,
-            HttpServerOverride::callback, this, MHD_OPTION_THREAD_POOL_SIZE, this->threads,
-            MHD_OPTION_SOCK_ADDR, &sain, MHD_OPTION_END );
-
-        if ( this->daemon != NULL )
-            this->running = true;
+void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
+    const char* strOrigin, const std::string& strPayload ) {
+    std::stringstream ssProtocol;
+    std::string strProto =
+        ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
+    strOrigin = ( strOrigin && strOrigin[0] ) ? strOrigin : "unknown origin";
+    std::string strErrorSuffix, strOriginSuffix, strDirect;
+    if ( isRX ) {
+        strDirect = cc::ws_rx( " >>> " );
+        ssProtocol << cc::ws_rx_inv( " >>> " + strProto + "/RX >>> " );
+    } else {
+        strDirect = cc::ws_tx( " <<< " );
+        ssProtocol << cc::ws_tx_inv( " <<< " + strProto + "/TX <<< " );
     }
-    return this->running;
+    strOriginSuffix = cc::u( strOrigin );
+    if ( isError )
+        strErrorSuffix = cc::fatal( " ERROR " );
+    if ( isError )
+        clog( dev::VerbosityError, ssProtocol.str() )
+            << strErrorSuffix << strOriginSuffix << strDirect << strPayload;
+    else
+        clog( dev::VerbosityInfo, ssProtocol.str() )
+            << strErrorSuffix << strOriginSuffix << strDirect << strPayload;
 }
 
-bool HttpServerOverride::StopListening() {
-    if ( this->running ) {
-        MHD_stop_daemon( this->daemon );
-        this->running = false;
+bool SkaleServerOverride::startListeningHTTP() {
+    try {
+        stopListeningHTTP();
+        if ( address_http_.empty() || port_http_ <= 0 )
+            return true;
+        bIsSSL_ = false;
+        if ( ( !pathSslKey_.empty() ) && ( !pathSslCert_.empty() ) )
+            bIsSSL_ = true;
+        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+            cc::debug( "starting " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                cc::debug( " server on address " ) + cc::info( address_http_ ) +
+                cc::debug( " and port " ) + cc::c( port_http_ ) + cc::debug( "..." ) );
+        if ( bIsSSL_ )
+            this->pServerHTTP_.reset(
+                new skutils::http::SSL_server( pathSslCert_.c_str(), pathSslKey_.c_str() ) );
+        else
+            this->pServerHTTP_.reset( new skutils::http::server );
+        this->pServerHTTP_->Options( "/", [&]( const skutils::http::request& req,
+                                              skutils::http::response& res ) {
+            if ( bTraceCalls_ )
+                logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                    cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
+            res.set_header( "access-control-allow-headers", "Content-Type" );
+            res.set_header( "access-control-allow-methods", "POST" );
+            res.set_header( "access-control-allow-origin", "*" );
+            res.set_header( "content-length", "0" );
+            res.set_header(
+                "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
+        } );
+        this->pServerHTTP_->Post(
+            "/", [this]( const skutils::http::request& req, skutils::http::response& res ) {
+                if ( bTraceCalls_ )
+                    logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP",
+                        req.origin_.c_str(), cc::j( req.body_ ) );
+                int nID = -1;
+                std::string strResponse;
+                try {
+                    nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
+                    nID = joRequest["id"].get< int >();
+                    jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
+                    if ( handler == nullptr )
+                        throw std::runtime_error( "No client connection handler found" );
+                    handler->HandleRequest( req.body_.c_str(), strResponse );
+                } catch ( const std::exception& ex ) {
+                    logTraceServerTraffic( false, true, bIsSSL_ ? "HTTPS" : "HTTP",
+                        req.origin_.c_str(), cc::warn( ex.what() ) );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = nID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( ex.what() );
+                    strResponse = joErrorResponce.dump();
+                } catch ( ... ) {
+                    const char* e = "unknown exception in SkaleServerOverride";
+                    logTraceServerTraffic( false, true, bIsSSL_ ? "HTTPS" : "HTTP",
+                        req.origin_.c_str(), cc::warn( e ) );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = nID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( e );
+                    strResponse = joErrorResponce.dump();
+                }
+                if ( bTraceCalls_ )
+                    logTraceServerTraffic( false, false, bIsSSL_ ? "HTTPS" : "HTTP",
+                        req.origin_.c_str(), cc::j( strResponse ) );
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "vary", "Origin" );
+                res.set_content( strResponse.c_str(), "application/json" );
+            } );
+        std::thread( [this]() {
+            this->pServerHTTP_->listen( this->address_http_.c_str(), this->port_http_ );
+        } ).detach();
+        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+            cc::success( "OK, started " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                cc::success( " server on address " ) + cc::info( address_http_ ) +
+                cc::success( " and port " ) + cc::c( port_http_ ) );
+        return true;
+    } catch ( const std::exception& ex ) {
+        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+    }
+    return false;
+}
+
+bool SkaleServerOverride::stopListeningHTTP() {
+    try {
+        if ( pServerHTTP_ ) {
+            logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+                cc::notice( "Will stop " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                    cc::notice( " server on address " ) + cc::info( address_http_ ) +
+                    cc::success( " and port " ) + cc::c( port_http_ ) + cc::notice( "..." ) );
+            if ( pServerHTTP_->is_running() )
+                pServerHTTP_->stop();
+            pServerHTTP_.reset();
+            logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
+                cc::success( "OK, stopped " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+                    cc::success( " server on address " ) + cc::info( address_http_ ) +
+                    cc::success( " and port " ) + cc::c( port_http_ ) );
+        }
+    } catch ( ... ) {
     }
     return true;
 }
 
-bool HttpServerOverride::SendResponse( const std::string& response, void* addInfo ) {
-    MICROPROFILE_SCOPEI( "HttpServerOverride", "SendResponse", MP_MEDIUMBLUE );
-    struct mhd_coninfo* client_connection = static_cast< struct mhd_coninfo* >( addInfo );
-    struct MHD_Response* result = MHD_create_response_from_buffer(
-        response.size(), ( void* ) response.c_str(), MHD_RESPMEM_MUST_COPY );
 
-    MHD_add_response_header( result, "Content-Type", "application/json" );
-    MHD_add_response_header( result, "Access-Control-Allow-Origin", "*" );
-
-    int ret = MHD_queue_response( client_connection->connection, client_connection->code, result );
-    MHD_destroy_response( result );
-    return ret == MHD_YES;
+bool SkaleServerOverride::StartListening() {
+    auto retVal = startListeningHTTP() ? true : false;
+    return retVal;
 }
 
-bool HttpServerOverride::SendOptionsResponse( void* addInfo ) {
-    struct mhd_coninfo* client_connection = static_cast< struct mhd_coninfo* >( addInfo );
-    struct MHD_Response* result = MHD_create_response_from_buffer( 0, NULL, MHD_RESPMEM_MUST_COPY );
-
-    MHD_add_response_header( result, "Allow", "POST, OPTIONS" );
-    MHD_add_response_header( result, "Access-Control-Allow-Origin", "*" );
-    MHD_add_response_header(
-        result, "Access-Control-Allow-Headers", "origin, content-type, accept" );
-    MHD_add_response_header( result, "DAV", "1" );
-
-    int ret = MHD_queue_response( client_connection->connection, client_connection->code, result );
-    MHD_destroy_response( result );
-    return ret == MHD_YES;
+bool SkaleServerOverride::StopListening() {
+    auto retVal = stopListeningHTTP() ? true : false;
+    return retVal;
 }
 
-int HttpServerOverride::callback( void* cls, struct MHD_Connection* connection, const char* url,
-    const char* method, const char* version, const char* upload_data, size_t* upload_data_size,
-    void** con_cls ) {
-    MICROPROFILE_SCOPEI( "HttpServerOverride", "callback", MP_SLATEBLUE );
-    ( void ) version;
-    if ( *con_cls == NULL ) {
-        struct mhd_coninfo* client_connection = new mhd_coninfo;
-        client_connection->connection = connection;
-        client_connection->server = static_cast< HttpServerOverride* >( cls );
-        *con_cls = client_connection;
-        return MHD_YES;
-    }
-    struct mhd_coninfo* client_connection = static_cast< struct mhd_coninfo* >( *con_cls );
-
-    if ( std::string( "POST" ) == method )
-        try {
-            if ( *upload_data_size != 0 ) {
-                client_connection->request.write( upload_data, *upload_data_size );
-                *upload_data_size = 0;
-                return MHD_YES;
-            } else {
-                std::string response;
-                jsonrpc::IClientConnectionHandler* handler =
-                    client_connection->server->GetHandler( std::string( url ) );
-                if ( handler == NULL ) {
-                    client_connection->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-                    client_connection->server->SendResponse(
-                        "No client connection handler found", client_connection );
-                } else {
-                    client_connection->code = MHD_HTTP_OK;
-                    if ( static_cast< HttpServerOverride* >( cls )->bTraceHttpCalls ) {
-                        std::cout << "HTTP request: " << client_connection->request.str() << "\n";
-                        std::cout.flush();
-                    }
-                    clog( dev::VerbosityTrace, "rpc" ) << client_connection->request.str();
-                    handler->HandleRequest( client_connection->request.str(), response );
-                    clog( dev::VerbosityTrace, "rpc" ) << response;
-                    if ( static_cast< HttpServerOverride* >( cls )->bTraceHttpCalls ) {
-                        std::cout << "HTTP responce: " << response << "\n";
-                        std::cout.flush();
-                    }
-                    client_connection->server->SendResponse( response, client_connection );
-                }
-            }
-        } catch ( const std::exception& ex ) {
-            cerror << "CRITICAL " << ex.what() << " in HttpServerOverride";
-            client_connection->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-            client_connection->server->SendResponse( ex.what(), client_connection );
-        } catch ( ... ) {
-            cerror << "CRITICAL unknown exception in HttpServerOverride";
-            client_connection->code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-            client_connection->server->SendResponse(
-                "unknown exception in HttpServerOverride", client_connection );
-        }  // catch
-    else if ( std::string( "OPTIONS" ) == method ) {
-        client_connection->code = MHD_HTTP_OK;
-        client_connection->server->SendOptionsResponse( client_connection );
-    } else {
-        client_connection->code = MHD_HTTP_METHOD_NOT_ALLOWED;
-        client_connection->server->SendResponse( "Not allowed HTTP Method", client_connection );
-    }
-    delete client_connection;
-    *con_cls = NULL;
-
-    return MHD_YES;
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

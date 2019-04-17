@@ -16,7 +16,7 @@ if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)
 endif()
 
-target_include_directories(${EXECUTABLE_NAME} PRIVATE ../utils)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE ../utils ${SKUTILS_INCLUDE_DIRS})
 
 if(MINIUPNPC)
     target_compile_definitions(${EXECUTABLE_NAME} PRIVATE ETH_MINIUPNPC)
