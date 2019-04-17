@@ -110,6 +110,8 @@ public:
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
 private:
+    bool working = false;
+
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:

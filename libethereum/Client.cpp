@@ -72,9 +72,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 }
 
 Client::Client( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption, std::shared_ptr< SkaleHost > _skaleHost,
-    fs::path const& _dbPath, fs::path const& _snapshotPath, WithExisting _forceAction,
-    TransactionQueue::Limits const& _l )
+    std::shared_ptr< GasPricer > _gpForAdoption, fs::path const& _dbPath,
+    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction,
           []( unsigned d, unsigned t ) {
@@ -84,12 +83,12 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ),
-      m_skaleHost( _skaleHost ) {
+      m_working( chainParams().accountStartNonce ) {
     init( _dbPath, _snapshotPath, _forceAction, _networkID );
 }
 
 Client::~Client() {
+    assert( m_skaleHost );
     m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
     m_signalled.notify_all();    // to wake up the thread from Client::doWork()
     stopWorking();
@@ -98,6 +97,18 @@ Client::~Client() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     terminate();
+}
+
+void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
+    assert( !m_skaleHost );
+
+    m_skaleHost = _skaleHost;
+
+    if ( !m_skaleHost )
+        m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+
+    if(Worker::isWorking())
+        m_skaleHost->startWorking();
 }
 
 void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPath,
@@ -131,7 +142,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
-        m_skaleHost->onBlockImported( _info );
+        if ( m_skaleHost )
+            m_skaleHost->onBlockImported( _info );
         m_onBlockImport( _info );
     } );
 
@@ -145,9 +157,9 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
         //        auto ethHostCapability =
         //            make_shared<EthereumHost>(_extNet, bc(), m_stateDB, m_tq, m_bq, _networkId);
         //        _extNet.registerCapability(ethHostCapability);
-        if(!m_skaleHost)
-            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
-        m_skaleHost->startWorking();
+        //        if(!m_skaleHost)
+        //            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+        //        m_skaleHost->startWorking();
     }
 
     // create Warp capability if we either download snapshot or can give out snapshot
@@ -398,6 +410,8 @@ void Client::syncBlockQueue() {
 }
 
 size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+    assert( m_skaleHost );
+
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() )
@@ -467,6 +481,8 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 }
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
+    assert( m_skaleHost );
+
     // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
     for ( auto const& h : _blocks )
         LOG( m_loggerDetail ) << "Live block: " << h;

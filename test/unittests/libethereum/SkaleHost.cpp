@@ -1,7 +1,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
-#include <mapreduce_consensus/node/ConsensusEngine.h>
+#include <libconsensus/node/ConsensusEngine.h>
 
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
@@ -81,26 +81,28 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        client =
-            make_unique< Client >( chainParams, chainParams.networkID, gasPricer, tempDir.path() );
+        client = make_unique< Client >( chainParams, chainParams.networkID, gasPricer, tempDir.path() );
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
-
-        skaleHost = make_unique< SkaleHost >( *client, tq, &test_stub_factory );
+        skaleHost = make_shared< SkaleHost >( *client, tq, &test_stub_factory );
         stub = test_stub_factory.result;
 
+        client->injectSkaleHost(skaleHost);
+        client->startWorking();
+
         // make money
-        dev::eth::simulateMining( *client, 1 );
+        //dev::eth::simulateMining( *client, 1 );
     }
+
+    TransactionQueue tq;
 
     unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
 
-    unique_ptr< SkaleHost > skaleHost;
-    TransactionQueue tq;
+    shared_ptr< SkaleHost > skaleHost;
     ConsensusTestStub* stub;
 };
 
