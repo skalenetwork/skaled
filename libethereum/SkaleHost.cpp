@@ -106,8 +106,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq
 
     // set up consensus
     // XXX
-    if(!_consFactory)
-        m_consensus = DefaultConsensusFactory(m_client).create( *m_extFace );
+    if ( !_consFactory )
+        m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
     else
         m_consensus = _consFactory->create( *m_extFace );
 
@@ -290,6 +290,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 }
 
 void SkaleHost::startWorking() {
+    assert( !working );
+
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( bcast_func );
 
@@ -319,16 +321,23 @@ void SkaleHost::startWorking() {
     // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
     // m_consensus->bootStrapAll();
     m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
+
+    working = true;
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
 void SkaleHost::stopWorking() {
+    if( !working )
+        return;
+
     m_exitNeeded = true;
     m_broadcastedQueue.abortWaiting();
     m_consensus->exitGracefully();
     m_consensusThread.join();
 
     m_broadcastThread.join();
+
+    working = false;
 }
 
 void SkaleHost::broadcastFunc() {
