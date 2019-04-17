@@ -70,13 +70,14 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
 class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
-        std::shared_ptr< SkaleHost > _skaleHost = nullptr,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
     virtual ~Client();
+
+    void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
 
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
@@ -232,7 +233,11 @@ public:
     using ClientBase::block;
 
     /// should be called after the constructor of the most derived class finishes.
-    void startWorking() { Worker::startWorking(); };
+    void startWorking() {
+        assert( m_skaleHost );
+        m_skaleHost->startWorking();
+        Worker::startWorking();
+    };
 
     /// Change the function that is called when a new block is imported
     Handler< BlockHeader const& > setOnBlockImport(
