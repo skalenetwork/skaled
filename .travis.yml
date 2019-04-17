@@ -45,8 +45,6 @@ matrix:
               - ZIP_SUFFIX=ubuntu-xenial
               - CMAKE_BUILD_TYPE=Debug
               - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-git:
-    depth: 2
 cache:
     ccache: true
     directories:
