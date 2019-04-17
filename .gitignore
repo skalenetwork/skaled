@@ -1,3 +1,12 @@
+# QTCreator project files
+skaled.config
+skaled.creator
+skaled.files
+skaled.includes
+
+# spell checker dictionaries
+docs-dictionary-*
+
 # coverage stats
 *.gcov
 *.gcda
@@ -23,9 +32,12 @@ SkaleDeps/nettle-3.4.1
 SkaleDeps/libtasn1
 SkaleDeps/gnutls-3.6.5
 SkaleDeps/libmicrohttpd
+SkaleDeps/libmicrohttpd_openssl
 SkaleDeps/jsoncpp
 SkaleDeps/libjson-rpc-cpp
 SkaleDeps/libcryptopp
+SkaleDeps/libgcrypt
+SkaleDeps/libgpg-error
 
 # Compiled Object files
 *.slo
