@@ -376,6 +376,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
+    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );

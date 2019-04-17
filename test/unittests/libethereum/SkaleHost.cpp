@@ -96,8 +96,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         dev::eth::simulateMining( *client, 1 );
     }
 
-    TransactionQueue tq;
-
     unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
