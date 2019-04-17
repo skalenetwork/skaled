@@ -72,8 +72,9 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 }
 
 Client::Client( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l )
+    std::shared_ptr< GasPricer > _gpForAdoption, std::shared_ptr< SkaleHost > _skaleHost,
+    fs::path const& _dbPath, fs::path const& _snapshotPath, WithExisting _forceAction,
+    TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction,
           []( unsigned d, unsigned t ) {
@@ -83,7 +84,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ) {
+      m_working( chainParams().accountStartNonce ),
+      m_skaleHost( _skaleHost ) {
     init( _dbPath, _snapshotPath, _forceAction, _networkID );
 }
 
@@ -143,7 +145,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
         //        auto ethHostCapability =
         //            make_shared<EthereumHost>(_extNet, bc(), m_stateDB, m_tq, m_bq, _networkId);
         //        _extNet.registerCapability(ethHostCapability);
-        m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+        if(!m_skaleHost)
+            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
         m_skaleHost->startWorking();
     }
 
@@ -394,7 +397,7 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-void Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() )
@@ -409,11 +412,8 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
-        if ( m_working.isSealed() ) {
-            ctrace << "Skipping txq sync for a sealed block.";
-            return;
-        }
 
+        //        assert(m_state.m_db_write_lock.has_value());
         newPendingReceipts = m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
     }
@@ -423,7 +423,7 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
         ctrace << "No transactions to process. " << m_working.pending().size() << " pending, "
                << s.current << " queued, " << s.future << " future, " << s.unverified
                << " unverified";
-        return;
+        return newPendingReceipts.size();
     }
 
     DEV_READ_GUARDED( x_working )
@@ -445,6 +445,8 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
            << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
+
+    return newPendingReceipts.size();
 }
 
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
