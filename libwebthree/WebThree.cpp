@@ -49,15 +49,15 @@ WebThreeDirect::WebThreeDirect( std::string const& _clientVersion,
         auto tq_limits = TransactionQueue::Limits{100000, 1024};
 
         if ( _testing )
-            m_ethereum.reset( new eth::ClientTest(
-                _params, ( int ) _params.networkID, shared_ptr< GasPricer >(), _dbPath, _we ) );
+            m_ethereum.reset( new eth::ClientTest( _params, ( int ) _params.networkID,
+                shared_ptr< GasPricer >(), nullptr, _dbPath, _we ) );
         else {
             if ( _params.sealEngineName == Ethash::name() )
                 m_ethereum.reset( new eth::EthashClient( _params, ( int ) _params.networkID,
-                    shared_ptr< GasPricer >(), _dbPath, _snapshotPath, _we, tq_limits ) );
+                    shared_ptr< GasPricer >(), nullptr, _dbPath, _snapshotPath, _we, tq_limits ) );
             else if ( _params.sealEngineName == NoProof::name() )
                 m_ethereum.reset( new eth::Client( _params, ( int ) _params.networkID,
-                    shared_ptr< GasPricer >(), _dbPath, _snapshotPath, _we, tq_limits ) );
+                    shared_ptr< GasPricer >(), nullptr, _dbPath, _snapshotPath, _we, tq_limits ) );
             else
                 BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                            "Unknown seal engine: " + _params.sealEngineName ) );
