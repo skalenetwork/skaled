@@ -25,28 +25,63 @@
 language: cpp
 env:
     global:        
-        - TRAVIS_TESTS=On        
-matrix:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+os: linux
+dist: xenial
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - g++-7
+            - texinfo
+            - lcov
+            - clang-format-6.0
+            - libboost-all-dev
+            - libssl-dev
+jobs:
     include:
-        - os: linux
-          dist: xenial
-          addons:
-              apt:
-                sources:
-                    - ubuntu-toolchain-r-test
-                packages:
-                    - g++-7
-                    - texinfo
-                    - lcov
-                    - clang-format-6.0
-                    - libboost-all-dev
-                    - libssl-dev
+        - stage: test
           env:
-              - ZIP_SUFFIX=ubuntu-xenial
-              - CMAKE_BUILD_TYPE=Debug
-              - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+            - CMAKE_BUILD_TYPE=Debug
+            - CODE_COVERAGE=ON
+          after_success:
+            # run tests
+            - cd test
+            - ./testeth
+            - cd ..
+
+            # Create lcov report
+            - lcov --capture --directory . --output-file coverage.info
+            - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+            - lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
+            - lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+            - lcov --list coverage.info # debug info
+
+            # Uploading report to CodeCov
+            - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+
+        - stage: deploy
+          env:
+            - CMAKE_BUILD_TYPE=Debug
+            - CODE_COVERAGE=OFF
+          before_deploy:
+            # Set up git user name and tag this commit
+            - git config --local user.name "skale-jenkins"
+            - git config --local user.email "$GITHUB_EMAIL"
+            - export TRAVIS_TAG=v$(cat ../VERSION)
+            - git tag $TRAVIS_TAG
+          deploy:
+            provider: releases
+            api_key: "$GITHUB_OAUTH_TOKEN"
+            skip_cleanup: true
+            file:
+                - skaled/skaled
+            on:
+                repo: skalenetwork/skaled
+                branch: feature/SKALE-963-releases
 git:
-    depth: 2
+    depth: 7
 cache:
     ccache: true
     directories:
@@ -66,24 +101,10 @@ script:
     # configure
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=ON ..
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
 
     # check code style
     - make format-check || travis_terminate 1;
 
     # build    
-    - make -j$(nproc)
-
-    # run tests
-    - cd test
-    - ./testeth
-    - cd ..
-after_success:
-    # Create lcov report
-    - lcov --capture --directory . --output-file coverage.info
-    - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-    - lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
-    - lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-    - lcov --list coverage.info # debug info
-    # Uploading report to CodeCov
-    - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+    - cmake --build . -- -j$(nproc)
