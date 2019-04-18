@@ -24,8 +24,8 @@
 
 language: cpp
 env:
-    global:        
-        - TRAVIS_TESTS=On        
+    global:
+        - TRAVIS_TESTS=On
 matrix:
     include:
         - os: linux
@@ -45,11 +45,12 @@ matrix:
               - ZIP_SUFFIX=ubuntu-xenial
               - CMAKE_BUILD_TYPE=Debug
               - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+              - CLANG_FORMAT_BIN_NAME=clang-format-6.0
 cache:
     ccache: true
     directories:
         - ~/.ethash
-        - ~/.local        
+        - ~/.local
         - ~/.hunter
         # Cache whole deps dir hoping you will not need to download and
         # build external dependencies next build.
@@ -58,18 +59,18 @@ cache:
 
 before_install:
     - eval "${MATRIX_EVAL}"
-install:    
+install:
     - ./SkaleDeps/build.sh
 script:
     # configure
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=ON ..
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=ON -DCLANG_FORMAT_BIN_NAME=$CLANG_FORMAT_BIN_NAME ..
 
     # check code style
     - make format-check || travis_terminate 1;
 
-    # build    
+    # build
     - make -j$(nproc)
 
     # run tests
