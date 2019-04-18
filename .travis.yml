@@ -37,8 +37,6 @@ addons:
             - texinfo
             - lcov
             - clang-format-6.0
-            - libboost-all-dev
-            - libssl-dev
 jobs:
     include:
         - stage: test
@@ -62,7 +60,7 @@ jobs:
             - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
 
         - stage: deploy
-          if: branch = master
+          if: branch = feature/SKALE-963-releases
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
