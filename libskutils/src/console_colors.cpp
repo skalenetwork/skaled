@@ -2448,11 +2448,11 @@ void ansi_transform( producer& p, std::istream& is ) {
                                 //										// experimental
                                 //										if( negative == 0 )
                                 //											bc = momelem->digit[
-                                //mompos
+                                // mompos
                                 //+
                                 // 1
                                 //]; 										else
-                                //fc = momelem->digit[ mompos + 1 ]; break;
+                                // fc = momelem->digit[ mompos + 1 ]; break;
                             }  // switch( a_digit )
                         }
                         momelem = momelem->next;
@@ -2653,8 +2653,9 @@ std::string strip( const char* s ) {
     //'\033'
     //) { 			} else if( c == 0x1B ) { 			} else if( c == '[' && cp == 0x1B ) {
     //} else if( cp == '[' && cpp
-    //== 0x1B ) { 			} else if( c=='m' && cpp == '[' && cppp == 0x1B ) { 			} else if(
-    //c
+    //== 0x1B ) { 			} else if( c=='m' && cpp == '[' && cppp == 0x1B ) { 			} else
+    //if(
+    // c
     //==
     //';' && cpp ==
     //'[' && cppp == 0x1B ) { 			} else if( cp == ';' && cppp == '[' && cpppp == 0x1B ) {
@@ -2668,9 +2669,9 @@ std::string strip( const char* s ) {
     // c =='m'
     // && cpppppp ==
     //';' && cpppppppp == '[' && cppppppppp == 0x1B ) { 			} else //if( isprint( c ) )
-    // ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp; 			cppppppp =
-    // cpppppp; cpppppp = cppppp; 			cppppp = cpppp; 			cpppp = cppp;
-    // cppp = cpp; 			cpp = cp; 			cp = c;
+    // ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp; 			cppppppp
+    // = cpppppp; cpppppp = cppppp; 			cppppp = cpppp; 			cpppp = cppp; cppp =
+    // cpp; 			cpp = cp; 			cp = c;
     //		}
     //		return ret;
     //
