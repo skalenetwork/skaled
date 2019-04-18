@@ -2654,7 +2654,7 @@ std::string strip( const char* s ) {
     //) { 			} else if( c == 0x1B ) { 			} else if( c == '[' && cp == 0x1B ) {
     //} else if( cp == '[' && cpp
     //== 0x1B ) { 			} else if( c=='m' && cpp == '[' && cppp == 0x1B ) { 			} else
-    //if(
+    // if(
     // c
     //==
     //';' && cpp ==
@@ -2669,9 +2669,9 @@ std::string strip( const char* s ) {
     // c =='m'
     // && cpppppp ==
     //';' && cpppppppp == '[' && cppppppppp == 0x1B ) { 			} else //if( isprint( c ) )
-    // ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp; 			cppppppp
-    // = cpppppp; cpppppp = cppppp; 			cppppp = cpppp; 			cpppp = cppp; cppp =
-    // cpp; 			cpp = cp; 			cp = c;
+    // ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp;
+    // cppppppp = cpppppp; cpppppp = cppppp; 			cppppp = cpppp; 			cpppp = cppp;
+    // cppp = cpp; 			cpp = cp; 			cp = c;
     //		}
     //		return ret;
     //
