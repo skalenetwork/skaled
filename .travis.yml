@@ -67,7 +67,7 @@ script:
     - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=ON ..
 
     # check code style
-    - make format-check || travis_terminate 1;
+    - true || make format-check || travis_terminate 1;
 
     # build
     - make -j$(nproc)
