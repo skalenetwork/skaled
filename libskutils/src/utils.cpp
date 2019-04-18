@@ -25,9 +25,9 @@ extern "C" {
 }
 
 #if ( defined __BUILDING_4_MAC_OS_X__ )
-#include <mach/mach_init.h>
 #include <mach/mach_error.h>
 #include <mach/mach_host.h>
+#include <mach/mach_init.h>
 #include <mach/vm_map.h>
 #endif
 
