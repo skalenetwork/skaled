@@ -86,9 +86,9 @@ jobs:
                   branch: feature/SKALE-963-releases
             - provider: script
               script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
-                on:
-                  repo: skalenetwork/skaled
-                  branch: feature/SKALE-963-releases
+              on:
+                repo: skalenetwork/skaled
+                branch: feature/SKALE-963-releases
 git:
     depth: 7
 cache:
