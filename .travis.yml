@@ -40,6 +40,7 @@ addons:
 jobs:
     include:
         - stage: test
+          if: branch = never # temporary disable test stage
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
@@ -64,6 +65,11 @@ jobs:
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
+          after_success:
+            - cp skaled/skaled ../scripts/skale_build/executable/
+            - cd ../scripts/skale_build
+            - build_image.sh $(cat ../../VERSION)
+            - cd ../../build
           before_deploy:
             # Set up git user name and tag this commit
             - git config --local user.name "skale-jenkins"
@@ -71,14 +77,19 @@ jobs:
             - export TRAVIS_TAG=v$(cat ../VERSION)
             - git tag $TRAVIS_TAG
           deploy:
-            provider: releases
-            api_key: "$GITHUB_OAUTH_TOKEN"
-            skip_cleanup: true
-            file:
-                - skaled/skaled
-            on:
-                repo: skalenetwork/skaled
-                branch: feature/SKALE-963-releases
+            - provider: releases
+              api_key: "$GITHUB_OAUTH_TOKEN"
+              skip_cleanup: true
+              file:
+                  - skaled/skaled
+              on:
+                  repo: skalenetwork/skaled
+                  branch: feature/SKALE-963-releases
+            - provider: script
+              script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
+                on:
+                  repo: skalenetwork/skaled
+                  branch: feature/SKALE-963-releases
 git:
     depth: 7
 cache:
