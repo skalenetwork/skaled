@@ -26,6 +26,7 @@ language: cpp
 env:
     global:        
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - TARGET=all
 os: linux
 dist: xenial
 addons:
@@ -65,6 +66,7 @@ jobs:
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
+            - TARGET=skaled
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
             - cd ../scripts/skale_build
@@ -117,4 +119,4 @@ script:
     - make format-check || travis_terminate 1;
 
     # build    
-    - cmake --build . -- -j$(nproc)
+    - cmake --build . --target $TARGET -- -j$(nproc)
