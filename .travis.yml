@@ -40,24 +40,25 @@ addons:
 jobs:
     include:
         - stage: test
+          if: branch = never # temporary disabled
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
-          #after_success:
-            ## run tests
-            #- cd test
-            #- ./testeth
-            #- cd ..
+          after_success:
+            # run tests
+            - cd test
+            - ./testeth
+            - cd ..
 
-            ## Create lcov report
-            #- lcov --capture --directory . --output-file coverage.info
-            #- lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-            #- lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
-            #- lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-            #- lcov --list coverage.info # debug info
+            # Create lcov report
+            - lcov --capture --directory . --output-file coverage.info
+            - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+            - lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
+            - lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+            - lcov --list coverage.info # debug info
 
-            ## Uploading report to CodeCov
-            #- bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+            # Uploading report to CodeCov
+            - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
 
         - stage: deploy
           if: branch = feature/SKALE-963-releases
@@ -67,7 +68,7 @@ jobs:
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
             - cd ../scripts/skale_build
-            - build_image.sh $(cat ../../VERSION)
+            - ./build_image.sh $(cat ../../VERSION)
             - cd ../../build
           before_deploy:
             # Set up git user name and tag this commit
