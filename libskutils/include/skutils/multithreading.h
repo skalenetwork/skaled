@@ -142,7 +142,7 @@ public:
 typedef pthread_mutex mutex_type;  // typedef std::mutex mutex_type;
                                    //		typedef std::lock_guard  < mutex_type > lock_type;
                                    //		typedef std::unique_lock < mutex_type >
-                                   //unique_lock_type;
+                                   // unique_lock_type;
 
 typedef pthread_recursive_mutex recursive_mutex_type;  // typedef std::recursive_mutex
                                                        // recursive_mutex_type;

@@ -1214,7 +1214,7 @@ loop_ptr_t domain::get_loop() {
     //{
     //				};
     //			pLoop->on_job_exception_ = [&] ( const skutils::dispatch::job_id_t & id,
-    //std::exception
+    // std::exception
     //* pe ) -> void {
     //				};
     loop_thread_ = std::thread( [pLoop]() -> void { pLoop->run(); } );
