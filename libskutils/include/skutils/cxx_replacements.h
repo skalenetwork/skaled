@@ -1,29 +1,29 @@
-#if (!defined __SKUTILS_CXX_REPLACEMENTS_H)
+#if ( !defined __SKUTILS_CXX_REPLACEMENTS_H )
 #define __SKUTILS_CXX_REPLACEMENTS_H 1
 
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include <stdint.h>
 
 /*
-#include <string.h>
-#include <stdlib.h>
 #include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
+#include <chrono>
 #include <exception>
 #include <functional>
-#include <chrono>
 */
 
 namespace skutils {
 
-    extern void sleep_for_microseconds( uint64_t n );
-    extern void sleep_for_milliseconds( uint64_t n );
-    extern void sleep_for_seconds( uint64_t n );
+extern void sleep_for_microseconds( uint64_t n );
+extern void sleep_for_milliseconds( uint64_t n );
+extern void sleep_for_seconds( uint64_t n );
 
-    bool is_nan( float f );
-    bool is_nan( double d );
+bool is_nan( float f );
+bool is_nan( double d );
 
 /*
     typedef int32_t status_t;
@@ -103,10 +103,8 @@ namespace skutils {
         status_t wait( mutex & m );
         status_t waitRelative( mutex & m, nsecs_t reltime );
         status_t wait( lock_guard<mutex> & m ) { return wait( m.mutex_ ); }
-        status_t waitRelative( lock_guard<mutex> & m, nsecs_t reltime ) { return waitRelative( m.mutex_, reltime ); }
-        void signal();
-        void signal( WakeUpType type ) {
-            if( type == WAKE_UP_ONE )
+        status_t waitRelative( lock_guard<mutex> & m, nsecs_t reltime ) { return waitRelative(
+m.mutex_, reltime ); } void signal(); void signal( WakeUpType type ) { if( type == WAKE_UP_ONE )
                 signal();
             else
                 broadcast();
@@ -170,7 +168,8 @@ namespace skutils {
         void sleep_for_nanoseconds( const nsecs_t & sleep_duration );
         template< class Rep, class Period >
         inline void sleep_for( const std::chrono::duration< Rep, Period > & sleep_duration ) {
-            sleep_for_nanoseconds( std::chrono::duration_cast<std::chrono::nanoseconds>(sleep_duration).count() );
+            sleep_for_nanoseconds(
+std::chrono::duration_cast<std::chrono::nanoseconds>(sleep_duration).count() );
         }
     }; /// namespace this_thread
 
@@ -210,16 +209,12 @@ namespace skutils {
         }
     public:
         shared_ptr() : pa(), pt() { }
-        template < class U, class Deleter > shared_ptr( U * pu, Deleter d ) : pa( new auximpl<U,Deleter>(pu,d)), pt(pu) { }
-        template< class U > explicit shared_ptr( U * pu ) :pa( new auximpl<U,default_deleter<U> >(pu,default_deleter<U>()) ), pt(pu) {}
-        shared_ptr( const shared_ptr & s ) : pa(s.pa), pt(s.pt) { inc(); }
-        template< class U > shared_ptr( const shared_ptr<U> & s) :pa(s.pa), pt(s.pt) { inc(); }
-        ~shared_ptr() { dec(); }
-        shared_ptr & operator=( const shared_ptr & s ) {
-            if( this != &s ) {
-                dec();
-                pa = s.pa; pt=s.pt;
-                inc();
+        template < class U, class Deleter > shared_ptr( U * pu, Deleter d ) : pa( new
+auximpl<U,Deleter>(pu,d)), pt(pu) { } template< class U > explicit shared_ptr( U * pu ) :pa( new
+auximpl<U,default_deleter<U> >(pu,default_deleter<U>()) ), pt(pu) {} shared_ptr( const shared_ptr &
+s ) : pa(s.pa), pt(s.pt) { inc(); } template< class U > shared_ptr( const shared_ptr<U> & s)
+:pa(s.pa), pt(s.pt) { inc(); } ~shared_ptr() { dec(); } shared_ptr & operator=( const shared_ptr & s
+) { if( this != &s ) { dec(); pa = s.pa; pt=s.pt; inc();
             }
             return *this;
         }
@@ -297,21 +292,14 @@ namespace skutils {
         //basic_string( const char * sz, size_t len );
         ~basic_string() { clear(); }
         basic_string & operator = ( const basic_string & other ) { assign( other.buf_ ); }
-        basic_string & operator = ( basic_string && other ) { if( buf_ != other.buf_ ) { clear(); swap(other); } return (*this); }
-        const char * c_str() const { return ( buf_ == nullptr ) ? "" : buf_; }
-    protected:
-        char * nonconst_c_str() { static char e[]=""; return ( buf_ == nullptr ) ? e : buf_; }
-    public:
-        size_t size() const { return ( buf_ == nullptr ) ? 0 : (::strlen(buf_)); }
-        size_t length() const { return size(); }
-        bool empty() const { return ( buf_ == nullptr || buf_[0] == '\0' ) ? true : false; }
-        void clear() { if( buf_ ) { ::free(buf_); buf_ = nullptr; } }
-        void append( const char * first, const char * last ) {
-            if( first && last ) {
-                size_t n = size_t(last-first) + size() + 1;
-                if( n == 0 ) {
-                    clear();
-                    return;
+        basic_string & operator = ( basic_string && other ) { if( buf_ != other.buf_ ) { clear();
+swap(other); } return (*this); } const char * c_str() const { return ( buf_ == nullptr ) ? "" :
+buf_; } protected: char * nonconst_c_str() { static char e[]=""; return ( buf_ == nullptr ) ? e :
+buf_; } public: size_t size() const { return ( buf_ == nullptr ) ? 0 : (::strlen(buf_)); } size_t
+length() const { return size(); } bool empty() const { return ( buf_ == nullptr || buf_[0] == '\0' )
+? true : false; } void clear() { if( buf_ ) { ::free(buf_); buf_ = nullptr; } } void append( const
+char * first, const char * last ) { if( first && last ) { size_t n = size_t(last-first) + size() +
+1; if( n == 0 ) { clear(); return;
                 }
                 char * p = (char*)::calloc( 1, n );
                 if( buf_ )
@@ -342,28 +330,22 @@ namespace skutils {
             buf_ = other.buf_;
             other.buf_ = p;
         }
-        basic_string & operator += ( const basic_string & other ) { append( other ); return (*this); }
-        basic_string & operator += ( const char * other ) { append( other ); return (*this); }
-        basic_string & operator += ( char c ) { const char * s = &c; append( s, s + 1 ); return (*this); }
-        int compare( const char * s ) const {
-            if( buf_ == s )
-                return 0;
-            if( (!buf_) && s )
-                return -1;
-            if( buf_ && (!s) )
-                return 1;
-            return ::strcmp( buf_, s );
+        basic_string & operator += ( const basic_string & other ) { append( other ); return (*this);
+} basic_string & operator += ( const char * other ) { append( other ); return (*this); }
+        basic_string & operator += ( char c ) { const char * s = &c; append( s, s + 1 ); return
+(*this); } int compare( const char * s ) const { if( buf_ == s ) return 0; if( (!buf_) && s ) return
+-1; if( buf_ && (!s) ) return 1; return ::strcmp( buf_, s );
         }
         int compare( const basic_string & s ) const {
             return compare( s.c_str() );
         }
-        bool operator == ( const basic_string & s ) const { return ( compare( s ) == 0 ) ? true : false; }
-        bool operator != ( const basic_string & s ) const { return ( compare( s ) != 0 ) ? true : false; }
-        bool operator <  ( const basic_string & s ) const { return ( compare( s ) <  0 ) ? true : false; }
-        bool operator <= ( const basic_string & s ) const { return ( compare( s ) <= 0 ) ? true : false; }
-        bool operator >  ( const basic_string & s ) const { return ( compare( s ) >  0 ) ? true : false; }
-        bool operator >= ( const basic_string & s ) const { return ( compare( s ) >= 0 ) ? true : false; }
-        bool operator == ( const char * s ) const { return ( compare( s ) == 0 ) ? true : false; }
+        bool operator == ( const basic_string & s ) const { return ( compare( s ) == 0 ) ? true :
+false; } bool operator != ( const basic_string & s ) const { return ( compare( s ) != 0 ) ? true :
+false; } bool operator <  ( const basic_string & s ) const { return ( compare( s ) <  0 ) ? true :
+false; } bool operator <= ( const basic_string & s ) const { return ( compare( s ) <= 0 ) ? true :
+false; } bool operator >  ( const basic_string & s ) const { return ( compare( s ) >  0 ) ? true :
+false; } bool operator >= ( const basic_string & s ) const { return ( compare( s ) >= 0 ) ? true :
+false; } bool operator == ( const char * s ) const { return ( compare( s ) == 0 ) ? true : false; }
         bool operator != ( const char * s ) const { return ( compare( s ) != 0 ) ? true : false; }
         bool operator <  ( const char * s ) const { return ( compare( s ) <  0 ) ? true : false; }
         bool operator <= ( const char * s ) const { return ( compare( s ) <= 0 ) ? true : false; }
@@ -404,12 +386,13 @@ namespace skutils {
         }
     };
 
-    inline basic_string operator + ( const basic_string & a, const basic_string & b ) { basic_string c; c.append(a); c.append( b ); return c; }
+    inline basic_string operator + ( const basic_string & a, const basic_string & b ) { basic_string
+c; c.append(a); c.append( b ); return c; }
 
     typedef basic_string string;
 */
 
-}; /// namespace skutils
+};  // namespace skutils
 
 
-#endif /// (!defined __SKUTILS_CXX_REPLACEMENTS_H)
+#endif  /// (!defined __SKUTILS_CXX_REPLACEMENTS_H)

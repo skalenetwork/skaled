@@ -164,7 +164,7 @@ int main( int argc, const char* argv[] ) {
 
     std::cout << "Running tests using path: " << test::getTestPath() << std::endl;
     int result = 0;
-    auto fakeInit = []( int, char* [] ) -> boost::unit_test::test_suite* { return nullptr; };
+    auto fakeInit = []( int, char*[] ) -> boost::unit_test::test_suite* { return nullptr; };
     if ( opt.jsontrace || opt.vmtrace || opt.statediff ) {
         // Do not use travis '.' output thread if debug is defined
         result = unit_test_main( fakeInit, argc, const_cast< char** >( argv ) );

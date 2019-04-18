@@ -2447,10 +2447,12 @@ void ansi_transform( producer& p, std::istream& is ) {
                                 //									case 9:
                                 //										// experimental
                                 //										if( negative == 0 )
-                                //											bc = momelem->digit[ mompos +
-                                //1
-                                //]; 										else 											fc =
-                                //momelem->digit[ mompos + 1 ]; break;
+                                //											bc = momelem->digit[
+                                // mompos
+                                //+
+                                // 1
+                                //]; 										else
+                                // fc = momelem->digit[ mompos + 1 ]; break;
                             }  // switch( a_digit )
                         }
                         momelem = momelem->next;
@@ -2599,11 +2601,12 @@ std::string generate_html( const std::string& s ) {
 //	#define IS_DIGIT (1 << 3) // not used, just give you an idea
 //	static unsigned int g_stat_strip_char_table[256] = {0};
 //	static void stat_init_strip_table() { // could use ctypes, but then they pretty much do the same
-// thing 		static bool g_bInitialized = false; 		if( g_bInitialized ) 			return; 		g_bInitialized =
-// true; 		int i; 		for( i = 0; i < 32; i++ ) 			g_stat_strip_char_table[i] |=
+// thing 		static bool g_bInitialized = false; 		if( g_bInitialized ) 			return;
+// g_bInitialized
+// = true; 		int i; 		for( i = 0; i < 32; i++ ) 			g_stat_strip_char_table[i] |=
 // IS_CTRL; 		g_stat_strip_char_table[127]
 //|= IS_CTRL; 		for( i = 'A'; i <= 'Z'; i++ ) { 			g_stat_strip_char_table[i] |=
-//IS_ALPHA; 			g_stat_strip_char_table[i + 0x20] |= IS_ALPHA; /* lower case */
+// IS_ALPHA; 			g_stat_strip_char_table[i + 0x20] |= IS_ALPHA; /* lower case */
 //		}
 //		for( i = 128; i < 256; i++ )
 //			g_stat_strip_char_table[i] |= IS_EXT;
@@ -2648,25 +2651,27 @@ std::string strip( const char* s ) {
     //			} else if( isdigit( c ) && isdigit( cp ) && cpp == '[' && cppp == '\033' ) {
     //			} else if( c == 'm' && isdigit( cp ) && isdigit( cpp ) && cppp == '[' && cpppp ==
     //'\033'
-    //) { 			} else if( c == 0x1B ) { 			} else if( c == '[' && cp == 0x1B ) { 			} else
-    //if( cp == '[' && cpp
-    //== 0x1B ) { 			} else if( c=='m' && cpp == '[' && cppp == 0x1B ) { 			} else if( c ==
+    //) { 			} else if( c == 0x1B ) { 			} else if( c == '[' && cp == 0x1B ) {
+    //} else if( cp == '[' && cpp
+    //== 0x1B ) { 			} else if( c=='m' && cpp == '[' && cppp == 0x1B ) { 			} else
+    // if(
+    // c
+    //==
     //';' && cpp ==
-    //'[' && cppp == 0x1B ) { 			} else if( cp == ';' && cppp == '[' && cpppp == 0x1B ) { 			}
-    //else if(
-    // cpp == ';' && cpppp == '[' && cppppp == 0x1B ) { 			} else if( cppp == ';' && cppppp == '['
+    //'[' && cppp == 0x1B ) { 			} else if( cp == ';' && cppp == '[' && cpppp == 0x1B ) {
+    //} else if(
+    // cpp == ';' && cpppp == '[' && cppppp == 0x1B ) { 			} else if( cppp == ';' && cppppp
+    // ==
+    // '['
     // &&
-    // cpppppp == 0x1B ) { 			} else if( cpppp == ';' && cpppppp == '[' && cppppppp == 0x1B ) { 			}
-    // else
-    // if( cppppp == ';' && cppppppp == '[' && cpppppppp == 0x1B ) { 			} else if( c =='m' &&
-    // cpppppp ==
+    // cpppppp == 0x1B ) { 			} else if( cpppp == ';' && cpppppp == '[' && cppppppp == 0x1B )
+    // { } else if( cppppp == ';' && cppppppp == '[' && cpppppppp == 0x1B ) { 			} else if(
+    // c =='m'
+    // && cpppppp ==
     //';' && cpppppppp == '[' && cppppppppp == 0x1B ) { 			} else //if( isprint( c ) )
-    //ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp; 			cppppppp = cpppppp; 			cpppppp = cppppp;
-    //			cppppp = cpppp;
-    //			cpppp = cppp;
-    //			cppp = cpp;
-    //			cpp = cp;
-    //			cp = c;
+    // ret += c; 			cppppppppp = cpppppppp; 			cpppppppp = cppppppp;
+    // cppppppp = cpppppp; cpppppp = cppppp; 			cppppp = cpppp; 			cpppp = cppp;
+    // cppp = cpp; 			cpp = cp; 			cp = c;
     //		}
     //		return ret;
     //
