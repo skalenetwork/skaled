@@ -144,7 +144,8 @@ bool SimpleAccountHolder::unlockAccount(
     m_keyManager.notePassword( _password );
 
     try {
-        if ( !m_keyManager.secret( _account, [&] { return _password; }, false ) )
+        if ( !m_keyManager.secret(
+                 _account, [&] { return _password; }, false ) )
             return false;
     } catch ( PasswordUnknown const& ) {
         return false;
