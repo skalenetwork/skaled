@@ -19,11 +19,11 @@
 #include <sys/stat.h>
 
 #if ( defined _WIN32 )
-#include <io.h>
 #include "gettimeofday.h"
+#include <io.h>
 #else
-#include <syslog.h>
 #include <sys/time.h>
+#include <syslog.h>
 #include <unistd.h>
 #endif
 

@@ -18,17 +18,17 @@
 //#define SKUTILS_WITH_SSL 1
 
 extern "C" {
+#include <netinet/in.h>
 #include <signal.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #if ( defined SKUTILS_WITH_SSL )
+#include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
 #endif  // (defined SKUTILS_WITH_SSL)
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 };
 

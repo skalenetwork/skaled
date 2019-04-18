@@ -858,7 +858,7 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
       accumulator_base_( 0 )
       //	, domain_mtx_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this )
       //) 	, mtx_with_jobs_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
-      //this ) )
+      // this ) )
       ,
       shutdown_flag_( true ),
       thread_pool_(
@@ -1213,7 +1213,8 @@ loop_ptr_t domain::get_loop() {
     //			pLoop->on_job_did_executed_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void
     //{
     //				};
-    //			pLoop->on_job_exception_ = [&] ( const skutils::dispatch::job_id_t & id, std::exception
+    //			pLoop->on_job_exception_ = [&] ( const skutils::dispatch::job_id_t & id,
+    //std::exception
     //* pe ) -> void {
     //				};
     loop_thread_ = std::thread( [pLoop]() -> void { pLoop->run(); } );

@@ -8,8 +8,8 @@
 #include <vector>
 
 #if ( defined WIN32 )
-#include <winsock2.h>
 #include <time.h>
+#include <winsock2.h>
 #pragma comment( lib, "ws2_32.lib" )
 #if _MSC_VER < 1400
 #define snprintf _snprintf
@@ -17,16 +17,16 @@
 #define snprintf sprintf_s
 #endif
 #else  /// (defined WIN32)
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
-#include <iostream>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <iostream>
 #endif  /// else from (defined WIN32)
 
 namespace skutils {
