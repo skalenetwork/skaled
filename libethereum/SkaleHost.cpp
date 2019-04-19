@@ -290,7 +290,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 }
 
 void SkaleHost::startWorking() {
-    assert( !working );
+    if( working )
+        return;
 
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( bcast_func );
