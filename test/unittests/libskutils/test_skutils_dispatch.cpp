@@ -313,8 +313,8 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                         for ( idxPriority = 0; idxPriority < cntPriorities; ++idxPriority ) {
                             if ( g_bStopSignalFlag )
                                 break;
-                            skutils::dispatch::priority_t pri =
-                                g_arrTestDataByPriority[idxPriority].priority_;
+                            //skutils::dispatch::priority_t pri =
+                            //    g_arrTestDataByPriority[idxPriority].priority_;
                             skutils::dispatch::queue_id_t strQueueID =
                                 g_arrTestDataByPriority[idxPriority]
                                     .id_;  // skutils::tools::format(
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
             skutils::test::test_log_e( thread_prefix_str() + cc::debug( "analyzing results..." ) );
             //
             for ( idxPriority = 0; idxPriority < cntPriorities; ++idxPriority ) {
-                skutils::dispatch::priority_t pri = g_arrTestDataByPriority[idxPriority].priority_;
+                //skutils::dispatch::priority_t pri = g_arrTestDataByPriority[idxPriority].priority_;
                 skutils::dispatch::queue_id_t strQueueID =
                     g_arrTestDataByPriority[idxPriority].id_;  // skutils::tools::format(
                                                                // "queue_id_%zu", size_t(pri) );
