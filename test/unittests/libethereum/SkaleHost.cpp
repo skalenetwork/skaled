@@ -138,10 +138,16 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-    BOOST_REQUIRE( blockTransactions.size() == 1 );
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
     BOOST_REQUIRE( blockTransactions[0] == txHash );
 }
 
+// Transaction should be EXCLUDED from the block
+// Proposer should be penalized
+// 1 0 bytes
+// 2 Small amount of random bytes
+// 3 110 random bytes
+// 4 110 bytes of semi-correct RLP
 BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     bytes small_tx1 = bytes();
     bytes small_tx2 = jsToBytes( "0x0011223344556677889900" );
@@ -163,13 +169,19 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-    BOOST_REQUIRE( blockTransactions.size() == 0 );
+BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
 }
 
+// Transaction should be EXCLUDED from the block
+// Proposer should be penalized
+// zero signature
 BOOST_AUTO_TEST_CASE( transactionSigZero ) {
     // TODO find out how to create zero signature
 }
 
+// Transaction should be EXCLUDED from the block
+// Proposer should be penalized
+// corrupted signature
 BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -189,7 +201,7 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     bytes data = stream.out();
 
     // TODO try to spoil other fields
-    data[43] = 0x7f;      // spoil v
+    data[43] = 0x7f;  // spoil v
 
     BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
@@ -199,17 +211,158 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-    BOOST_REQUIRE( blockTransactions.size() == 0 );
+BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionGasSmall ) {}
+// Transaction should be EXCLUDED from the block
+// Proposer should be penalized
+// gas < min_gas
+BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
 
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["gas"] = "19000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+
+    BOOST_REQUIRE_EQUAL( client->number(), 0 );
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_EQUAL( client->number(), 1 );
+
+    TransactionHashes blockTransactions =
+        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
+
+BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
+}
+
+// Transaction should be COMMITTED to block
+// Transaction should be REVERTED during execution
+// Sender should be charged for gas consumed
+// Proposer should NOT be penalized
+// transaction exceedes it's gas limit
+BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value json;
+    int gas = 80000;
+    json["from"] = toJS( senderAddress );
+    json["code"] = compiled;
+    json["gas"] = gas;
+    json["gasPrice"] = 1;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+
+    h256 txHash = tx.sha3();
+
+    u256 balanceBefore = client->balanceAt(senderAddress);
+
+    BOOST_REQUIRE_EQUAL( client->number(), 0 );
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_EQUAL( client->number(), 1 );
+
+    u256 balanceAfter = client->balanceAt(senderAddress);
+
+    BOOST_REQUIRE( balanceBefore - balanceAfter == u256(gas) );
+
+    TransactionHashes blockTransactions =
+        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
+
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
+    BOOST_REQUIRE( blockTransactions[0] == txHash );
+}
+
+
+// Transaction should be COMMITTED to block
+// Transaction should be IGNORED during execution
+// Proposer should be penalized
+// nonce too big
+BOOST_AUTO_TEST_CASE( transactionNonceBig ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 1;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+
+    h256 txHash = tx.sha3();
+
+    u256 balanceBefore = client->balanceAt(senderAddress);
+
+    BOOST_REQUIRE_EQUAL( client->number(), 0 );
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_EQUAL( client->number(), 1 );
+
+    u256 balanceAfter = client->balanceAt(senderAddress);
+
+    BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
+
+    TransactionHashes blockTransactions =
+        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
+
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
+    BOOST_REQUIRE( blockTransactions[0] == txHash );
+}
+
+// Transaction should be COMMITTED to block
+// Transaction should be IGNORED during execution
+// Proposer should be penalized
+// nonce too small
 BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {}
 
-BOOST_AUTO_TEST_CASE( transactionNonceBig ) {}
-
+// Transaction should be COMMITTED to block
+// Transaction should be IGNORED during execution
+// Proposer should be penalized
+// not enough cache
 BOOST_AUTO_TEST_CASE( transactionBalanceBad ) {}
 
+// Transaction should be COMMITTED to block
+// Transaction should be IGNORED during execution
+// Proposer should be penalized
+// transaction goes beyond block gas limit
 BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
