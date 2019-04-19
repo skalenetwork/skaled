@@ -74,11 +74,13 @@ jobs:
             - cd ../../build
           before_deploy:
             # Set up git user name and tag this commit
-            - test ! $TRAVIS_TAG &&
+            - (
+              test ! $TRAVIS_TAG &&
               git config --local user.name "skale-jenkins" &&
               git config --local user.email "$GITHUB_EMAIL" &&
               export TRAVIS_TAG=v$(cat ../VERSION) &&
               git tag "$TRAVIS_TAG"
+              ) || true
           deploy:
             - provider: releases
               api_key: "$GITHUB_OAUTH_TOKEN"
