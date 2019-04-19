@@ -94,8 +94,6 @@ jobs:
               on:
                 repo: skalenetwork/skaled
                 branch: master
-git:
-    depth: 7
 cache:
     ccache: true
     directories:
