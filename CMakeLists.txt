@@ -87,10 +87,10 @@ include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-set(CLANG_FORMAT_BIN_NAME clang-format-6.0)
 set(CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
+    "${CMAKE_CURRENT_SOURCE_DIR}/evmc/"
     "${CMAKE_CURRENT_SOURCE_DIR}/evmjit/"
     "${CMAKE_CURRENT_SOURCE_DIR}/libconsensus/")
 include(FindClangFormat)

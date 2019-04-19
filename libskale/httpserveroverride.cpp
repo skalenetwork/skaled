@@ -63,7 +63,7 @@ void SkaleWsPeer::onPeerRegister() {
     skutils::ws::peer::onPeerRegister();
 }
 void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage after call to
-                                          // this
+                                        // this
     if ( pso()->bTraceCalls_ )
         clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer unregistered" );
@@ -211,7 +211,8 @@ bool SkaleWsRelay::start( SkaleServerOverride* pso ) {
         } catch ( ... ) {
         }
         // isRunning_ = false;
-    } ).detach();
+    } )
+        .detach();
     clog( dev::VerbosityInfo, cc::info( scheme_uc_ ) )
         << cc::success( "OK, server started on port " ) << cc::c( nPort_ );
     return true;
@@ -274,8 +275,8 @@ void SkaleServerOverride::logTraceServerEvent(
         clog( dev::VerbosityInfo, ssProtocol.str() ) << strMessage;
 }
 
-void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError,
-    const char* strProtocol, const char* strOrigin, const std::string& strPayload ) {
+void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
+    const char* strOrigin, const std::string& strPayload ) {
     std::stringstream ssProtocol;
     std::string strProto =
         ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
@@ -312,14 +313,15 @@ bool SkaleServerOverride::startListeningHTTP() {
                 cc::debug( " server on address " ) + cc::info( address_http_ ) +
                 cc::debug( " and port " ) + cc::c( port_http_ ) + cc::debug( "..." ) );
         if ( bIsSSL_ )
-            this->pServerHTTP_.reset( new skutils::http::SSL_server( pathSslCert_.c_str(), pathSslKey_.c_str() ) );
+            this->pServerHTTP_.reset(
+                new skutils::http::SSL_server( pathSslCert_.c_str(), pathSslKey_.c_str() ) );
         else
             this->pServerHTTP_.reset( new skutils::http::server );
         this->pServerHTTP_->Options( "/", [&]( const skutils::http::request& req,
                                               skutils::http::response& res ) {
             if ( bTraceCalls_ )
-                logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP",
-                    req.origin_.c_str(), cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
+                logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                    cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
             res.set_header( "access-control-allow-headers", "Content-Type" );
             res.set_header( "access-control-allow-methods", "POST" );
             res.set_header( "access-control-allow-origin", "*" );
@@ -368,7 +370,8 @@ bool SkaleServerOverride::startListeningHTTP() {
             } );
         std::thread( [this]() {
             this->pServerHTTP_->listen( this->address_http_.c_str(), this->port_http_ );
-        } ).detach();
+        } )
+            .detach();
         logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
             cc::success( "OK, started " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
                 cc::success( " server on address " ) + cc::info( address_http_ ) +

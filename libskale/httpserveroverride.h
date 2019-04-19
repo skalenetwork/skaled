@@ -77,9 +77,7 @@ public:
         return getShortPeerDescription( isColored, false, false );
     }
     SkaleWsRelay& getRelay();
-    const SkaleWsRelay& getRelay() const {
-        return const_cast< SkaleWsPeer* >( this )->getRelay();
-    }
+    const SkaleWsRelay& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }
     SkaleServerOverride* pso();
     const SkaleServerOverride* pso() const { return const_cast< SkaleWsPeer* >( this )->pso(); }
     friend class SkaleWsRelay;

@@ -8,8 +8,7 @@
 	branch = a4f7029371961b2ac4727e76eb721b86627a78d3
 [submodule "libconsensus"]
 	path = libconsensus
-	url = git@github.com:skalelabs/skale-consensus.git
-	branch = develop
+	url = https://github.com/skalenetwork/skale-consensus.git
 [submodule "test/jsontests"]
 	path = test/jsontests
-	url = git@github.com:skalenetwork/skaled-tests.git
+	url = https://github.com/skalenetwork/skaled-tests.git
