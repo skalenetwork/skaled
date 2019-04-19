@@ -1128,8 +1128,7 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable(
-                    isProxy,
+                _t.userReadable( isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = web3.ethereum()->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )

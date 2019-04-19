@@ -177,7 +177,8 @@ bool SkaleServerOverride::startListeningHTTP() {
             } );
         std::thread( [this]() {
             this->pServerHTTP_->listen( this->address_http_.c_str(), this->port_http_ );
-        } ).detach();
+        } )
+            .detach();
         logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
             cc::success( "OK, started " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
                 cc::success( " server on address " ) + cc::info( address_http_ ) +

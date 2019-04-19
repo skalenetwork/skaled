@@ -123,7 +123,8 @@ void UnixDomainSocketServer::Listen() {
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception in UnixDomainSocketServer";
                 }  // catch
-            }}.detach();
+            }}
+                .detach();
         }
     }
 }

@@ -184,9 +184,9 @@ void SnapshotImporter::importBlockChunks(
 
             h256 const blockStateRoot = abridgedBlock[1].toHash< h256 >( RLP::VeryStrict );
             RLP transactions = abridgedBlock[8];
-            h256 const txRoot = trieRootOver(
-                transactions.itemCount(), [&]( unsigned i ) { return rlp( i ); },
-                [&]( unsigned i ) { return transactions[i].data().toBytes(); } );
+            h256 const txRoot =
+                trieRootOver( transactions.itemCount(), [&]( unsigned i ) { return rlp( i ); },
+                    [&]( unsigned i ) { return transactions[i].data().toBytes(); } );
             RLP uncles = abridgedBlock[9];
             RLP receipts = blockAndReceipts[1];
             std::vector< bytesConstRef > receiptsVector;

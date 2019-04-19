@@ -266,8 +266,7 @@ void loop::run() {
                 loop* pLoop = ( loop* ) ( p_uvIdler->data );
                 pLoop->on_idle();
             } );
-            uv_timer_start(
-                &uvTimerStateCheck,
+            uv_timer_start( &uvTimerStateCheck,
                 []( uv_timer_t* p_uvTimer ) {
                     loop* pLoop = ( loop* ) ( p_uvTimer->data );
                     pLoop->on_state_check();
@@ -363,8 +362,7 @@ void loop::job_data_t::init() {
         ( ns_timeout / ( 1000 * 1000 ) ) + ( ( ( ns_timeout % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
     uint64_t ms_interval =
         ( ns_interval / ( 1000 * 1000 ) ) + ( ( ( ns_interval % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
-    uv_timer_start(
-        p_uvTimer,
+    uv_timer_start( p_uvTimer,
         []( uv_timer_t* pTimer ) {
             loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
             pJobData->on_timer();
@@ -676,8 +674,7 @@ bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interva
             if ( pJobID )
                 ( *pJobID ) = id;
             queue_ptr_t pThis( this );
-            pLoop->job_add(
-                id,
+            pLoop->job_add( id,
                 [pLoop, id, pThis, fn]() -> void {
                     queue_ptr_t& pQueue = const_cast< queue_ptr_t& >( pThis );
                     if ( pQueue->is_removed() ) {
