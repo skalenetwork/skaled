@@ -130,8 +130,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
         //
         volatile size_t nCallCountOnce = 0;
         const uint64_t nOnceJobTimeout = 500;  // milliseconds
-        pLoop->job_add_once(
-            "once uppon a time",
+        pLoop->job_add_once( "once uppon a time",
             [&]() -> void {
                 ++nCallCountOnce;
                 skutils::test::test_log_e( thread_prefix_str() +
@@ -140,8 +139,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
             },
             skutils::dispatch::duration_from_milliseconds( nOnceJobTimeout ) );
         //
-        pLoop->job_add_once(
-            "bad job",
+        pLoop->job_add_once( "bad job",
             [&]() -> void {
                 skutils::test::test_log_e(
                     thread_prefix_str() + cc::warn( "bad job invoked, throwing someting" ) );
@@ -158,8 +156,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
         skutils::test::test_log_e(
             thread_prefix_str() + cc::debug( "expecting periodical job to be invoked " ) +
             cc::size10( nExpectedCallCountPeriodical ) + cc::debug( " time(s), at least" ) );
-        pLoop->job_add_periodic(
-            "some periodical work",
+        pLoop->job_add_periodic( "some periodical work",
             [&]() -> void {
                 ++nCallCountPeriodical;
                 skutils::test::test_log_e( thread_prefix_str() +
@@ -381,7 +378,8 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                     g_bThreadStoppedFlag = true;
                     skutils::test::test_log_e(
                         thread_prefix_str() + cc::debug( "test thread is about to leave..." ) );
-                } ).detach();
+                } )
+                    .detach();
                 //
                 //
                 static const size_t nSleepMilliSeconds = 5000;
@@ -663,8 +661,7 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::notice( "once job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::once(
-            skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::once( skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallOnce ) );
                 bInsideCallOnce = true;
@@ -679,8 +676,7 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::warn( "periodic job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::repeat(
-            skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::repeat( skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallPeriodic ) );
                 bInsideCallPeriodic = true;
@@ -697,8 +693,7 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::note( "async job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::async(
-            skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::async( skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallAsync ) );
                 bInsideCallAsync = true;
