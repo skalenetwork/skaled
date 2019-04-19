@@ -41,7 +41,6 @@ addons:
 jobs:
     include:
         - stage: test
-          if: branch = never # temporary disabled
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
@@ -62,7 +61,7 @@ jobs:
             - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
 
         - stage: deploy
-          if: branch = feature/SKALE-963-releases
+          if: branch = master
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
@@ -89,12 +88,12 @@ jobs:
                   - skaled/skaled
               on:
                   repo: skalenetwork/skaled
-                  branch: feature/SKALE-963-releases
+                  branch: master
             - provider: script
               script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
                 repo: skalenetwork/skaled
-                branch: feature/SKALE-963-releases
+                branch: master
 git:
     depth: 7
 cache:
