@@ -780,6 +780,7 @@ Block Client::block( h256 const& _block ) const {
 }
 
 Block Client::latestBlock() const {
+    // TODO Why it returns not-filled block??! (see Block ctor)
     try {
         return Block( bc(), bc().currentHash(), m_state.startRead() );
     } catch ( Exception& ex ) {

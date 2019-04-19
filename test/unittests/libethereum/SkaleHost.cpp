@@ -81,7 +81,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        client = make_unique< Client >( chainParams, chainParams.networkID, gasPricer, tempDir.path() );
+        client =
+            make_unique< Client >( chainParams, chainParams.networkID, gasPricer, tempDir.path() );
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
@@ -92,7 +93,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->startWorking();
 
         // make money
-        dev::eth::simulateMining( *client, 1 );
+        //dev::eth::simulateMining( *client, 1 );
     }
 
     unique_ptr< Client > client;
