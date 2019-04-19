@@ -432,14 +432,6 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
         m_state.updateToLatestVersion();
     }
 
-    if ( newPendingReceipts.empty() ) {
-        auto s = m_tq.status();
-        ctrace << "No transactions to process. " << m_working.pending().size() << " pending, "
-               << s.current << " queued, " << s.future << " future, " << s.unverified
-               << " unverified";
-        return newPendingReceipts.size();
-    }
-
     DEV_READ_GUARDED( x_working )
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
