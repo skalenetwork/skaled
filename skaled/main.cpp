@@ -296,6 +296,12 @@ int main( int argc, char** argv ) try {
         "Run web3 HTTP server on specified port" );
     addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 WS server on specified port" );
+    std::string str_ws_mode_description =
+        "Run web3 WS server using specified mode(" + skutils::ws::nlws::list_srvmodes_as_str() +
+        "); default mode is " +
+        skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
+    addClientOption(
+        "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
@@ -1139,7 +1145,8 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable( isProxy,
+                _t.userReadable(
+                    isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = web3.ethereum()->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )
