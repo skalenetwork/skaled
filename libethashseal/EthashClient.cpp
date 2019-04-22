@@ -49,8 +49,6 @@ EthashClient::EthashClient( ChainParams const& _params, int _networkID,
     TransactionQueue::Limits const& _limits )
     : Client( _params, _networkID, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _limits ) {
 
-    this->injectSkaleHost();
-
     // will throw if we're not an Ethash seal engine.
     asEthashClient( *this );
 }
