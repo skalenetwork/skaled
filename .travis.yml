@@ -90,7 +90,7 @@ jobs:
               file:
                   - skaled/skaled
               on:
-                  repo: skalenetwork/skaled
+                  repo: DimaStebaev/skaled
                   branch: master
             - provider: releases
               api_key: "$GITHUB_OAUTH_TOKEN"
@@ -99,12 +99,12 @@ jobs:
               file:
                 - program
               on:
-                repo: skalenetwork/skaled
+                repo: DimaStebaev/skaled
                 branch: release-candidate
             - provider: script
               script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
-                repo: skalenetwork/skaled
+                repo: DimaStebaev/skaled
                 branch: master
 cache:
     ccache: true
