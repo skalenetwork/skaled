@@ -74,7 +74,7 @@ WORKING_DIR_NEW=`$READLINK -f $WORKING_DIR_NEW`
 cd $WORKING_DIR_NEW
 
 #
-# MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
+# MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
 #
 #
 
@@ -181,12 +181,14 @@ fi
 TOP_CMAKE_BUILD_TYPE="Release"
 if [ "$DEBUG" = "1" ];
 then
-	TOP_CMAKE_BUILD_TYPE="Debug"
 	DEBUG=1
+	TOP_CMAKE_BUILD_TYPE="Debug"
 	DEBUG_D="d"
+	CONF_DEBUG_OPTIONS="--enable-debug"
 else
 	DEBUG=0
 	DEBUG_D=""
+	CONF_DEBUG_OPTIONS=""
 fi
 #
 if [ -z "${USE_LLVM}" ];
@@ -235,6 +237,8 @@ WITH_NETTLE="no"
 WITH_TASN1="no"
 WITH_GNU_TLS="no"
 #
+WITH_GPGERROR="no"
+WITH_GCRYPT="no"
 WITH_MICRO_HTTP_D="yes"
 WITH_JSONCPP="yes"
 WITH_JSONRPCCPP="yes"
@@ -263,6 +267,9 @@ mkdir -p $SOURCES_ROOT
 mkdir -p $INSTALL_ROOT
 mkdir -p $INSTALL_ROOT/share
 mkdir -p $INSTALL_ROOT/share/pkgconfig
+
+# we need this custom prefix bin dir in PATH for tools like gpg-error-config which we build here
+export PATH=$PATH:$INSTALL_ROOT/bin
 
 export TOOLCHAINS_PATH=/usr/local/toolchains
 export TOOLCHAINS_DOWNLOADED_PATH=$TOOLCHAINS_PATH/downloads
@@ -309,15 +316,21 @@ then
 	else
 		if [ "$UNIX_SYSTEM_NAME" = "Linux" ];
 		then
-			export CC=`which gcc-7`
 			if [ -z "${CC}" ];
 			then
-				export CC=`which gcc`
+				export CC=`which gcc-7`
+				if [ -z "${CC}" ];
+				then
+					export CC=`which gcc`
+				fi
 			fi
-			export CXX=`which g++-7`
-			if [ -z "${CXX}" ];
+			if [ -z "${CXX}" ];			
 			then
-				export CXX=`which g++`
+				export CXX=`which g++-7`
+				if [ -z "${CXX}" ];
+				then
+					export CXX=`which g++`
+				fi
 			fi
 		else
 			export CC=`which gcc`
@@ -507,6 +520,8 @@ echo -e "${COLOR_VAR_NAME}WITH_ARGTABLE2${COLOR_DOTS}.........${COLOR_VAR_DESC}l
 echo -e "${COLOR_VAR_NAME}WITH_NETTLE${COLOR_DOTS}............${COLOR_VAR_DESC}LibNettle${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_NETTLE${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_TASN1${COLOR_DOTS}.............${COLOR_VAR_DESC}libTASN1${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_TASN1${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_GNU_TLS${COLOR_DOTS}...........${COLOR_VAR_DESC}libGnuTLS${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_GNU_TLS${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GPGERROR${COLOR_DOTS}..........${COLOR_VAR_DESC}libGpgError${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_GPGERROR${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GCRYPT${COLOR_DOTS}............${COLOR_VAR_DESC}libGCrypt${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_GCRYPT${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_MICRO_HTTP_D${COLOR_DOTS}......${COLOR_VAR_DESC}libMiniHttpD${COLOR_DOTS}...........................${COLOR_VAR_VAL}$WITH_MICRO_HTTP_D${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_JSONCPP${COLOR_DOTS}...........${COLOR_VAR_DESC}LibJsonC++${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_JSONCPP${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_JSONRPCCPP${COLOR_DOTS}........${COLOR_VAR_DESC}LibJsonRpcC++${COLOR_DOTS}..........................${COLOR_VAR_VAL}$WITH_JSONRPCCPP${COLOR_RESET}"
@@ -919,7 +934,7 @@ then
 			tar -xzf libiconv-1.15.tar.gz
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libiconv-1.15
-			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 			cd ..
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -950,7 +965,7 @@ then
 			tar -xzf SDL2-2.0.7.tar.gz
 			cd SDL2-2.0.7
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-			./configure --enable-static --disable-shared --prefix=$INSTALL_ROOT
+			./configure --enable-static --disable-shared --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 			cd ..
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -989,18 +1004,18 @@ then
 			#pushd external/freetype-2.4.12
 			#echo -e "${COLOR_INFO}configuring freetype${COLOR_DOTS}...${COLOR_RESET}"
 			#./autogen.sh
-			#./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT
+			#./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 			#popd
 			#echo -e "${COLOR_INFO}configuring SDL2_ttf${COLOR_DOTS}...${COLOR_RESET}"
 			#./autogen.sh
-			#./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT --with-sdl-prefix=$INSTALL_ROOT
+			#./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT --with-sdl-prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 			cd ..
 		fi
 		cd SDL2_ttf-2.0.14
 		echo -e "${COLOR_INFO}building freetype${COLOR_DOTS}...${COLOR_RESET}"
 		pushd external/freetype-2.4.12
 		./autogen.sh
-		./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT
+		./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 		# ??? this parallel build does not work on OSX ???
 		#$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE
@@ -1010,7 +1025,7 @@ then
 		popd
 		echo -e "${COLOR_INFO}building SDL2_ttf${COLOR_DOTS}...${COLOR_RESET}"
 		./autogen.sh
-		./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT --with-sdl-prefix=$INSTALL_ROOT --with-freetype-prefix=$INSTALL_ROOT
+		./configure --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT --with-sdl-prefix=$INSTALL_ROOT --with-freetype-prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ..
@@ -1139,7 +1154,7 @@ then
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libuv
 			./autogen.sh
-			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 			#--with-sysroot==$INSTALL_ROOT
 			cd ..
 		fi
@@ -1363,7 +1378,7 @@ fi
 # 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 # 			cd asio/asio
 # 			./autogen.sh
-# 			./configure --prefix=$INSTALL_ROOT --without-boost --with-openssl=$SOURCES_ROOT/openssl
+# 			./configure --prefix=$INSTALL_ROOT --without-boost --with-openssl=$SOURCES_ROOT/openssl $CONF_DEBUG_OPTIONS
 # 			cd ../..
 # 		fi
 # 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1428,7 +1443,7 @@ then
 			tar -xvjf $PREDOWNLOADED_ROOT/libupnp-1.8.3.tar.bz2
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libupnp-1.8.3
-			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $UPNP_DISABLE_LARGE_FILE_SUPPORT
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $UPNP_DISABLE_LARGE_FILE_SUPPORT $CONF_DEBUG_OPTIONS
 			cd $SOURCES_ROOT
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1460,7 +1475,7 @@ fi
 #        cd readline-7.0
 #        mkdir -p build
 #        cd build
-#        ../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT
+#        ../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 #        cd $SOURCES_ROOT
 #    fi
 #    cd readline-7.0
@@ -1491,7 +1506,7 @@ fi
 # 		cd libxml2-2.9.7
 # 		mkdir -p build
 # 		cd build
-# 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --without-html --without-python --prefix=$INSTALL_ROOT
+# 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --without-html --without-python --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 # 		cd $SOURCES_ROOT
 # 	fi
 # 	cd libxml2-2.9.7
@@ -1522,7 +1537,7 @@ fi
 # 		cd libarchive-3.3.2
 # 		mkdir -p build
 # 		cd build
-# 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT
+# 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
 # 		cd $SOURCES_ROOT
 # 	fi
 # 	cd libarchive-3.3.2/build
@@ -1647,7 +1662,7 @@ then
             tar -xvzf nettle-3.4.1.tar.gz
             echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
             cd nettle-3.4.1
-            ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT
+            ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
         else
             cd nettle-3.4.1
         fi
@@ -1681,7 +1696,7 @@ then
             autoheader
             automake --add-missing
             ./configure --disable-doc --disable-gtk-doc=1 --disable-gtk-doc-html --disable-gtk-doc-pdf \
-                $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT
+                $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
         else
             cd libtasn1
         fi
@@ -1696,6 +1711,43 @@ then
     fi
 fi
 
+# if [ "$WITH_GNU_TLS" = "yes" ];
+# then
+# 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libGnuTLS${COLOR_SEPARATOR} ====================================${COLOR_RESET}"
+# 	if [ ! -f "$INSTALL_ROOT/lib/libgnutls.a" ];
+# 	then
+# 		env_restore
+# 		cd $SOURCES_ROOT
+# 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
+# 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
+# 		if [ ! -d "gnutls-3.6.5" ];
+# 		then
+# 			if [ ! -f "gnutls-3.6.5.tar.xz" ];
+# 			then
+# 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
+# 				$WGET https://www.gnupg.org/ftp/gcrypt/gnutls/v3.6/gnutls-3.6.5.tar.xz
+# 			fi
+# 			tar -xf gnutls-3.6.5.tar.xz
+# 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+# 			cd gnutls-3.6.5
+# 			#export PKG_CONFIG_PATH=$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
+#             ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT --with-nettle-mini=$SOURCES_ROOT/nettle-3.4.1 --with-libnettle-prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
+#         else
+# 			cd gnutls-3.6.5
+# 		fi
+# 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+# 		$MAKE $PARALLEL_MAKE_OPTIONS
+# 		$MAKE $PARALLEL_MAKE_OPTIONS install
+# 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
+# 		export PKG_CONFIG_PATH_SAVED=
+# 		cd $SOURCES_ROOT
+# 	else
+# 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+# 	fi
+# fi
+
+#https://github.com/gnutls/gnutls
+#git@github.com:gnutls/gnutls.git
 if [ "$WITH_GNU_TLS" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libGnuTLS${COLOR_SEPARATOR} ====================================${COLOR_RESET}"
@@ -1703,28 +1755,78 @@ then
 	then
 		env_restore
 		cd $SOURCES_ROOT
-		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
-		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
-		if [ ! -d "gnutls-3.6.5" ];
+		if [ ! -d "gnutls" ];
 		then
-			if [ ! -f "gnutls-3.6.5.tar.xz" ];
-			then
-				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				$WGET https://www.gnupg.org/ftp/gcrypt/gnutls/v3.6/gnutls-3.6.5.tar.xz
-			fi
-			tar -xf gnutls-3.6.5.tar.xz
+			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            git clone git@github.com:gnutls/gnutls.git
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-			cd gnutls-3.6.5
-			#export PKG_CONFIG_PATH=$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
-                        ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT --with-nettle-mini=$SOURCES_ROOT/nettle-3.4.1 --with-libnettle-prefix=$INSTALL_ROOT
-                else
-			cd gnutls-3.6.5
+			cd gnutls
+			./bootstrap
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
+		else
+			cd gnutls
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-		$MAKE $PARALLEL_MAKE_OPTIONS
-		$MAKE $PARALLEL_MAKE_OPTIONS install
-		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
-		export PKG_CONFIG_PATH_SAVED=
+		$MAKE
+		$MAKE install
+		cd $SOURCES_ROOT
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/gpg/libgpg-error
+#git@github.com:gpg/libgpg-error.git
+if [ "$WITH_GPGERROR" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}liGpgError${COLOR_SEPARATOR} ===================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libgpg-error.a" ];
+	then
+		env_restore
+		cd $SOURCES_ROOT
+		if [ ! -d "libgpg-error" ];
+		then
+			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            git clone git@github.com:gpg/libgpg-error.git
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd libgpg-error
+			./autogen.sh --git-build
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
+		else
+			cd libgpg-error
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		$MAKE
+		$MAKE install
+		cd $SOURCES_ROOT
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/gpg/libgcrypt
+#git@github.com:gpg/libgcrypt.git
+if [ "$WITH_GCRYPT" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}liGrypt${COLOR_SEPARATOR} ======================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libgcrypt.a" ];
+	then
+		env_restore
+		cd $SOURCES_ROOT
+		if [ ! -d "libgcrypt" ];
+		then
+			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            git clone git@github.com:gpg/libgcrypt.git
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd libgcrypt
+			./autogen.sh
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
+		else
+			cd libgcrypt
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		$MAKE
+		$MAKE install
 		cd $SOURCES_ROOT
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
@@ -1743,11 +1845,16 @@ then
 		if [ ! -d "libmicrohttpd" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-                        git clone https://github.com/scottjg/libmicrohttpd.git
+            git clone https://github.com/scottjg/libmicrohttpd.git
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libmicrohttpd
+			MHD_HTTPS_OPT=""
+			if [ "$WITH_GCRYPT" = "yes" ];
+			then
+				MHD_HTTPS_OPT="--enable-https"
+			fi
 			./bootstrap
-			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --prefix=$INSTALL_ROOT
+			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $MHD_HTTPS_OPT $CONF_DEBUG_OPTIONS
 		else
 			cd libmicrohttpd
 		fi
@@ -1759,6 +1866,35 @@ then
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
 fi
+
+# #https://github.com/Sajoch/libmicrohttpd_openssl
+# #git@github.com:Sajoch/libmicrohttpd_openssl.git
+# if [ "$WITH_MICRO_HTTP_D" = "yes" ];
+# then
+# 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libMiniHttpD${COLOR_SEPARATOR} =================================${COLOR_RESET}"
+# 	if [ ! -f "$INSTALL_ROOT/lib/libmicrohttpd.a" ];
+# 	then
+# 		env_restore
+# 		cd $SOURCES_ROOT
+# 		if [ ! -d "libmicrohttpd_openssl" ];
+# 		then
+# 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+#             git clone git@github.com:Sajoch/libmicrohttpd_openssl.git
+# 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+# 			cd libmicrohttpd_openssl
+# 			./bootstrap
+# 			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT --enable-https $CONF_DEBUG_OPTIONS
+# 		else
+# 			cd libmicrohttpd_openssl
+# 		fi
+# 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+# 		$MAKE
+# 		$MAKE install
+# 		cd $SOURCES_ROOT
+# 	else
+# 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+# 	fi
+# fi
 
 #https://github.com/open-source-parsers/jsoncpp
 #git@github.com:open-source-parsers/jsoncpp.git
