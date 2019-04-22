@@ -667,6 +667,27 @@ Json::Value WebThreeStubClient::eth_signTransaction( const Json::Value& param1 )
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+Json::Value WebThreeStubClient::eth_subscribe( const Json::Value& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "eth_subscribe", p );
+    if ( result.isObject() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+Json::Value WebThreeStubClient::eth_unsubscribe( const Json::Value& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "eth_unsubscribe", p );
+    if ( result.isObject() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 Json::Value WebThreeStubClient::eth_inspectTransaction( const std::string& param1 ) {
     Json::Value p;
     p.append( param1 );

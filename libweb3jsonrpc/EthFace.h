@@ -178,6 +178,12 @@ public:
             jsonrpc::Procedure( "eth_signTransaction", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_signTransactionI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "eth_subscribe", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::EthFace::eth_subscribeI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "eth_unsubscribe", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::EthFace::eth_unsubscribeI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "eth_inspectTransaction", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
@@ -368,6 +374,12 @@ public:
         const Json::Value& request, Json::Value& response ) {
         response = this->eth_fetchQueuedTransactions( request[0u].asString() );
     }
+    inline virtual void eth_subscribeI( const Json::Value& request, Json::Value& response ) {
+        response = this->eth_subscribe( request[0u] );
+    }
+    inline virtual void eth_unsubscribeI( const Json::Value& request, Json::Value& response ) {
+        response = this->eth_unsubscribe( request[0u] );
+    }
     inline virtual void eth_signTransactionI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_signTransaction( request[0u] );
     }
@@ -447,6 +459,8 @@ public:
     virtual bool eth_unregister( const std::string& param1 ) = 0;
     virtual Json::Value eth_fetchQueuedTransactions( const std::string& param1 ) = 0;
     virtual Json::Value eth_signTransaction( const Json::Value& param1 ) = 0;
+    virtual Json::Value eth_subscribe( const Json::Value& param1 ) = 0;
+    virtual Json::Value eth_unsubscribe( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_inspectTransaction( const std::string& param1 ) = 0;
     virtual std::string eth_sendRawTransaction( const std::string& param1 ) = 0;
     virtual bool eth_notePassword( const std::string& param1 ) = 0;
