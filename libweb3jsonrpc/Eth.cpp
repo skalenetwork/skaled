@@ -241,6 +241,21 @@ Json::Value Eth::eth_signTransaction( Json::Value const& _json ) {
     }
 }
 
+Json::Value Eth::eth_subscribe( Json::Value const& /*_transaction*/ ) {
+    try {
+        throw JsonRpcException( "eth_subscribe() API is not supported yet" );
+    } catch ( Exception const& ) {
+        throw JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+Json::Value Eth::eth_unsubscribe( Json::Value const& /*_transaction*/ ) {
+    try {
+        throw JsonRpcException( "eth_unsubscribe() API is not supported yet" );
+    } catch ( Exception const& ) {
+        throw JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
         return toJson(

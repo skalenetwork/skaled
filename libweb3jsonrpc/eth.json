@@ -45,6 +45,8 @@
 { "name": "eth_unregister", "params": [""], "order": [], "returns": true},
 { "name": "eth_fetchQueuedTransactions", "params": [""], "order": [], "returns": []},
 { "name": "eth_signTransaction", "params": [{}], "order": [], "returns": {}},
+{ "name": "eth_subscribe", "params": [{}], "order": [], "returns": {}},
+{ "name": "eth_unsubscribe", "params": [{}], "order": [], "returns": {}},
 { "name": "eth_inspectTransaction", "params": [""], "order": [], "returns": {}},
 { "name": "eth_sendRawTransaction", "params": [""], "order": [], "returns": ""},
 { "name": "eth_notePassword", "params": [""], "order": [], "returns": true},
