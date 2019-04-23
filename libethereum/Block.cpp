@@ -422,6 +422,8 @@ TransactionReceipts Block::syncEveryone(
 
     m_currentBlock.setTimestamp( _timestamp );
 
+    m_state = m_state.delegateWrite();  // mainly for debugging
+
     unsigned i = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
