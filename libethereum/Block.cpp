@@ -84,6 +84,7 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const StateClass& _state
     }
 
     if ( _bc.currentHash() != _hash && _bc.genesisHash() != _hash ) {
+        assert(false);
         throw std::logic_error(
             "Can't populate block with historical state because it is not supported" );
     }
@@ -180,6 +181,7 @@ PopulationStatistics Block::populateFromChain(
     }
 
     if ( _bc.currentHash() != _h && _bc.genesisHash() != _h ) {
+        assert(false);
         throw std::logic_error(
             "Can't populate block with historical state because it is not supported" );
     } else {

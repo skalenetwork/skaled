@@ -778,6 +778,7 @@ Block Client::block( h256 const& _block ) const {
     } else if ( _block == m_bc.genesisHash() ) {
         return m_bc.genesisBlock( m_state.startRead() );
     } else {
+        assert(false);
         throw std::logic_error( "Cannot load block because Skale state do not support rollbacks" );
     }
 }
