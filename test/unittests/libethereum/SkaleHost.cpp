@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
 }
 
 // Transaction should be EXCLUDED from the block
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
 }
 
 // Transaction should be EXCLUDED from the block
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
-BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
+    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 0 );
 }
 
 // Transaction should be COMMITTED to block
@@ -270,11 +270,11 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
         "8fb480406fc2728a960029";
 
     Json::Value json;
-    int gas = 80000;
+    int gas = 82000;  // not enough but will pass size check
     json["from"] = toJS( senderAddress );
     json["code"] = compiled;
     json["gas"] = gas;
-    json["gasPrice"] = 1;
+    json["gasPrice"] = "100000000000";  // 100b
 
     TransactionSkeleton ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );
@@ -286,22 +286,21 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt(senderAddress);
+    u256 balanceBefore = client->balanceAt( senderAddress );
 
     BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt(senderAddress);
-
-    BOOST_REQUIRE( balanceBefore - balanceAfter == u256(gas) );
-
     TransactionHashes blockTransactions =
         static_cast< Interface* >( client.get() )->transactionHashes( 1 );
 
     BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
     BOOST_REQUIRE( blockTransactions[0] == txHash );
+
+    u256 balanceAfter = client->balanceAt( senderAddress );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( "100000000000" ) );
 }
 
 
@@ -329,14 +328,14 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt(senderAddress);
+    u256 balanceBefore = client->balanceAt( senderAddress );
 
     BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt(senderAddress);
+    u256 balanceAfter = client->balanceAt( senderAddress );
 
     BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
 
