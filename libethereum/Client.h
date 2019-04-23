@@ -77,6 +77,8 @@ public:
     /// Destructor.
     virtual ~Client();
 
+    void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
+
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
 
@@ -231,7 +233,11 @@ public:
     using ClientBase::block;
 
     /// should be called after the constructor of the most derived class finishes.
-    void startWorking() { Worker::startWorking(); };
+    void startWorking() {
+        assert( m_skaleHost );
+        m_skaleHost->startWorking();
+        Worker::startWorking();
+    };
 
     /// Change the function that is called when a new block is imported
     Handler< BlockHeader const& > setOnBlockImport(
@@ -244,7 +250,8 @@ public:
     }
 
     /// As syncTransactionQueue - but get list of transactions explicitly
-    void syncTransactions(
+    /// returns number of successfullty executed transactions
+    size_t syncTransactions(
         const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub

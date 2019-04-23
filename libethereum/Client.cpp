@@ -88,6 +88,7 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
+    assert( m_skaleHost );
     m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
     m_signalled.notify_all();    // to wake up the thread from Client::doWork()
     stopWorking();
@@ -96,6 +97,18 @@ Client::~Client() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     terminate();
+}
+
+void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
+    assert( !m_skaleHost );
+
+    m_skaleHost = _skaleHost;
+
+    if ( !m_skaleHost )
+        m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+
+    if ( Worker::isWorking() )
+        m_skaleHost->startWorking();
 }
 
 void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPath,
@@ -129,7 +142,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
-        m_skaleHost->onBlockImported( _info );
+        if ( m_skaleHost )
+            m_skaleHost->onBlockImported( _info );
         m_onBlockImport( _info );
     } );
 
@@ -143,8 +157,9 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
         //        auto ethHostCapability =
         //            make_shared<EthereumHost>(_extNet, bc(), m_stateDB, m_tq, m_bq, _networkId);
         //        _extNet.registerCapability(ethHostCapability);
-        m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
-        m_skaleHost->startWorking();
+        //        if(!m_skaleHost)
+        //            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+        //        m_skaleHost->startWorking();
     }
 
     // create Warp capability if we either download snapshot or can give out snapshot
@@ -394,7 +409,9 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-void Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+    assert( m_skaleHost );
+
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() )
@@ -409,21 +426,10 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
-        if ( m_working.isSealed() ) {
-            ctrace << "Skipping txq sync for a sealed block.";
-            return;
-        }
 
+        //        assert(m_state.m_db_write_lock.has_value());
         newPendingReceipts = m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
-    }
-
-    if ( newPendingReceipts.empty() ) {
-        auto s = m_tq.status();
-        ctrace << "No transactions to process. " << m_working.pending().size() << " pending, "
-               << s.current << " queued, " << s.future << " future, " << s.unverified
-               << " unverified";
-        return;
     }
 
     DEV_READ_GUARDED( x_working )
@@ -445,6 +451,8 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
            << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
+
+    return newPendingReceipts.size();
 }
 
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
@@ -465,6 +473,8 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 }
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
+    assert( m_skaleHost );
+
     // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
     for ( auto const& h : _blocks )
         LOG( m_loggerDetail ) << "Live block: " << h;
@@ -773,6 +783,7 @@ Block Client::block( h256 const& _block ) const {
 }
 
 Block Client::latestBlock() const {
+    // TODO Why it returns not-filled block??! (see Block ctor)
     try {
         return Block( bc(), bc().currentHash(), m_state.startRead() );
     } catch ( Exception& ex ) {

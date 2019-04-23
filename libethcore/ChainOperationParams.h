@@ -69,6 +69,7 @@ public:
     u256 id;
     std::string ip;
     uint16_t port;
+    int emptyBlockIntervalMs = -1;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111 ) {
