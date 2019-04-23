@@ -105,7 +105,9 @@ jobs:
               script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
                 repo: DimaStebaev/skaled
-                branch: master
+                branch:
+                    - master
+                    - release-candidate
 cache:
     ccache: true
     directories:
