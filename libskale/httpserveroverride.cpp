@@ -32,6 +32,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <sstream>
 
@@ -43,8 +44,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 SkaleWsPeer::SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl )
-    : skutils::ws::peer( srv, hdl ) {
-    strPeerQueueID_ = skutils::dispatch::generate_id( this, "relay_peer" );
+    : skutils::ws::peer( srv, hdl ),
+      strPeerQueueID_( skutils::dispatch::generate_id( this, "relay_peer" ) ) {
     if ( pso()->bTraceCalls_ )
         clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer ctor" );
@@ -146,6 +147,9 @@ SkaleWsRelay& SkaleWsPeer::getRelay() {
 SkaleServerOverride* SkaleWsPeer::pso() {
     return getRelay().pso();
 }
+dev::eth::Interface* SkaleWsPeer::ethereum() const {
+    return pso()->ethereum();
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,10 +164,29 @@ SkaleWsRelay::SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
         if ( pso()->bTraceCalls_ )
             clog( dev::VerbosityInfo, cc::info( scheme_uc_ ) )
                 << cc::notice( "Will instantiate new peer" );
-        return new SkaleWsPeer( srv, hdl );
+        SkaleWsPeer* pSkalePeer = new SkaleWsPeer( srv, hdl );
+        return pSkalePeer;
     };
-    // onPeerRegister_ =
-    // onPeerUnregister_ =
+    onPeerRegister_ = [&]( skutils::ws::peer_ptr_t& pPeer ) -> void {
+        SkaleWsPeer* pSkalePeer = dynamic_cast< SkaleWsPeer* >( pPeer );
+        if ( pSkalePeer == nullptr ) {
+            std::cerr << "SLAKLE server fatal error: bad WS peer interface(1)\n";
+            std::cerr.flush();
+            std::terminate();
+        }
+        lock_type lock( mtxAllPeers() );
+        mapAllPeers_[pSkalePeer->strPeerQueueID_] = pSkalePeer;
+    };
+    onPeerUnregister_ = [&]( skutils::ws::peer_ptr_t& pPeer ) -> void {
+        SkaleWsPeer* pSkalePeer = dynamic_cast< SkaleWsPeer* >( pPeer );
+        if ( pSkalePeer == nullptr ) {
+            std::cerr << "SLAKLE server fatal error: bad WS peer interface(2)\n";
+            std::cerr.flush();
+            std::terminate();
+        }
+        lock_type lock( mtxAllPeers() );
+        mapAllPeers_.erase( pSkalePeer->strPeerQueueID_ );
+    };
 }
 
 SkaleWsRelay::~SkaleWsRelay() {
@@ -229,13 +252,18 @@ void SkaleWsRelay::stop() {
         << cc::success( "OK, server stopped on port " ) << cc::c( nPort_ );
 }
 
+dev::eth::Interface* SkaleWsRelay::ethereum() const {
+    return pso()->ethereum();
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( const std::string& http_addr, int http_port,
-    const std::string& web_socket_addr, int web_socket_port, const std::string& pathSslKey,
-    const std::string& pathSslCert )
-    : AbstractServerConnector(),
+SkaleServerOverride::SkaleServerOverride( dev::eth::Interface* pEth, const std::string& http_addr,
+    int http_port, const std::string& web_socket_addr, int web_socket_port,
+    const std::string& pathSslKey, const std::string& pathSslCert )
+    : pEth_( pEth ),
+      AbstractServerConnector(),
       address_http_( http_addr ),
       address_web_socket_( web_socket_addr ),
       port_http_( http_port ),
@@ -247,6 +275,15 @@ SkaleServerOverride::SkaleServerOverride( const std::string& http_addr, int http
 
 SkaleServerOverride::~SkaleServerOverride() {
     StopListening();
+}
+
+dev::eth::Interface* SkaleServerOverride::ethereum() const {
+    if ( !pEth_ ) {
+        std::cerr << "SLAKLE server fatal error: no eth interface\n";
+        std::cerr.flush();
+        std::terminate();
+    }
+    return pEth_;
 }
 
 jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::string& url ) {

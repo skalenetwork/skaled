@@ -38,7 +38,7 @@ struct InstalledFilter {
 
     LogFilter filter;
     unsigned refCount = 1;
-    LocalisedLogEntries changes;
+    LocalisedLogEntries changes_;
 };
 
 static const h256 PendingChangedFilter = u256( 0 );
@@ -47,19 +47,28 @@ static const h256 ChainChangedFilter = u256( 1 );
 static const LogEntry SpecialLogEntry = LogEntry( Address(), h256s(), bytes() );
 static const LocalisedLogEntry InitialChange( SpecialLogEntry );
 
+struct ClientWatch;
+
 struct ClientWatch {
-    ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
-    explicit ClientWatch( h256 _id, Reaping _r )
-        : id( _id ),
-          lastPoll( _r == Reaping::Automatic ? std::chrono::system_clock::now() :
-                                               std::chrono::system_clock::time_point::max() ) {}
+    ClientWatch();
+    explicit ClientWatch( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges );
 
     h256 id;
+
+private:
+    void init( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges );
+    fnClientWatchHandlerMulti_t fnOnNewChanges_;
 #if INITIAL_STATE_AS_CHANGES
-    LocalisedLogEntries changes = LocalisedLogEntries{InitialChange};
+    LocalisedLogEntries changes_ = LocalisedLogEntries{InitialChange};
 #else
-    LocalisedLogEntries changes;
+    LocalisedLogEntries changes_;
 #endif
+public:
+    LocalisedLogEntries get_changes() const;
+    void swap_changes( LocalisedLogEntries& otherChanges );
+    void append_changes( const LocalisedLogEntries& otherChanges );
+    void append_changes( const LocalisedLogEntry& entry );
+
     mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
@@ -97,8 +106,10 @@ public:
         BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const;
 
     /// Install, uninstall and query watches.
-    unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic ) override;
-    unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic ) override;
+    unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) override;
+    unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) override;
     bool uninstallWatch( unsigned _watchId ) override;
     LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;

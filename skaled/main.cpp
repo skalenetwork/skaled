@@ -1243,9 +1243,9 @@ int main( int argc, char** argv ) try {
             }
             //
             //
-            auto skale_server_connector =
-                new SkaleServerOverride( chainParams.nodeInfo.ip, explicit_http_port,
-                    chainParams.nodeInfo.ip, explicit_web_socket_port, pathSslKey, pathSslCert );
+            auto skale_server_connector = new SkaleServerOverride( web3.ethereum(),
+                chainParams.nodeInfo.ip, explicit_http_port, chainParams.nodeInfo.ip,
+                explicit_web_socket_port, pathSslKey, pathSslCert );
             skale_server_connector->bTraceCalls_ = bTraceHttpCalls;
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?

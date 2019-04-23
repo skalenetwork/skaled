@@ -46,11 +46,15 @@ typedef intptr_t ssize_t;
 #include <memory>
 #include <string>
 
+#include <mutex>
+
 #include <skutils/console_colors.h>
 #include <skutils/http.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
 #include <json.hpp>
+
+#include <libethereum/Interface.h>
 
 class SkaleWsPeer;
 class SkaleWsRelay;
@@ -61,7 +65,7 @@ class SkaleServerOverride;
 
 class SkaleWsPeer : public skutils::ws::peer {
 public:
-    std::string strPeerQueueID_;
+    const std::string strPeerQueueID_;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
     ~SkaleWsPeer() override;
     void onPeerRegister() override;
@@ -80,6 +84,7 @@ public:
     const SkaleWsRelay& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }
     SkaleServerOverride* pso();
     const SkaleServerOverride* pso() const { return const_cast< SkaleWsPeer* >( this )->pso(); }
+    dev::eth::Interface* ethereum() const;
     friend class SkaleWsRelay;
 };  /// class SkaleWsPeer
 
@@ -96,6 +101,17 @@ protected:
     SkaleServerOverride* pso_ = nullptr;
 
 public:
+    typedef skutils::multithreading::recursive_mutex_type mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+    typedef skutils::retain_release_ptr< SkaleWsPeer > skale_peer_ptr_t;
+    typedef std::map< std::string, skale_peer_ptr_t > map_skale_peers_t;  // maps strPeerQueueID_ ->
+                                                                          // skale peer pointer
+
+protected:
+    mutable mutex_type mtxAllPeers_;
+    mutable map_skale_peers_t mapAllPeers_;
+
+public:
     SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
         int nPort );
     ~SkaleWsRelay() override;
@@ -107,6 +123,8 @@ public:
     void stop();
     SkaleServerOverride* pso() { return pso_; }
     const SkaleServerOverride* pso() const { return pso_; }
+    dev::eth::Interface* ethereum() const;
+    mutex_type& mtxAllPeers() const { return mtxAllPeers_; }
     friend class SkaleWsPeer;
 };  /// class SkaleWsRelay
 
@@ -114,11 +132,15 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
+    mutable dev::eth::Interface* pEth_;
+
 public:
-    SkaleServerOverride( const std::string& http_addr, int http_port,
+    SkaleServerOverride( dev::eth::Interface* pEth, const std::string& http_addr, int http_port,
         const std::string& web_socket_addr, int web_socket_port, const std::string& pathSslKey = "",
         const std::string& pathSslCert = "" );
     ~SkaleServerOverride() override;
+
+    dev::eth::Interface* ethereum() const;
 
 private:
     bool startListeningHTTP();
