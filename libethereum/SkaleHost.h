@@ -59,16 +59,17 @@ struct tx_hash_small {
     }
 };
 
-class ConsensusFactory{
+class ConsensusFactory {
 public:
-    virtual std::unique_ptr<ConsensusInterface> create(ConsensusExtFace& _extFace) const = 0;
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const = 0;
     virtual ~ConsensusFactory() = default;
 };
 
-class DefaultConsensusFactory: public ConsensusFactory {
+class DefaultConsensusFactory : public ConsensusFactory {
 public:
-    DefaultConsensusFactory(const dev::eth::Client& _client): m_client(_client){}
-    virtual std::unique_ptr<ConsensusInterface> create(ConsensusExtFace& _extFace) const;
+    DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
+
 private:
     const dev::eth::Client& m_client;
 };
@@ -89,7 +90,8 @@ class SkaleHost {
     };
 
 public:
-    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq, const ConsensusFactory* _consFactory = nullptr);
+    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
+        const ConsensusFactory* _consFactory = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();
