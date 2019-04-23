@@ -97,12 +97,12 @@ jobs:
               skip_cleanup: true
               prerelease: true
               file:
-                - program
+                - skaled/skaled
               on:
                 repo: DimaStebaev/skaled
                 branch: release-candidate
             - provider: script
-              script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
+              script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
                 repo: DimaStebaev/skaled
                 branch:
