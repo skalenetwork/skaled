@@ -262,8 +262,8 @@ dev::eth::Interface* SkaleWsRelay::ethereum() const {
 SkaleServerOverride::SkaleServerOverride( dev::eth::Interface* pEth, const std::string& http_addr,
     int http_port, const std::string& web_socket_addr, int web_socket_port,
     const std::string& pathSslKey, const std::string& pathSslCert )
-    : pEth_( pEth ),
-      AbstractServerConnector(),
+    : AbstractServerConnector(),
+      pEth_( pEth ),
       address_http_( http_addr ),
       address_web_socket_( web_socket_addr ),
       port_http_( http_port ),
