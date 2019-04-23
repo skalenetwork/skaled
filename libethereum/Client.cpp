@@ -348,7 +348,7 @@ void Client::appendFromNewPending(
         if ( m.size() ) {
             // filter catches them
             for ( LogEntry const& l : m )
-                i.second.changes.push_back( LocalisedLogEntry( l ) );
+                i.second.changes_.push_back( LocalisedLogEntry( l ) );
             io_changed.insert( i.first );
         }
     }
@@ -370,7 +370,7 @@ void Client::appendFromBlock( h256 const& _block, BlockPolarity _polarity, h256H
                 auto transactionHash = transaction( _block, j ).sha3();
                 // filter catches them
                 for ( LogEntry const& l : m )
-                    i.second.changes.push_back( LocalisedLogEntry( l, _block,
+                    i.second.changes_.push_back( LocalisedLogEntry( l, _block,
                         ( BlockNumber ) bc().number( _block ), transactionHash, j, 0, _polarity ) );
                 io_changed.insert( i.first );
             }
@@ -675,7 +675,7 @@ void Client::noteChanged( h256Hash const& _filters ) {
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
                 LOG( m_loggerWatch ) << "!!! " << w.first << " " << w.second.id.abridged();
-                w.second.changes += m_filters.at( w.second.id ).changes;
+                w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
                     LOG( m_loggerWatch )
@@ -683,12 +683,12 @@ void Client::noteChanged( h256Hash const& _filters ) {
                         << ( w.second.id == PendingChangedFilter ?
                                    "pending" :
                                    w.second.id == ChainChangedFilter ? "chain" : "???" );
-                    w.second.changes.push_back( LocalisedLogEntry( SpecialLogEntry, hash ) );
+                    w.second.append_changes( LocalisedLogEntry( SpecialLogEntry, hash ) );
                 }
         }
     // clear the filters now.
     for ( auto& i : m_filters )
-        i.second.changes.clear();
+        i.second.changes_.clear();
     for ( auto& i : m_specialFilters )
         i.second.clear();
 }

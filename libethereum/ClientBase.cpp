@@ -26,13 +26,50 @@
 #include "BlockChain.h"
 #include "Executive.h"
 #include "State.h"
+
 #include <algorithm>
+#include <utility>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
 static const int64_t c_maxGasEstimate = 50000000;
+
+ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
+
+ClientWatch::ClientWatch( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges )
+    : id( _id ),
+      lastPoll( ( _r == Reaping::Automatic ) ? std::chrono::system_clock::now() :
+                                               std::chrono::system_clock::time_point::max() ),
+      fnOnNewChanges_( fnOnNewChanges ) {}
+
+LocalisedLogEntries ClientWatch::get_changes() const {
+    return changes_;
+}
+
+void ClientWatch::swap_changes( LocalisedLogEntries& otherChanges ) {
+    if ( ( ( void* ) &changes_ ) == ( ( void* ) &otherChanges ) )
+        return;
+    std::swap( changes_, otherChanges );
+    if ( !changes_.empty() )
+        fnOnNewChanges_();
+}
+
+void ClientWatch::append_changes( const LocalisedLogEntries& otherChanges ) {
+    if ( ( ( void* ) &changes_ ) == ( ( void* ) &otherChanges ) )
+        return;
+    changes_ += otherChanges;
+    if ( !changes_.empty() )
+        fnOnNewChanges_();
+}
+
+void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
+    changes_.push_back( entry );
+    if ( !changes_.empty() )
+        fnOnNewChanges_();
+}
+
 
 std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
     Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
@@ -199,7 +236,8 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     }
 }
 
-unsigned ClientBase::installWatch( LogFilter const& _f, Reaping _r ) {
+unsigned ClientBase::installWatch(
+    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
     h256 h = _f.sha3();
     {
         Guard l( x_filtersWatches );
@@ -208,15 +246,16 @@ unsigned ClientBase::installWatch( LogFilter const& _f, Reaping _r ) {
             m_filters.insert( make_pair( h, _f ) );
         }
     }
-    return installWatch( h, _r );
+    return installWatch( h, _r, fnOnNewChanges );
 }
 
-unsigned ClientBase::installWatch( h256 _h, Reaping _r ) {
+unsigned ClientBase::installWatch(
+    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-        m_watches[ret] = ClientWatch( _h, _r );
+        m_watches[ret] = ClientWatch( _h, _r, fnOnNewChanges );
         LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
@@ -225,7 +264,7 @@ unsigned ClientBase::installWatch( h256 _h, Reaping _r ) {
         ch.push_back( InitialChange );
     {
         Guard l( x_filtersWatches );
-        swap( m_watches[ret].changes, ch );
+        m_watches[ret].swap_changes( ch );
     }
 #endif
     return ret;
@@ -260,7 +299,7 @@ LocalisedLogEntries ClientBase::peekWatch( unsigned _watchId ) const {
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     if ( w.lastPoll != chrono::system_clock::time_point::max() )
         w.lastPoll = chrono::system_clock::now();
-    return w.changes;
+    return w.get_changes();
 }
 
 LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
@@ -271,7 +310,7 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     auto& w = m_watches.at( _watchId );
     //	LOG(m_loggerWatch) << "lastPoll updated to " <<
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-    std::swap( ret, w.changes );
+    w.swap_changes( ret );
     if ( w.lastPoll != chrono::system_clock::time_point::max() )
         w.lastPoll = chrono::system_clock::now();
 
