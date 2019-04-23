@@ -40,9 +40,9 @@ ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
 
 ClientWatch::ClientWatch( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges )
     : id( _id ),
+      fnOnNewChanges_( fnOnNewChanges ),
       lastPoll( ( _r == Reaping::Automatic ) ? std::chrono::system_clock::now() :
-                                               std::chrono::system_clock::time_point::max() ),
-      fnOnNewChanges_( fnOnNewChanges ) {}
+                                               std::chrono::system_clock::time_point::max() ) {}
 
 LocalisedLogEntries ClientWatch::get_changes() const {
     return changes_;
