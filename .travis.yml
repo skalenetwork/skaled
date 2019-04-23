@@ -68,10 +68,10 @@ jobs:
             - TARGET=skaled
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
-            - cd ../scripts/skale_build
+            - cd ../scripts/skale_build            - 
             - export VERSION=$(cat ../../VERSION)
             - export VERSION=$( (test $TRAVIS_BRANCH = "master" && echo $VERSION) || ../scripts/calculate_rc_version.sh $VERSION)
-            - echo "Version: $VERSION"
+            - echo "Version $VERSION"
             - ./build_image.sh $VERSION
             - cd ../../build
           before_deploy:
