@@ -132,6 +132,8 @@ public:
     virtual bool eth_notePassword( std::string const& ) override { return false; }
     virtual Json::Value eth_syncing() override;
     virtual std::string eth_chainId() override;
+    virtual Json::Value eth_subscribe( Json::Value const& _transaction ) override;
+    virtual Json::Value eth_unsubscribe( Json::Value const& _transaction ) override;
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 
