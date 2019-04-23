@@ -68,10 +68,10 @@ jobs:
             - TARGET=skaled
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
-            - cd ../scripts/skale_build
-            - export VERSION=$(cat ../../VERSION)
+            - export VERSION=$(cat ../VERSION)
             - export VERSION=$( (test $TRAVIS_BRANCH = "master" && echo $VERSION) || ../scripts/calculate_rc_version.sh $VERSION)
-            - echo "Version: $VERSION"
+            - echo "Version $VERSION"
+            - cd ../scripts/skale_build
             - ./build_image.sh $VERSION
             - cd ../../build
           before_deploy:
@@ -97,15 +97,17 @@ jobs:
               skip_cleanup: true
               prerelease: true
               file:
-                - program
+                - skaled/skaled
               on:
                 repo: skalenetwork/skaled
                 branch: release-candidate
             - provider: script
-              script: bash ../scripts/skale_build/deploy_image.sh $(cat ../VERSION) $DOCKER_USERNAME $DOCKER_PASSWORD
+              script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
                 repo: skalenetwork/skaled
-                branch: master
+                branch:
+                    - master
+                    - release-candidate
 cache:
     ccache: true
     directories:
