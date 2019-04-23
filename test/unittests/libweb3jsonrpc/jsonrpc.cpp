@@ -545,8 +545,6 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
-<<<<<<< HEAD
-=======
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     auto senderAddress = coinbase.address();
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
@@ -601,7 +599,6 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( "100000000000" ) );
 }
 
->>>>>>> 02a9f4a... Add test eth_sendRawTransaction_gasLimitExceeded into jsonrpc.cpp
 BOOST_AUTO_TEST_CASE( contract_storage ) {
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
 
