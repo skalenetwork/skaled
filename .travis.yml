@@ -128,7 +128,7 @@ script:
     - mkdir -p build
     - cd build
     - mkdir skaled
-    - touch skaled/skaled
+    - echo "Hello" > skaled/skaled
     #- cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
 
     ## check code style
