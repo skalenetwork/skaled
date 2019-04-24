@@ -157,7 +157,8 @@ dev::eth::Interface* SkaleWsPeer::ethereum() const {
 SkaleWsRelay::SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
     int nPort )
     : scheme_( skutils::tools::to_lower( strScheme ) ),
-      scheme_uc_( skutils::tools::to_upper( strScheme ), nPort_( nPort ) ) {
+      scheme_uc_( skutils::tools::to_upper( strScheme ) ),
+      nPort_( nPort ) {
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
         if ( pso()->bTraceCalls_ )
