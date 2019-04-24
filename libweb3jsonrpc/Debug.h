@@ -37,8 +37,8 @@ public:
     virtual std::string debug_preimage( std::string const& _hashedKey ) override;
     virtual Json::Value debug_traceBlock( std::string const& _blockRlp, Json::Value const& _json );
 
-    virtual void debug_pauseBroadcast( bool pause );
-    virtual void debug_pauseConsensus( bool pause );
+    void debug_pauseBroadcast( bool pause ) override;
+    void debug_pauseConsensus( bool pause ) override;
 
 private:
     eth::Client const& m_eth;

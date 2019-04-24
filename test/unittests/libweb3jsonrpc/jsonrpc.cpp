@@ -337,12 +337,12 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
+    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
     cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress, blockNumber - 1 )
          << endl;
-    dev::eth::mine( *( web3->ethereum() ), blocksToMine );
+    dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
     cerr << "Balance after: " << web3->ethereum()->balanceAt( senderAddress, blockNumber ) << endl;
     BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
 

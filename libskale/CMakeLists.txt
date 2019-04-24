@@ -20,7 +20,10 @@ set(headers
 
 add_library(skale ${sources} ${headers})
 
-target_include_directories(skale PRIVATE "${UTILS_INCLUDE_DIR}")
+target_include_directories( skale PRIVATE
+	"${UTILS_INCLUDE_DIR}"
+	${SKUTILS_INCLUDE_DIRS}
+	)
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
-target_link_libraries(skale PUBLIC ethereum ZeroMQ::libzmq-static)
+target_link_libraries(skale PUBLIC ethereum ZeroMQ::libzmq-static skutils)
 #*1CY

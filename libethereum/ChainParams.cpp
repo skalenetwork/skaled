@@ -295,6 +295,7 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort"] = ( int64_t ) nodeInfo.port;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
+    infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
 
     skaleObj["nodeInfo"] = infoObj;
 
