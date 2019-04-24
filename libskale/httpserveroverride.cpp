@@ -40,8 +40,14 @@
 
 #include <stdio.h>
 
+#include <libethcore/CommonJS.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace skale {
+namespace server {
+namespace helper {
 
 dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT ) {
     dev::Verbosity dv = dev::Verbosity::VerbosityTrace;
@@ -64,6 +70,72 @@ dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT 
     }
     return dv;
 }
+
+dev::eth::LogFilter toLogFilter( const nlohmann::json& jo ) {
+    dev::eth::LogFilter filter;
+    if ( ( !jo.is_object() ) || jo.size() == 0 )
+        return filter;
+
+    // check only !empty. it should throw exceptions if input params are incorrect
+    if ( jo.count( "fromBlock" ) > 0 )
+        filter.withEarliest( dev::jsToFixed< 32 >( jo["fromBlock"].get< std::string >() ) );
+    if ( jo.count( "toBlock" ) > 0 )
+        filter.withLatest( dev::jsToFixed< 32 >( jo["toBlock"].get< std::string >() ) );
+    if ( jo.count( "address" ) > 0 ) {
+        if ( jo["address"].is_array() )
+            for ( auto i : jo["address"] )
+                filter.address( dev::jsToAddress( i.get< std::string >() ) );
+        else
+            filter.address( dev::jsToAddress( jo["address"].get< std::string >() ) );
+    }
+    if ( jo.count( "topics" ) > 0 )
+        for ( unsigned i = 0; i < jo["topics"].size(); i++ ) {
+            if ( jo["topics"][i].is_array() ) {
+                for ( auto t : jo["topics"][i] )
+                    if ( !t.is_null() )
+                        filter.topic( i, dev::jsToFixed< 32 >( t.get< std::string >() ) );
+            } else if ( !jo["topics"][i].is_null() )  // if it is anything else then string, it
+                                                      // should and will fail
+                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< std::string >() ) );
+        }
+    return filter;
+}
+
+dev::eth::LogFilter toLogFilter( const nlohmann::json& jo, dev::eth::Interface const& _client ) {
+    dev::eth::LogFilter filter;
+    if ( ( !jo.is_object() ) || jo.size() == 0 )
+        return filter;
+    // check only !empty. it should throw exceptions if input params are incorrect
+    if ( jo.count( "fromBlock" ) > 0 )
+        filter.withEarliest( _client.hashFromNumber(
+            dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) ) );
+    if ( jo.count( "toBlock" ) > 0 )
+        filter.withLatest( _client.hashFromNumber(
+            dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) ) );
+    if ( jo.count( "address" ) > 0 ) {
+        if ( jo.count( "address" ) > 0 )
+            for ( auto i : jo["address"] )
+                filter.address( dev::jsToAddress( i.get< std::string >() ) );
+        else
+            filter.address( dev::jsToAddress( jo["address"].get< std::string >() ) );
+    }
+    if ( jo.count( "topics" ) > 0 )
+        for ( unsigned i = 0; i < jo["topics"].size(); i++ ) {
+            if ( jo["topics"][i].is_array() ) {
+                for ( auto t : jo["topics"][i] )
+                    if ( !t.is_null() )
+                        filter.topic( i, dev::jsToFixed< 32 >( t.get< std::string >() ) );
+            } else if ( !jo["topics"][i].is_null() )  // if it is anything else then string, it
+                                                      // should and will fail
+                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< std::string >() ) );
+        }
+    return filter;
+}
+
+};  // namespace helper
+};  // namespace server
+};  // namespace skale
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +243,8 @@ void SkaleWsPeer::onFail() {
 void SkaleWsPeer::onLogMessage(
     skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) {
     if ( pso()->bTraceCalls_ )
-        clog( dv_from_ws_msg_type( eWSLMT ), cc::info( getRelay().scheme_uc_ ) )
+        clog( skale::server::helper::dv_from_ws_msg_type( eWSLMT ),
+            cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::debug( " peer log: " ) << msg << "\n";
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
@@ -214,8 +287,87 @@ const SkaleWsPeer::rpc_map_t SkaleWsPeer::g_rpc_map = {
 };
 
 
-void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {}
-void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {}
+void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( joRequest.count( "params" ) == 0 ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
+                << cc::error( " is missing" ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            "error in \"eth_subscribe\" rpc method, json entry \"params\" is missing";
+        joResponse["error"] = joError;
+        return;
+    }
+    const nlohmann::json& jarrParams = joRequest["params"];
+    if ( !jarrParams.is_array() ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
+                << cc::error( " must be array" ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            "error in \"eth_subscribe\" rpc method, json entry \"params\" must be array";
+        joResponse["error"] = joError;
+        return;
+    }
+    std::string strSubcscriptionType;
+    dev::eth::LogFilter logFilter;
+    bool bHaveLogFilter = false;
+    size_t idxParam, cntParams = jarrParams.size();
+    for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
+        const nlohmann::json& joParamItem = jarrParams[idxParam];
+        if ( joParamItem.is_string() ) {
+            if ( strSubcscriptionType.empty() ) {
+                strSubcscriptionType =
+                    skutils::tools::trim_copy( joParamItem.get< std::string >() );
+                continue;
+            }
+        } else if ( joParamItem.is_object() ) {
+            if ( !bHaveLogFilter ) {
+                bHaveLogFilter = true;
+                logFilter = skale::server::helper::toLogFilter( joParamItem, *ethereum() );
+            }
+        }
+    }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
+    try {
+        unsigned iw = ethereum()->installWatch( logFilter );
+        std::string strIW = dev::toJS( iw );
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::info( "eth_subscribe" )
+                << cc::debug( " rpc method did installed watch " ) << cc::info( strIW ) << "\n";
+        joResponse["result"] = strIW;
+    } catch ( const std::exception& ex ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << cc::error( " rpc method, exception " ) << cc::warn( ex.what() ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            std::string( "error in \"eth_subscribe\" rpc method, exception: " ) + ex.what();
+        joResponse["error"] = joError;
+        return;
+    } catch ( ... ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << cc::error( " rpc method, unknown exception " ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] = "error in \"eth_subscribe\" rpc method, unknown exception";
+        joResponse["error"] = joError;
+        return;
+    }
+}
+
+void SkaleWsPeer::eth_unsubscribe(
+    const nlohmann::json& /*joRequest*/, nlohmann::json& /*joResponse*/ ) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
