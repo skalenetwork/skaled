@@ -54,11 +54,17 @@ typedef intptr_t ssize_t;
 #include <skutils/ws.h>
 #include <json.hpp>
 
+#include <libdevcore/Log.h>
 #include <libethereum/Interface.h>
 
 class SkaleWsPeer;
 class SkaleWsRelay;
 class SkaleServerOverride;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +91,22 @@ public:
     SkaleServerOverride* pso();
     const SkaleServerOverride* pso() const { return const_cast< SkaleWsPeer* >( this )->pso(); }
     dev::eth::Interface* ethereum() const;
+
+protected:
+    bool handleWebSocketSpecificRequest(
+        const nlohmann::json& joRequest, std::string& strResponse );
+    bool handleWebSocketSpecificRequest(
+        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+    typedef void ( SkaleWsPeer::*rpc_method_t )(
+        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    typedef std::map< std::string, rpc_method_t > rpc_map_t;
+    static const rpc_map_t g_rpc_map;
+
+    void eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+public:
     friend class SkaleWsRelay;
 };  /// class SkaleWsPeer
 
