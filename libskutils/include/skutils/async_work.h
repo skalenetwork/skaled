@@ -47,7 +47,7 @@ public:
                 if ( map_threads_.size() == 0 )
                     break;
             }  // block
-            skutils::sleep_for_milliseconds( 100 );
+            std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
         }  // while( true )
         lock_type lock( mutex_ );
         map_results_.clear();
@@ -70,7 +70,7 @@ public:
             std::thread t( std::bind(
                 [&]( data_src_t from, fn_work_handler_t fn_work ) {  // not reference!
                     while ( !start_flag )
-                        skutils::sleep_for_milliseconds( 100 );
+                        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
                     responce_flag = true;
                     data_dst_t dst;  // clear dst
                     fn_work( from, dst );
@@ -90,7 +90,7 @@ public:
             std::thread::native_handle_type h = t.native_handle();
             start_flag = true;
             while ( !responce_flag )
-                skutils::sleep_for_milliseconds( 100 );
+                std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
             t.detach();
             map_threads_[src] = pair_thread_info_t( h, fn_completion_handler );
             return true;
@@ -113,8 +113,8 @@ public:
                 ++nSleepAttemptIndex;
                 if ( nSleepAttemptsCount > 0 && nSleepAttemptIndex >= nSleepAttemptsCount )
                     break;
-                skutils::sleep_for_milliseconds(
-                    ( nSleepStepMilliseconds >= 10 ) ? nSleepStepMilliseconds : 10 );
+                std::this_thread::sleep_for( std::chrono::milliseconds(
+                    ( nSleepStepMilliseconds >= 10 ) ? nSleepStepMilliseconds : 10 ) );
                 needSleep = false;
             }
             lock_type lock( mutex_ );
