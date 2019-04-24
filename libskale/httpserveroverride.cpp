@@ -43,16 +43,41 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT ) {
+    dev::Verbosity dv = dev::Verbosity::VerbosityTrace;
+    switch ( eWSLMT ) {
+    case skutils::ws::e_ws_log_message_type_t::eWSLMT_debug:
+        dv = dev::Verbosity::VerbosityDebug;
+        break;
+    case skutils::ws::e_ws_log_message_type_t::eWSLMT_info:
+        dv = dev::Verbosity::VerbosityInfo;
+        break;
+    case skutils::ws::e_ws_log_message_type_t::eWSLMT_warning:
+        dv = dev::Verbosity::VerbosityWarning;
+        break;
+    case skutils::ws::e_ws_log_message_type_t::eWSLMT_error:
+        dv = dev::Verbosity::VerbosityWarning;
+        break;
+    default:
+        dv = dev::Verbosity::VerbosityError;
+        break;
+    }
+    return dv;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 SkaleWsPeer::SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl )
     : skutils::ws::peer( srv, hdl ),
       strPeerQueueID_( skutils::dispatch::generate_id( this, "relay_peer" ) ) {
     if ( pso()->bTraceCalls_ )
-        clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
+        clog( dev::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer ctor" );
 }
 SkaleWsPeer::~SkaleWsPeer() {
     if ( pso()->bTraceCalls_ )
-        clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
+        clog( dev::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer dctor" );
     skutils::dispatch::remove( strPeerQueueID_ );
 }
@@ -75,44 +100,54 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     if ( eOpCode != skutils::ws::opcv::text )
         throw std::runtime_error( "only ws text messages are supported" );
     skutils::dispatch::async( strPeerQueueID_, [=]() -> void {
+        std::string strRequest( msg );
         if ( pso()->bTraceCalls_ )
             clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
                 << cc::ws_rx_inv( " >>> " + getRelay().scheme_uc_ + "/RX >>> " ) << desc()
-                << cc::ws_rx( " >>> " ) << cc::j( msg );
-        int nID = -1;
-        std::string strResponse;
-        try {
-            nlohmann::json joRequest = nlohmann::json::parse( msg );
-            nID = joRequest["id"].get< int >();
-            jsonrpc::IClientConnectionHandler* handler = pso()->GetHandler( "/" );
-            if ( handler == nullptr )
-                throw std::runtime_error( "No client connection handler found" );
-            handler->HandleRequest( msg, strResponse );
-        } catch ( const std::exception& ex ) {
-            clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
-                << cc::ws_tx_inv( " !!! " + getRelay().scheme_uc_ + "/ERR !!! " ) << desc()
-                << cc::ws_tx( " !!! " ) << cc::warn( ex.what() );
-            nlohmann::json joErrorResponce;
-            joErrorResponce["id"] = nID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( ex.what() );
-            strResponse = joErrorResponce.dump();
-        } catch ( ... ) {
-            const char* e = "unknown exception in SkaleServerOverride";
-            clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
-                << cc::ws_tx_inv( " !!! " + getRelay().scheme_uc_ + "/ERR !!! " ) << desc()
-                << cc::ws_tx( " !!! " ) << cc::warn( e );
-            nlohmann::json joErrorResponce;
-            joErrorResponce["id"] = nID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( e );
-            strResponse = joErrorResponce.dump();
-        }
-        if ( pso()->bTraceCalls_ )
-            clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
-                << cc::ws_tx_inv( " <<< " + getRelay().scheme_uc_ + "/TX <<< " ) << desc()
-                << cc::ws_tx( " <<< " ) << cc::j( strResponse );
-        sendMessage( strResponse );
+                << cc::ws_rx( " >>> " ) << cc::j( strRequest );
+        this->ref_retain();  // manual ref management
+        skutils::dispatch::async( strPeerQueueID_, [this, strRequest]() -> void {
+            try {
+                int nID = -1;
+                std::string strResponse;
+                try {
+                    nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+                    if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+                        nID = joRequest["id"].get< int >();
+                        jsonrpc::IClientConnectionHandler* handler = pso()->GetHandler( "/" );
+                        if ( handler == nullptr )
+                            throw std::runtime_error( "No client connection handler found" );
+                        handler->HandleRequest( strRequest, strResponse );
+                    }
+                } catch ( const std::exception& ex ) {
+                    clog( dev::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                        << cc::ws_tx_inv( " !!! " + getRelay().scheme_uc_ + "/ERR !!! " ) << desc()
+                        << cc::ws_tx( " !!! " ) << cc::warn( ex.what() );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = nID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( ex.what() );
+                    strResponse = joErrorResponce.dump();
+                } catch ( ... ) {
+                    const char* e = "unknown exception in SkaleServerOverride";
+                    clog( dev::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                        << cc::ws_tx_inv( " !!! " + getRelay().scheme_uc_ + "/ERR !!! " ) << desc()
+                        << cc::ws_tx( " !!! " ) << cc::warn( e );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = nID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( e );
+                    strResponse = joErrorResponce.dump();
+                }
+                if ( pso()->bTraceCalls_ )
+                    clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
+                        << cc::ws_tx_inv( " <<< " + getRelay().scheme_uc_ + "/TX <<< " ) << desc()
+                        << cc::ws_tx( " <<< " ) << cc::j( strResponse );
+                sendMessage( strResponse );
+            } catch ( ... ) {
+            }
+            this->ref_release();  // manual ref management
+        } );
     } );
     skutils::ws::peer::onMessage( msg, eOpCode );
 }
@@ -136,7 +171,7 @@ void SkaleWsPeer::onFail() {
 void SkaleWsPeer::onLogMessage(
     skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) {
     if ( pso()->bTraceCalls_ )
-        clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
+        clog( dv_from_ws_msg_type( eWSLMT ), cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::debug( " peer log: " ) << msg << "\n";
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
@@ -151,6 +186,37 @@ dev::eth::Interface* SkaleWsPeer::ethereum() const {
     return pso()->ethereum();
 }
 
+bool SkaleWsPeer::handleWebSocketSpecificRequest(
+    const nlohmann::json& joRequest, std::string& strResponse ) {
+    strResponse.clear();
+    nlohmann::json joResponse = nlohmann::json::object();
+    joResponse["jsonrpc"] = "2.0";
+    joResponse["id"] = joRequest["id"];
+    joResponse["result"] = nullptr;
+    if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
+        return false;
+    strResponse = joResponse.dump();
+}
+
+bool SkaleWsPeer::handleWebSocketSpecificRequest(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::string strMethod = joRequest["method"].get< std::string >();
+    rpc_map_t::const_iterator itFind = g_rpc_map.find( strMethod );
+    if ( itFind == g_rpc_map.end() )
+        return false;
+    ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
+    return true;
+}
+
+const SkaleWsPeer::rpc_map_t SkaleWsPeer::g_rpc_map = {
+    {"eth_subscribe", &SkaleWsPeer::eth_subscribe},
+    {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
+};
+
+
+void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {}
+void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -162,7 +228,7 @@ SkaleWsRelay::SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
         if ( pso()->bTraceCalls_ )
-            clog( dev::VerbosityInfo, cc::info( scheme_uc_ ) )
+            clog( dev::VerbosityTrace, cc::info( scheme_uc_ ) )
                 << cc::notice( "Will instantiate new peer" );
         SkaleWsPeer* pSkalePeer = new SkaleWsPeer( srv, hdl );
         return pSkalePeer;
