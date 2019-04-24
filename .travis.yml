@@ -24,32 +24,95 @@
 
 language: cpp
 env:
-    global:
-        - TRAVIS_TESTS=On
-matrix:
+    global:        
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        - TARGET=all
+os: linux
+dist: xenial
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - g++-7
+            - texinfo
+            - lcov
+            - clang-format-6.0
+jobs:
     include:
-        - os: linux
-          dist: xenial
-          addons:
-              apt:
-                sources:
-                    - ubuntu-toolchain-r-test
-                packages:
-                    - g++-7
-                    - texinfo
-                    - lcov
-                    - clang-format-6.0
-                    - libboost-all-dev
-                    - libssl-dev
+        - stage: test
           env:
-              - ZIP_SUFFIX=ubuntu-xenial
-              - CMAKE_BUILD_TYPE=Debug
-              - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+            - CMAKE_BUILD_TYPE=Debug
+            - CODE_COVERAGE=ON
+          #after_success:
+            ## run tests
+            #- cd test
+            #- ./testeth
+            #- cd ..
+
+            ## Create lcov report
+            #- lcov --capture --directory . --output-file coverage.info
+            #- lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+            #- lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
+            #- lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+            #- lcov --list coverage.info # debug info
+
+            ## Uploading report to CodeCov
+            #- bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+
+        - stage: deploy
+          if: branch IN (master, release-candidate)
+          env:
+            - CMAKE_BUILD_TYPE=Debug
+            - CODE_COVERAGE=OFF
+            - TARGET=skaled
+          after_success:
+            - cp skaled/skaled ../scripts/skale_build/executable/
+            - export VERSION=$(cat ../VERSION)
+            - export VERSION=$( (test $TRAVIS_BRANCH = "master" && echo $VERSION) || ../scripts/calculate_rc_version.sh $VERSION)
+            - echo "Version $VERSION"
+            - cd ../scripts/skale_build
+            - ./build_image.sh $VERSION
+            - cd ../../build
+          before_deploy:
+            # Set up git user name and tag this commit
+            - (
+              test ! $TRAVIS_TAG &&
+              git config --local user.name "skale-jenkins" &&
+              git config --local user.email "$GITHUB_EMAIL" &&
+              export TRAVIS_TAG=v$VERSION &&
+              git tag "$TRAVIS_TAG"
+              ) || true
+          deploy:
+            - provider: releases
+              api_key: "$GITHUB_OAUTH_TOKEN"
+              skip_cleanup: true
+              file:
+                  - skaled/skaled
+              on:
+                  repo: DimaStebaev/skaled
+                  branch: master
+            - provider: releases
+              api_key: "$GITHUB_OAUTH_TOKEN"
+              skip_cleanup: true
+              prerelease: true
+              file:
+                - skaled/skaled
+              on:
+                repo: DimaStebaev/skaled
+                branch: release-candidate
+            - provider: script
+              script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
+              on:
+                repo: DimaStebaev/skaled
+                branch:
+                    - master
+                    - release-candidate
 cache:
     ccache: true
     directories:
         - ~/.ethash
-        - ~/.local
+        - ~/.local        
         - ~/.hunter
         # Cache whole deps dir hoping you will not need to download and
         # build external dependencies next build.
@@ -58,30 +121,18 @@ cache:
 
 before_install:
     - eval "${MATRIX_EVAL}"
-install:
-    - ./SkaleDeps/build.sh
+#install:
+    #- ./SkaleDeps/build.sh
 script:
     # configure
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=ON ..
+    - mkdir skaled
+    - echo "Hello" > skaled/skaled
+    #- cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
 
-    # check code style
-    - make format-check || travis_terminate 1;
+    ## check code style
+    #- make format-check || travis_terminate 1;
 
-    # build
-    - make -j$(nproc)
-
-    # run tests
-    - cd test
-    - ./testeth
-    - cd ..
-after_success:
-    # Create lcov report
-    - lcov --capture --directory . --output-file coverage.info
-    - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-    - lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
-    - lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-    - lcov --list coverage.info # debug info
-    # Uploading report to CodeCov
-    - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+    ## build
+    #- cmake --build . --target $TARGET -- -j$(nproc)

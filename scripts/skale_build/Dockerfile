@@ -2,16 +2,12 @@ FROM ubuntu:16.04
 
 RUN apt-get -q update && \
     apt-get -qy install \
-
         software-properties-common \
-
         curl \
         libgmp-dev \
         libleveldb-dev \
-
         nettle-bin \
         gnutls-bin \
-
         python3 \
         python3-pip
 
