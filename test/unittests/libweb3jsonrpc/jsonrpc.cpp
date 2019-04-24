@@ -544,6 +544,10 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
 
+    // We change author because coinbase.address() is author address by default
+    // and will take all transaction fee after execution so we can't check money spent
+    // for senderAddress correctly.
+    web3->ethereum()->setAuthor( Address( 5 ) );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
@@ -560,11 +564,12 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
         "8fb480406fc2728a960029";
 
     Json::Value create;
-    int gas = 82000;  // not enough but will pass size check
+    int gas = 82000;                   // not enough but will pass size check
+    string gasPrice = "100000000000";  // 100b
     create["from"] = toJS( senderAddress );
     create["code"] = compiled;
     create["gas"] = gas;
-    create["gasPrice"] = "100000000000";  // 100b
+    create["gasPrice"] = gasPrice;
 
     BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
     BOOST_CHECK_EQUAL(
@@ -591,7 +596,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
 
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( "100000000000" ) );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
 }
 
 BOOST_AUTO_TEST_CASE( contract_storage ) {
