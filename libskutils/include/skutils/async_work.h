@@ -1,7 +1,6 @@
 #if ( !defined __SKUTILS_ASYNCWORK_H )
 #define __SKUTILS_ASYNCWORK_H 1
 
-#include <skutils/cxx_replacements.h>
 #include <skutils/multifunction.h>
 #include <skutils/multithreading.h>
 #include <chrono>
