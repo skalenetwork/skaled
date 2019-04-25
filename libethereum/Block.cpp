@@ -698,8 +698,25 @@ ExecutionResult Block::execute(
     uncommitToSeal();
 
     StateClass stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        stateSnapshot.execute( EnvInfo( info(), _lh, gasUsed() ), *m_sealEngine, _t, _p, _onOp );
+
+    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
+
+    // "bad" transaction receipt for failed transactions
+    TransactionReceipt const null_receipt =
+        envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+            TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
+            TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
+
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+
+    try {
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+    } catch ( const Exception& ex ) {
+
+        // use fake receipt created above if execution throws!!
+        _p = Permanence::CommittedWithoutState;
+
+    }  // catch
 
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
