@@ -26,8 +26,10 @@
 
 #include <libdevcore/microprofile.h>
 
+#include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 
+#include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/common/specificationparser.h>
 
 #include <cassert>
@@ -35,6 +37,8 @@
 #include <exception>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
+#include <vector>
 
 #include <arpa/inet.h>
 
@@ -132,6 +136,63 @@ dev::eth::LogFilter toLogFilter( const nlohmann::json& jo, dev::eth::Interface c
     return filter;
 }
 
+nlohmann::json nljsBlockNumber( dev::eth::BlockNumber bn ) {
+    if ( bn == dev::eth::LatestBlock )
+        return nlohmann::json( "latest" );
+    if ( bn == 0 )
+        return nlohmann::json( "earliest" );
+    if ( bn == dev::eth::PendingBlock )
+        return nlohmann::json( "pending" );
+    return nlohmann::json( unsigned( bn ) );
+}
+
+nlohmann::json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
+    std::vector< dev::h256 > const& order ) {
+    nlohmann::json res = nlohmann::json::array();
+    for ( auto const& i : order ) {
+        auto entries = eb.at( i );
+        nlohmann::json currentBlock = nlohmann::json::object();
+        dev::eth::LocalisedLogEntry entry = entries[0];
+        if ( entry.mined ) {
+            currentBlock["blockNumber"] = nljsBlockNumber( entry.blockNumber );
+            currentBlock["blockHash"] = toJS( entry.blockHash );
+            currentBlock["type"] = "mined";
+        } else
+            currentBlock["type"] = "pending";
+        currentBlock["polarity"] = entry.polarity == dev::eth::BlockPolarity::Live ? true : false;
+        currentBlock["logs"] = nlohmann::json::array();
+        for ( dev::eth::LocalisedLogEntry const& e : entries ) {
+            nlohmann::json log = nlohmann::json::object();
+            log["logIndex"] = e.logIndex;
+            log["transactionIndex"] = e.transactionIndex;
+            log["transactionHash"] = toJS( e.transactionHash );
+            log["address"] = dev::toJS( e.address );
+            log["data"] = dev::toJS( e.data );
+            log["topics"] = nlohmann::json::array();
+            for ( auto const& t : e.topics )
+                log["topics"].push_back( dev::toJS( t ) );
+            currentBlock["logs"].push_back( log );
+        }
+        res.push_back( currentBlock );
+    }
+    return res;
+}
+
+nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
+    std::vector< dev::h256 > order;
+    std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > entriesByBlock;
+    for ( dev::eth::LocalisedLogEntry const& e : le ) {
+        if ( e.isSpecial )  // skip special log
+            continue;
+        if ( entriesByBlock.count( e.blockHash ) == 0 ) {
+            entriesByBlock[e.blockHash] = dev::eth::LocalisedLogEntries();
+            order.push_back( e.blockHash );
+        }
+        entriesByBlock[e.blockHash].push_back( e );
+    }
+    return toJson( entriesByBlock, order );
+}
+
 };  // namespace helper
 };  // namespace server
 };  // namespace skale
@@ -151,6 +212,7 @@ SkaleWsPeer::~SkaleWsPeer() {
     if ( pso()->bTraceCalls_ )
         clog( dev::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer dctor" );
+    uninstall_all_watches();
     skutils::dispatch::remove( strPeerQueueID_ );
 }
 
@@ -166,6 +228,7 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
         clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer unregistered" );
     skutils::ws::peer::onPeerUnregister();
+    uninstall_all_watches();
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
@@ -221,7 +284,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             this->ref_release();  // manual ref management
         } );
     } );
-    skutils::ws::peer::onMessage( msg, eOpCode );
+    // skutils::ws::peer::onMessage( msg, eOpCode );
 }
 
 void SkaleWsPeer::onClose(
@@ -231,6 +294,7 @@ void SkaleWsPeer::onClose(
             << desc() << cc::warn( " peer close event with code=" ) << cc::c( local_close_code )
             << cc::debug( ", reason=" ) << cc::info( reason ) << "\n";
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
+    uninstall_all_watches();
 }
 
 void SkaleWsPeer::onFail() {
@@ -238,6 +302,7 @@ void SkaleWsPeer::onFail() {
         clog( dev::VerbosityError, cc::fatal( getRelay().scheme_uc_ ) )
             << desc() << cc::error( " peer fail event" ) << "\n";
     skutils::ws::peer::onFail();
+    uninstall_all_watches();
 }
 
 void SkaleWsPeer::onLogMessage(
@@ -259,6 +324,17 @@ dev::eth::Interface* SkaleWsPeer::ethereum() const {
     return pso()->ethereum();
 }
 
+void SkaleWsPeer::uninstall_all_watches() {
+    set_watche_ids_t sw = setInstalledWatches_;
+    setInstalledWatches_.clear();
+    for ( auto iw : sw ) {
+        try {
+            ethereum()->uninstallWatch( iw );
+        } catch ( ... ) {
+        }
+    }
+}
+
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     const nlohmann::json& joRequest, std::string& strResponse ) {
     strResponse.clear();
@@ -269,6 +345,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
         return false;
     strResponse = joResponse.dump();
+    return true;
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
@@ -286,56 +363,140 @@ const SkaleWsPeer::rpc_map_t SkaleWsPeer::g_rpc_map = {
     {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
 };
 
+bool SkaleWsPeer::check_params_present(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( joRequest.count( "params" ) > 0 )
+        return true;
+    if ( pso()->bTraceCalls_ )
+        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+            << desc() << " " << cc::error( "error in " ) << cc::warn( strMethodName )
+            << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
+            << cc::error( " is missing" ) << "\n";
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32602;
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" is missing";
+    joResponse["error"] = joError;
+    return false;
+}
+
+bool SkaleWsPeer::check_params_is_array(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( !check_params_present( strMethodName, joRequest, joResponse ) )
+        return false;
+    const nlohmann::json& jarrParams = joRequest["params"];
+    if ( jarrParams.is_array() )
+        return true;
+    if ( pso()->bTraceCalls_ )
+        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+            << desc() << " " << cc::error( "error in " ) << cc::warn( strMethodName )
+            << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
+            << cc::error( " must be array" ) << "\n";
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32602;
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" must be array";
+    joResponse["error"] = joError;
+    return false;
+}
 
 void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( joRequest.count( "params" ) == 0 ) {
-        if ( pso()->bTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
-                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
-                << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
-                << cc::error( " is missing" ) << "\n";
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] =
-            "error in \"eth_subscribe\" rpc method, json entry \"params\" is missing";
-        joResponse["error"] = joError;
+    if ( !check_params_is_array( "eth_subscribe", joRequest, joResponse ) )
         return;
-    }
     const nlohmann::json& jarrParams = joRequest["params"];
-    if ( !jarrParams.is_array() ) {
-        if ( pso()->bTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
-                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
-                << cc::error( " rpc method, json entry " ) << cc::warn( "params" )
-                << cc::error( " must be array" ) << "\n";
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] =
-            "error in \"eth_subscribe\" rpc method, json entry \"params\" must be array";
-        joResponse["error"] = joError;
-        return;
-    }
     std::string strSubcscriptionType;
-    dev::eth::LogFilter logFilter;
-    bool bHaveLogFilter = false;
     size_t idxParam, cntParams = jarrParams.size();
     for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
         const nlohmann::json& joParamItem = jarrParams[idxParam];
-        if ( joParamItem.is_string() ) {
-            if ( strSubcscriptionType.empty() ) {
-                strSubcscriptionType =
-                    skutils::tools::trim_copy( joParamItem.get< std::string >() );
-                continue;
-            }
-        } else if ( joParamItem.is_object() ) {
-            if ( !bHaveLogFilter ) {
-                bHaveLogFilter = true;
-                logFilter = skale::server::helper::toLogFilter( joParamItem, *ethereum() );
-            }
-        }
-    }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
+        if ( !joParamItem.is_string() )
+            continue;
+        strSubcscriptionType = skutils::tools::trim_copy( joParamItem.get< std::string >() );
+        break;
+    }
+    if ( strSubcscriptionType == "logs" ) {
+        eth_subscribe_logs( joRequest, joResponse );
+        return;
+    }
+    if ( pso()->bTraceCalls_ )
+        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+            << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+            << cc::error( " rpc method, missing valid subscription type in parameters" ) << "\n";
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32603;
+    joError["message"] =
+        "error in \"eth_subscribe\" rpc method, missing valid subscription type in parameters";
+    joResponse["error"] = joError;
+}
+
+void SkaleWsPeer::eth_subscribe_logs(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     try {
-        unsigned iw = ethereum()->installWatch( logFilter );
+        const nlohmann::json& jarrParams = joRequest["params"];
+        dev::eth::LogFilter logFilter;
+        bool bHaveLogFilter = false;
+        size_t idxParam, cntParams = jarrParams.size();
+        for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
+            const nlohmann::json& joParamItem = jarrParams[idxParam];
+            if ( joParamItem.is_string() )
+                continue;
+            if ( joParamItem.is_object() ) {
+                if ( !bHaveLogFilter ) {
+                    bHaveLogFilter = true;
+                    logFilter = skale::server::helper::toLogFilter( joParamItem, *ethereum() );
+                }
+            }
+        }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
+        skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
+        dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
+        fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
+            skutils::dispatch::async( pThis->strPeerQueueID_, [pThis, iw]() -> void {
+                dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
+                nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
+                if ( joResult.is_array() ) {
+                    for ( const auto& joRW : joResult ) {
+                        if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
+                             joRW.count( "blockHash" ) > 0 && joRW.count( "blockNumber" ) > 0 ) {
+                            std::string strBlockHash = joRW["blockHash"].get< std::string >();
+                            unsigned nBlockBumber = joRW["blockNumber"].get< unsigned >();
+                            const nlohmann::json& joResultLogs = joRW["logs"];
+                            if ( joResultLogs.is_array() ) {
+                                for ( const auto& joWalk : joResultLogs ) {
+                                    if ( !joWalk.is_object() )
+                                        continue;
+                                    nlohmann::json joLog = joWalk;  // copy
+                                    joLog["blockHash"] = strBlockHash;
+                                    joLog["blockNumber"] = nBlockBumber;
+                                    nlohmann::json joParams = nlohmann::json::object();
+                                    joParams["susbcription"] = dev::toJS( iw );
+                                    joParams["result"] = joLog;
+                                    nlohmann::json joNotification = nlohmann::json::object();
+                                    joNotification["jsonrpc"] = "2.0";
+                                    joNotification["method"] = "eth_subscription";
+                                    joNotification["params"] = joParams;
+                                    std::string strNotification = joNotification.dump();
+                                    if ( pThis->pso()->bTraceCalls_ )
+                                        clog( dev::VerbosityInfo,
+                                            cc::info( pThis->getRelay().scheme_uc_ ) )
+                                            << cc::ws_tx_inv( " <<< " +
+                                                              pThis->getRelay().scheme_uc_ +
+                                                              "/TX <<< " )
+                                            << pThis->desc() << cc::ws_tx( " <<< " )
+                                            << cc::j( strNotification );
+                                    skutils::dispatch::async(
+                                        pThis->strPeerQueueID_, [pThis, strNotification]() -> void {
+                                            const_cast< SkaleWsPeer* >( pThis.get() )
+                                                ->sendMessage( strNotification );
+                                        } );
+                                }  // for ( const auto& joWalk : joResultLogs )
+                            }      // if ( joResultLogs.is_array() )
+                        }
+                    }  // for ( const auto& joRW : joResult )
+                }      // if ( joResult.is_array() )
+            } );
+        };
+        unsigned iw = ethereum()->installWatch(
+            logFilter, dev::eth::Reaping::Automatic, fnOnSunscriptionEvent );
+        setInstalledWatches_.insert( iw );
         std::string strIW = dev::toJS( iw );
         if ( pso()->bTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
@@ -366,8 +527,51 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
     }
 }
 
-void SkaleWsPeer::eth_unsubscribe(
-    const nlohmann::json& /*joRequest*/, nlohmann::json& /*joResponse*/ ) {}
+void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( !check_params_is_array( "eth_unsubscribe", joRequest, joResponse ) )
+        return;
+    const nlohmann::json& jarrParams = joRequest["params"];
+    size_t idxParam, cntParams = jarrParams.size();
+    for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
+        const nlohmann::json& joParamItem = jarrParams[idxParam];
+        unsigned iw = unsigned( -1 );
+        if ( joParamItem.is_string() ) {
+            std::string strIW = skutils::tools::trim_copy( joParamItem.get< std::string >() );
+            if ( !strIW.empty() )
+                iw = unsigned( std::stoul( strIW.c_str(), nullptr, 0 ) );
+        } else if ( joParamItem.is_number_integer() ) {
+            iw = joParamItem.get< unsigned >();
+        }
+        if ( iw == unsigned( -1 ) ) {
+            if ( pso()->bTraceCalls_ )
+                clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                    << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_unsubscribe" )
+                    << cc::error( " rpc method, bad subsription ID " ) << cc::j( joParamItem )
+                    << "\n";
+            nlohmann::json joError = nlohmann::json::object();
+            joError["code"] = -32602;
+            joError["message"] =
+                "error in \"eth_unsubscribe\" rpc method, ad subsription ID " + joParamItem.dump();
+            joResponse["error"] = joError;
+            return;
+        }
+        if ( setInstalledWatches_.find( iw ) == setInstalledWatches_.end() ) {
+            std::string strIW = dev::toJS( iw );
+            if ( pso()->bTraceCalls_ )
+                clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                    << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_unsubscribe" )
+                    << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW ) << "\n";
+            nlohmann::json joError = nlohmann::json::object();
+            joError["code"] = -32602;
+            joError["message"] =
+                "error in \"eth_unsubscribe\" rpc method, ad subsription ID " + strIW;
+            joResponse["error"] = joError;
+            return;
+        }
+        ethereum()->uninstallWatch( iw );
+        setInstalledWatches_.erase( iw );
+    }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

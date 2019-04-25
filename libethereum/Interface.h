@@ -53,7 +53,7 @@ struct GasEstimationProgress {
 
 using GasEstimationCallback = std::function< void( GasEstimationProgress const& ) >;
 
-using fnClientWatchHandlerMulti_t = skutils::multifunction< void() >;
+using fnClientWatchHandlerMulti_t = skutils::multifunction< void( unsigned iw ) >;
 
 
 /**

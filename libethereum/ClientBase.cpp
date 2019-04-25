@@ -38,8 +38,10 @@ static const int64_t c_maxGasEstimate = 50000000;
 
 ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
 
-ClientWatch::ClientWatch( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges )
+ClientWatch::ClientWatch(
+    h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw )
     : id( _id ),
+      iw_( iw ),
       fnOnNewChanges_( fnOnNewChanges ),
       lastPoll( ( _r == Reaping::Automatic ) ? std::chrono::system_clock::now() :
                                                std::chrono::system_clock::time_point::max() ) {}
@@ -53,7 +55,7 @@ void ClientWatch::swap_changes( LocalisedLogEntries& otherChanges ) {
         return;
     std::swap( changes_, otherChanges );
     if ( !changes_.empty() )
-        fnOnNewChanges_();
+        fnOnNewChanges_( iw_ );
 }
 
 void ClientWatch::append_changes( const LocalisedLogEntries& otherChanges ) {
@@ -61,13 +63,13 @@ void ClientWatch::append_changes( const LocalisedLogEntries& otherChanges ) {
         return;
     changes_ += otherChanges;
     if ( !changes_.empty() )
-        fnOnNewChanges_();
+        fnOnNewChanges_( iw_ );
 }
 
 void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
     changes_.push_back( entry );
     if ( !changes_.empty() )
-        fnOnNewChanges_();
+        fnOnNewChanges_( iw_ );
 }
 
 
@@ -257,7 +259,7 @@ unsigned ClientBase::installWatch(
     {
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-        m_watches[ret] = ClientWatch( _h, _r, fnOnNewChanges );
+        m_watches[ret] = ClientWatch( _h, _r, fnOnNewChanges, ret );
         LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
