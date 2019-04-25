@@ -44,6 +44,7 @@ typedef intptr_t ssize_t;
 #include <microhttpd.h>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 
 #include <mutex>
@@ -89,6 +90,10 @@ public:
     dev::eth::Interface* ethereum() const;
 
 protected:
+    typedef std::set< unsigned > set_watche_ids_t;
+    set_watche_ids_t setInstalledWatches_;
+    void uninstall_all_watches();
+
     bool handleWebSocketSpecificRequest(
         const nlohmann::json& joRequest, std::string& strResponse );
     bool handleWebSocketSpecificRequest(
@@ -99,7 +104,13 @@ protected:
     typedef std::map< std::string, rpc_method_t > rpc_map_t;
     static const rpc_map_t g_rpc_map;
 
+    bool check_params_present(
+        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    bool check_params_is_array(
+        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
     void eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    void eth_subscribe_logs( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:

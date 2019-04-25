@@ -51,9 +51,11 @@ struct ClientWatch;
 
 struct ClientWatch {
     ClientWatch();
-    explicit ClientWatch( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges );
+    explicit ClientWatch(
+        h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw = 0 );
 
     h256 id;
+    unsigned iw_ = 0;
 
 private:
     void init( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges );

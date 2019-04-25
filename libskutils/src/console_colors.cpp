@@ -583,6 +583,10 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
         os << flag( jo.get< bool >() );
         return;
     }
+    case nlohmann::json::value_t::number_unsigned: {
+        os << stc << jo.get< unsigned >() << reset();
+        return;
+    }
     case nlohmann::json::value_t::number_integer: {
         os << stc << jo.get< int >() << reset();
         return;
