@@ -95,6 +95,6 @@ Learn more about the SKALE community over on [Discord](https://discord.gg/vvUtWJ
 
 All contributions are made under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html). See [LICENSE](LICENSE).
 
-All original cpp-ethereum code Copyright (C) Aleth Authors.
-All cpp-ethereum modifications Copyright (C) SKALE Labs.
+All original cpp-ethereum code Copyright (C) Aleth Authors.  
+All cpp-ethereum modifications Copyright (C) SKALE Labs.  
 All skaled code Copyright (C) SKALE Labs.
