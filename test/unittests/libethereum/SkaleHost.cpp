@@ -253,6 +253,11 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
+    // We change author because coinbase.address() is author address by default
+    // and will take all transaction fee after execution so we can't check money spent
+    // for senderAddress correctly.
+    client->setAuthor( Address( 5 ) );
+
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
     // }
@@ -268,11 +273,12 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
         "8fb480406fc2728a960029";
 
     Json::Value json;
-    int gas = 82000;  // not enough but will pass size check
+    int gas = 82000;                   // not enough but will pass size check
+    string gasPrice = "100000000000";  // 100b
     json["from"] = toJS( senderAddress );
     json["code"] = compiled;
     json["gas"] = gas;
-    json["gasPrice"] = "100000000000";  // 100b
+    json["gasPrice"] = gasPrice;
 
     TransactionSkeleton ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );
@@ -298,7 +304,7 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
     BOOST_REQUIRE( blockTransactions[0] == txHash );
 
     u256 balanceAfter = client->balanceAt( senderAddress );
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( "100000000000" ) );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
 }
 
 
