@@ -34,6 +34,7 @@
 #include <libethcore/SealEngine.h>
 
 #include <skutils/multifunction.h>
+#include <functional>
 
 namespace dev {
 namespace eth {
@@ -256,6 +257,26 @@ public:
 
     /// Get the seal engine.
     virtual SealEngineFace* sealEngine() const { return nullptr; }
+
+public:
+    // new block watch
+    virtual unsigned installNewBlockWatch(
+        std::function< void( const unsigned&, const Block& ) >& ) {  // not implemented here
+        return unsigned( -1 );
+    }
+    virtual bool uninstallNewBlockWatch( const unsigned& ) {  // not implemented here
+        return false;
+    }
+
+    // new pending transation watch
+    virtual unsigned installNewPendingTransactionWatch(  // not implemented here
+        std::function< void( const unsigned&, const Transaction& ) >& ) {
+        return unsigned( -1 );
+    }
+    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) {  // not implemented
+                                                                           // here
+        return false;
+    }
 };
 
 class Watch;

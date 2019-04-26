@@ -42,12 +42,40 @@
 
 #include <arpa/inet.h>
 
+#include <limits.h>
 #include <stdio.h>
 
 #include <libethcore/CommonJS.h>
 
+#if ( defined MSIZE )
+#undef MSIZE
+#endif
+
+#include <libethereum/Block.h>
+#include <libethereum/Transaction.h>
+#include <libweb3jsonrpc/JsonHelper.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if INT_MAX == 32767
+// 16 bits
+#define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x1000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x2000
+#elif INT_MAX == 2147483647
+// 32 bits
+#define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF0000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x10000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x20000000
+#elif INT_MAX == 9223372036854775807
+// 64 bits
+#define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF000000000000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x1000000000000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x2000000000000000
+#else
+#error "What kind of weird system are you on? We cannot detect size of int"
+#endif
 
 namespace skale {
 namespace server {
@@ -212,7 +240,7 @@ SkaleWsPeer::~SkaleWsPeer() {
     if ( pso()->bTraceCalls_ )
         clog( dev::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer dctor" );
-    uninstall_all_watches();
+    uninstallAllWatches();
     skutils::dispatch::remove( strPeerQueueID_ );
 }
 
@@ -228,7 +256,7 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
         clog( dev::VerbosityInfo, cc::info( getRelay().scheme_uc_ ) )
             << desc() << cc::notice( " peer unregistered" );
     skutils::ws::peer::onPeerUnregister();
-    uninstall_all_watches();
+    uninstallAllWatches();
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
@@ -294,7 +322,7 @@ void SkaleWsPeer::onClose(
             << desc() << cc::warn( " peer close event with code=" ) << cc::c( local_close_code )
             << cc::debug( ", reason=" ) << cc::info( reason ) << "\n";
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
-    uninstall_all_watches();
+    uninstallAllWatches();
 }
 
 void SkaleWsPeer::onFail() {
@@ -302,7 +330,7 @@ void SkaleWsPeer::onFail() {
         clog( dev::VerbosityError, cc::fatal( getRelay().scheme_uc_ ) )
             << desc() << cc::error( " peer fail event" ) << "\n";
     skutils::ws::peer::onFail();
-    uninstall_all_watches();
+    uninstallAllWatches();
 }
 
 void SkaleWsPeer::onLogMessage(
@@ -324,12 +352,32 @@ dev::eth::Interface* SkaleWsPeer::ethereum() const {
     return pso()->ethereum();
 }
 
-void SkaleWsPeer::uninstall_all_watches() {
-    set_watche_ids_t sw = setInstalledWatches_;
-    setInstalledWatches_.clear();
+void SkaleWsPeer::uninstallAllWatches() {
+    set_watche_ids_t sw;
+    //
+    sw = setInstalledWatchesLogs_;
+    setInstalledWatchesLogs_.clear();
     for ( auto iw : sw ) {
         try {
             ethereum()->uninstallWatch( iw );
+        } catch ( ... ) {
+        }
+    }
+    //
+    sw = setInstalledWatchesNewPendingTransactions_;
+    setInstalledWatchesNewPendingTransactions_.clear();
+    for ( auto iw : sw ) {
+        try {
+            ethereum()->uninstallNewPendingTransactionWatch( iw );
+        } catch ( ... ) {
+        }
+    }
+    //
+    sw = setInstalledWatchesNewBlocks_;
+    setInstalledWatchesNewBlocks_.clear();
+    for ( auto iw : sw ) {
+        try {
+            ethereum()->uninstallNewBlockWatch( iw );
         } catch ( ... ) {
         }
     }
@@ -363,7 +411,7 @@ const SkaleWsPeer::rpc_map_t SkaleWsPeer::g_rpc_map = {
     {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
 };
 
-bool SkaleWsPeer::check_params_present(
+bool SkaleWsPeer::checkParamsPresent(
     const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( joRequest.count( "params" ) > 0 )
         return true;
@@ -380,9 +428,9 @@ bool SkaleWsPeer::check_params_present(
     return false;
 }
 
-bool SkaleWsPeer::check_params_is_array(
+bool SkaleWsPeer::checkParamsIsArray(
     const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !check_params_present( strMethodName, joRequest, joResponse ) )
+    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
         return false;
     const nlohmann::json& jarrParams = joRequest["params"];
     if ( jarrParams.is_array() )
@@ -401,7 +449,7 @@ bool SkaleWsPeer::check_params_is_array(
 }
 
 void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !check_params_is_array( "eth_subscribe", joRequest, joResponse ) )
+    if ( !checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
     const nlohmann::json& jarrParams = joRequest["params"];
     std::string strSubcscriptionType;
@@ -417,14 +465,29 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
         eth_subscribe_logs( joRequest, joResponse );
         return;
     }
+    if ( strSubcscriptionType == "newPendingTransactions" ||
+         strSubcscriptionType == "pendingTransactions" ) {
+        eth_subscribe_newPendingTransactions( joRequest, joResponse );
+        return;
+    }
+    if ( strSubcscriptionType == "newHeads" || strSubcscriptionType == "newBlockHeaders" ) {
+        eth_subscribe_newHeads( joRequest, joResponse );
+        return;
+    }
+    if ( strSubcscriptionType.empty() )
+        strSubcscriptionType = "<empty>";
     if ( pso()->bTraceCalls_ )
         clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
             << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
-            << cc::error( " rpc method, missing valid subscription type in parameters" ) << "\n";
+            << cc::error(
+                   " rpc method, missing valid subscription type in parameters, was specifiedL " )
+            << cc::warn( strSubcscriptionType ) << "\n";
     nlohmann::json joError = nlohmann::json::object();
     joError["code"] = -32603;
     joError["message"] =
-        "error in \"eth_subscribe\" rpc method, missing valid subscription type in parameters";
+        "error in \"eth_subscribe\" rpc method, missing valid subscription type in parameters, was "
+        "specified: " +
+        strSubcscriptionType;
     joResponse["error"] = joError;
 }
 
@@ -496,39 +559,161 @@ void SkaleWsPeer::eth_subscribe_logs(
         };
         unsigned iw = ethereum()->installWatch(
             logFilter, dev::eth::Reaping::Automatic, fnOnSunscriptionEvent );
-        setInstalledWatches_.insert( iw );
+        setInstalledWatchesLogs_.insert( iw );
         std::string strIW = dev::toJS( iw );
         if ( pso()->bTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
-                << desc() << " " << cc::info( "eth_subscribe" )
+                << desc() << " " << cc::info( "eth_subscribe/logs" )
                 << cc::debug( " rpc method did installed watch " ) << cc::info( strIW ) << "\n";
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pso()->bTraceCalls_ )
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
-                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe/logs" )
                 << cc::error( " rpc method, exception " ) << cc::warn( ex.what() ) << "\n";
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
-            std::string( "error in \"eth_subscribe\" rpc method, exception: " ) + ex.what();
+            std::string( "error in \"eth_subscribe/logs\" rpc method, exception: " ) + ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {
         if ( pso()->bTraceCalls_ )
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
-                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe" )
+                << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_subscribe/logs" )
                 << cc::error( " rpc method, unknown exception " ) << "\n";
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
-        joError["message"] = "error in \"eth_subscribe\" rpc method, unknown exception";
+        joError["message"] = "error in \"eth_subscribe/logs\" rpc method, unknown exception";
         joResponse["error"] = joError;
         return;
     }
 }
 
+void SkaleWsPeer::eth_subscribe_newPendingTransactions(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    try {
+        skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
+        std::function< void( const unsigned& iw, const dev::eth::Transaction& t ) >
+            fnOnSunscriptionEvent =
+                [pThis]( const unsigned& iw, const dev::eth::Transaction& t ) -> void {
+
+
+        };
+        unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+        setInstalledWatchesNewPendingTransactions_.insert( iw );
+        iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION;
+        std::string strIW = dev::toJS( iw );
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::info( "eth_subscribe/newPendingTransactions" )
+                << cc::debug( " rpc method did installed watch " ) << cc::info( strIW ) << "\n";
+        joResponse["result"] = strIW;
+    } catch ( const std::exception& ex ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newPendingTransactions" )
+                << cc::error( " rpc method, exception " ) << cc::warn( ex.what() ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            std::string(
+                "error in \"eth_subscribe/newPendingTransactions\" rpc method, exception: " ) +
+            ex.what();
+        joResponse["error"] = joError;
+        return;
+    } catch ( ... ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newPendingTransactions" )
+                << cc::error( " rpc method, unknown exception " ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            "error in \"eth_subscribe/newPendingTransactions\" rpc method, unknown exception";
+        joResponse["error"] = joError;
+        return;
+    }
+}
+
+void SkaleWsPeer::eth_subscribe_newHeads(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions ) {
+    try {
+        skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
+        std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
+            fnOnSunscriptionEvent = [pThis, bIncludeTransactions](
+                                        const unsigned& iw, const dev::eth::Block& block ) -> void {
+            dev::h256 h = block.info().hash();
+            Json::Value jv;
+            if ( bIncludeTransactions )
+                jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
+                    pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
+                    pThis->ethereum()->transactions( h ), pThis->ethereum()->sealEngine() );
+            else
+                jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
+                    pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
+                    pThis->ethereum()->transactionHashes( h ), pThis->ethereum()->sealEngine() );
+            Json::FastWriter fastWriter;
+            std::string s = fastWriter.write( jv );
+            nlohmann::json joBlockDescription = nlohmann::json::parse( s );
+            //
+            nlohmann::json joParams = nlohmann::json::object();
+            joParams["susbcription"] = dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK );
+            joParams["result"] = joBlockDescription;
+            nlohmann::json joNotification = nlohmann::json::object();
+            joNotification["jsonrpc"] = "2.0";
+            joNotification["method"] = "eth_subscription";
+            joNotification["params"] = joParams;
+            std::string strNotification = joNotification.dump();
+            if ( pThis->pso()->bTraceCalls_ )
+                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().scheme_uc_ ) )
+                    << cc::ws_tx_inv( " <<< " + pThis->getRelay().scheme_uc_ + "/TX <<< " )
+                    << pThis->desc() << cc::ws_tx( " <<< " ) << cc::j( strNotification );
+            skutils::dispatch::async( pThis->strPeerQueueID_, [pThis, strNotification]() -> void {
+                const_cast< SkaleWsPeer* >( pThis.get() )->sendMessage( strNotification );
+            } );
+        };
+        unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+        setInstalledWatchesNewBlocks_.insert( iw );
+        iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK;
+        std::string strIW = dev::toJS( iw );
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::info( "eth_subscribe/newHeads" )
+                << cc::debug( " rpc method did installed watch " ) << cc::info( strIW ) << "\n";
+        joResponse["result"] = strIW;
+    } catch ( const std::exception& ex ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newHeads(" ) << cc::error( " rpc method, exception " )
+                << cc::warn( ex.what() ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            std::string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
+            ex.what();
+        joResponse["error"] = joError;
+        return;
+    } catch ( ... ) {
+        if ( pso()->bTraceCalls_ )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newHeads(" )
+                << cc::error( " rpc method, unknown exception " ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
+        joResponse["error"] = joError;
+        return;
+    }
+}
+
+
 void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !check_params_is_array( "eth_unsubscribe", joRequest, joResponse ) )
+    if ( !checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
         return;
     const nlohmann::json& jarrParams = joRequest["params"];
     size_t idxParam, cntParams = jarrParams.size();
@@ -555,21 +740,69 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
             joResponse["error"] = joError;
             return;
         }
-        if ( setInstalledWatches_.find( iw ) == setInstalledWatches_.end() ) {
-            std::string strIW = dev::toJS( iw );
-            if ( pso()->bTraceCalls_ )
-                clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
-                    << desc() << " " << cc::error( "error in " ) << cc::warn( "eth_unsubscribe" )
-                    << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW ) << "\n";
-            nlohmann::json joError = nlohmann::json::object();
-            joError["code"] = -32602;
-            joError["message"] =
-                "error in \"eth_unsubscribe\" rpc method, ad subsription ID " + strIW;
-            joResponse["error"] = joError;
-            return;
+        unsigned x = ( iw & SKALED_WS_SUBSCRIPTION_TYPE_MASK );
+        if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION ) {
+            if ( setInstalledWatchesNewPendingTransactions_.find(
+                     iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
+                 setInstalledWatchesNewPendingTransactions_.end() ) {
+                std::string strIW = dev::toJS( iw );
+                if ( pso()->bTraceCalls_ )
+                    clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                        << desc() << " " << cc::error( "error in " )
+                        << cc::warn( "eth_unsubscribe/newPendingTransactionWatch" )
+                        << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW )
+                        << "\n";
+                nlohmann::json joError = nlohmann::json::object();
+                joError["code"] = -32602;
+                joError["message"] =
+                    "error in \"eth_unsubscribe/newPendingTransactionWatch\" rpc method, ad "
+                    "subsription ID " +
+                    strIW;
+                joResponse["error"] = joError;
+                return;
+            }
+            ethereum()->uninstallNewPendingTransactionWatch( iw );
+            setInstalledWatchesNewPendingTransactions_.erase(
+                iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
+        } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK ) {
+            if ( setInstalledWatchesNewBlocks_.find(
+                     iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
+                 setInstalledWatchesNewBlocks_.end() ) {
+                std::string strIW = dev::toJS( iw );
+                if ( pso()->bTraceCalls_ )
+                    clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                        << desc() << " " << cc::error( "error in " )
+                        << cc::warn( "eth_unsubscribe/newHeads" )
+                        << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW )
+                        << "\n";
+                nlohmann::json joError = nlohmann::json::object();
+                joError["code"] = -32602;
+                joError["message"] =
+                    "error in \"eth_unsubscribe/newHeads\" rpc method, ad subsription ID " + strIW;
+                joResponse["error"] = joError;
+                return;
+            }
+            ethereum()->uninstallNewBlockWatch( iw );
+            setInstalledWatchesNewBlocks_.erase( iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
+        } else {
+            if ( setInstalledWatchesLogs_.find( iw ) == setInstalledWatchesLogs_.end() ) {
+                std::string strIW = dev::toJS( iw );
+                if ( pso()->bTraceCalls_ )
+                    clog( dev::Verbosity::VerbosityError, cc::info( getRelay().scheme_uc_ ) )
+                        << desc() << " " << cc::error( "error in " )
+                        << cc::warn( "eth_unsubscribe/logs" )
+                        << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW )
+                        << "\n";
+                nlohmann::json joError = nlohmann::json::object();
+                joError["code"] = -32602;
+                joError["message"] =
+                    "error in \"eth_unsubscribe/logs\" rpc method, ad subsription ID " + strIW;
+                joResponse["error"] = joError;
+                return;
+            }
+            ethereum()->uninstallWatch( iw );
+            setInstalledWatchesLogs_.erase( iw );
         }
-        ethereum()->uninstallWatch( iw );
-        setInstalledWatches_.erase( iw );
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
 }
 

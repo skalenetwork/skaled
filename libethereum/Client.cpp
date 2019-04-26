@@ -89,6 +89,9 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
+    m_new_block_watch.uninstallAll();
+    m_new_pending_transaction_watch.uninstallAll();
+
     assert( m_skaleHost );
     m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
     m_signalled.notify_all();    // to wake up the thread from Client::doWork()
@@ -663,6 +666,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -882,6 +886,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
         BOOST_THROW_EXCEPTION( UnknownTransactionValidationError() );
     }
 
+    m_new_pending_transaction_watch.invoke( _t );
+
     return _t.sha3();
 }
 
@@ -909,4 +915,22 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+// new block watch
+unsigned Client::installNewBlockWatch(
+    std::function< void( const unsigned&, const Block& ) >& fn ) {
+    return m_new_block_watch.install( fn );
+}
+bool Client::uninstallNewBlockWatch( const unsigned& k ) {
+    return m_new_block_watch.uninstall( k );
+}
+
+// new pending transation watch
+unsigned Client::installNewPendingTransactionWatch(
+    std::function< void( const unsigned&, const Transaction& ) >& fn ) {
+    return m_new_pending_transaction_watch.install( fn );
+}
+bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
+    return m_new_pending_transaction_watch.uninstall( k );
 }

@@ -42,12 +42,12 @@ typedef intptr_t ssize_t;
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
+#include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
-
-#include <mutex>
 
 #include <skutils/console_colors.h>
 #include <skutils/http.h>
@@ -91,8 +91,9 @@ public:
 
 protected:
     typedef std::set< unsigned > set_watche_ids_t;
-    set_watche_ids_t setInstalledWatches_;
-    void uninstall_all_watches();
+    set_watche_ids_t setInstalledWatchesLogs_, setInstalledWatchesNewPendingTransactions_,
+        setInstalledWatchesNewBlocks_;
+    void uninstallAllWatches();
 
     bool handleWebSocketSpecificRequest(
         const nlohmann::json& joRequest, std::string& strResponse );
@@ -104,13 +105,16 @@ protected:
     typedef std::map< std::string, rpc_method_t > rpc_map_t;
     static const rpc_map_t g_rpc_map;
 
-    bool check_params_present(
+    bool checkParamsPresent(
         const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    bool check_params_is_array(
+    bool checkParamsIsArray(
         const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
     void eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_logs( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    void eth_subscribe_newPendingTransactions(
+        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    void eth_subscribe_newHeads( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
@@ -207,6 +211,7 @@ private:
 public:
     bool isSSL() const { return bIsSSL_; }
 
+public:
     friend class SkaleWsRelay;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride
