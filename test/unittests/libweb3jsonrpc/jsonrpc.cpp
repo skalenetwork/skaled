@@ -545,6 +545,65 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
+    auto senderAddress = coinbase.address();
+    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
+
+    // We change author because coinbase.address() is author address by default
+    // and will take all transaction fee after execution so we can't check money spent
+    // for senderAddress correctly.
+    web3->ethereum()->setAuthor( Address( 5 ) );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+    int gas = 82000;                   // not enough but will pass size check
+    string gasPrice = "100000000000";  // 100b
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = gas;
+    create["gasPrice"] = gasPrice;
+
+    BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL(
+        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+
+    u256 balanceBefore =
+        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+
+    BOOST_REQUIRE_EQUAL(
+        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+
+    // wait for transaction processing
+    while ( jsToU256( rpcClient->eth_getTransactionCount(
+                toJS( coinbase.address() ), "latest" ) ) == 0 ) {
+        sleep( 1 );
+        cerr << "Wait for transaction processing" << endl;
+    };
+
+    u256 balanceAfter =
+        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
+}
+
 BOOST_AUTO_TEST_CASE( contract_storage ) {
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
 
