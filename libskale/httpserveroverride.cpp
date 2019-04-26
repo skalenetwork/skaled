@@ -591,7 +591,7 @@ void SkaleWsPeer::eth_subscribe_logs(
 }
 
 void SkaleWsPeer::eth_subscribe_newPendingTransactions(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         std::function< void( const unsigned& iw, const dev::eth::Transaction& t ) >
@@ -655,7 +655,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
 }
 
 void SkaleWsPeer::eth_subscribe_newHeads(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions ) {
+    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse, bool bIncludeTransactions ) {
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
