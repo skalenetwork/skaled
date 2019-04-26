@@ -114,7 +114,8 @@ protected:
     void eth_subscribe_logs( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_newPendingTransactions(
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    void eth_subscribe_newHeads( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    void eth_subscribe_newHeads(
+        const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
