@@ -471,7 +471,7 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
         return;
     }
     if ( strSubcscriptionType == "newHeads" || strSubcscriptionType == "newBlockHeaders" ) {
-        eth_subscribe_newHeads( joRequest, joResponse );
+        eth_subscribe_newHeads( joRequest, joResponse, false );
         return;
     }
     if ( strSubcscriptionType.empty() )
@@ -597,8 +597,24 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         std::function< void( const unsigned& iw, const dev::eth::Transaction& t ) >
             fnOnSunscriptionEvent =
                 [pThis]( const unsigned& iw, const dev::eth::Transaction& t ) -> void {
-
-
+            dev::h256 h = t.sha3();
+            //
+            nlohmann::json joParams = nlohmann::json::object();
+            joParams["susbcription"] =
+                dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION );
+            joParams["result"] = dev::toJS( h );  // h.hex()
+            nlohmann::json joNotification = nlohmann::json::object();
+            joNotification["jsonrpc"] = "2.0";
+            joNotification["method"] = "eth_subscription";
+            joNotification["params"] = joParams;
+            std::string strNotification = joNotification.dump();
+            if ( pThis->pso()->bTraceCalls_ )
+                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().scheme_uc_ ) )
+                    << cc::ws_tx_inv( " <<< " + pThis->getRelay().scheme_uc_ + "/TX <<< " )
+                    << pThis->desc() << cc::ws_tx( " <<< " ) << cc::j( strNotification );
+            skutils::dispatch::async( pThis->strPeerQueueID_, [pThis, strNotification]() -> void {
+                const_cast< SkaleWsPeer* >( pThis.get() )->sendMessage( strNotification );
+            } );
         };
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
