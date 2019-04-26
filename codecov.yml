@@ -32,3 +32,4 @@ flags:
     joined: false
 ignore:
   - test/tools/fuzzTesting/fuzzHelper.cpp
+  - libskutils/*

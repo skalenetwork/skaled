@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.5.1)
 ############################################################################################################
 set( DEPS_SOURCES_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/SkaleDeps" )
 set( DEPS_INSTALL_ROOT "${DEPS_SOURCES_ROOT}/deps_inst/x86_or_x64" )
-include_directories( "${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp" )
+include_directories( "${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp" ${CMAKE_BINARY_DIR}/deps/include )
 link_directories( "${DEPS_INSTALL_ROOT}/lib" )
 set( CMAKE_PREFIX_PATH "${DEPS_INSTALL_ROOT}" )
 
@@ -87,10 +87,10 @@ include(EthExecutableHelper)
 include(EthDependencies)
 include(EthUtils)
 
-set(CLANG_FORMAT_BIN_NAME clang-format-6.0)
-set(CLANG_FORMAT_EXCLUDE_PATTERNS    
+set(CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
+    "${CMAKE_CURRENT_SOURCE_DIR}/evmc/"
     "${CMAKE_CURRENT_SOURCE_DIR}/evmjit/"
     "${CMAKE_CURRENT_SOURCE_DIR}/libconsensus/")
 include(FindClangFormat)
@@ -157,6 +157,15 @@ add_subdirectory(libskale-interpreter)
 add_subdirectory(libdevcore)
 add_subdirectory(libdevcrypto)
 add_subdirectory(libp2p)
+
+
+set( SKUTILS_INCLUDE_DIRS
+	"${CMAKE_SOURCE_DIR}/libskutils/include"
+	"${CMAKE_SOURCE_DIR}/libconsensus/thirdparty"
+	)
+include_directories( ${SKUTILS_INCLUDE_DIRS} )
+add_subdirectory(libskutils)
+
 add_subdirectory(libskale)
 
 add_subdirectory(libethcore)
@@ -203,6 +212,3 @@ include(CPack)
 if (CONSENSUS)
     add_subdirectory(libconsensus)
 endif()
-
-
-

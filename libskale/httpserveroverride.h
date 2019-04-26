@@ -43,36 +43,124 @@ typedef intptr_t ssize_t;
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
 #include <map>
+#include <memory>
+#include <string>
 
-class HttpServerOverride : public jsonrpc::AbstractServerConnector {
+#include <skutils/console_colors.h>
+#include <skutils/http.h>
+#include <skutils/utils.h>
+#include <skutils/ws.h>
+#include <json.hpp>
+
+class SkaleWsPeer;
+class SkaleWsRelay;
+class SkaleServerOverride;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleWsPeer : public skutils::ws::peer {
 public:
-    HttpServerOverride( const std::string& address, int port );
+    std::string strPeerQueueID_;
+    SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
+    ~SkaleWsPeer() override;
+    void onPeerRegister() override;
+    void onPeerUnregister() override;  // peer will no longer receive onMessage after call to this
+    void onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) override;
+    void onClose( const std::string& reason, int local_close_code,
+        const std::string& local_close_code_as_str ) override;
+    void onFail() override;
+    void onLogMessage(
+        skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) override;
+
+    std::string desc( bool isColored = true ) const {
+        return getShortPeerDescription( isColored, false, false );
+    }
+    SkaleWsRelay& getRelay();
+    const SkaleWsRelay& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }
+    SkaleServerOverride* pso();
+    const SkaleServerOverride* pso() const { return const_cast< SkaleWsPeer* >( this )->pso(); }
+    friend class SkaleWsRelay;
+};  /// class SkaleWsPeer
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleWsRelay : public skutils::ws::server {
+protected:
+    volatile bool isRunning_ = false;
+    volatile bool isInLoop_ = false;
+    std::string scheme_;
+    std::string scheme_uc_;
+    int nPort_ = -1;
+    SkaleServerOverride* pso_ = nullptr;
+
+public:
+    SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
+        int nPort );
+    ~SkaleWsRelay() override;
+    void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
+    bool isRunning() const { return isRunning_; }
+    bool isInLoop() const { return isInLoop_; }
+    void waitWhileInLoop();
+    bool start( SkaleServerOverride* pso );
+    void stop();
+    SkaleServerOverride* pso() { return pso_; }
+    const SkaleServerOverride* pso() const { return pso_; }
+    friend class SkaleWsPeer;
+};  /// class SkaleWsRelay
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
+public:
+    SkaleServerOverride( const std::string& http_addr, int http_port,
+        const std::string& web_socket_addr, int web_socket_port, const std::string& pathSslKey = "",
+        const std::string& pathSslCert = "" );
+    ~SkaleServerOverride() override;
+
+private:
+    bool startListeningHTTP();
+    bool startListeningWebSocket();
+    bool stopListeningHTTP();
+    bool stopListeningWebSocket();
+
+public:
     virtual bool StartListening() override;
     virtual bool StopListening() override;
-
-    bool virtual SendResponse( const std::string& response, void* addInfo = NULL );
-    bool virtual SendOptionsResponse( void* addInfo );
 
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
 private:
-    const std::string address;
+    void logTraceServerEvent(
+        bool isError, const char* strProtocol, const std::string& strMessage );
+    void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
+        const char* strOrigin, const std::string& strPayload );
+    const std::string address_http_, address_web_socket_;
+    int port_http_, port_web_socket_;
 
-    static int callback( void* cls, struct MHD_Connection* connection, const char* url,
-        const char* method, const char* version, const char* upload_data, size_t* upload_data_size,
-        void** con_cls );
-
-    // inherited:
-    int port;
-    int threads;
-    bool running;
-
-    struct MHD_Daemon* daemon;
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
 
 public:
-    bool bTraceHttpCalls;
-};
+    bool bTraceCalls_;
 
-#endif  // HTTPSERVEROVERRIDE_H
+private:
+    std::shared_ptr< skutils::http::server > pServerHTTP_;
+    std::string pathSslKey_, pathSslCert_;
+    bool bIsSSL_;
+
+    std::shared_ptr< SkaleWsRelay > pServerWS_;
+
+public:
+    bool isSSL() const { return bIsSSL_; }
+
+    friend class SkaleWsRelay;
+    friend class SkaleWsPeer;
+};  /// class SkaleServerOverride
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif  ///(!defined __HTTP_SERVER_OVERRIDE_H)
