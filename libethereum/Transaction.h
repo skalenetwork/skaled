@@ -50,7 +50,8 @@ enum class TransactionException {
     StackUnderflow,
     RevertInstruction,
     InvalidZeroSignatureFormat,
-    AddressAlreadyUsed
+    AddressAlreadyUsed,
+    WouldNotBeInBlock   ///< In original Ethereum this tx should not be included in block
 };
 
 enum class CodeDeposit { None = 0, Failed, Success };

@@ -423,12 +423,13 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
 
     h256Hash changeds;
     TransactionReceipts newPendingReceipts;
+    unsigned goodReceipts;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
         //        assert(m_state.m_db_write_lock.has_value());
-        newPendingReceipts = m_working.syncEveryone( bc(), _transactions, _timestamp );
+        tie(newPendingReceipts, goodReceipts) = m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
     }
 
@@ -452,7 +453,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
            << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
 
-    return newPendingReceipts.size();
+    return goodReceipts;
 }
 
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {

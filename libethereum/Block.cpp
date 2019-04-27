@@ -29,15 +29,19 @@
 #include "ExtVM.h"
 #include "GenesisInfo.h"
 #include "TransactionQueue.h"
+
 #include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TrieHash.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/SealEngine.h>
 #include <libevm/VMFactory.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
+
 #include <ctime>
+#include <tuple>
 
 #include <libdevcore/microprofile.h>
 
@@ -408,7 +412,7 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-TransactionReceipts Block::syncEveryone(
+tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -425,10 +429,13 @@ TransactionReceipts Block::syncEveryone(
     m_state = m_state.delegateWrite();  // mainly for debugging
 
     unsigned i = 0;
+    unsigned count_bad = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
-            execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
             receipts.push_back( m_receipts.back() );
+            if ( res.excepted == TransactionException::WouldNotBeInBlock )
+                ++count_bad;
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
             // throw;
@@ -438,7 +445,7 @@ TransactionReceipts Block::syncEveryone(
         ++i;
     }
     m_state.stopWrite();
-    return receipts;
+    return make_tuple( receipts, receipts.size() - count_bad );
 }
 
 u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
@@ -709,11 +716,13 @@ ExecutionResult Block::execute(
 
     try {
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
-    } catch ( const Exception& ex ) {
-
+    } catch ( const TransactionException& ex ) {
+        // shoul not happen as exception in execute() means that tx should not be in block
+        assert( false );
+    } catch ( ... ) {
         // use fake receipt created above if execution throws!!
         _p = Permanence::CommittedWithoutState;
-
+        resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
