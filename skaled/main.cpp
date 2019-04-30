@@ -680,12 +680,17 @@ int main( int argc, char** argv ) try {
                     if ( block_no >= web3.ethereum()->number() ) {
                         MICROPROFILE_ENTERI( "main", "in.read", -1 );
                     }
-                    in.read( reinterpret_cast< char* >( block.data() ), 8 );
+                    in.read( reinterpret_cast< char* >( block.data() ),
+                        std::streamsize( block.size() ) );
                     block.resize( RLP( block, RLP::LaissezFaire ).actualSize() );
-                    in.read( reinterpret_cast< char* >( block.data() + 8 ),
-                        std::streamsize( block.size() ) - 8 );
-                    if ( block_no >= web3.ethereum()->number() ) {
-                        MICROPROFILE_LEAVE();
+                    if ( block.size() >= 8 ) {
+                        in.read( reinterpret_cast< char* >( block.data() + 8 ),
+                            std::streamsize( block.size() ) - 8 );
+                        if ( block_no >= web3.ethereum()->number() ) {
+                            MICROPROFILE_LEAVE();
+                        }
+                    } else {
+                        throw std::runtime_error( "Buffer error" );
                     }
                 }
                 block_no++;
