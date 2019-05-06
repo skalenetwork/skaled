@@ -27,8 +27,6 @@ using namespace dev::eth;
 using namespace dev::test;
 using namespace std;
 
-namespace {
-
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
@@ -110,7 +108,37 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     ConsensusTestStub* stub;
 };
 
-}  // namespace
+#define CHECK_BLOCK_BEGIN auto blockBefore = client->number()
+
+#define REQUIRE_BLOCK_INCREASE( increase ) \
+    auto blockAfter = client->number();    \
+    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase )
+
+#define REQUIRE_BLOCK_SIZE( number, s )                                             \
+    {                                                                               \
+        TransactionHashes blockTransactions =                                       \
+            static_cast< Interface* >( client.get() )->transactionHashes( number ); \
+        BOOST_REQUIRE_EQUAL( blockTransactions.size(), s );                         \
+    }
+
+#define REQUIRE_BLOCK_TRANSACTION( blockNumber, txNumber, txHash )                       \
+    {                                                                                    \
+        TransactionHashes blockTransactions =                                            \
+            static_cast< Interface* >( client.get() )->transactionHashes( blockNumber ); \
+        BOOST_REQUIRE( blockTransactions[txNumber] == txHash );                          \
+    }
+
+#define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
+
+#define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
+    u256 nonceAfter = client->countAt( senderAddress );   \
+    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase )
+
+#define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
+
+#define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
+    u256 balanceAfter = client->balanceAt( senderAddress ); \
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
 
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )
 
@@ -136,22 +164,19 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
 
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
-    BOOST_REQUIRE( blockTransactions[0] == txHash );
-
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, value + gasPrice * 21000 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 }
 
 // Transaction should be IGNORED during execution
@@ -174,26 +199,20 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
         "445566778899001122334455667788990011223344556677889900112233445566778899001122334455667788"
         "990011223344556677889900112233445566778899" );
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
         ConsensusExtFace::transactions_vector{small_tx1, small_tx2, bad_tx1, bad_tx2}, utcTime(),
         1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
-
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 4 );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 4 );
     // TODO What should be hashes exactly?
 
-    BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
-
-    u256 nonce = client->countAt(senderAddress);
-    BOOST_REQUIRE_EQUAL( nonce, 0 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
 // Transaction should be IGNORED during execution
@@ -227,24 +246,19 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     // TODO try to spoil other fields
     data[43] = 0x7f;  // spoil v
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
-
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
     // TODO check tx hash
 
-    BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
-
-    u256 nonce = client->countAt(senderAddress);
-    BOOST_REQUIRE_EQUAL( nonce, 0 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
 // Transaction should be IGNORED during execution
@@ -270,25 +284,19 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
 
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
-    BOOST_REQUIRE( blockTransactions[0] == txHash );
-
-    BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
-
-    u256 nonce = client->countAt(senderAddress);
-    BOOST_REQUIRE_EQUAL( nonce, 0 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
 // Transaction should be REVERTED during execution
@@ -331,25 +339,19 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
 
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
-    BOOST_REQUIRE( blockTransactions[0] == txHash );
-
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
-
-    u256 nonce = client->countAt(senderAddress);
-    BOOST_REQUIRE_EQUAL( nonce, 1 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, u256( gas ) * u256( gasPrice ) );
 }
 
 
@@ -376,40 +378,166 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig ) {
 
     h256 txHash = tx.sha3();
 
-    u256 balanceBefore = client->balanceAt( senderAddress );
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_EQUAL( client->number(), 0 );
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-    BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
-    u256 balanceAfter = client->balanceAt( senderAddress );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
 
-    TransactionHashes blockTransactions =
-        static_cast< Interface* >( client.get() )->transactionHashes( 1 );
-
-    BOOST_REQUIRE_EQUAL( blockTransactions.size(), 1 );
-    BOOST_REQUIRE( blockTransactions[0] == txHash );
-
-    BOOST_REQUIRE_EQUAL( balanceBefore, balanceAfter );
-
-    u256 nonce = client->countAt(senderAddress);
-    BOOST_REQUIRE_EQUAL( nonce, 0 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {}
+BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // create 1 txns in 1 block
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    // now our test txn
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash = tx2.sha3();
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+}
 
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
-// not enough cache
-BOOST_AUTO_TEST_CASE( transactionBalanceBad ) {}
+// not enough cash
+BOOST_AUTO_TEST_CASE( transactionBalanceBad ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 3 * dev::eth::ether + dev::eth::wei ) );
+    json["nonce"] = 0;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+
+    h256 txHash = tx.sha3();
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+}
 
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {}
+BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // 1 txn with max gas
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+    json["gasPrice"] = 0;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    h256 txHash1 = tx1.sha3();
+
+    // 2 txn
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    json["nonce"] = 1;
+    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash2 = tx2.sha3();
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{stream1.out(), stream2.out()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_EQUAL( client->number(), 1 );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 2 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 1, txHash2 );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );    // only 1st!
+}
 
 BOOST_AUTO_TEST_SUITE_END()
