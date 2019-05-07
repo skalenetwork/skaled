@@ -156,6 +156,18 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
     this_thread::sleep_for( chrono::milliseconds( 100 ) );
 }
 
+void removeEmptyOptions( po::parsed_options& parsed ) {
+    const set< string > filteredOptions = {"http-port", "ws-port", "ssl-key", "ssl-cert"};
+    const set< string > emptyValues = {"NULL", "null", "None"};
+
+    parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
+                              [&filteredOptions, &emptyValues]( const auto& option ) -> bool {
+                                  return filteredOptions.count( option.string_key ) &&
+                                         emptyValues.count( option.value.front() );
+                              } ),
+        parsed.options.end() );
+}
+
 }  // namespace
 
 int main( int argc, char** argv ) try {
@@ -205,8 +217,6 @@ int main( int argc, char** argv ) try {
     unsigned short listenPort = 30303;
     string publicIP;
     string remoteHost;
-    bool disableDiscovery = false;
-    bool enableDiscovery = false;
     static const unsigned NoNetworkID = static_cast< unsigned int >( -1 );
     unsigned networkID = NoNetworkID;
 
@@ -348,6 +358,7 @@ int main( int argc, char** argv ) try {
                                         .allow_unregistered()
                                         .run();
         unrecognisedOptions = collect_unrecognized( parsed.options, po::include_positional );
+        removeEmptyOptions( parsed );
         po::store( parsed, vm );
         po::notify( vm );
     } catch ( po::error const& e ) {
@@ -602,7 +613,7 @@ int main( int argc, char** argv ) try {
 
     auto netPrefs = publicIP.empty() ? NetworkPreferences( listenIP, listenPort, upnp ) :
                                        NetworkPreferences( publicIP, listenIP, listenPort, upnp );
-    netPrefs.discovery = ( privateChain.empty() && !disableDiscovery ) || enableDiscovery;
+    netPrefs.discovery = false;
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
