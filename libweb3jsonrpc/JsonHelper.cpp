@@ -182,18 +182,22 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
 
 Json::Value toJson( dev::eth::Transaction const& _t ) {
     Json::Value res;
-    res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
-    res["from"] = toJS( _t.from() );
-    res["gas"] = toJS( _t.gas() );
-    res["gasPrice"] = toJS( _t.gasPrice() );
-    res["value"] = toJS( _t.value() );
-    res["data"] = toJS( _t.data(), 32 );
-    res["nonce"] = toJS( _t.nonce() );
+    if(_t){
+        res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
+        res["from"] = toJS( _t.from() );
+        res["gas"] = toJS( _t.gas() );
+        res["gasPrice"] = toJS( _t.gasPrice() );
+        res["value"] = toJS( _t.value() );
+        res["data"] = toJS( _t.data(), 32 );
+        res["nonce"] = toJS( _t.nonce() );
+        res["r"] = toJS( _t.signature().r );
+        res["s"] = toJS( _t.signature().s );
+        res["v"] = toJS( _t.signature().v );
+    }
+
     res["hash"] = toJS( _t.sha3( WithSignature ) );
     res["sighash"] = toJS( _t.sha3( WithoutSignature ) );
-    res["r"] = toJS( _t.signature().r );
-    res["s"] = toJS( _t.signature().s );
-    res["v"] = toJS( _t.signature().v );
+
     return res;
 }
 

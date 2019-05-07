@@ -107,11 +107,11 @@ public:
         : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig );
+    explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig )
-        : Transaction( &_rlp, _checkSig ) {}
+    explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
+        : Transaction( &_rlp, _checkSig, _allowInvalid ) {}
 };
 
 /// Nice name for vector of Transaction.

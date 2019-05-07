@@ -338,7 +338,7 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     RLP b( bl );
     Transactions res;
     for ( unsigned i = 0; i < b[1].itemCount(); i++ )
-        res.emplace_back( b[1][i].data(), CheckTransaction::Cheap );
+        res.emplace_back( b[1][i].data(), CheckTransaction::Cheap, true );
     return res;
 }
 

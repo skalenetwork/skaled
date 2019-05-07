@@ -127,7 +127,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     {                                                                                    \
         TransactionHashes blockTransactions =                                            \
             static_cast< Interface* >( client.get() )->transactionHashes( blockNumber ); \
-        BOOST_REQUIRE( blockTransactions[txNumber] == txHash );                          \
+        BOOST_REQUIRE_EQUAL( blockTransactions[txNumber], txHash );                      \
     }
 
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
@@ -183,10 +183,9 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
 
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
-// 1 0 bytes
-// 2 Small amount of random bytes
-// 3 110 random bytes
-// 4 110 bytes of semi-correct RLP
+// 1 Small amount of random bytes
+// 2 110 random bytes
+// 3 110 bytes of semi-correct RLP
 BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     auto senderAddress = coinbase.address();
 
@@ -210,11 +209,18 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
         1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 4 );
-    // TODO What should be hashes exactly?
+    REQUIRE_BLOCK_SIZE( 1, 3 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+
+    // check transaction hashes
+    Transactions txns = client->transactions( 1 );
+//    cerr << toJson( txns );
+
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
+    REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
+    REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
 }
 
 // Transaction should be IGNORED during execution
@@ -253,11 +259,13 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{data}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
-    // TODO check tx hash
+
+    h256 txHash = sha3(data);
+    REQUIRE_BLOCK_TRANSACTION(1, 0, txHash);
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
@@ -539,7 +547,7 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 1, txHash2 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
-    REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );    // only 1st!
+    REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
 }
 
 BOOST_AUTO_TEST_SUITE_END()
