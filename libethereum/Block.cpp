@@ -717,7 +717,12 @@ ExecutionResult Block::execute(
     std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
 
     try {
+
+        if ( _t.isInvalid() )
+            throw - 1;  // will catch below
+
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
         assert( false );

@@ -249,7 +249,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // if new
         else {
             try {
-                Transaction t( data, CheckTransaction::Everything );
+                Transaction t( data, CheckTransaction::Everything, true );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn!";
             } catch ( const exception& ex ) {
