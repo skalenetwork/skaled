@@ -162,11 +162,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                                                                        // transition from q to q
             Transaction txn = m_broadcastedQueue.pop();
 
-            // re-verify transaction aginst current block
+            // re-verify transaction against current block
             // throws in case of error
-            Executive::verifyTransaction( txn,
-                static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                m_client.state().startRead(), *m_client.sealEngine(), 0 );
+            if ( m_verificationCounter-- > 0 )
+                Executive::verifyTransaction( txn,
+                    static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                    m_client.state().startRead(), *m_client.sealEngine(), 0 );
 
             std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
@@ -211,9 +212,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID ) try {
-    // convert bytes back to transactions (using caching), delete them from q and push results to
-    // another q
+    // convert bytes back to transactions (using caching), delete them from q and push results into
+    // blockchain
     std::vector< Transaction > out_txns;  // resultant Transaction vector
+
+    bool have_consensus_born = false;  // means we need to re-verify old txns
+
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
         h256 sha = sha3( data );
@@ -248,16 +252,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
         // if new
         else {
-            try {
-                Transaction t( data, CheckTransaction::Everything, true );
-                out_txns.push_back( t );
-                LOG( m_debugLogger ) << "Will import consensus-born txn!";
-            } catch ( const exception& ex ) {
-                penalizePeer();
-                clog( VerbosityWarning, "skale-host" )
-                    << "Dropped consensus-born txn!" << ex.what();
-            }  // catch
-        }      // else
+            Transaction t( data, CheckTransaction::Everything, true );
+            out_txns.push_back( t );
+            LOG( m_debugLogger ) << "Will import consensus-born txn!";
+            have_consensus_born = true;
+        }  // else
 
         if ( m_tq.knownTransactions().count( sha ) != 0 ) {
             // TODO fix this!!?
@@ -278,6 +277,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     m_client.sealUnconditionally( false );
     m_client.importWorkingBlock();
+
+    if(have_consensus_born)
+        this->m_verificationCounter = m_broadcastedQueue.size();
 
     logState();
 } catch ( const std::exception& ex ) {
