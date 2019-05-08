@@ -225,7 +225,38 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
 // Proposer should be penalized
 // zero signature
 BOOST_AUTO_TEST_CASE( transactionSigZero ) {
-    // TODO find out how to create zero signature
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    // kill signature
+    RLPStream stream;
+    tx.streamRLP(stream, WithoutSignature);
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+
+    h256 txHash = sha3(stream.out());
+    REQUIRE_BLOCK_TRANSACTION(1, 0, txHash);
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
 // Transaction should be IGNORED during execution
