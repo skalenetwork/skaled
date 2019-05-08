@@ -162,34 +162,40 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                                                                        // transition from q to q
             Transaction txn = m_broadcastedQueue.pop();
 
-            // re-verify transaction against current block
-            // throws in case of error
-            if ( m_verificationCounter-- > 0 )
-                Executive::verifyTransaction( txn,
-                    static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                    m_client.state().startRead(), *m_client.sealEngine(), 0 );
+            try {
+                // re-verify transaction against current block
+                // throws in case of error
+                if ( m_verificationCounter-- > 0 )
+                    Executive::verifyTransaction( txn,
+                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
 
-            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+                std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
-            h256 sha = txn.sha3();
-            m_transaction_cache[sha.asArray()] = txn;
-            out_vector.push_back( txn.rlp() );
+                h256 sha = txn.sha3();
+                m_transaction_cache[sha.asArray()] = txn;
+                out_vector.push_back( txn.rlp() );
 
 #ifdef DEBUG_TX_BALANCE
-            if ( sent.count( sha ) != 0 ) {
-                int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << std::endl;
-
                 if ( sent.count( sha ) != 0 ) {
-                    // TODO fix this!!?
-                    clog( VerbosityWarning, "skale-host" )
-                        << "Sending to consensus duplicate transaction (sent before!)";
+                    int prev = sent[sha];
+                    std::cerr << "Prev no = " << prev << std::endl;
+
+                    if ( sent.count( sha ) != 0 ) {
+                        // TODO fix this!!?
+                        clog( VerbosityWarning, "skale-host" )
+                            << "Sending to consensus duplicate transaction (sent before!)";
+                    }
                 }
-            }
-            sent[sha] = total_sent + i;
+                sent[sha] = total_sent + i;
 #endif
-            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
-            i++;
+                LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+                i++;
+            } catch ( const exception& ex ) {
+                // usually this is tx validation exception
+                clog( VerbosityInfo, "skale-host" )
+                    << "Dropped now-invalid transaction in pending queue:" << ex.what();
+            }
         }
     } catch ( std::length_error& ) {
         // just end-of-transactions
@@ -278,7 +284,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     m_client.sealUnconditionally( false );
     m_client.importWorkingBlock();
 
-    if(have_consensus_born)
+    if ( have_consensus_born )
         this->m_verificationCounter = m_broadcastedQueue.size();
 
     logState();
