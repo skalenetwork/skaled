@@ -128,6 +128,8 @@ private:
     void penalizePeer(){};  // fake function for now
 
     HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
+    size_t m_verificationCounter = 0;  // how many txns need re-verification
+                                       // in m_broadcastedQueue because of new block
 
     std::thread m_consensusThread;
 
