@@ -59,6 +59,21 @@ struct tx_hash_small {
     }
 };
 
+class ConsensusFactory {
+public:
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const = 0;
+    virtual ~ConsensusFactory() = default;
+};
+
+class DefaultConsensusFactory : public ConsensusFactory {
+public:
+    DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
+
+private:
+    const dev::eth::Client& m_client;
+};
+
 class SkaleHost {
     friend class ConsensusExtImpl;
 
@@ -75,7 +90,8 @@ class SkaleHost {
     };
 
 public:
-    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq );
+    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
+        const ConsensusFactory* _consFactory = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -96,6 +112,8 @@ public:
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
 private:
+    bool working = false;
+
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
@@ -107,11 +125,9 @@ private:
     void broadcastFunc();
     dev::h256Hash m_received;
 
-    //    dev::h256Hash m_broadcastedHash;
-    HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
+    void penalizePeer(){};  // fake function for now
 
-    std::thread m_blockImportThread;
-    void blockImportFunc();
+    HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
 
     std::thread m_consensusThread;
 
@@ -128,21 +144,6 @@ private:
 
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
-
-    struct bq_item {
-        std::vector< dev::eth::Transaction > transactions;
-        uint64_t timestamp;
-        uint64_t block_id;
-        // TODO This should not be needed!
-        bool operator==( const bq_item& rhs ) const {
-            return transactions == rhs.transactions && timestamp == rhs.timestamp &&
-                   block_id == rhs.block_id;
-        }
-    };
-    HashingThreadSafeQueue< bq_item, no_hash< bq_item >, false > m_bq;  // blocks returned by
-                                                                        // consensus (for
-                                                                        // thread-safety see
-                                                                        // below!!)
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};
