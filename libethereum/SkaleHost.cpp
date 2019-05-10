@@ -165,7 +165,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             try {
                 // re-verify transaction against current block
                 // throws in case of error
-                if ( m_verificationCounter-- > 0 )
+                if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
                     Executive::verifyTransaction( txn,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
                         m_client.state().startRead(), *m_client.sealEngine(), 0 );
@@ -285,7 +285,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     m_client.importWorkingBlock();
 
     if ( have_consensus_born )
-        this->m_verificationCounter = m_broadcastedQueue.size();
+        this->m_lastBlockWithBornTransactions = _blockID;
 
     logState();
 } catch ( const std::exception& ex ) {
