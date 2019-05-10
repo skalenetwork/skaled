@@ -223,6 +223,14 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
 }
 
+class VrsHackedTransaction: public Transaction{
+public:
+    void resetSignature(){
+        this->m_vrs->r = h256(0);
+        this->m_vrs->s = h256(0);
+    }
+};
+
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // zero signature
@@ -241,8 +249,12 @@ BOOST_AUTO_TEST_CASE( transactionSigZero ) {
     Transaction tx( ts, ar.second );
 
     // kill signature
+    // HACK
+    VrsHackedTransaction* hacked_tx = reinterpret_cast<VrsHackedTransaction*>(&tx);
+    hacked_tx->resetSignature();
+
     RLPStream stream;
-    tx.streamRLP( stream, WithoutSignature );
+    tx.streamRLP( stream, WithSignature );
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
