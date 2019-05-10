@@ -95,10 +95,12 @@ public:
           m_data( _data ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit TransactionBase(
+        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
+    explicit TransactionBase(
+        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
 
     /// Checks equality of transactions.
@@ -151,34 +153,55 @@ public:
 
     /// @returns the amount of ETH to be transferred by this (message-call) transaction, in Wei.
     /// Synonym for endowment().
-    u256 value() const { assert(!isInvalid()); return m_value; }
+    u256 value() const {
+        assert( !isInvalid() );
+        return m_value;
+    }
 
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
-    u256 gasPrice() const { assert(!isInvalid()); return m_gasPrice; }
+    u256 gasPrice() const {
+        assert( !isInvalid() );
+        return m_gasPrice;
+    }
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
-    u256 gas() const { assert(!isInvalid()); return m_gas; }
+    u256 gas() const {
+        assert( !isInvalid() );
+        return m_gas;
+    }
 
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).
-    Address receiveAddress() const { assert(!isInvalid()); return m_receiveAddress; }
+    Address receiveAddress() const {
+        assert( !isInvalid() );
+        return m_receiveAddress;
+    }
 
     /// Synonym for receiveAddress().
-    Address to() const { assert(!isInvalid()); return m_receiveAddress; }
+    Address to() const {
+        assert( !isInvalid() );
+        return m_receiveAddress;
+    }
 
     /// Synonym for safeSender().
-    Address from() const { assert(!isInvalid()); return safeSender(); }
+    Address from() const {
+        assert( !isInvalid() );
+        return safeSender();
+    }
 
     /// @returns the data associated with this (message-call) transaction. Synonym for initCode().
     bytes const& data() const { return m_data; }
 
     /// @returns the transaction-count of the sender.
-    u256 nonce() const { assert(!isInvalid()); return m_nonce; }
+    u256 nonce() const {
+        assert( !isInvalid() );
+        return m_nonce;
+    }
 
     /// Sets the nonce to the given value. Clears any signature.
     void setNonce( u256 const& _n ) {
-        assert(!isInvalid());
+        assert( !isInvalid() );
         clearSignature();
         m_nonce = _n;
     }
@@ -190,7 +213,10 @@ public:
     bool hasZeroSignature() const { return m_vrs && isZeroSignature( m_vrs->r, m_vrs->s ); }
 
     /// @returns true if the transaction uses EIP155 replay protection
-    bool isReplayProtected() const { assert(!isInvalid()); return m_chainId != -4; }
+    bool isReplayProtected() const {
+        assert( !isInvalid() );
+        return m_chainId != -4;
+    }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -200,14 +226,13 @@ public:
 
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
-        assert(!isInvalid());
+        assert( !isInvalid() );
         return baseGasRequired( isCreation(), &m_data, _es );
     }
 
-    bool isInvalid() const {
-        return m_type == Type::Invalid;
-    }
+    bool isInvalid() const { return m_type == Type::Invalid; }
 
+    mutable int64_t verifiedOn = -1;  // on which block it was imported
 
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
