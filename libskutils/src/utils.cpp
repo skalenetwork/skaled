@@ -992,7 +992,7 @@ unsigned char* md5::raw_digest() {
         delete[] s;
         // std::cerr << "md5::raw_digest: cannot get digest if you haven't finalized the digest" <<
         // std::endl;
-        memset( s, 0, sizeof( s ) );
+        s = nullptr;
     } else
         memcpy( s, digest, 16 );
     return s;
