@@ -169,18 +169,22 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
     mutable dev::eth::Interface* pEth_;
 
 public:
-    SkaleServerOverride( dev::eth::Interface* pEth, const std::string& http_addr, int http_port,
-        const std::string& web_socket_addr, int web_socket_port, const std::string& pathSslKey = "",
-        const std::string& pathSslCert = "" );
+    SkaleServerOverride( dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nPortHTTP,
+        const std::string& strAddrHTTPS, int nPortHTTPS, const std::string& strAddrWS, int nPortWS,
+        const std::string& strAddrWSS, int nPortWSS, const std::string& strPathSslKey,
+        const std::string& strPathSslCert );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
 
 private:
-    bool startListeningHTTP();
-    bool startListeningWebSocket();
-    bool stopListeningHTTP();
-    bool stopListeningWebSocket();
+    bool implStartListening( std::shared_ptr< skutils::http::server >& pSrv,
+        const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+        const std::string& strPathSslCert );
+    bool implStartListening( std::shared_ptr< SkaleWsRelay >& pSrv, const std::string& strAddr,
+        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert );
+    bool implStopListening( std::shared_ptr< skutils::http::server >& pSrv, bool bIsSSL );
+    bool implStopListening( std::shared_ptr< SkaleWsRelay >& pSrv, bool bIsSSL );
 
 public:
     virtual bool StartListening() override;
@@ -193,8 +197,14 @@ private:
         bool isError, const char* strProtocol, const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
         const char* strOrigin, const std::string& strPayload );
-    const std::string address_http_, address_web_socket_;
-    int port_http_, port_web_socket_;
+    const std::string strAddrHTTP_;
+    const int nPortHTTP_;
+    const std::string strAddrHTTPS_;
+    const int nPortHTTPS_;
+    const std::string strAddrWS_;
+    const int nPortWS_;
+    const std::string strAddrWSS_;
+    const int nPortWSS_;
 
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
@@ -203,16 +213,17 @@ public:
     bool bTraceCalls_;
 
 private:
-    std::shared_ptr< skutils::http::server > pServerHTTP_;
-    std::string pathSslKey_, pathSslCert_;
-    bool bIsSSL_;
-
-    std::shared_ptr< SkaleWsRelay > pServerWS_;
+    std::shared_ptr< skutils::http::server > pSrvHTTP_, pSrvHTTPS_;
+    std::string strPathSslKey_, strPathSslCert_;
+    std::shared_ptr< SkaleWsRelay > pSrvWS_, pSrvWSS_;
 
 public:
-    bool isSSL() const { return bIsSSL_; }
+    // status API, returns running server port or -1 if server is not started
+    int getServerPortStatusHTTP() const;
+    int getServerPortStatusHTTPS() const;
+    int getServerPortStatusWS() const;
+    int getServerPortStatusWSS() const;
 
-public:
     friend class SkaleWsRelay;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride

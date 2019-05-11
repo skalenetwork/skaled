@@ -894,8 +894,8 @@ bool SkaleWsRelay::start( SkaleServerOverride* pso ) {
     clog( dev::VerbosityInfo, cc::info( scheme_uc_ ) )
         << cc::notice( "Will start server on port " ) << cc::c( nPort_ );
     if ( !open( scheme_, nPort_ ) ) {
-        clog( dev::VerbosityError, cc::fatal( scheme_uc_ + " ERRORL" ) )
-            << cc::error( "Failed to start serv on port " ) << cc::c( nPort_ );
+        clog( dev::VerbosityError, cc::fatal( scheme_uc_ + " ERROR:" ) )
+            << cc::error( "Failed to start server on port " ) << cc::c( nPort_ );
         return false;
     }
     std::thread( [&]() {
@@ -930,19 +930,23 @@ dev::eth::Interface* SkaleWsRelay::ethereum() const {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( dev::eth::Interface* pEth, const std::string& http_addr,
-    int http_port, const std::string& web_socket_addr, int web_socket_port,
-    const std::string& pathSslKey, const std::string& pathSslCert )
+SkaleServerOverride::SkaleServerOverride( dev::eth::Interface* pEth, const std::string& strAddrHTTP,
+    int nPortHTTP, const std::string& strAddrHTTPS, int nPortHTTPS, const std::string& strAddrWS,
+    int nPortWS, const std::string& strAddrWSS, int nPortWSS, const std::string& strPathSslKey,
+    const std::string& strPathSslCert )
     : AbstractServerConnector(),
       pEth_( pEth ),
-      address_http_( http_addr ),
-      address_web_socket_( web_socket_addr ),
-      port_http_( http_port ),
-      port_web_socket_( web_socket_port ),
+      strAddrHTTP_( strAddrHTTP ),
+      nPortHTTP_( nPortHTTP ),
+      strAddrHTTPS_( strAddrHTTPS ),
+      nPortHTTPS_( nPortHTTPS ),
+      strAddrWS_( strAddrWS ),
+      nPortWS_( nPortWS ),
+      strAddrWSS_( strAddrWS ),
+      nPortWSS_( nPortWSS ),
       bTraceCalls_( false ),
-      pathSslKey_( pathSslKey ),
-      pathSslCert_( pathSslCert ),
-      bIsSSL_( false ) {}
+      strPathSslKey_( strPathSslKey ),
+      strPathSslCert_( strPathSslCert ) {}
 
 SkaleServerOverride::~SkaleServerOverride() {
     StopListening();
@@ -1008,27 +1012,28 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const 
             << strErrorSuffix << strOriginSuffix << strDirect << strPayload;
 }
 
-bool SkaleServerOverride::startListeningHTTP() {
+bool SkaleServerOverride::implStartListening( std::shared_ptr< skutils::http::server >& pSrv,
+    const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+    const std::string& strPathSslCert ) {
+    bool bIsSSL = false;
+    if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
+        bIsSSL = true;
     try {
-        stopListeningHTTP();
-        if ( address_http_.empty() || port_http_ <= 0 )
+        implStopListening( pSrv, bIsSSL );
+        if ( strAddr.empty() || nPort <= 0 )
             return true;
-        bIsSSL_ = false;
-        if ( ( !pathSslKey_.empty() ) && ( !pathSslCert_.empty() ) )
-            bIsSSL_ = true;
-        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-            cc::debug( "starting " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
-                cc::debug( " server on address " ) + cc::info( address_http_ ) +
-                cc::debug( " and port " ) + cc::c( port_http_ ) + cc::debug( "..." ) );
-        if ( bIsSSL_ )
-            this->pServerHTTP_.reset(
-                new skutils::http::SSL_server( pathSslCert_.c_str(), pathSslKey_.c_str() ) );
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::debug( "starting " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::debug( " server on address " ) + cc::info( strAddr ) +
+                cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
+        if ( bIsSSL )
+            pSrv.reset(
+                new skutils::http::SSL_server( strPathSslCert.c_str(), strPathSslKey.c_str() ) );
         else
-            this->pServerHTTP_.reset( new skutils::http::server );
-        this->pServerHTTP_->Options( "/", [&]( const skutils::http::request& req,
-                                              skutils::http::response& res ) {
+            pSrv.reset( new skutils::http::server );
+        pSrv->Options( "/", [&]( const skutils::http::request& req, skutils::http::response& res ) {
             if ( bTraceCalls_ )
-                logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", req.origin_.c_str(),
                     cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
             res.set_header( "access-control-allow-headers", "Content-Type" );
             res.set_header( "access-control-allow-methods", "POST" );
@@ -1037,150 +1042,200 @@ bool SkaleServerOverride::startListeningHTTP() {
             res.set_header(
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
         } );
-        this->pServerHTTP_->Post(
-            "/", [this]( const skutils::http::request& req, skutils::http::response& res ) {
-                if ( bTraceCalls_ )
-                    logTraceServerTraffic( true, false, bIsSSL_ ? "HTTPS" : "HTTP",
-                        req.origin_.c_str(), cc::j( req.body_ ) );
-                int nID = -1;
-                std::string strResponse;
-                try {
-                    nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
-                    nID = joRequest["id"].get< int >();
-                    jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
-                    if ( handler == nullptr )
-                        throw std::runtime_error( "No client connection handler found" );
-                    handler->HandleRequest( req.body_.c_str(), strResponse );
-                } catch ( const std::exception& ex ) {
-                    logTraceServerTraffic( false, true, bIsSSL_ ? "HTTPS" : "HTTP",
-                        req.origin_.c_str(), cc::warn( ex.what() ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( ex.what() );
-                    strResponse = joErrorResponce.dump();
-                } catch ( ... ) {
-                    const char* e = "unknown exception in SkaleServerOverride";
-                    logTraceServerTraffic( false, true, bIsSSL_ ? "HTTPS" : "HTTP",
-                        req.origin_.c_str(), cc::warn( e ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( e );
-                    strResponse = joErrorResponce.dump();
-                }
-                if ( bTraceCalls_ )
-                    logTraceServerTraffic( false, false, bIsSSL_ ? "HTTPS" : "HTTP",
-                        req.origin_.c_str(), cc::j( strResponse ) );
-                res.set_header( "access-control-allow-origin", "*" );
-                res.set_header( "vary", "Origin" );
-                res.set_content( strResponse.c_str(), "application/json" );
-            } );
-        std::thread( [this]() {
-            this->pServerHTTP_->listen( this->address_http_.c_str(), this->port_http_ );
-        } )
-            .detach();
-        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-            cc::success( "OK, started " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
-                cc::success( " server on address " ) + cc::info( address_http_ ) +
-                cc::success( " and port " ) + cc::c( port_http_ ) );
+        pSrv->Post( "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
+            if ( bTraceCalls_ )
+                logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                    cc::j( req.body_ ) );
+            int nID = -1;
+            std::string strResponse;
+            try {
+                nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
+                nID = joRequest["id"].get< int >();
+                jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
+                if ( handler == nullptr )
+                    throw std::runtime_error( "No client connection handler found" );
+                handler->HandleRequest( req.body_.c_str(), strResponse );
+            } catch ( const std::exception& ex ) {
+                logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                    cc::warn( ex.what() ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = nID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( ex.what() );
+                strResponse = joErrorResponce.dump();
+            } catch ( ... ) {
+                const char* e = "unknown exception in SkaleServerOverride";
+                logTraceServerTraffic(
+                    false, true, bIsSSL ? "HTTPS" : "HTTP", req.origin_.c_str(), cc::warn( e ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = nID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( e );
+                strResponse = joErrorResponce.dump();
+            }
+            if ( bTraceCalls_ )
+                logTraceServerTraffic( false, false, bIsSSL ? "HTTPS" : "HTTP", req.origin_.c_str(),
+                    cc::j( strResponse ) );
+            res.set_header( "access-control-allow-origin", "*" );
+            res.set_header( "vary", "Origin" );
+            res.set_content( strResponse.c_str(), "application/json" );
+        } );
+        std::thread( [=]() { pSrv->listen( strAddr.c_str(), nPort ); } ).detach();
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::success( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "HTTPS" : "HTTP" ) +
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+    }
+    try {
+        implStopListening( pSrv, bIsSSL );
+    } catch ( ... ) {
     }
     return false;
 }
 
-bool SkaleServerOverride::stopListeningHTTP() {
+bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleWsRelay >& pSrv,
+    const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+    const std::string& strPathSslCert ) {
+    bool bIsSSL = false;
+    if ( ( !strPathSslKey.empty() ) && ( !strPathSslKey.empty() ) )
+        bIsSSL = true;
     try {
-        if ( pServerHTTP_ ) {
-            logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-                cc::notice( "Will stop " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
-                    cc::notice( " server on address " ) + cc::info( address_http_ ) +
-                    cc::success( " and port " ) + cc::c( port_http_ ) + cc::notice( "..." ) );
-            if ( pServerHTTP_->is_running() )
-                pServerHTTP_->stop();
-            pServerHTTP_.reset();
-            logTraceServerEvent( false, bIsSSL_ ? "HTTPS" : "HTTP",
-                cc::success( "OK, stopped " ) + cc::info( bIsSSL_ ? "HTTPS" : "HTTP" ) +
-                    cc::success( " server on address " ) + cc::info( address_http_ ) +
-                    cc::success( " and port " ) + cc::c( port_http_ ) );
+        implStopListening( pSrv, bIsSSL );
+        if ( strAddr.empty() || nPort <= 0 )
+            return true;
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::debug( "starting " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
+                cc::debug( " server on address " ) + cc::info( strAddr ) +
+                cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
+        pSrv.reset( new SkaleWsRelay( bIsSSL ? "wss" : "ws", nPort ) );
+        if ( bIsSSL ) {
+            pSrv->strCertificateFile_ = strPathSslCert;
+            pSrv->strPrivateKeyFile_ = strPathSslKey;
         }
+        if ( !pSrv->start( this ) )
+            throw std::runtime_error( "Failed to start server" );
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::success( "OK, started " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
+                cc::success( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
+        return true;
+    } catch ( const std::exception& ex ) {
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
+                cc::error( " server: " ) + cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
+                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+    }
+    try {
+        implStopListening( pSrv, bIsSSL );
+    } catch ( ... ) {
+    }
+    return false;
+}
+
+bool SkaleServerOverride::implStopListening(
+    std::shared_ptr< skutils::http::server >& pSrv, bool bIsSSL ) {
+    try {
+        if ( !pSrv )
+            return true;
+        std::string strAddr = bIsSSL ? strAddrHTTPS_ : strAddrHTTP_;
+        int nPort = bIsSSL ? nPortHTTPS_ : nPortHTTP_;
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::notice( "Will stop " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::notice( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
+        if ( pSrv->is_running() )
+            pSrv->stop();
+        pSrv.reset();
+        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
+            cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::success( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) );
     } catch ( ... ) {
     }
     return true;
 }
 
-bool SkaleServerOverride::startListeningWebSocket() {
+bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleWsRelay >& pSrv, bool bIsSSL ) {
     try {
-        stopListeningWebSocket();
-        if ( address_web_socket_.empty() || port_web_socket_ <= 0 )
+        if ( !pSrv )
             return true;
-        bIsSSL_ = false;
-        if ( ( !pathSslKey_.empty() ) && ( !pathSslCert_.empty() ) )
-            bIsSSL_ = true;
-        logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-            cc::debug( "starting " ) + cc::info( bIsSSL_ ? "WSS" : "WS" ) +
-                cc::debug( " server on address " ) + cc::info( address_web_socket_ ) +
-                cc::debug( " and port " ) + cc::c( port_web_socket_ ) + cc::debug( "..." ) );
-        pServerWS_.reset( new SkaleWsRelay( bIsSSL_ ? "wss" : "ws", port_web_socket_ ) );
-        if ( bIsSSL_ ) {
-            pServerWS_->strCertificateFile_ = pathSslCert_;
-            pServerWS_->strPrivateKeyFile_ = pathSslKey_;
-        }
-        if ( !pServerWS_->start( this ) )
-            throw std::runtime_error( "Failed to start server" );
-        logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-            cc::success( "OK, started " ) + cc::info( bIsSSL_ ? "WSS" : "WS" ) +
-                cc::success( " server on address " ) + cc::info( address_web_socket_ ) +
-                cc::success( " and port " ) + cc::c( port_web_socket_ ) + cc::debug( "..." ) );
-        return true;
-    } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "WSS" : "WS" ) +
-                cc::error( " server: " ) + cc::warn( ex.what() ) );
-    } catch ( ... ) {
-        logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL_ ? "WSS" : "WS" ) +
-                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
-    }
-    return false;
-}
-bool SkaleServerOverride::stopListeningWebSocket() {
-    try {
-        if ( pServerWS_ ) {
-            logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-                cc::notice( "Will stop " ) + cc::info( bIsSSL_ ? "WSS" : "WS" ) +
-                    cc::notice( " server on address " ) + cc::info( address_web_socket_ ) +
-                    cc::success( " and port " ) + cc::c( port_web_socket_ ) + cc::notice( "..." ) );
-            if ( pServerWS_->isRunning() )
-                pServerWS_->stop();
-            pServerWS_.reset();
-            logTraceServerEvent( false, bIsSSL_ ? "WSS" : "WS",
-                cc::success( "OK, stopped " ) + cc::info( bIsSSL_ ? "WSS" : "WS" ) +
-                    cc::success( " server on address " ) + cc::info( address_web_socket_ ) +
-                    cc::success( " and port " ) + cc::c( port_web_socket_ ) );
-        }
+        std::string strAddr = bIsSSL ? strAddrWSS_ : strAddrWS_;
+        int nPort = bIsSSL ? nPortWSS_ : nPortWS_;
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::notice( "Will stop " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
+                cc::notice( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
+        if ( pSrv->isRunning() )
+            pSrv->stop();
+        pSrv.reset();
+        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS",
+            cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
+                cc::success( " server on address " ) + cc::info( strAddr ) +
+                cc::success( " and port " ) + cc::c( nPort ) );
     } catch ( ... ) {
     }
     return true;
 }
 
 bool SkaleServerOverride::StartListening() {
-    auto retVal = startListeningHTTP() && startListeningWebSocket() ? true : false;
-    return retVal;
+    if ( 0 <= nPortHTTP_ && nPortHTTP_ <= 65535 ) {
+        if ( !implStartListening( pSrvHTTP_, strAddrHTTP_, nPortHTTP_, "", "" ) )
+            return false;
+    }
+    if ( 0 <= nPortHTTPS_ && nPortHTTPS_ <= 65535 && ( !strPathSslKey_.empty() ) &&
+         ( !strPathSslCert_.empty() ) && nPortHTTPS_ != nPortHTTP_ ) {
+        if ( !implStartListening(
+                 pSrvHTTPS_, strAddrHTTPS_, nPortHTTPS_, strPathSslKey_, strPathSslCert_ ) )
+            return false;
+    }
+    if ( 0 <= nPortWS_ && nPortWS_ <= 65535 && nPortWS_ != nPortHTTP_ && nPortWS_ != nPortHTTPS_ ) {
+        if ( !implStartListening( pSrvWS_, strAddrWS_, nPortWS_, "", "" ) )
+            return false;
+    }
+    if ( 0 <= nPortWSS_ && nPortWSS_ <= 65535 && ( !strPathSslKey_.empty() ) &&
+         ( !strPathSslCert_.empty() ) && nPortWSS_ != nPortWS_ && nPortWSS_ != nPortHTTP_ &&
+         nPortWSS_ != nPortHTTPS_ ) {
+        if ( !implStartListening(
+                 pSrvWSS_, strAddrWSS_, nPortWSS_, strPathSslKey_, strPathSslCert_ ) )
+            return false;
+    }
+    return true;
 }
 
 bool SkaleServerOverride::StopListening() {
-    auto retVal = stopListeningHTTP() && stopListeningWebSocket() ? true : false;
+    auto retVal = implStopListening( pSrvHTTP_, false ) && implStopListening( pSrvHTTPS_, true ) &&
+                          implStopListening( pSrvWS_, false ) &&
+                          implStopListening( pSrvWSS_, true ) ?
+                      true :
+                      false;
     return retVal;
 }
+
+int SkaleServerOverride::getServerPortStatusHTTP() const {
+    return ( pSrvHTTP_ && pSrvHTTP_->is_running() ) ? nPortHTTP_ : -1;
+}
+int SkaleServerOverride::getServerPortStatusHTTPS() const {
+    return ( pSrvHTTPS_ && pSrvHTTPS_->is_running() ) ? nPortHTTPS_ : -1;
+}
+int SkaleServerOverride::getServerPortStatusWS() const {
+    return ( pSrvWS_ && pSrvWS_->isRunning() ) ? nPortWS_ : -1;
+}
+int SkaleServerOverride::getServerPortStatusWSS() const {
+    return ( pSrvWSS_ && pSrvWSS_->isRunning() ) ? nPortWSS_ : -1;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
