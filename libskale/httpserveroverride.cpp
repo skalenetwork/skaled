@@ -942,7 +942,7 @@ SkaleServerOverride::SkaleServerOverride( dev::eth::Interface* pEth, const std::
       nPortHTTPS_( nPortHTTPS ),
       strAddrWS_( strAddrWS ),
       nPortWS_( nPortWS ),
-      strAddrWSS_( strAddrWS ),
+      strAddrWSS_( strAddrWSS ),
       nPortWSS_( nPortWSS ),
       bTraceCalls_( false ),
       strPathSslKey_( strPathSslKey ),
@@ -1106,7 +1106,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleWsRelay >& p
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert ) {
     bool bIsSSL = false;
-    if ( ( !strPathSslKey.empty() ) && ( !strPathSslKey.empty() ) )
+    if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
     try {
         implStopListening( pSrv, bIsSSL );
