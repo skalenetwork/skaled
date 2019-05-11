@@ -157,7 +157,8 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "ws-port", "ssl-key", "ssl-cert"};
+    const set< string > filteredOptions = {
+        "http-port", "https-port", "ws-port", "wss-port", "ssl-key", "ssl-cert"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -201,8 +202,10 @@ int main( int argc, char** argv ) try {
     NodeMode nodeMode = NodeMode::Full;
 
     bool is_ipc = true;
-    int explicit_http_port = -1;
-    int explicit_web_socket_port = -1;
+    int nExplicitPortHTTP = -1;
+    int nExplicitPortHTTPS = -1;
+    int nExplicitPortWS = -1;
+    int nExplicitPortWSS = -1;
     bool bTraceHttpCalls = false;
 
     string jsonAdmin;
@@ -275,11 +278,15 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 HTTP server on specified port" );
+    addClientOption( "https-port", po::value< string >()->value_name( "<port>" ),
+        "Run web3 HTTPS server on specified port" );
     addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 WS server on specified port" );
+    addClientOption( "wss-port", po::value< string >()->value_name( "<port>" ),
+        "Run web3 WSS server on specified port" );
     std::string str_ws_mode_description =
-        "Run web3 WS server using specified mode(" + skutils::ws::nlws::list_srvmodes_as_str() +
-        "); default mode is " +
+        "Run web3 WS and/or WSS server(s) using specified mode(" +
+        skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
         skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
@@ -392,17 +399,33 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "http-port" ) ) {
         std::string strPort = vm["http-port"].as< string >();
         if ( !strPort.empty() ) {
-            explicit_http_port = atoi( strPort.c_str() );
-            if ( !( 0 <= explicit_http_port && explicit_http_port <= 65535 ) )
-                explicit_http_port = -1;
+            nExplicitPortHTTP = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
+                nExplicitPortHTTP = -1;
+        }
+    }
+    if ( vm.count( "https-port" ) ) {
+        std::string strPort = vm["https-port"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortHTTPS = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
+                nExplicitPortHTTPS = -1;
         }
     }
     if ( vm.count( "ws-port" ) ) {
         std::string strPort = vm["ws-port"].as< string >();
         if ( !strPort.empty() ) {
-            explicit_web_socket_port = atoi( strPort.c_str() );
-            if ( !( 0 <= explicit_web_socket_port && explicit_web_socket_port <= 65535 ) )
-                explicit_web_socket_port = -1;
+            nExplicitPortWS = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
+                nExplicitPortWS = -1;
+        }
+    }
+    if ( vm.count( "wss-port" ) ) {
+        std::string strPort = vm["wss-port"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortWSS = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
+                nExplicitPortWSS = -1;
         }
     }
     if ( vm.count( "web3-trace" ) )
@@ -898,7 +921,8 @@ int main( int argc, char** argv ) try {
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
         };
-    if ( is_ipc || explicit_http_port > 0 || explicit_web_socket_port > 0 ) {
+    if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
+         nExplicitPortWSS > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,  /// skale
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
@@ -938,55 +962,81 @@ int main( int argc, char** argv ) try {
             }  // catch
         }      // if ( is_ipc )
 
-        if ( explicit_http_port >= 65536 ) {
+        if ( nExplicitPortHTTP >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
-        if ( explicit_web_socket_port >= 65536 ) {
+        if ( nExplicitPortHTTPS >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
+        if ( nExplicitPortWS >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
-        if ( explicit_http_port >= 0 && explicit_http_port == explicit_web_socket_port ) {
+        if ( nExplicitPortWSS >= 65536 ) {
             clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" )
-                << cc::error(
-                       " Please specify different port numbers for HTTP and WS servers to run" );
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
 
-        if ( explicit_http_port > 0 || explicit_web_socket_port > 0 ) {
-            std::string pathSslKey, pathSslCert;
-            bool bIsSSL = false;
-            if ( vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
-                pathSslKey = vm["ssl-key"].as< std::string >();
-                pathSslCert = vm["ssl-cert"].as< std::string >();
-                if ( ( !pathSslKey.empty() ) && ( !pathSslCert.empty() ) )
-                    bIsSSL = true;
+        if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
+             nExplicitPortWSS > 0 ) {
+            std::string strPathSslKey, strPathSslCert;
+            bool bHaveSSL = false;
+            if ( ( nExplicitPortHTTPS > 0 || nExplicitPortWSS > 0 ) && vm.count( "ssl-key" ) > 0 &&
+                 vm.count( "ssl-cert" ) > 0 ) {
+                strPathSslKey = vm["ssl-key"].as< std::string >();
+                strPathSslCert = vm["ssl-cert"].as< std::string >();
+                if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
+                    bHaveSSL = true;
             }
-            clog( VerbosityInfo, "main" )
-                << "SSL is...................... " << ( bIsSSL ? "ON" : "OFF" );
-            if ( bIsSSL ) {
-                clog( VerbosityInfo, "main" ) << "....SSL key is.............. " << pathSslKey;
-                clog( VerbosityInfo, "main" ) << "....SSL certificate is...... " << pathSslCert;
+            if ( !bHaveSSL )
+                nExplicitPortHTTPS = nExplicitPortWSS = -1;
+            if ( bHaveSSL ) {
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "...." ) << cc::info( "SSL key is" )
+                    << cc::debug( ".............. " ) << cc::p( strPathSslKey );
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "...." ) + cc::info( "SSL certificate is" )
+                    << cc::debug( "...... " ) << cc::p( strPathSslCert );
             }
             //
             //
             auto skale_server_connector = new SkaleServerOverride( web3.ethereum(),
-                chainParams.nodeInfo.ip, explicit_http_port, chainParams.nodeInfo.ip,
-                explicit_web_socket_port, pathSslKey, pathSslCert );
+                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+                nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
+                chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             skale_server_connector->bTraceCalls_ = bTraceHttpCalls;
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;
             }
-            if ( bIsSSL )
-                clog( VerbosityInfo, "main" ) << "....SSL started............. "
-                                              << ( skale_server_connector->isSSL() ? "YES" : "NO" );
-        }  // if ( explicit_http_port > 0 || explicit_web_socket_port > 0 )
+            int nStatHTTP = skale_server_connector->getServerPortStatusHTTP();
+            int nStatHTTPS = skale_server_connector->getServerPortStatusHTTPS();
+            int nStatWS = skale_server_connector->getServerPortStatusWS();
+            int nStatWSS = skale_server_connector->getServerPortStatusWSS();
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTP" ) << cc::debug( "................... " )
+                << ( ( nStatHTTP >= 0 ) ? cc::num10( nStatHTTP ) : cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTPS" ) << cc::debug( ".................. " )
+                << ( ( nStatHTTPS >= 0 ) ? cc::num10( nStatHTTPS ) : cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS" ) << cc::debug( "..................... " )
+                << ( ( nStatWS >= 0 ) ? cc::num10( nStatWS ) : cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS" ) << cc::debug( ".................... " )
+                << ( ( nStatWSS >= 0 ) ? cc::num10( nStatWSS ) : cc::error( "off" ) );
+        }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
+           // nExplicitPortWSS > 0 )
 
         if ( jsonAdmin.empty() )
             jsonAdmin =
@@ -996,7 +1046,8 @@ int main( int argc, char** argv ) try {
                 jsonAdmin, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
         cout << "JSONRPC Admin Session Key: " << jsonAdmin << "\n";
-    }  // if ( is_ipc || explicit_http_port > 0 || explicit_web_socket_port > 0 )
+    }  // if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0  || nExplicitPortWS > 0 ||
+       // nExplicitPortWSS > 0 )
 
     bool bEnabledShutdownViaWeb3 = vm.count( "web3-shutdown" ) ? true : false;
     if ( bEnabledShutdownViaWeb3 ) {
