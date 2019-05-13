@@ -306,7 +306,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     clog( dev::VerbosityInfo, cc::info( getRelay().m_strSchemeUC ) )
                         << cc::ws_tx_inv( " <<< " + getRelay().m_strSchemeUC + "/TX <<< " )
                         << desc() << cc::ws_tx( " <<< " ) << cc::j( strResponse );
-                sendMessage( strResponse );
+                sendMessage( skutils::tools::trim_copy( strResponse ) );
             } catch ( ... ) {
             }
             this->ref_release();  // manual ref management
@@ -530,7 +530,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                     joLog["blockHash"] = strBlockHash;
                                     joLog["blockNumber"] = nBlockBumber;
                                     nlohmann::json joParams = nlohmann::json::object();
-                                    joParams["susbcription"] = dev::toJS( iw );
+                                    joParams["subscription"] = dev::toJS( iw );
                                     joParams["result"] = joLog;
                                     nlohmann::json joNotification = nlohmann::json::object();
                                     joNotification["jsonrpc"] = "2.0";
@@ -548,7 +548,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                     skutils::dispatch::async( pThis->m_strPeerQueueID,
                                         [pThis, strNotification]() -> void {
                                             const_cast< SkaleWsPeer* >( pThis.get() )
-                                                ->sendMessage( strNotification );
+                                                ->sendMessage(
+                                                    skutils::tools::trim_copy( strNotification ) );
                                         } );
                                 }  // for ( const auto& joWalk : joResultLogs )
                             }      // if ( joResultLogs.is_array() )
@@ -600,7 +601,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
             dev::h256 h = t.sha3();
             //
             nlohmann::json joParams = nlohmann::json::object();
-            joParams["susbcription"] =
+            joParams["subscription"] =
                 dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION );
             joParams["result"] = dev::toJS( h );  // h.hex()
             nlohmann::json joNotification = nlohmann::json::object();
@@ -613,7 +614,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                     << cc::ws_tx_inv( " <<< " + pThis->getRelay().m_strSchemeUC + "/TX <<< " )
                     << pThis->desc() << cc::ws_tx( " <<< " ) << cc::j( strNotification );
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
-                const_cast< SkaleWsPeer* >( pThis.get() )->sendMessage( strNotification );
+                const_cast< SkaleWsPeer* >( pThis.get() )
+                    ->sendMessage( skutils::tools::trim_copy( strNotification ) );
             } );
         };
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
@@ -676,7 +678,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
             nlohmann::json joBlockDescription = nlohmann::json::parse( s );
             //
             nlohmann::json joParams = nlohmann::json::object();
-            joParams["susbcription"] = dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK );
+            joParams["subscription"] = dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK );
             joParams["result"] = joBlockDescription;
             nlohmann::json joNotification = nlohmann::json::object();
             joNotification["jsonrpc"] = "2.0";
@@ -688,7 +690,8 @@ void SkaleWsPeer::eth_subscribe_newHeads(
                     << cc::ws_tx_inv( " <<< " + pThis->getRelay().m_strSchemeUC + "/TX <<< " )
                     << pThis->desc() << cc::ws_tx( " <<< " ) << cc::j( strNotification );
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
-                const_cast< SkaleWsPeer* >( pThis.get() )->sendMessage( strNotification );
+                const_cast< SkaleWsPeer* >( pThis.get() )
+                    ->sendMessage( skutils::tools::trim_copy( strNotification ) );
             } );
         };
         unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
