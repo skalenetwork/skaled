@@ -124,6 +124,7 @@ private:
     std::thread m_broadcastThread;
     void broadcastFunc();
     dev::h256Hash m_received;
+    std::mutex m_receivedMutex;
 
     void penalizePeer(){};  // fake function for now
 
@@ -132,7 +133,6 @@ private:
 
     std::thread m_consensusThread;
 
-    std::mutex m_localMutex;  // used to protect local caches/hashes; TODO rethink multithreading!!
     bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;

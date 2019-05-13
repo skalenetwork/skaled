@@ -129,7 +129,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     h256 sha = transaction.sha3();
 
     {
-        std::lock_guard< std::mutex > localGuard( m_localMutex );
+        std::lock_guard< std::mutex > localGuard( m_receivedMutex );
         m_received.insert( sha );
         LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
     }
@@ -158,8 +158,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     size_t i = 0;
     try {
         while ( i < _limit ) {
-            std::lock_guard< std::mutex > localGuard( m_localMutex );  // need to lock while in
-                                                                       // transition from q to q
+
             Transaction txn = m_broadcastedQueue.pop();
 
             try {
@@ -249,7 +248,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
             out_txns.push_back( t );
             m_tq.dropGood( t );
-            std::lock_guard< std::mutex > localGuard( m_localMutex );
             MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
             m_transaction_cache.erase( sha.asArray() );
             m_received.erase( sha );
@@ -362,9 +360,12 @@ void SkaleHost::broadcastFunc() {
             Transaction& txn = txns[0];
             h256 sha = txn.sha3();
 
-            m_localMutex.lock();
-            size_t received = m_received.count( sha );
-            m_localMutex.unlock();
+            // TODO XXX such blocks suck :(
+            size_t received;
+            {
+                std::lock_guard<std::mutex> lock(m_receivedMutex);
+                received = m_received.count( sha );
+            }
 
             if ( received == 0 ) {
                 try {
