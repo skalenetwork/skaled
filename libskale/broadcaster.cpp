@@ -161,7 +161,11 @@ void ZmqBroadcaster::startService() {
                     continue;
                 }
 
-                assert( res > 0 );
+                if (res < 0 ){
+                    clog( dev::VerbosityWarning, "skale-host" )
+                        << "Received bad message on ZmqBroadcaster port. errno = " << errno;
+                    continue;
+                }
 
                 size_t size = zmq_msg_size( &msg );
                 void* data = zmq_msg_data( &msg );
