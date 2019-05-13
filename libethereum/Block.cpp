@@ -715,7 +715,6 @@ ExecutionResult Block::execute(
     std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
 
     try {
-
         if ( _t.isInvalid() )
             throw - 1;  // will catch below
 

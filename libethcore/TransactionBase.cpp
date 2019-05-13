@@ -115,7 +115,7 @@ TransactionBase::TransactionBase(
     } catch ( ... ) {
         m_type = Type::Invalid;
         RLPStream s;
-        s.append(_rlpData.toBytes());       // add "string" header
+        s.append( _rlpData.toBytes() );  // add "string" header
         m_rawData = s.out();
 
         if ( !_allowInvalid )

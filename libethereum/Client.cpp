@@ -429,7 +429,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
         assert( !m_working.isSealed() );
 
         //        assert(m_state.m_db_write_lock.has_value());
-        tie(newPendingReceipts, goodReceipts) = m_working.syncEveryone( bc(), _transactions, _timestamp );
+        tie( newPendingReceipts, goodReceipts ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
     }
 
