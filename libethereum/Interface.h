@@ -33,6 +33,9 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/SealEngine.h>
 
+#include <skutils/multifunction.h>
+#include <functional>
+
 namespace dev {
 namespace eth {
 struct SyncStatus;
@@ -50,6 +53,9 @@ struct GasEstimationProgress {
 };
 
 using GasEstimationCallback = std::function< void( GasEstimationProgress const& ) >;
+
+using fnClientWatchHandlerMulti_t = skutils::multifunction< void( unsigned iw ) >;
+
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -139,8 +145,10 @@ public:
     virtual LocalisedLogEntries logs( LogFilter const& _filter ) const = 0;
 
     /// Install, uninstall and query watches.
-    virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic ) = 0;
-    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic ) = 0;
+    virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) = 0;
+    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) = 0;
     virtual bool uninstallWatch( unsigned _watchId ) = 0;
     LocalisedLogEntries peekWatchSafe( unsigned _watchId ) const {
         try {
@@ -279,6 +287,26 @@ public:
 
 protected:
     int m_default = PendingBlock;
+
+public:
+    // new block watch
+    virtual unsigned installNewBlockWatch(
+        std::function< void( const unsigned&, const Block& ) >& ) {  // not implemented here
+        return unsigned( -1 );
+    }
+    virtual bool uninstallNewBlockWatch( const unsigned& ) {  // not implemented here
+        return false;
+    }
+
+    // new pending transation watch
+    virtual unsigned installNewPendingTransactionWatch(  // not implemented here
+        std::function< void( const unsigned&, const Transaction& ) >& ) {
+        return unsigned( -1 );
+    }
+    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) {  // not implemented
+                                                                           // here
+        return false;
+    }
 };
 
 class Watch;

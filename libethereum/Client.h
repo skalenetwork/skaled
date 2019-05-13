@@ -38,7 +38,9 @@
 #include <array>
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <list>
+#include <map>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -439,6 +441,86 @@ protected:
 
 public:
     FILE* performance_fd;
+
+protected:
+    // generic watch
+    template < typename parameter_type, typename key_type = unsigned >
+    class genericWatch {
+    public:
+        typedef std::function< void( const unsigned&, const parameter_type& ) > handler_type;
+
+    private:
+        typedef std::recursive_mutex mutex_type;
+        typedef std::lock_guard< mutex_type > lock_type;
+        mutable mutex_type mtx_;
+
+        typedef std::map< key_type, handler_type > map_type;
+        map_type map_;
+
+        std::atomic< key_type > subscription_counter_ = 0;
+
+    public:
+        genericWatch() {}
+        virtual ~genericWatch() { uninstallAll(); }
+        key_type create_subscription_id() { return subscription_counter_++; }
+        virtual bool is_installed( const key_type& k ) const {
+            lock_type lock( mtx_ );
+            if ( map_.find( k ) == map_.end() )
+                return false;
+            return true;
+        }
+        virtual key_type install( handler_type& h ) {
+            if ( !h )
+                return false;  // not call-able
+            lock_type lock( mtx_ );
+            key_type k = create_subscription_id();
+            map_[k] = h;
+            return k;
+        }
+        virtual bool uninstall( const key_type& k ) {
+            lock_type lock( mtx_ );
+            auto itFind = map_.find( k );
+            if ( itFind == map_.end() )
+                return false;
+            map_.erase( itFind );
+            return true;
+        }
+        virtual void uninstallAll() {
+            lock_type lock( mtx_ );
+            map_.clear();
+        }
+        virtual void invoke( const parameter_type& p ) {
+            map_type map2;
+            {  // block
+                lock_type lock( mtx_ );
+                map2 = map_;
+            }  // block
+            auto itWalk = map2.begin();
+            for ( ; itWalk != map2.end(); ++itWalk ) {
+                try {
+                    itWalk->second( itWalk->first, p );
+                } catch ( ... ) {
+                }
+            }
+        }
+    };
+    // new block watch
+    typedef genericWatch< Block > blockWatch;
+    blockWatch m_new_block_watch;
+    // new pending transation watch
+    typedef genericWatch< Transaction > transactionWatch;
+    transactionWatch m_new_pending_transaction_watch;
+
+public:
+    // new block watch
+    virtual unsigned installNewBlockWatch(
+        std::function< void( const unsigned&, const Block& ) >& ) override;
+    virtual bool uninstallNewBlockWatch( const unsigned& ) override;
+
+    // new pending transation watch
+    virtual unsigned installNewPendingTransactionWatch(
+        std::function< void( const unsigned&, const Transaction& ) >& ) override;
+    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
 };
 
 }  // namespace eth
