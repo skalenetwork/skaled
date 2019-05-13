@@ -226,7 +226,7 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple<TransactionReceipts, unsigned> syncEveryone(
+    std::tuple< TransactionReceipts, unsigned > syncEveryone(
         BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp );
 
     /// Execute all transactions within a given block.

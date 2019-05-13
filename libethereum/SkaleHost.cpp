@@ -158,7 +158,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     size_t i = 0;
     try {
         while ( i < _limit ) {
-
             Transaction txn = m_broadcastedQueue.pop();
 
             try {
@@ -363,7 +362,7 @@ void SkaleHost::broadcastFunc() {
             // TODO XXX such blocks suck :(
             size_t received;
             {
-                std::lock_guard<std::mutex> lock(m_receivedMutex);
+                std::lock_guard< std::mutex > lock( m_receivedMutex );
                 received = m_received.count( sha );
             }
 

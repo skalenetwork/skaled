@@ -372,7 +372,7 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     WriteGuard l( m_lock );
     MICROPROFILE_LEAVE();
 
-    if(!_t.isInvalid())
+    if ( !_t.isInvalid() )
         makeCurrent_WITH_LOCK( _t );
 
     if ( !m_known.count( _t.sha3() ) )

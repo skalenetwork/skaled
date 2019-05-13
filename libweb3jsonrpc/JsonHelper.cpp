@@ -182,7 +182,7 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
 
 Json::Value toJson( dev::eth::Transaction const& _t ) {
     Json::Value res;
-    if(_t){
+    if ( _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
         res["from"] = toJS( _t.from() );
         res["gas"] = toJS( _t.gas() );
