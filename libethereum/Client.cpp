@@ -187,10 +187,6 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
     return m_bq.import( &_block, _isSafe );
 }
 
-Block Client::block( const h256& /*_blockHash*/, PopulationStatistics* /*o_stats*/ ) const {
-    throw std::logic_error( "Depricated" );
-}
-
 tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
     stopWorking();
     return bc().sync( m_bq, m_state, _max );
@@ -772,16 +768,6 @@ void Client::prepareForTransaction() {
     startWorking();
 }
 
-Block Client::block( h256 const& _block ) const {
-    if ( _block == m_bc.currentHash() ) {
-        return latestBlock();
-    } else if ( _block == m_bc.genesisHash() ) {
-        return m_bc.genesisBlock( m_state.startRead() );
-    } else {
-        assert(false);
-        throw std::logic_error( "Cannot load block because Skale state do not support rollbacks" );
-    }
-}
 
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
@@ -889,10 +875,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
 // TODO: remove try/catch, allow exceptions
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff ) {
+    u256 _gas, u256 _gasPrice, FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
-        Block temp = blockByNumber( _blockNumber );
+        Block temp = latestBlock();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;

@@ -95,7 +95,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, BlockNumber _blockNumber,
+        u256 _gas, u256 _gasPrice,
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 
     /// Blocks until all pending transactions have been processed.
@@ -228,9 +228,7 @@ public:
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
 
-    Block block( h256 const& _block ) const override;
     Block latestBlock() const;
-    using ClientBase::block;
 
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {

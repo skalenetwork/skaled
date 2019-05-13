@@ -81,19 +81,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call( Address const& _from, u256 _value, Address _dest,
-        bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber,
-        FudgeFactor _ff = FudgeFactor::Strict ) = 0;
-    ExecutionResult call( Address const& _from, u256 _value, Address _dest,
-        bytes const& _data = bytes(), u256 _gas = 1000000, u256 _gasPrice = DefaultGasPrice,
-        FudgeFactor _ff = FudgeFactor::Strict ) {
-        return call( _from, _value, _dest, _data, _gas, _gasPrice, m_default, _ff );
-    }
-    ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, BlockNumber _blockNumber,
-        FudgeFactor _ff = FudgeFactor::Strict ) {
-        return call(
-            toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _blockNumber, _ff );
-    }
+        bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) {
         return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _ff );
@@ -108,30 +96,21 @@ public:
     /// @param _callback Optional callback function for progress reporting
     virtual std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        BlockNumber _blockNumber,
         GasEstimationCallback const& _callback = GasEstimationCallback() ) = 0;
 
     // [STATE-QUERY API]
 
-    int getDefault() const { return m_default; }
-    void setDefault( BlockNumber _block ) { m_default = _block; }
-
-    u256 balanceAt( Address _a ) const { return balanceAt( _a, m_default ); }
-    u256 countAt( Address _a ) const { return countAt( _a, m_default ); }
-    u256 stateAt( Address _a, u256 _l ) const { return stateAt( _a, _l, m_default ); }
-    bytes codeAt( Address _a ) const { return codeAt( _a, m_default ); }
-    h256 codeHashAt( Address _a ) const { return codeHashAt( _a, m_default ); }
-    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const {
-        return storageAt( _a, m_default );
+    int getDefault() const { return PendingBlock; }
+    void setDefault( BlockNumber /*_block*/ ) {
+        throw std::logic_error( "setDefault is not supported" );
     }
 
-    virtual u256 balanceAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 countAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 stateAt( Address _a, u256 _l, BlockNumber _block ) const = 0;
-    virtual bytes codeAt( Address _a, BlockNumber _block ) const = 0;
-    virtual h256 codeHashAt( Address _a, BlockNumber _block ) const = 0;
-    virtual std::map< h256, std::pair< u256, u256 > > storageAt(
-        Address _a, BlockNumber _block ) const = 0;
+    virtual u256 balanceAt( Address _a ) const = 0;
+    virtual u256 countAt( Address _a ) const = 0;
+    virtual u256 stateAt( Address _a, u256 _l ) const = 0;
+    virtual bytes codeAt( Address _a ) const = 0;
+    virtual h256 codeHashAt( Address _a ) const = 0;
+    virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const = 0;
 
     // [LOGS API]
 
@@ -227,12 +206,6 @@ public:
     virtual Transactions pending() const = 0;
     virtual h256s pendingHashes() const = 0;
 
-    /// Get a list of all active addresses.
-    /// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw
-    /// InterfaceNotSupported.
-    virtual Addresses addresses() const { return addresses( m_default ); }
-    virtual Addresses addresses( BlockNumber _block ) const = 0;
-
     /// Get the remaining gas limit in this block.
     virtual u256 gasLimitRemaining() const = 0;
     // Get the gas bidding price
@@ -276,9 +249,6 @@ public:
 
     /// Get the seal engine.
     virtual SealEngineFace* sealEngine() const { return nullptr; }
-
-protected:
-    int m_default = PendingBlock;
 };
 
 class Watch;

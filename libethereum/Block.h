@@ -141,6 +141,10 @@ public:
         return m_state.storage( _contract, _memory );
     }
 
+    std::map< h256, std::pair< u256, u256 > > storage( Address const& _contract ) const {
+        return m_state.storage( _contract );
+    }
+
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
     bytes const& code( Address const& _contract ) const { return m_state.code( _contract ); }

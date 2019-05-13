@@ -97,13 +97,9 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     return traces;
 }
 
-Json::Value Debug::debug_traceTransaction( string const& _txHash, Json::Value const& /*_json*/ ) {
+Json::Value Debug::debug_traceTransaction( string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
     Json::Value ret;
     try {
-        LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
-        Block block = m_eth.block( t.blockHash() );
-        StateClass s;
-        eth::ExecutionResult er;
         throw std::logic_error( "Historical state is not supported in Skale" );
         //        Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
         //        e.setResultRecipient(er);
@@ -123,16 +119,18 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
     return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
 }
 
-Json::Value Debug::debug_traceBlockByHash( string const& _blockHash, Json::Value const& _json ) {
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByHash( string const& /*_blockHash*/, Json::Value const& _json ) {
     Json::Value ret;
-    Block block = m_eth.block( h256( _blockHash ) );
+    Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
     return ret;
 }
 
-Json::Value Debug::debug_traceBlockByNumber( int _blockNumber, Json::Value const& _json ) {
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
     Json::Value ret;
-    Block block = m_eth.block( blockHash( std::to_string( _blockNumber ) ) );
+    Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
     return ret;
 }
@@ -213,10 +211,10 @@ std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
 }
 
 Json::Value Debug::debug_traceCall(
-    Json::Value const& _call, std::string const& _blockNumber, Json::Value const& _options ) {
+    Json::Value const& _call, Json::Value const& _options ) {
     Json::Value ret;
     try {
-        Block temp = m_eth.blockByNumber( jsToBlockNumber( _blockNumber ) );
+        Block temp = m_eth.latestBlock();
         TransactionSkeleton ts = toTransactionSkeleton( _call );
         if ( !ts.from ) {
             ts.from = Address();

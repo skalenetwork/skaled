@@ -35,14 +35,14 @@ using namespace dev::eth;
 static const int64_t c_maxGasEstimate = 50000000;
 
 std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
-    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber,
+    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
     GasEstimationCallback const& _callback ) {
     try {
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
         int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-        Block bk = blockByNumber( _blockNumber );
+        Block bk = latestBlock();
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         ExecutionResult er;
         ExecutionResult lastGood;
@@ -89,30 +89,28 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
     return bc().attemptImport( _block, preSeal().mutableState() ).first;
 }
 
-u256 ClientBase::balanceAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).balance( _a );
+u256 ClientBase::balanceAt( Address _a ) const {
+    return latestBlock().balance( _a );
 }
 
-u256 ClientBase::countAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).transactionsFrom( _a );
+u256 ClientBase::countAt( Address _a ) const {
+    return latestBlock().transactionsFrom( _a );
 }
 
-u256 ClientBase::stateAt( Address _a, u256 _l, BlockNumber _block ) const {
-    return blockByNumber( _block ).storage( _a, _l );
+u256 ClientBase::stateAt( Address _a, u256 _l ) const {
+    return latestBlock().storage( _a, _l );
 }
 
-bytes ClientBase::codeAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).code( _a );
+bytes ClientBase::codeAt( Address _a ) const {
+    return latestBlock().code( _a );
 }
 
-h256 ClientBase::codeHashAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).codeHash( _a );
+h256 ClientBase::codeHashAt( Address _a ) const {
+    return latestBlock().codeHash( _a );
 }
 
-map< h256, pair< u256, u256 > > ClientBase::storageAt(
-    Address /*_a*/, BlockNumber /*_block*/ ) const {
-    throw logic_error( "Full storage object is unsupported in Skale state" );
-    //    return blockByNumber(_block).storage(_a);
+map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
+    return latestBlock().storage( _a );
 }
 
 // TODO: remove try/catch, allow exceptions
@@ -390,14 +388,6 @@ BlockDetails ClientBase::pendingDetails() const {
         ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{} );
 }
 
-Addresses ClientBase::addresses( BlockNumber /*_block*/ ) const {
-    throw std::logic_error( "Getting addresses list is not supported in Skale state" );
-    //    Addresses ret;
-    //    for (auto const& i : blockByNumber(_block).addresses())
-    //        ret.push_back(i.first);
-    //    return ret;
-}
-
 u256 ClientBase::gasLimitRemaining() const {
     return postSeal().gasLimitRemaining();
 }
@@ -457,17 +447,20 @@ bool ClientBase::isKnownTransaction( h256 const& _transactionHash ) const {
 }
 
 bool ClientBase::isKnownTransaction( h256 const& _blockHash, unsigned _i ) const {
-    return isKnown( _blockHash ) && block( _blockHash ).pending().size() > _i;
+    bytes block = bc().block(_blockHash);
+
+    if(block.empty())
+        return false;
+
+    VerifiedBlockRef vb = bc().verifyBlock(&block, function<void(Exception&)>());
+
+    return vb.transactions.size() > _i;
 }
 
-Block ClientBase::blockByNumber( BlockNumber _h ) const {
-    if ( _h == PendingBlock ) {
-        Block block = postSeal();
-        block.startReadState();
-        return block;
-    } else if ( _h == LatestBlock )
-        return block( bc().currentHash() );
-    return block( bc().numberHash( _h ) );
+Block ClientBase::latestBlock() const {
+    Block res = postSeal();
+    res.startReadState();
+    return res;
 }
 
 int ClientBase::chainId() const {

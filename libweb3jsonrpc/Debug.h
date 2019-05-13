@@ -26,8 +26,8 @@ public:
         std::string const& _addressHash, int _maxResults ) override;
     virtual Json::Value debug_traceTransaction(
         std::string const& _txHash, Json::Value const& _json ) override;
-    virtual Json::Value debug_traceCall( Json::Value const& _call, std::string const& _blockNumber,
-        Json::Value const& _options ) override;
+    virtual Json::Value debug_traceCall(
+        Json::Value const& _call, Json::Value const& _options ) override;
     virtual Json::Value debug_traceBlockByNumber(
         int _blockNumber, Json::Value const& _json ) override;
     virtual Json::Value debug_traceBlockByHash(
