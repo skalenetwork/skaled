@@ -1014,7 +1014,7 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
-            skale_server_connector->bTraceCalls_ = bTraceHttpCalls;
+            skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;
