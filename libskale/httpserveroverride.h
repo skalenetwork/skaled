@@ -68,7 +68,7 @@ class SkaleServerOverride;
 
 class SkaleWsPeer : public skutils::ws::peer {
 public:
-    const std::string strPeerQueueID_;
+    const std::string m_strPeerQueueID;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
     ~SkaleWsPeer() override;
     void onPeerRegister() override;
@@ -127,38 +127,38 @@ public:
 
 class SkaleWsRelay : public skutils::ws::server {
 protected:
-    volatile bool isRunning_ = false;
-    volatile bool isInLoop_ = false;
-    std::string scheme_;
-    std::string scheme_uc_;
-    int nPort_ = -1;
-    SkaleServerOverride* pso_ = nullptr;
+    volatile bool m_isRunning = false;
+    volatile bool m_isInLoop = false;
+    std::string m_strScheme_;
+    std::string m_strSchemeUC;
+    int m_nPort = -1;
+    SkaleServerOverride* m_pSO = nullptr;
 
 public:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
     typedef skutils::retain_release_ptr< SkaleWsPeer > skale_peer_ptr_t;
-    typedef std::map< std::string, skale_peer_ptr_t > map_skale_peers_t;  // maps strPeerQueueID_ ->
-                                                                          // skale peer pointer
+    typedef std::map< std::string, skale_peer_ptr_t > map_skale_peers_t;  // maps m_strPeerQueueID
+                                                                          // -> skale peer pointer
 
 protected:
-    mutable mutex_type mtxAllPeers_;
-    mutable map_skale_peers_t mapAllPeers_;
+    mutable mutex_type m_mtxAllPeers;
+    mutable map_skale_peers_t m_mapAllPeers;
 
 public:
     SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
         int nPort );
     ~SkaleWsRelay() override;
     void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
-    bool isRunning() const { return isRunning_; }
-    bool isInLoop() const { return isInLoop_; }
+    bool isRunning() const { return m_isRunning; }
+    bool isInLoop() const { return m_isInLoop; }
     void waitWhileInLoop();
-    bool start( SkaleServerOverride* pso );
+    bool start( SkaleServerOverride* pSO );
     void stop();
-    SkaleServerOverride* pso() { return pso_; }
-    const SkaleServerOverride* pso() const { return pso_; }
+    SkaleServerOverride* pso() { return m_pSO; }
+    const SkaleServerOverride* pso() const { return m_pSO; }
     dev::eth::Interface* ethereum() const;
-    mutex_type& mtxAllPeers() const { return mtxAllPeers_; }
+    mutex_type& mtxAllPeers() const { return m_mtxAllPeers; }
     friend class SkaleWsPeer;
 };  /// class SkaleWsRelay
 
@@ -197,25 +197,25 @@ private:
         bool isError, const char* strProtocol, const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
         const char* strOrigin, const std::string& strPayload );
-    const std::string strAddrHTTP_;
-    const int nPortHTTP_;
-    const std::string strAddrHTTPS_;
-    const int nPortHTTPS_;
-    const std::string strAddrWS_;
-    const int nPortWS_;
-    const std::string strAddrWSS_;
-    const int nPortWSS_;
+    const std::string m_strAddrHTTP;
+    const int m_nPortHTTP;
+    const std::string m_strAddrHTTPS;
+    const int m_nPortHTTPS;
+    const std::string m_strAddrWS;
+    const int m_nPortWS;
+    const std::string m_strAddrWSS;
+    const int m_nPortWSS;
 
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
 
 public:
-    bool bTraceCalls_;
+    bool m_bTraceCalls;
 
 private:
-    std::shared_ptr< skutils::http::server > pSrvHTTP_, pSrvHTTPS_;
-    std::string strPathSslKey_, strPathSslCert_;
-    std::shared_ptr< SkaleWsRelay > pSrvWS_, pSrvWSS_;
+    std::shared_ptr< skutils::http::server > m_pServerHTTP, m_pServerHTTPS;
+    std::string m_strPathSslKey, m_strPathSslCert;
+    std::shared_ptr< SkaleWsRelay > m_pServerWS, m_pServerWSS;
 
 public:
     // status API, returns running server port or -1 if server is not started
