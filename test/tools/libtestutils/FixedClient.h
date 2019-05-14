@@ -68,8 +68,8 @@ public:
         return {};
     };
     h256 importTransaction( eth::Transaction const& ) override { return {}; }
-    eth::ExecutionResult call( Address const&, u256, Address, bytes const&, u256, u256,
-        eth::FudgeFactor ) override {
+    eth::ExecutionResult call(
+        Address const&, u256, Address, bytes const&, u256, u256, eth::FudgeFactor ) override {
         return {};
     };
     eth::TransactionSkeleton populateTransactionWithDefaults(

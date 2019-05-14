@@ -95,8 +95,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice,
-        FudgeFactor _ff = FudgeFactor::Strict ) override;
+        u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;

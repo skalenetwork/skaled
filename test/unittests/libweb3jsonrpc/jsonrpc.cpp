@@ -339,8 +339,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress )
-         << endl;
+    cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress ) << endl;
     dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
     cerr << "Balance after: " << web3->ethereum()->balanceAt( senderAddress ) << endl;
     BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );

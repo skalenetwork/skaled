@@ -97,7 +97,8 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     return traces;
 }
 
-Json::Value Debug::debug_traceTransaction( string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
+Json::Value Debug::debug_traceTransaction(
+    string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
     Json::Value ret;
     try {
         throw std::logic_error( "Historical state is not supported in Skale" );
@@ -120,7 +121,8 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
 }
 
 // TODO Make function without "block" parameter
-Json::Value Debug::debug_traceBlockByHash( string const& /*_blockHash*/, Json::Value const& _json ) {
+Json::Value Debug::debug_traceBlockByHash(
+    string const& /*_blockHash*/, Json::Value const& _json ) {
     Json::Value ret;
     Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
@@ -210,8 +212,7 @@ std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
     //    return key.empty() ? std::string() : toHexPrefixed(key);
 }
 
-Json::Value Debug::debug_traceCall(
-    Json::Value const& _call, Json::Value const& _options ) {
+Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
     Json::Value ret;
     try {
         Block temp = m_eth.latestBlock();

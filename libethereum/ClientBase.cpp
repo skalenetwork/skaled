@@ -447,12 +447,12 @@ bool ClientBase::isKnownTransaction( h256 const& _transactionHash ) const {
 }
 
 bool ClientBase::isKnownTransaction( h256 const& _blockHash, unsigned _i ) const {
-    bytes block = bc().block(_blockHash);
+    bytes block = bc().block( _blockHash );
 
-    if(block.empty())
+    if ( block.empty() )
         return false;
 
-    VerifiedBlockRef vb = bc().verifyBlock(&block, function<void(Exception&)>());
+    VerifiedBlockRef vb = bc().verifyBlock( &block, function< void( Exception& ) >() );
 
     return vb.transactions.size() > _i;
 }

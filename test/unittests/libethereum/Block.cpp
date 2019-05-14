@@ -91,6 +91,7 @@ BOOST_AUTO_TEST_CASE( bExceedBlockGasLimit ) {
     testBlock.addTransaction( transaction2 );
 
     // Transactions valid but exceed block gasLimit - BlockGasLimitReached
+    // we include it in block but don't execute
     TestBlock testBlockT = testBlock;
     TestTransaction transaction = TestTransaction::defaultTransaction( 3, 1, 1500000 );
     testBlockT.addTransaction( transaction );
@@ -98,8 +99,17 @@ BOOST_AUTO_TEST_CASE( bExceedBlockGasLimit ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_CASE( bTemporaryNoGasLeft ) {
@@ -149,8 +159,17 @@ BOOST_AUTO_TEST_CASE( bInvalidNonceNoncesAhead ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_CASE( bInvalidNonceNonceTooLow ) {
@@ -173,8 +192,17 @@ BOOST_AUTO_TEST_CASE( bInvalidNonceNonceTooLow ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_SUITE_END()
