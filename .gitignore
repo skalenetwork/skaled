@@ -3,6 +3,8 @@ skaled.config
 skaled.creator
 skaled.files
 skaled.includes
+skaled.cflags
+skaled.cxxflags
 
 # spell checker dictionaries
 docs-dictionary-*

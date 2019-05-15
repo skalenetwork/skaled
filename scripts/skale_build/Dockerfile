@@ -29,7 +29,9 @@ ENTRYPOINT /skaled/skaled \
  -d $DATA_DIR \
  --ipcpath $DATA_DIR \
  --http-port $HTTP_RPC_PORT \
+ --https-port $HTTPS_RPC_PORT \
  --ws-port $WS_RPC_PORT \
+ --wss-port $WSS_RPC_PORT \
  --ssl-key $SSL_KEY_PATH \
  --ssl-cert $SSL_CERT_PATH \
  -v 4  \

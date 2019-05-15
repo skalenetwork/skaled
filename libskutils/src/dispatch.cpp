@@ -38,6 +38,7 @@ bool sleep_while_true(  // returns false if timeout is reached and fn() never re
     if ( fn ) {
         uint64_t last_time = uv_hrtime(), dur = 0, ns_timeout = timeout.count();
         for ( ; fn(); ) {
+            ++nSleepStepsDone;
             stat_sleep( step );
             uint64_t next_time = uv_hrtime();
             dur += next_time - last_time;
