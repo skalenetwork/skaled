@@ -84,12 +84,13 @@ public:
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the state.
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
-        dev::h256 const& _genesis, dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting )
+        dev::h256 const& _genesis, dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting,
+        dev::u256 _initialFunds = 0 )
         : State( _accountStartNonce,
               openDB( _dbPath, _genesis,
                   _bs == dev::eth::BaseState::PreExisting ? dev::WithExisting::Trust :
                                                             dev::WithExisting::Kill ),
-              _bs ) {}
+              _bs, _initialFunds ) {}
 
     State() : State( dev::Invalid256, OverlayDB(), dev::eth::BaseState::Empty ) {}
 
@@ -271,7 +272,7 @@ public:
 
 private:
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
-        dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting );
+        dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting, dev::u256 _initialFunds = 0 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
@@ -325,6 +326,8 @@ private:
 
     friend std::ostream& operator<<( std::ostream& _out, State const& _s );
     dev::eth::ChangeLog m_changeLog;
+
+    dev::u256 m_initial_funds = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

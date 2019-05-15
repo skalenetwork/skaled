@@ -62,12 +62,14 @@ using skale::OverlayDB;
 #endif
 
 
-State::State( u256 const& _accountStartNonce, OverlayDB const& _db, eth::BaseState _bs )
+State::State(
+    u256 const& _accountStartNonce, OverlayDB const& _db, eth::BaseState _bs, u256 _initialFunds )
     : x_db_ptr( make_shared< shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
-      m_accountStartNonce( _accountStartNonce ) {
+      m_accountStartNonce( _accountStartNonce ),
+      m_initial_funds( _initialFunds ) {
     if ( _bs == eth::BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << "Using existing database";
     } else if ( _bs == eth::BaseState::Empty ) {
@@ -134,6 +136,7 @@ State& State::operator=( const State& _s ) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
+    m_initial_funds = _s.m_initial_funds;
 
     return *this;
 }
@@ -369,7 +372,7 @@ u256 State::balance( Address const& _id ) const {
     if ( auto a = account( _id ) )
         return a->balance();
     else
-        return 0;
+        return m_initial_funds;
 }
 
 void State::incNonce( Address const& _addr ) {
@@ -379,7 +382,7 @@ void State::incNonce( Address const& _addr ) {
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible if a transaction has gas price 0.
-        createAccount( _addr, eth::Account( requireAccountStartNonce() + 1, 0 ) );
+        createAccount( _addr, eth::Account( requireAccountStartNonce() + 1, m_initial_funds ) );
 }
 
 void State::setNonce( Address const& _addr, u256 const& _newNonce ) {
@@ -389,7 +392,7 @@ void State::setNonce( Address const& _addr, u256 const& _newNonce ) {
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible when a contract is being created.
-        createAccount( _addr, eth::Account( _newNonce, 0 ) );
+        createAccount( _addr, eth::Account( _newNonce, m_initial_funds ) );
 }
 
 void State::addBalance( Address const& _id, u256 const& _amount ) {
@@ -408,7 +411,7 @@ void State::addBalance( Address const& _id, u256 const& _amount ) {
         // and are cleared if empty at the end of the transaction.
         a->addBalance( _amount );
     } else
-        createAccount( _id, eth::Account( requireAccountStartNonce(), _amount ) );
+        createAccount( _id, eth::Account( requireAccountStartNonce(), m_initial_funds + _amount ) );
 
     if ( _amount )
         m_changeLog.emplace_back( eth::Change::Balance, _id, _amount );
@@ -436,7 +439,7 @@ void State::setBalance( Address const& _addr, u256 const& _value ) {
 }
 
 void State::createContract( Address const& _address ) {
-    createAccount( _address, {requireAccountStartNonce(), 0} );
+    createAccount( _address, {requireAccountStartNonce(), m_initial_funds} );
 }
 
 void State::createAccount( Address const& _address, eth::Account const&& _account ) {

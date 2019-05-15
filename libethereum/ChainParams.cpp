@@ -81,7 +81,6 @@ ChainParams ChainParams::loadConfig(
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
 
-
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
         auto skaleObj = obj[c_skaleConfig].get_obj();
@@ -132,6 +131,7 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
     setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
+    setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
 
     if ( params.count( c_chainID ) )
         cp.chainID =
