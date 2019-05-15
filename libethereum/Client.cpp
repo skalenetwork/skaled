@@ -123,7 +123,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = StateClass( chainParams().accountStartNonce, _dbPath, bc().genesisHash() );
+    m_state = StateClass( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
+        dev::eth::BaseState::PreExisting, chainParams().accountInitialFunds );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
