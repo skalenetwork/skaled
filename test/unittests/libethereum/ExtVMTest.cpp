@@ -27,6 +27,7 @@
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+using skale::State;
 
 class ExtVMTestFixture : public TestOutputHelperFixture {
 public:
@@ -49,7 +50,7 @@ public:
     NetworkSelector networkSelector;
     TestBlockChain testBlockchain;
     TestBlock const& genesisBlock;
-    StateClass const& genesisState;
+    State const& genesisState;
     BlockChain const& blockchain;
 };
 

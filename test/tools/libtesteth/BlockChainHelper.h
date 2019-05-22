@@ -76,7 +76,7 @@ public:
     void verify( TestBlockChain const& _bc ) const;
 
     void setBlockHeader( BlockHeader const& _header );
-    void setState( StateClass const& _state );
+    void setState( skale::State const& _state );
     void clearState();
 
     BlockHeader const& premineHeader() {
@@ -88,13 +88,13 @@ public:
         return bytesConstRef( &m_receipts.out()[0], m_receipts.out().size() );
     }
     AccountMap const& accountMap() const { return m_accountMap; }
-    StateClass const& state() const {
+    skale::State const& state() const {
         if ( m_state.get() == 0 )
             BOOST_THROW_EXCEPTION(
                 BlockStateUndefined() << errinfo_comment( "Block State is Nulled" ) );
         return *m_state.get();
     }
-    StateClass& mutableState() const {
+    skale::State& mutableState() const {
         if ( m_state.get() == 0 )
             BOOST_THROW_EXCEPTION(
                 BlockStateUndefined() << errinfo_comment( "Block State is Nulled" ) );
@@ -111,7 +111,7 @@ private:
     BlockHeader constructBlock( mObject const& _o, h256 const& _stateRoot );
     dev::bytes createBlockRLPFromFields( mObject const& _tObj, h256 const& _stateRoot = h256{} );
     void recalcBlockHeaderBytes();
-    void copyStateFrom( StateClass const& _state );
+    void copyStateFrom( skale::State const& _state );
     void populateFrom( TestBlock const& _original );
     void premineUpdate( BlockHeader& info );
     void initBlockFromJsonHeader( mObject const& _blockHeader,
@@ -120,7 +120,7 @@ private:
     bool m_dirty;
     BlockHeader m_blockHeader;
     vector< TestBlock > m_uncles;
-    std::unique_ptr< StateClass > m_state;
+    std::unique_ptr< skale::State > m_state;
     TransactionQueue m_transactionQueue;
     BlockQueue m_uncleQueue;
     dev::bytes m_bytes;
