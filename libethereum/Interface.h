@@ -87,8 +87,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call( Address const& _from, u256 _value, Address _dest,
-        bytes const& _data, u256 _gas, u256 _gasPrice,
-        FudgeFactor _ff = FudgeFactor::Strict ) = 0;
+        bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) {
         return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _ff );
