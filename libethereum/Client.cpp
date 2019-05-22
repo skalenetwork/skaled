@@ -88,6 +88,9 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
+    m_new_block_watch.uninstallAll();
+    m_new_pending_transaction_watch.uninstallAll();
+
     assert( m_skaleHost );
     m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
     m_signalled.notify_all();    // to wake up the thread from Client::doWork()
@@ -351,7 +354,7 @@ void Client::appendFromNewPending(
         if ( m.size() ) {
             // filter catches them
             for ( LogEntry const& l : m )
-                i.second.changes.push_back( LocalisedLogEntry( l ) );
+                i.second.changes_.push_back( LocalisedLogEntry( l ) );
             io_changed.insert( i.first );
         }
     }
@@ -373,7 +376,7 @@ void Client::appendFromBlock( h256 const& _block, BlockPolarity _polarity, h256H
                 auto transactionHash = transaction( _block, j ).sha3();
                 // filter catches them
                 for ( LogEntry const& l : m )
-                    i.second.changes.push_back( LocalisedLogEntry( l, _block,
+                    i.second.changes_.push_back( LocalisedLogEntry( l, _block,
                         ( BlockNumber ) bc().number( _block ), transactionHash, j, 0, _polarity ) );
                 io_changed.insert( i.first );
             }
@@ -666,6 +669,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -678,7 +682,7 @@ void Client::noteChanged( h256Hash const& _filters ) {
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
                 LOG( m_loggerWatch ) << "!!! " << w.first << " " << w.second.id.abridged();
-                w.second.changes += m_filters.at( w.second.id ).changes;
+                w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
                     LOG( m_loggerWatch )
@@ -686,12 +690,12 @@ void Client::noteChanged( h256Hash const& _filters ) {
                         << ( w.second.id == PendingChangedFilter ?
                                    "pending" :
                                    w.second.id == ChainChangedFilter ? "chain" : "???" );
-                    w.second.changes.push_back( LocalisedLogEntry( SpecialLogEntry, hash ) );
+                    w.second.append_changes( LocalisedLogEntry( SpecialLogEntry, hash ) );
                 }
         }
     // clear the filters now.
     for ( auto& i : m_filters )
-        i.second.changes.clear();
+        i.second.changes_.clear();
     for ( auto& i : m_specialFilters )
         i.second.clear();
 }
@@ -885,6 +889,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
         BOOST_THROW_EXCEPTION( UnknownTransactionValidationError() );
     }
 
+    m_new_pending_transaction_watch.invoke( _t );
+
     return _t.sha3();
 }
 
@@ -912,4 +918,22 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+// new block watch
+unsigned Client::installNewBlockWatch(
+    std::function< void( const unsigned&, const Block& ) >& fn ) {
+    return m_new_block_watch.install( fn );
+}
+bool Client::uninstallNewBlockWatch( const unsigned& k ) {
+    return m_new_block_watch.uninstall( k );
+}
+
+// new pending transation watch
+unsigned Client::installNewPendingTransactionWatch(
+    std::function< void( const unsigned&, const Transaction& ) >& fn ) {
+    return m_new_pending_transaction_watch.install( fn );
+}
+bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
+    return m_new_pending_transaction_watch.uninstall( k );
 }

@@ -48,7 +48,7 @@ public:
 
 private:
     std::set< int > m_reg;
-    bool m_ok;
+    bool m_ok = false;
     std::shared_ptr< UPNPUrls > m_urls;
     std::shared_ptr< IGDdatas > m_data;
 };
