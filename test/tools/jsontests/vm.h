@@ -28,9 +28,9 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libethereum/ExtVM.h>
-#include <libethereum/State.h>
 #include <libethereum/Transaction.h>
 #include <libevm/ExtVMFace.h>
+#include <libskale/State.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
 #include <json_spirit/json_spirit.h>

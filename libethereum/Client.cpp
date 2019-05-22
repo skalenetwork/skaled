@@ -40,6 +40,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using skale::Permanence;
+using skale::State;
+using namespace skale::error;
 
 static_assert( BOOST_VERSION >= 106400, "Wrong boost headers version" );
 
@@ -123,8 +127,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = StateClass( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
-        dev::eth::BaseState::PreExisting, chainParams().accountInitialFunds );
+    m_state = State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -297,10 +301,10 @@ void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
 
         bc().reopen( _p, _we );
         if ( !m_state.connected() ) {
-            m_state = StateClass( Invalid256, Defaults::dbPath(), bc().genesisHash() );
+            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
         }
         if ( _we == WithExisting::Kill ) {
-            StateClass writer = m_state.startWrite();
+            State writer = m_state.startWrite();
             writer.clearAll();
             writer.populateFrom( bc().chainParams().genesisState );
         }

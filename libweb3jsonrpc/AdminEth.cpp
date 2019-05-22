@@ -1,16 +1,21 @@
 #include "AdminEth.h"
-#include "JsonHelper.h"
-#include "SessionManager.h"
+
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonJS.h>
 #include <libethashseal/EthashClient.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Client.h>
 #include <libethereum/Executive.h>
+
+#include "JsonHelper.h"
+#include "SessionManager.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::rpc;
 using namespace dev::eth;
+using namespace skale;
+
 
 AdminEth::AdminEth( eth::Client& _eth, eth::TrivialGasPricer& _gp, eth::KeyManager& _keyManager,
     SessionManager& _sm )
@@ -163,7 +168,7 @@ Json::Value AdminEth::admin_eth_vmTrace(
     if ( ( unsigned ) _txIndex < block.pending().size() ) {
         try {
             Transaction t = block.pending()[_txIndex];
-            StateClass s;
+            State s;
             throw std::logic_error( "Historical state is not supported in Skale state" );
             //        Executive e(s, block, _txIndex, m_eth.blockChain());
             //            StandardTrace st;

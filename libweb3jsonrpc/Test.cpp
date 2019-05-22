@@ -23,6 +23,7 @@
  */
 
 #include "Test.h"
+
 #include <jsonrpccpp/common/errors.h>
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonJS.h>

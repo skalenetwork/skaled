@@ -10,7 +10,6 @@ using namespace std;
 
 #include <libdevcore/Address.h>
 #include <libdevcore/FileSystem.h>
-#include <libethereum/State.h>
 
 #include <libskale/State.h>
 

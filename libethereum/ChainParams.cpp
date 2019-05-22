@@ -22,10 +22,7 @@
  */
 
 #include "ChainParams.h"
-#include "Account.h"
-#include "GenesisInfo.h"
-#include "State.h"
-#include "ValidationSchemes.h"
+
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcore/Log.h>
@@ -33,6 +30,10 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Precompiled.h>
 #include <libethcore/SealEngine.h>
+
+#include "Account.h"
+#include "GenesisInfo.h"
+#include "ValidationSchemes.h"
 
 using namespace std;
 using namespace dev;

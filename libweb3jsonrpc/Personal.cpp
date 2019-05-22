@@ -2,6 +2,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Client.h>
+#include <libskale/State.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 

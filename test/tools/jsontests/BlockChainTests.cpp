@@ -35,6 +35,7 @@ using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -361,7 +362,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
 
     if ( _input.count( "expect" ) > 0 ) {
         AccountMaskMap expectStateMap;
-        StateClass stateExpect = StateClass();
+        State stateExpect = State();
         ImportTest::importState( _input.at( "expect" ).get_obj(), stateExpect, expectStateMap );
         if ( ImportTest::compareStates(
                  stateExpect, testChain.topBlock().state(), expectStateMap, WhenError::Throw ) )
@@ -373,7 +374,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
-    StateClass prestate = StateClass();
+    State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
     output["pre"] = fillJsonWithState( prestate.startRead() );
 
@@ -400,7 +401,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
     for ( auto const& bl : _o.at( "blocks" ).get_array() ) {
         mObject blObj = bl.get_obj();
         TestBlock blockFromRlp;
-        StateClass const preState = testChain.topBlock().state();
+        State const preState = testChain.topBlock().state();
         h256 const preHash = testChain.topBlock().blockHeader().hash();
         try {
             TestBlock blRlp( blObj["rlp"].get_str() );
@@ -487,7 +488,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
 
         // check the balance before and after the block according to mining rules
         if ( blockFromFields.blockHeader().parentHash() == preHash ) {
-            StateClass const postState = testChain.topBlock().state();
+            State const postState = testChain.topBlock().state();
             assert( testChain.getInterface().sealEngine() );
             bigint reward = calculateMiningReward( testChain.topBlock().blockHeader().number(),
                 uncleNumbers.size() >= 1 ? uncleNumbers[0] : 0,
@@ -518,7 +519,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
     //        testName + "State root in chain from RLP blocks != State root in chain from Field
     //        blocks!");
 
-    StateClass postState = StateClass();  // Compare post states
+    State postState = State();  // Compare post states
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
     ImportTest::compareStates( postState, testChain.topBlock().state() );

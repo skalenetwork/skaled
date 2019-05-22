@@ -23,16 +23,17 @@
 
 #pragma once
 
-#include <libdevcore/Common.h>
-#include <boost/filesystem/path.hpp>
 #include <memory>
+
+#include <boost/filesystem/path.hpp>
+
+#include <libdevcore/Common.h>
 
 namespace dev {
 namespace eth {
 
 struct Defaults {
     friend class BlockChain;
-    friend class State;
 
 public:
     Defaults();

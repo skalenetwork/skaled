@@ -23,16 +23,18 @@
  */
 
 #include "ClientBase.h"
-#include "BlockChain.h"
-#include "Executive.h"
-#include "State.h"
 
 #include <algorithm>
 #include <utility>
 
+#include "BlockChain.h"
+#include "Executive.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using skale::Permanence;
+using skale::State;
 
 static const int64_t c_maxGasEstimate = 50000000;
 
@@ -96,7 +98,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                 t = Transaction( _value, gasPrice, mid, _data, n );
             t.forceSender( _from );
             EnvInfo const env( bk.info(), bc().lastBlockHashes(), 0, mid );
-            StateClass& tempState = bk.mutableState();
+            State& tempState = bk.mutableState();
             tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
             er = tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
             if ( er.excepted == TransactionException::OutOfGas ||
