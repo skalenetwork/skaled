@@ -153,6 +153,7 @@ public:
     /// Skale additional config
     NodeInfo nodeInfo;
     SChain sChain;
+    u256 accountInitialFunds = 0;
 };
 
 }  // namespace eth

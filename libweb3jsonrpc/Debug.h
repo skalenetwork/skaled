@@ -44,7 +44,7 @@ private:
     eth::Client const& m_eth;
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
-    eth::StateClass stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
+    skale::State stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
     Json::Value traceTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, Json::Value const& _json );
     Json::Value traceBlock( dev::eth::Block const& _block, Json::Value const& _json );

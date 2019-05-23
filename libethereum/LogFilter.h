@@ -32,6 +32,10 @@
 #pragma warning( disable : 1098 )  // the qualifier on this friend declaration is ignored
 #endif
 
+namespace skale {
+class State;
+}
+
 namespace dev {
 namespace eth {
 class LogFilter;
@@ -41,7 +45,6 @@ namespace eth {
 /// Simple stream output for the StateDiff.
 std::ostream& operator<<( std::ostream& _out, dev::eth::LogFilter const& _s );
 
-// class State;
 class Block;
 
 class LogFilter {

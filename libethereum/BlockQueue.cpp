@@ -22,16 +22,17 @@
  */
 
 #include "BlockQueue.h"
-#include "BlockChain.h"
-#include "State.h"
-#include "VerifiedBlock.h"
-#include <libdevcore/Log.h>
-#include <libethcore/BlockHeader.h>
-#include <libethcore/Exceptions.h>
+
 #include <sstream>
 #include <thread>
 
+#include <libdevcore/Log.h>
 #include <libdevcore/microprofile.h>
+#include <libethcore/BlockHeader.h>
+#include <libethcore/Exceptions.h>
+
+#include "BlockChain.h"
+#include "VerifiedBlock.h"
 
 using namespace std;
 using namespace dev;

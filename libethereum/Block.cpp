@@ -45,6 +45,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using namespace skale::error;
+using skale::Permanence;
+using skale::State;
 
 #define ETH_TIMED_ENACTMENTS 1
 
@@ -70,7 +74,7 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block( const BlockChain& _bc, h256 const& _hash, const StateClass& _state, BaseState /*_bs*/,
+Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
     const Address& _author )
     : m_state( _state ), m_precommit( Invalid256 ), m_author( _author ) {
     noteChain( _bc );
@@ -220,7 +224,7 @@ bool Block::sync( BlockChain const& _bc ) {
     return sync( _bc, _bc.currentHash() );
 }
 
-bool Block::sync( BlockChain const& _bc, StateClass const& _state ) {
+bool Block::sync( BlockChain const& _bc, State const& _state ) {
     m_state = _state;
     m_precommit = _state;
     return sync( _bc );
@@ -669,8 +673,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    m_state.commit( removeEmptyAccounts ? StateClass::CommitBehaviour::RemoveEmptyAccounts :
-                                          StateClass::CommitBehaviour::KeepEmptyAccounts );
+    m_state.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                          State::CommitBehaviour::KeepEmptyAccounts );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -695,7 +699,7 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    StateClass stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
     std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
         stateSnapshot.execute( EnvInfo( info(), _lh, gasUsed() ), *m_sealEngine, _t, _p, _onOp );
 
@@ -731,7 +735,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
     }
 }
 
@@ -742,14 +746,14 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                StateClass state = m_state.startWrite();
+                State state = m_state.startWrite();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
-                state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( State::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
-            m_state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
         }
     }
 
@@ -762,7 +766,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( StateClass::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 
@@ -843,8 +847,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
     //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? StateClass::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         StateClass::CommitBehaviour::KeepEmptyAccounts);
+    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+    //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerDetailed ) << "Post-reward stateRoot: "
                             << "is not calculated in Skale state";
