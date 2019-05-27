@@ -1,15 +1,14 @@
 [submodule "evmjit"]
-        path = evmjit
-        url = https://github.com/ethereum/evmjit
-        branch = develop
+	path = evmjit
+	url = https://github.com/ethereum/evmjit
+	branch = develop
 [submodule "evmc"]
-        path = evmc
-        url = https://github.com/ethereum/evmc
-        branch = a4f7029371961b2ac4727e76eb721b86627a78d3
+	path = evmc
+	url = https://github.com/ethereum/evmc
+	branch = a4f7029371961b2ac4727e76eb721b86627a78d3
 [submodule "libconsensus"]
-        path = libconsensus
-        url = https://github.com/skalenetwork/skale-consensus.git
+	path = libconsensus
+	url = https://github.com/skalenetwork/skale-consensus.git
 [submodule "test/jsontests"]
-        path = test/jsontests
-        url = https://github.com/skalenetwork/skaled-tests.git
-
+	path = test/jsontests
+	url = https://github.com/skalenetwork/skaled-tests.git

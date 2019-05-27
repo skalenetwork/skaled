@@ -112,7 +112,7 @@ cache:
     ccache: true
     directories:
         - ~/.ethash
-        - ~/.local        
+        - ~/.local
         - ~/.hunter
         # Cache whole deps dir hoping you will not need to download and
         # build external dependencies next build.
@@ -121,7 +121,7 @@ cache:
 
 before_install:
     - eval "${MATRIX_EVAL}"
-install:    
+install:
     - ./SkaleDeps/build.sh
 script:
     # configure

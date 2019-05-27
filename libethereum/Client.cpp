@@ -431,6 +431,10 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
+        if ( m_working.isSealed() ) {
+            ctrace << "Skipping txq sync for a sealed block.";
+            return;
+        }
 
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
