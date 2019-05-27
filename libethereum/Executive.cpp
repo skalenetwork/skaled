@@ -203,6 +203,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+        if ( _transaction.hasExternalGas() ) {
+            gasCost = 0;
+        }
         bigint totalCost = _transaction.value() + gasCost;
         if ( _state.balance( _transaction.sender() ) < totalCost ) {
             BOOST_THROW_EXCEPTION( NotEnoughCash()
@@ -236,10 +239,13 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
-    // Pay...
-    LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                           << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
-    m_s.subBalance( m_t.sender(), m_gasCost );
+    if ( !m_t.hasExternalGas() ) {
+        // Pay...
+        LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
+        m_s.subBalance( m_t.sender(), m_gasCost );
+    }
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )

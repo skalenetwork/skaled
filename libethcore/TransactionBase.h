@@ -103,6 +103,10 @@ public:
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
 
+    TransactionBase( TransactionBase const& ) = default;
+
+    virtual ~TransactionBase() = default;
+
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
         return m_type == _c.m_type &&
@@ -159,17 +163,11 @@ public:
     }
 
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
-    u256 gasPrice() const {
-        assert( !isInvalid() );
-        return m_gasPrice;
-    }
+    virtual u256 gasPrice() const;
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
-    u256 gas() const {
-        assert( !isInvalid() );
-        return m_gas;
-    }
+    virtual u256 gas() const;
 
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).

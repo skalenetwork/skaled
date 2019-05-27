@@ -240,3 +240,13 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
         m_hashWith = ret;
     return ret;
 }
+
+u256 TransactionBase::gasPrice() const {
+    assert( !isInvalid() );
+    return m_gasPrice;
+}
+
+u256 TransactionBase::gas() const {
+    assert( !isInvalid() );
+    return m_gas;
+}

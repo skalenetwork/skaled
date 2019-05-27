@@ -124,5 +124,85 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     return _out;
 }
 
+Transaction::Transaction() {}
+
+Transaction::Transaction( const TransactionSkeleton& _ts, const Secret& _s )
+    : TransactionBase( _ts, _s ) {
+    checkOutExternalGas();
+}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _secret ) {
+    checkOutExternalGas();
+}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {
+    checkOutExternalGas();
+}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce ) {
+    checkOutExternalGas();
+}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {
+    checkOutExternalGas();
+}
+
 Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid )
-    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {}
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {
+    checkOutExternalGas();
+}
+
+Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid )
+    : Transaction( &_rlp, _checkSig, _allowInvalid ) {
+    checkOutExternalGas();
+}
+
+bool Transaction::hasExternalGas() const {
+    return m_externalGas.has_value();
+}
+
+u256 Transaction::getExternalGas() const {
+    if ( hasExternalGas() ) {
+        return *m_externalGas;
+    } else {
+        return u256( 0 );
+    }
+}
+
+u256 Transaction::gas() const {
+    if ( hasExternalGas() ) {
+        return *m_externalGas;
+    } else {
+        return TransactionBase::gas();
+    }
+}
+
+u256 Transaction::gasPrice() const {
+    if ( hasExternalGas() ) {
+        return 0;
+    } else {
+        return TransactionBase::gasPrice();
+    }
+}
+
+void Transaction::checkOutExternalGas() {
+    const u256 GAS_PER_HASH = 1;
+    if ( m_sender.has_value() ) {
+        h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
+        if ( !hash ) {
+            hash = h256( 1 );
+        }
+        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        if ( externalGas >= baseGasRequired( ConstantinopleSchedule ) ) {
+            m_externalGas = externalGas;
+        }
+    }
+}
