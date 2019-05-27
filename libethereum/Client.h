@@ -70,7 +70,6 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
 class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
-        std::shared_ptr< SkaleHost > _skaleHost = nullptr,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,

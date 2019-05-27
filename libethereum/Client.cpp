@@ -72,7 +72,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 }
 
 Client::Client( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption, std::shared_ptr< SkaleHost > _skaleHost,
+    std::shared_ptr< GasPricer > _gpForAdoption,
     fs::path const& _dbPath, fs::path const& _snapshotPath, WithExisting _forceAction,
     TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
@@ -84,8 +84,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ),
-      m_skaleHost( _skaleHost ) {
+      m_working( chainParams().accountStartNonce ) {
     init( _dbPath, _snapshotPath, _forceAction, _networkID );
 }
 

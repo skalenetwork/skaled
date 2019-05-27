@@ -42,9 +42,9 @@ ClientTest* dev::eth::asClientTest( Interface* _c ) {
 }
 
 ClientTest::ClientTest( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption, std::shared_ptr< SkaleHost > _skaleHost, fs::path const& _dbPath, WithExisting _forceAction,
+    std::shared_ptr< GasPricer > _gpForAdoption, fs::path const& _dbPath, WithExisting _forceAction,
     TransactionQueue::Limits const& _limits )
-    : Client( _params, _networkID, _gpForAdoption, _skaleHost, _dbPath, std::string(), _forceAction, _limits ) {
+    : Client( _params, _networkID, _gpForAdoption, _dbPath, std::string(), _forceAction, _limits ) {
 }
 
 ClientTest::~ClientTest() {
