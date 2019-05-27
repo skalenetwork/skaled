@@ -200,9 +200,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
         assert( out_vector.size() == 0 );
         return out_vector;  // they should detect abort themselves
         // TODO What if someone calls HashingThreadSafeQueue AFTER abort?!
-    } catch ( const exception& ex ) {
-        // usually this is tx validation exception
-        clog( VerbosityWarning, "skale-host" ) << ex.what();
     }
 
     total_sent += out_vector.size();
