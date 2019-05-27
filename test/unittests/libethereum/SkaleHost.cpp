@@ -99,6 +99,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( Address( 5 ) );
     }
 
+    TransactionQueue tq;
+
     unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;

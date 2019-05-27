@@ -76,9 +76,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 }
 
 Client::Client( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption,
-    fs::path const& _dbPath, fs::path const& _snapshotPath, WithExisting _forceAction,
-    TransactionQueue::Limits const& _l )
+    std::shared_ptr< GasPricer > _gpForAdoption, fs::path const& _dbPath,
+    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction,
           []( unsigned d, unsigned t ) {
@@ -780,15 +779,6 @@ void Client::prepareForTransaction() {
     startWorking();
 }
 
-Block Client::block( h256 const& _block ) const {
-    if ( _block == m_bc.currentHash() ) {
-        return latestBlock();
-    } else if ( _block == m_bc.genesisHash() ) {
-        return m_bc.genesisBlock( m_state.startRead() );
-    } else {
-        throw std::logic_error( "Cannot load block because Skale state do not support rollbacks" );
-    }
-}
 
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)

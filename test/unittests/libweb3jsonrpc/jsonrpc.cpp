@@ -375,7 +375,6 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );
@@ -541,12 +540,9 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
+    auto senderAddress = coinbase.address();
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
 
-    // We change author because coinbase.address() is author address by default
-    // and will take all transaction fee after execution so we can't check money spent
-    // for senderAddress correctly.
-    web3->ethereum()->setAuthor( Address( 5 ) );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
