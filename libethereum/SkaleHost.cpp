@@ -162,12 +162,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                                                                        // transition from q to q
             Transaction txn = m_broadcastedQueue.pop();
 
-            // re-verify transaction aginst current block
-            // throws in case of error
-            Executive::verifyTransaction( txn,
-                static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                m_client.state().startRead(), *m_client.sealEngine(), 0 );
-
             std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
             h256 sha = txn.sha3();
@@ -249,7 +243,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // if new
         else {
             try {
-                Transaction t( data, CheckTransaction::Everything );
+                Transaction t( data, CheckTransaction::None );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn!";
             } catch ( const exception& ex ) {
@@ -287,7 +281,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 }
 
 void SkaleHost::startWorking() {
-    if( working )
+    if ( working )
         return;
 
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
@@ -325,7 +319,7 @@ void SkaleHost::startWorking() {
 
 // TODO finish all gracefully to allow all undone jobs be finished
 void SkaleHost::stopWorking() {
-    if( !working )
+    if ( !working )
         return;
 
     m_exitNeeded = true;
