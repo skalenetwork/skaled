@@ -38,29 +38,29 @@ BOOST_FIXTURE_TEST_SUITE( ClientBase, ParallelClientBaseFixture )
 BOOST_AUTO_TEST_CASE( blocks ) {
     enumerateClients( []( Json::Value const& _json, dev::eth::ClientBase& _client ) -> void {
         auto compareState = [&_client]( Json::Value const& _o, string const& _name,
-                                BlockNumber _blockNumber ) -> void {
+                                BlockNumber /*_blockNumber*/ ) -> void {
             Address address( _name );
 
             // balanceAt
             u256 expectedBalance = u256( _o["balance"].asString() );
-            u256 balance = _client.balanceAt( address, _blockNumber );
+            u256 balance = _client.balanceAt( address );
             ETH_CHECK_EQUAL( expectedBalance, balance );
 
             // countAt
             u256 expectedCount = u256( _o["nonce"].asString() );
-            u256 count = _client.countAt( address, _blockNumber );
+            u256 count = _client.countAt( address );
             ETH_CHECK_EQUAL( expectedCount, count );
 
             // stateAt
             for ( string const& pos : _o["storage"].getMemberNames() ) {
                 u256 expectedState = u256( _o["storage"][pos].asString() );
-                u256 state = _client.stateAt( address, u256( pos ), _blockNumber );
+                u256 state = _client.stateAt( address, u256( pos ) );
                 ETH_CHECK_EQUAL( expectedState, state );
             }
 
             // codeAt
             bytes expectedCode = fromHex( _o["code"].asString() );
-            bytes code = _client.codeAt( address, _blockNumber );
+            bytes code = _client.codeAt( address );
             ETH_CHECK_EQUAL_COLLECTIONS(
                 expectedCode.begin(), expectedCode.end(), code.begin(), code.end() );
         };

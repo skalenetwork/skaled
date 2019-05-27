@@ -412,7 +412,7 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-TransactionReceipts Block::syncEveryone(
+tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -429,10 +429,13 @@ TransactionReceipts Block::syncEveryone(
     m_state = m_state.delegateWrite();  // mainly for debugging
 
     unsigned i = 0;
+    unsigned count_bad = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
-            execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
             receipts.push_back( m_receipts.back() );
+            if ( res.excepted == TransactionException::WouldNotBeInBlock )
+                ++count_bad;
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
             // throw;
@@ -442,7 +445,7 @@ TransactionReceipts Block::syncEveryone(
         ++i;
     }
     m_state.stopWrite();
-    return receipts;
+    return make_tuple( receipts, receipts.size() - count_bad );
 }
 
 u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
@@ -700,8 +703,31 @@ ExecutionResult Block::execute(
     uncommitToSeal();
 
     State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        stateSnapshot.execute( EnvInfo( info(), _lh, gasUsed() ), *m_sealEngine, _t, _p, _onOp );
+
+    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
+
+    // "bad" transaction receipt for failed transactions
+    TransactionReceipt const null_receipt =
+        envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+            TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
+            TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
+
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+
+    try {
+        if ( _t.isInvalid() )
+            throw - 1;  // will catch below
+
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+
+    } catch ( const TransactionException& ex ) {
+        // shoul not happen as exception in execute() means that tx should not be in block
+        assert( false );
+    } catch ( ... ) {
+        // use fake receipt created above if execution throws!!
+        _p = Permanence::CommittedWithoutState;
+        resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
+    }  // catch
 
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {

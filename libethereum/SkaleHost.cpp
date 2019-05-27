@@ -129,7 +129,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     h256 sha = transaction.sha3();
 
     {
-        std::lock_guard< std::mutex > localGuard( m_localMutex );
+        std::lock_guard< std::mutex > localGuard( m_receivedMutex );
         m_received.insert( sha );
         LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
     }
@@ -158,31 +158,42 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     size_t i = 0;
     try {
         while ( i < _limit ) {
-            std::lock_guard< std::mutex > localGuard( m_localMutex );  // need to lock while in
-                                                                       // transition from q to q
             Transaction txn = m_broadcastedQueue.pop();
 
-            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+            try {
+                // re-verify transaction against current block
+                // throws in case of error
+                if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
+                    Executive::verifyTransaction( txn,
+                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
 
-            h256 sha = txn.sha3();
-            m_transaction_cache[sha.asArray()] = txn;
-            out_vector.push_back( txn.rlp() );
+                std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
+                h256 sha = txn.sha3();
+                m_transaction_cache[sha.asArray()] = txn;
+                out_vector.push_back( txn.rlp() );
 
 #ifdef DEBUG_TX_BALANCE
-            if ( sent.count( sha ) != 0 ) {
-                int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << std::endl;
-
                 if ( sent.count( sha ) != 0 ) {
-                    // TODO fix this!!?
-                    clog( VerbosityWarning, "skale-host" )
-                        << "Sending to consensus duplicate transaction (sent before!)";
+                    int prev = sent[sha];
+                    std::cerr << "Prev no = " << prev << std::endl;
+
+                    if ( sent.count( sha ) != 0 ) {
+                        // TODO fix this!!?
+                        clog( VerbosityWarning, "skale-host" )
+                            << "Sending to consensus duplicate transaction (sent before!)";
+                    }
                 }
-            }
-            sent[sha] = total_sent + i;
+                sent[sha] = total_sent + i;
 #endif
-            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
-            i++;
+                LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+                i++;
+            } catch ( const exception& ex ) {
+                // usually this is tx validation exception
+                clog( VerbosityInfo, "skale-host" )
+                    << "Dropped now-invalid transaction in pending queue:" << ex.what();
+            }
         }
     } catch ( std::length_error& ) {
         // just end-of-transactions
@@ -194,9 +205,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
         assert( out_vector.size() == 0 );
         return out_vector;  // they should detect abort themselves
         // TODO What if someone calls HashingThreadSafeQueue AFTER abort?!
-    } catch ( const exception& ex ) {
-        // usually this is tx validation exception
-        clog( VerbosityWarning, "skale-host" ) << ex.what();
     }
 
     total_sent += out_vector.size();
@@ -208,9 +216,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID ) try {
-    // convert bytes back to transactions (using caching), delete them from q and push results to
-    // another q
+    // convert bytes back to transactions (using caching), delete them from q and push results into
+    // blockchain
     std::vector< Transaction > out_txns;  // resultant Transaction vector
+
+    bool have_consensus_born = false;  // means we need to re-verify old txns
+
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
         h256 sha = sha3( data );
@@ -236,7 +247,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
             out_txns.push_back( t );
             m_tq.dropGood( t );
-            std::lock_guard< std::mutex > localGuard( m_localMutex );
             MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
             m_transaction_cache.erase( sha.asArray() );
             m_received.erase( sha );
@@ -245,16 +255,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
         // if new
         else {
-            try {
-                Transaction t( data, CheckTransaction::None );
-                out_txns.push_back( t );
-                LOG( m_debugLogger ) << "Will import consensus-born txn!";
-            } catch ( const exception& ex ) {
-                penalizePeer();
-                clog( VerbosityWarning, "skale-host" )
-                    << "Dropped consensus-born txn!" << ex.what();
-            }  // catch
-        }      // else
+            Transaction t( data, CheckTransaction::Everything, true );
+            out_txns.push_back( t );
+            LOG( m_debugLogger ) << "Will import consensus-born txn!";
+            have_consensus_born = true;
+        }  // else
 
         if ( m_tq.knownTransactions().count( sha ) != 0 ) {
             // TODO fix this!!?
@@ -275,6 +280,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     m_client.sealUnconditionally( false );
     m_client.importWorkingBlock();
+
+    if ( have_consensus_born )
+        this->m_lastBlockWithBornTransactions = _blockID;
 
     logState();
 } catch ( const std::exception& ex ) {
@@ -351,9 +359,12 @@ void SkaleHost::broadcastFunc() {
             Transaction& txn = txns[0];
             h256 sha = txn.sha3();
 
-            m_localMutex.lock();
-            size_t received = m_received.count( sha );
-            m_localMutex.unlock();
+            // TODO XXX such blocks suck :(
+            size_t received;
+            {
+                std::lock_guard< std::mutex > lock( m_receivedMutex );
+                received = m_received.count( sha );
+            }
 
             if ( received == 0 ) {
                 try {

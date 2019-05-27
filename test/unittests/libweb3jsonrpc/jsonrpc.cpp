@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     dev::KeyPair key = KeyPair::create();
     auto address = key.address();
     string stateAt = rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
-    BOOST_CHECK_EQUAL( web3->ethereum()->stateAt( address, 0, 0 ), jsToU256( stateAt ) );
+    BOOST_CHECK_EQUAL( web3->ethereum()->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
 BOOST_AUTO_TEST_CASE( eth_coinbase ) {
@@ -281,14 +281,14 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
 
     BOOST_CHECK_EQUAL( countAt, web3->ethereum()->countAt( address ) );
     BOOST_CHECK_EQUAL( countAt, 0 );
-    u256 balance = web3->ethereum()->balanceAt( address, 0 );
+    u256 balance = web3->ethereum()->balanceAt( address );
     string balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
     BOOST_CHECK_EQUAL( toJS( balance ), balanceString );
     BOOST_CHECK_EQUAL( jsToDecimal( balanceString ), "0" );
 
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
     //    BOOST_CHECK_EQUAL(web3->ethereum()->blockByNumber(LatestBlock).author(), address);
-    balance = web3->ethereum()->balanceAt( address, LatestBlock );
+    balance = web3->ethereum()->balanceAt( address );
     balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
 
     BOOST_REQUIRE_GT( balance, 0 );
@@ -337,14 +337,12 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress, blockNumber - 1 )
-         << endl;
+    cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress ) << endl;
     dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
-    cerr << "Balance after: " << web3->ethereum()->balanceAt( senderAddress, blockNumber ) << endl;
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    cerr << "Balance after: " << web3->ethereum()->balanceAt( senderAddress ) << endl;
+    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );
 
     auto signedTx = rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
@@ -357,8 +355,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorZeroBalance ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
-    const int blockNumber = 0;
-    BOOST_CHECK_EQUAL( 0, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    BOOST_CHECK_EQUAL( 0, web3->ethereum()->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -378,10 +375,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -419,10 +415,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::mine( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -445,10 +440,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::mine( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -549,10 +543,6 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     auto senderAddress = coinbase.address();
     dev::eth::simulateMining( *( web3->ethereum() ), 1 );
 
-    // We change author because coinbase.address() is author address by default
-    // and will take all transaction fee after execution so we can't check money spent
-    // for senderAddress correctly.
-    web3->ethereum()->setAuthor( Address( 5 ) );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }

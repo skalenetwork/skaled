@@ -124,14 +124,15 @@ private:
     std::thread m_broadcastThread;
     void broadcastFunc();
     dev::h256Hash m_received;
+    std::mutex m_receivedMutex;
 
     void penalizePeer(){};  // fake function for now
 
     HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
+    int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
 
     std::thread m_consensusThread;
 
-    std::mutex m_localMutex;  // used to protect local caches/hashes; TODO rethink multithreading!!
     bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;

@@ -85,22 +85,14 @@ public:
     /// @param _callback Optional callback function for progress reporting
     std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        BlockNumber _blockNumber, GasEstimationCallback const& _callback ) override;
+        GasEstimationCallback const& _callback ) override;
 
-    using Interface::balanceAt;
-    using Interface::codeAt;
-    using Interface::codeHashAt;
-    using Interface::countAt;
-    using Interface::stateAt;
-    using Interface::storageAt;
-
-    u256 balanceAt( Address _a, BlockNumber _block ) const override;
-    u256 countAt( Address _a, BlockNumber _block ) const override;
-    u256 stateAt( Address _a, u256 _l, BlockNumber _block ) const override;
-    bytes codeAt( Address _a, BlockNumber _block ) const override;
-    h256 codeHashAt( Address _a, BlockNumber _block ) const override;
-    std::map< h256, std::pair< u256, u256 > > storageAt(
-        Address _a, BlockNumber _block ) const override;
+    u256 balanceAt( Address _a ) const override;
+    u256 countAt( Address _a ) const override;
+    u256 stateAt( Address _a, u256 _l ) const override;
+    bytes codeAt( Address _a ) const override;
+    h256 codeHashAt( Address _a ) const override;
+    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
 
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;
@@ -158,8 +150,6 @@ public:
 
     ImportResult injectBlock( bytes const& _block ) override;
 
-    using Interface::addresses;
-    Addresses addresses( BlockNumber _block ) const override;
     u256 gasLimitRemaining() const override;
     u256 gasBidPrice() const override { return DefaultGasPrice; }
 
@@ -189,7 +179,7 @@ public:
             InterfaceNotSupported() << errinfo_interface( "ClientBase::syncStatus" ) );
     }
 
-    Block blockByNumber( BlockNumber _h ) const;
+    Block latestBlock() const;
 
     int chainId() const override;
 
@@ -198,7 +188,6 @@ protected:
     /// {
     virtual BlockChain& bc() = 0;
     virtual BlockChain const& bc() const = 0;
-    virtual Block block( h256 const& _h ) const = 0;
     virtual Block preSeal() const = 0;
     virtual Block postSeal() const = 0;
     virtual void prepareForTransaction() = 0;

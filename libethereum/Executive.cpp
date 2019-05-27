@@ -212,6 +212,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
                                    << errinfo_comment( _transaction.sender().hex() ) );
         }  // if balance
     }      // if !zero
+
+    _transaction.verifiedOn = _blockHeader.number();
 }
 
 void Executive::initialize( Transaction const& _transaction ) {

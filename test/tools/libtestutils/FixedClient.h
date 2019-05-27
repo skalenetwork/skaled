@@ -50,8 +50,7 @@ public:
             InterfaceNotSupported() << errinfo_interface( "FixedClient::bc()" ) );
     }
     eth::BlockChain const& bc() const override { return m_bc; }
-    using ClientBase::block;
-    eth::Block block( h256 const& _h ) const override;
+    using ClientBase::latestBlock;
     eth::Block preSeal() const override {
         ReadGuard l( x_stateDB );
         return m_block;
@@ -69,8 +68,8 @@ public:
         return {};
     };
     h256 importTransaction( eth::Transaction const& ) override { return {}; }
-    eth::ExecutionResult call( Address const&, u256, Address, bytes const&, u256, u256,
-        eth::BlockNumber, eth::FudgeFactor ) override {
+    eth::ExecutionResult call(
+        Address const&, u256, Address, bytes const&, u256, u256, eth::FudgeFactor ) override {
         return {};
     };
     eth::TransactionSkeleton populateTransactionWithDefaults(

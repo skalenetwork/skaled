@@ -147,6 +147,10 @@ public:
         return m_state.storage( _contract, _memory );
     }
 
+    std::map< h256, std::pair< u256, u256 > > storage( Address const& _contract ) const {
+        return m_state.storage( _contract );
+    }
+
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
     bytes const& code( Address const& _contract ) const { return m_state.code( _contract ); }
@@ -228,7 +232,7 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    TransactionReceipts syncEveryone(
+    std::tuple< TransactionReceipts, unsigned > syncEveryone(
         BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp );
 
     /// Execute all transactions within a given block.
