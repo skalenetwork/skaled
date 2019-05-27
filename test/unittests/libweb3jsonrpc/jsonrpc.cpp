@@ -564,9 +564,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
         "8fb480406fc2728a960029";
 
     Json::Value create;
+    int gas = 82000;  // not enough but will pass size check
+    create["from"] = toJS( senderAddress );
     create["code"] = compiled;
-    create["gas"] = "80000";  // not enough
-    create["gasPrice"] = "1";
+    create["gas"] = gas;
+    create["gasPrice"] = "100000000000";  // 100b
 
     BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
     BOOST_CHECK_EQUAL(
@@ -574,6 +576,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
 
     u256 balanceBefore =
         jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+
+    BOOST_REQUIRE_EQUAL(
+        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
 
     string txHash = rpcClient->eth_sendTransaction( create );
 
@@ -589,8 +594,8 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
 
-    BOOST_REQUIRE_EQUAL( receipt["status"], string("0") );
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256(80000) );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( "100000000000" ) );
 }
 
 BOOST_AUTO_TEST_CASE( contract_storage ) {
