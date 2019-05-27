@@ -40,6 +40,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using skale::Permanence;
+using skale::State;
+using namespace skale::error;
 
 static_assert( BOOST_VERSION >= 106400, "Wrong boost headers version" );
 
@@ -122,7 +126,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = StateClass( chainParams().accountStartNonce, _dbPath, bc().genesisHash() );
+    m_state = State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -188,10 +193,6 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
         this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
     return m_bq.import( &_block, _isSafe );
-}
-
-Block Client::block( const h256& /*_blockHash*/, PopulationStatistics* /*o_stats*/ ) const {
-    throw std::logic_error( "Depricated" );
 }
 
 tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
@@ -299,10 +300,10 @@ void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
 
         bc().reopen( _p, _we );
         if ( !m_state.connected() ) {
-            m_state = StateClass( Invalid256, Defaults::dbPath(), bc().genesisHash() );
+            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
         }
         if ( _we == WithExisting::Kill ) {
-            StateClass writer = m_state.startWrite();
+            State writer = m_state.startWrite();
             writer.clearAll();
             writer.populateFrom( bc().chainParams().genesisState );
         }
@@ -426,12 +427,14 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
 
     h256Hash changeds;
     TransactionReceipts newPendingReceipts;
+    unsigned goodReceipts;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
         //        assert(m_state.m_db_write_lock.has_value());
-        newPendingReceipts = m_working.syncEveryone( bc(), _transactions, _timestamp );
+        tie( newPendingReceipts, goodReceipts ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
     }
 
@@ -455,7 +458,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
            << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
 
-    return newPendingReceipts.size();
+    return goodReceipts;
 }
 
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
@@ -776,15 +779,6 @@ void Client::prepareForTransaction() {
     startWorking();
 }
 
-Block Client::block( h256 const& _block ) const {
-    if ( _block == m_bc.currentHash() ) {
-        return latestBlock();
-    } else if ( _block == m_bc.genesisHash() ) {
-        return m_bc.genesisBlock( m_state.startRead() );
-    } else {
-        throw std::logic_error( "Cannot load block because Skale state do not support rollbacks" );
-    }
-}
 
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
@@ -894,10 +888,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
 // TODO: remove try/catch, allow exceptions
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff ) {
+    u256 _gas, u256 _gasPrice, FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
-        Block temp = blockByNumber( _blockNumber );
+        Block temp = latestBlock();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;

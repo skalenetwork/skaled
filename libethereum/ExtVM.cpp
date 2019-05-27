@@ -22,12 +22,16 @@
  */
 
 #include "ExtVM.h"
-#include "LastBlockHashesFace.h"
-#include <boost/thread.hpp>
+
 #include <exception>
+
+#include <boost/thread.hpp>
+
+#include "LastBlockHashesFace.h"
 
 using namespace dev;
 using namespace dev::eth;
+using skale::Permanence;
 
 namespace  // anonymous
 {

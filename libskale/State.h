@@ -30,18 +30,11 @@
 #include <boost/optional.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include <libdevcore/Common.h>
-#include <libdevcore/RLP.h>
-#include <libdevcore/TrieDB.h>
-#include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 #include <libethereum/Account.h>
-#include <libethereum/CodeSizeCache.h>
-#include <libethereum/GasPricer.h>
-#include <libethereum/StateCommon.h>
+#include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
-#include <libevm/ExtVMFace.h>
 
 #include "OverlayDB.h"
 
@@ -55,7 +48,106 @@ struct hash< boost::filesystem::path > {
 };
 }  // namespace std
 
+namespace dev {
+namespace eth {
+class SealEngineFace;
+class Executive;
+}  // namespace eth
+}  // namespace dev
+
 namespace skale {
+
+namespace error {
+// Import-specific errinfos
+using errinfo_uncleIndex = boost::error_info< struct tag_uncleIndex, unsigned >;
+using errinfo_currentNumber = boost::error_info< struct tag_currentNumber, dev::u256 >;
+using errinfo_uncleNumber = boost::error_info< struct tag_uncleNumber, dev::u256 >;
+using errinfo_unclesExcluded = boost::error_info< struct tag_unclesExcluded, dev::h256Hash >;
+using errinfo_block = boost::error_info< struct tag_block, dev::bytes >;
+using errinfo_now = boost::error_info< struct tag_now, unsigned >;
+
+using errinfo_transactionIndex = boost::error_info< struct tag_transactionIndex, unsigned >;
+
+using errinfo_vmtrace = boost::error_info< struct tag_vmtrace, std::string >;
+using errinfo_receipts = boost::error_info< struct tag_receipts, std::vector< dev::bytes > >;
+using errinfo_transaction = boost::error_info< struct tag_transaction, dev::bytes >;
+using errinfo_phase = boost::error_info< struct tag_phase, unsigned >;
+using errinfo_required_LogBloom =
+    boost::error_info< struct tag_required_LogBloom, dev::eth::LogBloom >;
+using errinfo_got_LogBloom = boost::error_info< struct tag_get_LogBloom, dev::eth::LogBloom >;
+using LogBloomRequirementError = boost::tuple< errinfo_required_LogBloom, errinfo_got_LogBloom >;
+
+DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
+DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
+DEV_SIMPLE_EXCEPTION( AttemptToWriteToStateInThePast );
+DEV_SIMPLE_EXCEPTION( AttemptToReadFromStateInThePast );
+DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
+}  // namespace error
+
+enum class BaseState { PreExisting, Empty };
+
+enum class Permanence {
+    Reverted,
+    Committed,
+    Uncommitted,  ///< Uncommitted state for change log readings in tests.
+    CommittedWithoutState
+};
+
+/// An atomic state changelog entry.
+struct Change {
+    enum Kind : int {
+        /// Account balance changed. Change::value contains the amount the
+        /// balance was increased by.
+        Balance,
+
+        /// Account storage was modified. Change::key contains the storage key,
+        /// Change::value the storage value.
+        Storage,
+
+        /// Account storage root was modified.  Change::value contains the old
+        /// account storage root.
+        StorageRoot,
+
+        /// Account nonce was changed.
+        Nonce,
+
+        /// Account was created (it was not existing before).
+        Create,
+
+        /// New code was added to an account (by "create" message execution).
+        Code,
+
+        /// Account was touched for the first time.
+        Touch
+    };
+
+    Kind kind;             ///< The kind of the change.
+    dev::Address address;  ///< Changed account address.
+    dev::u256 value;       ///< Change value, e.g. balance, storage and nonce.
+    dev::u256 key;         ///< Storage key. Last because used only in one case.
+    dev::bytes oldCode;  ///< Code overwritten by CREATE, empty except in case of address collision.
+
+    /// Helper constructor to make change log update more readable.
+    Change( Kind _kind, dev::Address const& _addr, dev::u256 const& _value = 0 )
+        : kind( _kind ), address( _addr ), value( _value ) {
+        assert( _kind != Code );  // For this the special constructor needs to be used.
+    }
+
+    /// Helper constructor especially for storage change log.
+    Change( dev::Address const& _addr, dev::u256 const& _key, dev::u256 const& _value )
+        : kind( Storage ), address( _addr ), value( _value ), key( _key ) {}
+
+    /// Helper constructor for nonce change log.
+    Change( dev::Address const& _addr, dev::u256 const& _value )
+        : kind( Nonce ), address( _addr ), value( _value ) {}
+
+    /// Helper constructor especially for new code change log.
+    Change( dev::Address const& _addr, dev::bytes const& _oldCode )
+        : kind( Code ), address( _addr ), oldCode( _oldCode ) {}
+};
+
+using ChangeLog = std::vector< Change >;
+
 /**
  * Model of an Skale state.
  *
@@ -77,21 +169,22 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State( dev::u256 const& _accountStartNonce )
-        : State( _accountStartNonce, OverlayDB(), dev::eth::BaseState::Empty ) {}
+        : State( _accountStartNonce, OverlayDB(), BaseState::Empty ) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the state.
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
-        dev::h256 const& _genesis, dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting )
+        dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
+        dev::u256 _initialFunds = 0 )
         : State( _accountStartNonce,
               openDB( _dbPath, _genesis,
-                  _bs == dev::eth::BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                            dev::WithExisting::Kill ),
-              _bs ) {}
+                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                                                  dev::WithExisting::Kill ),
+              _bs, _initialFunds ) {}
 
-    State() : State( dev::Invalid256, OverlayDB(), dev::eth::BaseState::Empty ) {}
+    State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
 
     /// Copy state object.
     State( State const& _s );
@@ -223,7 +316,7 @@ public:
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
-        dev::eth::Transaction const& _t, dev::eth::Permanence _p = dev::eth::Permanence::Committed,
+        dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
         dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
 
     /// Get the account start nonce. May be required.
@@ -238,7 +331,7 @@ public:
     /// Revert all recent changes up to the given @p _savepoint savepoint.
     void rollback( size_t _savepoint );
 
-    dev::eth::ChangeLog const& changeLog() const { return m_changeLog; }
+    ChangeLog const& changeLog() const { return m_changeLog; }
 
     void updateToLatestVersion();
 
@@ -271,7 +364,7 @@ public:
 
 private:
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
-        dev::eth::BaseState _bs = dev::eth::BaseState::PreExisting );
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
@@ -324,7 +417,9 @@ private:
     dev::u256 m_accountStartNonce;
 
     friend std::ostream& operator<<( std::ostream& _out, State const& _s );
-    dev::eth::ChangeLog m_changeLog;
+    ChangeLog m_changeLog;
+
+    dev::u256 m_initial_funds = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

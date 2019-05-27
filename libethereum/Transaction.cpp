@@ -124,5 +124,5 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     return _out;
 }
 
-Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig )
-    : TransactionBase( _rlpData, _checkSig ) {}
+Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid )
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {}

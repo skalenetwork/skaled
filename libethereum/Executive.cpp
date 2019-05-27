@@ -19,27 +19,26 @@
 
 #include "Executive.h"
 
-#include "Block.h"
-#include "BlockChain.h"
-#include "ExtVM.h"
-#include "Interface.h"
-#include "State.h"
+#include <numeric>
 
+#include <boost/timer.hpp>
+
+#include <json/json.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/microprofile.h>
 #include <libethcore/CommonJS.h>
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
 
-#include <json/json.h>
-#include <boost/timer.hpp>
-
-#include <numeric>
-
-#include <libdevcore/microprofile.h>
+#include "Block.h"
+#include "BlockChain.h"
+#include "ExtVM.h"
+#include "Interface.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using skale::State;
 
 namespace {
 std::string dumpStackAndMemory( LegacyVM const& _vm ) {
@@ -183,7 +182,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 }
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const StateClass& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed ) {
+    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     _sealEngine.verifyTransaction(
@@ -213,6 +212,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
                                    << errinfo_comment( _transaction.sender().hex() ) );
         }  // if balance
     }      // if !zero
+
+    _transaction.verifiedOn = _blockHeader.number();
 }
 
 void Executive::initialize( Transaction const& _transaction ) {

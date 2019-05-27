@@ -23,11 +23,12 @@
 
 #include "BlockChain.h"
 
-#include "Block.h"
-#include "Defaults.h"
-#include "GenesisInfo.h"
-#include "ImportPerformanceLogger.h"
-#include "State.h"
+#include <memory>
+#include <thread>
+
+#include <boost/exception/errinfo_nested_exception.hpp>
+#include <boost/filesystem.hpp>
+
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/DBImpl.h>
@@ -35,21 +36,22 @@
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieHash.h>
+#include <libdevcore/microprofile.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
-#include <boost/exception/errinfo_nested_exception.hpp>
-#include <boost/filesystem.hpp>
-
-#include <libdevcore/microprofile.h>
-
-#include <memory>
-#include <thread>
+#include "Block.h"
+#include "Defaults.h"
+#include "GenesisInfo.h"
+#include "ImportPerformanceLogger.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using skale::State;
+using namespace skale::error;
 
 #define ETH_TIMED_IMPORTS 1
 
@@ -388,7 +390,7 @@ string BlockChain::dumpDatabase() const {
 }
 
 tuple< ImportRoute, bool, unsigned > BlockChain::sync(
-    BlockQueue& _bq, StateClass& _state, unsigned _max ) {
+    BlockQueue& _bq, State& _state, unsigned _max ) {
     MICROPROFILE_SCOPEI( "BlockChain", "sync many blocks", MP_LIGHTGOLDENROD );
 
     //  _bq.tick(*this);
@@ -452,7 +454,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
 }
 
 pair< ImportResult, ImportRoute > BlockChain::attemptImport(
-    bytes const& _block, StateClass& _state, bool _mustBeNew ) noexcept {
+    bytes const& _block, State& _state, bool _mustBeNew ) noexcept {
     try {
         return make_pair( ImportResult::Success,
             import( verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks ), _state,
@@ -470,7 +472,7 @@ pair< ImportResult, ImportRoute > BlockChain::attemptImport(
     }
 }
 
-ImportRoute BlockChain::import( bytes const& _block, StateClass& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import( bytes const& _block, State& _state, bool _mustBeNew ) {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block =
         verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
@@ -582,8 +584,7 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
     }
 }
 
-ImportRoute BlockChain::import(
-    VerifiedBlockRef const& _block, StateClass& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
     MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
@@ -983,7 +984,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
     }
 }
 
-void BlockChain::rescue( StateClass const& /*_state*/ ) {
+void BlockChain::rescue( State const& /*_state*/ ) {
     cout << "Rescuing database..." << endl;
     throw std::logic_error( "Rescueing is not implemented" );
 
@@ -1413,7 +1414,7 @@ Block BlockChain::genesisBlock(
     return ret;
 }
 
-Block BlockChain::genesisBlock( const StateClass& _state ) const {
+Block BlockChain::genesisBlock( const State& _state ) const {
     Block ret( *this, m_genesisHash, _state, BaseState::PreExisting );
     ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
     ret.resetCurrent();

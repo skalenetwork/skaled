@@ -1,16 +1,21 @@
 #include "AdminEth.h"
-#include "JsonHelper.h"
-#include "SessionManager.h"
+
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonJS.h>
 #include <libethashseal/EthashClient.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/Client.h>
 #include <libethereum/Executive.h>
+
+#include "JsonHelper.h"
+#include "SessionManager.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::rpc;
 using namespace dev::eth;
+using namespace skale;
+
 
 AdminEth::AdminEth( eth::Client& _eth, eth::TrivialGasPricer& _gp, eth::KeyManager& _keyManager,
     SessionManager& _sm )
@@ -85,27 +90,20 @@ Json::Value AdminEth::admin_eth_allAccounts( string const& _session ) {
     RPC_ADMIN;
     Json::Value ret;
     u256 total = 0;
-    u256 pendingtotal = 0;
     Address beneficiary;
     for ( auto const& address : m_keyManager.accounts() ) {
-        auto pending = m_eth.balanceAt( address, PendingBlock );
-        auto latest = m_eth.balanceAt( address, LatestBlock );
+        auto balance = m_eth.balanceAt( address );
         Json::Value a;
         if ( address == beneficiary )
             a["beneficiary"] = true;
         a["address"] = toJS( address );
-        a["balance"] = toJS( latest );
-        a["nicebalance"] = formatBalance( latest );
-        a["pending"] = toJS( pending );
-        a["nicepending"] = formatBalance( pending );
+        a["balance"] = toJS( balance );
+        a["nicebalance"] = formatBalance( balance );
         ret["accounts"][m_keyManager.accountName( address )] = a;
-        total += latest;
-        pendingtotal += pending;
+        total += balance;
     }
     ret["total"] = toJS( total );
     ret["nicetotal"] = formatBalance( total );
-    ret["pendingtotal"] = toJS( pendingtotal );
-    ret["nicependingtotal"] = formatBalance( pendingtotal );
     return ret;
 }
 
@@ -141,10 +139,10 @@ Json::Value AdminEth::admin_eth_inspect( string const& _address, string const& _
 
     Json::Value ret;
     auto h = Address( fromHex( _address ) );
-    ret["storage"] = toJson( m_eth.storageAt( h, PendingBlock ) );
-    ret["balance"] = toJS( m_eth.balanceAt( h, PendingBlock ) );
-    ret["nonce"] = toJS( m_eth.countAt( h, PendingBlock ) );
-    ret["code"] = toJS( m_eth.codeAt( h, PendingBlock ) );
+    ret["storage"] = toJson( m_eth.storageAt( h ) );
+    ret["balance"] = toJS( m_eth.balanceAt( h ) );
+    ret["nonce"] = toJS( m_eth.countAt( h ) );
+    ret["code"] = toJS( m_eth.codeAt( h ) );
     return ret;
 }
 
@@ -158,31 +156,19 @@ h256 AdminEth::blockHash( string const& _blockNumberOrHash ) const {
     }
 }
 
-Json::Value AdminEth::admin_eth_reprocess(
-    string const& _blockNumberOrHash, string const& _session ) {
-    RPC_ADMIN;
-    Json::Value ret;
-    PopulationStatistics ps;
-    m_eth.block( blockHash( _blockNumberOrHash ), &ps );
-    ret["enact"] = ps.enact;
-    ret["verify"] = ps.verify;
-    ret["total"] = ps.verify + ps.enact;
-    return ret;
-}
-
 Json::Value AdminEth::admin_eth_vmTrace(
-    string const& _blockNumberOrHash, int _txIndex, string const& _session ) {
+    string const& /*_blockNumberOrHash*/, int _txIndex, string const& _session ) {
     RPC_ADMIN;
 
     Json::Value ret;
 
     if ( _txIndex < 0 )
         throw jsonrpc::JsonRpcException( "Negative index" );
-    Block block = m_eth.block( blockHash( _blockNumberOrHash ) );
+    Block block = m_eth.latestBlock();
     if ( ( unsigned ) _txIndex < block.pending().size() ) {
         try {
             Transaction t = block.pending()[_txIndex];
-            StateClass s;
+            State s;
             throw std::logic_error( "Historical state is not supported in Skale state" );
             //        Executive e(s, block, _txIndex, m_eth.blockChain());
             //            StandardTrace st;

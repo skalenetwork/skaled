@@ -56,10 +56,6 @@ public:
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
                                     jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::AdminEthFace::admin_eth_inspectI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "admin_eth_reprocess",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
-                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::AdminEthFace::admin_eth_reprocessI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "admin_eth_vmTrace", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
@@ -133,9 +129,6 @@ public:
     inline virtual void admin_eth_inspectI( const Json::Value& request, Json::Value& response ) {
         response = this->admin_eth_inspect( request[0u].asString(), request[1u].asString() );
     }
-    inline virtual void admin_eth_reprocessI( const Json::Value& request, Json::Value& response ) {
-        response = this->admin_eth_reprocess( request[0u].asString(), request[1u].asString() );
-    }
     inline virtual void admin_eth_vmTraceI( const Json::Value& request, Json::Value& response ) {
         response = this->admin_eth_vmTrace(
             request[0u].asString(), request[1u].asInt(), request[2u].asString() );
@@ -179,8 +172,6 @@ public:
     virtual bool admin_eth_setMiningBenefactor(
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value admin_eth_inspect(
-        const std::string& param1, const std::string& param2 ) = 0;
-    virtual Json::Value admin_eth_reprocess(
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value admin_eth_vmTrace(
         const std::string& param1, int param2, const std::string& param3 ) = 0;

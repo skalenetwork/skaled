@@ -29,6 +29,7 @@
 using namespace dev;
 using namespace dev::test;
 using namespace dev::eth;
+using skale::State;
 
 
 namespace {
@@ -104,7 +105,7 @@ public:
     LastBlockHashes lastBlockHashes;
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0};
     Address address{KeyPair::create().address()};
-    StateClass state{0};
+    State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
 
