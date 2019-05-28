@@ -873,6 +873,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
+    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
+
     // throws in case of error
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),

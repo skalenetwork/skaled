@@ -58,6 +58,8 @@ enum class CodeDeposit { None = 0, Failed, Success };
 
 struct VMException;
 
+DEV_SIMPLE_EXCEPTION( ExternalGasException );
+
 TransactionException toTransactionException( Exception const& _e );
 std::ostream& operator<<( std::ostream& _out, TransactionException const& _er );
 
@@ -121,10 +123,11 @@ public:
 
     u256 gasPrice() const override;
 
+    void checkOutExternalGas( u256 const& _difficulty );
+
 private:
     std::optional< u256 > m_externalGas;
-
-    void checkOutExternalGas();
+    bool m_externalGasIsChecked = false;
 };
 
 /// Nice name for vector of Transaction.

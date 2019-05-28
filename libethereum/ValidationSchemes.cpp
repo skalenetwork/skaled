@@ -76,6 +76,7 @@ string const c_allowFutureBlocks = "allowFutureBlocks";
 string const c_skaleConfig = "skaleConfig";
 string const c_stateRoot = "stateRoot";
 string const c_accountInitialFunds = "accountInitialFunds";
+string const c_externalGasDifficulty = "externalGasDifficulty";
 
 void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",

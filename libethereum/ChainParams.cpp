@@ -133,6 +133,7 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
     setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
+    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
 
     if ( params.count( c_chainID ) )
         cp.chainID =

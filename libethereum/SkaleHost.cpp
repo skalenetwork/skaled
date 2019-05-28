@@ -234,6 +234,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // TODO clear occasionally this cache?!
         if ( m_transaction_cache.count( sha.asArray() ) ) {
             Transaction& t = m_transaction_cache[sha.asArray()];
+            t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
 
             //            t.setNonce(t.nonce()-1);
 
