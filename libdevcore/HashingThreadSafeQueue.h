@@ -77,6 +77,15 @@ public:
         cond.notify_one();
     }
 
+    void unpop( const value_type& val ) {
+        boost::unique_lock< boost::shared_mutex > lock( mutex );
+        queue.push_front( val );
+        if ( USE_HASH )
+            hash.insert( val );
+        assert( num_waiting <= 1 );
+        cond.notify_one();
+    }
+
     value_type pop() {
         boost::unique_lock< boost::shared_mutex > lock( mutex );
 
