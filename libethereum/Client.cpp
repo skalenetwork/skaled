@@ -413,6 +413,17 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
+size_t Client::importTransactionsAsBlock( const Transactions& _transactions, uint64_t _timestamp ) {
+    DEV_GUARDED(m_blockImportMutex){
+        size_t n_succeeded = syncTransactions( _transactions, _timestamp );
+        sealUnconditionally( false );
+        importWorkingBlock();
+        return n_succeeded;
+    }
+    assert(false);
+    return 0;
+}
+
 size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
     assert( m_skaleHost );
 
@@ -783,7 +794,11 @@ void Client::prepareForTransaction() {
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
     try {
-        return Block( bc(), bc().currentHash(), m_state.startRead() );
+        DEV_GUARDED(m_blockImportMutex){
+            return Block( bc(), bc().currentHash(), m_state );
+        }
+        assert(false);
+        return Block( bc() );
     } catch ( Exception& ex ) {
         ex << errinfo_block( bc().block( bc().currentHash() ) );
         onBadBlock( ex );
