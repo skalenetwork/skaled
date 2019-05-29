@@ -161,7 +161,7 @@ void ZmqBroadcaster::startService() {
                     continue;
                 }
 
-                if (res < 0 ){
+                if ( res < 0 ) {
                     clog( dev::VerbosityWarning, "skale-host" )
                         << "Received bad message on ZmqBroadcaster port. errno = " << errno;
                     continue;
