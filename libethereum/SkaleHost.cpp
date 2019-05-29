@@ -120,8 +120,7 @@ void SkaleHost::logState() {
     LOG( m_debugLogger ) << "sent_to_consensus = " << total_sent
                          << " got_from_consensus = " << total_arrived
                          << " m_transaction_cache = " << m_transaction_cache.size()
-                         << " m_tq = " << m_tq.knownTransactions().size()
-                         << " broadcasted = " << m_broadcastedQueue.size();
+                         << " m_tq = " << m_tq.knownTransactions().size();
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
@@ -155,57 +154,51 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     ConsensusExtFace::transactions_vector out_vector;
 
-    size_t i = 0;
-    try {
-        while ( i < _limit ) {
-            Transaction txn = m_broadcastedQueue.pop();
+    Transactions txns = m_tq.topTransactionsSync( _limit, [this]( const Transaction& tx ) -> bool {
+        return m_tq.getCategory( tx.sha3() ) == 1;  // take broadcasted
+    } );
 
-            try {
-                // re-verify transaction against current block
-                // throws in case of error
-                if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
-                    Executive::verifyTransaction( txn,
-                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
+    if ( txns.size() == 0 )
+        return out_vector;  // time-out with 0 results
 
-                std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+    for ( size_t i = 0; i < txns.size(); ++i )
+        try {
+            Transaction& txn = txns[i];
 
-                h256 sha = txn.sha3();
-                m_transaction_cache[sha.asArray()] = txn;
-                out_vector.push_back( txn.rlp() );
+            // re-verify transaction against current block
+            // throws in case of error
+            if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
+                Executive::verifyTransaction( txn,
+                    static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                    m_client.state().startRead(), *m_client.sealEngine(), 0 );
+
+            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
+            h256 sha = txn.sha3();
+            m_transaction_cache[sha.asArray()] = txn;
+            out_vector.push_back( txn.rlp() );
 
 #ifdef DEBUG_TX_BALANCE
-                if ( sent.count( sha ) != 0 ) {
-                    int prev = sent[sha];
-                    std::cerr << "Prev no = " << prev << std::endl;
+            if ( sent.count( sha ) != 0 ) {
+                int prev = sent[sha];
+                std::cerr << "Prev no = " << prev << std::endl;
 
-                    if ( sent.count( sha ) != 0 ) {
-                        // TODO fix this!!?
-                        clog( VerbosityWarning, "skale-host" )
-                            << "Sending to consensus duplicate transaction (sent before!)";
-                    }
+                if ( sent.count( sha ) != 0 ) {
+                    // TODO fix this!!?
+                    clog( VerbosityWarning, "skale-host" )
+                        << "Sending to consensus duplicate transaction (sent before!)";
                 }
-                sent[sha] = total_sent + i;
-#endif
-                LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
-                i++;
-            } catch ( const exception& ex ) {
-                // usually this is tx validation exception
-                clog( VerbosityInfo, "skale-host" )
-                    << "Dropped now-invalid transaction in pending queue:" << ex.what();
             }
+            sent[sha] = total_sent + i;
+#endif
+            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+            i++;
+        } catch ( const exception& ex ) {
+            // usually this is tx validation exception
+            clog( VerbosityInfo, "skale-host" )
+                << "Dropped now-invalid transaction in pending queue:" << ex.what();
+            continue;
         }
-    } catch ( std::length_error& ) {
-        // just end-of-transactions
-        if ( out_vector.size() == 0 )
-            usleep( 100000 );  // TODO implement nice popSync() when i==0!!
-        total_sent += out_vector.size();
-        return out_vector;  // added by advice of D4
-    } catch ( abort_exception& ) {
-        assert( out_vector.size() == 0 );
-        return out_vector;  // they should detect abort themselves
-        // TODO What if someone calls HashingThreadSafeQueue AFTER abort?!
-    }
 
     total_sent += out_vector.size();
 
@@ -241,7 +234,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // TODO clear occasionally this cache?!
         if ( m_transaction_cache.count( sha.asArray() ) ) {
             Transaction& t = m_transaction_cache[sha.asArray()];
-            assert( !m_broadcastedQueue.contains( t ) );
 
             //            t.setNonce(t.nonce()-1);
 
@@ -269,6 +261,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     }  // for
     // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
+
+    if(m_transaction_cache.size() != 0){
+        clog( VerbosityInfo, "skale-host" )
+            << "Erasing " << m_transaction_cache.size() << " txns from m_transaction_cache";
+        m_transaction_cache.clear();
+    }
 
     total_arrived += out_txns.size();
 
@@ -303,7 +301,6 @@ void SkaleHost::startWorking() {
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        m_broadcastedQueue.abortWaiting();
         m_broadcastThread.join();
         throw;
     }
@@ -334,7 +331,6 @@ void SkaleHost::stopWorking() {
         return;
 
     m_exitNeeded = true;
-    m_broadcastedQueue.abortWaiting();
     m_consensus->exitGracefully();
     m_consensusThread.join();
 
@@ -376,9 +372,6 @@ void SkaleHost::broadcastFunc() {
                 }  // catch
 
             }  // if
-
-            // TODO some time this should become asynchronous
-            m_broadcastedQueue.push( txn );
 
             logState();
         } catch ( const std::exception& ex ) {
