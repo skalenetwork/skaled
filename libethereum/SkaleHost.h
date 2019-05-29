@@ -128,7 +128,6 @@ private:
 
     void penalizePeer(){};  // fake function for now
 
-    HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
     int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
 
     std::thread m_consensusThread;
