@@ -23,13 +23,15 @@
  */
 
 #include "vm.h"
+
+#include <boost/filesystem.hpp>
+
 #include <libethereum/ChainParams.h>
 #include <libethereum/Executive.h>
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
 #include <test/tools/libtesteth/TestSuite.h>
 #include <test/tools/libtestutils/TestLastBlockHashes.h>
-#include <boost/filesystem.hpp>
 
 using namespace std;
 using namespace json_spirit;
@@ -37,6 +39,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 namespace fs = boost::filesystem;
+using skale::State;
 
 FakeExtVM::FakeExtVM( EnvInfo const& _envInfo, unsigned _depth )
     :  /// TODO: XXX: remove the default argument & fix.
@@ -364,8 +367,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 if ( testInput.count( "expect" ) > 0 ) {
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
-                    StateClass postState = StateClass();
-                    StateClass expectState = StateClass();
+                    State postState = State();
+                    State expectState = State();
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
@@ -384,8 +387,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
-                    StateClass postState = StateClass();
-                    StateClass expectState = StateClass();
+                    State postState = State();
+                    State expectState = State();
                     AccountMaskMap expectStateMap;
 
                     // json_spirit::mObject const& debug_var = testOutput.at("post").get_obj();
@@ -447,8 +450,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
 
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
-                StateClass postState = StateClass();
-                StateClass expectState = StateClass();
+                State postState = State();
+                State expectState = State();
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );

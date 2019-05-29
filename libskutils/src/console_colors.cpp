@@ -583,6 +583,10 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
         os << flag( jo.get< bool >() );
         return;
     }
+    case nlohmann::json::value_t::number_unsigned: {
+        os << stc << jo.get< unsigned >() << reset();
+        return;
+    }
     case nlohmann::json::value_t::number_integer: {
         os << stc << jo.get< int >() << reset();
         return;
@@ -1896,7 +1900,7 @@ std::string rpc_rpc_log_type_2_direction_arrows_str( e_rpc_log_type_t erpcltt ) 
     }
     return s;
 }
-std::string rpc_rpc_log_colorize_prefix( e_rpc_log_type_t erpcltt, const std::string s ) {
+std::string rpc_rpc_log_colorize_prefix( e_rpc_log_type_t erpcltt, const std::string& s ) {
     switch ( erpcltt ) {
     case e_rpc_log_type_t::erpcltt_ws_tx:
         return ws_tx_inv( s );
@@ -1905,7 +1909,7 @@ std::string rpc_rpc_log_colorize_prefix( e_rpc_log_type_t erpcltt, const std::st
     }
     return s;
 }
-std::string rpc_rpc_log_colorize_suffix( e_rpc_log_type_t erpcltt, const std::string s ) {
+std::string rpc_rpc_log_colorize_suffix( e_rpc_log_type_t erpcltt, const std::string& s ) {
     switch ( erpcltt ) {
     case e_rpc_log_type_t::erpcltt_ws_tx:
         return ws_tx( s );

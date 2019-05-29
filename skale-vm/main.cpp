@@ -45,6 +45,7 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 namespace po = boost::program_options;
+using skale::State;
 
 namespace {
 unsigned const c_lineWidth = 160;
@@ -107,7 +108,7 @@ int main( int argc, char** argv ) {
     setCLocale();
     string inputFile;
     Mode mode = Mode::Statistics;
-    StateClass state( 0 );
+    State state( 0 );
     Address sender = Address( 69 );
     Address origin = Address( 69 );
     u256 value = 0;

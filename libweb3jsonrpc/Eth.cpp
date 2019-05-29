@@ -86,8 +86,7 @@ string Eth::eth_getBalance( string const& _address, string const& /* _blockNumbe
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS(
-            client()->balanceAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->balanceAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -99,10 +98,8 @@ string Eth::eth_getStorageAt(
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS(
-            toCompactBigEndian( client()->stateAt( jsToAddress( _address ), jsToU256( _position ),
-                                    jsToBlockNumber( blockNumber ) ),
-                32 ) );
+        return toJS( toCompactBigEndian(
+            client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -138,7 +135,7 @@ string Eth::eth_getTransactionCount( string const& _address, string const& /* _b
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS( client()->countAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->countAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -197,7 +194,7 @@ string Eth::eth_getCode( string const& _address, string const& /* _blockNumber *
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS( client()->codeAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->codeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -284,8 +281,8 @@ string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */
         string blockNumber = "latest";
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
-        ExecutionResult er = client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-            jsToBlockNumber( blockNumber ), FudgeFactor::Lenient );
+        ExecutionResult er = client()->call(
+            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
         return toJS( er.output );
     } catch ( std::exception const& ex ) {
         throw JsonRpcException( ex.what() );
@@ -300,9 +297,7 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
         setTransactionDefaults( t );
         int64_t gas = static_cast< int64_t >( t.gas );
         return toJS(
-            client()
-                ->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock )
-                .first );
+            client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice ).first );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

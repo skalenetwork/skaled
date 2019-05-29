@@ -29,6 +29,8 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using skale::BaseState;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -40,12 +42,12 @@ BOOST_AUTO_TEST_CASE( Basic ) {
 
 BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
-    StateClass state( 0 );
-    StateClass s = state.startWrite();
+    State state( 0 );
+    State s = state.startWrite();
     s.createContract( addr );
     uint8_t codeData[] = {'c', 'o', 'd', 'e'};
     s.setCode( addr, {std::begin( codeData ), std::end( codeData )} );
-    s.commit( StateClass::CommitBehaviour::RemoveEmptyAccounts );
+    s.commit( State::CommitBehaviour::RemoveEmptyAccounts );
 
     auto& loadedCode = s.code( addr );
     BOOST_CHECK(
@@ -62,14 +64,14 @@ public:
         }
 
         // create accounts in the state
-        StateClass writer = state.startWrite();
+        State writer = state.startWrite();
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
-        writer.commit( StateClass::CommitBehaviour::RemoveEmptyAccounts );
+        writer.commit( State::CommitBehaviour::RemoveEmptyAccounts );
     }
 
     TransientDirectory m_tempDirState;
-    StateClass state = StateClass( 0, m_tempDirState.path(), h256{}, BaseState::Empty );
+    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty );
     unsigned const addressCount = 10;
     std::map< h256, Address > hashToAddress;
 };
@@ -78,9 +80,9 @@ BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
 
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
-    std::pair< StateClass::AddressMap, h256 > addressesAndNextKey =
+    std::pair< State::AddressMap, h256 > addressesAndNextKey =
         state.startRead().addresses( h256{}, addressCount * 2 );
-    StateClass::AddressMap addresses = addressesAndNextKey.first;
+    State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
     BOOST_CHECK( addresses == hashToAddress );
@@ -89,27 +91,27 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     int maxResults = 3;
-    std::pair< StateClass::AddressMap, h256 > addressesAndNextKey =
+    std::pair< State::AddressMap, h256 > addressesAndNextKey =
         state.startRead().addresses( h256{}, maxResults );
-    StateClass::AddressMap& addresses = addressesAndNextKey.first;
+    State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
     BOOST_CHECK_EQUAL( addresses.size(), maxResults );
     auto itHashToAddressEnd = std::next( hashToAddress.begin(), maxResults );
-    BOOST_CHECK( addresses == StateClass::AddressMap( hashToAddress.begin(), itHashToAddressEnd ) );
+    BOOST_CHECK( addresses == State::AddressMap( hashToAddress.begin(), itHashToAddressEnd ) );
     BOOST_CHECK_EQUAL( nextKey, itHashToAddressEnd->first );
 
     // request next chunk
-    std::pair< StateClass::AddressMap, h256 > addressesAndNextKey2 =
+    std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
         state.startRead().addresses( nextKey, maxResults );
-    StateClass::AddressMap& addresses2 = addressesAndNextKey2.first;
+    State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
-    BOOST_CHECK( addresses2 == StateClass::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
+    BOOST_CHECK( addresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
-    StateClass s = state.startRead();
+    State s = state.startRead();
 
     // delete some accounts
     unsigned deleteCount = 3;
@@ -118,15 +120,15 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
         s.kill( it->second );
     // don't commmit
 
-    std::pair< StateClass::AddressMap, h256 > addressesAndNextKey =
+    std::pair< State::AddressMap, h256 > addressesAndNextKey =
         s.addresses( h256{}, addressCount * 2 );
-    StateClass::AddressMap& addresses = addressesAndNextKey.first;
+    State::AddressMap& addresses = addressesAndNextKey.first;
     BOOST_CHECK_EQUAL( addresses.size(), addressCount - deleteCount );
-    BOOST_CHECK( addresses == StateClass::AddressMap( it, hashToAddress.end() ) );
+    BOOST_CHECK( addresses == State::AddressMap( it, hashToAddress.end() ) );
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache ) {
-    StateClass s = state.startRead();
+    State s = state.startRead();
 
     // create some accounts
     unsigned createCount = 3;
@@ -141,9 +143,9 @@ BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache ) {
         s.addBalance( hashAndAddr.second, 100 );
     // don't commmit
 
-    std::pair< StateClass::AddressMap, h256 > addressesAndNextKey =
+    std::pair< State::AddressMap, h256 > addressesAndNextKey =
         s.addresses( newHashToAddress.begin()->first, addressCount + createCount );
-    StateClass::AddressMap& addresses = addressesAndNextKey.first;
+    State::AddressMap& addresses = addressesAndNextKey.first;
     for ( auto const& hashAndAddr : newHashToAddress )
         BOOST_CHECK( addresses.find( hashAndAddr.first ) != addresses.end() );
 }

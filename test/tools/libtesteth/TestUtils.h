@@ -61,8 +61,8 @@ struct ParallelFixture {
 };
 
 struct BlockChainFixture : public LoadTestFileFixture {
-    void enumerateBlockchains( std::function< void(
-            Json::Value const&, dev::eth::BlockChain const&, dev::eth::StateClass state ) >
+    void enumerateBlockchains(
+        std::function< void( Json::Value const&, dev::eth::BlockChain const&, skale::State state ) >
             callback ) const;
 };
 

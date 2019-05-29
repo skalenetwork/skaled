@@ -30,7 +30,7 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/ExtVM.h>
-#include <libethereum/State.h>
+#include <libskale/State.h>
 #include <test/tools/jsontests/StateTests.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>

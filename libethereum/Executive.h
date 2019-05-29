@@ -19,25 +19,28 @@
 
 #pragma once
 
-#include "State.h"
-#include "Transaction.h"
+#include <functional>
 
+#include <json/json.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libevm/VMFace.h>
+#include <libskale/State.h>
 
-#include <json/json.h>
-#include <functional>
+#include "Transaction.h"
 
 namespace Json {
 class Value;
+}
+
+namespace skale {
+class State;
 }
 
 namespace dev {
 class OverlayDB;
 
 namespace eth {
-// class State;
 class Block;
 class BlockChain;
 class ExtVM;
@@ -99,7 +102,7 @@ private:
 class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
-    Executive( StateClass& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
+    Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
         unsigned _level = 0 )
         : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_sealEngine( _sealEngine ) {}
 
@@ -120,7 +123,7 @@ public:
      * populating environment info from the given Block and the LastHashes portion from the
      * BlockChain. State is assigned the resultant value, but otherwise unused.
      */
-    Executive( StateClass& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
+    Executive( skale::State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
         unsigned _level = 0 );
 
     Executive( Executive const& ) = delete;
@@ -193,14 +196,14 @@ public:
     void revert();
 
     static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-        const StateClass& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed );
+        const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed );
 
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress );
 
-    StateClass& m_s;  ///< The state to which this operation/transaction is applied.
+    skale::State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
     EnvInfo m_envInfo;               ///< Information on the runtime environment.
     std::shared_ptr< ExtVM > m_ext;  ///< The VM externality object for the VM execution or null if

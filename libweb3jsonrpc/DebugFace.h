@@ -77,7 +77,7 @@ public:
         response = this->debug_traceBlockByHash( request[0u].asString(), request[1u] );
     }
     inline virtual void debug_traceCallI( const Json::Value& request, Json::Value& response ) {
-        response = this->debug_traceCall( request[0u], request[1u].asString(), request[2u] );
+        response = this->debug_traceCall( request[0u], request[1u] );
     }
 
     virtual void debug_pauseBroadcastI( const Json::Value& request, Json::Value& response ) {
@@ -99,8 +99,7 @@ public:
     virtual Json::Value debug_traceBlockByNumber( int param1, const Json::Value& param2 ) = 0;
     virtual Json::Value debug_traceBlockByHash(
         const std::string& param1, const Json::Value& param2 ) = 0;
-    virtual Json::Value debug_traceCall(
-        const Json::Value& param1, const std::string& param2, const Json::Value& param3 ) = 0;
+    virtual Json::Value debug_traceCall( const Json::Value& param1, const Json::Value& param2 ) = 0;
 
     virtual void debug_pauseBroadcast( bool pause ) = 0;
     virtual void debug_pauseConsensus( bool pause ) = 0;

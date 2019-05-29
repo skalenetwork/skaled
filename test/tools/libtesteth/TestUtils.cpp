@@ -29,6 +29,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -76,8 +77,8 @@ void ParallelFixture::enumerateThreads( std::function< void() > callback ) const
 }
 
 void BlockChainFixture::enumerateBlockchains(
-    std::function< void( Json::Value const&, dev::eth::BlockChain const&, StateClass state ) >
-        callback ) const {
+    std::function< void( Json::Value const&, dev::eth::BlockChain const&, State state ) > callback )
+    const {
     for ( string const& name : m_json.getMemberNames() ) {
         BlockChainLoader bcl( m_json[name] );
         callback( m_json[name], bcl.bc(), bcl.state() );
@@ -87,11 +88,11 @@ void BlockChainFixture::enumerateBlockchains(
 void ClientBaseFixture::enumerateClients(
     std::function< void( Json::Value const&, dev::eth::ClientBase& ) > callback ) const {
     enumerateBlockchains( [&callback]( Json::Value const& _json, BlockChain const& _bc,
-                              StateClass _state ) -> void {
+                              State _state ) -> void {
         cerr << "void ClientBaseFixture::enumerateClients. FixedClient now accepts block not sate!"
              << endl;
-        _state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
-                                                                          // this line
+        _state.commit( State::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
+                                                                     // this line
         eth::Block b( Block::Null );
         b.noteChain( _bc );
         FixedClient client( _bc, b );

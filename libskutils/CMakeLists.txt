@@ -4,7 +4,6 @@ add_library( skutils STATIC
     ./src/atomic_shared_ptr.cpp     ./include/skutils/atomic_shared_ptr.h
     ./src/command_line_parser.cpp   ./include/skutils/command_line_parser.h
     ./src/console_colors.cpp        ./include/skutils/console_colors.h
-    ./src/cxx_replacements.cpp      ./include/skutils/cxx_replacements.h
     ./src/dispatch.cpp              ./include/skutils/dispatch.h
     ./src/mail.cpp                  ./include/skutils/mail.h
                                     ./include/skutils/multifunction.h

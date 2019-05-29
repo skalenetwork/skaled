@@ -558,8 +558,8 @@ extern std::string rpc_message( const std::string& msg, bool isBinaryMessage = f
 enum class e_rpc_log_type_t { erpcltt_ws_tx, erpcltt_ws_rx };  /// enum class e_rpc_log_type_t
 extern std::string rpc_rpc_log_type_2_str( e_rpc_log_type_t erpcltt );
 extern std::string rpc_rpc_log_type_2_direction_arrows_str( e_rpc_log_type_t erpcltt );
-extern std::string rpc_rpc_log_colorize_prefix( e_rpc_log_type_t erpcltt, const std::string s );
-extern std::string rpc_rpc_log_colorize_suffix( e_rpc_log_type_t erpcltt, const std::string s );
+extern std::string rpc_rpc_log_colorize_prefix( e_rpc_log_type_t erpcltt, const std::string& s );
+extern std::string rpc_rpc_log_colorize_suffix( e_rpc_log_type_t erpcltt, const std::string& s );
 
 extern std::string rpc_log( e_rpc_log_type_t erpcltt,
     const char* strConnectionType,         // can be nullptr
