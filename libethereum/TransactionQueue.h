@@ -83,9 +83,7 @@ public:
     /// @param _txHash Trasnaction hash
     void drop( h256 const& _txHash );
 
-    int getCategory(const h256& hash){
-        return m_currentByHash[hash]->category;
-    }
+    int getCategory( const h256& hash ) { return m_currentByHash[hash]->category; }
 
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.

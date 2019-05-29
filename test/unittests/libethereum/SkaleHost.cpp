@@ -673,7 +673,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     h256 txHash = tx.sha3();
 
     // 1 add tx as normal
-    client->importTransaction(tx);
+    client->importTransaction( tx );
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
@@ -691,10 +691,10 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 
     // send it as usual
-    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions(1);
-    assert(tx_from_q.size() == 1);
-    sleep(1);
-    stub->createBlock(tx_from_q, utcTime(), 2U);
+    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions( 1 );
+    assert( tx_from_q.size() == 1 );
+    sleep( 1 );
+    stub->createBlock( tx_from_q, utcTime(), 2U );
 
     // 3 send new tx and see nonce
     json["nonce"] = 1;
@@ -703,7 +703,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    client->importTransaction(tx2);
+    client->importTransaction( tx2 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

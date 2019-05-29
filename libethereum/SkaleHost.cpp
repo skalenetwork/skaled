@@ -262,7 +262,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     }  // for
     // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
 
-    if(m_transaction_cache.size() != 0){
+    if ( m_transaction_cache.size() != 0 ) {
         clog( VerbosityInfo, "skale-host" )
             << "Erasing " << m_transaction_cache.size() << " txns from m_transaction_cache";
         m_transaction_cache.clear();
