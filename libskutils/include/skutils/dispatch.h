@@ -694,7 +694,7 @@ private:
     queue_ptr_t impl_queue_get( const queue_id_t& id, bool isAutoAdd = false );
     bool impl_queue_remove( const queue_id_t& id );
     size_t impl_queue_remove_all();
-    void impl_startup();
+    void impl_startup( size_t nWaitMilliSeconds = size_t( -1 ) );
     void impl_shutdown();
     queue_ptr_t impl_find_queue_to_run();  // find queue with minimal accumulator and remove it from
                                            // with_jobs_
@@ -707,7 +707,7 @@ public:
     queue_ptr_t queue_get( const queue_id_t& id, bool isAutoAdd = false );
     bool queue_remove( const queue_id_t& id );
     size_t queue_remove_all();
-    void startup();
+    void startup( size_t nWaitMilliSeconds = size_t( -1 ) );
     void shutdown();
     bool run_one();  // returns true if task job was executed
     loop_ptr_t get_loop();
