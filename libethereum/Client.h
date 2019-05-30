@@ -252,19 +252,26 @@ public:
         return m_onBlockSealed.add( _handler );
     }
 
+    std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
+
+    // main entry point after consensus
+    size_t importTransactionsAsBlock(
+        const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
+
+protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
+    /// thread unsafe!!
     size_t syncTransactions(
         const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
+    /// thread unsafe!!
     void sealUnconditionally( bool submitToBlockChain = true );
 
-    std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
-
+    /// thread unsafe!!
     void importWorkingBlock();
 
-protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
     void init( boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
@@ -383,8 +390,11 @@ protected:
     mutable SharedMutex x_working;  ///< Lock on m_working.
     Block m_working;  ///< The state of the client which we're sealing (i.e. it'll have all the
                       ///< rewards added), while we're actually working on it.
-    BlockHeader m_sealingInfo;     ///< The header we're attempting to seal on (derived from
-                                   ///< m_postSeal).
+    BlockHeader m_sealingInfo;  ///< The header we're attempting to seal on (derived from
+                                ///< m_postSeal).
+
+    mutable Mutex m_blockImportMutex;  /// synchronize state and latest block update
+
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
     std::atomic< bool > m_needStateReset = {false};  ///< Need reset working state to premin on next
