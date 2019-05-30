@@ -912,6 +912,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
         t.forceSender( _from );
+        t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, Permanence::Reverted );
