@@ -988,8 +988,8 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
     // init thread pool
     std::atomic_size_t cntFailedToStartThreads;
     cntFailedToStartThreads = 0;
+    size_t cntThreadsToStart = cntThreads;
     for ( ; true; ) {
-        size_t cntThreadsToStart = cntThreads;
         for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
             bool bThreadStartedOK = thread_pool_.safe_submit_without_future( [this]() {
                 ++cntRunningThreads_;
