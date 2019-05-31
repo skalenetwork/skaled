@@ -113,21 +113,19 @@ public:
 
     Transaction( Transaction const& ) = default;
 
-    virtual ~Transaction() = default;
-
     bool hasExternalGas() const;
 
     u256 getExternalGas() const;
 
-    u256 gas() const override;
+    u256 gas() const;
 
-    u256 gasPrice() const override;
+    u256 gasPrice() const;
 
     void checkOutExternalGas( u256 const& _difficulty );
 
 private:
-    std::optional< u256 > m_externalGas;
     bool m_externalGasIsChecked = false;
+    std::optional< u256 > m_externalGas;
 };
 
 /// Nice name for vector of Transaction.
@@ -136,20 +134,16 @@ using Transactions = std::vector< Transaction >;
 class LocalisedTransaction : public Transaction {
 public:
     LocalisedTransaction( Transaction const& _t, h256 const& _blockHash, unsigned _transactionIndex,
-        BlockNumber _blockNumber = 0 )
-        : Transaction( _t ),
-          m_blockHash( _blockHash ),
-          m_transactionIndex( _transactionIndex ),
-          m_blockNumber( _blockNumber ) {}
+        BlockNumber _blockNumber = 0 );
 
-    h256 const& blockHash() const { return m_blockHash; }
-    unsigned transactionIndex() const { return m_transactionIndex; }
-    BlockNumber blockNumber() const { return m_blockNumber; }
+    h256 const& blockHash() const;
+    unsigned transactionIndex() const;
+    BlockNumber blockNumber() const;
 
 private:
-    h256 m_blockHash;
     unsigned m_transactionIndex;
     BlockNumber m_blockNumber;
+    h256 m_blockHash;
 };
 
 }  // namespace eth

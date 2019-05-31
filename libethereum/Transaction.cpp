@@ -197,3 +197,22 @@ void Transaction::checkOutExternalGas( u256 const& _difficulty ) {
         m_externalGasIsChecked = true;
     }
 }
+
+LocalisedTransaction::LocalisedTransaction( const Transaction& _t, const h256& _blockHash,
+    unsigned _transactionIndex, BlockNumber _blockNumber )
+    : Transaction( _t ),
+      m_transactionIndex( _transactionIndex ),
+      m_blockNumber( _blockNumber ),
+      m_blockHash( _blockHash ) {}
+
+const h256& LocalisedTransaction::blockHash() const {
+    return m_blockHash;
+}
+
+unsigned LocalisedTransaction::transactionIndex() const {
+    return m_transactionIndex;
+}
+
+BlockNumber LocalisedTransaction::blockNumber() const {
+    return m_blockNumber;
+}
