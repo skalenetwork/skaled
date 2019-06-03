@@ -37,14 +37,14 @@ using namespace dev;
 using namespace dev::eth;
 
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
-    : m_type( _ts.creation ? ContractCreation : MessageCall ),
-      m_nonce( _ts.nonce ),
+    : m_nonce( _ts.nonce ),
       m_value( _ts.value ),
-      m_receiveAddress( _ts.to ),
       m_gasPrice( _ts.gasPrice ),
       m_gas( _ts.gas ),
       m_data( _ts.data ),
-      m_sender( _ts.from ) {
+      m_type( _ts.creation ? ContractCreation : MessageCall ),
+      m_sender( _ts.from ),
+      m_receiveAddress( _ts.to ) {
     if ( _s )
         sign( _s );
 }
@@ -239,4 +239,14 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     if ( _sig == WithSignature )
         m_hashWith = ret;
     return ret;
+}
+
+u256 TransactionBase::gasPrice() const {
+    assert( !isInvalid() );
+    return m_gasPrice;
+}
+
+u256 TransactionBase::gas() const {
+    assert( !isInvalid() );
+    return m_gas;
 }

@@ -51,48 +51,48 @@ public:
     /// Constructs a signed message-call transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret )
-        : m_type( MessageCall ),
-          m_nonce( _nonce ),
+        : m_nonce( _nonce ),
           m_value( _value ),
-          m_receiveAddress( _dest ),
           m_gasPrice( _gasPrice ),
           m_gas( _gas ),
-          m_data( _data ) {
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_receiveAddress( _dest ) {
         sign( _secret );
     }
 
     /// Constructs a signed contract-creation transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, Secret const& _secret )
-        : m_type( ContractCreation ),
-          m_nonce( _nonce ),
+        : m_nonce( _nonce ),
           m_value( _value ),
           m_gasPrice( _gasPrice ),
           m_gas( _gas ),
-          m_data( _data ) {
+          m_data( _data ),
+          m_type( ContractCreation ) {
         sign( _secret );
     }
 
     /// Constructs an unsigned message-call transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         Address const& _dest, bytes const& _data, u256 const& _nonce = 0 )
-        : m_type( MessageCall ),
-          m_nonce( _nonce ),
+        : m_nonce( _nonce ),
           m_value( _value ),
-          m_receiveAddress( _dest ),
           m_gasPrice( _gasPrice ),
           m_gas( _gas ),
-          m_data( _data ) {}
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_receiveAddress( _dest ) {}
 
     /// Constructs an unsigned contract-creation transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce = 0 )
-        : m_type( ContractCreation ),
-          m_nonce( _nonce ),
+        : m_nonce( _nonce ),
           m_value( _value ),
           m_gasPrice( _gasPrice ),
           m_gas( _gas ),
-          m_data( _data ) {}
+          m_data( _data ),
+          m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase(
@@ -102,6 +102,8 @@ public:
     explicit TransactionBase(
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
+
+    TransactionBase( TransactionBase const& ) = default;
 
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
@@ -159,17 +161,11 @@ public:
     }
 
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
-    u256 gasPrice() const {
-        assert( !isInvalid() );
-        return m_gasPrice;
-    }
+    u256 gasPrice() const;
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
-    u256 gas() const {
-        assert( !isInvalid() );
-        return m_gas;
-    }
+    u256 gas() const;
 
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).
@@ -232,8 +228,6 @@ public:
 
     bool isInvalid() const { return m_type == Type::Invalid; }
 
-    mutable int64_t verifiedOn = -1;  // on which block it was imported
-
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
         bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );
@@ -252,26 +246,29 @@ protected:
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
 
-    Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
-                                    ///< transaction?
-    u256 m_nonce;                   ///< The transaction-count of the sender.
+    u256 m_nonce;  ///< The transaction-count of the sender.
     u256 m_value;  ///< The amount of ETH to be transferred by this transaction. Called 'endowment'
                    ///< for contract-creation transactions.
-    Address m_receiveAddress;  ///< The receiving address of the transaction.
-    u256 m_gasPrice;           ///< The base fee and thus the implied exchange rate of ETH to GAS.
+    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS.
     u256 m_gas;  ///< The total gas to convert, paid for from sender's account. Any unused gas gets
                  ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
                    ///< creation transaction.
-    boost::optional< SignatureStruct > m_vrs;  ///< The signature of the transaction. Encodes the
-                                               ///< sender.
-    int m_chainId = -4;                        ///< EIP155 value for calculating transaction hash
-                                               ///< https://github.com/ethereum/EIPs/issues/155
+    bytes m_rawData;
 
+public:
+    mutable int64_t verifiedOn = -1;  // on which block it was imported
+
+protected:
+    Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
+                                    ///< transaction?
+    int m_chainId = -4;             ///< EIP155 value for calculating transaction hash
+                                    ///< https://github.com/ethereum/EIPs/issues/155
+    boost::optional< SignatureStruct > m_vrs;     ///< The signature of the transaction. Encodes the
+                                                  ///< sender.
     mutable h256 m_hashWith;                      ///< Cached hash of transaction with signature.
     mutable boost::optional< Address > m_sender;  ///< Cached sender, determined from signature.
-
-    bytes m_rawData;
+    Address m_receiveAddress;                     ///< The receiving address of the transaction.
 };
 
 /// Nice name for vector of Transaction.

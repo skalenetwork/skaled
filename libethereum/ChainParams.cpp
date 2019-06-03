@@ -133,6 +133,7 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
     setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
+    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
 
     if ( params.count( c_chainID ) )
         cp.chainID =
@@ -141,6 +142,9 @@ ChainParams ChainParams::loadConfig(
         cp.networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
     cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
+    if ( cp.externalGasDifficulty == 0 ) {
+        cp.externalGasDifficulty = -1;
+    }
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );

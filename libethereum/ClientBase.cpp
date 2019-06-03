@@ -97,6 +97,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             else
                 t = Transaction( _value, gasPrice, mid, _data, n );
             t.forceSender( _from );
+            t.checkOutExternalGas( ~u256( 0 ) );
             EnvInfo const env( bk.info(), bc().lastBlockHashes(), 0, mid );
             State& tempState = bk.mutableState();
             tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );

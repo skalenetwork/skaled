@@ -728,6 +728,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction( e, _t, onOp );
 
+
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:

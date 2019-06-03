@@ -58,6 +58,8 @@ enum class CodeDeposit { None = 0, Failed, Success };
 
 struct VMException;
 
+DEV_SIMPLE_EXCEPTION( ExternalGasException );
+
 TransactionException toTransactionException( Exception const& _e );
 std::ostream& operator<<( std::ostream& _out, TransactionException const& _er );
 
@@ -80,31 +82,26 @@ std::ostream& operator<<( std::ostream& _out, ExecutionResult const& _er );
 class Transaction : public TransactionBase {
 public:
     /// Constructs a null transaction.
-    Transaction() {}
+    Transaction();
 
     /// Constructs from a transaction skeleton & optional secret.
-    Transaction( TransactionSkeleton const& _ts, Secret const& _s = Secret() )
-        : TransactionBase( _ts, _s ) {}
+    Transaction( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
     /// Constructs a signed message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
-        bytes const& _data, u256 const& _nonce, Secret const& _secret )
-        : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _secret ) {}
+        bytes const& _data, u256 const& _nonce, Secret const& _secret );
 
     /// Constructs a signed contract-creation transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce, Secret const& _secret )
-        : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {}
+        u256 const& _nonce, Secret const& _secret );
 
     /// Constructs an unsigned message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
-        bytes const& _data, u256 const& _nonce = Invalid256 )
-        : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce ) {}
+        bytes const& _data, u256 const& _nonce = Invalid256 );
 
     /// Constructs an unsigned contract-creation transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce = Invalid256 )
-        : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
+        u256 const& _nonce = Invalid256 );
 
     /// Constructs a transaction from the given RLP.
     explicit Transaction(
@@ -112,8 +109,23 @@ public:
 
     /// Constructs a transaction from the given RLP.
     explicit Transaction(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
-        : Transaction( &_rlp, _checkSig, _allowInvalid ) {}
+        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+
+    Transaction( Transaction const& ) = default;
+
+    bool hasExternalGas() const;
+
+    u256 getExternalGas() const;
+
+    u256 gas() const;
+
+    u256 gasPrice() const;
+
+    void checkOutExternalGas( u256 const& _difficulty );
+
+private:
+    bool m_externalGasIsChecked = false;
+    std::optional< u256 > m_externalGas;
 };
 
 /// Nice name for vector of Transaction.
@@ -122,20 +134,16 @@ using Transactions = std::vector< Transaction >;
 class LocalisedTransaction : public Transaction {
 public:
     LocalisedTransaction( Transaction const& _t, h256 const& _blockHash, unsigned _transactionIndex,
-        BlockNumber _blockNumber = 0 )
-        : Transaction( _t ),
-          m_blockHash( _blockHash ),
-          m_transactionIndex( _transactionIndex ),
-          m_blockNumber( _blockNumber ) {}
+        BlockNumber _blockNumber = 0 );
 
-    h256 const& blockHash() const { return m_blockHash; }
-    unsigned transactionIndex() const { return m_transactionIndex; }
-    BlockNumber blockNumber() const { return m_blockNumber; }
+    h256 const& blockHash() const;
+    unsigned transactionIndex() const;
+    BlockNumber blockNumber() const;
 
 private:
-    h256 m_blockHash;
     unsigned m_transactionIndex;
     BlockNumber m_blockNumber;
+    h256 m_blockHash;
 };
 
 }  // namespace eth

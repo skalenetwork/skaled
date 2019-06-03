@@ -128,6 +128,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.byzantiumForkBlock = 0;
+        chainParams.externalGasDifficulty = 1;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
@@ -145,7 +146,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return web3->ethereum(); }, {} ) );
-        accountHolder->setAccounts( {coinbase} );
+        accountHolder->setAccounts( {coinbase, account2} );
 
         sessionManager.reset( new rpc::SessionManager() );
         adminSession =
@@ -180,6 +181,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
     unique_ptr< WebThreeDirect > web3;
     dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
     unique_ptr< rpc::SessionManager > sessionManager;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
@@ -815,6 +817,72 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     responseString = rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
+}
+
+BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
+    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
+
+    // pragma solidity ^0.4.22;
+
+    // contract test
+    // {
+    //     uint hello;
+    //     function writeHello(uint value) returns(bool d)
+    //     {
+    //       hello = value;
+    //       return true;
+    //     }
+    // }
+
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60c28061001d6000396000f3006"
+        "08060405260043610603f576000357c0100000000000000000000000000"
+        "000000000000000000000000000000900463ffffffff16806315b2eec31"
+        "46044575b600080fd5b3415604e57600080fd5b606a6004803603810190"
+        "80803590602001909291905050506084565b60405180821515151581526"
+        "0200191505060405180910390f35b600081600081905550600190509190"
+        "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
+        "5ee8909b83094a3f856b9051274500029";
+
+    Json::Value create;
+    create["code"] = compiled;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Address address2 = account2.address();
+    string balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
+
+    u256 powGasPrice = 0;
+    do {
+        const u256 GAS_PER_HASH = 1;
+        u256 candidate = h256::random();
+        h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
+        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        if ( externalGas >= 21000 ) {
+            powGasPrice = candidate;
+        }
+    } while ( !powGasPrice );
+
+    Json::Value transact;
+    transact["from"] = toJS( address2 );
+    transact["to"] = contractAddress;
+    transact["gasPrice"] = toJS( powGasPrice );
+    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+    rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+
+    string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
+    BOOST_CHECK_EQUAL(
+        storage, "0x0000000000000000000000000000000000000000000000000000000000000003" );
+
+    balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
