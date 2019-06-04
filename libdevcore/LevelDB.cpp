@@ -20,6 +20,8 @@
 #include "LevelDB.h"
 #include "Assertions.h"
 
+#include <libdevcore/microprofile.h>
+
 namespace dev {
 namespace db {
 namespace {
@@ -66,6 +68,7 @@ private:
 };
 
 void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
+    MICROPROFILE_SCOPEI( "LevelDBWriteBatch", "insert", MP_LAVENDERBLUSH );
     m_writeBatch.Put( toLDBSlice( _key ), toLDBSlice( _value ) );
 }
 

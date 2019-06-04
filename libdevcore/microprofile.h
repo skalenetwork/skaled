@@ -601,7 +601,7 @@ typedef uint64_t MicroProfileThreadIdType;
 #endif
 
 #ifndef MICROPROFILE_MAX_THREADS
-#define MICROPROFILE_MAX_THREADS 64
+#define MICROPROFILE_MAX_THREADS 128
 #endif
 
 #ifndef MICROPROFILE_UNPACK_RED

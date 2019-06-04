@@ -120,7 +120,8 @@ void SkaleHost::logState() {
     LOG( m_debugLogger ) << "sent_to_consensus = " << total_sent
                          << " got_from_consensus = " << total_arrived
                          << " m_transaction_cache = " << m_transaction_cache.size()
-                         << " m_tq = " << m_tq.knownTransactions().size();
+                         << " m_tq = " << m_tq.status().current
+                         << " m_bcast_counter = " << m_bcast_counter;
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
@@ -161,46 +162,49 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
 
-    for ( size_t i = 0; i < txns.size(); ++i )
-        try {
-            Transaction& txn = txns[i];
+    try {
+        for ( size_t i = 0; i < txns.size(); ++i )
+            try {
+                Transaction& txn = txns[i];
 
-            // re-verify transaction against current block
-            // throws in case of error
-            if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
-                Executive::verifyTransaction( txn,
-                    static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                    m_client.state().startRead(), *m_client.sealEngine(), 0 );
+                // re-verify transaction against current block
+                // throws in case of error
+                if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
+                    Executive::verifyTransaction( txn,
+                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
 
-            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+                std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
-            h256 sha = txn.sha3();
-            m_transaction_cache[sha.asArray()] = txn;
-            out_vector.push_back( txn.rlp() );
+                h256 sha = txn.sha3();
+                m_transaction_cache[sha.asArray()] = txn;
+                out_vector.push_back( txn.rlp() );
+                ++total_sent;
 
 #ifdef DEBUG_TX_BALANCE
-            if ( sent.count( sha ) != 0 ) {
-                int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << std::endl;
-
                 if ( sent.count( sha ) != 0 ) {
-                    // TODO fix this!!?
-                    clog( VerbosityWarning, "skale-host" )
-                        << "Sending to consensus duplicate transaction (sent before!)";
-                }
-            }
-            sent[sha] = total_sent + i;
-#endif
-            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
-            i++;
-        } catch ( const exception& ex ) {
-            // usually this is tx validation exception
-            clog( VerbosityInfo, "skale-host" )
-                << "Dropped now-invalid transaction in pending queue:" << ex.what();
-            continue;
-        }
+                    int prev = sent[sha];
+                    std::cerr << "Prev no = " << prev << std::endl;
 
-    total_sent += out_vector.size();
+                    if ( sent.count( sha ) != 0 ) {
+                        // TODO fix this!!?
+                        clog( VerbosityWarning, "skale-host" )
+                            << "Sending to consensus duplicate transaction (sent before!)";
+                    }
+                }
+                sent[sha] = total_sent + i;
+#endif
+                LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+            } catch ( const exception& ex ) {
+                // usually this is tx validation exception
+                clog( VerbosityInfo, "skale-host" )
+                    << "Dropped now-invalid transaction in pending queue:" << ex.what();
+                continue;
+            }
+
+    } catch ( ... ) {
+        clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
+    }
 
     logState();
 
@@ -341,6 +345,8 @@ void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
     while ( !m_exitNeeded ) {
         try {
+            m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
+
             dev::eth::Transactions txns = m_tq.topTransactionsSync( 1, 0, 1 );
             if ( txns.empty() )  // means timeout
                 continue;
@@ -362,14 +368,19 @@ void SkaleHost::broadcastFunc() {
 
             if ( received == 0 ) {
                 try {
-                    if ( !m_broadcastPauseFlag )
+                    if ( !m_broadcastPauseFlag ) {
+                        MICROPROFILE_SCOPEI(
+                            "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
                         m_broadcaster->broadcast( toJS( txn.rlp() ) );
+                    }
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
                     cwarn << ex.what() << endl;
                 }  // catch
 
             }  // if
+
+            ++m_bcast_counter;
 
             logState();
         } catch ( const std::exception& ex ) {
