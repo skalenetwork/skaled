@@ -155,21 +155,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     ConsensusExtFace::transactions_vector out_vector;
 
-    int iterated = 0;
-    int approved = 0;
-
-    Transactions txns = m_tq.topTransactionsSync(
-        _limit, [this, &iterated, &approved]( const Transaction& tx ) -> bool {
-            ++iterated;
-            bool ok = m_tq.getCategory( tx.sha3() ) == 1;  // take broadcasted
-            LOG( m_traceLogger ) << "iterate " << tx.sha3() << " " << iterated
-                                 << ( ok ? " 1 " : "" );
-            approved += ok ? 1 : 0;
-            return ok;
-        } );
-
-    LOG( m_traceLogger ) << "iterated = " << iterated << " approved = " << approved
-                         << " txns = " << txns.size();
+    Transactions txns = m_tq.topTransactionsSync( _limit, [this]( const Transaction& tx ) -> bool {
+        return m_tq.getCategory( tx.sha3() ) == 1;  // take broadcasted
+    } );
 
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
