@@ -61,6 +61,9 @@ std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
 }
 
 void HttpBroadcaster::broadcast( const std::string& _rlp ) {
+    if ( _rlp.empty() )
+        return;
+
     for ( const auto& node : m_nodeClients ) {
         node->skale_receiveTransaction( _rlp );
     }
@@ -206,6 +209,11 @@ void ZmqBroadcaster::stopService() {
 }
 
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
+    if ( _rlp.empty() ) {
+        server_socket();
+        return;
+    }
+
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     assert( res > 0 );
 }

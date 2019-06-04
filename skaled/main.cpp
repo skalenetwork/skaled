@@ -378,7 +378,8 @@ int main( int argc, char** argv ) try {
             return -1;
         }
 
-    skutils::dispatch::default_domain( skutils::tools::cpu_count() );
+    // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
+    skutils::dispatch::default_domain( 48 );
 
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;

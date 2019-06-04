@@ -74,6 +74,8 @@ typedef int socket_t;
 #include <zlib.h>
 #endif
 
+#include <libdevcore/microprofile.h>
+
 #include <skutils/dispatch.h>
 #include <skutils/network.h>
 
@@ -1657,15 +1659,12 @@ inline bool server::listen_internal() {
                 }
                 continue;
             }
+
+            MICROPROFILE_SCOPEI( "skutils", "http::server::listen_internal", MP_PALEGREEN );
+
             socket_t sock = accept( svr_sock_, NULL, NULL );
             if ( sock == INVALID_SOCKET ) {
-                if ( svr_sock_ != INVALID_SOCKET ) {
-                    detail::close_socket( svr_sock_ );
-                    ret = false;
-                } else {
-                    ;  // The server socket was closed by user.
-                }
-                break;
+                continue;
             }
             skutils::dispatch::job_t fn = [=]() {
                 running_connectoin_handlers_increment();
@@ -1680,7 +1679,8 @@ inline bool server::listen_internal() {
                 break;
             }
         }
-    } catch ( ... ) {
+    } catch ( const std::exception& ex ) {
+        std::cerr << ex.what() << std::endl;
     }
     is_running_ = false;
     is_in_loop_ = false;
@@ -1721,6 +1721,8 @@ inline bool server::dispatch_request( request& req, response& res, Handlers& han
 
 inline bool server::process_request(
     const std::string& origin, stream& strm, bool last_connection, bool& connection_close ) {
+    MICROPROFILE_SCOPEI( "skutils", "http::server::process_request", MP_PAPAYAWHIP );
+
     const auto bufsiz = 2048;
     char buf[bufsiz];
     detail::stream_line_reader reader( strm, buf, bufsiz );

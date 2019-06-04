@@ -80,6 +80,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) 
 }
 
 db::Slice dev::eth::toSlice( h256 const& _h, unsigned _sub ) {
+    MICROPROFILE_SCOPEI( "BlockChain", "toSlice", MP_MAGENTA3 );
+
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
     static thread_local FixedHash< 33 > h = _h;
     h[32] = ( uint8_t ) _sub;
@@ -778,6 +780,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
          || ( m_sealEngine->chainParams().tieBreakingGas &&
                 _totalDifficulty == details( last ).totalDifficulty &&
                 _block.info.gasUsed() > info( last ).gasUsed() ) ) {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
+
         // don't include bi.hash() in treeRoute, since it's not yet in details DB...
         // just tack it on afterwards.
         unsigned commonIndex;
@@ -793,6 +797,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         // Go through ret backwards (i.e. from new head to common) until hash !=
         // last.parent and update m_transactionAddresses, m_blockHashes
         for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
+
             BlockHeader tbi;
             if ( *i == _block.info.hash() )
                 tbi = _block.info;
@@ -802,6 +808,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             // Collate logs into blooms.
             h256s alteredBlooms;
             {
+                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
+
                 LogBloom blockBloom = tbi.logBloom();
                 blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
 
@@ -822,24 +830,36 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             // Collate transaction hashes and remember who they were.
             // h256s newTransactionAddresses;
             {
+                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
+
                 bytes blockBytes;
                 RLP blockRLP(
                     *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
                 TransactionAddress ta;
                 ta.blockHash = tbi.hash();
-                for ( ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index )
+
+                RLP txns_rlp = blockRLP[1];
+
+                for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+                    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
+
                     extrasWriteBatch->insert(
-                        toSlice( sha3( blockRLP[1][ta.index].data() ), ExtraTransactionAddress ),
+                        toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
                         ( db::Slice ) dev::ref( ta.rlp() ) );
+                }
             }
 
             // Update database with them.
             ReadGuard l1( x_blocksBlooms );
-            for ( auto const& h : alteredBlooms )
-                extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
-                    ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-            extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-                ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+            {
+                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
+
+                for ( auto const& h : alteredBlooms )
+                    extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
+                        ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+                extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+                    ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+            }
         }
 
         // FINALLY! change our best hash.
@@ -861,6 +881,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
 
     try {
+        MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
         m_blocksDB->commit( std::move( blocksWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << "Error writing to blockchain database: " << boost::diagnostic_information( ex );
@@ -869,6 +890,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
 
     try {
+        MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
         m_extrasDB->commit( std::move( extrasWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
@@ -897,6 +919,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     if ( m_lastBlockHash != newLastBlockHash )
         DEV_WRITE_GUARDED( x_lastBlockHash ) {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "m_lastBlockHash", MP_LIGHTGOLDENROD );
+
             m_lastBlockHash = newLastBlockHash;
             m_lastBlockNumber = newLastBlockNumber;
             try {

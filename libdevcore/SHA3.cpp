@@ -22,6 +22,8 @@
 
 #include <ethash/keccak.hpp>
 
+#include <libdevcore/microprofile.h>
+
 namespace dev {
 h256 const EmptySHA3 = sha3( bytesConstRef() );
 h256 const EmptyListSHA3 = sha3( rlpList() );
@@ -29,6 +31,9 @@ h256 const EmptyListSHA3 = sha3( rlpList() );
 bool sha3( bytesConstRef _input, bytesRef o_output ) noexcept {
     if ( o_output.size() != 32 )
         return false;
+
+    MICROPROFILE_SCOPEI( "sha3", "sha3", MP_MEDIUMBLUE );
+
     ethash::hash256 h = ethash::keccak256( _input.data(), _input.size() );
     bytesConstRef{h.bytes, 32}.copyTo( o_output );
     return true;

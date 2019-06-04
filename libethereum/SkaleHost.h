@@ -126,6 +126,8 @@ private:
     dev::h256Hash m_received;
     std::mutex m_receivedMutex;
 
+    int m_bcast_counter = 0;
+
     void penalizePeer(){};  // fake function for now
 
     int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
