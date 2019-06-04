@@ -11,11 +11,7 @@ namespace multithreading {
 std::string getThreadName() {
     char name[128];
     memset( name, 0, sizeof( name ) );
-#if defined( __APPLE__ )
     pthread_getname_np( pthread_self(), name, sizeof( name ) / sizeof( name[0] ) - 1 );
-#else
-    pthread_getname_np( pthread_self(), name );
-#endif
     return std::string( name );
 }
 void setThreadName( const char* name ) {
