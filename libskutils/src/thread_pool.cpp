@@ -1,6 +1,7 @@
 // note: based on https://github.com/mtrebi/thread-pool
 
 #include <skutils/thread_pool.h>
+#include <skutils/utils.h>
 
 namespace skutils {
 
@@ -9,6 +10,7 @@ thread_pool::worker::worker( thread_pool* p, const size_t i ) : pool_( p ), id_(
 thread_pool::worker::~worker() {}
 
 void thread_pool::worker::invoke() {
+    skutils::multithreading::threadNamer tn( skutils::tools::format( "p%zu", id_ ) );
     std::function< void() > func;
     bool was_dequeued = false;
     while ( !pool_->shutdown_flag_ ) {
