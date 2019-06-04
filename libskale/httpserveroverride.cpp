@@ -55,6 +55,8 @@
 #include <libethereum/Transaction.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <skutils/multithreading.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -903,6 +905,7 @@ bool SkaleWsRelay::start( SkaleServerOverride* pSO ) {
     }
     std::thread( [&]() {
         m_isRunning = true;
+        skutils::multithreading::threadNameAppender tn( "/" + m_strSchemeUC + "-listener" );
         try {
             run( [&]() -> bool { return m_isRunning; } );
         } catch ( ... ) {
@@ -1083,7 +1086,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< skutils::http::se
             res.set_header( "vary", "Origin" );
             res.set_content( strResponse.c_str(), "application/json" );
         } );
-        std::thread( [=]() { pSrv->listen( strAddr.c_str(), nPort ); } ).detach();
+        std::thread( [=]() {
+            skutils::multithreading::threadNameAppender tn(
+                "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
+            pSrv->listen( strAddr.c_str(), nPort );
+        } )
+            .detach();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP",
             cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::success( " server on address " ) + cc::info( strAddr ) +

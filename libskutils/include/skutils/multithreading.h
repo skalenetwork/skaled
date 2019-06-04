@@ -14,6 +14,32 @@ namespace skutils {
 
 namespace multithreading {
 
+extern std::string getThreadName();
+extern void setThreadName( const char* name );
+extern void setThreadName( const std::string& name );
+
+class threadNamer {
+    std::string m_oldName;
+
+public:
+    threadNamer( const char* name ) : m_oldName( getThreadName() ) { setThreadName( name ); }
+    threadNamer( const std::string& name ) : m_oldName( getThreadName() ) { setThreadName( name ); }
+    threadNamer() { setThreadName( m_oldName ); }
+};  /// class threadNamer
+
+class threadNameAppender {
+    std::string m_oldName;
+
+public:
+    threadNameAppender( const char* nameSuffix ) : m_oldName( getThreadName() ) {
+        setThreadName( m_oldName + nameSuffix );
+    }
+    threadNameAppender( const std::string& nameSuffix ) : m_oldName( getThreadName() ) {
+        setThreadName( m_oldName + nameSuffix );
+    }
+    threadNameAppender() { setThreadName( m_oldName ); }
+};  /// class threadNameAppender
+
 class pthread_lockable;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
