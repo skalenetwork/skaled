@@ -290,6 +290,9 @@ int main( int argc, char** argv ) try {
         skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
+    addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
+        "Max nuber of RPC connections(such as web3) summary for all protocols(zero is default and "
+        "means unlimited)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
@@ -1011,11 +1014,15 @@ int main( int argc, char** argv ) try {
             }
             //
             //
+            size_t maxConnections = 0;
+            if ( vm.count( "max-connections" ) )
+                maxConnections = vm["max-connections"].as< size_t >();
             auto skale_server_connector = new SkaleServerOverride( web3.ethereum(),
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
+            skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;

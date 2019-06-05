@@ -869,9 +869,9 @@ SkaleWsRelay::SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
     : m_strScheme_( skutils::tools::to_lower( strScheme ) ),
       m_strSchemeUC( skutils::tools::to_upper( strScheme ) ),
       m_nPort( nPort ) {
-    SkaleServerOverride* pSO = pso();
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
+        SkaleServerOverride* pSO = pso();
         if ( pSO->m_bTraceCalls )
             clog( dev::VerbosityTrace, cc::info( m_strSchemeUC ) )
                 << cc::notice( "Will instantiate new peer" );
@@ -887,20 +887,16 @@ SkaleWsRelay::SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
     onPeerRegister_ = [&]( skutils::ws::peer_ptr_t& pPeer ) -> void {
         SkaleWsPeer* pSkalePeer = dynamic_cast< SkaleWsPeer* >( pPeer );
         if ( pSkalePeer == nullptr ) {
-            std::cerr << "SLAKLE server fatal error: bad WS peer interface(1)\n";
-            std::cerr.flush();
-            std::terminate();
+            pPeer->close( "server too busy" );
+            return;
         }
         lock_type lock( mtxAllPeers() );
         m_mapAllPeers[pSkalePeer->m_strPeerQueueID] = pSkalePeer;
     };
     onPeerUnregister_ = [&]( skutils::ws::peer_ptr_t& pPeer ) -> void {
         SkaleWsPeer* pSkalePeer = dynamic_cast< SkaleWsPeer* >( pPeer );
-        if ( pSkalePeer == nullptr ) {
-            std::cerr << "SLAKLE server fatal error: bad WS peer interface(2)\n";
-            std::cerr.flush();
-            std::terminate();
-        }
+        if ( pSkalePeer == nullptr )
+            return;
         lock_type lock( mtxAllPeers() );
         m_mapAllPeers.erase( pSkalePeer->m_strPeerQueueID );
     };
@@ -1302,7 +1298,7 @@ bool SkaleServerOverride::is_connection_limit_overflow() const {
     if ( cntConnectionsMax == 0 )
         return false;
     size_t cntConnections = size_t( m_cntConnections );
-    if ( cntConnections < cntConnectionsMax )
+    if ( cntConnections <= cntConnectionsMax )
         return false;
     return true;
 }
