@@ -842,7 +842,6 @@ class server : public basic_socket, public security_args, public guarded_traffic
     size_t server_serial_number_;
 
 public:
-    bool reuse_addr_;
     int listen_backlog_;
     std::string last_scheme_cached_;
     onPeerInstantiate_t onPeerInstantiate_;

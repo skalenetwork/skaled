@@ -158,7 +158,7 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
     const set< string > filteredOptions = {
-        "http-port", "https-port", "ws-port", "wss-port", "ssl-key", "ssl-cert"};
+        "http-port", "https-port", "ws-port", "wss-port", "wsll", "ssl-key", "ssl-cert"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -284,6 +284,8 @@ int main( int argc, char** argv ) try {
         "Run web3 WS server on specified port" );
     addClientOption( "wss-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 WSS server on specified port" );
+    addClientOption( "wsll", po::value< string >()->value_name( "<mode>" ),
+        "Set web sockets logginng mode(none, basic, detailed), default is none" );
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
         skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
@@ -436,6 +438,12 @@ int main( int argc, char** argv ) try {
                 nExplicitPortWSS = -1;
         }
     }
+    if ( vm.count( "wsll" ) ) {
+        std::string strWSLL = vm["wsll"].as< string >();
+        if ( !strWSLL.empty() )
+            skutils::ws::g_eWSLL = skutils::ws::str2wsll( strWSLL );
+    }
+
     if ( vm.count( "web3-trace" ) )
         bTraceHttpCalls = true;
     if ( vm.count( "unsafe-transactions" ) )

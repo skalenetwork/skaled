@@ -3506,7 +3506,7 @@ std::string peer::getCidString() const {
 }
 
 
-server::server() : server_serial_number_( 0 ), reuse_addr_( true ), listen_backlog_( 0 ) {
+server::server() : server_serial_number_( 0 ), listen_backlog_( 0 ) {
     traffic_stats::registrer_default_event_queues_for_web_socket_server();
     api_.onConnect_ = [this]( connection_identifier_t cid, struct lws* /*wsi*/,
                           const char* /*strPeerClientAddressName*/,
