@@ -61,7 +61,7 @@ typedef intptr_t ssize_t;
 
 class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
-class SkaleWsRelay;
+class SkaleRelayWS;
 class SkaleServerOverride;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +94,8 @@ public:
     std::string desc( bool isColored = true ) const {
         return getShortPeerDescription( isColored, false, false );
     }
-    SkaleWsRelay& getRelay();
-    const SkaleWsRelay& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }
+    SkaleRelayWS& getRelay();
+    const SkaleRelayWS& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }
     SkaleServerOverride* pso();
     const SkaleServerOverride* pso() const { return const_cast< SkaleWsPeer* >( this )->pso(); }
     dev::eth::Interface* ethereum() const;
@@ -130,13 +130,26 @@ protected:
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
-    friend class SkaleWsRelay;
+    friend class SkaleRelayWS;
 };  /// class SkaleWsPeer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleWsRelay : public skutils::ws::server {
+class SkaleServerHelper {
+protected:
+    int m_nServerIndex;
+
+public:
+    SkaleServerHelper( int nServerIndex = -1 ) : m_nServerIndex( nServerIndex ) {}
+    virtual ~SkaleServerHelper() {}
+    int serverIndex() const { return m_nServerIndex; }
+};  /// class SkaleServerHelper
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleRelayWS : public skutils::ws::server, public SkaleServerHelper {
 protected:
     volatile bool m_isRunning = false;
     volatile bool m_isInLoop = false;
@@ -157,9 +170,9 @@ protected:
     mutable map_skale_peers_t m_mapAllPeers;
 
 public:
-    SkaleWsRelay( const char* strScheme,  // "ws" or "wss"
-        int nPort );
-    ~SkaleWsRelay() override;
+    SkaleRelayWS( const char* strScheme,  // "ws" or "wss"
+        int nPort, int nServerIndex = -1 );
+    ~SkaleRelayWS() override;
     void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
     bool isRunning() const { return m_isRunning; }
     bool isInLoop() const { return m_isInLoop; }
@@ -171,31 +184,44 @@ public:
     dev::eth::Interface* ethereum() const;
     mutex_type& mtxAllPeers() const { return m_mtxAllPeers; }
     friend class SkaleWsPeer;
-};  /// class SkaleWsRelay
+};  /// class SkaleRelayWS
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleRelayHTTP : public skutils::http::server, public SkaleServerHelper {
+public:
+    std::shared_ptr< skutils::http::server > m_pServer;
+    SkaleRelayHTTP( const char* cert_path = nullptr, const char* private_key_path = nullptr,
+        int nServerIndex = -1 );
+    ~SkaleRelayHTTP() override;
+};  /// class SkaleRelayHTTP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
+    size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
 
 public:
-    SkaleServerOverride( dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nPortHTTP,
-        const std::string& strAddrHTTPS, int nPortHTTPS, const std::string& strAddrWS, int nPortWS,
-        const std::string& strAddrWSS, int nPortWSS, const std::string& strPathSslKey,
-        const std::string& strPathSslCert );
+    SkaleServerOverride( size_t cntServers, dev::eth::Interface* pEth,
+        const std::string& strAddrHTTP, int nPortHTTP, const std::string& strAddrHTTPS,
+        int nPortHTTPS, const std::string& strAddrWS, int nPortWS, const std::string& strAddrWSS,
+        int nPortWSS, const std::string& strPathSslKey, const std::string& strPathSslCert );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
 
 private:
-    bool implStartListening( std::shared_ptr< skutils::http::server >& pSrv,
-        const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-        const std::string& strPathSslCert );
-    bool implStartListening( std::shared_ptr< SkaleWsRelay >& pSrv, const std::string& strAddr,
-        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert );
-    bool implStopListening( std::shared_ptr< skutils::http::server >& pSrv, bool bIsSSL );
-    bool implStopListening( std::shared_ptr< SkaleWsRelay >& pSrv, bool bIsSSL );
+    bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, const std::string& strAddr,
+        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
+        int nServerIndex );
+    bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, const std::string& strAddr,
+        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
+        int nServerIndex );
+    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, bool bIsSSL );
+    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, bool bIsSSL );
 
 public:
     virtual bool StartListening() override;
@@ -205,8 +231,8 @@ public:
 
 private:
     void logTraceServerEvent(
-        bool isError, const char* strProtocol, const std::string& strMessage );
-    void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
+        bool isError, const char* strProtocol, int nServerIndex, const std::string& strMessage );
+    void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol, int nServerIndex,
         const char* strOrigin, const std::string& strPayload );
     const std::string m_strAddrHTTP;
     const int m_nPortHTTP;
@@ -224,9 +250,9 @@ public:
     bool m_bTraceCalls;
 
 private:
-    std::shared_ptr< skutils::http::server > m_pServerHTTP, m_pServerHTTPS;
+    std::list< std::shared_ptr< SkaleRelayHTTP > > m_serversHTTP, m_serversHTTPS;
     std::string m_strPathSslKey, m_strPathSslCert;
-    std::shared_ptr< SkaleWsRelay > m_pServerWS, m_pServerWSS;
+    std::list< std::shared_ptr< SkaleRelayWS > > m_serversWS, m_serversWSS;
 
     std::atomic_size_t m_cntConnections;
     std::atomic_size_t m_cntConnectionsMax;  // 0 is unlimited
@@ -243,9 +269,10 @@ public:
     void connection_counter_dec();
     size_t max_connection_get() const;
     void max_connection_set( size_t cntConnectionsMax );
-    virtual void on_connection_overflow_peer_closed( const char* strProtocol, int nPort );
+    virtual void on_connection_overflow_peer_closed(
+        const char* strProtocol, int nServerIndex, int nPort );
 
-    friend class SkaleWsRelay;
+    friend class SkaleRelayWS;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride
 

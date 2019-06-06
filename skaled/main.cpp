@@ -291,8 +291,12 @@ int main( int argc, char** argv ) try {
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
     addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
-        "Max nuber of RPC connections(such as web3) summary for all protocols(zero is default and "
+        "Max number of RPC connections(such as web3) summary for all protocols(0 is default and "
         "means unlimited)" );
+    addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
+        "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
+        "default and "
+        "minimal)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
@@ -993,6 +997,27 @@ int main( int argc, char** argv ) try {
 
         if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
              nExplicitPortWSS > 0 ) {
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTP port" )
+                << cc::debug( ".............................. " )
+                << ( ( nExplicitPortHTTP >= 0 ) ? cc::num10( nExplicitPortHTTP ) :
+                                                  cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTPS port" )
+                << cc::debug( "............................. " )
+                << ( ( nExplicitPortHTTPS >= 0 ) ? cc::num10( nExplicitPortHTTPS ) :
+                                                   cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS port" )
+                << cc::debug( "................................ " )
+                << ( ( nExplicitPortWS >= 0 ) ? cc::num10( nExplicitPortWS ) : cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS port" )
+                << cc::debug( "............................... " )
+                << ( ( nExplicitPortWSS >= 0 ) ? cc::num10( nExplicitPortWSS ) :
+                                                 cc::error( "off" ) );
             std::string strPathSslKey, strPathSslCert;
             bool bHaveSSL = false;
             if ( ( nExplicitPortHTTPS > 0 || nExplicitPortWSS > 0 ) && vm.count( "ssl-key" ) > 0 &&
@@ -1007,17 +1032,31 @@ int main( int argc, char** argv ) try {
             if ( bHaveSSL ) {
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) << cc::info( "SSL key is" )
-                    << cc::debug( ".............. " ) << cc::p( strPathSslKey );
+                    << cc::debug( "............................. " ) << cc::p( strPathSslKey );
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) + cc::info( "SSL certificate is" )
-                    << cc::debug( "...... " ) << cc::p( strPathSslCert );
+                    << cc::debug( "..................... " ) << cc::p( strPathSslCert );
             }
             //
             //
-            size_t maxConnections = 0;
-            if ( vm.count( "max-connections" ) )
+            size_t maxConnections = 0, cntServers = 1;
+            if ( vm.count( "max-connections" ) ) {
                 maxConnections = vm["max-connections"].as< size_t >();
-            auto skale_server_connector = new SkaleServerOverride( web3.ethereum(),
+            }
+            if ( vm.count( "acceptors" ) ) {
+                cntServers = vm["acceptors"].as< size_t >();
+                if ( cntServers < 1 )
+                    cntServers = 1;
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "Max RPC connections" )
+                << cc::debug( ".................... " )
+                << ( ( maxConnections > 0 ) ? cc::num10( uint64_t( maxConnections ) ) :
+                                              cc::error( "disabled" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
+                << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
+            auto skale_server_connector = new SkaleServerOverride( cntServers, web3.ethereum(),
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
@@ -1032,16 +1071,22 @@ int main( int argc, char** argv ) try {
             int nStatWS = skale_server_connector->getServerPortStatusWS();
             int nStatWSS = skale_server_connector->getServerPortStatusWSS();
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP" ) << cc::debug( "................... " )
+                << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTP" )
+                << cc::debug( "................................... " )
                 << ( ( nStatHTTP >= 0 ) ? cc::num10( nStatHTTP ) : cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS" ) << cc::debug( ".................. " )
+                << cc::debug( "...." ) << cc::info( "HTTPS" )
+                << cc::debug( ".................................. " )
                 << ( ( nStatHTTPS >= 0 ) ? cc::num10( nStatHTTPS ) : cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WS" ) << cc::debug( "..................... " )
+                << cc::debug( "...." ) << cc::info( "WS" )
+                << cc::debug( "..................................... " )
                 << ( ( nStatWS >= 0 ) ? cc::num10( nStatWS ) : cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS" ) << cc::debug( ".................... " )
+                << cc::debug( "...." ) << cc::info( "WSS" )
+                << cc::debug( ".................................... " )
                 << ( ( nStatWSS >= 0 ) ? cc::num10( nStatWSS ) : cc::error( "off" ) );
         }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
            // nExplicitPortWSS > 0 )
