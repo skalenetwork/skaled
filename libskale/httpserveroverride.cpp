@@ -1383,18 +1383,22 @@ bool SkaleServerOverride::StopListening() {
         if ( !implStopListening( pServer, false ) )
             bRetVal = false;
     }
+    m_serversHTTP.clear();
     for ( auto pServer : m_serversHTTPS ) {
         if ( !implStopListening( pServer, true ) )
             bRetVal = false;
     }
+    m_serversHTTPS.clear();
     for ( auto pServer : m_serversWS ) {
         if ( !implStopListening( pServer, false ) )
             bRetVal = false;
     }
+    m_serversWS.clear();
     for ( auto pServer : m_serversWSS ) {
         if ( !implStopListening( pServer, true ) )
             bRetVal = false;
     }
+    m_serversWSS.clear();
     return bRetVal;
 }
 
