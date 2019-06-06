@@ -59,6 +59,7 @@ typedef intptr_t ssize_t;
 #include <libethereum/Interface.h>
 #include <libethereum/LogFilter.h>
 
+class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleWsRelay;
 class SkaleServerOverride;
@@ -66,9 +67,19 @@ class SkaleServerOverride;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct SkaleServerConnectionsTrackHelper {
+    SkaleServerOverride& m_sso;
+    SkaleServerConnectionsTrackHelper( SkaleServerOverride& sso );
+    ~SkaleServerConnectionsTrackHelper();
+};  /// truct SkaleServerConnectionsTrackHelper
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class SkaleWsPeer : public skutils::ws::peer {
 public:
     const std::string m_strPeerQueueID;
+    std::unique_ptr< SkaleServerConnectionsTrackHelper > m_pSSCTH;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
     ~SkaleWsPeer() override;
     void onPeerRegister() override;
@@ -217,12 +228,22 @@ private:
     std::string m_strPathSslKey, m_strPathSslCert;
     std::shared_ptr< SkaleWsRelay > m_pServerWS, m_pServerWSS;
 
+    std::atomic_size_t m_cntConnections;
+    std::atomic_size_t m_cntConnectionsMax;  // 0 is unlimited
+
 public:
     // status API, returns running server port or -1 if server is not started
     int getServerPortStatusHTTP() const;
     int getServerPortStatusHTTPS() const;
     int getServerPortStatusWS() const;
     int getServerPortStatusWSS() const;
+
+    bool is_connection_limit_overflow() const;
+    void connection_counter_inc();
+    void connection_counter_dec();
+    size_t max_connection_get() const;
+    void max_connection_set( size_t cntConnectionsMax );
+    virtual void on_connection_overflow_peer_closed( const char* strProtocol, int nPort );
 
     friend class SkaleWsRelay;
     friend class SkaleWsPeer;

@@ -1,4 +1,6 @@
 
+message( INFO "*************** DEPS_INSTALL_ROOT is ${DEPS_INSTALL_ROOT}" )
+
 add_library( skutils STATIC
                                     ./include/skutils/async_work.h
     ./src/atomic_shared_ptr.cpp     ./include/skutils/atomic_shared_ptr.h
@@ -21,6 +23,7 @@ endif()
 target_include_directories( skutils PRIVATE
     ./include
 	${SKUTILS_INCLUDE_DIRS}
+	"${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp" #${CMAKE_BINARY_DIR}/deps/include
     )
 target_link_libraries( skutils
     websockets uv

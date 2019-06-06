@@ -2015,11 +2015,15 @@ then
 		if [ ! -d "libcryptopp" ];
 		then
 			mkdir libcryptopp
-			if [ ! -f "cryptopp700.zip" ];
-			then
-				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				$WGET https://www.cryptopp.com/cryptopp700.zip
-			fi
+			#
+			#if [ ! -f "cryptopp700.zip" ];
+			#then
+			#	echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
+			#	$WGET https://www.cryptopp.com/cryptopp700.zip
+			#fi
+			#
+			git clone git@github.com:weidai11/cryptopp.git libcryptopp
+			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 			unzip cryptopp700.zip -d $SOURCES_ROOT/libcryptopp
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
