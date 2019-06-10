@@ -47,7 +47,7 @@ jobs:
           after_success:
             # run tests
             - cd test
-            - ./testeth
+            - ./testeth || travis_terminate 1;
             - cd ..
 
             # Create lcov report
