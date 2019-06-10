@@ -1155,7 +1155,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 new SkaleRelayHTTP( strPathSslCert.c_str(), strPathSslKey.c_str(), nServerIndex ) );
         else
             pSrv.reset( new SkaleRelayHTTP( nullptr, nullptr, nServerIndex ) );
-        pSrv->m_pServer->Options( "/", [&]( const skutils::http::request& req,
+        pSrv->m_pServer->Options( "/", [=]( const skutils::http::request& req,
                                            skutils::http::response& res ) {
             if ( m_bTraceCalls )
                 logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
