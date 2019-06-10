@@ -2022,7 +2022,7 @@ then
 			#	$WGET https://www.cryptopp.com/cryptopp700.zip
 			#fi
 			#
-                        git clone https://github.com/DimaStebaev/cryptopp.git libcryptopp
+			git clone http://github.com/weidai11/cryptopp.git libcryptopp
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 			unzip cryptopp700.zip -d $SOURCES_ROOT/libcryptopp
