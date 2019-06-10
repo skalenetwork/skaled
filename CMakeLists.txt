@@ -180,7 +180,7 @@ if (EVMJIT)
     add_subdirectory(evmjit)
 endif()
 
-add_compile_options(-Wno-error=sign-compare -Wno-error=reorder -Wno-error=unused-but-set-variable
+#add_compile_options(-Wno-error=sign-compare -Wno-error=reorder -Wno-error=unused-but-set-variable
         -Wno-error=missing-field-initializers -Wno-error=extra -Wno-error=write-strings)
 
 if (CONSENSUS)
