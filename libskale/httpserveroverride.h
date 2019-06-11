@@ -206,9 +206,10 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
 
 public:
     SkaleServerOverride( size_t cntServers, dev::eth::Interface* pEth,
-        const std::string& strAddrHTTP, int nPortHTTP, const std::string& strAddrHTTPS,
-        int nPortHTTPS, const std::string& strAddrWS, int nPortWS, const std::string& strAddrWSS,
-        int nPortWSS, const std::string& strPathSslKey, const std::string& strPathSslCert );
+        const std::string& strAddrHTTP, int nBasePortHTTP, const std::string& strAddrHTTPS,
+        int nBasePortHTTPS, const std::string& strAddrWS, int nBasePortWS,
+        const std::string& strAddrWSS, int nBasePortWSS, const std::string& strPathSslKey,
+        const std::string& strPathSslCert );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
@@ -235,13 +236,13 @@ private:
     void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol, int nServerIndex,
         const char* strOrigin, const std::string& strPayload );
     const std::string m_strAddrHTTP;
-    const int m_nPortHTTP;
+    const int m_nBasePortHTTP;
     const std::string m_strAddrHTTPS;
-    const int m_nPortHTTPS;
+    const int m_nBasePortHTTPS;
     const std::string m_strAddrWS;
-    const int m_nPortWS;
+    const int m_nBasePortWS;
     const std::string m_strAddrWSS;
-    const int m_nPortWSS;
+    const int m_nBasePortWSS;
 
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );

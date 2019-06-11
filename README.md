@@ -47,8 +47,8 @@ Configure the project build with the following command to create the
 `build` directory with the configuration.
 
 ```shell
-cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug    # Configure the project and create a build directory.
-cmake --build build -- -j$(nproc)             # Build all default targets.
+cmake . # Configure the project
+cmake -- -j$(nproc) # Build all default targets.
 ```
 
 ## Contributing
