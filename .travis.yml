@@ -38,6 +38,8 @@ addons:
             - texinfo
             - lcov
             - clang-format-6.0
+            - flex
+            - bison
 jobs:
     include:
         - stage: test
