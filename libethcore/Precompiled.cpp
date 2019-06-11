@@ -236,8 +236,8 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
 
         size_t filenameLength;
-        std::string filename;
-        convertBytesToString( _in, 32, filename, filenameLength );
+        std::string rawFilename;
+        convertBytesToString( _in, 32, rawFilename, filenameLength );
         size_t const filenameBlocksCount = ( filenameLength + 31 ) / UINT256_SIZE;
         bigint const byteFileSize( parseBigEndianRightPadded(
             _in, 64 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ) );
@@ -248,16 +248,18 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
                << " exceeds supported limit " << FILE_MAX_SIZE;
             throw std::runtime_error( ss.str() );
         }
+        const fs::path filePath(rawFilename);
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
-        if ( !fs::exists( fsDirectoryPath ) ) {
-            bool isCreated = fs::create_directories( fsDirectoryPath );
+        const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
+        if ( !fs::exists( fsFilePath ) ) {
+            bool isCreated = fs::create_directories( fsFilePath );
             if ( !isCreated ) {
                 throw std::runtime_error(
                     "createFile() failed because cannot create subdirectory" );
             }
         }
         fstream file;
-        file.open( ( fsDirectoryPath / filename ).string(), ios::out );
+        file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
         if ( fileSize > 0 ) {
             file.seekp( static_cast< long >( fileSize ) - 1 );
             file.write( "0", 1 );
