@@ -337,9 +337,6 @@ pair< TransactionReceipts, bool > Block::sync(
     Transactions transactions = _tq.topTransactions( c_maxSyncTransactions, m_transactionSet );
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
-    for ( Transaction& transation : transactions ) {
-        transation.checkOutExternalGas( _bc.chainParams().externalGasDifficulty );
-    }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
@@ -537,8 +534,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
-            const_cast< Transaction& >( tr ).checkOutExternalGas(
-                _bc.chainParams().externalGasDifficulty );
+            const_cast< Transaction& >( tr ).checkOutExternalGas( _bc.chainParams().externalGasDifficulty );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;

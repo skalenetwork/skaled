@@ -690,11 +690,9 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 
-    // send it as usual
+    // 2 should be dropped from q
     ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions( 1 );
-    assert( tx_from_q.size() == 1 );
-    sleep( 1 );
-    stub->createBlock( tx_from_q, utcTime(), 2U );
+    BOOST_REQUIRE_EQUAL( tx_from_q.size(), 0 );
 
     // 3 send new tx and see nonce
     json["nonce"] = 1;
