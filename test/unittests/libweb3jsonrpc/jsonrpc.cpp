@@ -864,7 +864,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
         u256 candidate = h256::random();
         h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= 21000 ) {
+        if ( externalGas >= 21000 + 21000 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
