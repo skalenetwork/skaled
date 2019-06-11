@@ -184,7 +184,7 @@ u256 Transaction::gasPrice() const {
 
 void Transaction::checkOutExternalGas( u256 const& _difficulty ) {
     assert( _difficulty > 0 );
-    if ( !m_externalGasIsChecked ) {
+    if ( !m_externalGasIsChecked && !isInvalid() ) {
         h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
         if ( !hash ) {
             hash = h256( 1 );
