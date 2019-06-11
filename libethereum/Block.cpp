@@ -432,7 +432,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     unsigned count_bad = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
-            const_cast< Transaction& >( tr ).checkOutExternalGas( _bc.chainParams().externalGasDifficulty );
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
             receipts.push_back( m_receipts.back() );
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -535,7 +534,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
-            const_cast< Transaction& >( tr ).checkOutExternalGas( _bc.chainParams().externalGasDifficulty );
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams().externalGasDifficulty );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
