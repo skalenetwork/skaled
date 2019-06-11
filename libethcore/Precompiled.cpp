@@ -248,7 +248,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
                << " exceeds supported limit " << FILE_MAX_SIZE;
             throw std::runtime_error( ss.str() );
         }
-        const fs::path filePath(rawFilename);
+        const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( !fs::exists( fsFilePath ) ) {
@@ -482,11 +482,16 @@ ETH_REGISTER_PRECOMPILED( listFiles )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, storagePath, pathLength );
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / storagePath;
-        fs::recursive_directory_iterator directory_iterator(filePath);
-        fs::recursive_directory_iterator end;
-        std::vector<std::string> listOfFiles;
-        while (directory_iterator != end){
-            listOfFiles.push_back(directory_iterator->path().string());
+        fs::recursive_directory_iterator directory_iterator( filePath );
+        fs::recursive_directory_iterator end_iterator;
+        std::vector< std::string > listOfFiles;
+        while ( directory_iterator != end_iterator ) {
+            std::string _filePath = directory_iterator->path().string();
+            if ( fs::is_regular_file( _filePath ) ) {
+                _filePath = _filePath.substr(
+                    getFileStorageDir( Address( address ) ).string().length() - address.length() );
+                listOfFiles.push_back( _filePath );
+            }
             directory_iterator++;
         }
         u256 code = 1;
@@ -496,9 +501,9 @@ ETH_REGISTER_PRECOMPILED( listFiles )( bytesConstRef _in ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-                LOG( getLogger( VerbosityError ) ) << "Exception in listFiles: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) ) << "Exception in listFiles: " << strError << "\n";
     } catch ( ... ) {
-                LOG( getLogger( VerbosityError ) ) << "Unknown exception in listFiles\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in listFiles\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
