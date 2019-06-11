@@ -190,7 +190,7 @@ void Transaction::checkOutExternalGas( u256 const& _difficulty ) {
             hash = h256( 1 );
         }
         u256 externalGas = ~u256( 0 ) / u256( hash ) / _difficulty;
-        cerr << "Mined gas: " << externalGas << endl;
+        cdebug << "Mined gas: " << externalGas << endl;
         if ( externalGas >= baseGasRequired( ConstantinopleSchedule ) ) {
             m_externalGas = externalGas;
         }

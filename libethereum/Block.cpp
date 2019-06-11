@@ -534,6 +534,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams().externalGasDifficulty );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
