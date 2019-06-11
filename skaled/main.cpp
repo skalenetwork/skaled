@@ -157,8 +157,8 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {
-        "http-port", "https-port", "ws-port", "wss-port", "wsll", "ssl-key", "ssl-cert"};
+    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
+        "ws-log", "ssl-key", "ssl-cert", "acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -277,21 +277,21 @@ int main( int argc, char** argv ) try {
     addClientOption( "no-ipc", "Disable IPC server" );
 
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTP server on specified port" );
+        "Run web3 HTTP server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "https-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTPS server on specified port" );
+        "Run web3 HTTPS server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 WS server on specified port" );
+        "Run web3 WS server on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "wss-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 WSS server on specified port" );
-    addClientOption( "wsll", po::value< string >()->value_name( "<mode>" ),
-        "Set web sockets logginng mode(none, basic, detailed), default is none" );
+        "Run web3 WSS server(s) on specified port(and next set of ports if --acceptors > 1)" );
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
         skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
         skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
+    addClientOption( "ws-log", po::value< string >()->value_name( "<mode>" ),
+        "Web socket debug logging mode(none, basic detailed; default is none)" );
     addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
         "Max number of RPC connections(such as web3) summary for all protocols(0 is default and "
         "means unlimited)" );
@@ -437,11 +437,6 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
                 nExplicitPortWSS = -1;
         }
-    }
-    if ( vm.count( "wsll" ) ) {
-        std::string strWSLL = vm["wsll"].as< string >();
-        if ( !strWSLL.empty() )
-            skutils::ws::g_eWSLL = skutils::ws::str2wsll( strWSLL );
     }
 
     if ( vm.count( "web3-trace" ) )
@@ -1056,6 +1051,22 @@ int main( int argc, char** argv ) try {
                 if ( cntServers < 1 )
                     cntServers = 1;
             }
+            if ( vm.count( "ws-mode" ) ) {
+                std::string s = vm["ws-mode"].as< std::string >();
+                skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
+            }
+            if ( vm.count( "ws-log" ) ) {
+                std::string s = vm["ws-log"].as< std::string >();
+                skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "WS mode" )
+                << cc::debug( "........................ " )
+                << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "....................." ) + cc::info( "WS logging" )
+                << cc::debug( "...... " )
+                << cc::info( skutils::ws::wsll2str( skutils::ws::g_eWSLL ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Max RPC connections" )
                 << cc::debug( ".................... " )
