@@ -471,4 +471,38 @@ ETH_REGISTER_PRECOMPILED( checkFile )( bytesConstRef _in ) {
     return {false, response};
 }
 
+ETH_REGISTER_PRECOMPILED( listFiles )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+
+        size_t pathLength;
+        std::string storagePath;
+        convertBytesToString( _in, 32, storagePath, pathLength );
+
+        const fs::path filePath = getFileStorageDir( Address( address ) ) / storagePath;
+        fs::recursive_directory_iterator directory_iterator(filePath);
+        fs::recursive_directory_iterator end;
+        std::vector<std::string> listOfFiles;
+        while (directory_iterator != end){
+            listOfFiles.push_back(directory_iterator->path().string());
+            directory_iterator++;
+        }
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+                LOG( getLogger( VerbosityError ) ) << "Exception in listFiles: " << strError << "\n";
+    } catch ( ... ) {
+                LOG( getLogger( VerbosityError ) ) << "Unknown exception in listFiles\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};
+}
+
 }  // namespace
