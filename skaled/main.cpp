@@ -42,10 +42,10 @@
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
+#include <libethereum/ClientTest.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/SnapshotImporter.h>
 #include <libethereum/SnapshotStorage.h>
-#include <libethereum/ClientTest.h>
 #include <libevm/VMFactory.h>
 
 #include <libdevcrypto/LibSnark.h>
@@ -111,10 +111,10 @@ static void version() {
          << buildinfo->build_type << "\n";
 }
 
-static std::string clientVersion( ) {
+static std::string clientVersion() {
     const auto* buildinfo = skale_get_buildinfo();
-    return std::string("skaled/") + buildinfo->project_version + "/" + buildinfo->system_name + "/" +
-           buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
+    return std::string( "skaled/" ) + buildinfo->project_version + "/" + buildinfo->system_name +
+           "/" + buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
 }
 
 /*
@@ -682,10 +682,12 @@ int main( int argc, char** argv ) try {
     signal( SIGTERM, &ExitHandler::exitHandler );
     signal( SIGINT, &ExitHandler::exitHandler );
 
-//    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(), "",
-//        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false );
+    //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
+    //    "",
+    //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
+    //        );
 
-    std::unique_ptr<Client> client;
+    std::unique_ptr< Client > client;
     std::string snapshotPath = "";
 
     if ( getDataDir().size() )
@@ -694,14 +696,12 @@ int main( int argc, char** argv ) try {
         Ethash::init();
         NoProof::init();
 
-        auto tq_limits = TransactionQueue::Limits{100000, 1024};
-
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, tq_limits ) );
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, TransactionQueue::Limits{100000, 1024} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, tq_limits ) );
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, TransactionQueue::Limits{100000, 1024} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -710,12 +710,11 @@ int main( int argc, char** argv ) try {
         client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();
-        client->setExtraData(
-            rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
-                            string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
-                            string{buildinfo->build_type}.substr( 0, 1 ) +
-                            string{buildinfo->system_name}.substr( 0, 5 ) +
-                            string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+        client->setExtraData( rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
+                                              string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
+                                              string{buildinfo->build_type}.substr( 0, 1 ) +
+                                              string{buildinfo->system_name}.substr( 0, 5 ) +
+                                              string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
     }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
@@ -737,8 +736,7 @@ int main( int argc, char** argv ) try {
 
         unsigned last = toNumber( exportTo );
         for ( unsigned i = toNumber( exportFrom ); i <= last; ++i ) {
-            bytes block = client->blockChain().block(
-                client->blockChain().numberHash( i ) );
+            bytes block = client->blockChain().block( client->blockChain().numberHash( i ) );
             switch ( exportFormat ) {
             case Format::Binary:
                 out.write( reinterpret_cast< char const* >( block.data() ),
@@ -772,8 +770,7 @@ int main( int argc, char** argv ) try {
             unsigned imported = 0;
 
             unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1
-                 << " blocks.\n";
+            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
             while ( in.peek() != -1 && !exitHandler.shouldExit() ) {
                 bytes block( 8 );
@@ -838,8 +835,7 @@ int main( int argc, char** argv ) try {
                          << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
                          << client->number() << ")"
                          << "\n";
-                    fprintf( client->performance_fd, "%d\t%.2lf\n",
-                        client->number(), i / d );
+                    fprintf( client->performance_fd, "%d\t%.2lf\n", client->number(), i / d );
                     last = static_cast< unsigned >( e );
                     lastImported = imported;
                     MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
@@ -860,8 +856,8 @@ int main( int argc, char** argv ) try {
                     .count() /
                 1000.0;
             cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                 << client->number() << ")\n";
+                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << client->number()
+                 << ")\n";
         } );  // thread
         th.join();
         return 0;
@@ -970,19 +966,19 @@ int main( int argc, char** argv ) try {
             if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
                 return true;
 
-            string r = getResponse(
-                _t.userReadable( isProxy,
-                    [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
-                        h256 contractCodeHash = client->postState().codeHash( _t.to );
-                        if ( contractCodeHash == EmptySHA3 )
-                            return std::make_pair( false, std::string() );
-                        // TODO: actually figure out the natspec. we'll need the
-                        // natspec database here though.
-                        return std::make_pair( true, std::string() );
-                    },
-                    [&]( Address const& _a ) { return _a.hex(); } ) +
-                    "\nEnter yes/no/always (always to this address): ",
-                {"yes", "n", "N", "no", "NO", "always"} );
+            string r =
+                getResponse( _t.userReadable( isProxy,
+                                 [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
+                                     h256 contractCodeHash = client->postState().codeHash( _t.to );
+                                     if ( contractCodeHash == EmptySHA3 )
+                                         return std::make_pair( false, std::string() );
+                                     // TODO: actually figure out the natspec. we'll need the
+                                     // natspec database here though.
+                                     return std::make_pair( true, std::string() );
+                                 },
+                                 [&]( Address const& _a ) { return _a.hex(); } ) +
+                                 "\nEnter yes/no/always (always to this address): ",
+                    {"yes", "n", "N", "no", "NO", "always"} );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
@@ -1007,8 +1003,7 @@ int main( int argc, char** argv ) try {
             skaleFace,  /// skale
             new rpc::Net(), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
-            new rpc::AdminEth(
-                *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
             new rpc::Debug( *client ), nullptr ) );
 
         if ( is_ipc ) {
