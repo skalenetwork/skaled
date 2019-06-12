@@ -2,7 +2,7 @@
 #include <boost/test/unit_test.hpp>
 
 BOOST_AUTO_TEST_SUITE( SkUtils )
-BOOST_AUTO_TEST_SUITE( http )
+BOOST_AUTO_TEST_SUITE( http, *boost::unit_test::disabled() )
 
 BOOST_AUTO_TEST_CASE( http_server_startup ) {
     skutils::test::test_print_header_name( "SkUtils/http/http_server_startup" );

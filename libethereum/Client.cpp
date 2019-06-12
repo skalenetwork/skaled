@@ -95,7 +95,10 @@ Client::~Client() {
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
 
-    assert( m_skaleHost );
+    if ( !m_skaleHost ) {
+        cerror << "Instance of SkaleHost was not properly created.";
+    }
+
     m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
     m_signalled.notify_all();    // to wake up the thread from Client::doWork()
     stopWorking();
