@@ -485,18 +485,18 @@ ETH_REGISTER_PRECOMPILED( listFiles )( bytesConstRef _in ) {
         fs::recursive_directory_iterator directory_iterator( filePath );
         fs::recursive_directory_iterator end_iterator;
         std::vector< std::string > listOfFiles;
+        bytes returnedList;
         while ( directory_iterator != end_iterator ) {
             std::string _filePath = directory_iterator->path().string();
             if ( fs::is_regular_file( _filePath ) ) {
-                _filePath = _filePath.substr(
+                std::string fileFullPath = _filePath.substr(
                     getFileStorageDir( Address( address ) ).string().length() - address.length() );
-                listOfFiles.push_back( _filePath );
+                bytes byteFilePath(fileFullPath.c_str(),fileFullPath.c_str()+fileFullPath.length());
+                returnedList.insert( returnedList.end(), byteFilePath.begin(), byteFilePath.end());
             }
             directory_iterator++;
         }
-        u256 code = 1;
-        bytes response = toBigEndian( code );
-        return {true, response};
+        return {true, returnedList};
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
