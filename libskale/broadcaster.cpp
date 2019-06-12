@@ -99,7 +99,9 @@ void* ZmqBroadcaster::server_socket() const {
             if ( node.id == ch.nodeInfo.id )
                 continue;
             int res = zmq_connect( m_zmq_server_socket, getZmqUrl( node ).c_str() );
-            assert( res == 0 );
+            if ( res != 0 ) {
+                throw std::runtime_error( "Zmq can't connect" );
+            }
         }
         sleep( 1 );  // HACK to overcome zmq "slow joiner". see SKALE-742
     }
@@ -139,7 +141,9 @@ void ZmqBroadcaster::startService() {
 
     int timeo = 100;  // 100 milliseconds
     int res = zmq_setsockopt( client_socket(), ZMQ_RCVTIMEO, &timeo, sizeof( timeo ) );
-    assert( res == 0 );
+    if ( res != 0 ) {
+        throw runtime_error( "zmq_setsockopt has failed" );
+    }
 
     auto func = [this]() {
         setThreadName( "ZmqBroadcaster" );
@@ -215,5 +219,7 @@ void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     }
 
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
-    assert( res > 0 );
+    if ( res <= 0 ) {
+        throw runtime_error( "Zmq can't send data" );
+    }
 }
