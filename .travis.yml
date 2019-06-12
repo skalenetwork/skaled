@@ -54,7 +54,7 @@ jobs:
               skip_cleanup: true
               draft: true
               file:
-                - skaled/skaled
+                - test/testeth
               on:
                 repo: skalenetwork/skaled
                 all_branches: true
