@@ -277,6 +277,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     assert( _blockID == m_client.number() + 1 );
 
+    for ( Transaction& transaction : out_txns ) {
+        transaction.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+    }
+
     size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _timeStamp );
     if ( n_succeeded != out_txns.size() )
         penalizePeer();

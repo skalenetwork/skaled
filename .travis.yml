@@ -43,13 +43,27 @@ addons:
 jobs:
     include:
         - stage: test
+
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
+
           after_success:
+            - provider: releases
+              api_key: "$GITHUB_OAUTH_TOKEN"
+              skip_cleanup: true
+              draft: true
+              file:
+                - test/testeth
+              on:
+                repo: skalenetwork/skaled
+                all_branches: true
+                tag: true
+                condition: $TRAVIS_TAG = do-draft-release
+
             # run tests
             - cd test
-            - ./testeth
+            - ./testeth || travis_terminate 1;
             - cd ..
 
             # Create lcov report
