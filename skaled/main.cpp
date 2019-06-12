@@ -47,7 +47,6 @@
 #include <libethereum/SnapshotStorage.h>
 #include <libethereum/ClientTest.h>
 #include <libevm/VMFactory.h>
-#include <libwebthree/WebThree.h>
 
 #include <libdevcrypto/LibSnark.h>
 
@@ -1211,7 +1210,7 @@ int main( int argc, char** argv ) try {
     MicroProfileShutdown();
 
     return 0;
-} catch ( const WebThreeDirect::CreationException& ex ) {
+} catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     return EXIT_FAILURE;

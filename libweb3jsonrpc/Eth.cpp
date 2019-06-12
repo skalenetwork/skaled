@@ -31,14 +31,13 @@
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libwebthree/WebThree.h>
+
 #include <csignal>
 
 using namespace std;
 using namespace jsonrpc;
 using namespace dev;
 using namespace eth;
-using namespace shh;
 using namespace dev::rpc;
 
 Eth::Eth( eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
