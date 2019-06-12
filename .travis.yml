@@ -43,10 +43,24 @@ addons:
 jobs:
     include:
         - stage: test
+
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
+
           after_success:
+            - provider: releases
+              api_key: "$GITHUB_OAUTH_TOKEN"
+              skip_cleanup: true
+              draft: true
+              file:
+                - skaled/skaled
+              on:
+                repo: skalenetwork/skaled
+                all_branches: true
+                tag: true
+                condition: $TRAVIS_TAG = do-draft-release
+
             # run tests
             - cd test
             - ./testeth || travis_terminate 1;
@@ -103,17 +117,6 @@ jobs:
               on:
                 repo: skalenetwork/skaled
                 branch: release-candidate
-            - provider: releases
-              api_key: "$GITHUB_OAUTH_TOKEN"
-              skip_cleanup: true
-              draft: true
-              file:
-                - skaled/skaled
-              on:
-                repo: skalenetwork/skaled
-                all_branches: true
-                tag: true
-                condition: $TRAVIS_TAG = do-draft-release
             - provider: script
               script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
