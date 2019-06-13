@@ -143,7 +143,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     u256 balanceAfter = client->balanceAt( senderAddress ); \
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
 
-BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture, *boost::unit_test::disabled() )
+BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture)//, *boost::unit_test::disabled() )
 
 BOOST_AUTO_TEST_CASE( validTransaction ) {
     auto senderAddress = coinbase.address();

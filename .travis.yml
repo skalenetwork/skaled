@@ -63,7 +63,7 @@ jobs:
 
             # run tests
             - cd test
-            - ./testeth || travis_terminate 1;
+            - ./testeth -- --verbosity 4 || travis_terminate 1;
             - cd ..
 
             # Create lcov report
