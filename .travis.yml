@@ -63,7 +63,7 @@ jobs:
 
             # run tests
             - cd test
-            - ./testeth -- --verbosity 4 || travis_terminate 1;
+            - ./testeth -t SkaleHostSuite -- --verbosity 4 || travis_terminate 1;
             - cd ..
 
             # Create lcov report
