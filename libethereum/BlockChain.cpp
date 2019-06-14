@@ -973,7 +973,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         else
             fresh.push_back( h );
 
-    clog(VerbosityTrace, "BlockChain") << "Insterted block with " << n_transactions << " transactions";
+    clog( VerbosityTrace, "BlockChain" )
+        << "Insterted block with " << n_transactions << " transactions";
 
     return ImportRoute{dead, fresh, _block.transactions};
 }

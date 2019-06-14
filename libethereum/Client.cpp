@@ -256,7 +256,6 @@ void Client::startedWorking() {
     LOG( m_loggerDetail ) << "startedWorking()";
 
     DEV_GUARDED( m_blockImportMutex ) {
-
         DEV_WRITE_GUARDED( x_preSeal )
         m_preSeal.sync( bc() );
         DEV_READ_GUARDED( x_preSeal ) {
@@ -265,7 +264,6 @@ void Client::startedWorking() {
             DEV_WRITE_GUARDED( x_postSeal )
             m_postSeal = m_preSeal;
         }
-
     }
 }
 
@@ -274,7 +272,6 @@ void Client::doneWorking() {
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 
     DEV_GUARDED( m_blockImportMutex ) {
-
         DEV_WRITE_GUARDED( x_preSeal )
         m_preSeal.sync( bc() );
         DEV_READ_GUARDED( x_preSeal ) {
@@ -283,7 +280,6 @@ void Client::doneWorking() {
             DEV_WRITE_GUARDED( x_postSeal )
             m_postSeal = m_preSeal;
         }
-
     }
 }
 
