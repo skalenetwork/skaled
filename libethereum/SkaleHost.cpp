@@ -285,6 +285,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
+    LOG( m_traceLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size() << " transactions" << std::endl;
+
     if ( have_consensus_born )
         this->m_lastBlockWithBornTransactions = _blockID;
 

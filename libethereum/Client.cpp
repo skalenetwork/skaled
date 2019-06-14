@@ -249,31 +249,41 @@ bool Client::isMajorSyncing() const {
     // TODO Ask here some special sync component
 }
 
+// TODO make Client not-Worker, remove all this stuff! (doWork, etc..)
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
     LOG( m_loggerDetail ) << "startedWorking()";
 
-    DEV_WRITE_GUARDED( x_preSeal )
-    m_preSeal.sync( bc() );
-    DEV_READ_GUARDED( x_preSeal ) {
-        DEV_WRITE_GUARDED( x_working )
-        m_working = m_preSeal;
-        DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_preSeal;
+    DEV_GUARDED( m_blockImportMutex ) {
+
+        DEV_WRITE_GUARDED( x_preSeal )
+        m_preSeal.sync( bc() );
+        DEV_READ_GUARDED( x_preSeal ) {
+            DEV_WRITE_GUARDED( x_working )
+            m_working = m_preSeal;
+            DEV_WRITE_GUARDED( x_postSeal )
+            m_postSeal = m_preSeal;
+        }
+
     }
 }
 
 void Client::doneWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    DEV_WRITE_GUARDED( x_preSeal )
-    m_preSeal.sync( bc() );
-    DEV_READ_GUARDED( x_preSeal ) {
-        DEV_WRITE_GUARDED( x_working )
-        m_working = m_preSeal;
-        DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_preSeal;
+
+    DEV_GUARDED( m_blockImportMutex ) {
+
+        DEV_WRITE_GUARDED( x_preSeal )
+        m_preSeal.sync( bc() );
+        DEV_READ_GUARDED( x_preSeal ) {
+            DEV_WRITE_GUARDED( x_working )
+            m_working = m_preSeal;
+            DEV_WRITE_GUARDED( x_postSeal )
+            m_postSeal = m_preSeal;
+        }
+
     }
 }
 

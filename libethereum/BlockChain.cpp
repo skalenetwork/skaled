@@ -770,6 +770,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         throw;
     }
 
+    int n_transactions = 0;
+
     h256s route;
     h256 common;
     bool isImportedAndBest = false;
@@ -793,6 +795,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         if ( common != last )
             DEV_READ_GUARDED( x_lastBlockHash )
         clearCachesDuringChainReversion( number( common ) + 1 );
+
+        // TODO Understand and remove this trash with "routes"
 
         // Go through ret backwards (i.e. from new head to common) until hash !=
         // last.parent and update m_transactionAddresses, m_blockHashes
@@ -827,6 +831,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
                 }
             }
+
             // Collate transaction hashes and remember who they were.
             // h256s newTransactionAddresses;
             {
@@ -839,6 +844,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                 ta.blockHash = tbi.hash();
 
                 RLP txns_rlp = blockRLP[1];
+                n_transactions += txns_rlp.size();
 
                 for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
                     MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
@@ -966,6 +972,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             dead.push_back( h );
         else
             fresh.push_back( h );
+
+    clog(VerbosityTrace, "BlockChain") << "Insterted block with " << n_transactions << " transactions";
+
     return ImportRoute{dead, fresh, _block.transactions};
 }
 
