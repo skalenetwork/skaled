@@ -360,7 +360,7 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
-    addGeneralOption( "bls-file,d", po::value< string >()->value_name( "<file>" ),
+    addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
@@ -458,18 +458,6 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "ipcpath" ) )
         setIpcPath( vm["ipcpath"].as< string >() );
 
-    if ( vm.count( "bls-key-file" ) ) {
-        try {
-            fs::path blsFile = vm["bls-key-file"].as< string >();
-            blsJson = contentsString( blsFile.string() );
-            if ( blsJson.empty() )
-                throw "BLS key file probably not found";
-        } catch ( ... ) {
-            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
-            return -1;
-        }
-    }
-
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
@@ -478,6 +466,18 @@ int main( int argc, char** argv ) try {
                 throw "Config file probably not found";
         } catch ( ... ) {
             cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
+            return -1;
+        }
+    }
+
+    if ( vm.count( "bls-key-file" ) ) {
+        try {
+            fs::path blsFile = vm["bls-key-file"].as< string >();
+            blsJson = contentsString( blsFile.string() );
+            if ( blsJson.empty() )
+                throw "BLS key file probably not found";
+        } catch ( ... ) {
+            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
             return -1;
         }
     }
@@ -618,6 +618,41 @@ int main( int argc, char** argv ) try {
         }
     }
 
+    string blsPrivateKey;
+    string blsPublicKey1;
+    string blsPublicKey2;
+    string blsPublicKey3;
+    string blsPublicKey4;
+
+    if ( !blsJson.empty() ) {
+        try {
+
+            using namespace  json_spirit;
+
+            mValue val;
+            json_spirit::read_string_or_throw( blsJson, val );
+            mObject obj = val.get_obj();
+
+            string blsPrivateKey = obj["secret_key"].get_str();
+
+            mArray pub = obj["common_public"].get_array();
+
+            string blsPublicKey1 = pub[0].get_str();
+            string blsPublicKey2 = pub[1].get_str();
+            string blsPublicKey3 = pub[2].get_str();
+            string blsPublicKey4 = pub[3].get_str();
+
+        } catch ( const json_spirit::Error_position& err ) {
+            cerr << "error in parsing BLS keyfile:\n";
+            cerr << err.reason_ << " line " << err.line_ << endl;
+            cerr << blsJson << endl;
+        } catch ( ... ) {
+            cerr << "BLS keyfile is not well formatted\n";
+            cerr << blsJson << endl;
+            return 0;
+        }
+    }
+
     setupLogging( loggingOptions );
 
     if ( !chainConfigIsSet )
@@ -706,7 +741,10 @@ int main( int argc, char** argv ) try {
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
-        client->injectSkaleHost();
+        DefaultConsensusFactory cons_fact(*client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4);
+        std::shared_ptr<SkaleHost> skaleHost = std::make_shared<SkaleHost>(*client, &cons_fact);
+
+        client->injectSkaleHost(skaleHost);
         client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();
