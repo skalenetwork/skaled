@@ -90,8 +90,7 @@ class SkaleHost {
     };
 
 public:
-    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
-        const ConsensusFactory* _consFactory = nullptr );
+    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();

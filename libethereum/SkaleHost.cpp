@@ -96,9 +96,9 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT );
 }
 
-SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
+SkaleHost::SkaleHost( dev::eth::Client& _client,
     const ConsensusFactory* _consFactory )
-    : m_client( _client ), m_tq( _tq ), total_sent( 0 ), total_arrived( 0 ) {
+    : m_client( _client ), m_tq( _client.m_tq ), total_sent( 0 ), total_arrived( 0 ) {
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 

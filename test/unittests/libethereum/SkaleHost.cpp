@@ -85,7 +85,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
-        skaleHost = make_shared< SkaleHost >( *client, *tq, &test_stub_factory );
+        skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
         stub = test_stub_factory.result;
 
         client->injectSkaleHost( skaleHost );
