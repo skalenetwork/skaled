@@ -27,7 +27,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/ChainParams.h>
-#include <libethereum/Client.h>
+#include <libethereum/ClientTest.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
@@ -141,9 +141,14 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
-        client.reset(
-            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+            shared_ptr< GasPricer >(), tempDir.path(), WithExisting::Kill ) );
+
+        //        client.reset(
+        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
+        //            GasPricer >(),
+        //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
+        //                1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
