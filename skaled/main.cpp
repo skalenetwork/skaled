@@ -470,7 +470,7 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    if ( vm.count( "bls-key-file" ) ) {
+    if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
         try {
             fs::path blsFile = vm["bls-key-file"].as< string >();
             blsJson = contentsString( blsFile.string() );
