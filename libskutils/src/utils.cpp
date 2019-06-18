@@ -576,7 +576,11 @@ std::vector< long double > cpu_load() {
     FILE* fp = fopen( "/proc/stat", "r" );
     if ( !fp )
         return cpuLoad;
-    fscanf( fp, "%*s %Lf %Lf %Lf %Lf", &cpuLoad[0], &cpuLoad[1], &cpuLoad[2], &cpuLoad[3] );
+    if ( fscanf( fp, "%*s %Lf %Lf %Lf %Lf", &cpuLoad[0], &cpuLoad[1], &cpuLoad[2], &cpuLoad[3] ) !=
+         4 ) {
+        fclose( fp );
+        throw std::runtime_error( "Can't parse /proc/stat" );
+    };
     fclose( fp );
 
     return cpuLoad;

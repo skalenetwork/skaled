@@ -51,6 +51,7 @@ if( SKALED_HATE_WARNINGS )
     #add_compile_options( -Wno-error=unused-variable )
     #add_compile_options( -Wno-error=unused-parameter )
     #add_compile_options( -Wno-error=unused-but-set-variable )
+    add_compile_options(-Wno-error=int-in-bool-context)
 endif()
 
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
