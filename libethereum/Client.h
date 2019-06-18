@@ -73,7 +73,6 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
  * @brief Main API hub for interfacing with Ethereum.
  */
 class Client : public ClientBase, protected Worker {
-
     friend class ::SkaleHost;
 
 public:

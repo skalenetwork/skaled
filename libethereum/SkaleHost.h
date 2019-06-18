@@ -67,11 +67,15 @@ public:
 
 class DefaultConsensusFactory : public ConsensusFactory {
 public:
-    DefaultConsensusFactory( const dev::eth::Client& _client, const string &_blsPrivateKey = "",
-                             const string &_blsPublicKey1 = "", const string &_blsPublicKey2 = "",
-                             const string &_blsPublicKey3 = "", const string &_blsPublicKey4 = "" ) :
-        m_client( _client ), m_blsPrivateKey(_blsPrivateKey),
-        m_blsPublicKey1(_blsPublicKey1), m_blsPublicKey2(_blsPublicKey2), m_blsPublicKey3(_blsPublicKey3), m_blsPublicKey4(_blsPublicKey4) {}
+    DefaultConsensusFactory( const dev::eth::Client& _client, const string& _blsPrivateKey = "",
+        const string& _blsPublicKey1 = "", const string& _blsPublicKey2 = "",
+        const string& _blsPublicKey3 = "", const string& _blsPublicKey4 = "" )
+        : m_client( _client ),
+          m_blsPrivateKey( _blsPrivateKey ),
+          m_blsPublicKey1( _blsPublicKey1 ),
+          m_blsPublicKey2( _blsPublicKey2 ),
+          m_blsPublicKey3( _blsPublicKey3 ),
+          m_blsPublicKey4( _blsPublicKey4 ) {}
     virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
 
 private:

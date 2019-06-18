@@ -626,8 +626,7 @@ int main( int argc, char** argv ) try {
 
     if ( !blsJson.empty() ) {
         try {
-
-            using namespace  json_spirit;
+            using namespace json_spirit;
 
             mValue val;
             json_spirit::read_string_or_throw( blsJson, val );
@@ -733,18 +732,22 @@ int main( int argc, char** argv ) try {
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, TransactionQueue::Limits{100000, 1024} ) );
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                TransactionQueue::Limits{100000, 1024} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting, TransactionQueue::Limits{100000, 1024} ) );
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                TransactionQueue::Limits{100000, 1024} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
-        DefaultConsensusFactory cons_fact(*client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4);
-        std::shared_ptr<SkaleHost> skaleHost = std::make_shared<SkaleHost>(*client, &cons_fact);
+        DefaultConsensusFactory cons_fact(
+            *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
+        std::shared_ptr< SkaleHost > skaleHost =
+            std::make_shared< SkaleHost >( *client, &cons_fact );
 
-        client->injectSkaleHost(skaleHost);
+        client->injectSkaleHost( skaleHost );
         client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();

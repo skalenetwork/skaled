@@ -165,7 +165,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
-            new rpc::Web3( /*web3->clientVersion()*/ ),     // TODO Add real version?
+            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
             new rpc::Test( *client ) ) );

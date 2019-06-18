@@ -49,9 +49,10 @@ public:
 
         auto nodesState = contents( dir / fs::path( "network.rlp" ) );
 
-//        bool testingMode = true;
-//        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth" ), dir,
-//            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
+        //        bool testingMode = true;
+        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
+        //        ), dir,
+        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         m_ethereum.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
