@@ -254,7 +254,6 @@ public:
                           << std::endl;
             }
 
-            Client* client = client;
             auto number = client->number();
             std::cerr << "Node2 has " << number << " blocks" << std::endl;
             for ( size_t i = 0; i <= number; i++ ) {
