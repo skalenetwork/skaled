@@ -70,8 +70,7 @@ public:
     ConsensusExtImpl( SkaleHost& _host );
     virtual transactions_vector pendingTransactions( size_t _limit ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs,
-        uint64_t _blockID, u256 _gasPrice ) override;
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -88,8 +87,7 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions( siz
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */,
-    uint64_t _blockID, u256 /* _gasPrice */ ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 /* _gasPrice */ ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions, _timeStamp, _blockID );
 }
