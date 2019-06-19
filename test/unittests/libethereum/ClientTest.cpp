@@ -54,9 +54,13 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
-        m_ethereum.reset(
-            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+            shared_ptr< GasPricer >(), dir, WithExisting::Kill ) );
+
+        //        m_ethereum.reset(
+        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
+        //            GasPricer >(),
+        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
