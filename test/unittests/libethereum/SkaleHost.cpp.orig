@@ -45,7 +45,7 @@ public:
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
         uint64_t _timeStamp, uint64_t _blockID ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, _blockID, 0 );
+        m_extFace.createBlock( _approvedTransactions, _timeStamp, _blockID );
     }
 };
 
@@ -81,11 +81,18 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         client =
             make_unique< Client >( chainParams, chainParams.networkID, gasPricer, tempDir.path() );
+<<<<<<< HEAD
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
-        skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
+        skaleHost = make_shared< SkaleHost >( *client, *tq, &test_stub_factory );
+=======
+        client->setAuthor( coinbase.address() );
+
+        ConsensusTestStubFactory test_stub_factory;
+        skaleHost = make_shared< SkaleHost >( *client, tq, &test_stub_factory );
+>>>>>>> develop
         stub = test_stub_factory.result;
 
         client->injectSkaleHost( skaleHost );
@@ -100,7 +107,11 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( Address( 5 ) );
     }
 
+<<<<<<< HEAD
     TransactionQueue* tq;
+=======
+    TransactionQueue tq;
+>>>>>>> develop
 
     unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
@@ -143,7 +154,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     u256 balanceAfter = client->balanceAt( senderAddress ); \
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
 
-BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
+BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )
 
 BOOST_AUTO_TEST_CASE( validTransaction ) {
     auto senderAddress = coinbase.address();
@@ -614,7 +625,11 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
 
     // submit it!
     // TODO Make one queue again! (in SkaleHost and Client)
+<<<<<<< HEAD
     tq->import( tx1 );
+=======
+    tq.import( tx1 );
+>>>>>>> develop
 
     // 2nd transaction
     u256 value2 = 9000 * dev::eth::szabo;
@@ -649,6 +664,7 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
+<<<<<<< HEAD
 BOOST_AUTO_TEST_CASE( transactionRace ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -673,7 +689,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     h256 txHash = tx.sha3();
 
     // 1 add tx as normal
-    client->importTransaction( tx );
+    client->importTransaction(tx);
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
@@ -690,9 +706,11 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 
-    // 2 should be dropped from q
-    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( tx_from_q.size(), 0 );
+    // send it as usual
+    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions(1);
+    assert(tx_from_q.size() == 1);
+    sleep(1);
+    stub->createBlock(tx_from_q, utcTime(), 2U);
 
     // 3 send new tx and see nonce
     json["nonce"] = 1;
@@ -701,7 +719,9 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    client->importTransaction( tx2 );
+    client->importTransaction(tx2);
 }
 
+=======
+>>>>>>> develop
 BOOST_AUTO_TEST_SUITE_END()

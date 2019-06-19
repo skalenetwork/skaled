@@ -73,6 +73,8 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
  * @brief Main API hub for interfacing with Ethereum.
  */
 class Client : public ClientBase, protected Worker {
+    friend class ::SkaleHost;
+
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
