@@ -259,8 +259,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( !fs::exists( fsFilePath ) ) {
-            throw std::runtime_error(
-                    "createFile() failed because directory not exists" );
+            throw std::runtime_error( "createFile() failed because directory not exists" );
         }
         fstream file;
         file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
@@ -435,79 +434,31 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
     return {false, response};
 }
 
-ETH_REGISTER_PRECOMPILED( checkFile )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        size_t filenameLength;
-        std::string filename;
-        convertBytesToString( _in, 32, filename, filenameLength );
-        size_t const filenameBlocksCount = ( filenameLength + 31 ) / UINT256_SIZE;
-        auto rawChecksum =
-            _in.cropped( 64 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ).toBytes();
-        std::string checksum;
-        boost::algorithm::hex( rawChecksum.begin(), rawChecksum.end(), back_inserter( checksum ) );
+        size_t directoryPathLength;
+        std::string directoryPath;
+        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        CryptoPP::SHA256 hash;
-        string digest;
-        CryptoPP::FileSource file( filePath.c_str(), true,
-            new CryptoPP::HashFilter(
-                hash, new CryptoPP::HexEncoder( new CryptoPP::StringSink( digest ) ) ) );
-        u256 code;
-        if ( checksum == digest )
-            code = 1;
-        else
-            code = 0;
+        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        bool isCreated = fs::create_directories( absolutePath );
+        if ( !isCreated ) {
+            throw std::runtime_error(
+                    "createDirectory() failed because cannot create directory" );
+        }
+        u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in checkFile: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) ) << "Exception in createDirectory: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in checkFile\n";
-    }
-    u256 code = 0;
-    bytes response = toBigEndian( code );
-    return {false, response};
-}
-
-ETH_REGISTER_PRECOMPILED( listFiles )( bytesConstRef _in ) {
-    try {
-        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
-        std::string address;
-        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-
-        size_t pathLength;
-        std::string storagePath;
-        convertBytesToString( _in, 32, storagePath, pathLength );
-
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / storagePath;
-        fs::recursive_directory_iterator directory_iterator( filePath );
-        fs::recursive_directory_iterator end_iterator;
-        std::vector< std::string > listOfFiles;
-        bytes returnedList;
-        while ( directory_iterator != end_iterator ) {
-            std::string _filePath = directory_iterator->path().string();
-            if ( fs::is_regular_file( _filePath ) ) {
-                std::string fileFullPath = _filePath.substr(
-                    getFileStorageDir( Address( address ) ).string().length() - address.length() );
-                bytes byteFilePath(fileFullPath.c_str(),fileFullPath.c_str()+fileFullPath.length());
-                returnedList.insert( returnedList.end(), byteFilePath.begin(), byteFilePath.end());
-            }
-            directory_iterator++;
-        }
-        return {true, returnedList};
-    } catch ( std::exception& ex ) {
-        std::string strError = ex.what();
-        if ( strError.empty() )
-            strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in listFiles: " << strError << "\n";
-    } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in listFiles\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
