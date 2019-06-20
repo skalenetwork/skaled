@@ -250,13 +250,17 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         }
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
-        const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
-        if ( !fs::exists( fsFilePath ) ) {
-            bool isCreated = fs::create_directories( fsFilePath );
+        if ( !fs::exists( fsDirectoryPath ) ) {
+            bool isCreated = fs::create_directories( fsDirectoryPath );
             if ( !isCreated ) {
                 throw std::runtime_error(
                     "createFile() failed because cannot create subdirectory" );
             }
+        }
+        const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
+        if ( !fs::exists( fsFilePath ) ) {
+            throw std::runtime_error(
+                    "createFile() failed because directory not exists" );
         }
         fstream file;
         file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
