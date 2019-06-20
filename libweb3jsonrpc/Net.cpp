@@ -26,7 +26,6 @@
 #include "Net.h"
 #include <libdevcore/CommonJS.h>
 #include <libethcore/Common.h>
-#include <libwebthree/WebThree.h>
 
 using namespace dev;
 using namespace dev::rpc;

@@ -42,11 +42,11 @@
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
+#include <libethereum/ClientTest.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/SnapshotImporter.h>
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
-#include <libwebthree/WebThree.h>
 
 #include <libdevcrypto/LibSnark.h>
 
@@ -91,7 +91,7 @@ namespace {
 std::atomic< bool > g_silence = {false};
 unsigned const c_lineWidth = 160;
 
-void version() {
+static void version() {
     const auto* buildinfo = skale_get_buildinfo();
     std::string pv = buildinfo->project_version, ver, commit;
     auto pos = pv.find( "+" );
@@ -109,6 +109,12 @@ void version() {
     cout << "Client database version..........." << dev::eth::c_databaseVersion << "\n";
     cout << "Build............................." << buildinfo->system_name << "/"
          << buildinfo->build_type << "\n";
+}
+
+static std::string clientVersion() {
+    const auto* buildinfo = skale_get_buildinfo();
+    return std::string( "skaled/" ) + buildinfo->project_version + "/" + buildinfo->system_name +
+           "/" + buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
 }
 
 /*
@@ -239,6 +245,8 @@ int main( int argc, char** argv ) try {
     fs::path configFile = getDataDir() / fs::path( "config.rlp" );
     bytes b = contents( configFile );
 
+    std::string blsJson;
+
     strings passwordsToNote;
     Secrets toImport;
     if ( b.size() ) {
@@ -352,6 +360,8 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
+        "Load BLS keys from file (default: none)" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -447,6 +457,7 @@ int main( int argc, char** argv ) try {
         setDataDir( vm["db-path"].as< string >() );
     if ( vm.count( "ipcpath" ) )
         setIpcPath( vm["ipcpath"].as< string >() );
+
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
@@ -455,6 +466,18 @@ int main( int argc, char** argv ) try {
                 throw "Config file probably not found";
         } catch ( ... ) {
             cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
+            return -1;
+        }
+    }
+
+    if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
+        try {
+            fs::path blsFile = vm["bls-key-file"].as< string >();
+            blsJson = contentsString( blsFile.string() );
+            if ( blsJson.empty() )
+                throw "BLS key file probably not found";
+        } catch ( ... ) {
+            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
             return -1;
         }
     }
@@ -595,6 +618,40 @@ int main( int argc, char** argv ) try {
         }
     }
 
+    string blsPrivateKey;
+    string blsPublicKey1;
+    string blsPublicKey2;
+    string blsPublicKey3;
+    string blsPublicKey4;
+
+    if ( !blsJson.empty() ) {
+        try {
+            using namespace json_spirit;
+
+            mValue val;
+            json_spirit::read_string_or_throw( blsJson, val );
+            mObject obj = val.get_obj();
+
+            string blsPrivateKey = obj["secret_key"].get_str();
+
+            mArray pub = obj["common_public"].get_array();
+
+            string blsPublicKey1 = pub[0].get_str();
+            string blsPublicKey2 = pub[1].get_str();
+            string blsPublicKey3 = pub[2].get_str();
+            string blsPublicKey4 = pub[3].get_str();
+
+        } catch ( const json_spirit::Error_position& err ) {
+            cerr << "error in parsing BLS keyfile:\n";
+            cerr << err.reason_ << " line " << err.line_ << endl;
+            cerr << blsJson << endl;
+        } catch ( ... ) {
+            cerr << "BLS keyfile is not well formatted\n";
+            cerr << blsJson << endl;
+            return 0;
+        }
+    }
+
     setupLogging( loggingOptions );
 
     if ( !chainConfigIsSet )
@@ -659,14 +716,53 @@ int main( int argc, char** argv ) try {
     signal( SIGTERM, &ExitHandler::exitHandler );
     signal( SIGINT, &ExitHandler::exitHandler );
 
-    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(), "",
-        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false );
+    //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
+    //    "",
+    //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
+    //        );
+
+    std::unique_ptr< Client > client;
+    std::string snapshotPath = "";
+
+    if ( getDataDir().size() )
+        Defaults::setDBPath( getDataDir() );
+    if ( nodeMode == NodeMode::Full && caps.count( "eth" ) ) {
+        Ethash::init();
+        NoProof::init();
+
+        if ( chainParams.sealEngineName == Ethash::name() ) {
+            client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                TransactionQueue::Limits{100000, 1024} ) );
+        } else if ( chainParams.sealEngineName == NoProof::name() ) {
+            client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                TransactionQueue::Limits{100000, 1024} ) );
+        } else
+            BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
+                                       "Unknown seal engine: " + chainParams.sealEngineName ) );
+
+        DefaultConsensusFactory cons_fact(
+            *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
+        std::shared_ptr< SkaleHost > skaleHost =
+            std::make_shared< SkaleHost >( *client, &cons_fact );
+
+        client->injectSkaleHost( skaleHost );
+        client->startWorking();
+
+        const auto* buildinfo = skale_get_buildinfo();
+        client->setExtraData( rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
+                                              string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
+                                              string{buildinfo->build_type}.substr( 0, 1 ) +
+                                              string{buildinfo->system_name}.substr( 0, 5 ) +
+                                              string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+    }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
         if ( s == "latest" )
-            return web3.ethereum()->number();
+            return client->number();
         if ( s.size() == 64 || ( s.size() == 66 && s.substr( 0, 2 ) == "0x" ) )
-            return web3.ethereum()->blockChain().number( h256( s ) );
+            return client->blockChain().number( h256( s ) );
         try {
             return static_cast< unsigned int >( stoul( s ) );
         } catch ( ... ) {
@@ -681,8 +777,7 @@ int main( int argc, char** argv ) try {
 
         unsigned last = toNumber( exportTo );
         for ( unsigned i = toNumber( exportFrom ); i <= last; ++i ) {
-            bytes block = web3.ethereum()->blockChain().block(
-                web3.ethereum()->blockChain().numberHash( i ) );
+            bytes block = client->blockChain().block( client->blockChain().numberHash( i ) );
             switch ( exportFormat ) {
             case Format::Binary:
                 out.write( reinterpret_cast< char const* >( block.data() ),
@@ -716,13 +811,12 @@ int main( int argc, char** argv ) try {
             unsigned imported = 0;
 
             unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << web3.ethereum()->syncStatus().currentBlockNumber + 1
-                 << " blocks.\n";
+            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
             while ( in.peek() != -1 && !exitHandler.shouldExit() ) {
                 bytes block( 8 );
                 {
-                    if ( block_no >= web3.ethereum()->number() ) {
+                    if ( block_no >= client->number() ) {
                         MICROPROFILE_ENTERI( "main", "in.read", -1 );
                     }
                     in.read( reinterpret_cast< char* >( block.data() ),
@@ -731,7 +825,7 @@ int main( int argc, char** argv ) try {
                     if ( block.size() >= 8 ) {
                         in.read( reinterpret_cast< char* >( block.data() + 8 ),
                             std::streamsize( block.size() ) - 8 );
-                        if ( block_no >= web3.ethereum()->number() ) {
+                        if ( block_no >= client->number() ) {
                             MICROPROFILE_LEAVE();
                         }
                     } else {
@@ -740,10 +834,10 @@ int main( int argc, char** argv ) try {
                 }
                 block_no++;
 
-                if ( block_no <= web3.ethereum()->number() )
+                if ( block_no <= client->number() )
                     continue;
 
-                switch ( web3.ethereum()->queueBlock( block, safeImport ) ) {
+                switch ( client->queueBlock( block, safeImport ) ) {
                 case ImportResult::Success:
                     good++;
                     break;
@@ -766,7 +860,7 @@ int main( int argc, char** argv ) try {
                 }
 
                 // sync chain with queue
-                tuple< ImportRoute, bool, unsigned > r = web3.ethereum()->syncQueue( 10 );
+                tuple< ImportRoute, bool, unsigned > r = client->syncQueue( 10 );
                 imported += get< 2 >( r );
 
                 double e =
@@ -780,10 +874,9 @@ int main( int argc, char** argv ) try {
                     cout << i << " more imported at " << i / d << " blocks/s. " << imported
                          << " imported in " << e << " seconds at "
                          << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                         << web3.ethereum()->number() << ")"
+                         << client->number() << ")"
                          << "\n";
-                    fprintf( web3.ethereum()->performance_fd, "%d\t%.2lf\n",
-                        web3.ethereum()->number(), i / d );
+                    fprintf( client->performance_fd, "%d\t%.2lf\n", client->number(), i / d );
                     last = static_cast< unsigned >( e );
                     lastImported = imported;
                     MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
@@ -797,15 +890,15 @@ int main( int argc, char** argv ) try {
                     MICROPROFILE_SCOPEI( "main", "sleep 1 sec", MP_DIMGREY );
                     this_thread::sleep_for( chrono::seconds( 1 ) );
                 }
-                tie( ignore, moreToImport, ignore ) = web3.ethereum()->syncQueue( 100000 );
+                tie( ignore, moreToImport, ignore ) = client->syncQueue( 100000 );
             }
             double e =
                 chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
                     .count() /
                 1000.0;
             cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                 << web3.ethereum()->number() << ")\n";
+                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << client->number()
+                 << ")\n";
         } );  // thread
         th.join();
         return 0;
@@ -847,12 +940,12 @@ int main( int argc, char** argv ) try {
 
     if ( mode == OperationMode::ImportSnapshot ) {
         try {
-            auto stateImporter = web3.ethereum()->createStateImporter();
-            auto blockChainImporter = web3.ethereum()->createBlockChainImporter();
+            auto stateImporter = client->createStateImporter();
+            auto blockChainImporter = client->createBlockChainImporter();
             SnapshotImporter importer( *stateImporter, *blockChainImporter );
 
             auto snapshotStorage( createSnapshotStorage( filename ) );
-            importer.import( *snapshotStorage, web3.ethereum()->blockChain().genesisHash() );
+            importer.import( *snapshotStorage, client->blockChain().genesisHash() );
             // continue with regular sync from the snapshot block
         } catch ( ... ) {
             cerr << "Error during importing the snapshot: "
@@ -863,8 +956,7 @@ int main( int argc, char** argv ) try {
 
     std::shared_ptr< eth::TrivialGasPricer > gasPricer =
         make_shared< eth::TrivialGasPricer >( askPrice, bidPrice );
-    eth::Client* client = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
-    if ( client ) {
+    if ( nodeMode == NodeMode::Full ) {
         client->setGasPricer( gasPricer );
         client->setSealer( m.minerType() );
         client->setAuthor( author );
@@ -915,19 +1007,19 @@ int main( int argc, char** argv ) try {
             if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
                 return true;
 
-            string r = getResponse(
-                _t.userReadable( isProxy,
-                    [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
-                        h256 contractCodeHash = web3.ethereum()->postState().codeHash( _t.to );
-                        if ( contractCodeHash == EmptySHA3 )
-                            return std::make_pair( false, std::string() );
-                        // TODO: actually figure out the natspec. we'll need the
-                        // natspec database here though.
-                        return std::make_pair( true, std::string() );
-                    },
-                    [&]( Address const& _a ) { return _a.hex(); } ) +
-                    "\nEnter yes/no/always (always to this address): ",
-                {"yes", "n", "N", "no", "NO", "always"} );
+            string r =
+                getResponse( _t.userReadable( isProxy,
+                                 [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
+                                     h256 contractCodeHash = client->postState().codeHash( _t.to );
+                                     if ( contractCodeHash == EmptySHA3 )
+                                         return std::make_pair( false, std::string() );
+                                     // TODO: actually figure out the natspec. we'll need the
+                                     // natspec database here though.
+                                     return std::make_pair( true, std::string() );
+                                 },
+                                 [&]( Address const& _a ) { return _a.hex(); } ) +
+                                 "\nEnter yes/no/always (always to this address): ",
+                    {"yes", "n", "N", "no", "NO", "always"} );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
@@ -942,19 +1034,18 @@ int main( int argc, char** argv ) try {
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
-            [&]() { return web3.ethereum(); }, getAccountPassword, keyManager, authenticator ) );
+            [&]() { return client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        auto ethFace = new rpc::Eth( *web3.ethereum(), *accountHolder.get() );
+        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *web3.ethereum()->skaleHost() );
+        auto skaleFace = new rpc::Skale( *client->skaleHost() );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,  /// skale
-            new rpc::Net(), new rpc::Web3( web3.clientVersion() ),
-            new rpc::Personal( keyManager, *accountHolder, *web3.ethereum() ),
-            new rpc::AdminEth(
-                *web3.ethereum(), *gasPricer.get(), keyManager, *sessionManager.get() ),
-            new rpc::Debug( *web3.ethereum() ), nullptr ) );
+            new rpc::Net(), new rpc::Web3( clientVersion() ),
+            new rpc::Personal( keyManager, *accountHolder, *client ),
+            new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            new rpc::Debug( *client ), nullptr ) );
 
         if ( is_ipc ) {
             try {
@@ -1075,7 +1166,7 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( cntServers, web3.ethereum(),
+            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
@@ -1139,7 +1230,7 @@ int main( int argc, char** argv ) try {
         unsigned int mining = 0;
 
         while ( !exitHandler.shouldExit() )
-            stopSealingAfterXBlocks( client, n, mining );
+            stopSealingAfterXBlocks( client.get(), n, mining );
     } else
         while ( !exitHandler.shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
@@ -1155,7 +1246,7 @@ int main( int argc, char** argv ) try {
     MicroProfileShutdown();
 
     return 0;
-} catch ( const WebThreeDirect::CreationException& ex ) {
+} catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     return EXIT_FAILURE;

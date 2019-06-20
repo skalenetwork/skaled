@@ -26,11 +26,12 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/KeyManager.h>
+#include <libethereum/ChainParams.h>
+#include <libethereum/Client.h>
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/Personal.h>
-#include <libwebthree/WebThree.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/filesystem.hpp>
@@ -65,15 +66,21 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     chainParams.difficulty = chainParams.minimumDifficulty;
     chainParams.gasLimit = chainParams.maxGasLimit;
 
-    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(), string(),
-        chainParams, WithExisting::Kill, set< string >{"eth"} );
-    // SKALE    web3.stopNetwork();
-    web3.ethereum()->stopSealing();
+    //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
+    //    string(),
+    //        chainParams, WithExisting::Kill, set< string >{"eth"} );
+
+    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
+        getDataDir(), "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
+
+    client.injectSkaleHost();
+    client.startWorking();
+    client.stopSealing();
 
     bool userShouldEnterPassword = false;
     string passwordUserWillEnter;
 
-    SimpleAccountHolder accountHolder( [&]() { return web3.ethereum(); },
+    SimpleAccountHolder accountHolder( [&]() { return &client; },
         [&]( Address ) {
             if ( !userShouldEnterPassword )
                 BOOST_FAIL( "Password input requested" );
@@ -83,8 +90,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
         []( TransactionSkeleton const&, bool ) -> bool {
             return false;  // user input goes here
         } );
-    rpc::Personal personal( keyManager, accountHolder, *web3.ethereum() );
-    rpc::Eth eth( *web3.ethereum(), accountHolder );
+    rpc::Personal personal( keyManager, accountHolder, client );
+    rpc::Eth eth( client, accountHolder );
 
     // Create account
 
@@ -123,14 +130,14 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     BOOST_CHECK( personal.personal_unlockAccount( address, password, 2 ) );
     // Mine 1 block so the account will have a non-zero balance
     // and transactions can be sent successfully
-    web3.ethereum()->setAuthor( jsToAddress( address ) );
-    dev::eth::simulateMining( *( web3.ethereum() ), 1 /* # blocks to mine */ );
+    client.setAuthor( jsToAddress( address ) );
+    dev::eth::simulateMining( client, 1 /* # blocks to mine */ );
     sendingShouldSucceed();
 
     BOOST_TEST_CHECKPOINT( "Transaction should be sendable multiple times in unlocked mode." );
     // Mine so the previous successful transaction is included in a block and Client
     // nonce validation for the next transaction will pass
-    dev::eth::mineTransaction( *( web3.ethereum() ), 1 /* # blocks to mine */ );
+    dev::eth::mineTransaction( client, 1 /* # blocks to mine */ );
     sendingShouldSucceed();
 
     this_thread::sleep_for( chrono::seconds( 2 ) );
