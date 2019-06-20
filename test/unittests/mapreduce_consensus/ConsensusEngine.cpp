@@ -181,7 +181,7 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint64_t _blockID, u256 /*_gasPrice */ ) override {
+        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
