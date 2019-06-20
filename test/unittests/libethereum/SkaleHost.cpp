@@ -45,7 +45,7 @@ public:
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
         uint64_t _timeStamp, uint64_t _blockID ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, _blockID, 0, 0 );
+        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, 0 );
     }
 };
 
