@@ -70,7 +70,7 @@ public:
     ConsensusExtImpl( SkaleHost& _host );
     virtual transactions_vector pendingTransactions( size_t _limit ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint64_t _blockID, u256 _gasPrice ) override;
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -87,7 +87,7 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions( siz
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint64_t _blockID, u256 /* _gasPrice */ ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 /* _gasPrice */ ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions, _timeStamp, _blockID );
 }
@@ -96,9 +96,8 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT );
 }
 
-SkaleHost::SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq,
-    const ConsensusFactory* _consFactory )
-    : m_client( _client ), m_tq( _tq ), total_sent( 0 ), total_arrived( 0 ) {
+SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory )
+    : m_client( _client ), m_tq( _client.m_tq ), total_sent( 0 ), total_arrived( 0 ) {
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
@@ -277,9 +276,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     assert( _blockID == m_client.number() + 1 );
 
+    for ( Transaction& transaction : out_txns ) {
+        transaction.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+    }
+
     size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _timeStamp );
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
+
+    LOG( m_traceLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
+                         << " transactions" << std::endl;
 
     if ( have_consensus_born )
         this->m_lastBlockWithBornTransactions = _blockID;

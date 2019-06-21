@@ -76,6 +76,10 @@ public:
 
 class ClientBase : public Interface {
 public:
+    class CreationException : public std::exception {
+        virtual const char* what() const noexcept { return "Error creating Client"; }
+    };
+
     ClientBase() {}
     virtual ~ClientBase() {}
 

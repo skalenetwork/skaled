@@ -97,7 +97,6 @@ jsonrpcstub_create(web3jsonrpc skale.jsonweb3jsonrpc
 
 target_link_libraries( web3jsonrpc
     ethashseal
-    webthree
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-common.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a

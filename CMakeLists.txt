@@ -173,15 +173,11 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(libethashseal)
 
-add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
 
 if (EVMJIT)
     add_subdirectory(evmjit)
 endif()
-
-#add_compile_options(-Wno-error=sign-compare -Wno-error=reorder -Wno-error=unused-but-set-variable -Wno-error=missing-field-initializers -Wno-error=extra -Wno-error=write-strings -Wno-error=int-in-bool-context)
-add_compile_options(-Wno-error=int-in-bool-context)
 
 if (CONSENSUS)
     set( BLS_WITH_SECP256K1_INCLUDE_DIR ${CMAKE_BINARY_DIR}/deps/include )
@@ -212,6 +208,9 @@ set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
 include(CPack)
 
+
+
 if (CONSENSUS)
+    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter") # hack to make libBLS compile
     add_subdirectory(libconsensus)
 endif()
