@@ -168,9 +168,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
                         m_client.state().startRead(), *m_client.sealEngine(), 0 );
                 } catch ( const exception& ex ) {
-                    clog( VerbosityInfo, "skale-host" )
-                        << "Dropped now-invalid transaction in pending queue " << tx.sha3() << ":"
-                        << ex.what();
+                    if ( to_delete.count( tx.sha3() ) == 0 )
+                        clog( VerbosityInfo, "skale-host" )
+                            << "Dropped now-invalid transaction in pending queue " << tx.sha3()
+                            << ":" << ex.what();
                     to_delete.insert( tx.sha3() );
                     return false;
                 }
