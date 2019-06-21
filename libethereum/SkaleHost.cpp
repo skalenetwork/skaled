@@ -96,8 +96,11 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT );
 }
 
-SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory )
-    : m_client( _client ), m_tq( _client.m_tq ), total_sent( 0 ), total_arrived( 0 ) {
+SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory ) try
+    : m_client( _client ),
+      m_tq( _client.m_tq ),
+      total_sent( 0 ),
+      total_arrived( 0 ) {
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
@@ -111,6 +114,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus = _consFactory->create( *m_extFace );
 
     m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+} catch ( const std::exception& ) {
+    std::throw_with_nested( CreationException() );
 }
 
 SkaleHost::~SkaleHost() {}

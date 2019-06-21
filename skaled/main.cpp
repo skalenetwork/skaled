@@ -1250,6 +1250,10 @@ int main( int argc, char** argv ) try {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     return EXIT_FAILURE;
+} catch ( const SkaleHost::CreationException& ex ) {
+    clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
+    // TODO close microprofile!!
+    return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
 } catch ( ... ) {
