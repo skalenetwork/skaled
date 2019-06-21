@@ -890,7 +890,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
         this->state().startRead(), *bc().sealEngine(), 0 );
 
-    ImportResult res = m_tq.import( _t.rlp() );
+    ImportResult res = m_tq.import( _t );
     switch ( res ) {
     case ImportResult::Success:
         break;
