@@ -197,7 +197,6 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )( bytesConstRef _in 
 static Logger& getLogger( int a_severity = VerbosityTrace ) {
     static std::mutex g_mtx;
     std::lock_guard< std::mutex > lock( g_mtx );
-    //
     typedef std::map< int, Logger > map_loggers_t;
     static map_loggers_t g_mapLoggers;
     if ( g_mapLoggers.find( a_severity ) == g_mapLoggers.end() )
@@ -446,8 +445,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
         bool isCreated = fs::create_directories( absolutePath );
         if ( !isCreated ) {
-            throw std::runtime_error(
-                    "createDirectory() failed because cannot create directory" );
+            throw std::runtime_error( "createDirectory() failed because cannot create directory" );
         }
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -459,6 +457,33 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         LOG( getLogger( VerbosityError ) ) << "Exception in createDirectory: " << strError << "\n";
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};
+}
+
+ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+        size_t directoryPathLength;
+        std::string directoryPath;
+        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
+
+        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        fs::remove_all( absolutePath );
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
