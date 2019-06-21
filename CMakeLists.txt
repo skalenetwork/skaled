@@ -208,6 +208,9 @@ set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
 include(CPack)
 
+
+
 if (CONSENSUS)
+    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter") # hack to make libBLS compile
     add_subdirectory(libconsensus)
 endif()
