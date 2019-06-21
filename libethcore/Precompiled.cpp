@@ -473,6 +473,9 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        if ( !fs::exists( absolutePath ) ) {
+            throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+        }
         fs::remove_all( absolutePath );
         u256 code = 1;
         bytes response = toBigEndian( code );
