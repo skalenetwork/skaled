@@ -157,34 +157,35 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     h256Hash to_delete;
 
-    Transactions txns = m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
-
-        if(m_tq.getCategory( tx.sha3() ) != 1 )     // take broadcasted
-            return false;
-
-        if ( tx.verifiedOn < m_lastBlockWithBornTransactions ) try {
-                Executive::verifyTransaction( tx,
-                    static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                    m_client.state().startRead(), *m_client.sealEngine(), 0 );
-        } catch(const exception& ex) {
-                clog( VerbosityInfo, "skale-host" )
-                    << "Dropped now-invalid transaction in pending queue " << tx.sha3() << ":" << ex.what();
-                to_delete.insert(tx.sha3());
+    Transactions txns =
+        m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
+            if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
-        }
 
-        return true;
-    } );
+            if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
+                try {
+                    Executive::verifyTransaction( tx,
+                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
+                } catch ( const exception& ex ) {
+                    clog( VerbosityInfo, "skale-host" )
+                        << "Dropped now-invalid transaction in pending queue " << tx.sha3() << ":"
+                        << ex.what();
+                    to_delete.insert( tx.sha3() );
+                    return false;
+                }
 
-    for(auto sha: to_delete)
-        m_tq.drop(sha);
+            return true;
+        } );
+
+    for ( auto sha : to_delete )
+        m_tq.drop( sha );
 
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
 
     try {
-        for ( size_t i = 0; i < txns.size(); ++i ){
-
+        for ( size_t i = 0; i < txns.size(); ++i ) {
             std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
             Transaction& txn = txns[i];
 

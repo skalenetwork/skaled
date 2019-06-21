@@ -615,7 +615,7 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     // submit it!
     tq->import( tx1 );
 
-    sleep(1);
+    sleep( 1 );
 
     // 2nd transaction will remove 1
     u256 value2 = 8000 * dev::eth::szabo;
@@ -672,9 +672,9 @@ BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
     tx1.streamRLP( stream1 );
 
     // receive it!
-    skaleHost->receiveTransaction(toJS(stream1.out()));
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
 
-    sleep(1);
+    sleep( 1 );
 
     // 2d transaction will remove 1
     u256 value2 = 8000 * dev::eth::szabo;
