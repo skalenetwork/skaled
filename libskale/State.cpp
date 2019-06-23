@@ -43,6 +43,7 @@ using boost::upgrade_to_unique_lock;
 #include "libweb3jsonrpc/JsonHelper.h"
 
 #include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
 
 using namespace std;
 using namespace dev;
@@ -735,7 +736,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
-        strRevertReason = dev::rpc::Eth::stat_call_error_message_2_string( res.output );
+        strRevertReason = skutils::eth::call_error_message_2_str( res.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         Json::Value jvTransaction = dev::eth::toJson( _t );

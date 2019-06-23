@@ -35,6 +35,7 @@
 #include <csignal>
 
 #include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
 
 using namespace std;
 using namespace jsonrpc;
@@ -275,21 +276,6 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     }
 }
 
-std::string Eth::stat_call_error_message_2_string( const bytes& b ) {
-    // see https://solidity.readthedocs.io/en/v0.5.6/control-structures.html?highlight=require
-
-    if ( b.size() <= 4 + 32 + 32 || b[0] != 0x08 || b[1] != 0xc3 || b[2] != 0x79 || b[3] != 0xa0 )
-        return "";
-
-    int offset = 4 + 32 + ntohl( *( ( int* ) ( b.data() + 32 ) ) );
-    int length = ntohl( *( ( int* ) ( b.data() + 64 ) ) );
-
-    char buf[length + 1];
-    buf[length] = 0;
-    std::copy( b.begin() + offset, b.begin() + offset + length, buf );
-    return string( buf );
-}
-
 string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */ ) {
     try {
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
@@ -302,7 +288,7 @@ string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */
 
         std::string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
-            strRevertReason = dev::rpc::Eth::stat_call_error_message_2_string( er.output );
+            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
             Json::FastWriter fastWriter;
