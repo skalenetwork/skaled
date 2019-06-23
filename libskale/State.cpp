@@ -739,12 +739,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         strRevertReason = skutils::eth::call_error_message_2_str( res.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
-        Json::Value jvTransaction = dev::eth::toJson( _t );
-        Json::FastWriter fastWriter;
-        std::string strTransactionDescription = fastWriter.write( jvTransaction );
         std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
-                             cc::warn( strRevertReason ) + cc::error( ", with transaction: " ) +
-                             cc::j( strTransactionDescription );
+                             cc::warn( strRevertReason );
         cerror << strOut;
     }
 
@@ -763,10 +759,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
 
-    TransactionReceipt const receipt =
+    TransactionReceipt receipt =
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+    receipt.setRevertReason( strRevertReason );
     return make_pair( res, receipt );
 }
 

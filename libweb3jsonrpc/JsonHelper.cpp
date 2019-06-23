@@ -159,6 +159,10 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
     res["gasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["bloom"] = toJS( _t.bloom() );
     res["log"] = dev::toJson( _t.log() );
+    //
+    std::string strRevertReason = _t.getRevertReason();
+    if ( !strRevertReason.empty() )
+        res["revertReason"] = strRevertReason;
     return res;
 }
 
@@ -177,6 +181,10 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
         res["status"] = toString( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
+    //
+    std::string strRevertReason = _t.getRevertReason();
+    if ( !strRevertReason.empty() )
+        res["revertReason"] = strRevertReason;
     return res;
 }
 
