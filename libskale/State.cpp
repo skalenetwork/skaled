@@ -39,6 +39,11 @@ using boost::upgrade_to_unique_lock;
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 
+#include "libweb3jsonrpc/Eth.h"
+#include "libweb3jsonrpc/JsonHelper.h"
+
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace skale;
@@ -728,6 +733,19 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction( e, _t, onOp );
 
+    std::string strRevertReason;
+    if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
+        strRevertReason = dev::rpc::Eth::stat_call_error_message_2_string( res.output );
+        if ( strRevertReason.empty() )
+            strRevertReason = "EVM revert instruction without description message";
+        Json::Value jvTransaction = dev::eth::toJson( _t );
+        Json::FastWriter fastWriter;
+        std::string strTransactionDescription = fastWriter.write( jvTransaction );
+        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                             cc::warn( strRevertReason ) + cc::error( ", with transaction: " ) +
+                             cc::j( strTransactionDescription );
+        cerror << strOut;
+    }
 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
@@ -762,6 +780,9 @@ bool State::executeTransaction(
         if ( !_e.execute() )
             _e.go( _onOp );
         return _e.finalize();
+    } catch ( dev::eth::RevertInstruction const& re ) {
+        rollback( savept );
+        throw;
     } catch ( Exception const& ) {
         rollback( savept );
         throw;

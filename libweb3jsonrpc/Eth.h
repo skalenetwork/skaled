@@ -59,6 +59,8 @@ class Eth : public dev::rpc::EthFace {
 public:
     Eth( eth::Interface& _eth, eth::AccountHolder& _ethAccounts );
 
+    static std::string stat_call_error_message_2_string( const bytes& b );
+
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"eth", "1.0"}};
     }

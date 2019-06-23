@@ -34,6 +34,8 @@
 
 #include <csignal>
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace jsonrpc;
 using namespace dev;
@@ -273,6 +275,21 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     }
 }
 
+std::string Eth::stat_call_error_message_2_string( const bytes& b ) {
+    // see https://solidity.readthedocs.io/en/v0.5.6/control-structures.html?highlight=require
+
+    if ( b.size() <= 4 + 32 + 32 || b[0] != 0x08 || b[1] != 0xc3 || b[2] != 0x79 || b[3] != 0xa0 )
+        return "";
+
+    int offset = 4 + 32 + ntohl( *( ( int* ) ( b.data() + 32 ) ) );
+    int length = ntohl( *( ( int* ) ( b.data() + 64 ) ) );
+
+    char buf[length + 1];
+    buf[length] = 0;
+    std::copy( b.begin() + offset, b.begin() + offset + length, buf );
+    return string( buf );
+}
+
 string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */ ) {
     try {
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
@@ -282,6 +299,23 @@ string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */
         setTransactionDefaults( t );
         ExecutionResult er = client()->call(
             t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+
+        std::string strRevertReason;
+        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = dev::rpc::Eth::stat_call_error_message_2_string( er.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            Json::FastWriter fastWriter;
+            std::string strJSON = fastWriter.write( _json );
+            std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                                 cc::warn( strRevertReason ) +
+                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
+                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
+                                 cc::error( "=" ) + cc::bright( blockNumber );
+            cerror << strOut;
+            throw JsonRpcException( strRevertReason );
+        }
+
         return toJS( er.output );
     } catch ( std::exception const& ex ) {
         throw JsonRpcException( ex.what() );
