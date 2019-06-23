@@ -32,7 +32,7 @@ using namespace dev::eth;
 
 TransactionReceipt::TransactionReceipt( bytesConstRef _rlp ) {
     RLP r( _rlp );
-    if ( !r.isList() || r.itemCount() < 4 || r.itemCount() > 5 )
+    if ( !r.isList() || r.itemCount() != 5 )
         BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
 
     if ( !r[0].isData() )
@@ -51,9 +51,9 @@ TransactionReceipt::TransactionReceipt( bytesConstRef _rlp ) {
         m_log.emplace_back( i );
 
     // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
-    // we need 5thh dynamic chunk to store "revert reason" string
+    // we need 5th chunk to store "revert reason" string
     std::string strRevertReason;
-    if ( r.itemCount() >= 5 && r[4].isData() )
+    if ( r[4].isData() )
         strRevertReason = ( std::string ) r[4].toString();
     setRevertReason( strRevertReason );
 }
@@ -73,8 +73,7 @@ TransactionReceipt::TransactionReceipt(
       m_log( _log ) {}
 
 void TransactionReceipt::streamRLP( RLPStream& _s ) const {
-    std::string const& strRevertReason = getRevertReason();
-    _s.appendList( strRevertReason.empty() ? 4 : 5 );
+    _s.appendList( 5 );
     if ( hasStatusCode() )
         _s << statusCode();
     else
@@ -85,9 +84,9 @@ void TransactionReceipt::streamRLP( RLPStream& _s ) const {
         l.streamRLP( _s );
 
     // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
-    // we need 5thh dynamic chunk to store "revert reason" string
-    if ( !strRevertReason.empty() )
-        _s << strRevertReason;
+    // we need 5th chunk to store "revert reason" string
+    std::string const& strRevertReason = getRevertReason();
+    _s << strRevertReason;
 }
 
 bool TransactionReceipt::hasStatusCode() const {
