@@ -5,6 +5,7 @@ add_library( skutils STATIC
     ./src/command_line_parser.cpp   ./include/skutils/command_line_parser.h
     ./src/console_colors.cpp        ./include/skutils/console_colors.h
     ./src/dispatch.cpp              ./include/skutils/dispatch.h
+	./src/eth_utils.cpp             ./include/skutils/eth_utils.h
     ./src/mail.cpp                  ./include/skutils/mail.h
                                     ./include/skutils/multifunction.h
     ./src/multithreading.cpp        ./include/skutils/multithreading.h

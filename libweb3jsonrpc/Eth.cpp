@@ -34,6 +34,9 @@
 
 #include <csignal>
 
+#include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
+
 using namespace std;
 using namespace jsonrpc;
 using namespace dev;
@@ -282,6 +285,23 @@ string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */
         setTransactionDefaults( t );
         ExecutionResult er = client()->call(
             t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+
+        std::string strRevertReason;
+        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            Json::FastWriter fastWriter;
+            std::string strJSON = fastWriter.write( _json );
+            std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                                 cc::warn( strRevertReason ) +
+                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
+                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
+                                 cc::error( "=" ) + cc::bright( blockNumber );
+            cerror << strOut;
+            throw JsonRpcException( strRevertReason );
+        }
+
         return toJS( er.output );
     } catch ( std::exception const& ex ) {
         throw JsonRpcException( ex.what() );
