@@ -22,7 +22,6 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
-#include <libwebthree/WebThree.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
 
@@ -49,9 +48,23 @@ public:
         netPrefs.pin = false;
 
         auto nodesState = contents( dir / fs::path( "network.rlp" ) );
-        bool testingMode = true;
-        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth" ), dir,
-            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
+
+        //        bool testingMode = true;
+        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
+        //        ), dir,
+        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
+
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+            shared_ptr< GasPricer >(), dir, WithExisting::Kill ) );
+
+        //        m_ethereum.reset(
+        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
+        //            GasPricer >(),
+        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+
+        m_ethereum->injectSkaleHost();
+        m_ethereum->startWorking();
+
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -61,10 +74,10 @@ public:
         throw;
     }
 
-    dev::WebThreeDirect* getWeb3() { return m_web3.get(); }
+    dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
 private:
-    std::unique_ptr< dev::WebThreeDirect > m_web3;
+    std::unique_ptr< dev::eth::Client > m_ethereum;
 };
 
 // genesis config string from solidity
@@ -106,7 +119,7 @@ static std::string const c_configString = R"(
 BOOST_FIXTURE_TEST_SUITE( ClientTestSuite, TestClientFixture )
 
 BOOST_AUTO_TEST_CASE( ClientTest_setChainParamsAuthor ) {
-    ClientTest* testClient = asClientTest( getWeb3()->ethereum() );
+    ClientTest* testClient = asClientTest( ethereum() );
     BOOST_CHECK_EQUAL(
         testClient->author(), Address( "0000000000000000000000000000000000000000" ) );
     testClient->setChainParams( c_configString );

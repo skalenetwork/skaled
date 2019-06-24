@@ -13,7 +13,7 @@ add_executable(${executable_name} ${sources} ${headers})
 target_link_libraries(
     ${executable_name}
     PRIVATE ethereum skale
-#    PRIVATE ethereum ethashseal evm web3jsonrpc webthree  Boost::program_options
+#    PRIVATE ethereum ethashseal evm web3jsonrpc Boost::program_options
 )
 
 #target_include_directories(evm_benchmark PRIVATE ../utils)

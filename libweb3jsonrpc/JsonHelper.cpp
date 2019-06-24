@@ -28,7 +28,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/Client.h>
-#include <libwebthree/WebThree.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
