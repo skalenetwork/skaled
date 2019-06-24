@@ -43,6 +43,12 @@ eth::Network ChainBranch::s_tempBlockchainNetwork = eth::Network::MainNetwork;
 eth::Network TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
 json_spirit::mValue BlockchainTestSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
+    //
+    // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
+    // we need 5thh dynamic chunk to store "revert reason" string
+    // Unfortunatelly this is incompatible with current set of tests in this file
+    dev::eth::TransactionReceipt::g_bEnableRevertReasonPersistence = false;
+    //
     json_spirit::mObject tests;
     for ( auto const& i : _input.get_obj() ) {
         string const& testname = i.first;

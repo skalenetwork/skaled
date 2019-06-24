@@ -58,6 +58,7 @@ public:
     LogBloom const& bloom() const { return m_bloom; }
     LogEntries const& log() const { return m_log; }
 
+    static volatile bool g_bEnableRevertReasonPersistence;
     std::string const& getRevertReason() const { return m_strRevertReason; }
     void setRevertReason( std::string const& strRevertReason ) {
         m_strRevertReason = strRevertReason;
