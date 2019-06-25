@@ -22,4 +22,6 @@ target_link_libraries(
 #    target_compile_definitions(evm_benchmark PRIVATE ETH_MINIUPNPC)
 #endif()
 
-#install(TARGETS evm_benchmark DESTINATION bin)
+#if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
+#	install( TARGETS evm_benchmark DESTINATION bin )
+#endif()
