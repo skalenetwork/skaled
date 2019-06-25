@@ -1477,21 +1477,19 @@ std::string stringToHex( std::string inputString ) {
 BOOST_AUTO_TEST_CASE( createFile ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
 
-    std::string address = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+    std::string address = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
     std::string fileName = "Hello!";
     size_t fileSize = 100;
 
-    std::string hexAddress = stringToHex( address );
-    std::string hexFileNameLength = numberToHex( fileName.length() );
-    std::string hexFileName = stringToHex( fileName );
-    std::string hexFileSize = numberToHex( fileSize );
+    std::string hexAddress = address;
+    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
 
-    bytes in = fromHex( hexAddress + hexFileNameLength + hexFileName + hexFileSize );
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
-
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE(
-        boost::filesystem::exists( dev::getDataDir() / "filestorage" / address ) == true );
+        boost::filesystem::exists( dev::getDataDir() / "filestorage" / Address( address ).hex() ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
