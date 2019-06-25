@@ -1460,6 +1460,20 @@ BOOST_AUTO_TEST_CASE( bench_bn256Pairing, *ut::label( "bench" ) ) {
     benchmarkPrecompiled( "alt_bn128_pairing_product", tests, 1000 );
 }
 
+std::string numberToHex( size_t inputNumber ) {
+    std::stringstream sstream;
+    sstream << std::hex << inputNumber;
+    std::string hexNumber = sstream.str();
+    hexNumber.insert( hexNumber.begin(), 64 - hexNumber.length(), '0' );
+    return hexNumber;
+}
+
+std::string stringToHex( std::string inputString ) {
+    std::string hexString = toHex( inputString.begin(), inputString.end(), "" );
+    hexString.insert( hexString.begin() + hexString.length(), 64 - hexString.length(), '0' );
+    return hexString;
+}
+
 BOOST_AUTO_TEST_CASE( createFile ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
 
@@ -1467,23 +1481,17 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     std::string fileName = "Hello!";
     size_t fileSize = 100;
 
-    std::string hexFileName = toHex( fileName.begin(), fileName.end(), "" );
-    std::string hexAddress = toHex( address.begin(), address.end(), "" );
-    hexFileName.insert(
-        hexFileName.begin() + hexFileName.length(), 64 - hexFileName.length(), '0' );
-    std::stringstream sstream;
-    sstream << std::hex << fileSize;
-    std::string hexFileSize = sstream.str();
-    hexFileSize.insert( hexFileSize.begin(), 64 - hexFileSize.length(), '0' );
-    sstream.str("");
-    sstream << std::hex << fileName.length();
-    std::string hexFileNameLength = sstream.str();
-    hexFileNameLength.insert( hexFileNameLength.begin(), 64 - hexFileNameLength.length(), '0' );
+    std::string hexAddress = stringToHex( address );
+    std::string hexFileNameLength = numberToHex( fileName.length() );
+    std::string hexFileName = stringToHex( fileName );
+    std::string hexFileSize = numberToHex( fileSize );
+
     bytes in = fromHex( hexAddress + hexFileNameLength + hexFileName + hexFileSize );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    //    BOOST_REQUIRE( res.second );
+    BOOST_REQUIRE(
+        boost::filesystem::exists( dev::getDataDir() / "filestorage" / address ) == true );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
