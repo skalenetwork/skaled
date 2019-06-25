@@ -39,6 +39,12 @@ using boost::upgrade_to_unique_lock;
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 
+#include "libweb3jsonrpc/Eth.h"
+#include "libweb3jsonrpc/JsonHelper.h"
+
+#include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
+
 using namespace std;
 using namespace dev;
 using namespace skale;
@@ -728,6 +734,15 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction( e, _t, onOp );
 
+    std::string strRevertReason;
+    if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
+        strRevertReason = skutils::eth::call_error_message_2_str( res.output );
+        if ( strRevertReason.empty() )
+            strRevertReason = "EVM revert instruction without description message";
+        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                             cc::warn( strRevertReason );
+        cerror << strOut;
+    }
 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
@@ -744,10 +759,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
 
-    TransactionReceipt const receipt =
+    TransactionReceipt receipt =
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+    receipt.setRevertReason( strRevertReason );
     return make_pair( res, receipt );
 }
 
@@ -762,6 +778,9 @@ bool State::executeTransaction(
         if ( !_e.execute() )
             _e.go( _onOp );
         return _e.finalize();
+    } catch ( dev::eth::RevertInstruction const& re ) {
+        rollback( savept );
+        throw;
     } catch ( Exception const& ) {
         rollback( savept );
         throw;

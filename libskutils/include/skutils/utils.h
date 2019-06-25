@@ -1,8 +1,6 @@
 #if ( !defined __SKUTILS_UTILS_H )
 #define __SKUTILS_UTILS_H 1
 
-#include <skutils/utils.h>
-
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>

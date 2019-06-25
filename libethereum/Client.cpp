@@ -99,8 +99,10 @@ Client::~Client() {
         cerror << "Instance of SkaleHost was not properly created.";
     }
 
-    m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
-    m_signalled.notify_all();    // to wake up the thread from Client::doWork()
+    if ( m_skaleHost )
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+                                     // workers
+    m_signalled.notify_all();        // to wake up the thread from Client::doWork()
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
