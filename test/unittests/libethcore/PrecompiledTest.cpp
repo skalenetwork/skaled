@@ -1487,9 +1487,10 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto path = dev::getDataDir() / "filestorage" / Address( address ).hex() / fileName;
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE(
-        boost::filesystem::exists( dev::getDataDir() / "filestorage" / Address( address ).hex() ) );
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+    BOOST_REQUIRE( boost::filesystem::file_size(path) == fileSize);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
