@@ -18,11 +18,13 @@ if(SKALE_INTERPRETER_SHARED)
     add_library(skale-interpreter-shared SHARED ${sources})
     target_link_libraries(skale-interpreter-shared PRIVATE devcore skale-buildinfo evmc::evmc evmc::instructions)
     set_target_properties(skale-interpreter-shared PROPERTIES OUTPUT_NAME skale-interpreter)
-    install(TARGETS skale-interpreter-shared EXPORT skaleTargets
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    )
+	if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
+		install( TARGETS skale-interpreter-shared EXPORT skaleTargets
+			RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+			LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+			)
+	endif()
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
