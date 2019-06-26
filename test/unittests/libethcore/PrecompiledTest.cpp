@@ -1506,9 +1506,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
     }
 
-    ~FilestorageFixture() override {
-        remove( pathToFile.c_str() );
-    }
+    ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
 
     Address ownerAddress;
     std::string fileName;
@@ -1528,10 +1526,10 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    std::ifstream ifs(pathToFile.string());
+    std::ifstream ifs( pathToFile.string() );
     std::string content;
-    std::copy_n(std::istreambuf_iterator<char>(ifs.rdbuf()),
-                data.length(), std::back_inserter(content));
+    std::copy_n( std::istreambuf_iterator< char >( ifs.rdbuf() ), data.length(),
+        std::back_inserter( content ) );
     BOOST_REQUIRE( data == content );
 }
 
@@ -1541,20 +1539,15 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     std::string hexAddress = ownerAddress.hex();
     hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-                        numberToHex( 0 ) + numberToHex( fileSize ));
+                        numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    std::ifstream file(pathToFile.c_str(), std::ios_base::binary);
-//    std::copy(std::istreambuf_iterator<unsigned char>(infile),
-//              std::istreambuf_iterator<unsigned char>(),
-//              std::back_inserter(buffer));
-    std::vector<unsigned char> buffer;
-    buffer.reserve(fileSize);
-    buffer.insert(buffer.begin(),
-               std::istream_iterator<unsigned char>(file),
-               std::istream_iterator<unsigned char>());
-    auto data = res.second;
-    BOOST_REQUIRE( data == buffer );
+    std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
+    std::vector< unsigned char > buffer;
+    buffer.reserve( fileSize );
+    buffer.insert( buffer.begin(), std::istream_iterator< unsigned char >( file ),
+        std::istream_iterator< unsigned char >() );
+    BOOST_REQUIRE( res.second == buffer );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
