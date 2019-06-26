@@ -1506,6 +1506,10 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
     }
 
+    ~FilestorageFixture() override {
+        remove( pathToFile.c_str() );
+    }
+
     Address ownerAddress;
     std::string fileName;
     std::size_t fileSize;
