@@ -1542,12 +1542,24 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+
     std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
     std::vector< unsigned char > buffer;
     buffer.reserve( fileSize );
     buffer.insert( buffer.begin(), std::istream_iterator< unsigned char >( file ),
         std::istream_iterator< unsigned char >() );
     BOOST_REQUIRE( res.second == buffer );
+}
+
+BOOST_AUTO_TEST_CASE( getFileSize ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
+
+    std::string hexAddress = ownerAddress.hex();
+    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
