@@ -1474,25 +1474,6 @@ std::string stringToHex( std::string inputString ) {
     return hexString;
 }
 
-BOOST_AUTO_TEST_CASE( createFile ) {
-    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
-
-    std::string address = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-    std::string fileName = "Hello!";
-    size_t fileSize = 100;
-
-    std::string hexAddress = address;
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
-
-    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-                        numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
-    auto path = dev::getDataDir() / "filestorage" / Address( address ).hex() / fileName;
-    BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( boost::filesystem::exists( path ) );
-    BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
-}
-
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
         ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
@@ -1519,6 +1500,22 @@ struct FilestorageFixture : public TestOutputHelperFixture {
 };
 
 BOOST_FIXTURE_TEST_SUITE( FilestoragePrecompiledTests, FilestorageFixture )
+
+BOOST_AUTO_TEST_CASE( createFile ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
+
+    std::string fileName = "test_file_createFile";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+    BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
+    remove( path.c_str() );
+}
 
 BOOST_AUTO_TEST_CASE( uploadChunk ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "uploadChunk" );
@@ -1569,18 +1566,13 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-
 BOOST_AUTO_TEST_CASE( createDirectory ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createDirectory" );
 
-    Address ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
     std::string dirName = "test_dir";
     boost::filesystem::path pathToDir =
         dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
@@ -1591,18 +1583,17 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
 BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteDirectory" );
 
-    Address ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
     std::string dirName = "test_dir";
     boost::filesystem::path pathToDir =
         dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
     boost::filesystem::create_directories( pathToDir );
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
