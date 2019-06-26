@@ -9,4 +9,6 @@ target_link_libraries(skale-vm PRIVATE ethereum evm ethashseal devcore skutils B
 
 target_include_directories(skale-vm PRIVATE ../utils)
 
-install(TARGETS skale-vm EXPORT skaleTargets DESTINATION bin)
+if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
+	install( TARGETS skale-vm EXPORT skaleTargets DESTINATION bin )
+endif()
