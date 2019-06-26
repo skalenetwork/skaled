@@ -1500,6 +1500,9 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         fileSize = 100;
         pathToFile = dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
 
+        hexAddress = ownerAddress.hex();
+        hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+
         fstream file;
         file.open( pathToFile.string(), ios::out );
         file.seekp( static_cast< long >( fileSize ) - 1 );
@@ -1509,6 +1512,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
     ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
 
     Address ownerAddress;
+    std::string hexAddress;
     std::string fileName;
     std::size_t fileSize;
     boost::filesystem::path pathToFile;
@@ -1519,8 +1523,6 @@ BOOST_FIXTURE_TEST_SUITE( FilestoragePrecompiledTests, FilestorageFixture )
 BOOST_AUTO_TEST_CASE( uploadChunk ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "uploadChunk" );
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     std::string data = "random_data";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
@@ -1536,8 +1538,6 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
 BOOST_AUTO_TEST_CASE( readChunk ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "readChunk" );
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
@@ -1554,23 +1554,19 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 BOOST_AUTO_TEST_CASE( getFileSize ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ));
+    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
-    std::string hexAddress = ownerAddress.hex();
-    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( !boost::filesystem::exists(pathToFile));
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -1580,14 +1576,15 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
 
     Address ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
     std::string dirName = "test_dir";
-    boost::filesystem::path pathToDir = dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
+    boost::filesystem::path pathToDir =
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
 
     std::string hexAddress = ownerAddress.hex();
     hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( boost::filesystem::exists(pathToDir));
+    BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
     remove( pathToDir.c_str() );
 }
 
@@ -1596,15 +1593,16 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
 
     Address ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
     std::string dirName = "test_dir";
-    boost::filesystem::path pathToDir = dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
-    boost::filesystem::create_directories(pathToDir);
+    boost::filesystem::path pathToDir =
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
+    boost::filesystem::create_directories( pathToDir );
 
     std::string hexAddress = ownerAddress.hex();
     hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( !boost::filesystem::exists(pathToDir));
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
