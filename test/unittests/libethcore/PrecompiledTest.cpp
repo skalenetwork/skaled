@@ -1535,6 +1535,28 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     BOOST_REQUIRE( data == content );
 }
 
+BOOST_AUTO_TEST_CASE( readChunk ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "readChunk" );
+
+    std::string hexAddress = ownerAddress.hex();
+    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( 0 ) + numberToHex( fileSize ));
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    std::ifstream file(pathToFile.c_str(), std::ios_base::binary);
+//    std::copy(std::istreambuf_iterator<unsigned char>(infile),
+//              std::istreambuf_iterator<unsigned char>(),
+//              std::back_inserter(buffer));
+    std::vector<unsigned char> buffer;
+    buffer.reserve(fileSize);
+    buffer.insert(buffer.begin(),
+               std::istream_iterator<unsigned char>(file),
+               std::istream_iterator<unsigned char>());
+    auto data = res.second;
+    BOOST_REQUIRE( data == buffer );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
