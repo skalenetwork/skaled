@@ -1490,15 +1490,15 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     auto path = dev::getDataDir() / "filestorage" / Address( address ).hex() / fileName;
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( path ) );
-    BOOST_REQUIRE( boost::filesystem::file_size(path) == fileSize);
+    BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
 }
 
-struct FilestorageFixture : public TestOutputHelperFixture{
-    FilestorageFixture(){
-        ownerAddress = Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+struct FilestorageFixture : public TestOutputHelperFixture {
+    FilestorageFixture() {
+        ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
         fileName = "test_file";
         fileSize = 100;
-        pathToFile =  dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
+        pathToFile = dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
 
         fstream file;
         file.open( pathToFile.string(), ios::out );
@@ -1512,7 +1512,7 @@ struct FilestorageFixture : public TestOutputHelperFixture{
     boost::filesystem::path pathToFile;
 };
 
-BOOST_FIXTURE_TEST_SUITE(FilestoragePrecompiledTests, FilestorageFixture)
+BOOST_FIXTURE_TEST_SUITE( FilestoragePrecompiledTests, FilestorageFixture )
 
 BOOST_AUTO_TEST_CASE( uploadChunk ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "uploadChunk" );
@@ -1521,9 +1521,14 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
     std::string data = "random_data";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-                        numberToHex( 0 ) + numberToHex( data.length()) + stringToHex( data));
+                        numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+    std::ifstream ifs(pathToFile.string());
+    std::string content;
+    std::copy_n(std::istreambuf_iterator<char>(ifs.rdbuf()),
+                data.length(), std::back_inserter(content));
+    BOOST_REQUIRE( data == content );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
