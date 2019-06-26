@@ -1591,4 +1591,20 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     remove( pathToDir.c_str() );
 }
 
+BOOST_AUTO_TEST_CASE( deleteDirectory ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteDirectory" );
+
+    Address ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
+    std::string dirName = "test_dir";
+    boost::filesystem::path pathToDir = dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
+    boost::filesystem::create_directories(pathToDir);
+
+    std::string hexAddress = ownerAddress.hex();
+    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+    bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !boost::filesystem::exists(pathToDir));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
