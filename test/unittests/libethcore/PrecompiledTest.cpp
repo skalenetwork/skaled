@@ -1562,6 +1562,17 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ));
 }
 
+BOOST_AUTO_TEST_CASE( deleteFile ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
+
+    std::string hexAddress = ownerAddress.hex();
+    hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !boost::filesystem::exists(pathToFile));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
