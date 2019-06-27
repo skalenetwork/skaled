@@ -968,16 +968,29 @@ BOOST_AUTO_TEST_CASE( cross_jobs ) {
                 BOOST_REQUIRE( !bool( vecInside[i] ) );
             } );
         }
-        static const size_t nSleepSeconds = 5;
+        static const size_t nSleepSecondsNormalAttempt = 5;
         skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
-                                   cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-        sleep( nSleepSeconds );
+                                   cc::size10( nSleepSecondsNormalAttempt ) +
+                                   cc::warn( " second(s)..." ) );
+        sleep( nSleepSecondsNormalAttempt );
         skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                   cc::size10( nSleepSeconds ) +
+                                   cc::size10( nSleepSecondsNormalAttempt ) +
                                    cc::warn( " second(s), end of domain life time..." ) );
         //
+        // pre-liminary attempt to find out everything is OKay
+        skutils::test::test_log_e(
+            thread_prefix_str() + cc::info( "performing preliminary state test..." ) );
+        bool isEverythingOKay = true;
         for ( i = 0; i < nQueueCount; ++i ) {
-            BOOST_REQUIRE( !bool( vecInside[i] ) );
+            bool bInside = bool( vecInside[i] );
+            skutils::test::test_log_e(
+                thread_prefix_str() + cc::debug( "queue " ) + cc::size10( i ) +
+                cc::debug( " is " ) +
+                ( ( !bInside ) ? cc::success( "OKay" ) : cc::fatal( "STILL WORKING - FAIL" ) ) );
+            if ( bInside ) {
+                isEverythingOKay = false;
+                break;
+            }
             skutils::dispatch::queue_id_t id_queue_current =
                 skutils::tools::format( "queue_%zu", i );
             skutils::dispatch::queue_ptr_t pQueue =
@@ -991,6 +1004,48 @@ BOOST_AUTO_TEST_CASE( cross_jobs ) {
                 ( ( nQueueJobCount == 0 ) ? cc::success( "OKay" ) :
                                             cc::fatal( "FAIL, MUST BE ZERO" ) ) );
         }
+        skutils::test::test_log_e(
+            thread_prefix_str() + cc::info( "done preliminary state test - " ) +
+            ( isEverythingOKay ? cc::success( "PASSED" ) : cc::fatal( "FAILED" ) ) );
+        //
+        //
+        if ( !isEverythingOKay ) {
+            static const size_t nSleepSecondsExtraAttempt = 10;
+            skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep additional " ) +
+                                       cc::size10( nSleepSecondsExtraAttempt ) +
+                                       cc::warn( " second(s)..." ) );
+            sleep( nSleepSecondsExtraAttempt );
+            skutils::test::test_log_e( thread_prefix_str() +
+                                       cc::warn( "done sleeping additional " ) +
+                                       cc::size10( nSleepSecondsExtraAttempt ) +
+                                       cc::warn( " second(s), end of domain life time..." ) );
+        }
+        //
+        // final test
+        skutils::test::test_log_e(
+            thread_prefix_str() + cc::info( "performing final state test..." ) );
+        for ( i = 0; i < nQueueCount; ++i ) {
+            bool bInside = bool( vecInside[i] );
+            skutils::test::test_log_e(
+                thread_prefix_str() + cc::debug( "queue " ) + cc::size10( i ) +
+                cc::debug( " is " ) +
+                ( ( !bInside ) ? cc::success( "OKay" ) : cc::fatal( "STILL WORKING - FAIL" ) ) );
+            BOOST_REQUIRE( !bInside );
+            skutils::dispatch::queue_id_t id_queue_current =
+                skutils::tools::format( "queue_%zu", i );
+            skutils::dispatch::queue_ptr_t pQueue =
+                skutils::dispatch::get( id_queue_current, false );
+            size_t nQueueJobCount = pQueue->async_job_count();
+            // BOOST_REQUIRE( nQueueJobCount == 0 );
+            skutils::test::test_log_e(
+                thread_prefix_str() + cc::debug( "worker " ) + cc::bright( id_queue_current ) +
+                cc::debug( " has " ) + cc::size10( nQueueJobCount ) +
+                cc::debug( " job(s) unfinished " ) +
+                ( ( nQueueJobCount == 0 ) ? cc::success( "OKay" ) :
+                                            cc::fatal( "FAIL, MUST BE ZERO" ) ) );
+        }
+        skutils::test::test_log_e( thread_prefix_str() + cc::info( "done final state test - " +
+                                                                   cc::success( "PASSED" ) ) );
         //
         skutils::test::test_log_e(
             thread_prefix_str() + cc::warn( "shutting down default domain..." ) );
