@@ -95,14 +95,13 @@ Client::~Client() {
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
 
-    if ( !m_skaleHost ) {
-        cerror << "Instance of SkaleHost was not properly created.";
-    }
-
     if ( m_skaleHost )
         m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
                                      // workers
-    m_signalled.notify_all();        // to wake up the thread from Client::doWork()
+    else
+        cerror << "Instance of SkaleHost was not properly created.";
+
+    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
@@ -891,7 +890,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
         this->state().startRead(), *bc().sealEngine(), 0 );
 
-    ImportResult res = m_tq.import( _t.rlp() );
+    ImportResult res = m_tq.import( _t );
     switch ( res ) {
     case ImportResult::Success:
         break;

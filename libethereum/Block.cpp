@@ -726,11 +726,16 @@ ExecutionResult Block::execute(
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 
+        // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
         assert( false );
+    } catch ( const std::exception& ex ) {
+        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: " << ex.what();
+        _p = Permanence::CommittedWithoutState;
+        resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        // use fake receipt created above if execution throws!!
+        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: ...";
         _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch

@@ -99,6 +99,10 @@ class SkaleHost {
     };
 
 public:
+    class CreationException : public std::exception {
+        virtual const char* what() const noexcept { return "Error creating SkaleHost"; }
+    };
+
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr );
     virtual ~SkaleHost();
 

@@ -613,11 +613,12 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     Transaction tx1( ts, ar.second );
 
     // submit it!
-    // TODO Make one queue again! (in SkaleHost and Client)
     tq->import( tx1 );
 
-    // 2nd transaction
-    u256 value2 = 9000 * dev::eth::szabo;
+    sleep( 1 );
+
+    // 2nd transaction will remove 1
+    u256 value2 = 8000 * dev::eth::szabo;
     json["value"] = jsToDecimal( toJS( value2 ) );
 
     ts = toTransactionSkeleton( json );
@@ -625,8 +626,8 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    RLPStream stream;
-    tx2.streamRLP( stream );
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
 
     h256 txHash2 = tx2.sha3();
 
@@ -636,7 +637,66 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
+
+    // should not be accessible from queue
+    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+}
+
+BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    u256 value1 = 10000 * dev::eth::szabo;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( value1 ) );
+    json["gasPrice"] = jsToDecimal( "0x0" );
+    json["nonce"] = 0;
+
+    // 1st tx
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // receive it!
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+
+    sleep( 1 );
+
+    // 2d transaction will remove 1
+    u256 value2 = 8000 * dev::eth::szabo;
+    json["value"] = jsToDecimal( toJS( value2 ) );
+
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash2 = tx2.sha3();
+
+    // return it from consensus!
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );

@@ -96,8 +96,11 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT );
 }
 
-SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory )
-    : m_client( _client ), m_tq( _client.m_tq ), total_sent( 0 ), total_arrived( 0 ) {
+SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory ) try
+    : m_client( _client ),
+      m_tq( _client.m_tq ),
+      total_sent( 0 ),
+      total_arrived( 0 ) {
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
@@ -111,6 +114,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus = _consFactory->create( *m_extFace );
 
     m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+} catch ( const std::exception& ) {
+    std::throw_with_nested( CreationException() );
 }
 
 SkaleHost::~SkaleHost() {}
@@ -125,6 +130,7 @@ void SkaleHost::logState() {
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+
     h256 sha = transaction.sha3();
 
     {
@@ -154,53 +160,62 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     ConsensusExtFace::transactions_vector out_vector;
 
-    Transactions txns = m_tq.topTransactionsSync( _limit, [this]( const Transaction& tx ) -> bool {
-        return m_tq.getCategory( tx.sha3() ) == 1;  // take broadcasted
-    } );
+    h256Hash to_delete;
+
+    Transactions txns =
+        m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
+            if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
+                return false;
+
+            if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
+                try {
+                    Executive::verifyTransaction( tx,
+                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
+                } catch ( const exception& ex ) {
+                    if ( to_delete.count( tx.sha3() ) == 0 )
+                        clog( VerbosityInfo, "skale-host" )
+                            << "Dropped now-invalid transaction in pending queue " << tx.sha3()
+                            << ":" << ex.what();
+                    to_delete.insert( tx.sha3() );
+                    return false;
+                }
+
+            return true;
+        } );
+
+    for ( auto sha : to_delete )
+        m_tq.drop( sha );
 
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
 
     try {
-        for ( size_t i = 0; i < txns.size(); ++i )
-            try {
-                Transaction& txn = txns[i];
+        for ( size_t i = 0; i < txns.size(); ++i ) {
+            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+            Transaction& txn = txns[i];
 
-                // re-verify transaction against current block
-                // throws in case of error
-                if ( txn.verifiedOn < m_lastBlockWithBornTransactions )
-                    Executive::verifyTransaction( txn,
-                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
-
-                std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
-
-                h256 sha = txn.sha3();
-                m_transaction_cache[sha.asArray()] = txn;
-                out_vector.push_back( txn.rlp() );
-                ++total_sent;
+            h256 sha = txn.sha3();
+            m_transaction_cache[sha.asArray()] = txn;
+            out_vector.push_back( txn.rlp() );
+            ++total_sent;
 
 #ifdef DEBUG_TX_BALANCE
+            if ( sent.count( sha ) != 0 ) {
+                int prev = sent[sha];
+                std::cerr << "Prev no = " << prev << std::endl;
+
                 if ( sent.count( sha ) != 0 ) {
-                    int prev = sent[sha];
-                    std::cerr << "Prev no = " << prev << std::endl;
-
-                    if ( sent.count( sha ) != 0 ) {
-                        // TODO fix this!!?
-                        clog( VerbosityWarning, "skale-host" )
-                            << "Sending to consensus duplicate transaction (sent before!)";
-                    }
+                    // TODO fix this!!?
+                    clog( VerbosityWarning, "skale-host" )
+                        << "Sending to consensus duplicate transaction (sent before!)";
                 }
-                sent[sha] = total_sent + i;
-#endif
-                LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
-            } catch ( const exception& ex ) {
-                // usually this is tx validation exception
-                clog( VerbosityInfo, "skale-host" )
-                    << "Dropped now-invalid transaction in pending queue:" << ex.what();
-                continue;
             }
+            sent[sha] = total_sent + i;
+#endif
 
+            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+        }
     } catch ( ... ) {
         clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
     }
@@ -237,9 +252,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // TODO clear occasionally this cache?!
         if ( m_transaction_cache.count( sha.asArray() ) ) {
             Transaction& t = m_transaction_cache[sha.asArray()];
-            t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
-
-            //            t.setNonce(t.nonce()-1);
 
             out_txns.push_back( t );
             m_tq.dropGood( t );
@@ -252,6 +264,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // if new
         else {
             Transaction t( data, CheckTransaction::Everything, true );
+            t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
             out_txns.push_back( t );
             LOG( m_debugLogger ) << "Will import consensus-born txn!";
             have_consensus_born = true;
@@ -275,10 +288,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     total_arrived += out_txns.size();
 
     assert( _blockID == m_client.number() + 1 );
-
-    for ( Transaction& transaction : out_txns ) {
-        transaction.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
-    }
 
     size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _timeStamp );
     if ( n_succeeded != out_txns.size() )
