@@ -29,6 +29,7 @@
 
 #include <boost/variant/variant.hpp>
 #include <array>
+#include <string>
 
 namespace dev {
 namespace eth {
@@ -57,6 +58,12 @@ public:
     LogBloom const& bloom() const { return m_bloom; }
     LogEntries const& log() const { return m_log; }
 
+    static volatile bool g_bEnableRevertReasonPersistence;
+    std::string const& getRevertReason() const { return m_strRevertReason; }
+    void setRevertReason( std::string const& strRevertReason ) {
+        m_strRevertReason = strRevertReason;
+    }
+
     void streamRLP( RLPStream& _s ) const;
 
     bytes rlp() const {
@@ -70,6 +77,7 @@ private:
     u256 m_gasUsed;
     LogBloom m_bloom;
     LogEntries m_log;
+    std::string m_strRevertReason;
 };
 
 using TransactionReceipts = std::vector< TransactionReceipt >;

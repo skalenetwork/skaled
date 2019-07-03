@@ -30,10 +30,19 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+volatile bool TransactionReceipt::g_bEnableRevertReasonPersistence = true;
+
 TransactionReceipt::TransactionReceipt( bytesConstRef _rlp ) {
     RLP r( _rlp );
-    if ( !r.isList() || r.itemCount() != 4 )
+    if ( !r.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
+    if ( g_bEnableRevertReasonPersistence ) {
+        if ( r.itemCount() < 4 || r.itemCount() > 5 )
+            BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
+    } else {
+        if ( r.itemCount() != 4 )
+            BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
+    }
 
     if ( !r[0].isData() )
         BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
@@ -49,6 +58,15 @@ TransactionReceipt::TransactionReceipt( bytesConstRef _rlp ) {
     m_bloom = ( LogBloom ) r[2];
     for ( auto const& i : r[3] )
         m_log.emplace_back( i );
+
+    if ( g_bEnableRevertReasonPersistence ) {
+        // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
+        // we need 5thh dynamic chunk to store "revert reason" string
+        std::string strRevertReason;
+        if ( r.itemCount() >= 5 && r[4].isData() )
+            strRevertReason = ( std::string ) r[4].toString();
+        setRevertReason( strRevertReason );
+    }
 }
 
 TransactionReceipt::TransactionReceipt(
@@ -66,7 +84,8 @@ TransactionReceipt::TransactionReceipt(
       m_log( _log ) {}
 
 void TransactionReceipt::streamRLP( RLPStream& _s ) const {
-    _s.appendList( 4 );
+    std::string const& strRevertReason = getRevertReason();
+    _s.appendList( ( g_bEnableRevertReasonPersistence && ( !strRevertReason.empty() ) ) ? 5 : 4 );
     if ( hasStatusCode() )
         _s << statusCode();
     else
@@ -75,6 +94,12 @@ void TransactionReceipt::streamRLP( RLPStream& _s ) const {
     _s.appendList( m_log.size() );
     for ( LogEntry const& l : m_log )
         l.streamRLP( _s );
+
+    if ( g_bEnableRevertReasonPersistence && ( !strRevertReason.empty() ) ) {
+        // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
+        // we need 5thh dynamic chunk to store "revert reason" string
+        _s << strRevertReason;
+    }
 }
 
 bool TransactionReceipt::hasStatusCode() const {

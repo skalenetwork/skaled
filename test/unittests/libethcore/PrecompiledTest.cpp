@@ -1460,4 +1460,140 @@ BOOST_AUTO_TEST_CASE( bench_bn256Pairing, *ut::label( "bench" ) ) {
     benchmarkPrecompiled( "alt_bn128_pairing_product", tests, 1000 );
 }
 
+std::string numberToHex( size_t inputNumber ) {
+    std::stringstream sstream;
+    sstream << std::hex << inputNumber;
+    std::string hexNumber = sstream.str();
+    hexNumber.insert( hexNumber.begin(), 64 - hexNumber.length(), '0' );
+    return hexNumber;
+}
+
+std::string stringToHex( std::string inputString ) {
+    std::string hexString = toHex( inputString.begin(), inputString.end(), "" );
+    hexString.insert( hexString.begin() + hexString.length(), 64 - hexString.length(), '0' );
+    return hexString;
+}
+
+struct FilestorageFixture : public TestOutputHelperFixture {
+    FilestorageFixture() {
+        ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
+        fileName = "test_file";
+        fileSize = 100;
+        pathToFile = dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
+
+        hexAddress = ownerAddress.hex();
+        hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
+
+        fstream file;
+        file.open( pathToFile.string(), ios::out );
+        file.seekp( static_cast< long >( fileSize ) - 1 );
+        file.write( "0", 1 );
+    }
+
+    ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
+
+    Address ownerAddress;
+    std::string hexAddress;
+    std::string fileName;
+    std::size_t fileSize;
+    boost::filesystem::path pathToFile;
+};
+
+BOOST_FIXTURE_TEST_SUITE( FilestoragePrecompiledTests, FilestorageFixture )
+
+BOOST_AUTO_TEST_CASE( createFile ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
+
+    std::string fileName = "test_file_createFile";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+    BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
+    remove( path.c_str() );
+}
+
+BOOST_AUTO_TEST_CASE( uploadChunk ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "uploadChunk" );
+
+    std::string data = "random_data";
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    std::ifstream ifs( pathToFile.string() );
+    std::string content;
+    std::copy_n( std::istreambuf_iterator< char >( ifs.rdbuf() ), data.length(),
+        std::back_inserter( content ) );
+    BOOST_REQUIRE( data == content );
+}
+
+BOOST_AUTO_TEST_CASE( readChunk ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "readChunk" );
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( 0 ) + numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+
+    std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
+    std::vector< unsigned char > buffer;
+    buffer.reserve( fileSize );
+    buffer.insert( buffer.begin(), std::istream_iterator< unsigned char >( file ),
+        std::istream_iterator< unsigned char >() );
+    BOOST_REQUIRE( res.second == buffer );
+}
+
+BOOST_AUTO_TEST_CASE( getFileSize ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( deleteFile ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
+}
+
+BOOST_AUTO_TEST_CASE( createDirectory ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createDirectory" );
+
+    std::string dirName = "test_dir";
+    boost::filesystem::path pathToDir =
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
+
+    bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
+    remove( pathToDir.c_str() );
+}
+
+BOOST_AUTO_TEST_CASE( deleteDirectory ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteDirectory" );
+
+    std::string dirName = "test_dir";
+    boost::filesystem::path pathToDir =
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
+    boost::filesystem::create_directories( pathToDir );
+
+    bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()

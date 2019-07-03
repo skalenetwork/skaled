@@ -283,8 +283,16 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
-    if ( eOpCode != skutils::ws::opcv::text )
-        throw std::runtime_error( "only ws text messages are supported" );
+    if ( eOpCode != skutils::ws::opcv::text ) {
+        // throw std::runtime_error( "only ws text messages are supported" );
+        clog( dev::VerbosityWarning, cc::info( getRelay().m_strSchemeUC ) + cc::debug( "/" ) +
+                                         cc::num10( getRelay().serverIndex() ) )
+            << cc::ws_rx_inv( " >>> " + getRelay().m_strSchemeUC + "/" +
+                              std::to_string( getRelay().serverIndex() ) + "/RX >>> " )
+            << desc() << cc::ws_rx( " >>> " )
+            << cc::error( " got binary message and will try to interpret it as text: " )
+            << cc::warn( msg );
+    }
     SkaleServerOverride* pSO = pso();
     skutils::dispatch::async( m_strPeerQueueID, [=]() -> void {
         std::string strRequest( msg );

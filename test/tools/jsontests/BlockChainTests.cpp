@@ -43,6 +43,12 @@ eth::Network ChainBranch::s_tempBlockchainNetwork = eth::Network::MainNetwork;
 eth::Network TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
 json_spirit::mValue BlockchainTestSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
+    //
+    // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
+    // we need 5thh dynamic chunk to store "revert reason" string
+    // Unfortunatelly this is incompatible with current set of tests in this file
+    dev::eth::TransactionReceipt::g_bEnableRevertReasonPersistence = false;
+    //
     json_spirit::mObject tests;
     for ( auto const& i : _input.get_obj() ) {
         string const& testname = i.first;
@@ -118,7 +124,9 @@ json_spirit::mValue BlockchainTestSuite::doTests(
             testBCTest( inputTest );
         }
     }
-
+    //
+    dev::eth::TransactionReceipt::g_bEnableRevertReasonPersistence = true;  // roll back
+    //
     return tests;
 }
 fs::path BlockchainTestSuite::suiteFolder() const {
@@ -135,6 +143,12 @@ fs::path BCGeneralStateTestsSuite::suiteFillerFolder() const {
 }
 json_spirit::mValue TransitionTestsSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
+    //
+    // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
+    // we need 5thh dynamic chunk to store "revert reason" string
+    // Unfortunatelly this is incompatible with current set of tests in this file
+    dev::eth::TransactionReceipt::g_bEnableRevertReasonPersistence = false;
+    //
     json_spirit::mValue output = _input;
     for ( auto& i : output.get_obj() ) {
         string testname = i.first;
@@ -159,6 +173,9 @@ json_spirit::mValue TransitionTestsSuite::doTests(
         else
             testBCTest( o );
     }
+    //
+    dev::eth::TransactionReceipt::g_bEnableRevertReasonPersistence = true;  // roll back
+    //
     return output;
 }
 
