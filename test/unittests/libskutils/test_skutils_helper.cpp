@@ -254,7 +254,8 @@ test_ssl_cert_and_key_holder::test_ssl_cert_and_key_holder() {
     strCmd += strFilePathKey_;
     strCmd += " -out ";
     strCmd += strFilePathCert_;
-    ::system( strCmd.c_str() );
+    int res = ::system( strCmd.c_str() );
+    ( void ) res;
     if ( !( skutils::tools::file_exists( strFilePathKey_ ) &&
              skutils::tools::file_exists( strFilePathCert_ ) ) ) {
         static const char g_err_msg[] = "failed to generate self-signed SSL certificate";

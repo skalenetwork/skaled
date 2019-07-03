@@ -101,7 +101,7 @@ Client::~Client() {
     else
         cerror << "Instance of SkaleHost was not properly created.";
 
-    m_signalled.notify_all();    // to wake up the thread from Client::doWork()
+    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
