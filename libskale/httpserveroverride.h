@@ -51,6 +51,7 @@ typedef intptr_t ssize_t;
 
 #include <skutils/console_colors.h>
 #include <skutils/http.h>
+#include <skutils/stats.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
 #include <json.hpp>
@@ -189,12 +190,16 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleRelayHTTP : public SkaleServerHelper {
+class SkaleRelayHTTP : public SkaleServerHelper, public skutils::stats::named_event_stats {
 public:
+    const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
     SkaleRelayHTTP( const char* cert_path = nullptr, const char* private_key_path = nullptr,
         int nServerIndex = -1 );
     ~SkaleRelayHTTP() override;
+    std::string getProtoPrefix() const;
+    std::string getStatsEventQueueName( const char* strSuffix ) const;
+    void registrerDefaultEventQueues();
 };  /// class SkaleRelayHTTP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

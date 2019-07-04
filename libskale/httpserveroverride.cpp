@@ -1034,15 +1034,56 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 
 SkaleRelayHTTP::SkaleRelayHTTP(
     const char* cert_path, const char* private_key_path, int nServerIndex )
-    : SkaleServerHelper( nServerIndex ) {
-    if ( cert_path && cert_path[0] && private_key_path && private_key_path[0] )
+    : SkaleServerHelper( nServerIndex ),
+      m_bHelperIsSSL( ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ?
+                          true :
+                          false ) {
+    if ( m_bHelperIsSSL )
         m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
     else
         m_pServer.reset( new skutils::http::server );
+    registrerDefaultEventQueues();
 }
 
 SkaleRelayHTTP::~SkaleRelayHTTP() {
     m_pServer.reset();
+}
+
+std::string SkaleRelayHTTP::getProtoPrefix() const {
+    return m_bHelperIsSSL ? "https" : "http";
+}
+
+std::string SkaleRelayHTTP::getStatsEventQueueName( const char* strSuffix ) const {
+    std::string s;
+    s += getProtoPrefix();
+    s += '/';
+    s += strSuffix;
+    return s;
+}
+
+void SkaleRelayHTTP::registrerDefaultEventQueues() {
+    // basic
+    event_queue_add( getStatsEventQueueName( "recv bytes" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "sent bytes" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "recv messages" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "sent messages" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "sent error messages" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "sent error bytes" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "query options" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    // server-specific
+    event_queue_add( getStatsEventQueueName( "server start" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "server fail" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( getStatsEventQueueName( "server stop" ),
+        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1174,15 +1215,19 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             res.set_header( "content-length", "0" );
             res.set_header(
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
+            pSrv->event_add( pSrv->getStatsEventQueueName( "query options" ) );
         } );
         pSrv->m_pServer->Post(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
+                pSrv->event_add( pSrv->getStatsEventQueueName( "recv messages" ) );
+                pSrv->event_add( pSrv->getStatsEventQueueName( "recv bytes" ), req.body_.size() );
                 SkaleServerConnectionsTrackHelper sscth( *this );
                 if ( m_bTraceCalls )
                     logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP",
                         pSrv->serverIndex(), req.origin_.c_str(), cc::j( req.body_ ) );
                 int nID = -1;
                 std::string strResponse;
+                bool bPassed = false;
                 try {
                     if ( is_connection_limit_overflow() ) {
                         on_connection_overflow_peer_closed(
@@ -1195,6 +1240,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     if ( handler == nullptr )
                         throw std::runtime_error( "No client connection handler found" );
                     handler->HandleRequest( req.body_.c_str(), strResponse );
+                    bPassed = true;
                 } catch ( const std::exception& ex ) {
                     logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP",
                         pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
@@ -1219,11 +1265,20 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 res.set_header( "access-control-allow-origin", "*" );
                 res.set_header( "vary", "Origin" );
                 res.set_content( strResponse.c_str(), "application/json" );
+                pSrv->event_add( pSrv->getStatsEventQueueName(
+                    bPassed ? "sent messages" : "sent error messages" ) );
+                pSrv->event_add(
+                    pSrv->getStatsEventQueueName( bPassed ? "sent bytes" : "sent error bytes" ),
+                    strResponse.size() );
             } );
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
                 "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
-            pSrv->m_pServer->listen( strAddr.c_str(), nPort );
+            if ( !pSrv->m_pServer->listen( strAddr.c_str(), nPort ) ) {
+                pSrv->event_add( pSrv->getStatsEventQueueName( "server fai;" ) );
+                return;
+            }
+            pSrv->event_add( pSrv->getStatsEventQueueName( "server start" ) );
         } )
             .detach();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
@@ -1304,8 +1359,10 @@ bool SkaleServerOverride::implStopListening(
             cc::notice( "Will stop " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::notice( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
-        if ( pSrv->m_pServer && pSrv->m_pServer->is_running() )
+        if ( pSrv->m_pServer && pSrv->m_pServer->is_running() ) {
             pSrv->m_pServer->stop();
+            pSrv->event_add( pSrv->getStatsEventQueueName( "server stop" ) );
+        }
         pSrv.reset();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
             cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
