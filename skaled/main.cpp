@@ -207,7 +207,7 @@ int main( int argc, char** argv ) try {
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
 
-    bool is_ipc = true;
+    bool is_ipc = false;
     int nExplicitPortHTTP = -1;
     int nExplicitPortHTTPS = -1;
     int nExplicitPortWS = -1;
