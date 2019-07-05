@@ -883,7 +883,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
 }
 
 void SkaleWsPeer::eth_subscribe_skaleStats(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );

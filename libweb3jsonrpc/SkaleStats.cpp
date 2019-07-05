@@ -39,7 +39,9 @@ SkaleStats::SkaleStats( eth::Interface& _eth ) : m_eth( _eth ) {}
 
 Json::Value SkaleStats::skale_stats( Json::Value const& /*_val*/ ) {
     try {
-        throw jsonrpc::JsonRpcException( "skale_stats() API is not supported yet" );
+        Json::Value ret;
+        ret["hello"] = "there";
+        return ret;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
