@@ -36,6 +36,7 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
+#include <list>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -65,16 +66,19 @@
 #define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x1000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x2000
+#define SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS 0x3000
 #elif INT_MAX == 2147483647
 // 32 bits
 #define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF0000000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x10000000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x20000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS 0x30000000
 #elif INT_MAX == 9223372036854775807
 // 64 bits
 #define SKALED_WS_SUBSCRIPTION_TYPE_MASK 0xF000000000000000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION 0x1000000000000000
 #define SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK 0x2000000000000000
+#define SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS 0x3000000000000000
 #else
 #error "What kind of weird system are you on? We cannot detect size of int"
 #endif
@@ -227,6 +231,66 @@ nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
 };  // namespace server
 };  // namespace skale
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+SkaleStatsSunscriptionManager::SkaleStatsSunscriptionManager() : next_subscription_( 1 ) {}
+SkaleStatsSunscriptionManager::~SkaleStatsSunscriptionManager() {
+    unsubscribe_all();
+}
+
+SkaleStatsSunscriptionManager::subscription_id_t
+SkaleStatsSunscriptionManager::nextSubscriptionID() {
+    lock_type lock( mtx_ );
+    subscription_id_t idSubscription = next_subscription_;
+    ++next_subscription_;
+    return idSubscription;
+}
+
+bool SkaleStatsSunscriptionManager::subscribe(
+    SkaleStatsSunscriptionManager::subscription_id_t& idSubscription, SkaleWsPeer* pPeer ) {
+    idSubscription = 0;
+    if ( !pPeer )
+        return false;
+    lock_type lock( mtx_ );
+    idSubscription = nextSubscriptionID();
+    map_subscriptions_[idSubscription] = pPeer;
+    pPeer->ref_retain();  // mamual retail-release
+    return true;
+}
+
+bool SkaleStatsSunscriptionManager::unsubscribe(
+    const SkaleStatsSunscriptionManager::subscription_id_t& idSubscription ) {
+    try {
+        lock_type lock( mtx_ );
+        map_subscriptions_t::iterator itFind = map_subscriptions_.find( idSubscription ),
+                                      itEnd = map_subscriptions_.end();
+        if ( itFind == itEnd )
+            return false;
+        SkaleWsPeer* pPeer = itFind->second;
+        map_subscriptions_.erase( itFind );
+        if ( pPeer )
+            pPeer->ref_release();  // mamual retail-release
+        return true;
+    } catch ( ... ) {
+        return false;
+    }
+}
+
+void SkaleStatsSunscriptionManager::unsubscribe_all() {
+    lock_type lock( mtx_ );
+    std::list< subscription_id_t > lst;
+    map_subscriptions_t::iterator itWalk = map_subscriptions_.begin();
+    map_subscriptions_t::iterator itEnd = map_subscriptions_.end();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        subscription_id_t idSubscription = itWalk->first;
+        lst.push_back( idSubscription );
+    }
+    for ( const subscription_id_t& idSubscription : lst ) {
+        unsubscribe( idSubscription );
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -531,6 +595,10 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
         eth_subscribe_newHeads( joRequest, joResponse, false );
         return;
     }
+    if ( strSubcscriptionType == "skaleStats" ) {
+        eth_subscribe_skaleStats( joRequest, joResponse );
+        return;
+    }
     if ( strSubcscriptionType.empty() )
         strSubcscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
@@ -814,6 +882,51 @@ void SkaleWsPeer::eth_subscribe_newHeads(
     }
 }
 
+void SkaleWsPeer::eth_subscribe_skaleStats(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    SkaleServerOverride* pSO = pso();
+    try {
+        // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
+        SkaleStatsSunscriptionManager::subscription_id_t idSubscription = 0;
+        bool bWasSubscribed = pSO->subscribe( idSubscription, this );
+        std::string strIW = dev::toJS( bWasSubscribed | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
+        if ( pSO->m_bTraceCalls )
+            clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().m_strSchemeUC ) +
+                                                      cc::debug( "/" ) +
+                                                      cc::num10( getRelay().serverIndex() ) )
+                << desc() << " " << cc::info( "eth_subscribe/skaleStats" )
+                << cc::debug( " rpc method did installed watch " ) << cc::info( strIW ) << "\n";
+        joResponse["result"] = strIW;
+    } catch ( const std::exception& ex ) {
+        if ( pSO->m_bTraceCalls )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().m_strSchemeUC ) +
+                                                      cc::debug( "/" ) +
+                                                      cc::num10( getRelay().serverIndex() ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newHeads(" ) << cc::error( " rpc method, exception " )
+                << cc::warn( ex.what() ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            std::string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
+            ex.what();
+        joResponse["error"] = joError;
+        return;
+    } catch ( ... ) {
+        if ( pSO->m_bTraceCalls )
+            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().m_strSchemeUC ) +
+                                                      cc::debug( "/" ) +
+                                                      cc::num10( getRelay().serverIndex() ) )
+                << desc() << " " << cc::error( "error in " )
+                << cc::warn( "eth_subscribe/newHeads(" )
+                << cc::error( " rpc method, unknown exception " ) << "\n";
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
+        joResponse["error"] = joError;
+        return;
+    }
+}
 
 void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
@@ -894,6 +1007,29 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
             }
             ethereum()->uninstallNewBlockWatch( iw );
             setInstalledWatchesNewBlocks_.erase( iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
+        } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) {
+            SkaleStatsSunscriptionManager::subscription_id_t idSubscription =
+                SkaleStatsSunscriptionManager::subscription_id_t(
+                    iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) ) );
+            bool bWasUnsubscribed = pSO->unsubscribe( idSubscription );
+            if ( !bWasUnsubscribed ) {
+                std::string strIW = dev::toJS( iw );
+                if ( pSO->m_bTraceCalls )
+                    clog( dev::Verbosity::VerbosityError,
+                        cc::info( getRelay().m_strSchemeUC ) + cc::debug( "/" ) +
+                            cc::num10( getRelay().serverIndex() ) )
+                        << desc() << " " << cc::error( "error in " )
+                        << cc::warn( "eth_unsubscribe/newHeads" )
+                        << cc::error( " rpc method, bad subsription ID " ) << cc::warn( strIW )
+                        << "\n";
+                nlohmann::json joError = nlohmann::json::object();
+                joError["code"] = -32602;
+                joError["message"] =
+                    "error in \"eth_unsubscribe/skaleStats\" rpc method, ad subsription ID " +
+                    strIW;
+                joResponse["error"] = joError;
+                return;
+            }  // if ( !bWasUnsubscribed )
         } else {
             if ( setInstalledWatchesLogs_.find( iw ) == setInstalledWatchesLogs_.end() ) {
                 std::string strIW = dev::toJS( iw );

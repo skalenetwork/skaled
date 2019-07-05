@@ -60,10 +60,37 @@ typedef intptr_t ssize_t;
 #include <libethereum/Interface.h>
 #include <libethereum/LogFilter.h>
 
+class SkaleStatsSunscriptionManager;
 class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleStatsSunscriptionManager {
+public:
+    typedef int64_t subscription_id_t;
+
+protected:
+    typedef skutils::multithreading::recursive_mutex_type mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+    mutex_type mtx_;
+
+    std::atomic< subscription_id_t > next_subscription_;
+    subscription_id_t nextSubscriptionID();
+
+    typedef std::map< subscription_id_t, SkaleWsPeer* > map_subscriptions_t;
+    map_subscriptions_t map_subscriptions_;
+
+public:
+    SkaleStatsSunscriptionManager();
+    virtual ~SkaleStatsSunscriptionManager();
+    bool subscribe( subscription_id_t& idSubscription, SkaleWsPeer* pPeer );
+    bool unsubscribe( const subscription_id_t& idSubscription );
+    void unsubscribe_all();
+};  // class SkaleStatsSunscriptionManager
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +155,7 @@ protected:
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_newHeads(
         const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions );
+    void eth_subscribe_skaleStats( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
@@ -205,7 +233,8 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
+class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
+                            public SkaleStatsSunscriptionManager {
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
 
