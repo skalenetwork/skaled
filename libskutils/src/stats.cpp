@@ -110,8 +110,8 @@ void named_event_stats::event_queue_add( const std::string& strQueueName, size_t
         } else {
             itEvent->second.m_prevPerSec += nSize;
             itEvent->second.m_total += itEvent->second.m_prevPerSec;
+            ++itEvent->second.m_total1;
         }
-        ++itEvent->second.m_total1;
 
         itEvent->second.m_lastTime = clock::now();
     }
