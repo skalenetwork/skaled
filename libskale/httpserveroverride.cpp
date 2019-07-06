@@ -235,6 +235,334 @@ nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace stats {
+
+bool convert_json_string_value_to_boolean( const std::string r ) {
+    if ( r.empty() )
+        return false;
+    char c = r[0];
+    if ( c == 'f' || c == 'F' || c == 'n' || c == 'N' )
+        return false;
+    double lf = std::atof( r.c_str() );
+    return ( lf != 0.0 ) ? true : false;
+}
+
+template < typename T >
+const T getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName ) {
+    try {
+        if ( strMemberPropertyName.empty() )
+            return T();
+        T retVal( jo.count( strMemberPropertyName ) ? jo[strMemberPropertyName].get< T >() : T() );
+        return retVal;
+    } catch ( ... ) {
+        return T();
+    }
+}
+template < bool >
+bool getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName ) {
+    try {
+        if ( strMemberPropertyName.empty() )
+            return false;
+        std::string r( jo.count( strMemberPropertyName ) ?
+                           jo[strMemberPropertyName].get< std::string >() :
+                           std::string( "false" ) );
+        return convert_json_string_value_to_boolean( r );
+    } catch ( ... ) {
+        return false;
+    }
+}
+
+
+typedef skutils::multithreading::recursive_mutex_type mutex_type_set_all_peers;
+typedef std::lock_guard< mutex_type_set_all_peers > lock_type_set_all_peers;
+static skutils::multithreading::recursive_mutex_type g_mtx_for_set_all_peers( "RMTX-NMA-PEER-ALL" );
+
+struct map_method_call_stats_t
+    : public std::map< std::string, skutils::stats::named_event_stats* > {
+    typedef std::map< std::string, skutils::stats::named_event_stats* > my_base_t;
+    void clear() {
+        iterator itWalk = begin(), itEnd = end();
+        for ( ; itWalk != itEnd; ++itWalk ) {
+            skutils::stats::named_event_stats* x = itWalk->second;
+            if ( x )
+                delete x;
+        }
+        my_base_t::clear();
+    }
+    map_method_call_stats_t() = default;
+    ~map_method_call_stats_t() { clear(); }
+    map_method_call_stats_t( const map_method_call_stats_t& ) = delete;
+    map_method_call_stats_t( map_method_call_stats_t&& ) = delete;
+    map_method_call_stats_t& operator=( const map_method_call_stats_t& ) = delete;
+    map_method_call_stats_t& operator=( map_method_call_stats_t&& ) = delete;
+};
+
+map_method_call_stats_t g_map_method_call_stats;
+map_method_call_stats_t g_map_method_answer_stats;
+map_method_call_stats_t g_map_method_no_answer_stats;
+map_method_call_stats_t g_map_method_error_stats;
+map_method_call_stats_t g_map_method_exception_stats;
+map_method_call_stats_t g_map_method_unknown_stats;
+map_method_call_stats_t g_map_method_traffic_stats_in;
+map_method_call_stats_t g_map_method_traffic_stats_out;
+static size_t g_nDefaultQueueSize = 10;
+
+static skutils::stats::named_event_stats& stat_sybsystem_call_queue( const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_call_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_call_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_call_stats[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_answer_queue( const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_answer_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_answer_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_answer_stats[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_no_answer_queue(
+    const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_no_answer_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_no_answer_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_no_answer_stats[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_error_queue( const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_error_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_error_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_error_stats[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_exception_queue(
+    const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_exception_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_exception_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_exception_stats[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_unknown_queue( const char* strSubSystem ) {
+    map_method_call_stats_t::iterator itFind = g_map_method_unknown_stats.find( strSubSystem ),
+                                      itEnd = g_map_method_unknown_stats.end();
+    if ( itFind != itEnd ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_unknown_stats[strSubSystem] = x;
+    return ( *x );
+}
+
+static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_in(
+    const char* strSubSystem ) {
+    const auto itFind = g_map_method_traffic_stats_in.find( strSubSystem );
+    if ( itFind != std::end( g_map_method_traffic_stats_in ) ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_traffic_stats_in[strSubSystem] = x;
+    return ( *x );
+}
+static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_out(
+    const char* strSubSystem ) {
+    const auto itFind = g_map_method_traffic_stats_out.find( strSubSystem );
+    if ( itFind != std::end( g_map_method_traffic_stats_out ) ) {
+        skutils::stats::named_event_stats* x = itFind->second;
+        if ( x )
+            return ( *x );
+    }
+    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
+    g_map_method_traffic_stats_out[strSubSystem] = x;
+    return ( *x );
+}
+
+static nlohmann::json stat_generate_subsystem_stats( const char* strSubSystem ) {
+    nlohmann::json jo = nlohmann::json::object();
+    skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
+    skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& naq = stat_sybsystem_no_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& erq = stat_sybsystem_no_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& exq = stat_sybsystem_exception_queue( strSubSystem );
+    skutils::stats::named_event_stats& uq = stat_sybsystem_unknown_queue( strSubSystem );
+    skutils::stats::named_event_stats& tq_in = stat_sybsystem_traffic_queue_in( strSubSystem );
+    skutils::stats::named_event_stats& tq_out = stat_sybsystem_traffic_queue_out( strSubSystem );
+    std::set< std::string > setNames = cq.all_queue_names(), setNames_aq = aq.all_queue_names(),
+                            setNames_naq = naq.all_queue_names(),
+                            setNames_erq = erq.all_queue_names(),
+                            setNames_exq = exq.all_queue_names(),
+                            setNames_uq = uq.all_queue_names(),
+                            setNames_tq_in = tq_in.all_queue_names(),
+                            setNames_tq_out = tq_out.all_queue_names();
+    std::set< std::string >::const_iterator itNameWalk, itNameEnd;
+    for ( itNameWalk = setNames_aq.cbegin(), itNameEnd = setNames_aq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_naq.cbegin(), itNameEnd = setNames_naq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_erq.cbegin(), itNameEnd = setNames_erq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_exq.cbegin(), itNameEnd = setNames_exq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_uq.cbegin(), itNameEnd = setNames_uq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_tq_in.cbegin(), itNameEnd = setNames_tq_in.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_tq_out.cbegin(), itNameEnd = setNames_tq_out.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
+          ++itNameWalk ) {
+        const std::string& strMethodName = ( *itNameWalk );
+        size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0, nUnknown = 0;
+        skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
+        skutils::stats::time_point tpNow = skutils::stats::clock::now();
+        double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
+        double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, &nAnswers );
+        double lfNoAnswersPerSecond = naq.compute_eps( strMethodName, tpNow, &nNoAnswers );
+        double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, &nErrors );
+        double lfExceptopnsPerSecond = exq.compute_eps( strMethodName, tpNow, &nExceptopns );
+        double lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
+        double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv );
+        double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow, &nBytesSent );
+        nlohmann::json joMethod = nlohmann::json::object();
+        joMethod["cps"] = lfCallsPerSecond;
+        joMethod["aps"] = lfAnswersPerSecond;
+        joMethod["naps"] = lfNoAnswersPerSecond;
+        joMethod["erps"] = lfErrorsPerSecond;
+        joMethod["exps"] = lfExceptopnsPerSecond;
+        joMethod["ups"] = lfUnknownPerSecond;
+        joMethod["bps_recv"] = lfBytesPerSecondRecv;
+        joMethod["bps_sent"] = lfBytesPerSecondSent;
+        joMethod["calls"] = nCalls;
+        joMethod["answers"] = nAnswers;
+        joMethod["no_answers"] = nNoAnswers;
+        joMethod["errors"] = nErrors;
+        joMethod["exceptions"] = nExceptopns;
+        joMethod["unknown"] = nUnknown;
+        joMethod["bytes_recv"] = nBytesRecv;
+        joMethod["bytes_sent"] = nBytesSent;
+        jo[strMethodName] = joMethod;
+    }
+    return jo;
+}
+
+void register_stats_message(
+    const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
+    cq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    cq.event_add( strMethodName );
+    skutils::stats::named_event_stats& tq = stat_sybsystem_traffic_queue_in( strSubSystem );
+    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_add( strMethodName, nJsonSize );
+}
+void register_stats_answer(
+    const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );
+    aq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    aq.event_add( strMethodName );
+
+    skutils::stats::named_event_stats& tq = stat_sybsystem_traffic_queue_out( strSubSystem );
+    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_add( strMethodName, nJsonSize );
+}
+void register_stats_no_answer( const char* strSubSystem, const char* strMethodName ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& eq = stat_sybsystem_no_answer_queue( strSubSystem );
+    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_add( strMethodName );
+}
+void register_stats_error( const char* strSubSystem, const char* strMethodName ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& eq = stat_sybsystem_error_queue( strSubSystem );
+    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_add( strMethodName );
+}
+void register_stats_exception( const char* strSubSystem, const char* strMethodName ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& eq = stat_sybsystem_exception_queue( strSubSystem );
+    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_add( strMethodName );
+}
+void register_stats_unknown( const char* strSubSystem, const char* strMethodName ) {
+    lock_type_set_all_peers lock( g_mtx_for_set_all_peers );
+    skutils::stats::named_event_stats& eq = stat_sybsystem_unknown_queue( strSubSystem );
+    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_add( strMethodName );
+}
+
+void register_stats_message( const char* strSubSystem, const nlohmann::json& joMessage ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string txt = joMessage.dump();
+    size_t txt_len = txt.length();
+    register_stats_message( strSubSystem, strMethodName.c_str(), txt_len );
+}
+void register_stats_answer(
+    const char* strSubSystem, const nlohmann::json& joMessage, const nlohmann::json& joAnswer ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string txt = joAnswer.dump();
+    size_t txt_len = txt.length();
+    register_stats_answer( strSubSystem, strMethodName.c_str(), txt_len );
+}
+void register_stats_no_answer( const char* strSubSystem, const nlohmann::json& joMessage ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    register_stats_no_answer( strSubSystem, strMethodName.c_str() );
+}
+void register_stats_error( const char* strSubSystem, const nlohmann::json& joMessage ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    register_stats_error( strSubSystem, strMethodName.c_str() );
+}
+void register_stats_exception( const char* strSubSystem, const nlohmann::json& joMessage ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    register_stats_exception( strSubSystem, strMethodName.c_str() );
+}
+void register_stats_unknown( const char* strSubSystem, const nlohmann::json& joMessage ) {
+    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    register_stats_unknown( strSubSystem, strMethodName.c_str() );
+}
+
+};  // namespace stats
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 SkaleStatsSunscriptionManager::SkaleStatsSunscriptionManager() : next_subscription_( 1 ) {}
 SkaleStatsSunscriptionManager::~SkaleStatsSunscriptionManager() {
     unsubscribe_all();
@@ -1670,52 +1998,48 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
-    nlohmann::json joRPC = nlohmann::json::object();
-    for ( std::shared_ptr< SkaleRelayHTTP > pServerHTTP : m_serversHTTP ) {
-        skutils::stats::named_event_stats* pStats = pServerHTTP.get();
-        //
-        //
-        std::set< std::string > setNames = pStats->all_queue_names();
-        std::set< std::string >::const_iterator itNameWalk, itNameEnd;
-        for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
-              ++itNameWalk ) {
-            const std::string& strMethodName = ( *itNameWalk );
-            size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0,
-                   nUnknown = 0;
-            //            skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
-            //            skutils::stats::time_point tpNow = skutils::stats::clock::now();
-            //            double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
-            //            double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow,
-            //            &nAnswers ); double lfNoAnswersPerSecond = naq.compute_eps( strMethodName,
-            //            tpNow, &nNoAnswers ); double lfErrorsPerSecond = erq.compute_eps(
-            //            strMethodName, tpNow, &nErrors ); double lfExceptopnsPerSecond =
-            //            exq.compute_eps( strMethodName, tpNow, &nExceptopns ); double
-            //            lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
-            //            double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow,
-            //            &nBytesRecv ); double lfBytesPerSecondSent = tq_out.compute_eps(
-            //            strMethodName, tpNow, &nBytesSent ); JsonObject joMethod = JSON_EMPTY_OBJ;
-            //            joMethod["cps"] = lfCallsPerSecond;
-            //            joMethod["aps"] = lfAnswersPerSecond;
-            //            joMethod["naps"] = lfNoAnswersPerSecond;
-            //            joMethod["erps"] = lfErrorsPerSecond;
-            //            joMethod["exps"] = lfExceptopnsPerSecond;
-            //            joMethod["ups"] = lfUnknownPerSecond;
-            //            joMethod["bps_recv"] = lfBytesPerSecondRecv;
-            //            joMethod["bps_sent"] = lfBytesPerSecondSent;
-            //            joMethod["calls"] = nCalls;
-            //            joMethod["answers"] = nAnswers;
-            //            joMethod["no_answers"] = nNoAnswers;
-            //            joMethod["errors"] = nErrors;
-            //            joMethod["exceptions"] = nExceptopns;
-            //            joMethod["unknown"] = nUnknown;
-            //            joMethod["bytes_recv"] = nBytesRecv;
-            //            joMethod["bytes_sent"] = nBytesSent;
-            //            jo[strMethodName] = joMethod;
-            nlohmann::json joMethod = nlohmann::json::object();
-            joRPC[strMethodName] = joMethod;
-        }
-    }
-    joStats["rpc"] = joStats;
+    //    nlohmann::json joRPC = nlohmann::json::object();
+    //    for ( std::shared_ptr< SkaleRelayHTTP > pServerHTTP : m_serversHTTP ) {
+    //        skutils::stats::named_event_stats* pStats = pServerHTTP.get();
+    //        //
+    //        //
+    //        std::set< std::string > setNames = pStats->all_queue_names();
+    //        std::set< std::string >::const_iterator itNameWalk, itNameEnd;
+    //        for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk !=
+    //        itNameEnd;
+    //              ++itNameWalk ) {
+    //            const std::string& strMethodName = ( *itNameWalk );
+    //            size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0,
+    //                   nUnknown = 0;
+    //            skutils::stats::time_point tpNow = skutils::stats::clock::now();
+    //            //
+    //            skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
+    //            double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
+    //            double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, &nAnswers );
+    //            double lfNoAnswersPerSecond = naq.compute_eps( strMethodName, tpNow, &nNoAnswers
+    //            ); double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, &nErrors );
+    //            double lfExceptopnsPerSecond = exq.compute_eps( strMethodName, tpNow, &nExceptopns
+    //            ); double lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
+    //            double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv
+    //            ); double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow,
+    //            &nBytesSent ); nlohmann::json joMethod = nlohmann::json::object(); joMethod["cps"]
+    //            = lfCallsPerSecond; joMethod["aps"] = lfAnswersPerSecond; joMethod["naps"] =
+    //            lfNoAnswersPerSecond; joMethod["erps"] = lfErrorsPerSecond; joMethod["exps"] =
+    //            lfExceptopnsPerSecond; joMethod["ups"] = lfUnknownPerSecond; joMethod["bps_recv"]
+    //            = lfBytesPerSecondRecv; joMethod["bps_sent"] = lfBytesPerSecondSent;
+    //            joMethod["calls"] = nCalls;
+    //            joMethod["answers"] = nAnswers;
+    //            joMethod["no_answers"] = nNoAnswers;
+    //            joMethod["errors"] = nErrors;
+    //            joMethod["exceptions"] = nExceptopns;
+    //            joMethod["unknown"] = nUnknown;
+    //            joMethod["bytes_recv"] = nBytesRecv;
+    //            joMethod["bytes_sent"] = nBytesSent;
+    //            //
+    //            joRPC[strMethodName] = joMethod;
+    //        }
+    //    }
+    //    joStats["rpc"] = joRPC;
     return joStats;
 }
 
