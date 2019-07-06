@@ -60,6 +60,8 @@ typedef intptr_t ssize_t;
 #include <libethereum/Interface.h>
 #include <libethereum/LogFilter.h>
 
+#include <libweb3jsonrpc/SkaleStatsSite.h>
+
 class SkaleStatsSunscriptionManager;
 class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
@@ -234,7 +236,8 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
-                            public SkaleStatsSunscriptionManager {
+                            public SkaleStatsSunscriptionManager,
+                            public dev::rpc::SkaleStatsProviderImpl {
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
 
@@ -306,6 +309,8 @@ public:
     void max_connection_set( size_t cntConnectionsMax );
     virtual void on_connection_overflow_peer_closed(
         const char* strProtocol, int nServerIndex, int nPort );
+
+    nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;

@@ -1667,5 +1667,13 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
     logTraceServerEvent( false, strProtocol, nServerIndex, strMessage );
 }
 
+nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
+                                                           // dev::rpc::SkaleStatsProviderImpl
+    nlohmann::json joStats = nlohmann::json::object();
+    joStats["generator"] = "class SkaleServerOverride";
+    return joStats;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

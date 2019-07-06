@@ -42,6 +42,7 @@ set(sources
 	SkaleStats.h
 	SkaleStats.cpp
 	SkaleStatsFace.h
+	SkaleStatsSite.h
 )
 
 if(WIN32)

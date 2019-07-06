@@ -1175,6 +1175,10 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
+            //
+            skaleStatsFace->setProvider( skale_server_connector );
+            skale_server_connector->setConsumer( skaleStatsFace );
+            //
             skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
