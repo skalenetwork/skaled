@@ -558,6 +558,81 @@ void register_stats_unknown( const char* strSubSystem, const nlohmann::json& joM
     register_stats_unknown( strSubSystem, strMethodName.c_str() );
 }
 
+static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
+    nlohmann::json jo = nlohmann::json::object();
+    skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
+    skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& naq = stat_sybsystem_no_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& erq = stat_sybsystem_no_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& exq = stat_sybsystem_exception_queue( strSubSystem );
+    skutils::stats::named_event_stats& uq = stat_sybsystem_unknown_queue( strSubSystem );
+    skutils::stats::named_event_stats& tq_in = stat_sybsystem_traffic_queue_in( strSubSystem );
+    skutils::stats::named_event_stats& tq_out = stat_sybsystem_traffic_queue_out( strSubSystem );
+    std::set< std::string > setNames = cq.all_queue_names(), setNames_aq = aq.all_queue_names(),
+                            setNames_naq = naq.all_queue_names(),
+                            setNames_erq = erq.all_queue_names(),
+                            setNames_exq = exq.all_queue_names(),
+                            setNames_uq = uq.all_queue_names(),
+                            setNames_tq_in = tq_in.all_queue_names(),
+                            setNames_tq_out = tq_out.all_queue_names();
+    std::set< std::string >::const_iterator itNameWalk, itNameEnd;
+    for ( itNameWalk = setNames_aq.cbegin(), itNameEnd = setNames_aq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_naq.cbegin(), itNameEnd = setNames_naq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_erq.cbegin(), itNameEnd = setNames_erq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_exq.cbegin(), itNameEnd = setNames_exq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_uq.cbegin(), itNameEnd = setNames_uq.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_tq_in.cbegin(), itNameEnd = setNames_tq_in.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames_tq_out.cbegin(), itNameEnd = setNames_tq_out.cend();
+          itNameWalk != itNameEnd; ++itNameWalk )
+        setNames.insert( *itNameWalk );
+    for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
+          ++itNameWalk ) {
+        const std::string& strMethodName = ( *itNameWalk );
+        size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0, nUnknown = 0;
+        skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
+        skutils::stats::time_point tpNow = skutils::stats::clock::now();
+        double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
+        double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, &nAnswers );
+        double lfNoAnswersPerSecond = naq.compute_eps( strMethodName, tpNow, &nNoAnswers );
+        double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, &nErrors );
+        double lfExceptopnsPerSecond = exq.compute_eps( strMethodName, tpNow, &nExceptopns );
+        double lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
+        double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv );
+        double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow, &nBytesSent );
+        nlohmann::json joMethod = nlohmann::json::object();
+        joMethod["cps"] = lfCallsPerSecond;
+        joMethod["aps"] = lfAnswersPerSecond;
+        joMethod["naps"] = lfNoAnswersPerSecond;
+        joMethod["erps"] = lfErrorsPerSecond;
+        joMethod["exps"] = lfExceptopnsPerSecond;
+        joMethod["ups"] = lfUnknownPerSecond;
+        joMethod["bps_recv"] = lfBytesPerSecondRecv;
+        joMethod["bps_sent"] = lfBytesPerSecondSent;
+        joMethod["calls"] = nCalls;
+        joMethod["answers"] = nAnswers;
+        joMethod["no_answers"] = nNoAnswers;
+        joMethod["errors"] = nErrors;
+        joMethod["exceptions"] = nExceptopns;
+        joMethod["unknown"] = nUnknown;
+        joMethod["bytes_recv"] = nBytesRecv;
+        joMethod["bytes_sent"] = nBytesSent;
+        jo[strMethodName] = joMethod;
+    }
+    return jo;
+}
+
 };  // namespace stats
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -699,9 +774,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             try {
                 SkaleServerOverride* pSO = pso();
                 int nID = -1;
-                std::string strResponse;
+                std::string strResponse, strMethod;
                 try {
                     nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+                    strMethod = stats::getFieldSafe< std::string >( joRequest, "method" );
+                    stats::register_stats_message(
+                        ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest );
+                    stats::register_stats_message( "RPC", joRequest );
                     if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
                         nID = joRequest["id"].get< int >();
                         jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
@@ -709,6 +788,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                             throw std::runtime_error( "No client connection handler found" );
                         handler->HandleRequest( strRequest, strResponse );
                     }
+                    nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                    stats::register_stats_answer(
+                        ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest,
+                        joResponse );
+                    stats::register_stats_answer( "RPC", joRequest, joResponse );
                 } catch ( const std::exception& ex ) {
                     clog( dev::VerbosityError, cc::info( getRelay().m_strSchemeUC ) +
                                                    cc::debug( "/" ) +
@@ -721,6 +805,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     joErrorResponce["result"] = "error";
                     joErrorResponce["error"] = std::string( ex.what() );
                     strResponse = joErrorResponce.dump();
+                    stats::register_stats_error(
+                        ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(),
+                        "bad messages" );
+                    if ( !strMethod.empty() )
+                        stats::register_stats_error( "RPC", strMethod.c_str() );
                 } catch ( ... ) {
                     const char* e = "unknown exception in SkaleServerOverride";
                     clog( dev::VerbosityError, cc::info( getRelay().m_strSchemeUC ) +
@@ -734,6 +823,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     joErrorResponce["result"] = "error";
                     joErrorResponce["error"] = std::string( e );
                     strResponse = joErrorResponce.dump();
+                    stats::register_stats_error(
+                        ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(),
+                        "bad messages" );
+                    if ( !strMethod.empty() )
+                        stats::register_stats_error( "RPC", strMethod.c_str() );
                 }
                 if ( pSO->m_bTraceCalls )
                     clog( dev::VerbosityInfo, cc::info( getRelay().m_strSchemeUC ) +
@@ -1506,48 +1600,10 @@ SkaleRelayHTTP::SkaleRelayHTTP(
         m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
     else
         m_pServer.reset( new skutils::http::server );
-    registrerDefaultEventQueues();
 }
 
 SkaleRelayHTTP::~SkaleRelayHTTP() {
     m_pServer.reset();
-}
-
-std::string SkaleRelayHTTP::getProtoPrefix() const {
-    return m_bHelperIsSSL ? "https" : "http";
-}
-
-std::string SkaleRelayHTTP::getStatsEventQueueName( const char* strSuffix ) const {
-    std::string s;
-    s += getProtoPrefix();
-    s += '/';
-    s += strSuffix;
-    return s;
-}
-
-void SkaleRelayHTTP::registrerDefaultEventQueues() {
-    // basic
-    event_queue_add( getStatsEventQueueName( "recv bytes" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "sent bytes" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "recv messages" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "sent messages" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "sent error messages" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "sent error bytes" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "query options" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    // server-specific
-    event_queue_add( getStatsEventQueueName( "server start" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "server fail" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( getStatsEventQueueName( "server stop" ),
-        skutils::ws::traffic_stats::g_nDefaultEventQueueSizeForWebSocket );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1670,6 +1726,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             pSrv.reset( new SkaleRelayHTTP( nullptr, nullptr, nServerIndex ) );
         pSrv->m_pServer->Options( "/", [=]( const skutils::http::request& req,
                                            skutils::http::response& res ) {
+            stats::register_stats_message(
+                bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
             if ( m_bTraceCalls )
                 logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     req.origin_.c_str(), cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
@@ -1679,70 +1737,86 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             res.set_header( "content-length", "0" );
             res.set_header(
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
-            pSrv->event_add( pSrv->getStatsEventQueueName( "query options" ) );
+            stats::register_stats_answer(
+                bIsSSL ? "HTTPS" : "HTTP", "query options", res.body_.size() );
         } );
-        pSrv->m_pServer->Post(
-            "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
-                pSrv->event_add( pSrv->getStatsEventQueueName( "recv messages" ) );
-                pSrv->event_add( pSrv->getStatsEventQueueName( "recv bytes" ), req.body_.size() );
-                SkaleServerConnectionsTrackHelper sscth( *this );
-                if ( m_bTraceCalls )
-                    logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), req.origin_.c_str(), cc::j( req.body_ ) );
-                int nID = -1;
-                std::string strResponse;
-                bool bPassed = false;
-                try {
-                    if ( is_connection_limit_overflow() ) {
-                        on_connection_overflow_peer_closed(
-                            bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
-                        throw std::runtime_error( "server too busy" );
-                    }
-                    nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
-                    nID = joRequest["id"].get< int >();
-                    jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
-                    if ( handler == nullptr )
-                        throw std::runtime_error( "No client connection handler found" );
-                    handler->HandleRequest( req.body_.c_str(), strResponse );
-                    bPassed = true;
-                } catch ( const std::exception& ex ) {
-                    logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( ex.what() );
-                    strResponse = joErrorResponce.dump();
-                } catch ( ... ) {
-                    const char* e = "unknown exception in SkaleServerOverride";
-                    logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( e );
-                    strResponse = joErrorResponce.dump();
+        pSrv->m_pServer->Post( "/", [=]( const skutils::http::request& req,
+                                        skutils::http::response& res ) {
+            SkaleServerConnectionsTrackHelper sscth( *this );
+            if ( m_bTraceCalls )
+                logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+                    req.origin_.c_str(), cc::j( req.body_ ) );
+            int nID = -1;
+            std::string strResponse, strMethod;
+            bool bPassed = false;
+            try {
+                if ( is_connection_limit_overflow() ) {
+                    on_connection_overflow_peer_closed(
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
+                    throw std::runtime_error( "server too busy" );
                 }
-                if ( m_bTraceCalls )
-                    logTraceServerTraffic( false, false, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), req.origin_.c_str(), cc::j( strResponse ) );
-                res.set_header( "access-control-allow-origin", "*" );
-                res.set_header( "vary", "Origin" );
-                res.set_content( strResponse.c_str(), "application/json" );
-                pSrv->event_add( pSrv->getStatsEventQueueName(
-                    bPassed ? "sent messages" : "sent error messages" ) );
-                pSrv->event_add(
-                    pSrv->getStatsEventQueueName( bPassed ? "sent bytes" : "sent error bytes" ),
-                    strResponse.size() );
-            } );
+                nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
+                nID = joRequest["id"].get< int >();
+                strMethod = stats::getFieldSafe< std::string >( joRequest, "method" );
+                jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
+                if ( handler == nullptr )
+                    throw std::runtime_error( "No client connection handler found" );
+                //
+                stats::register_stats_message(
+                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest );
+                stats::register_stats_message( "RPC", joRequest );
+                //
+                handler->HandleRequest( req.body_.c_str(), strResponse );
+                //
+                nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                stats::register_stats_answer(
+                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest,
+                    joResponse );
+                stats::register_stats_answer( "RPC", joRequest, joResponse );
+                //
+                bPassed = true;
+            } catch ( const std::exception& ex ) {
+                logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+                    req.origin_.c_str(), cc::warn( ex.what() ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = nID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( ex.what() );
+                strResponse = joErrorResponce.dump();
+                stats::register_stats_error(
+                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST" );
+                if ( !strMethod.empty() )
+                    stats::register_stats_error( "RPC", strMethod.c_str() );
+            } catch ( ... ) {
+                const char* e = "unknown exception in SkaleServerOverride";
+                logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+                    req.origin_.c_str(), cc::warn( e ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = nID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( e );
+                strResponse = joErrorResponce.dump();
+                stats::register_stats_error(
+                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST" );
+                if ( !strMethod.empty() )
+                    stats::register_stats_error( "RPC", strMethod.c_str() );
+            }
+            if ( m_bTraceCalls )
+                logTraceServerTraffic( false, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+                    req.origin_.c_str(), cc::j( strResponse ) );
+            res.set_header( "access-control-allow-origin", "*" );
+            res.set_header( "vary", "Origin" );
+            res.set_content( strResponse.c_str(), "application/json" );
+            stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
+        } );
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
                 "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
             if ( !pSrv->m_pServer->listen( strAddr.c_str(), nPort ) ) {
-                pSrv->event_add( pSrv->getStatsEventQueueName( "server fai;" ) );
+                stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
-            pSrv->event_add( pSrv->getStatsEventQueueName( "server start" ) );
+            stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
         } )
             .detach();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
@@ -1825,7 +1899,7 @@ bool SkaleServerOverride::implStopListening(
                 cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
         if ( pSrv->m_pServer && pSrv->m_pServer->is_running() ) {
             pSrv->m_pServer->stop();
-            pSrv->event_add( pSrv->getStatsEventQueueName( "server stop" ) );
+            stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "STOP" );
         }
         pSrv.reset();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
@@ -1998,48 +2072,19 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
-    //    nlohmann::json joRPC = nlohmann::json::object();
-    //    for ( std::shared_ptr< SkaleRelayHTTP > pServerHTTP : m_serversHTTP ) {
-    //        skutils::stats::named_event_stats* pStats = pServerHTTP.get();
-    //        //
-    //        //
-    //        std::set< std::string > setNames = pStats->all_queue_names();
-    //        std::set< std::string >::const_iterator itNameWalk, itNameEnd;
-    //        for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk !=
-    //        itNameEnd;
-    //              ++itNameWalk ) {
-    //            const std::string& strMethodName = ( *itNameWalk );
-    //            size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0,
-    //                   nUnknown = 0;
-    //            skutils::stats::time_point tpNow = skutils::stats::clock::now();
-    //            //
-    //            skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
-    //            double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
-    //            double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, &nAnswers );
-    //            double lfNoAnswersPerSecond = naq.compute_eps( strMethodName, tpNow, &nNoAnswers
-    //            ); double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, &nErrors );
-    //            double lfExceptopnsPerSecond = exq.compute_eps( strMethodName, tpNow, &nExceptopns
-    //            ); double lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
-    //            double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv
-    //            ); double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow,
-    //            &nBytesSent ); nlohmann::json joMethod = nlohmann::json::object(); joMethod["cps"]
-    //            = lfCallsPerSecond; joMethod["aps"] = lfAnswersPerSecond; joMethod["naps"] =
-    //            lfNoAnswersPerSecond; joMethod["erps"] = lfErrorsPerSecond; joMethod["exps"] =
-    //            lfExceptopnsPerSecond; joMethod["ups"] = lfUnknownPerSecond; joMethod["bps_recv"]
-    //            = lfBytesPerSecondRecv; joMethod["bps_sent"] = lfBytesPerSecondSent;
-    //            joMethod["calls"] = nCalls;
-    //            joMethod["answers"] = nAnswers;
-    //            joMethod["no_answers"] = nNoAnswers;
-    //            joMethod["errors"] = nErrors;
-    //            joMethod["exceptions"] = nExceptopns;
-    //            joMethod["unknown"] = nUnknown;
-    //            joMethod["bytes_recv"] = nBytesRecv;
-    //            joMethod["bytes_sent"] = nBytesSent;
-    //            //
-    //            joRPC[strMethodName] = joMethod;
-    //        }
-    //    }
-    //    joStats["rpc"] = joRPC;
+    joStats["protocols"]["HTTP"]["listenerCount"] = m_serversHTTP.size();
+    joStats["protocols"]["HTTP"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
+    joStats["protocols"]["HTTP"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTP" );
+    joStats["protocols"]["HTTPS"]["listenerCount"] = m_serversHTTPS.size();
+    joStats["protocols"]["HTTPS"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
+    joStats["protocols"]["HTTPS"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTPS" );
+    joStats["protocols"]["WS"]["listenerCount"] = m_serversWS.size();
+    joStats["protocols"]["WS"]["stats"] = stats::generate_subsystem_stats( "WS" );
+    joStats["protocols"]["WS"]["rpc"] = stats::generate_subsystem_stats( "RPC/WS" );
+    joStats["protocols"]["WSS"]["listenerCount"] = m_serversWSS.size();
+    joStats["protocols"]["WSS"]["stats"] = stats::generate_subsystem_stats( "WSS" );
+    joStats["protocols"]["WSS"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
+    joStats["RPC"] = stats::generate_subsystem_stats( "RPC" );
     return joStats;
 }
 

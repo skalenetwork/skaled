@@ -220,16 +220,13 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleRelayHTTP : public SkaleServerHelper, public skutils::stats::named_event_stats {
+class SkaleRelayHTTP : public SkaleServerHelper {
 public:
     const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
     SkaleRelayHTTP( const char* cert_path = nullptr, const char* private_key_path = nullptr,
         int nServerIndex = -1 );
     ~SkaleRelayHTTP() override;
-    std::string getProtoPrefix() const;
-    std::string getStatsEventQueueName( const char* strSuffix ) const;
-    void registrerDefaultEventQueues();
 };  /// class SkaleRelayHTTP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
