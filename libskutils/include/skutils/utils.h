@@ -239,9 +239,8 @@ public:
                       0 );  // 0 means use g_nSleepMillisecondsBetweenCpuLoadMeasurements
     virtual ~load_monitor();
     double last_cpu_load() const;
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
     nlohmann::json last_disk_load() const;
-#endif
+
 private:
     void thread_proc();
 #if ( !defined __BUILDING_4_MAC_OS_X__ )

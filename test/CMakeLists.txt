@@ -61,6 +61,9 @@ hunter_add_package(yaml-cpp)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_executable(testeth ${sources})
+if( APPLE )
+	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
+endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR})
 target_link_libraries(testeth PRIVATE
     ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen

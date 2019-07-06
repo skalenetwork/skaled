@@ -1546,10 +1546,11 @@ void SkaleServerOverride::logTraceServerEvent(
         ssProtocol << cc::fatal( std::string( " ERROR:" ) );
     else
         ssProtocol << cc::info( std::string( ":" ) );
+    std::string strProtocolDescription = ssProtocol.str();
     if ( isError )
-        clog( dev::VerbosityError, ssProtocol.str() ) << ( strMessage );
+        clog( dev::VerbosityError, strProtocolDescription ) << strMessage;
     else
-        clog( dev::VerbosityInfo, ssProtocol.str() ) << ( strMessage );
+        clog( dev::VerbosityInfo, strProtocolDescription ) << strMessage;
 }
 
 void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
@@ -1575,11 +1576,12 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const 
     strOriginSuffix = cc::u( strOrigin );
     if ( isError )
         strErrorSuffix = cc::fatal( " ERROR " );
+    std::string strProtocolDescription = ssProtocol.str();
     if ( isError )
-        clog( dev::VerbosityError, ssProtocol.str() )
+        clog( dev::VerbosityError, strProtocolDescription )
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
     else
-        clog( dev::VerbosityInfo, ssProtocol.str() )
+        clog( dev::VerbosityInfo, strProtocolDescription )
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
@@ -1963,6 +1965,11 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
     logTraceServerEvent( false, strProtocol, nServerIndex, strMessage );
 }
 
+skutils::tools::load_monitor& stat_get_load_monitor() {
+    static skutils::tools::load_monitor g_lm;
+    return g_lm;
+}
+
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
@@ -1979,6 +1986,13 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
     joStats["protocols"]["wss"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
     joStats["rpc"] = stats::generate_subsystem_stats( "RPC" );
+    //
+    skutils::tools::load_monitor& lm = stat_get_load_monitor();
+    double lfCpuLoad = lm.last_cpu_load();
+    joStats["system"]["cpu_load"] = lfCpuLoad;
+    joStats["system"]["disk_usage"] = lm.last_disk_load();
+    double lfMemUsage = skutils::tools::mem_usage();
+    joStats["system"]["mem_usage"] = lfMemUsage;
     return joStats;
 }
 

@@ -53,6 +53,10 @@ endif()
 
 add_library(web3jsonrpc ${sources})
 
+if( APPLE )
+	target_compile_definitions( web3jsonrpc PRIVATE __BUILDING_4_MAC_OS_X__=1 )
+endif()
+
 jsonrpcstub_create(
     web3jsonrpc eth.json
     dev::rpc::EthFace ${CMAKE_CURRENT_SOURCE_DIR} EthFace

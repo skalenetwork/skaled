@@ -696,12 +696,15 @@ double load_monitor::last_cpu_load() const {
     return lf;
 }
 
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
 nlohmann::json load_monitor::last_disk_load() const {
+#if ( !defined __BUILDING_4_MAC_OS_X__ )
     std::lock_guard< std::mutex > lock{diskLoadMutex_};
     return diskLoad_;
-}
+#else
+    nlohmann::json jo = nullptr;
+    return jo;
 #endif
+}
 
 void load_monitor::thread_proc() {
     for ( ; !stop_flag_; )
