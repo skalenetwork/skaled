@@ -70,7 +70,7 @@ public:
         ISkaleStatsConsumer* pPrev = m_pConsumer;
         if ( pPrev == pConsumer )
             return;
-        m_pConsumer = nullptr;
+        m_pConsumer = pConsumer;
         if ( pPrev && pPrev->getProvider() == this )
             pPrev->setProvider( nullptr );
     }
@@ -90,7 +90,7 @@ public:
         ISkaleStatsProvider* pPrev = m_pProvider;
         if ( pPrev == pProvider )
             return;
-        m_pProvider = nullptr;
+        m_pProvider = pProvider;
         if ( pPrev && pPrev->getConsumer() == this )
             pPrev->setConsumer( nullptr );
     }

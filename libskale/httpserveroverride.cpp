@@ -1670,7 +1670,52 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
-    joStats["generator"] = "class SkaleServerOverride";
+    nlohmann::json joRPC = nlohmann::json::object();
+    for ( std::shared_ptr< SkaleRelayHTTP > pServerHTTP : m_serversHTTP ) {
+        skutils::stats::named_event_stats* pStats = pServerHTTP.get();
+        //
+        //
+        std::set< std::string > setNames = pStats->all_queue_names();
+        std::set< std::string >::const_iterator itNameWalk, itNameEnd;
+        for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
+              ++itNameWalk ) {
+            const std::string& strMethodName = ( *itNameWalk );
+            size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0,
+                   nUnknown = 0;
+            //            skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
+            //            skutils::stats::time_point tpNow = skutils::stats::clock::now();
+            //            double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, &nCalls );
+            //            double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow,
+            //            &nAnswers ); double lfNoAnswersPerSecond = naq.compute_eps( strMethodName,
+            //            tpNow, &nNoAnswers ); double lfErrorsPerSecond = erq.compute_eps(
+            //            strMethodName, tpNow, &nErrors ); double lfExceptopnsPerSecond =
+            //            exq.compute_eps( strMethodName, tpNow, &nExceptopns ); double
+            //            lfUnknownPerSecond = uq.compute_eps( strMethodName, tpNow, &nUnknown );
+            //            double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow,
+            //            &nBytesRecv ); double lfBytesPerSecondSent = tq_out.compute_eps(
+            //            strMethodName, tpNow, &nBytesSent ); JsonObject joMethod = JSON_EMPTY_OBJ;
+            //            joMethod["cps"] = lfCallsPerSecond;
+            //            joMethod["aps"] = lfAnswersPerSecond;
+            //            joMethod["naps"] = lfNoAnswersPerSecond;
+            //            joMethod["erps"] = lfErrorsPerSecond;
+            //            joMethod["exps"] = lfExceptopnsPerSecond;
+            //            joMethod["ups"] = lfUnknownPerSecond;
+            //            joMethod["bps_recv"] = lfBytesPerSecondRecv;
+            //            joMethod["bps_sent"] = lfBytesPerSecondSent;
+            //            joMethod["calls"] = nCalls;
+            //            joMethod["answers"] = nAnswers;
+            //            joMethod["no_answers"] = nNoAnswers;
+            //            joMethod["errors"] = nErrors;
+            //            joMethod["exceptions"] = nExceptopns;
+            //            joMethod["unknown"] = nUnknown;
+            //            joMethod["bytes_recv"] = nBytesRecv;
+            //            joMethod["bytes_sent"] = nBytesSent;
+            //            jo[strMethodName] = joMethod;
+            nlohmann::json joMethod = nlohmann::json::object();
+            joRPC[strMethodName] = joMethod;
+        }
+    }
+    joStats["rpc"] = joStats;
     return joStats;
 }
 
