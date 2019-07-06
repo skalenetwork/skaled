@@ -198,6 +198,49 @@ extern std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored = fal
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern bool convert_json_string_value_to_boolean( const std::string r );
+
+template < typename T >
+inline const T getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName ) {
+    try {
+        if ( strMemberPropertyName.empty() )
+            return T();
+        T retVal( jo.count( strMemberPropertyName ) ? jo[strMemberPropertyName].get< T >() : T() );
+        return retVal;
+    } catch ( ... ) {
+        return T();
+    }
+}
+template < typename T >
+inline const T getFieldSafe(
+    const nlohmann::json& jo, const std::string& strMemberPropertyName, const T& defaultValue ) {
+    try {
+        if ( strMemberPropertyName.empty() )
+            return defaultValue;
+        T retVal( jo.count( strMemberPropertyName ) ? jo[strMemberPropertyName].get< T >() : T() );
+        return retVal;
+    } catch ( ... ) {
+        return defaultValue;
+    }
+}
+template < bool >
+inline bool getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName,
+    bool defaultValue = false ) {
+    try {
+        if ( strMemberPropertyName.empty() )
+            return defaultValue;
+        std::string r( jo.count( strMemberPropertyName ) ?
+                           jo[strMemberPropertyName].get< std::string >() :
+                           std::string( "false" ) );
+        return convert_json_string_value_to_boolean( r );
+    } catch ( ... ) {
+        return defaultValue;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 extern double mem_usage();  // 0.0...1.0
 extern size_t cpu_count();
 

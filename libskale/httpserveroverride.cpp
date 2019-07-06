@@ -237,42 +237,6 @@ nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
 
 namespace stats {
 
-bool convert_json_string_value_to_boolean( const std::string r ) {
-    if ( r.empty() )
-        return false;
-    char c = r[0];
-    if ( c == 'f' || c == 'F' || c == 'n' || c == 'N' )
-        return false;
-    double lf = std::atof( r.c_str() );
-    return ( lf != 0.0 ) ? true : false;
-}
-
-template < typename T >
-const T getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName ) {
-    try {
-        if ( strMemberPropertyName.empty() )
-            return T();
-        T retVal( jo.count( strMemberPropertyName ) ? jo[strMemberPropertyName].get< T >() : T() );
-        return retVal;
-    } catch ( ... ) {
-        return T();
-    }
-}
-template < bool >
-bool getFieldSafe( const nlohmann::json& jo, const std::string& strMemberPropertyName ) {
-    try {
-        if ( strMemberPropertyName.empty() )
-            return false;
-        std::string r( jo.count( strMemberPropertyName ) ?
-                           jo[strMemberPropertyName].get< std::string >() :
-                           std::string( "false" ) );
-        return convert_json_string_value_to_boolean( r );
-    } catch ( ... ) {
-        return false;
-    }
-}
-
-
 typedef skutils::multithreading::recursive_mutex_type mutex_type_stats;
 typedef std::lock_guard< mutex_type_stats > lock_type_stats;
 static skutils::multithreading::recursive_mutex_type g_mtx_stats( "RMTX-NMA-PEER-ALL" );
@@ -416,24 +380,24 @@ void register_stats_exception( const char* strSubSystem, const char* strMethodNa
 }
 
 void register_stats_message( const char* strSubSystem, const nlohmann::json& joMessage ) {
-    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joMessage, "method" );
     std::string txt = joMessage.dump();
     size_t txt_len = txt.length();
     register_stats_message( strSubSystem, strMethodName.c_str(), txt_len );
 }
 void register_stats_answer(
     const char* strSubSystem, const nlohmann::json& joMessage, const nlohmann::json& joAnswer ) {
-    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joMessage, "method" );
     std::string txt = joAnswer.dump();
     size_t txt_len = txt.length();
     register_stats_answer( strSubSystem, strMethodName.c_str(), txt_len );
 }
 void register_stats_error( const char* strSubSystem, const nlohmann::json& joMessage ) {
-    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joMessage, "method" );
     register_stats_error( strSubSystem, strMethodName.c_str() );
 }
 void register_stats_exception( const char* strSubSystem, const nlohmann::json& joMessage ) {
-    std::string strMethodName = getFieldSafe< std::string >( joMessage, "method" );
+    std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joMessage, "method" );
     register_stats_exception( strSubSystem, strMethodName.c_str() );
 }
 
@@ -504,7 +468,7 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
 
 SkaleStatsSunscriptionManager::SkaleStatsSunscriptionManager() : next_subscription_( 1 ) {}
 SkaleStatsSunscriptionManager::~SkaleStatsSunscriptionManager() {
-    unsubscribe_all();
+    unsubscribeAll();
 }
 
 SkaleStatsSunscriptionManager::subscription_id_t
@@ -516,14 +480,65 @@ SkaleStatsSunscriptionManager::nextSubscriptionID() {
 }
 
 bool SkaleStatsSunscriptionManager::subscribe(
-    SkaleStatsSunscriptionManager::subscription_id_t& idSubscription, SkaleWsPeer* pPeer ) {
+    SkaleStatsSunscriptionManager::subscription_id_t& idSubscription, SkaleWsPeer* pPeer,
+    size_t nIntervalMilliseconds ) {
     idSubscription = 0;
     if ( !pPeer )
         return false;
+    if ( !pPeer->isConnected() )
+        return false;
+    static const size_t g_nIntervalMillisecondsMin = 500;
+    if ( nIntervalMilliseconds < g_nIntervalMillisecondsMin )
+        nIntervalMilliseconds = g_nIntervalMillisecondsMin;
     lock_type lock( mtx_ );
     idSubscription = nextSubscriptionID();
-    map_subscriptions_[idSubscription] = pPeer;
-    pPeer->ref_retain();  // mamual retail-release
+    subscription_data_t subscriptionData;
+    subscriptionData.m_idSubscription = idSubscription;
+    subscriptionData.m_pPeer = pPeer;
+    subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
+    subscriptionData.m_pPeer->ref_retain();  // mamual retain-release(subscription map)
+    subscriptionData.m_pPeer->ref_retain();  // mamual retain-release(async job)
+    skutils::dispatch::repeat( subscriptionData.m_pPeer->m_strPeerQueueID,
+        [=]() -> void {
+            if ( !subscriptionData.m_pPeer )
+                return;
+            if ( subscriptionData.m_pPeer->isConnected() ) {
+                nlohmann::json joParams = nlohmann::json::object();
+                joParams["subscription"] = dev::toJS(
+                    subscriptionData.m_idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
+                joParams["stats"] = getSSO().provideSkaleStats();
+                nlohmann::json joNotification = nlohmann::json::object();
+                joNotification["jsonrpc"] = "2.0";
+                joNotification["method"] = "eth_subscription";
+                joNotification["params"] = joParams;
+                std::string strNotification = joNotification.dump();
+                if ( getSSO().m_bTraceCalls )
+                    clog( dev::VerbosityInfo,
+                        cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) )
+                        << ( cc::ws_tx_inv( " <<< " +
+                                            subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
+                                            "/TX <<< " ) +
+                               subscriptionData.m_pPeer->desc() + cc::ws_tx( " <<< " ) +
+                               cc::j( strNotification ) );
+                skutils::dispatch::async( subscriptionData.m_pPeer->m_strPeerQueueID,
+                    [subscriptionData, strNotification]() -> void {
+                        subscriptionData.m_pPeer->sendMessage(
+                            skutils::tools::trim_copy( strNotification ) );
+                        stats::register_stats_answer(
+                            subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC().c_str(),
+                            "eth_subscription/skaleStats", strNotification.size() );
+                        stats::register_stats_answer(
+                            "RPC", "eth_subscription/skaleStats", strNotification.size() );
+                    } );
+                return;
+            }
+            if ( !subscriptionData.m_idDispatchJob.empty() )
+                skutils::dispatch::stop( subscriptionData.m_idDispatchJob );
+            subscriptionData.m_pPeer->ref_release();  // mamual retain-release(async job)
+        },
+        skutils::dispatch::duration_from_milliseconds( nIntervalMilliseconds ),
+        &subscriptionData.m_idDispatchJob );
+    map_subscriptions_[idSubscription] = subscriptionData;
     return true;
 }
 
@@ -535,17 +550,19 @@ bool SkaleStatsSunscriptionManager::unsubscribe(
                                       itEnd = map_subscriptions_.end();
         if ( itFind == itEnd )
             return false;
-        SkaleWsPeer* pPeer = itFind->second;
+        subscription_data_t subscriptionData = itFind->second;
         map_subscriptions_.erase( itFind );
-        if ( pPeer )
-            pPeer->ref_release();  // mamual retail-release
+        if ( subscriptionData.m_pPeer )
+            subscriptionData.m_pPeer->ref_release();  // mamual retain-release(subscription map)
+        if ( !subscriptionData.m_idDispatchJob.empty() )
+            skutils::dispatch::stop( subscriptionData.m_idDispatchJob );
         return true;
     } catch ( ... ) {
         return false;
     }
 }
 
-void SkaleStatsSunscriptionManager::unsubscribe_all() {
+void SkaleStatsSunscriptionManager::unsubscribeAll() {
     lock_type lock( mtx_ );
     std::list< subscription_id_t > lst;
     map_subscriptions_t::iterator itWalk = map_subscriptions_.begin();
@@ -642,7 +659,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 bool bPassed = false;
                 try {
                     nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-                    strMethod = stats::getFieldSafe< std::string >( joRequest, "method" );
+                    strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
                     stats::register_stats_message(
                         getRelay().m_strSchemeUC.c_str(), "messages", strRequest.size() );
                     stats::register_stats_message(
@@ -982,6 +999,11 @@ void SkaleWsPeer::eth_subscribe_logs(
                                             const_cast< SkaleWsPeer* >( pThis.get() )
                                                 ->sendMessage(
                                                     skutils::tools::trim_copy( strNotification ) );
+                                            stats::register_stats_answer(
+                                                pThis->getRelay().m_strSchemeUC.c_str(),
+                                                "eth_subscription/logs", strNotification.size() );
+                                            stats::register_stats_answer( "RPC",
+                                                "eth_subscription/logs", strNotification.size() );
                                         } );
                                 }  // for ( const auto& joWalk : joResultLogs )
                             }      // if ( joResultLogs.is_array() )
@@ -1056,6 +1078,10 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+                stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
+                    "eth_subscription/newPendingTransactions", strNotification.size() );
+                stats::register_stats_answer(
+                    "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
             } );
         };
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
@@ -1140,6 +1166,10 @@ void SkaleWsPeer::eth_subscribe_newHeads(
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+                stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
+                    "eth_subscription/newHeads", strNotification.size() );
+                stats::register_stats_answer(
+                    "RPC", "eth_subscription/newHeads", strNotification.size() );
             } );
         };
         unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
@@ -1185,13 +1215,17 @@ void SkaleWsPeer::eth_subscribe_newHeads(
 }
 
 void SkaleWsPeer::eth_subscribe_skaleStats(
-    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         SkaleStatsSunscriptionManager::subscription_id_t idSubscription = 0;
-        bool bWasSubscribed = pSO->subscribe( idSubscription, this );
-        std::string strIW = dev::toJS( bWasSubscribed | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
+        size_t nIntervalMilliseconds = 1000;
+        if ( joRequest.count( "intervalMilliseconds" ) )
+            nIntervalMilliseconds =
+                skutils::tools::getFieldSafe< size_t >( joRequest, "intervalMilliseconds", 1000 );
+        bool bWasSubscribed = pSO->subscribe( idSubscription, this, nIntervalMilliseconds );
+        std::string strIW = dev::toJS( idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
         if ( pSO->m_bTraceCalls )
             clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().m_strSchemeUC ) +
                                                       cc::debug( "/" ) +
@@ -1263,7 +1297,7 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
         unsigned x = ( iw & SKALED_WS_SUBSCRIPTION_TYPE_MASK );
         if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION ) {
             if ( setInstalledWatchesNewPendingTransactions_.find(
-                     iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
+                     iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
                  setInstalledWatchesNewPendingTransactions_.end() ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->m_bTraceCalls )
@@ -1285,10 +1319,10 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
             }
             ethereum()->uninstallNewPendingTransactionWatch( iw );
             setInstalledWatchesNewPendingTransactions_.erase(
-                iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
+                iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK ) {
             if ( setInstalledWatchesNewBlocks_.find(
-                     iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
+                     iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
                  setInstalledWatchesNewBlocks_.end() ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->m_bTraceCalls )
@@ -1307,11 +1341,11 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                 return;
             }
             ethereum()->uninstallNewBlockWatch( iw );
-            setInstalledWatchesNewBlocks_.erase( iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
+            setInstalledWatchesNewBlocks_.erase( iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) {
             SkaleStatsSunscriptionManager::subscription_id_t idSubscription =
                 SkaleStatsSunscriptionManager::subscription_id_t(
-                    iw & ( !( SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) ) );
+                    iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) ) );
             bool bWasUnsubscribed = pSO->unsubscribe( idSubscription );
             if ( !bWasUnsubscribed ) {
                 std::string strIW = dev::toJS( iw );
@@ -1638,7 +1672,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 }
                 nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
                 nID = joRequest["id"].get< int >();
-                strMethod = stats::getFieldSafe< std::string >( joRequest, "method" );
+                strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
                 jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
                 if ( handler == nullptr )
                     throw std::runtime_error( "No client connection handler found" );
@@ -1968,6 +2002,10 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
 skutils::tools::load_monitor& stat_get_load_monitor() {
     static skutils::tools::load_monitor g_lm;
     return g_lm;
+}
+
+SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSunscriptionManager
+    return ( *this );
 }
 
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from

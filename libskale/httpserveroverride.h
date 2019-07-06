@@ -50,6 +50,7 @@ typedef intptr_t ssize_t;
 #include <string>
 
 #include <skutils/console_colors.h>
+#include <skutils/dispatch.h>
 #include <skutils/http.h>
 #include <skutils/stats.h>
 #include <skutils/utils.h>
@@ -83,15 +84,23 @@ protected:
     std::atomic< subscription_id_t > next_subscription_;
     subscription_id_t nextSubscriptionID();
 
-    typedef std::map< subscription_id_t, SkaleWsPeer* > map_subscriptions_t;
+    struct subscription_data_t {
+        subscription_id_t m_idSubscription = 0;
+        SkaleWsPeer* m_pPeer = nullptr;
+        size_t m_nIntervalMilliseconds = 0;
+        skutils::dispatch::job_id_t m_idDispatchJob;
+    };  /// struct subscription_data_t
+    typedef std::map< subscription_id_t, subscription_data_t > map_subscriptions_t;
     map_subscriptions_t map_subscriptions_;
 
 public:
     SkaleStatsSunscriptionManager();
     virtual ~SkaleStatsSunscriptionManager();
-    bool subscribe( subscription_id_t& idSubscription, SkaleWsPeer* pPeer );
+    bool subscribe(
+        subscription_id_t& idSubscription, SkaleWsPeer* pPeer, size_t nIntervalMilliseconds );
     bool unsubscribe( const subscription_id_t& idSubscription );
-    void unsubscribe_all();
+    void unsubscribeAll();
+    virtual SkaleServerOverride& getSSO() = 0;
 };  // class SkaleStatsSunscriptionManager
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -214,6 +223,10 @@ public:
     const SkaleServerOverride* pso() const { return m_pSO; }
     dev::eth::Interface* ethereum() const;
     mutex_type& mtxAllPeers() const { return m_mtxAllPeers; }
+
+    std::string nfoGetScheme() const { return m_strScheme_; }
+    std::string nfoGetSchemeUC() const { return m_strSchemeUC; }
+
     friend class SkaleWsPeer;
 };  /// class SkaleRelayWS
 
@@ -307,6 +320,7 @@ public:
     virtual void on_connection_overflow_peer_closed(
         const char* strProtocol, int nServerIndex, int nPort );
 
+    SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSunscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
 
     friend class SkaleRelayWS;
