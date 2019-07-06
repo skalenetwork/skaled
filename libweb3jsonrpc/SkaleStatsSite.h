@@ -71,7 +71,7 @@ public:
         if ( pPrev == pConsumer )
             return;
         m_pConsumer = nullptr;
-        if ( pPrev->getProvider() == this )
+        if ( pPrev && pPrev->getProvider() == this )
             pPrev->setProvider( nullptr );
     }
 };  /// class SkaleStatsProviderImpl
@@ -91,7 +91,7 @@ public:
         if ( pPrev == pProvider )
             return;
         m_pProvider = nullptr;
-        if ( pPrev->getConsumer() == this )
+        if ( pPrev && pPrev->getConsumer() == this )
             pPrev->setConsumer( nullptr );
     }
     virtual nlohmann::json consumeSkaleStats() override {
