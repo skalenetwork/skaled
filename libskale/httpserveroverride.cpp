@@ -433,7 +433,7 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
     for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
           ++itNameWalk ) {
         const std::string& strMethodName = ( *itNameWalk );
-        size_t nCalls = 0, nAnswers = 0, nNoAnswers = 0, nErrors = 0, nExceptopns = 0, nUnknown = 0;
+        size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptopns = 0;
         skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
         skutils::stats::time_point tpNow = skutils::stats::clock::now();
         double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, nullptr, &nCalls );
@@ -1225,6 +1225,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
             nIntervalMilliseconds =
                 skutils::tools::getFieldSafe< size_t >( joRequest, "intervalMilliseconds", 1000 );
         bool bWasSubscribed = pSO->subscribe( idSubscription, this, nIntervalMilliseconds );
+        if ( !bWasSubscribed )
+            throw std::runtime_error( "internal subscription error" );
         std::string strIW = dev::toJS( idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
         if ( pSO->m_bTraceCalls )
             clog( dev::Verbosity::VerbosityTrace, cc::info( getRelay().m_strSchemeUC ) +
