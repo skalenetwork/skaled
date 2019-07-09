@@ -822,7 +822,8 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     strResponse.clear();
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["jsonrpc"] = "2.0";
-    joResponse["id"] = joRequest["id"];
+    if ( joRequest.count( "id" ) > 0 )
+        joResponse["id"] = joRequest["id"];
     joResponse["result"] = nullptr;
     if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
         return false;
