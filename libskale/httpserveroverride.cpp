@@ -1681,8 +1681,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     throw std::runtime_error( "No client connection handler found" );
                 //
                 stats::register_stats_message(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST",
-                    req.body_.size() );
+                    bIsSSL ? "HTTPS" : "HTTP", "POST", req.body_.size() );
                 stats::register_stats_message(
                     ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest );
                 stats::register_stats_message( "RPC", joRequest );
@@ -1690,8 +1689,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 handler->HandleRequest( req.body_.c_str(), strResponse );
                 //
                 stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST",
-                    strResponse.size() );
+                    bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
                 nlohmann::json joResponse = nlohmann::json::parse( strResponse );
                 stats::register_stats_answer(
                     ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest,
@@ -1707,12 +1705,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 joErrorResponce["result"] = "error";
                 joErrorResponce["error"] = std::string( ex.what() );
                 strResponse = joErrorResponce.dump();
-                stats::register_stats_exception(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST" );
+                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
                 if ( !strMethod.empty() ) {
-                    stats::register_stats_exception(
-                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
-                        strMethod.c_str() );
+                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
             } catch ( ... ) {
@@ -1724,12 +1719,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 joErrorResponce["result"] = "error";
                 joErrorResponce["error"] = std::string( e );
                 strResponse = joErrorResponce.dump();
-                stats::register_stats_exception(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), "POST" );
+                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
                 if ( !strMethod.empty() ) {
-                    stats::register_stats_exception(
-                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
-                        strMethod.c_str() );
+                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
             }
