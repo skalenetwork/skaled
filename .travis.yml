@@ -43,7 +43,7 @@ addons:
 jobs:
     include:
         - stage: deploy
-          if: branch IN (master, release-candidate)
+          if: branch IN (master, release-candidate, develop)
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
