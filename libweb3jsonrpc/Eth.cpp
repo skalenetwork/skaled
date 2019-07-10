@@ -31,14 +31,16 @@
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libwebthree/WebThree.h>
+
 #include <csignal>
+
+#include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
 
 using namespace std;
 using namespace jsonrpc;
 using namespace dev;
 using namespace eth;
-using namespace shh;
 using namespace dev::rpc;
 
 Eth::Eth( eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
@@ -86,8 +88,7 @@ string Eth::eth_getBalance( string const& _address, string const& /* _blockNumbe
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS(
-            client()->balanceAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->balanceAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -99,10 +100,8 @@ string Eth::eth_getStorageAt(
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS(
-            toCompactBigEndian( client()->stateAt( jsToAddress( _address ), jsToU256( _position ),
-                                    jsToBlockNumber( blockNumber ) ),
-                32 ) );
+        return toJS( toCompactBigEndian(
+            client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -138,7 +137,7 @@ string Eth::eth_getTransactionCount( string const& _address, string const& /* _b
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS( client()->countAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->countAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -197,7 +196,7 @@ string Eth::eth_getCode( string const& _address, string const& /* _blockNumber *
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
-        return toJS( client()->codeAt( jsToAddress( _address ), jsToBlockNumber( blockNumber ) ) );
+        return toJS( client()->codeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -284,8 +283,25 @@ string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */
         string blockNumber = "latest";
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
-        ExecutionResult er = client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
-            jsToBlockNumber( blockNumber ), FudgeFactor::Lenient );
+        ExecutionResult er = client()->call(
+            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+
+        std::string strRevertReason;
+        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            Json::FastWriter fastWriter;
+            std::string strJSON = fastWriter.write( _json );
+            std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                                 cc::warn( strRevertReason ) +
+                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
+                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
+                                 cc::error( "=" ) + cc::bright( blockNumber );
+            cerror << strOut;
+            throw JsonRpcException( strRevertReason );
+        }
+
         return toJS( er.output );
     } catch ( std::exception const& ex ) {
         throw JsonRpcException( ex.what() );
@@ -300,9 +316,7 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
         setTransactionDefaults( t );
         int64_t gas = static_cast< int64_t >( t.gas );
         return toJS(
-            client()
-                ->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice, PendingBlock )
-                .first );
+            client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice ).first );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

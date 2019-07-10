@@ -31,6 +31,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+using skale::Change;
+using skale::ChangeLog;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -49,18 +52,16 @@ json_spirit::mObject fillJsonWithTransaction( Transaction const& _txn ) {
     return txObject;
 }
 
-json_spirit::mObject fillJsonWithStateChange( StateClass const& _stateOrig,
-    eth::StateClass const& _statePost, eth::ChangeLog const& _changeLog ) {
+json_spirit::mObject fillJsonWithStateChange(
+    State const& _stateOrig, State const& _statePost, ChangeLog const& _changeLog ) {
     json_spirit::mObject oState;
     if ( !_changeLog.size() )
         return oState;
 
     // Sort the vector by address field
-    eth::ChangeLog changeLog = _changeLog;
-    std::sort(
-        changeLog.begin(), changeLog.end(), []( const eth::Change& lhs, const eth::Change& rhs ) {
-            return lhs.address < rhs.address;
-        } );
+    ChangeLog changeLog = _changeLog;
+    std::sort( changeLog.begin(), changeLog.end(),
+        []( const Change& lhs, const Change& rhs ) { return lhs.address < rhs.address; } );
 
     std::ostringstream log;
     json_spirit::mObject o;
@@ -78,7 +79,7 @@ json_spirit::mObject fillJsonWithStateChange( StateClass const& _stateOrig,
             string after;
             string before;
             json_spirit::mArray record;
-            eth::Change change = changeLog.at( i );
+            Change change = changeLog.at( i );
             switch ( change.kind ) {
             case Change::Kind::Code:
                 // take the original and final code only
@@ -165,13 +166,12 @@ json_spirit::mObject fillJsonWithStateChange( StateClass const& _stateOrig,
     return oState;
 }
 
-json_spirit::mObject fillJsonWithState( StateClass const& _state ) {
+json_spirit::mObject fillJsonWithState( State const& _state ) {
     AccountMaskMap emptyMap;
     return fillJsonWithState( _state, emptyMap );
 }
 
-json_spirit::mObject fillJsonWithState(
-    StateClass const& _state, eth::AccountMaskMap const& _map ) {
+json_spirit::mObject fillJsonWithState( State const& _state, eth::AccountMaskMap const& _map ) {
     bool mapEmpty = ( _map.size() == 0 );
     json_spirit::mObject oState;
     for ( auto const& a : _state.addresses() ) {

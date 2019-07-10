@@ -44,9 +44,12 @@ struct Exception : virtual std::exception, virtual boost::exception {
 
 extern std::string nested_exception_what( const std::exception& ex );
 extern void rethrow_most_nested( const std::exception& ex );
+}  // namespace dev
 
 #define DEV_SIMPLE_EXCEPTION( X ) \
-    struct X : virtual Exception {}
+    struct X : virtual dev::Exception {}
+
+namespace dev {
 
 /// Base class for all RLP exceptions.
 struct RLPException : virtual Exception {};

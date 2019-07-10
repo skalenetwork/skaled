@@ -40,9 +40,8 @@ StringHashMap BasicAuthority::jsInfo( BlockHeader const& _bi ) const {
     return {{"sig", toJS( sig( _bi ) )}};
 }
 
-bool BasicAuthority::shouldSeal( Interface* _i ) {
-    return _i->pendingInfo().timestamp() + 5 <= utcTime() ||
-           ( _i->pendingInfo().timestamp() <= utcTime() && !_i->pending().empty() );
+bool BasicAuthority::shouldSeal( Interface* /*_i*/ ) {
+    return true;  // here was 5 sec timeout to mine after previous mined block
 }
 
 void BasicAuthority::generateSeal( BlockHeader const& _bi ) {

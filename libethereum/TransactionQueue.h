@@ -83,6 +83,8 @@ public:
     /// @param _txHash Trasnaction hash
     void drop( h256 const& _txHash );
 
+    int getCategory( const h256& hash ) { return m_currentByHash[hash]->category; }
+
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.
     unsigned waiting( Address const& _a ) const;
@@ -310,7 +312,7 @@ Transactions TransactionQueue::topTransactionsSync( unsigned _limit, Args... arg
     // TODO Why wait_for needs exclusive lock?!
     if ( res.size() == 0 ) {
         UpgradeGuard wGuard( rGuard );
-        MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_TURQUOISE );
+        MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_DIMGRAY );
         m_cond.wait_for( *wGuard.mutex(),
             boost::chrono::milliseconds( 100 ) );  // TODO 100 ms was chosen randomly. it's used in
                                                    // nice thread termination in ConsensusStub
@@ -329,7 +331,7 @@ Transactions TransactionQueue::topTransactionsSync( unsigned _limit, Args... arg
     // TODO Why wait_for needs exclusive lock?!
     if ( res.size() == 0 ) {
         UpgradeGuard wGuard( rGuard );
-        MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_TURQUOISE );
+        MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_DIMGRAY );
         m_cond.wait_for( *wGuard.mutex(),
             boost::chrono::milliseconds( 100 ) );  // TODO 100 ms was chosen randomly. it's used in
                                                    // nice thread termination in ConsensusStub

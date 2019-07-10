@@ -36,6 +36,9 @@ using namespace dev;
 using namespace dev::test;
 using namespace std;
 namespace fs = boost::filesystem;
+using skale::ChangeLog;
+using skale::Permanence;
+using skale::State;
 
 namespace {
 vector< h256 > lastHashes( u256 _currentBlockNumber ) {
@@ -80,7 +83,7 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
         // generate expect sections for this transaction
         BOOST_REQUIRE( m_testInputObject.count( "expect" ) > 0 );
 
-        StateClass s = StateClass( 0 );
+        State s = State( 0 );
         AccountMaskMap m;
         StateAndMap smap{s, m};
         vector< size_t > stateIndexesToPrint;
@@ -214,6 +217,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             continue;
 
         for ( auto& tr : m_transactions ) {
+            tr.transaction.checkOutExternalGas( 100 );
             Options const& opt = Options::get();
             if ( opt.trDataIndex != -1 && opt.trDataIndex != tr.dataInd )
                 continue;
@@ -224,7 +228,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
-                m_statePre = StateClass( 0 );
+                m_statePre = State( 0 );
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
 
@@ -243,9 +247,8 @@ bytes ImportTest::executeTest( bool _isFilling ) {
     return bytes();
 }
 
-void ImportTest::checkBalance(
-    eth::StateClass const& _pre, eth::StateClass const& _post, bigint _miningReward ) {
-    eth::StateClass pre = _pre.startRead(), post = _post.startRead();
+void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
+    State pre = _pre.startRead(), post = _post.startRead();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -260,13 +263,13 @@ void ImportTest::checkBalance(
             TestOutputHelper::get().testName() );
 }
 
-std::tuple< eth::StateClass, ImportTest::ExecOutput, eth::ChangeLog >
-ImportTest::executeTransaction( eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env,
-    eth::StateClass const& _preState, eth::Transaction const& _tr ) {
+std::tuple< State, ImportTest::ExecOutput, ChangeLog > ImportTest::executeTransaction(
+    eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env, State const& _preState,
+    eth::Transaction const& _tr ) {
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    StateClass initialState = _preState.startWrite();
+    State initialState = _preState.startWrite();
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -286,18 +289,17 @@ ImportTest::executeTransaction( eth::Network const _sealEngineNetwork, eth::EnvI
 
         // the changeLog might be broken under --jsontrace, because it uses intialState.execute with
         // Permanence::Committed rather than Permanence::Uncommitted
-        eth::ChangeLog changeLog = initialState.changeLog();
+        ChangeLog changeLog = initialState.changeLog();
         ImportTest::checkBalance( _preState, initialState );
 
         // Finalize the state manually (clear logs)
-        initialState.commit( removeEmptyAccounts ?
-                                 StateClass::CommitBehaviour::RemoveEmptyAccounts :
-                                 StateClass::CommitBehaviour::KeepEmptyAccounts );
+        initialState.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                                   State::CommitBehaviour::KeepEmptyAccounts );
 
         if ( !removeEmptyAccounts ) {
             // Touch here bacuse coinbase might be suicided above
             initialState.addBalance( _env.author(), 0 );  // imitate mining reward
-            initialState.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+            initialState.commit( State::CommitBehaviour::KeepEmptyAccounts );
         }
         return std::make_tuple( initialState, out, changeLog );
     } catch ( Exception const& _e ) {
@@ -306,8 +308,8 @@ ImportTest::executeTransaction( eth::Network const _sealEngineNetwork, eth::EnvI
         cnote << "state execution exception: " << _e.what();
     }
 
-    initialState.commit( removeEmptyAccounts ? StateClass::CommitBehaviour::RemoveEmptyAccounts :
-                                               StateClass::CommitBehaviour::KeepEmptyAccounts );
+    initialState.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                               State::CommitBehaviour::KeepEmptyAccounts );
     return std::make_tuple( initialState, out, initialState.changeLog() );
 }
 
@@ -380,7 +382,7 @@ void ImportTest::importEnv( json_spirit::mObject const& _o ) {
 // import state from not fully declared json_spirit::mObject, writing to _stateOptionsMap which
 // fields were defined in json
 void ImportTest::importState(
-    json_spirit::mObject const& _o, StateClass& _state, AccountMaskMap& o_mask ) {
+    json_spirit::mObject const& _o, State& _state, AccountMaskMap& o_mask ) {
     json_spirit::mObject o = _o;
     replaceCodeInState( o );  // Compile LLL and other src code of the test Fillers using external
                               // call to lllc
@@ -392,7 +394,7 @@ void ImportTest::importState(
     _state.startWrite().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
 }
 
-void ImportTest::importState( json_spirit::mObject const& _o, StateClass& _state ) {
+void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
     for ( auto const& account : _o ) {
         BOOST_REQUIRE_MESSAGE( account.second.type() == jsonVType::obj_type,
             "State account is required to be json Object!" );
@@ -502,9 +504,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
             }
 }
 
-int ImportTest::compareStates( StateClass const& _stateExpect, StateClass const& _statePost,
+int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    StateClass stateExpect = _stateExpect.startRead(), statePost = _statePost.startRead();
+    State stateExpect = _stateExpect.startRead(), statePost = _statePost.startRead();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
@@ -712,9 +714,9 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                          ( opt.trValueIndex != -1 && opt.trValueIndex != tr.valInd ) )
                         continue;
 
-                    StateClass postState = tr.postState;
+                    State postState = tr.postState;
                     eth::AccountMaskMap stateMap;
-                    StateClass expectState( 0 );
+                    State expectState( 0 );
                     importState( _expects.at( "result" ).get_obj(), expectState, stateMap );
                     if ( _search ) {
                         _search->second.first = expectState;

@@ -1140,7 +1140,7 @@ void client::sendData( command_entry* pEntry ) {
         sendData_SSL( ssl_handle_, pEntry );
         return;
     }
-    int idx = 0, res, nLeft = strlen( pSendBuf_ );
+    int idx = 0, nLeft = strlen( pSendBuf_ );
     fd_set fdwrite;
     timeval time;
 
@@ -1155,6 +1155,7 @@ void client::sendData( command_entry* pEntry ) {
     while ( nLeft > 0 ) {
         FD_ZERO( &fdwrite );
         FD_SET( socket_handle_, &fdwrite );
+        int res;
         if ( ( res = select( socket_handle_ + 1, nullptr, &fdwrite, nullptr, &time ) ) ==
              SOCKET_ERROR ) {
             FD_CLR( socket_handle_, &fdwrite );

@@ -14,6 +14,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::rpc;
 using namespace dev::eth;
+using namespace skale;
 
 Debug::Debug( eth::Client const& _eth ) : m_eth( _eth ) {}
 
@@ -42,7 +43,7 @@ h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
     }
 }
 
-StateClass Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
+State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
     if ( _txIndex < 0 )
         throw jsonrpc::JsonRpcException( "Negative index" );
 
@@ -79,7 +80,7 @@ Json::Value Debug::traceTransaction(
 }
 
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
-    StateClass s( _block.state() );
+    State s( _block.state() );
     //    s.setRoot(_block.stateRootBeforeTx(0));
 
     Json::Value traces( Json::arrayValue );
@@ -97,13 +98,10 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     return traces;
 }
 
-Json::Value Debug::debug_traceTransaction( string const& _txHash, Json::Value const& /*_json*/ ) {
+Json::Value Debug::debug_traceTransaction(
+    string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
     Json::Value ret;
     try {
-        LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
-        Block block = m_eth.block( t.blockHash() );
-        StateClass s;
-        eth::ExecutionResult er;
         throw std::logic_error( "Historical state is not supported in Skale" );
         //        Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
         //        e.setResultRecipient(er);
@@ -123,16 +121,19 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
     return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
 }
 
-Json::Value Debug::debug_traceBlockByHash( string const& _blockHash, Json::Value const& _json ) {
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByHash(
+    string const& /*_blockHash*/, Json::Value const& _json ) {
     Json::Value ret;
-    Block block = m_eth.block( h256( _blockHash ) );
+    Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
     return ret;
 }
 
-Json::Value Debug::debug_traceBlockByNumber( int _blockNumber, Json::Value const& _json ) {
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
     Json::Value ret;
-    Block block = m_eth.block( blockHash( std::to_string( _blockNumber ) ) );
+    Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
     return ret;
 }
@@ -145,7 +146,7 @@ Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _
         throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
 
     try {
-        StateClass const state = stateAt( _blockHashOrNumber, _txIndex );
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
 
         throw std::logic_error( "Addresses list is not suppoted in Skale state" );
         //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
@@ -174,7 +175,7 @@ Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _
         throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
 
     try {
-        StateClass const state = stateAt( _blockHashOrNumber, _txIndex );
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
 
         throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
         //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));
@@ -212,11 +213,10 @@ std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
     //    return key.empty() ? std::string() : toHexPrefixed(key);
 }
 
-Json::Value Debug::debug_traceCall(
-    Json::Value const& _call, std::string const& _blockNumber, Json::Value const& _options ) {
+Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
     Json::Value ret;
     try {
-        Block temp = m_eth.blockByNumber( jsToBlockNumber( _blockNumber ) );
+        Block temp = m_eth.latestBlock();
         TransactionSkeleton ts = toTransactionSkeleton( _call );
         if ( !ts.from ) {
             ts.from = Address();

@@ -40,6 +40,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using skale::Permanence;
+using skale::State;
+using namespace skale::error;
 
 static_assert( BOOST_VERSION >= 106400, "Wrong boost headers version" );
 
@@ -88,14 +92,34 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
-    m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all workers
-    m_signalled.notify_all();    // to wake up the thread from Client::doWork()
+    m_new_block_watch.uninstallAll();
+    m_new_pending_transaction_watch.uninstallAll();
+
+    if ( m_skaleHost )
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+                                     // workers
+    else
+        cerror << "Instance of SkaleHost was not properly created.";
+
+    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     terminate();
+}
+
+void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
+    assert( !m_skaleHost );
+
+    m_skaleHost = _skaleHost;
+
+    if ( !m_skaleHost )
+        m_skaleHost = make_shared< SkaleHost >( *this );
+
+    if ( Worker::isWorking() )
+        m_skaleHost->startWorking();
 }
 
 void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPath,
@@ -106,7 +130,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = StateClass( chainParams().accountStartNonce, _dbPath, bc().genesisHash() );
+    m_state = State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -129,7 +154,8 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
-        m_skaleHost->onBlockImported( _info );
+        if ( m_skaleHost )
+            m_skaleHost->onBlockImported( _info );
         m_onBlockImport( _info );
     } );
 
@@ -143,8 +169,9 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
         //        auto ethHostCapability =
         //            make_shared<EthereumHost>(_extNet, bc(), m_stateDB, m_tq, m_bq, _networkId);
         //        _extNet.registerCapability(ethHostCapability);
-        m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
-        m_skaleHost->startWorking();
+        //        if(!m_skaleHost)
+        //            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
+        //        m_skaleHost->startWorking();
     }
 
     // create Warp capability if we either download snapshot or can give out snapshot
@@ -170,10 +197,6 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
         this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
     return m_bq.import( &_block, _isSafe );
-}
-
-Block Client::block( const h256& /*_blockHash*/, PopulationStatistics* /*o_stats*/ ) const {
-    throw std::logic_error( "Depricated" );
 }
 
 tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
@@ -227,31 +250,37 @@ bool Client::isMajorSyncing() const {
     // TODO Ask here some special sync component
 }
 
+// TODO make Client not-Worker, remove all this stuff! (doWork, etc..)
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
     LOG( m_loggerDetail ) << "startedWorking()";
 
-    DEV_WRITE_GUARDED( x_preSeal )
-    m_preSeal.sync( bc() );
-    DEV_READ_GUARDED( x_preSeal ) {
-        DEV_WRITE_GUARDED( x_working )
-        m_working = m_preSeal;
-        DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_preSeal;
+    DEV_GUARDED( m_blockImportMutex ) {
+        DEV_WRITE_GUARDED( x_preSeal )
+        m_preSeal.sync( bc() );
+        DEV_READ_GUARDED( x_preSeal ) {
+            DEV_WRITE_GUARDED( x_working )
+            m_working = m_preSeal;
+            DEV_WRITE_GUARDED( x_postSeal )
+            m_postSeal = m_preSeal;
+        }
     }
 }
 
 void Client::doneWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    DEV_WRITE_GUARDED( x_preSeal )
-    m_preSeal.sync( bc() );
-    DEV_READ_GUARDED( x_preSeal ) {
-        DEV_WRITE_GUARDED( x_working )
-        m_working = m_preSeal;
-        DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_preSeal;
+
+    DEV_GUARDED( m_blockImportMutex ) {
+        DEV_WRITE_GUARDED( x_preSeal )
+        m_preSeal.sync( bc() );
+        DEV_READ_GUARDED( x_preSeal ) {
+            DEV_WRITE_GUARDED( x_working )
+            m_working = m_preSeal;
+            DEV_WRITE_GUARDED( x_postSeal )
+            m_postSeal = m_preSeal;
+        }
     }
 }
 
@@ -281,10 +310,10 @@ void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
 
         bc().reopen( _p, _we );
         if ( !m_state.connected() ) {
-            m_state = StateClass( Invalid256, Defaults::dbPath(), bc().genesisHash() );
+            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
         }
         if ( _we == WithExisting::Kill ) {
-            StateClass writer = m_state.startWrite();
+            State writer = m_state.startWrite();
             writer.clearAll();
             writer.populateFrom( bc().chainParams().genesisState );
         }
@@ -336,7 +365,7 @@ void Client::appendFromNewPending(
         if ( m.size() ) {
             // filter catches them
             for ( LogEntry const& l : m )
-                i.second.changes.push_back( LocalisedLogEntry( l ) );
+                i.second.changes_.push_back( LocalisedLogEntry( l ) );
             io_changed.insert( i.first );
         }
     }
@@ -358,7 +387,7 @@ void Client::appendFromBlock( h256 const& _block, BlockPolarity _polarity, h256H
                 auto transactionHash = transaction( _block, j ).sha3();
                 // filter catches them
                 for ( LogEntry const& l : m )
-                    i.second.changes.push_back( LocalisedLogEntry( l, _block,
+                    i.second.changes_.push_back( LocalisedLogEntry( l, _block,
                         ( BlockNumber ) bc().number( _block ), transactionHash, j, 0, _polarity ) );
                 io_changed.insert( i.first );
             }
@@ -394,7 +423,20 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-void Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+size_t Client::importTransactionsAsBlock( const Transactions& _transactions, uint64_t _timestamp ) {
+    DEV_GUARDED( m_blockImportMutex ) {
+        size_t n_succeeded = syncTransactions( _transactions, _timestamp );
+        sealUnconditionally( false );
+        importWorkingBlock();
+        return n_succeeded;
+    }
+    assert( false );
+    return 0;
+}
+
+size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+    assert( m_skaleHost );
+
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() )
@@ -406,24 +448,15 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     h256Hash changeds;
     TransactionReceipts newPendingReceipts;
+    unsigned goodReceipts;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
-        if ( m_working.isSealed() ) {
-            ctrace << "Skipping txq sync for a sealed block.";
-            return;
-        }
 
-        newPendingReceipts = m_working.syncEveryone( bc(), _transactions, _timestamp );
+        //        assert(m_state.m_db_write_lock.has_value());
+        tie( newPendingReceipts, goodReceipts ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp );
         m_state.updateToLatestVersion();
-    }
-
-    if ( newPendingReceipts.empty() ) {
-        auto s = m_tq.status();
-        ctrace << "No transactions to process. " << m_working.pending().size() << " pending, "
-               << s.current << " queued, " << s.future << " future, " << s.unverified
-               << " unverified";
-        return;
     }
 
     DEV_READ_GUARDED( x_working )
@@ -445,6 +478,8 @@ void Client::syncTransactions( const Transactions& _transactions, uint64_t _time
 
     ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
            << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
+
+    return goodReceipts;
 }
 
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
@@ -465,6 +500,8 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 }
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
+    assert( m_skaleHost );
+
     // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
     for ( auto const& h : _blocks )
         LOG( m_loggerDetail ) << "Live block: " << h;
@@ -654,6 +691,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -666,7 +704,7 @@ void Client::noteChanged( h256Hash const& _filters ) {
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
                 LOG( m_loggerWatch ) << "!!! " << w.first << " " << w.second.id.abridged();
-                w.second.changes += m_filters.at( w.second.id ).changes;
+                w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
                     LOG( m_loggerWatch )
@@ -674,12 +712,12 @@ void Client::noteChanged( h256Hash const& _filters ) {
                         << ( w.second.id == PendingChangedFilter ?
                                    "pending" :
                                    w.second.id == ChainChangedFilter ? "chain" : "???" );
-                    w.second.changes.push_back( LocalisedLogEntry( SpecialLogEntry, hash ) );
+                    w.second.append_changes( LocalisedLogEntry( SpecialLogEntry, hash ) );
                 }
         }
     // clear the filters now.
     for ( auto& i : m_filters )
-        i.second.changes.clear();
+        i.second.changes_.clear();
     for ( auto& i : m_specialFilters )
         i.second.clear();
 }
@@ -762,19 +800,13 @@ void Client::prepareForTransaction() {
     startWorking();
 }
 
-Block Client::block( h256 const& _block ) const {
-    if ( _block == m_bc.currentHash() ) {
-        return latestBlock();
-    } else if ( _block == m_bc.genesisHash() ) {
-        return m_bc.genesisBlock( m_state.startRead() );
-    } else {
-        throw std::logic_error( "Cannot load block because Skale state do not support rollbacks" );
-    }
-}
 
 Block Client::latestBlock() const {
+    // TODO Why it returns not-filled block??! (see Block ctor)
     try {
-        return Block( bc(), bc().currentHash(), m_state.startRead() );
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
+        assert( false );
+        return Block( bc() );
     } catch ( Exception& ex ) {
         ex << errinfo_block( bc().block( bc().currentHash() ) );
         onBadBlock( ex );
@@ -851,12 +883,14 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
+    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
+
     // throws in case of error
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
         this->state().startRead(), *bc().sealEngine(), 0 );
 
-    ImportResult res = m_tq.import( _t.rlp() );
+    ImportResult res = m_tq.import( _t );
     switch ( res ) {
     case ImportResult::Success:
         break;
@@ -872,20 +906,23 @@ h256 Client::importTransaction( Transaction const& _t ) {
         BOOST_THROW_EXCEPTION( UnknownTransactionValidationError() );
     }
 
+    m_new_pending_transaction_watch.invoke( _t );
+
     return _t.sha3();
 }
 
 // TODO: remove try/catch, allow exceptions
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff ) {
+    u256 _gas, u256 _gasPrice, FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
-        Block temp = blockByNumber( _blockNumber );
+        Block temp = latestBlock();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
         t.forceSender( _from );
+        t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, Permanence::Reverted );
@@ -899,4 +936,22 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+// new block watch
+unsigned Client::installNewBlockWatch(
+    std::function< void( const unsigned&, const Block& ) >& fn ) {
+    return m_new_block_watch.install( fn );
+}
+bool Client::uninstallNewBlockWatch( const unsigned& k ) {
+    return m_new_block_watch.uninstall( k );
+}
+
+// new pending transation watch
+unsigned Client::installNewPendingTransactionWatch(
+    std::function< void( const unsigned&, const Transaction& ) >& fn ) {
+    return m_new_pending_transaction_watch.install( fn );
+}
+bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
+    return m_new_pending_transaction_watch.uninstall( k );
 }

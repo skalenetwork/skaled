@@ -3,6 +3,9 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
+
+
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
@@ -173,7 +176,6 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 add_subdirectory(libethashseal)
 
-add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
 
 if (EVMJIT)
@@ -209,6 +211,9 @@ set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)
 include(CPack)
 
+
+
 if (CONSENSUS)
+    SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter") # hack to make libBLS compile
     add_subdirectory(libconsensus)
 endif()

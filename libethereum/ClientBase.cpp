@@ -23,26 +23,67 @@
  */
 
 #include "ClientBase.h"
+
+#include <algorithm>
+#include <utility>
+
 #include "BlockChain.h"
 #include "Executive.h"
-#include "State.h"
-#include <algorithm>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using skale::Permanence;
+using skale::State;
 
 static const int64_t c_maxGasEstimate = 50000000;
 
+ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
+
+ClientWatch::ClientWatch(
+    h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw )
+    : id( _id ),
+      iw_( iw ),
+      fnOnNewChanges_( fnOnNewChanges ),
+      lastPoll( ( _r == Reaping::Automatic ) ? std::chrono::system_clock::now() :
+                                               std::chrono::system_clock::time_point::max() ) {}
+
+LocalisedLogEntries ClientWatch::get_changes() const {
+    return changes_;
+}
+
+void ClientWatch::swap_changes( LocalisedLogEntries& otherChanges ) {
+    if ( ( ( void* ) &changes_ ) == ( ( void* ) &otherChanges ) )
+        return;
+    std::swap( changes_, otherChanges );
+    if ( !changes_.empty() )
+        fnOnNewChanges_( iw_ );
+}
+
+void ClientWatch::append_changes( const LocalisedLogEntries& otherChanges ) {
+    if ( ( ( void* ) &changes_ ) == ( ( void* ) &otherChanges ) )
+        return;
+    changes_ += otherChanges;
+    if ( !changes_.empty() )
+        fnOnNewChanges_( iw_ );
+}
+
+void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
+    changes_.push_back( entry );
+    if ( !changes_.empty() )
+        fnOnNewChanges_( iw_ );
+}
+
+
 std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
-    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice, BlockNumber _blockNumber,
+    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
     GasEstimationCallback const& _callback ) {
     try {
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
         int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-        Block bk = blockByNumber( _blockNumber );
+        Block bk = latestBlock();
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         ExecutionResult er;
         ExecutionResult lastGood;
@@ -56,8 +97,9 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             else
                 t = Transaction( _value, gasPrice, mid, _data, n );
             t.forceSender( _from );
+            t.checkOutExternalGas( ~u256( 0 ) );
             EnvInfo const env( bk.info(), bc().lastBlockHashes(), 0, mid );
-            StateClass& tempState = bk.mutableState();
+            State& tempState = bk.mutableState();
             tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
             er = tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
             if ( er.excepted == TransactionException::OutOfGas ||
@@ -89,30 +131,28 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
     return bc().attemptImport( _block, preSeal().mutableState() ).first;
 }
 
-u256 ClientBase::balanceAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).balance( _a );
+u256 ClientBase::balanceAt( Address _a ) const {
+    return latestBlock().balance( _a );
 }
 
-u256 ClientBase::countAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).transactionsFrom( _a );
+u256 ClientBase::countAt( Address _a ) const {
+    return latestBlock().transactionsFrom( _a );
 }
 
-u256 ClientBase::stateAt( Address _a, u256 _l, BlockNumber _block ) const {
-    return blockByNumber( _block ).storage( _a, _l );
+u256 ClientBase::stateAt( Address _a, u256 _l ) const {
+    return latestBlock().storage( _a, _l );
 }
 
-bytes ClientBase::codeAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).code( _a );
+bytes ClientBase::codeAt( Address _a ) const {
+    return latestBlock().code( _a );
 }
 
-h256 ClientBase::codeHashAt( Address _a, BlockNumber _block ) const {
-    return blockByNumber( _block ).codeHash( _a );
+h256 ClientBase::codeHashAt( Address _a ) const {
+    return latestBlock().codeHash( _a );
 }
 
-map< h256, pair< u256, u256 > > ClientBase::storageAt(
-    Address /*_a*/, BlockNumber /*_block*/ ) const {
-    throw logic_error( "Full storage object is unsupported in Skale state" );
-    //    return blockByNumber(_block).storage(_a);
+map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
+    return latestBlock().storage( _a );
 }
 
 // TODO: remove try/catch, allow exceptions
@@ -201,7 +241,8 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     }
 }
 
-unsigned ClientBase::installWatch( LogFilter const& _f, Reaping _r ) {
+unsigned ClientBase::installWatch(
+    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
     h256 h = _f.sha3();
     {
         Guard l( x_filtersWatches );
@@ -210,15 +251,16 @@ unsigned ClientBase::installWatch( LogFilter const& _f, Reaping _r ) {
             m_filters.insert( make_pair( h, _f ) );
         }
     }
-    return installWatch( h, _r );
+    return installWatch( h, _r, fnOnNewChanges );
 }
 
-unsigned ClientBase::installWatch( h256 _h, Reaping _r ) {
+unsigned ClientBase::installWatch(
+    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-        m_watches[ret] = ClientWatch( _h, _r );
+        m_watches[ret] = ClientWatch( _h, _r, fnOnNewChanges, ret );
         LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
@@ -227,7 +269,7 @@ unsigned ClientBase::installWatch( h256 _h, Reaping _r ) {
         ch.push_back( InitialChange );
     {
         Guard l( x_filtersWatches );
-        swap( m_watches[ret].changes, ch );
+        m_watches[ret].swap_changes( ch );
     }
 #endif
     return ret;
@@ -262,7 +304,7 @@ LocalisedLogEntries ClientBase::peekWatch( unsigned _watchId ) const {
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     if ( w.lastPoll != chrono::system_clock::time_point::max() )
         w.lastPoll = chrono::system_clock::now();
-    return w.changes;
+    return w.get_changes();
 }
 
 LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
@@ -273,7 +315,7 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     auto& w = m_watches.at( _watchId );
     //	LOG(m_loggerWatch) << "lastPoll updated to " <<
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-    std::swap( ret, w.changes );
+    w.swap_changes( ret );
     if ( w.lastPoll != chrono::system_clock::time_point::max() )
         w.lastPoll = chrono::system_clock::now();
 
@@ -338,7 +380,7 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     RLP b( bl );
     Transactions res;
     for ( unsigned i = 0; i < b[1].itemCount(); i++ )
-        res.emplace_back( b[1][i].data(), CheckTransaction::Cheap );
+        res.emplace_back( b[1][i].data(), CheckTransaction::Cheap, true );
     return res;
 }
 
@@ -388,14 +430,6 @@ BlockDetails ClientBase::pendingDetails() const {
     auto li = Interface::blockDetails( LatestBlock );
     return BlockDetails(
         ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{} );
-}
-
-Addresses ClientBase::addresses( BlockNumber /*_block*/ ) const {
-    throw std::logic_error( "Getting addresses list is not supported in Skale state" );
-    //    Addresses ret;
-    //    for (auto const& i : blockByNumber(_block).addresses())
-    //        ret.push_back(i.first);
-    //    return ret;
 }
 
 u256 ClientBase::gasLimitRemaining() const {
@@ -457,17 +491,20 @@ bool ClientBase::isKnownTransaction( h256 const& _transactionHash ) const {
 }
 
 bool ClientBase::isKnownTransaction( h256 const& _blockHash, unsigned _i ) const {
-    return isKnown( _blockHash ) && block( _blockHash ).pending().size() > _i;
+    bytes block = bc().block( _blockHash );
+
+    if ( block.empty() )
+        return false;
+
+    VerifiedBlockRef vb = bc().verifyBlock( &block, function< void( Exception& ) >() );
+
+    return vb.transactions.size() > _i;
 }
 
-Block ClientBase::blockByNumber( BlockNumber _h ) const {
-    if ( _h == PendingBlock ) {
-        Block block = postSeal();
-        block.startReadState();
-        return block;
-    } else if ( _h == LatestBlock )
-        return block( bc().currentHash() );
-    return block( bc().numberHash( _h ) );
+Block ClientBase::latestBlock() const {
+    Block res = postSeal();
+    res.startReadState();
+    return res;
 }
 
 int ClientBase::chainId() const {

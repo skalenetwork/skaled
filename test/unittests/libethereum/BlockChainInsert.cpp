@@ -36,6 +36,7 @@ using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -68,7 +69,7 @@ public:
     }
 
     BlockChain& bc() { return m_bc; }
-    StateClass& state() { return m_state; }
+    State& state() { return m_state; }
 
     void sealAndImport( Block& _block ) {
         seal( _block );
@@ -91,7 +92,7 @@ private:
     SealEngineFace* sealer() const { return m_bc.sealEngine(); }
 
     string m_path;
-    StateClass m_state;
+    State m_state;
     BlockChain m_bc;
     Notified< bytes > sealed;
 };
@@ -115,7 +116,7 @@ h256s subs( bytesConstRef _node ) {
 }
 
 void syncStateTrie(
-    bytesConstRef _block, StateClass const& /*_stateSource*/, StateClass& /*_stateDestination*/ ) {
+    bytesConstRef _block, State const& /*_stateSource*/, State& /*_stateDestination*/ ) {
     BlockHeader bi( _block );
     cnote << "Root is " << bi.stateRoot();
 

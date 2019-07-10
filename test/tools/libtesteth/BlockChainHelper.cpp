@@ -37,6 +37,8 @@ using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
+using skale::BaseState;
+using skale::State;
 
 namespace dev {
 namespace test {
@@ -92,10 +94,10 @@ TestBlock& TestBlock::operator=( TestBlock const& _original ) {
 void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject const& _stateObj ) {
     m_tempDirState = std::unique_ptr< TransientDirectory >( new TransientDirectory() );
 
-    m_state = std::unique_ptr< StateClass >(
-        new StateClass( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty ) );
+    m_state = std::unique_ptr< State >(
+        new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty ) );
     ImportTest::importState( _stateObj, *m_state );
-    m_state->startWrite().commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+    m_state->startWrite().commit( State::CommitBehaviour::KeepEmptyAccounts );
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState( state );
@@ -111,7 +113,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     recalcBlockHeaderBytes();
 }
 
-void TestBlock::setState( StateClass const& _state ) {
+void TestBlock::setState( State const& _state ) {
     copyStateFrom( _state );
 }
 
@@ -176,7 +178,7 @@ void TestBlock::premineUpdate( BlockHeader& _blockInfo ) {
 void TestBlock::mine( TestBlockChain const& _bc ) {
     TestBlock const& genesisBlock = _bc.testGenesis();
     //    OverlayDB const& genesisDB = genesisBlock.state().db();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
 
     BlockChain const& blockchain = _bc.getInterface();
 
@@ -403,17 +405,17 @@ void TestBlock::recalcBlockHeaderBytes() {
     m_bytes = ret.out();
 }
 
-void TestBlock::copyStateFrom( StateClass const& _state ) {
+void TestBlock::copyStateFrom( State const& _state ) {
     // WEIRD WAY TO COPY STATE AS COPY CONSTRUCTOR FOR STATE NOT IMPLEMENTED CORRECTLY (they would
     // share the same DB)
     m_tempDirState.reset( new TransientDirectory() );
     //    if ( _state ) {
-    //        m_state.reset( new StateClass( _state ) );
+    //        m_state.reset( new State( _state ) );
     //    } else {
-    //        m_state.reset( new StateClass( 0 ) );
+    //        m_state.reset( new State( 0 ) );
     //    }
-    m_state.reset( new StateClass( _state ) );
-    //    m_state.reset( new StateClass( 0 ) );
+    m_state.reset( new State( _state ) );
+    //    m_state.reset( new State( 0 ) );
     //    json_spirit::mObject obj = fillJsonWithState( _state );
     //    ImportTest::importState( obj, *m_state.get() );
 }  // namespace test
@@ -431,7 +433,7 @@ void TestBlock::populateFrom( TestBlock const& _original ) {
         if ( _original.m_state ) {
             copyStateFrom( _original.state() );
         } else {
-            m_state.reset( new StateClass( 0 ) );
+            m_state.reset( new State( 0 ) );
         }
     } catch ( BlockStateUndefined const& _ex ) {
         clog( VerbosityDebug, "net" ) << _ex.what() << " copying block with null state";
@@ -490,7 +492,7 @@ bool TestBlockChain::addBlock( TestBlock const& _block ) {
         Block block = ( m_blockChain.get()->genesisBlock( m_genesisBlock.state() ) );
         block.sync( *m_blockChain.get() );
 
-        StateClass st( block.state() );
+        State st( block.state() );
         m_lastBlock.setState( st );
         return true;
     }

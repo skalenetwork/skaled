@@ -34,43 +34,46 @@ using boost::shared_mutex;
 using boost::upgrade_lock;
 using boost::upgrade_to_unique_lock;
 
-#include <libdevcore/Assertions.h>
 #include <libdevcore/DBImpl.h>
-#include <libethereum/Block.h>
-#include <libethereum/BlockChain.h>
+#include <libethcore/SealEngine.h>
+#include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
-#include <libethereum/ExtVM.h>
-#include <libethereum/TransactionQueue.h>
-#include <libevm/VMFactory.h>
+
+#include "libweb3jsonrpc/Eth.h"
+#include "libweb3jsonrpc/JsonHelper.h"
+
+#include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
 
 using namespace std;
 using namespace dev;
 using namespace skale;
+using namespace skale::error;
+using dev::eth::Account;
 using dev::eth::EnvInfo;
 using dev::eth::ExecutionResult;
 using dev::eth::Executive;
 using dev::eth::OnOpFunc;
-using dev::eth::Permanence;
 using dev::eth::SealEngineFace;
 using dev::eth::Transaction;
 using dev::eth::TransactionReceipt;
-using eth::Account;
-using skale::OverlayDB;
 
 #ifndef ETH_VMTRACE
 #define ETH_VMTRACE 0
 #endif
 
 
-State::State( u256 const& _accountStartNonce, OverlayDB const& _db, eth::BaseState _bs )
+State::State(
+    u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
     : x_db_ptr( make_shared< shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
-      m_accountStartNonce( _accountStartNonce ) {
-    if ( _bs == eth::BaseState::PreExisting ) {
+      m_accountStartNonce( _accountStartNonce ),
+      m_initial_funds( _initialFunds ) {
+    if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << "Using existing database";
-    } else if ( _bs == eth::BaseState::Empty ) {
+    } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_db_ptr->clearDB();
@@ -134,6 +137,7 @@ State& State::operator=( const State& _s ) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
+    m_initial_funds = _s.m_initial_funds;
 
     return *this;
 }
@@ -169,7 +173,7 @@ std::unordered_map< Address, u256 > State::addresses() const {
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
-        BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+        BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
     std::unordered_map< Address, u256 > addresses;
@@ -214,7 +218,7 @@ std::pair< State::AddressMap, h256 > State::addresses(
 
 u256 const& State::requireAccountStartNonce() const {
     if ( m_accountStartNonce == Invalid256 )
-        BOOST_THROW_EXCEPTION( eth::InvalidAccountStartNonceInState() );
+        BOOST_THROW_EXCEPTION( InvalidAccountStartNonceInState() );
     return m_accountStartNonce;
 }
 
@@ -222,7 +226,7 @@ void State::noteAccountStartNonce( u256 const& _actual ) {
     if ( m_accountStartNonce == Invalid256 )
         m_accountStartNonce = _actual;
     else if ( m_accountStartNonce != _actual )
-        BOOST_THROW_EXCEPTION( eth::IncorrectAccountStartNonceInState() );
+        BOOST_THROW_EXCEPTION( IncorrectAccountStartNonceInState() );
 }
 
 void State::removeEmptyAccounts() {
@@ -251,7 +255,7 @@ eth::Account* State::account( Address const& _address ) {
         if ( !checkVersion() ) {
             cerr << "Current state version is " << m_currentVersion << " but stored version is "
                  << *m_storedVersion << endl;
-            BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
         stateBack = asBytes( m_db_ptr->lookup( _address ) );
@@ -300,11 +304,11 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
 
     {
         if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToWriteToNotLockedStateObject() );
+            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
         upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToWriteToStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
 
         for ( auto const& addressAccountPair : m_cache ) {
@@ -369,7 +373,7 @@ u256 State::balance( Address const& _id ) const {
     if ( auto a = account( _id ) )
         return a->balance();
     else
-        return 0;
+        return m_initial_funds;
 }
 
 void State::incNonce( Address const& _addr ) {
@@ -379,7 +383,7 @@ void State::incNonce( Address const& _addr ) {
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible if a transaction has gas price 0.
-        createAccount( _addr, eth::Account( requireAccountStartNonce() + 1, 0 ) );
+        createAccount( _addr, eth::Account( requireAccountStartNonce() + 1, m_initial_funds ) );
 }
 
 void State::setNonce( Address const& _addr, u256 const& _newNonce ) {
@@ -389,7 +393,7 @@ void State::setNonce( Address const& _addr, u256 const& _newNonce ) {
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible when a contract is being created.
-        createAccount( _addr, eth::Account( _newNonce, 0 ) );
+        createAccount( _addr, eth::Account( _newNonce, m_initial_funds ) );
 }
 
 void State::addBalance( Address const& _id, u256 const& _amount ) {
@@ -401,17 +405,17 @@ void State::addBalance( Address const& _id, u256 const& _amount ) {
         // TODO: to save space we can combine this event with Balance by having
         //       Balance and Balance+Touch events.
         if ( !a->isDirty() && a->isEmpty() )
-            m_changeLog.emplace_back( eth::Change::Touch, _id );
+            m_changeLog.emplace_back( Change::Touch, _id );
 
         // Increase the account balance. This also is done for value 0 to mark
         // the account as dirty. Dirty account are not removed from the cache
         // and are cleared if empty at the end of the transaction.
         a->addBalance( _amount );
     } else
-        createAccount( _id, eth::Account( requireAccountStartNonce(), _amount ) );
+        createAccount( _id, eth::Account( requireAccountStartNonce(), m_initial_funds + _amount ) );
 
     if ( _amount )
-        m_changeLog.emplace_back( eth::Change::Balance, _id, _amount );
+        m_changeLog.emplace_back( Change::Balance, _id, _amount );
 }
 
 void State::subBalance( Address const& _addr, u256 const& _value ) {
@@ -436,14 +440,14 @@ void State::setBalance( Address const& _addr, u256 const& _value ) {
 }
 
 void State::createContract( Address const& _address ) {
-    createAccount( _address, {requireAccountStartNonce(), 0} );
+    createAccount( _address, {requireAccountStartNonce(), m_initial_funds} );
 }
 
 void State::createAccount( Address const& _address, eth::Account const&& _account ) {
     assert( !addressInUse( _address ) && "Account already exists" );
     m_cache[_address] = std::move( _account );
     m_nonExistingAccountsCache.erase( _address );
-    m_changeLog.emplace_back( eth::Change::Create, _address );
+    m_changeLog.emplace_back( Change::Create, _address );
 }
 
 void State::kill( Address _addr ) {
@@ -457,7 +461,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
-        BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+        BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
     std::map< h256, std::pair< u256, u256 > > storage;
@@ -498,7 +502,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
         // Not in the storage cache - go to the DB.
         shared_lock< shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
         u256 value = m_db_ptr->lookup( _id, _key );
         acc->setStorageCache( _key, value );
@@ -521,7 +525,7 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 
         shared_lock< shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
         u256 value = m_db_ptr->lookup( _contract, _key );
         acc->setStorageCache( _key, value );
@@ -551,7 +555,7 @@ bytes const& State::code( Address const& _addr ) const {
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
         shared_lock< shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToReadFromStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
         mutableAccount->noteCode( m_db_ptr->lookupAuxiliary( _addr, Auxiliary::CODE ) );
         eth::CodeSizeCache::instance().store( a->codeHash(), a->code().size() );
@@ -608,25 +612,25 @@ void State::rollback( size_t _savepoint ) {
         // Public State API cannot be used here because it will add another
         // change log entry.
         switch ( change.kind ) {
-        case eth::Change::Storage:
+        case Change::Storage:
             account.setStorage( change.key, change.value );
             break;
-        case eth::Change::StorageRoot:
+        case Change::StorageRoot:
             account.setStorageRoot( change.value );
             break;
-        case eth::Change::Balance:
+        case Change::Balance:
             account.addBalance( 0 - change.value );
             break;
-        case eth::Change::Nonce:
+        case Change::Nonce:
             account.setNonce( change.value );
             break;
-        case eth::Change::Create:
+        case Change::Create:
             m_cache.erase( change.address );
             break;
-        case eth::Change::Code:
+        case Change::Code:
             account.setCode( std::move( change.oldCode ) );
             break;
-        case eth::Change::Touch:
+        case Change::Touch:
             account.untouch();
             m_unchangedCacheEntries.emplace_back( change.address );
             break;
@@ -682,11 +686,11 @@ void State::stopWrite() {
 void State::clearAll() {
     if ( m_db_ptr ) {
         if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToWriteToNotLockedStateObject() );
+            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
         upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( eth::AttemptToWriteToStateInThePast() );
+            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
         m_db_ptr->clearDB();
     }
@@ -730,6 +734,16 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction( e, _t, onOp );
 
+    std::string strRevertReason;
+    if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
+        strRevertReason = skutils::eth::call_error_message_2_str( res.output );
+        if ( strRevertReason.empty() )
+            strRevertReason = "EVM revert instruction without description message";
+        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                             cc::warn( strRevertReason );
+        cerror << strOut;
+    }
+
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
@@ -745,10 +759,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
 
-    TransactionReceipt const receipt =
+    TransactionReceipt receipt =
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+    receipt.setRevertReason( strRevertReason );
     return make_pair( res, receipt );
 }
 
@@ -763,6 +778,9 @@ bool State::executeTransaction(
         if ( !_e.execute() )
             _e.go( _onOp );
         return _e.finalize();
+    } catch ( dev::eth::RevertInstruction const& re ) {
+        rollback( savept );
+        throw;
     } catch ( Exception const& ) {
         rollback( savept );
         throw;

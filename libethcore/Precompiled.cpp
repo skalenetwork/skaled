@@ -197,7 +197,6 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )( bytesConstRef _in 
 static Logger& getLogger( int a_severity = VerbosityTrace ) {
     static std::mutex g_mtx;
     std::lock_guard< std::mutex > lock( g_mtx );
-    //
     typedef std::map< int, Logger > map_loggers_t;
     static map_loggers_t g_mapLoggers;
     if ( g_mapLoggers.find( a_severity ) == g_mapLoggers.end() )
@@ -236,8 +235,8 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
 
         size_t filenameLength;
-        std::string filename;
-        convertBytesToString( _in, 32, filename, filenameLength );
+        std::string rawFilename;
+        convertBytesToString( _in, 32, rawFilename, filenameLength );
         size_t const filenameBlocksCount = ( filenameLength + 31 ) / UINT256_SIZE;
         bigint const byteFileSize( parseBigEndianRightPadded(
             _in, 64 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ) );
@@ -248,6 +247,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
                << " exceeds supported limit " << FILE_MAX_SIZE;
             throw std::runtime_error( ss.str() );
         }
+        const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
             bool isCreated = fs::create_directories( fsDirectoryPath );
@@ -256,8 +256,12 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
                     "createFile() failed because cannot create subdirectory" );
             }
         }
+        const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
+        if ( !fs::exists( fsFilePath ) ) {
+            throw std::runtime_error( "createFile() failed because directory not exists" );
+        }
         fstream file;
-        file.open( ( fsDirectoryPath / filename ).string(), ios::out );
+        file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
         if ( fileSize > 0 ) {
             file.seekp( static_cast< long >( fileSize ) - 1 );
             file.write( "0", 1 );
@@ -429,40 +433,60 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
     return {false, response};
 }
 
-ETH_REGISTER_PRECOMPILED( checkFile )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        size_t filenameLength;
-        std::string filename;
-        convertBytesToString( _in, 32, filename, filenameLength );
-        size_t const filenameBlocksCount = ( filenameLength + 31 ) / UINT256_SIZE;
-        auto rawChecksum =
-            _in.cropped( 64 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ).toBytes();
-        std::string checksum;
-        boost::algorithm::hex( rawChecksum.begin(), rawChecksum.end(), back_inserter( checksum ) );
+        size_t directoryPathLength;
+        std::string directoryPath;
+        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        CryptoPP::SHA256 hash;
-        string digest;
-        CryptoPP::FileSource file( filePath.c_str(), true,
-            new CryptoPP::HashFilter(
-                hash, new CryptoPP::HexEncoder( new CryptoPP::StringSink( digest ) ) ) );
-        u256 code;
-        if ( checksum == digest )
-            code = 1;
-        else
-            code = 0;
+        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        bool isCreated = fs::create_directories( absolutePath );
+        if ( !isCreated ) {
+            throw std::runtime_error( "createDirectory() failed because cannot create directory" );
+        }
+        u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in checkFile: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) ) << "Exception in createDirectory: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in checkFile\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};
+}
+
+ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+        size_t directoryPathLength;
+        std::string directoryPath;
+        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
+
+        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        if ( !fs::exists( absolutePath ) ) {
+            throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+        }
+        fs::remove_all( absolutePath );
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );

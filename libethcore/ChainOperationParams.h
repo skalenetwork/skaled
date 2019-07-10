@@ -69,6 +69,7 @@ public:
     u256 id;
     std::string ip;
     uint16_t port;
+    int emptyBlockIntervalMs = -1;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111 ) {
@@ -101,7 +102,7 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), u256( 0 )};
+        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), u256( 1 )};
         nodes.push_back( me );
     }
 };
@@ -152,6 +153,8 @@ public:
     /// Skale additional config
     NodeInfo nodeInfo;
     SChain sChain;
+    u256 accountInitialFunds = 0;
+    u256 externalGasDifficulty = ~u256( 0 );
 };
 
 }  // namespace eth

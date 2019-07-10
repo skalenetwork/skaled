@@ -124,5 +124,95 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     return _out;
 }
 
-Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig )
-    : TransactionBase( _rlpData, _checkSig ) {}
+Transaction::Transaction() {}
+
+Transaction::Transaction( const TransactionSkeleton& _ts, const Secret& _s )
+    : TransactionBase( _ts, _s ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _secret ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
+
+Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid )
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {}
+
+Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid )
+    : Transaction( &_rlp, _checkSig, _allowInvalid ) {}
+
+bool Transaction::hasExternalGas() const {
+    if ( !m_externalGasIsChecked ) {
+        throw ExternalGasException();
+    }
+    return m_externalGas.has_value();
+}
+
+u256 Transaction::getExternalGas() const {
+    if ( hasExternalGas() ) {
+        return *m_externalGas;
+    } else {
+        return u256( 0 );
+    }
+}
+
+u256 Transaction::gas() const {
+    if ( m_externalGasIsChecked && hasExternalGas() ) {
+        return *m_externalGas;
+    } else {
+        return TransactionBase::gas();
+    }
+}
+
+u256 Transaction::gasPrice() const {
+    if ( m_externalGasIsChecked && hasExternalGas() ) {
+        return 0;
+    } else {
+        return TransactionBase::gasPrice();
+    }
+}
+
+void Transaction::checkOutExternalGas( u256 const& _difficulty ) {
+    assert( _difficulty > 0 );
+    if ( !m_externalGasIsChecked && !isInvalid() ) {
+        h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
+        if ( !hash ) {
+            hash = h256( 1 );
+        }
+        u256 externalGas = ~u256( 0 ) / u256( hash ) / _difficulty;
+        cdebug << "Mined gas: " << externalGas << endl;
+        if ( externalGas >= baseGasRequired( ConstantinopleSchedule ) ) {
+            m_externalGas = externalGas;
+        }
+        m_externalGasIsChecked = true;
+    }
+}
+
+LocalisedTransaction::LocalisedTransaction( const Transaction& _t, const h256& _blockHash,
+    unsigned _transactionIndex, BlockNumber _blockNumber )
+    : Transaction( _t ),
+      m_transactionIndex( _transactionIndex ),
+      m_blockNumber( _blockNumber ),
+      m_blockHash( _blockHash ) {}
+
+const h256& LocalisedTransaction::blockHash() const {
+    return m_blockHash;
+}
+
+unsigned LocalisedTransaction::transactionIndex() const {
+    return m_transactionIndex;
+}
+
+BlockNumber LocalisedTransaction::blockNumber() const {
+    return m_blockNumber;
+}

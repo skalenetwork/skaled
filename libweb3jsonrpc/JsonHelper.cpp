@@ -28,7 +28,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/Client.h>
-#include <libwebthree/WebThree.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -159,6 +159,10 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
     res["gasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["bloom"] = toJS( _t.bloom() );
     res["log"] = dev::toJson( _t.log() );
+    //
+    std::string strRevertReason = _t.getRevertReason();
+    if ( !strRevertReason.empty() )
+        res["revertReason"] = strRevertReason;
     return res;
 }
 
@@ -177,23 +181,31 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
         res["status"] = toString( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
+    //
+    std::string strRevertReason = _t.getRevertReason();
+    if ( !strRevertReason.empty() )
+        res["revertReason"] = strRevertReason;
     return res;
 }
 
 Json::Value toJson( dev::eth::Transaction const& _t ) {
     Json::Value res;
-    res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
-    res["from"] = toJS( _t.from() );
-    res["gas"] = toJS( _t.gas() );
-    res["gasPrice"] = toJS( _t.gasPrice() );
-    res["value"] = toJS( _t.value() );
-    res["data"] = toJS( _t.data(), 32 );
-    res["nonce"] = toJS( _t.nonce() );
+    if ( _t ) {
+        res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
+        res["from"] = toJS( _t.from() );
+        res["gas"] = toJS( _t.gas() );
+        res["gasPrice"] = toJS( _t.gasPrice() );
+        res["value"] = toJS( _t.value() );
+        res["data"] = toJS( _t.data(), 32 );
+        res["nonce"] = toJS( _t.nonce() );
+        res["r"] = toJS( _t.signature().r );
+        res["s"] = toJS( _t.signature().s );
+        res["v"] = toJS( _t.signature().v );
+    }
+
     res["hash"] = toJS( _t.sha3( WithSignature ) );
     res["sighash"] = toJS( _t.sha3( WithoutSignature ) );
-    res["r"] = toJS( _t.signature().r );
-    res["s"] = toJS( _t.signature().s );
-    res["v"] = toJS( _t.signature().v );
+
     return res;
 }
 

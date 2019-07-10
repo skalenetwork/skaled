@@ -22,7 +22,7 @@
 
 #pragma once
 #include <libethashseal/GenesisInfo.h>
-#include <libethereum/State.h>
+#include <libskale/State.h>
 #include <test/tools/libtesteth/JsonSpiritHeaders.h>
 #include <test/tools/libtestutils/Common.h>
 
@@ -34,9 +34,9 @@ public:
 
     // imports
     void importEnv( json_spirit::mObject const& _o );
-    static void importState( json_spirit::mObject const& _o, eth::StateClass& _state );
+    static void importState( json_spirit::mObject const& _o, skale::State& _state );
     static void importState(
-        json_spirit::mObject const& _o, eth::StateClass& _state, eth::AccountMaskMap& o_mask );
+        json_spirit::mObject const& _o, skale::State& _state, eth::AccountMaskMap& o_mask );
     static void importTransaction( json_spirit::mObject const& _o, eth::Transaction& o_tr );
     void importTransaction( json_spirit::mObject const& _o );
     static json_spirit::mObject makeAllFieldsHex(
@@ -54,26 +54,25 @@ public:
     static void checkAllowedNetwork( std::string const& _network );
     static void checkAllowedNetwork( std::set< std::string > const& _networks );
     static void checkBalance(
-        eth::StateClass const& _pre, eth::StateClass const& _post, bigint _miningReward = 0 );
+        skale::State const& _pre, skale::State const& _post, bigint _miningReward = 0 );
 
     bytes executeTest( bool _isFilling );
     int exportTest();
-    static int compareStates( eth::StateClass const& _stateExpect,
-        eth::StateClass const& _statePost,
+    static int compareStates( skale::State const& _stateExpect, skale::State const& _statePost,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
         WhenError _throw = WhenError::Throw );
     bool checkGeneralTestSection( json_spirit::mObject const& _expects,
         std::vector< size_t >& _errorTransactions, std::string const& _network = "" ) const;
     void traceStateDiff();
 
-    eth::StateClass m_statePre;
-    eth::StateClass m_statePost;
+    skale::State m_statePre;
+    skale::State m_statePost;
 
 private:
     using ExecOutput = std::pair< eth::ExecutionResult, eth::TransactionReceipt >;
-    std::tuple< eth::StateClass, ExecOutput, eth::ChangeLog > executeTransaction(
+    std::tuple< skale::State, ExecOutput, skale::ChangeLog > executeTransaction(
         eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env,
-        eth::StateClass const& _preState, eth::Transaction const& _tr );
+        skale::State const& _preState, eth::Transaction const& _tr );
 
     std::unique_ptr< eth::LastBlockHashesFace const > m_lastBlockHashes;
     std::unique_ptr< eth::EnvInfo > m_envInfo;
@@ -94,13 +93,13 @@ private:
         int gasInd;
         int valInd;
         eth::Transaction transaction;
-        eth::StateClass postState;
-        eth::ChangeLog changeLog;
+        skale::State postState;
+        skale::ChangeLog changeLog;
         eth::Network netId;
         ExecOutput output;
     };
     std::vector< transactionToExecute > m_transactions;
-    using StateAndMap = std::pair< eth::StateClass, eth::AccountMaskMap >;
+    using StateAndMap = std::pair< skale::State, eth::AccountMaskMap >;
     using TrExpectSection = std::pair< transactionToExecute, StateAndMap >;
     bool checkGeneralTestSectionSearch( json_spirit::mObject const& _expects,
         std::vector< size_t >& _errorTransactions, std::string const& _network = "",

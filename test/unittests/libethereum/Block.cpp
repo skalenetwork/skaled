@@ -32,6 +32,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+using skale::State;
 
 BOOST_FIXTURE_TEST_SUITE( BlockSuite, TestOutputHelperFixture )
 
@@ -40,7 +41,7 @@ BOOST_FIXTURE_TEST_SUITE( GasPricer, TestOutputHelperFixture )
 BOOST_AUTO_TEST_CASE( bNormalTransactionInput ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -61,7 +62,7 @@ BOOST_AUTO_TEST_CASE( bNormalTransactionInput ) {
 BOOST_AUTO_TEST_CASE( bBlockNotSyncedToBlockchain ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -81,7 +82,7 @@ BOOST_AUTO_TEST_CASE( bBlockNotSyncedToBlockchain ) {
 BOOST_AUTO_TEST_CASE( bExceedBlockGasLimit ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -91,6 +92,7 @@ BOOST_AUTO_TEST_CASE( bExceedBlockGasLimit ) {
     testBlock.addTransaction( transaction2 );
 
     // Transactions valid but exceed block gasLimit - BlockGasLimitReached
+    // we include it in block but don't execute
     TestBlock testBlockT = testBlock;
     TestTransaction transaction = TestTransaction::defaultTransaction( 3, 1, 1500000 );
     testBlockT.addTransaction( transaction );
@@ -98,14 +100,23 @@ BOOST_AUTO_TEST_CASE( bExceedBlockGasLimit ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_CASE( bTemporaryNoGasLeft ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -132,7 +143,7 @@ BOOST_AUTO_TEST_CASE( bInvalidNonceNoncesAhead ) {
     // Add some amount of gas because block limit decreases
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 + 21000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -149,14 +160,23 @@ BOOST_AUTO_TEST_CASE( bInvalidNonceNoncesAhead ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_CASE( bInvalidNonceNonceTooLow ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = testBlockchain.getInterface();
 
     TestBlock testBlock;
@@ -173,8 +193,17 @@ BOOST_AUTO_TEST_CASE( bInvalidNonceNonceTooLow ) {
     ZeroGasPricer gp;
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
+
+    u256 balanceBefore = block.state().balance( transaction1.transaction().sender() );
+
     block.sync( blockchain, testBlockT.transactionQueue(), gp );
-    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
+    BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
+
+    u256 balanceAfter = block.state().balance( transaction1.transaction().sender() );
+
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, 21000 * 2 + 200 );  // run only 2
+    BOOST_REQUIRE_EQUAL( block.state().getNonce( transaction1.transaction().sender() ),
+        u256( 3 ) );  // nonce starts with 1
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -182,7 +211,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_CASE( bGetReceiptOverflow ) {
     TestBlockChain bc;
     TestBlock const& genesisBlock = bc.testGenesis();
-    StateClass const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
     BlockChain const& blockchain = bc.getInterface();
     Block block = blockchain.genesisBlock( genesisState );
     BOOST_CHECK_THROW( block.receipt( 123 ), std::out_of_range );

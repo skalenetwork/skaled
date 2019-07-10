@@ -59,6 +59,30 @@ struct tx_hash_small {
     }
 };
 
+class ConsensusFactory {
+public:
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const = 0;
+    virtual ~ConsensusFactory() = default;
+};
+
+class DefaultConsensusFactory : public ConsensusFactory {
+public:
+    DefaultConsensusFactory( const dev::eth::Client& _client, const string& _blsPrivateKey = "",
+        const string& _blsPublicKey1 = "", const string& _blsPublicKey2 = "",
+        const string& _blsPublicKey3 = "", const string& _blsPublicKey4 = "" )
+        : m_client( _client ),
+          m_blsPrivateKey( _blsPrivateKey ),
+          m_blsPublicKey1( _blsPublicKey1 ),
+          m_blsPublicKey2( _blsPublicKey2 ),
+          m_blsPublicKey3( _blsPublicKey3 ),
+          m_blsPublicKey4( _blsPublicKey4 ) {}
+    virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
+
+private:
+    const dev::eth::Client& m_client;
+    std::string m_blsPrivateKey, m_blsPublicKey1, m_blsPublicKey2, m_blsPublicKey3, m_blsPublicKey4;
+};
+
 class SkaleHost {
     friend class ConsensusExtImpl;
 
@@ -75,7 +99,11 @@ class SkaleHost {
     };
 
 public:
-    SkaleHost( dev::eth::Client& _client, dev::eth::TransactionQueue& _tq );
+    class CreationException : public std::exception {
+        virtual const char* what() const noexcept { return "Error creating SkaleHost"; }
+    };
+
+    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -96,6 +124,8 @@ public:
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
 private:
+    bool working = false;
+
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
@@ -106,16 +136,16 @@ private:
     std::thread m_broadcastThread;
     void broadcastFunc();
     dev::h256Hash m_received;
+    std::mutex m_receivedMutex;
 
-    //    dev::h256Hash m_broadcastedHash;
-    HashingThreadSafeQueue< dev::eth::Transaction, tx_hash_small, true > m_broadcastedQueue;
+    int m_bcast_counter = 0;
 
-    std::thread m_blockImportThread;
-    void blockImportFunc();
+    void penalizePeer(){};  // fake function for now
+
+    int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
 
     std::thread m_consensusThread;
 
-    std::mutex m_localMutex;  // used to protect local caches/hashes; TODO rethink multithreading!!
     bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;
@@ -128,21 +158,6 @@ private:
 
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
-
-    struct bq_item {
-        std::vector< dev::eth::Transaction > transactions;
-        uint64_t timestamp;
-        uint64_t block_id;
-        // TODO This should not be needed!
-        bool operator==( const bq_item& rhs ) const {
-            return transactions == rhs.transactions && timestamp == rhs.timestamp &&
-                   block_id == rhs.block_id;
-        }
-    };
-    HashingThreadSafeQueue< bq_item, no_hash< bq_item >, false > m_bq;  // blocks returned by
-                                                                        // consensus (for
-                                                                        // thread-safety see
-                                                                        // below!!)
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};

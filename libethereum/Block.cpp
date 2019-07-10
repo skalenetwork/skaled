@@ -45,6 +45,10 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::BaseState;
+using namespace skale::error;
+using skale::Permanence;
+using skale::State;
 
 #define ETH_TIMED_ENACTMENTS 1
 
@@ -70,7 +74,7 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block( const BlockChain& _bc, h256 const& _hash, const StateClass& _state, BaseState /*_bs*/,
+Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
     const Address& _author )
     : m_state( _state ), m_precommit( Invalid256 ), m_author( _author ) {
     noteChain( _bc );
@@ -220,7 +224,7 @@ bool Block::sync( BlockChain const& _bc ) {
     return sync( _bc, _bc.currentHash() );
 }
 
-bool Block::sync( BlockChain const& _bc, StateClass const& _state ) {
+bool Block::sync( BlockChain const& _bc, State const& _state ) {
     m_state = _state;
     m_precommit = _state;
     return sync( _bc );
@@ -334,6 +338,10 @@ pair< TransactionReceipts, bool > Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
+    for ( Transaction& transaction : transactions ) {
+        transaction.checkOutExternalGas( _bc.chainParams().externalGasDifficulty );
+    }
+
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
 
@@ -408,7 +416,7 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-TransactionReceipts Block::syncEveryone(
+tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -422,11 +430,16 @@ TransactionReceipts Block::syncEveryone(
 
     m_currentBlock.setTimestamp( _timestamp );
 
+    m_state = m_state.delegateWrite();  // mainly for debugging
+
     unsigned i = 0;
+    unsigned count_bad = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
-            execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
             receipts.push_back( m_receipts.back() );
+            if ( res.excepted == TransactionException::WouldNotBeInBlock )
+                ++count_bad;
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
             // throw;
@@ -436,7 +449,7 @@ TransactionReceipts Block::syncEveryone(
         ++i;
     }
     m_state.stopWrite();
-    return receipts;
+    return make_tuple( receipts, receipts.size() - count_bad );
 }
 
 u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
@@ -525,6 +538,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams().externalGasDifficulty );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
@@ -667,8 +682,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    m_state.commit( removeEmptyAccounts ? StateClass::CommitBehaviour::RemoveEmptyAccounts :
-                                          StateClass::CommitBehaviour::KeepEmptyAccounts );
+    m_state.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                          State::CommitBehaviour::KeepEmptyAccounts );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -693,9 +708,37 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    StateClass stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        stateSnapshot.execute( EnvInfo( info(), _lh, gasUsed() ), *m_sealEngine, _t, _p, _onOp );
+    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+
+    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
+
+    // "bad" transaction receipt for failed transactions
+    TransactionReceipt const null_receipt =
+        envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+            TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
+            TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
+
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+
+    try {
+        if ( _t.isInvalid() )
+            throw - 1;  // will catch below
+
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+
+        // use fake receipt created above if execution throws!!
+    } catch ( const TransactionException& ex ) {
+        // shoul not happen as exception in execute() means that tx should not be in block
+        assert( false );
+    } catch ( const std::exception& ex ) {
+        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: " << ex.what();
+        _p = Permanence::CommittedWithoutState;
+        resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
+    } catch ( ... ) {
+        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: ...";
+        _p = Permanence::CommittedWithoutState;
+        resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
+    }  // catch
 
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
@@ -729,7 +772,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
     }
 }
 
@@ -740,14 +783,14 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                StateClass state = m_state.startWrite();
+                State state = m_state.startWrite();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
-                state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( State::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
-            m_state.commit( StateClass::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
         }
     }
 
@@ -760,7 +803,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( StateClass::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 
@@ -841,8 +884,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
     //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? StateClass::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         StateClass::CommitBehaviour::KeepEmptyAccounts);
+    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+    //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerDetailed ) << "Post-reward stateRoot: "
                             << "is not calculated in Skale state";

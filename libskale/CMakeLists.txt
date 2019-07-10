@@ -1,5 +1,4 @@
 hunter_add_package(ZeroMQ)
-
 find_package(ZeroMQ CONFIG REQUIRED)
 
 set(sources
@@ -25,5 +24,5 @@ target_include_directories( skale PRIVATE
 	${SKUTILS_INCLUDE_DIRS}
 	)
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
-target_link_libraries(skale PUBLIC ethereum ZeroMQ::libzmq-static skutils)
+target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils ZeroMQ::libzmq-static)
 #*1CY

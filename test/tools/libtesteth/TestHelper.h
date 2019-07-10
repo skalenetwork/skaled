@@ -22,29 +22,33 @@
 
 #pragma once
 
-#include <boost/filesystem.hpp>
-#include <boost/progress.hpp>
-#include <boost/test/unit_test.hpp>
 #include <functional>
 #include <future>
 #include <set>
 #include <thread>
 
+#include <boost/filesystem.hpp>
+#include <boost/progress.hpp>
+#include <boost/test/unit_test.hpp>
+
 #include <libethashseal/Ethash.h>
 #include <libethashseal/GenesisInfo.h>
-#include <libethereum/State.h>
-#include <test/tools/libtestutils/Common.h>
-
+#include <libethereum/GasPricer.h>
+#include <libskale/State.h>
 #include <test/tools/libtesteth/ImportTest.h>
 #include <test/tools/libtesteth/JsonSpiritHeaders.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
+#include <test/tools/libtestutils/Common.h>
+
+namespace skale {
+class State;
+}
 
 namespace dev {
 namespace eth {
 class Client;
-// class State;
 
 void mine( Client& c, int numBlocks );
 
@@ -125,11 +129,11 @@ dev::eth::BlockHeader constructHeader( h256 const& _parentHash, h256 const& _sha
 void updateEthashSeal(
     dev::eth::BlockHeader& _header, h256 const& _mixHash, dev::eth::Nonce const& _nonce );
 RLPStream createRLPStreamFromTransactionFields( json_spirit::mObject const& _tObj );
-json_spirit::mObject fillJsonWithStateChange( eth::StateClass const& _stateOrig,
-    eth::StateClass const& _statePost, eth::ChangeLog const& _changeLog );
-json_spirit::mObject fillJsonWithState( eth::StateClass const& _state );
+json_spirit::mObject fillJsonWithStateChange( skale::State const& _stateOrig,
+    skale::State const& _statePost, skale::ChangeLog const& _changeLog );
+json_spirit::mObject fillJsonWithState( skale::State const& _state );
 json_spirit::mObject fillJsonWithState(
-    eth::StateClass const& _state, eth::AccountMaskMap const& _map );
+    skale::State const& _state, eth::AccountMaskMap const& _map );
 json_spirit::mObject fillJsonWithTransaction( eth::Transaction const& _txn );
 
 // Fill Test Functions

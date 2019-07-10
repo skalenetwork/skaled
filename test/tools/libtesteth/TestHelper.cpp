@@ -21,25 +21,27 @@
  */
 
 #include "TestHelper.h"
-#include "Options.h"
-#include "TestOutputHelper.h"
-#include "wast2wasm.h"
 
-#include <libdevcore/JsonUtils.h>
-#include <libethashseal/EthashCPUMiner.h>
-#include <libethereum/Client.h>
-
-#include <skale/buildinfo.h>
+#include <set>
+#include <string>
 
 #include <yaml-cpp/yaml.h>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/filesystem/path.hpp>
-#include <set>
-#include <string>
+
+#include <libdevcore/JsonUtils.h>
+#include <libethashseal/EthashCPUMiner.h>
+#include <libethereum/Client.h>
+#include <skale/buildinfo.h>
+
+#include "Options.h"
+#include "TestOutputHelper.h"
+#include "wast2wasm.h"
 
 using namespace std;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
+using skale::State;
 
 namespace dev {
 namespace eth {
@@ -111,7 +113,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
 }
 
 void simulateMining( Client& client, size_t numBlocks ) {
-    StateClass state = client.state().startWrite();
+    State state = client.state().startWrite();
     u256 reward = 0;
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
         reward += client.sealEngine()->blockReward( blockNumber );

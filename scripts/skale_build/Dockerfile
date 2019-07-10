@@ -24,6 +24,21 @@ EXPOSE 30303
 
 ENV DATA_DIR $DATA_DIR
 
-ENTRYPOINT /skaled/skaled --no-discovery --config $CONFIG_FILE -d $DATA_DIR --ipcpath $DATA_DIR -v 4  --http-trace --aa no --ask 0 --bid 0 >> $DATA_DIR/stdout.log 2>> $DATA_DIR/stderr.log
+ENTRYPOINT /skaled/skaled \
+ --config $CONFIG_FILE \
+ -d $DATA_DIR \
+ --ipcpath $DATA_DIR \
+ --http-port $HTTP_RPC_PORT \
+ --https-port $HTTPS_RPC_PORT \
+ --ws-port $WS_RPC_PORT \
+ --wss-port $WSS_RPC_PORT \
+ --ssl-key $SSL_KEY_PATH \
+ --ssl-cert $SSL_CERT_PATH \
+ -v 4  \
+ --web3-trace \
+ --aa no \
+ --ask 0 \
+ --bid 0 \
+ >> $DATA_DIR/stdout.log 2>> $DATA_DIR/stderr.log
 #CMD ["bash"]
 

@@ -36,10 +36,9 @@
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 
-#include <libwebthree/WebThree.h>
-
 #include <libethereum/ChainParams.h>
-#include <libethereum/Transaction.h>
+#include <libethereum/Client.h>
+#include <libethereum/TransactionQueue.h>
 
 #include <libdevcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
@@ -100,7 +99,7 @@ protected:
     std::vector< int > m_arrived_blocks;
 
 protected:  // remote peer
-    unique_ptr< WebThreeDirect > web3;
+    unique_ptr< Client > client;
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
 
@@ -135,22 +134,30 @@ public:
         chainParams.nodeInfo.name = "Node2";
         chainParams.resetJson();
 
-        web3.reset( new WebThreeDirect(
-            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
+        //        web3.reset( new WebThreeDirect(
+        //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
-        web3->ethereum()->setAuthor( coinbase.address() );
+        client.reset(
+            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
+                "", "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
-        accountHolder.reset( new FixedAccountHolder( [&]() { return web3->ethereum(); }, {} ) );
+        client->injectSkaleHost();
+        client->startWorking();
+
+        client->setAuthor( coinbase.address() );
+
+        accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase} );
 
         using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::Web3Face,
             rpc::DebugFace, rpc::TestFace >;
 
-        auto ethFace = new rpc::Eth( *web3->ethereum(), *accountHolder.get() );
+        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
 
-        rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *web3->ethereum()->skaleHost() ),
-            new rpc::Web3( web3->clientVersion() ), new rpc::Debug( *web3->ethereum() ),
-            new rpc::Test( *web3->ethereum() ) ) );
+        rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client->skaleHost() ),
+            new rpc::Web3( /*web3->clientVersion()*/ ), new rpc::Debug( *client ),  // TODO add
+                                                                                    // version here?
+            new rpc::Test( *client ) ) );
         auto ipcServer = new TestIpcServer;
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
@@ -174,7 +181,7 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint64_t _blockID ) override {
+        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -247,7 +254,6 @@ public:
                           << std::endl;
             }
 
-            Client* client = web3->ethereum();
             auto number = client->number();
             std::cerr << "Node2 has " << number << " blocks" << std::endl;
             for ( size_t i = 0; i <= number; i++ ) {

@@ -45,6 +45,7 @@ typedef SOCKET socket_t;
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -73,13 +74,15 @@ typedef int socket_t;
 #include <zlib.h>
 #endif
 
+#include <libdevcore/microprofile.h>
+
 #include <skutils/dispatch.h>
 #include <skutils/network.h>
 
 /// configuration
 
-#define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_SECOND__ 20
-#define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_USECOND__ 0
+#define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 3 * 1000 )
+#define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 20 * 1000 )
 
 namespace skutils {
 namespace http {
@@ -296,7 +299,7 @@ public:
 
 class client {
 public:
-    client( const char* host, int port = 80, time_t timeout_sec = 300 );
+    client( const char* host, int port = 80, int timeout_milliseconds = 60 * 1000 );
 
     virtual ~client();
 
@@ -342,7 +345,7 @@ protected:
         bool& connection_close );
     const std::string host_;
     const int port_;
-    time_t timeout_sec_;
+    int timeout_milliseconds_;
     const std::string host_and_port_;
 
 private:
@@ -381,7 +384,7 @@ private:
 
 class SSL_client : public client {
 public:
-    SSL_client( const char* host, int port = 443, time_t timeout_sec = 300 );
+    SSL_client( const char* host, int port = 443, int timeout_milliseconds = 60 * 1000 );
     ~SSL_client() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
@@ -472,33 +475,50 @@ inline int close_socket( socket_t sock ) {
 #endif
 }
 
-inline int select_read( socket_t sock, time_t sec, time_t usec ) {
-    fd_set fds;
-    FD_ZERO( &fds );
-    FD_SET( sock, &fds );
-    timeval tv;
-    tv.tv_sec = static_cast< long >( sec );
-    tv.tv_usec = static_cast< long >( usec );
-    return select( static_cast< int >( sock + 1 ), &fds, NULL, NULL, &tv );
+inline int poll_impl( socket_t sock, short which_poll, int timeout_milliseconds ) {
+    struct pollfd fds[1];
+    int nfds = 1;
+    fds[0].fd = sock;
+    fds[0].events = which_poll;
+    int rc = poll( fds, nfds, timeout_milliseconds );
+    return rc;
+}
+inline bool poll_read( socket_t sock, int timeout_milliseconds ) {
+    return ( poll_impl( sock, POLLIN, timeout_milliseconds ) > 0 ) ? true : false;
+}
+inline bool poll_write( socket_t sock, int timeout_milliseconds ) {
+    return ( poll_impl( sock, POLLOUT, timeout_milliseconds ) > 0 ) ? true : false;
 }
 
-inline bool wait_until_socket_is_ready( socket_t sock, time_t sec, time_t usec ) {
+inline bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds ) {
+    //
+    // TO-DO: l_sergiy: switch HTTP/client to poll() later
+    //
+    //    if ( poll_read( sock, timeout_milliseconds ) || poll_write( sock, timeout_milliseconds ) )
+    //    {
+    //        int error = 0;
+    //        socklen_t len = sizeof( error );
+    //        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
+    //            return false;
+    //    } else
+    //        return false;
+    //    return true;
+
     fd_set fdsr;
     FD_ZERO( &fdsr );
     FD_SET( sock, &fdsr );
     auto fdsw = fdsr;
     auto fdse = fdsr;
     timeval tv;
-    tv.tv_sec = static_cast< long >( sec );
-    tv.tv_usec = static_cast< long >( usec );
+    tv.tv_sec = static_cast< long >( timeout_milliseconds / 1000 );
+    tv.tv_usec = static_cast< long >( ( timeout_milliseconds % 1000 ) * 1000 );
     if ( select( static_cast< int >( sock + 1 ), &fdsr, &fdsw, &fdse, &tv ) < 0 )
         return false;
     if ( FD_ISSET( sock, &fdsr ) || FD_ISSET( sock, &fdsw ) ) {
         int error = 0;
         socklen_t len = sizeof( error );
-        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error ) {
+        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
             return false;
-        }
     } else
         return false;
     return true;
@@ -509,8 +529,8 @@ inline bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T
     bool ret = false;
     if ( keep_alive_max_count > 0 ) {
         auto count = keep_alive_max_count;
-        while ( count > 0 && detail::select_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_SECOND__,
-                                 __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_USECOND__ ) > 0 ) {
+        while ( count > 0 &&
+                detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) ) {
             socket_stream strm( sock );
             auto last_connection = count == 1;
             auto connection_close = false;
@@ -1650,24 +1670,20 @@ inline bool server::listen_internal() {
     try {
         is_running_ = true;
         for ( ; is_running_; ) {
-            auto val = detail::select_read( svr_sock_, 0, 100000 );
-
-            if ( val == 0 ) {  // Timeout
+            bool isOK = detail::poll_read( svr_sock_, __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ );
+            if ( !isOK ) {  // Timeout
                 if ( svr_sock_ == INVALID_SOCKET ) {
                     // The server socket was closed by 'stop' method.
                     break;
                 }
                 continue;
             }
+
+            MICROPROFILE_SCOPEI( "skutils", "http::server::listen_internal", MP_PALEGREEN );
+
             socket_t sock = accept( svr_sock_, NULL, NULL );
             if ( sock == INVALID_SOCKET ) {
-                if ( svr_sock_ != INVALID_SOCKET ) {
-                    detail::close_socket( svr_sock_ );
-                    ret = false;
-                } else {
-                    ;  // The server socket was closed by user.
-                }
-                break;
+                continue;
             }
             skutils::dispatch::job_t fn = [=]() {
                 running_connectoin_handlers_increment();
@@ -1682,7 +1698,8 @@ inline bool server::listen_internal() {
                 break;
             }
         }
-    } catch ( ... ) {
+    } catch ( const std::exception& ex ) {
+        std::cerr << ex.what() << std::endl;
     }
     is_running_ = false;
     is_in_loop_ = false;
@@ -1723,6 +1740,8 @@ inline bool server::dispatch_request( request& req, response& res, Handlers& han
 
 inline bool server::process_request(
     const std::string& origin, stream& strm, bool last_connection, bool& connection_close ) {
+    MICROPROFILE_SCOPEI( "skutils", "http::server::process_request", MP_PAPAYAWHIP );
+
     const auto bufsiz = 2048;
     char buf[bufsiz];
     detail::stream_line_reader reader( strm, buf, bufsiz );
@@ -1796,10 +1815,10 @@ inline bool server::read_and_close_socket( socket_t sock ) {
 }
 
 // HTTP client implementation
-inline client::client( const char* host, int port, time_t timeout_sec )
+inline client::client( const char* host, int port, int timeout_milliseconds )
     : host_( host ),
       port_( port ),
-      timeout_sec_( timeout_sec ),
+      timeout_milliseconds_( timeout_milliseconds ),
       host_and_port_( host_ + ":" + std::to_string( port_ ) ) {}
 
 inline client::~client() {}
@@ -1814,8 +1833,8 @@ inline socket_t client::create_client_socket() const {
             detail::set_nonblocking( sock, true );
             auto ret = connect( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) );
             if ( ret < 0 ) {
-                if ( detail::is_connection_error() ||
-                     !detail::wait_until_socket_is_ready( sock, timeout_sec_, 0 ) ) {
+                if ( detail::is_connection_error() || ( !detail::wait_until_socket_is_ready_client(
+                                                          sock, timeout_milliseconds_ ) ) ) {
                     detail::close_socket( sock );
                     return false;
                 }
@@ -2092,8 +2111,8 @@ inline bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_coun
     bool ret = false;
     if ( keep_alive_max_count > 0 ) {
         auto count = keep_alive_max_count;
-        while ( count > 0 && detail::select_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_SECOND__,
-                                 __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_USECOND__ ) > 0 ) {
+        while ( count > 0 &&
+                detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) ) {
             SSL_socket_stream strm( sock, ssl );
             auto last_connection = count == 1;
             auto connection_close = false;
@@ -2199,8 +2218,8 @@ inline bool SSL_server::read_and_close_socket( socket_t sock ) {
 
 /// SSL HTTP client implementation
 ///
-inline SSL_client::SSL_client( const char* host, int port, time_t timeout_sec )
-    : client( host, port, timeout_sec ) {
+inline SSL_client::SSL_client( const char* host, int port, int timeout_milliseconds )
+    : client( host, port, timeout_milliseconds ) {
     ctx_ = SSL_CTX_new( SSLv23_client_method() );
 }
 

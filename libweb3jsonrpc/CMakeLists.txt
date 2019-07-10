@@ -94,10 +94,14 @@ jsonrpcstub_create(web3jsonrpc skale.jsonweb3jsonrpc
         SkaleClient ${CMAKE_CURRENT_BINARY_DIR} SkaleClient
 )
 
+target_include_directories( skale PRIVATE
+	"${UTILS_INCLUDE_DIR}"
+	${SKUTILS_INCLUDE_DIRS}
+	)
 
 target_link_libraries( web3jsonrpc
     ethashseal
-    webthree
+	skutils
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-common.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a

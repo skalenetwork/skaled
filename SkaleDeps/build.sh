@@ -288,6 +288,15 @@ export TOOLCHAIN=no
 
 export CFLAGS=" -fPIC ${CFLAGS}"
 
+if [[ ! -z $CXX ]];
+then
+    SET_CXX=$CXX
+fi
+if [[ ! -z CC ]];
+then
+    SET_CC=$CC
+fi
+
 if [ "$ARCH" = "x86_or_x64" ];
 then
 	export CMAKE_CROSSCOMPILING_OPTS="-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
@@ -440,6 +449,15 @@ else
 	export CONF_CROSSCOMPILING_OPTS_X264="--host=arm-linux --disable-asm --disable-opencl"
 	export CONF_CROSSCOMPILING_OPTS_FFMPEG="--enable-cross-compile --cross-prefix=$ARM_TOOLCHAIN_PATH/bin/$HELPER_ARM_TOOLCHAIN_NAME- --arch=armel --target-os=linux --disable-asm"
 	export UPNP_DISABLE_LARGE_FILE_SUPPORT="--disable-largefile"
+fi
+
+if [[ ! -z $SET_CC ]];
+then
+    CC=$SET_CC
+fi
+if [[ ! -z $SET_CXX ]];
+then
+    CXX=$SET_CXX
 fi
 
 if [ -z "${CC}" ];
@@ -2003,13 +2021,8 @@ then
 		if [ ! -d "libcryptopp" ];
 		then
 			mkdir libcryptopp
-			if [ ! -f "cryptopp700.zip" ];
-			then
-				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				$WGET https://www.cryptopp.com/cryptopp700.zip
-			fi
-			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			unzip cryptopp700.zip -d $SOURCES_ROOT/libcryptopp
+			git clone https://github.com/DimaStebaev/cryptopp.git libcryptopp
+			#git clone http://github.com/weidai11/cryptopp.git libcryptopp
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 		fi
 		cd $SOURCES_ROOT/libcryptopp

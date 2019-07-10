@@ -23,30 +23,35 @@
 
 #pragma once
 
-#include "Block.h"
-#include "BlockChain.h"
-#include "BlockChainImporter.h"
-#include "ClientBase.h"
-#include "CommonNet.h"
-#include "StateImporter.h"
-#include <libdevcore/Common.h>
-#include <libdevcore/CommonIO.h>
-#include <libdevcore/Guards.h>
-#include <libdevcore/Worker.h>
-#include <libethcore/SealEngine.h>
-// SKALE #include <libp2p/Common.h>
 #include <array>
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <list>
+#include <map>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
 
-#include "SkaleHost.h"
-#include "ThreadSafeQueue.h"
 #include <boost/filesystem/path.hpp>
+
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Worker.h>
+#include <libethcore/SealEngine.h>
+#include <libskale/State.h>
+
+#include "Block.h"
+#include "BlockChain.h"
+#include "BlockChainImporter.h"
+#include "ClientBase.h"
+#include "CommonNet.h"
+#include "SkaleHost.h"
+#include "StateImporter.h"
+#include "ThreadSafeQueue.h"
+
 
 class ConsensusHost;
 
@@ -68,6 +73,8 @@ std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
  * @brief Main API hub for interfacing with Ethereum.
  */
 class Client : public ClientBase, protected Worker {
+    friend class ::SkaleHost;
+
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
@@ -76,6 +83,8 @@ public:
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
     virtual ~Client();
+
+    void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
 
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
@@ -93,8 +102,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, BlockNumber _blockNumber,
-        FudgeFactor _ff = FudgeFactor::Strict ) override;
+        u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
@@ -131,10 +139,11 @@ public:
     /// Get the block queue.
     BlockQueue const& blockQueue() const { return m_bq; }
     /// Get the state database.
-    StateClass const& state() const { return m_state; }
+    skale::State const& state() const { return m_state; }
     /// Get some information on the transaction queue.
     TransactionQueue::Status transactionQueueStatus() const { return m_tq.status(); }
     TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
+    TransactionQueue* debugGetTransactionQueue() { return &m_tq; }
 
     /// Freeze worker thread and sync some of the block queue.
     std::tuple< ImportRoute, bool, unsigned > syncQueue( unsigned _max = 1 );
@@ -226,12 +235,14 @@ public:
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
 
-    Block block( h256 const& _block ) const override;
     Block latestBlock() const;
-    using ClientBase::block;
 
     /// should be called after the constructor of the most derived class finishes.
-    void startWorking() { Worker::startWorking(); };
+    void startWorking() {
+        assert( m_skaleHost );
+        m_skaleHost->startWorking();
+        Worker::startWorking();
+    };
 
     /// Change the function that is called when a new block is imported
     Handler< BlockHeader const& > setOnBlockImport(
@@ -243,18 +254,26 @@ public:
         return m_onBlockSealed.add( _handler );
     }
 
+    std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
+
+    // main entry point after consensus
+    size_t importTransactionsAsBlock(
+        const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
+
+protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
-    void syncTransactions(
+    /// returns number of successfullty executed transactions
+    /// thread unsafe!!
+    size_t syncTransactions(
         const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
+    /// thread unsafe!!
     void sealUnconditionally( bool submitToBlockChain = true );
 
-    std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
-
+    /// thread unsafe!!
     void importWorkingBlock();
 
-protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
     void init( boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
@@ -364,7 +383,7 @@ protected:
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 
-    StateClass m_state;              ///< Acts as the central point for the state.
+    skale::State m_state;            ///< Acts as the central point for the state.
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
     Block m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
@@ -373,8 +392,11 @@ protected:
     mutable SharedMutex x_working;  ///< Lock on m_working.
     Block m_working;  ///< The state of the client which we're sealing (i.e. it'll have all the
                       ///< rewards added), while we're actually working on it.
-    BlockHeader m_sealingInfo;     ///< The header we're attempting to seal on (derived from
-                                   ///< m_postSeal).
+    BlockHeader m_sealingInfo;  ///< The header we're attempting to seal on (derived from
+                                ///< m_postSeal).
+
+    mutable Mutex m_blockImportMutex;  /// synchronize state and latest block update
+
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
     std::atomic< bool > m_needStateReset = {false};  ///< Need reset working state to premin on next
@@ -432,6 +454,86 @@ protected:
 
 public:
     FILE* performance_fd;
+
+protected:
+    // generic watch
+    template < typename parameter_type, typename key_type = unsigned >
+    class genericWatch {
+    public:
+        typedef std::function< void( const unsigned&, const parameter_type& ) > handler_type;
+
+    private:
+        typedef std::recursive_mutex mutex_type;
+        typedef std::lock_guard< mutex_type > lock_type;
+        mutable mutex_type mtx_;
+
+        typedef std::map< key_type, handler_type > map_type;
+        map_type map_;
+
+        std::atomic< key_type > subscription_counter_ = 0;
+
+    public:
+        genericWatch() {}
+        virtual ~genericWatch() { uninstallAll(); }
+        key_type create_subscription_id() { return subscription_counter_++; }
+        virtual bool is_installed( const key_type& k ) const {
+            lock_type lock( mtx_ );
+            if ( map_.find( k ) == map_.end() )
+                return false;
+            return true;
+        }
+        virtual key_type install( handler_type& h ) {
+            if ( !h )
+                return false;  // not call-able
+            lock_type lock( mtx_ );
+            key_type k = create_subscription_id();
+            map_[k] = h;
+            return k;
+        }
+        virtual bool uninstall( const key_type& k ) {
+            lock_type lock( mtx_ );
+            auto itFind = map_.find( k );
+            if ( itFind == map_.end() )
+                return false;
+            map_.erase( itFind );
+            return true;
+        }
+        virtual void uninstallAll() {
+            lock_type lock( mtx_ );
+            map_.clear();
+        }
+        virtual void invoke( const parameter_type& p ) {
+            map_type map2;
+            {  // block
+                lock_type lock( mtx_ );
+                map2 = map_;
+            }  // block
+            auto itWalk = map2.begin();
+            for ( ; itWalk != map2.end(); ++itWalk ) {
+                try {
+                    itWalk->second( itWalk->first, p );
+                } catch ( ... ) {
+                }
+            }
+        }
+    };
+    // new block watch
+    typedef genericWatch< Block > blockWatch;
+    blockWatch m_new_block_watch;
+    // new pending transation watch
+    typedef genericWatch< Transaction > transactionWatch;
+    transactionWatch m_new_pending_transaction_watch;
+
+public:
+    // new block watch
+    virtual unsigned installNewBlockWatch(
+        std::function< void( const unsigned&, const Block& ) >& ) override;
+    virtual bool uninstallNewBlockWatch( const unsigned& ) override;
+
+    // new pending transation watch
+    virtual unsigned installNewPendingTransactionWatch(
+        std::function< void( const unsigned&, const Transaction& ) >& ) override;
+    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
 };
 
 }  // namespace eth

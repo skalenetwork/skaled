@@ -19,27 +19,26 @@
 
 #include "Executive.h"
 
-#include "Block.h"
-#include "BlockChain.h"
-#include "ExtVM.h"
-#include "Interface.h"
-#include "State.h"
+#include <numeric>
 
+#include <boost/timer.hpp>
+
+#include <json/json.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/microprofile.h>
 #include <libethcore/CommonJS.h>
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
 
-#include <json/json.h>
-#include <boost/timer.hpp>
-
-#include <numeric>
-
-#include <libdevcore/microprofile.h>
+#include "Block.h"
+#include "BlockChain.h"
+#include "ExtVM.h"
+#include "Interface.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using skale::State;
 
 namespace {
 std::string dumpStackAndMemory( LegacyVM const& _vm ) {
@@ -183,7 +182,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 }
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const StateClass& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed ) {
+    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     _sealEngine.verifyTransaction(
@@ -204,6 +203,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+        if ( _transaction.hasExternalGas() ) {
+            gasCost = 0;
+        }
         bigint totalCost = _transaction.value() + gasCost;
         if ( _state.balance( _transaction.sender() ) < totalCost ) {
             BOOST_THROW_EXCEPTION( NotEnoughCash()
@@ -213,6 +215,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
                                    << errinfo_comment( _transaction.sender().hex() ) );
         }  // if balance
     }      // if !zero
+
+    _transaction.verifiedOn = _blockHeader.number();
 }
 
 void Executive::initialize( Transaction const& _transaction ) {
@@ -235,10 +239,13 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
-    // Pay...
-    LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                           << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
-    m_s.subBalance( m_t.sender(), m_gasCost );
+    if ( !m_t.hasExternalGas() ) {
+        // Pay...
+        LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
+        m_s.subBalance( m_t.sender(), m_gasCost );
+    }
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )

@@ -37,75 +37,95 @@ using namespace dev;
 using namespace dev::eth;
 
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
-    : m_type( _ts.creation ? ContractCreation : MessageCall ),
-      m_nonce( _ts.nonce ),
+    : m_nonce( _ts.nonce ),
       m_value( _ts.value ),
-      m_receiveAddress( _ts.to ),
       m_gasPrice( _ts.gasPrice ),
       m_gas( _ts.gas ),
       m_data( _ts.data ),
-      m_sender( _ts.from ) {
+      m_type( _ts.creation ? ContractCreation : MessageCall ),
+      m_sender( _ts.from ),
+      m_receiveAddress( _ts.to ) {
     if ( _s )
         sign( _s );
 }
 
-TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig ) {
+TransactionBase::TransactionBase(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
-    RLP const rlp( _rlpData );
     try {
-        if ( !rlp.isList() )
-            BOOST_THROW_EXCEPTION(
-                InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
+        RLP const rlp( _rlpData );
+        try {
+            if ( !rlp.isList() )
+                BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                                       << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_nonce = rlp[0].toInt< u256 >();
-        m_gasPrice = rlp[1].toInt< u256 >();
-        m_gas = rlp[2].toInt< u256 >();
-        m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
-        m_receiveAddress =
-            rlp[3].isEmpty() ? Address() : rlp[3].toHash< Address >( RLP::VeryStrict );
-        m_value = rlp[4].toInt< u256 >();
+            m_nonce = rlp[0].toInt< u256 >();
+            m_gasPrice = rlp[1].toInt< u256 >();
+            m_gas = rlp[2].toInt< u256 >();
+            m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+            m_receiveAddress =
+                rlp[3].isEmpty() ? Address() : rlp[3].toHash< Address >( RLP::VeryStrict );
+            m_value = rlp[4].toInt< u256 >();
 
-        if ( !rlp[5].isData() )
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
-                                   << errinfo_comment( "transaction data RLP must be an array" ) );
+            if ( !rlp[5].isData() )
+                BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                           "transaction data RLP must be an array" ) );
 
-        m_data = rlp[5].toBytes();
+            m_data = rlp[5].toBytes();
 
-        int const v = rlp[6].toInt< int >();
-        h256 const r = rlp[7].toInt< u256 >();
-        h256 const s = rlp[8].toInt< u256 >();
+            int const v = rlp[6].toInt< int >();
+            h256 const r = rlp[7].toInt< u256 >();
+            h256 const s = rlp[8].toInt< u256 >();
 
-        if ( isZeroSignature( r, s ) ) {
-            m_chainId = v;
-            m_vrs = SignatureStruct{r, s, 0};
-        } else {
-            if ( v > 36 )
-                m_chainId = ( v - 35 ) / 2;
-            else if ( v == 27 || v == 28 )
-                m_chainId = -4;
+            if ( isZeroSignature( r, s ) ) {
+                m_chainId = v;
+                m_vrs = SignatureStruct{r, s, 0};
+            } else {
+                if ( v > 36 )
+                    m_chainId = ( v - 35 ) / 2;
+                else if ( v == 27 || v == 28 )
+                    m_chainId = -4;
+                else
+                    BOOST_THROW_EXCEPTION( InvalidSignature() );
+
+                m_vrs = SignatureStruct{r, s, static_cast< _byte_ >( v - ( m_chainId * 2 + 35 ) )};
+
+                if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
+                    BOOST_THROW_EXCEPTION( InvalidSignature() );
+            }
+
+            if ( _checkSig == CheckTransaction::Everything )
+                m_sender = sender();
+
+            if ( rlp.itemCount() > 9 )
+                BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                           "too many fields in the transaction RLP" ) );
+            // XXX Strange "catch"-s %)
+        } catch ( Exception& _e ) {
+            _e << errinfo_name(
+                "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
+            m_type = Type::Invalid;
+            m_rawData = _rlpData.toBytes();
+
+            if ( !_allowInvalid )
+                throw;
             else
-                BOOST_THROW_EXCEPTION( InvalidSignature() );
-
-            m_vrs = SignatureStruct{r, s, static_cast< _byte_ >( v - ( m_chainId * 2 + 35 ) )};
-
-            if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
-                BOOST_THROW_EXCEPTION( InvalidSignature() );
+                cwarn << _e.what();
         }
+    } catch ( ... ) {
+        m_type = Type::Invalid;
+        RLPStream s;
+        s.append( _rlpData.toBytes() );  // add "string" header
+        m_rawData = s.out();
 
-        if ( _checkSig == CheckTransaction::Everything )
-            m_sender = sender();
-
-        if ( rlp.itemCount() > 9 )
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
-                                   << errinfo_comment( "too many fields in the transaction RLP" ) );
-    } catch ( Exception& _e ) {
-        _e << errinfo_name(
-            "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
-        throw;
+        if ( !_allowInvalid )
+            throw;
     }
-}
+}  // ctor
 
 Address const& TransactionBase::safeSender() const noexcept {
+    assert( !isInvalid() );
+
     try {
         return sender();
     } catch ( ... ) {
@@ -115,7 +135,7 @@ Address const& TransactionBase::safeSender() const noexcept {
 
 Address const& TransactionBase::sender() const {
     if ( !m_sender.has_value() ) {
-        if ( hasZeroSignature() )
+        if ( isInvalid() || hasZeroSignature() )
             m_sender = MaxAddress;
         else {
             if ( !m_vrs )
@@ -131,13 +151,15 @@ Address const& TransactionBase::sender() const {
 }
 
 SignatureStruct const& TransactionBase::signature() const {
-    if ( !m_vrs )
+    if ( isInvalid() || !m_vrs )
         BOOST_THROW_EXCEPTION( TransactionIsUnsigned() );
 
     return *m_vrs;
 }
 
 void TransactionBase::sign( Secret const& _priv ) {
+    assert( !isInvalid() );
+
     auto sig = dev::sign( _priv, sha3( WithoutSignature ) );
     SignatureStruct sigStruct = *( SignatureStruct const* ) &sig;
     if ( sigStruct.isValid() )
@@ -145,6 +167,11 @@ void TransactionBase::sign( Secret const& _priv ) {
 }
 
 void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
+    if ( isInvalid() ) {
+        _s.appendRaw( m_rawData );
+        return;
+    }
+
     if ( m_type == NullTransaction )
         return;
 
@@ -212,4 +239,14 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     if ( _sig == WithSignature )
         m_hashWith = ret;
     return ret;
+}
+
+u256 TransactionBase::gasPrice() const {
+    assert( !isInvalid() );
+    return m_gasPrice;
+}
+
+u256 TransactionBase::gas() const {
+    assert( !isInvalid() );
+    return m_gas;
 }

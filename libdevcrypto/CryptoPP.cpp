@@ -21,6 +21,10 @@
  * @date 2014
  */
 
+#pragma GCC diagnostic push
+// Suppress warnings: "unknown option after ‘#pragma GCC diagnostic’ kind [-Wpragmas]".
+// This is necessary because not all the compilers have the same warning options.
+#pragma GCC diagnostic ignored "-Wextra"
 #include "CryptoPP.h"
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/oids.h>
@@ -28,6 +32,7 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
 #include <libdevcore/SHA3.h>
+#pragma GCC diagnostic pop
 
 static_assert( CRYPTOPP_VERSION >= 565, "Wrong Crypto++ version" );
 

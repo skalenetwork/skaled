@@ -26,6 +26,9 @@
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
+#include <libethereum/ChainParams.h>
+#include <libethereum/ClientTest.h>
+#include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
@@ -36,7 +39,6 @@
 // SKALE #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
-#include <libwebthree/WebThree.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/lexical_cast.hpp>
@@ -128,38 +130,50 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.byzantiumForkBlock = 0;
+        chainParams.externalGasDifficulty = 1;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
         TransientDirectory tempDir;
 
-        web3.reset( new WebThreeDirect(
-            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"}, true ) );
+        //        web3.reset( new WebThreeDirect(
+        //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
+        //            true ) );
 
-        //        web3->setIdealPeerCount(5);
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+            shared_ptr< GasPricer >(), tempDir.path(), WithExisting::Kill ) );
 
-        web3->ethereum()->setAuthor( coinbase.address() );
+        //        client.reset(
+        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
+        //            GasPricer >(),
+        //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
+        //                1024} ) );
+
+        client->injectSkaleHost();
+        client->startWorking();
+
+        client->setAuthor( coinbase.address() );
 
         using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
-        accountHolder.reset( new FixedAccountHolder( [&]() { return web3->ethereum(); }, {} ) );
-        accountHolder->setAccounts( {coinbase} );
+        accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
+        accountHolder->setAccounts( {coinbase, account2} );
 
         sessionManager.reset( new rpc::SessionManager() );
         adminSession =
             sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
-        auto ethFace = new rpc::Eth( *web3->ethereum(), *accountHolder.get() );
+        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
-            new rpc::Web3( web3->clientVersion() ),
-            new rpc::AdminEth( *web3->ethereum(), *gasPricer, keyManager, *sessionManager.get() ),
-            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *web3->ethereum() ),
-            new rpc::Test( *web3->ethereum() ) ) );
+            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
+            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
+            new rpc::Test( *client ) ) );
         auto ipcServer = new TestIpcServer;
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
@@ -178,8 +192,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         return string();
     }
 
-    unique_ptr< WebThreeDirect > web3;
+    unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
     unique_ptr< rpc::SessionManager > sessionManager;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
@@ -232,11 +247,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_accounts ) {
 
 BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     auto number = jsToU256( rpcClient->eth_blockNumber() );
-    BOOST_CHECK_EQUAL( number, web3->ethereum()->number() );
-    dev::eth::mine( *( web3->ethereum() ), 1 );
+    BOOST_CHECK_EQUAL( number, client->number() );
+    dev::eth::mine( *( client ), 1 );
     auto numberAfter = jsToU256( rpcClient->eth_blockNumber() );
     BOOST_CHECK_GE( numberAfter, number + 1 );
-    BOOST_CHECK_EQUAL( numberAfter, web3->ethereum()->number() );
+    BOOST_CHECK_EQUAL( numberAfter, client->number() );
 }
 
 // SKALE disabled
@@ -257,38 +272,38 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
     rpcClient->admin_eth_setMining( true, adminSession );
-    BOOST_CHECK_EQUAL( web3->ethereum()->wouldSeal(), true );
+    BOOST_CHECK_EQUAL( client->wouldSeal(), true );
 
     rpcClient->admin_eth_setMining( false, adminSession );
-    BOOST_CHECK_EQUAL( web3->ethereum()->wouldSeal(), false );
+    BOOST_CHECK_EQUAL( client->wouldSeal(), false );
 }
 
 BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     dev::KeyPair key = KeyPair::create();
     auto address = key.address();
     string stateAt = rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
-    BOOST_CHECK_EQUAL( web3->ethereum()->stateAt( address, 0, 0 ), jsToU256( stateAt ) );
+    BOOST_CHECK_EQUAL( client->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
 BOOST_AUTO_TEST_CASE( eth_coinbase ) {
     string coinbase = rpcClient->eth_coinbase();
-    BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), web3->ethereum()->author() );
+    BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), client->author() );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
     auto address = coinbase.address();
     u256 countAt = jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
 
-    BOOST_CHECK_EQUAL( countAt, web3->ethereum()->countAt( address ) );
+    BOOST_CHECK_EQUAL( countAt, client->countAt( address ) );
     BOOST_CHECK_EQUAL( countAt, 0 );
-    u256 balance = web3->ethereum()->balanceAt( address, 0 );
+    u256 balance = client->balanceAt( address );
     string balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
     BOOST_CHECK_EQUAL( toJS( balance ), balanceString );
     BOOST_CHECK_EQUAL( jsToDecimal( balanceString ), "0" );
 
-    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
-    //    BOOST_CHECK_EQUAL(web3->ethereum()->blockByNumber(LatestBlock).author(), address);
-    balance = web3->ethereum()->balanceAt( address, LatestBlock );
+    dev::eth::simulateMining( *( client ), 1 );
+    //    BOOST_CHECK_EQUAL(client->blockByNumber(LatestBlock).author(), address);
+    balance = client->balanceAt( address );
     balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
 
     BOOST_REQUIRE_GT( balance, 0 );
@@ -313,13 +328,13 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
     BOOST_REQUIRE( !txHash.empty() );
 
     accountHolder->setAccounts( {} );
-    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+    dev::eth::mineTransaction( *( client ), 1 );
 
     countAt = jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
-    u256 balance2 = web3->ethereum()->balanceAt( receiver.address() );
+    u256 balance2 = client->balanceAt( receiver.address() );
     string balanceString2 = rpcClient->eth_getBalance( toJS( receiver.address() ), "latest" );
 
-    BOOST_CHECK_EQUAL( countAt, web3->ethereum()->countAt( address ) );
+    BOOST_CHECK_EQUAL( countAt, client->countAt( address ) );
     BOOST_CHECK_EQUAL( countAt, 1 );
     BOOST_CHECK_EQUAL( toJS( balance2 ), balanceString2 );
     BOOST_CHECK_EQUAL( jsToU256( balanceString2 ), txAmount );
@@ -337,14 +352,12 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << web3->ethereum()->balanceAt( senderAddress, blockNumber - 1 )
-         << endl;
-    dev::eth::mine( *( web3->ethereum() ), blocksToMine );
-    cerr << "Balance after: " << web3->ethereum()->balanceAt( senderAddress, blockNumber ) << endl;
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    cerr << "Balance before: " << client->balanceAt( senderAddress ) << endl;
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    cerr << "Balance after: " << client->balanceAt( senderAddress ) << endl;
+    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
 
     auto signedTx = rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
@@ -357,8 +370,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorZeroBalance ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
-    const int blockNumber = 0;
-    BOOST_CHECK_EQUAL( 0, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    BOOST_CHECK_EQUAL( 0, client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -378,10 +390,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const int blockNumber = 0;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::simulateMining( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -419,10 +430,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::mine( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -445,10 +455,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const int blockNumber = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::mine( *( web3->ethereum() ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, web3->ethereum()->balanceAt( senderAddress, blockNumber ) );
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -488,7 +497,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
     BOOST_REQUIRE( res["tx"] );
 
     accountHolder->setAccounts( {} );
-    dev::eth::mine( *( web3->ethereum() ), 1 );
+    dev::eth::mine( *( client ), 1 );
 
     auto countAtAfterSign =
         jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
@@ -497,7 +506,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( simple_contract ) {
-    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
+    dev::eth::simulateMining( *( client ), 1 );
 
 
     // contract test {
@@ -545,8 +554,67 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
+    auto senderAddress = coinbase.address();
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // We change author because coinbase.address() is author address by default
+    // and will take all transaction fee after execution so we can't check money spent
+    // for senderAddress correctly.
+    client->setAuthor( Address( 5 ) );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+    int gas = 82000;                   // not enough but will pass size check
+    string gasPrice = "100000000000";  // 100b
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = gas;
+    create["gasPrice"] = gasPrice;
+
+    BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL(
+        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+
+    u256 balanceBefore =
+        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+
+    BOOST_REQUIRE_EQUAL(
+        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+
+    // wait for transaction processing
+    while ( jsToU256( rpcClient->eth_getTransactionCount(
+                toJS( coinbase.address() ), "latest" ) ) == 0 ) {
+        sleep( 1 );
+        cerr << "Wait for transaction processing" << endl;
+    };
+
+    u256 balanceAfter =
+        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
+}
+
 BOOST_AUTO_TEST_CASE( contract_storage ) {
-    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
+    dev::eth::simulateMining( *( client ), 1 );
 
 
     // pragma solidity ^0.4.22;
@@ -576,7 +644,7 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+    dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
@@ -585,7 +653,7 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     transact["to"] = contractAddress;
     transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
     rpcClient->eth_sendTransaction( transact );
-    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+    dev::eth::mineTransaction( *( client ), 1 );
 
     string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
     BOOST_CHECK_EQUAL(
@@ -607,7 +675,7 @@ BOOST_AUTO_TEST_CASE( web3_sha3 ) {
 // BOOST_AUTO_TEST_CASE(debugAccountRangeAtFinalBlockState)
 //{
 //    // mine to get some balance at coinbase
-//    dev::eth::mine(*(web3->ethereum()), 1);
+//    dev::eth::mine(*(client), 1);
 
 //    // send transaction to have non-emtpy block
 //    Address receiver = Address::random();
@@ -620,7 +688,7 @@ BOOST_AUTO_TEST_CASE( web3_sha3 ) {
 //    string txHash = rpcClient->eth_sendTransaction(tx);
 //    BOOST_REQUIRE(!txHash.empty());
 
-//    dev::eth::mineTransaction(*(web3->ethereum()), 1);
+//    dev::eth::mineTransaction(*(client), 1);
 
 //    string receiverHash = toString(sha3(receiver));
 
@@ -638,7 +706,7 @@ BOOST_AUTO_TEST_CASE( web3_sha3 ) {
 // BOOST_AUTO_TEST_CASE(debugStorageRangeAtFinalBlockState)
 //{
 //    // mine to get some balance at coinbase
-//    dev::eth::mine(*(web3->ethereum()), 1);
+//    dev::eth::mine(*(client), 1);
 
 //    // pragma solidity ^0.4.22;
 //    // contract test
@@ -655,7 +723,7 @@ BOOST_AUTO_TEST_CASE( web3_sha3 ) {
 //    tx["from"] = toJS(coinbase.address());
 //    string txHash = rpcClient->eth_sendTransaction(tx);
 
-//    dev::eth::mineTransaction(*(web3->ethereum()), 1);
+//    dev::eth::mineTransaction(*(client), 1);
 
 //    Json::Value receipt = rpcClient->eth_getTransactionReceipt(txHash);
 //    string contractAddress = receipt["contractAddress"].asString();
@@ -714,7 +782,7 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
 }
 
 BOOST_AUTO_TEST_CASE( call_from_parameter ) {
-    dev::eth::simulateMining( *( web3->ethereum() ), 1 );
+    dev::eth::simulateMining( *( client ), 1 );
 
 
     //    pragma solidity ^0.5.1;
@@ -742,7 +810,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( web3->ethereum() ), 1 );
+    dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
@@ -762,6 +830,72 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     responseString = rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
+}
+
+BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // pragma solidity ^0.4.22;
+
+    // contract test
+    // {
+    //     uint hello;
+    //     function writeHello(uint value) returns(bool d)
+    //     {
+    //       hello = value;
+    //       return true;
+    //     }
+    // }
+
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60c28061001d6000396000f3006"
+        "08060405260043610603f576000357c0100000000000000000000000000"
+        "000000000000000000000000000000900463ffffffff16806315b2eec31"
+        "46044575b600080fd5b3415604e57600080fd5b606a6004803603810190"
+        "80803590602001909291905050506084565b60405180821515151581526"
+        "0200191505060405180910390f35b600081600081905550600190509190"
+        "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
+        "5ee8909b83094a3f856b9051274500029";
+
+    Json::Value create;
+    create["code"] = compiled;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Address address2 = account2.address();
+    string balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
+
+    u256 powGasPrice = 0;
+    do {
+        const u256 GAS_PER_HASH = 1;
+        u256 candidate = h256::random();
+        h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
+        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        if ( externalGas >= 21000 + 21000 ) {
+            powGasPrice = candidate;
+        }
+    } while ( !powGasPrice );
+
+    Json::Value transact;
+    transact["from"] = toJS( address2 );
+    transact["to"] = contractAddress;
+    transact["gasPrice"] = toJS( powGasPrice );
+    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+    rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
+    BOOST_CHECK_EQUAL(
+        storage, "0x0000000000000000000000000000000000000000000000000000000000000003" );
+
+    balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

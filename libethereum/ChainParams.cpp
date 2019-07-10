@@ -22,10 +22,7 @@
  */
 
 #include "ChainParams.h"
-#include "Account.h"
-#include "GenesisInfo.h"
-#include "State.h"
-#include "ValidationSchemes.h"
+
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcore/Log.h>
@@ -33,6 +30,10 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Precompiled.h>
 #include <libethcore/SealEngine.h>
+
+#include "Account.h"
+#include "GenesisInfo.h"
+#include "ValidationSchemes.h"
 
 using namespace std;
 using namespace dev;
@@ -80,7 +81,6 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
@@ -132,6 +132,8 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
     setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
+    setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
+    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
 
     if ( params.count( c_chainID ) )
         cp.chainID =
@@ -140,6 +142,9 @@ ChainParams ChainParams::loadConfig(
         cp.networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
     cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
+    if ( cp.externalGasDifficulty == 0 ) {
+        cp.externalGasDifficulty = -1;
+    }
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );
@@ -295,6 +300,7 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort"] = ( int64_t ) nodeInfo.port;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
+    infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
 
     skaleObj["nodeInfo"] = infoObj;
 

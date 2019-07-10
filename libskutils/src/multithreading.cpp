@@ -8,6 +8,23 @@ namespace multithreading {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::string getThreadName() {
+    char name[128];
+    memset( name, 0, sizeof( name ) );
+    pthread_getname_np( pthread_self(), name, sizeof( name ) / sizeof( name[0] ) - 1 );
+    return std::string( name );
+}
+void setThreadName( const char* name ) {
+#if defined( __APPLE__ )
+    pthread_setname_np( name );
+#else
+    pthread_setname_np( pthread_self(), name );
+#endif
+}
+void setThreadName( const std::string& name ) {
+    setThreadName( name.c_str() );
+}
+
 fn_on_exception_t& on_exception_handler() {
     static fn_on_exception_t g_fn;  // returns false to cancel exception throwing
     return g_fn;

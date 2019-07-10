@@ -61,6 +61,9 @@ std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
 }
 
 void HttpBroadcaster::broadcast( const std::string& _rlp ) {
+    if ( _rlp.empty() )
+        return;
+
     for ( const auto& node : m_nodeClients ) {
         node->skale_receiveTransaction( _rlp );
     }
@@ -96,7 +99,9 @@ void* ZmqBroadcaster::server_socket() const {
             if ( node.id == ch.nodeInfo.id )
                 continue;
             int res = zmq_connect( m_zmq_server_socket, getZmqUrl( node ).c_str() );
-            assert( res == 0 );
+            if ( res != 0 ) {
+                throw std::runtime_error( "Zmq can't connect" );
+            }
         }
         sleep( 1 );  // HACK to overcome zmq "slow joiner". see SKALE-742
     }
@@ -136,7 +141,9 @@ void ZmqBroadcaster::startService() {
 
     int timeo = 100;  // 100 milliseconds
     int res = zmq_setsockopt( client_socket(), ZMQ_RCVTIMEO, &timeo, sizeof( timeo ) );
-    assert( res == 0 );
+    if ( res != 0 ) {
+        throw runtime_error( "zmq_setsockopt has failed" );
+    }
 
     auto func = [this]() {
         setThreadName( "ZmqBroadcaster" );
@@ -161,7 +168,11 @@ void ZmqBroadcaster::startService() {
                     continue;
                 }
 
-                assert( res > 0 );
+                if ( res < 0 ) {
+                    clog( dev::VerbosityWarning, "skale-host" )
+                        << "Received bad message on ZmqBroadcaster port. errno = " << errno;
+                    continue;
+                }
 
                 size_t size = zmq_msg_size( &msg );
                 void* data = zmq_msg_data( &msg );
@@ -202,6 +213,13 @@ void ZmqBroadcaster::stopService() {
 }
 
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
+    if ( _rlp.empty() ) {
+        server_socket();
+        return;
+    }
+
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
-    assert( res > 0 );
+    if ( res <= 0 ) {
+        throw runtime_error( "Zmq can't send data" );
+    }
 }

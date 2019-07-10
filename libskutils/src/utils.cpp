@@ -576,7 +576,11 @@ std::vector< long double > cpu_load() {
     FILE* fp = fopen( "/proc/stat", "r" );
     if ( !fp )
         return cpuLoad;
-    fscanf( fp, "%*s %Lf %Lf %Lf %Lf", &cpuLoad[0], &cpuLoad[1], &cpuLoad[2], &cpuLoad[3] );
+    if ( fscanf( fp, "%*s %Lf %Lf %Lf %Lf", &cpuLoad[0], &cpuLoad[1], &cpuLoad[2], &cpuLoad[3] ) !=
+         4 ) {
+        fclose( fp );
+        throw std::runtime_error( "Can't parse /proc/stat" );
+    };
     fclose( fp );
 
     return cpuLoad;
@@ -989,11 +993,12 @@ md5::md5( std::ifstream& stream ) {
 unsigned char* md5::raw_digest() {
     uint1* s = new uint1[16];
     if ( !finalized ) {
+        delete[] s;
         // std::cerr << "md5::raw_digest: cannot get digest if you haven't finalized the digest" <<
         // std::endl;
-        return ( ( unsigned char* ) "" );
-    }
-    memcpy( s, digest, 16 );
+        s = nullptr;
+    } else
+        memcpy( s, digest, 16 );
     return s;
 }
 char* md5::hex_digest() {
