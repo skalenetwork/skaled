@@ -1080,7 +1080,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
                 stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
-                    "eth_subscription/newPendingTransactions", strNotification.size() );
+                    "RPC/eth_subscription/newPendingTransactions", strNotification.size() );
                 stats::register_stats_answer(
                     "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
             } );
@@ -1168,7 +1168,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
                 stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
-                    "eth_subscription/newHeads", strNotification.size() );
+                    "RPC/eth_subscription/newHeads", strNotification.size() );
                 stats::register_stats_answer(
                     "RPC", "eth_subscription/newHeads", strNotification.size() );
             } );
