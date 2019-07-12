@@ -246,3 +246,6 @@ void Debug::debug_pauseBroadcast( bool _pause ) {
 void Debug::debug_pauseConsensus( bool _pause ) {
     m_eth.skaleHost()->pauseConsensus( _pause );
 }
+void Debug::debug_forceBlock() {
+    m_eth.skaleHost()->forceEmptyBlock();
+}

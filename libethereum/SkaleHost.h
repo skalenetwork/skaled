@@ -123,6 +123,8 @@ public:
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
+    void forceEmptyBlock();
+
 private:
     bool working = false;
 
@@ -165,6 +167,9 @@ private:
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
     std::unique_ptr< ConsensusInterface > m_consensus;
+
+    std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
+                                                               // to 0
 
 #ifdef DEBUG_TX_BALANCE
     std::map< dev::h256, int > sent;

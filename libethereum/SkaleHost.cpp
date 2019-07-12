@@ -156,6 +156,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
+        this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
+        this->emptyBlockIntervalMsForRestore.reset();
+    }
+
     MICROPROFILE_SCOPEI( "SkaleHost", "pendintTransactions", MP_LAWNGREEN );
 
     ConsensusExtFace::transactions_vector out_vector;
@@ -408,6 +413,13 @@ void SkaleHost::broadcastFunc() {
     }  // while
 
     m_broadcaster->stopService();
+}
+
+void SkaleHost::forceEmptyBlock() {
+    assert( !this->emptyBlockIntervalMsForRestore.has_value() );
+    this->emptyBlockIntervalMsForRestore = this->m_consensus->getEmptyBlockIntervalMs();
+    // HACK it should be less than time-out in pendingTransactions - but not 0!
+    this->m_consensus->setEmptyBlockIntervalMs( 50 );  // just 1-time!
 }
 
 void SkaleHost::noteNewTransactions() {}
