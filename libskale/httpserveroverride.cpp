@@ -525,7 +525,9 @@ bool SkaleStatsSunscriptionManager::subscribe(
                         subscriptionData.m_pPeer->sendMessage(
                             skutils::tools::trim_copy( strNotification ) );
                         stats::register_stats_answer(
-                            subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC().c_str(),
+                            ( std::string( "RPC/" ) +
+                                subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() )
+                                .c_str(),
                             "eth_subscription/skaleStats", strNotification.size() );
                         stats::register_stats_answer(
                             "RPC", "eth_subscription/skaleStats", strNotification.size() );
@@ -1001,7 +1003,9 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                 ->sendMessage(
                                                     skutils::tools::trim_copy( strNotification ) );
                                             stats::register_stats_answer(
-                                                pThis->getRelay().m_strSchemeUC.c_str(),
+                                                ( std::string( "RPC/" ) +
+                                                    pThis->getRelay().m_strSchemeUC )
+                                                    .c_str(),
                                                 "eth_subscription/logs", strNotification.size() );
                                             stats::register_stats_answer( "RPC",
                                                 "eth_subscription/logs", strNotification.size() );
@@ -1079,8 +1083,9 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
-                    "RPC/eth_subscription/newPendingTransactions", strNotification.size() );
+                stats::register_stats_answer(
+                    ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
+                    "eth_subscription/newPendingTransactions", strNotification.size() );
                 stats::register_stats_answer(
                     "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
             } );
@@ -1167,8 +1172,9 @@ void SkaleWsPeer::eth_subscribe_newHeads(
             skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
                 const_cast< SkaleWsPeer* >( pThis.get() )
                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                stats::register_stats_answer( pThis->getRelay().m_strSchemeUC.c_str(),
-                    "RPC/eth_subscription/newHeads", strNotification.size() );
+                stats::register_stats_answer(
+                    ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
+                    "eth_subscription/newHeads", strNotification.size() );
                 stats::register_stats_answer(
                     "RPC", "eth_subscription/newHeads", strNotification.size() );
             } );
