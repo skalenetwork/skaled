@@ -8,6 +8,11 @@ set(
 set(EXECUTABLE_NAME skaled)
 
 add_executable(${EXECUTABLE_NAME} ${sources})
+
+if( APPLE )
+	target_compile_definitions( ${EXECUTABLE_NAME} PRIVATE __BUILDING_4_MAC_OS_X__=1 )
+endif()
+
 target_link_libraries(
     ${EXECUTABLE_NAME}
     PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options

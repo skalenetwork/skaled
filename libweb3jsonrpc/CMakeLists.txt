@@ -38,6 +38,11 @@ set(sources
     Skale.h
     Skale.cpp
     SkaleFace.h
+	
+	SkaleStats.h
+	SkaleStats.cpp
+	SkaleStatsFace.h
+	SkaleStatsSite.h
 )
 
 if(WIN32)
@@ -47,6 +52,10 @@ else()
 endif()
 
 add_library(web3jsonrpc ${sources})
+
+if( APPLE )
+	target_compile_definitions( web3jsonrpc PRIVATE __BUILDING_4_MAC_OS_X__=1 )
+endif()
 
 jsonrpcstub_create(
     web3jsonrpc eth.json
@@ -90,8 +99,13 @@ jsonrpcstub_create(web3jsonrpc test.json
 )
 
 jsonrpcstub_create(web3jsonrpc skale.jsonweb3jsonrpc
-        dev::rpc::SkaleFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleFace
-        SkaleClient ${CMAKE_CURRENT_BINARY_DIR} SkaleClient
+	dev::rpc::SkaleFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleFace
+	SkaleClient ${CMAKE_CURRENT_BINARY_DIR} SkaleClient
+)
+
+jsonrpcstub_create(web3jsonrpc skaleStats.json
+	dev::rpc::SkaleStatsFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleStatsFace
+	SkaleStatsClient ${CMAKE_CURRENT_BINARY_DIR} SkaleStatsClient
 )
 
 target_include_directories( skale PRIVATE

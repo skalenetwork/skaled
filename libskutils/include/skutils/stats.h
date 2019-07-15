@@ -62,6 +62,7 @@ struct UnitsPerSecond {
           m_lastTime{std::move( time )},
           m_prevPerSec{1},
           m_total{1},
+          m_total1{1},
           m_prevUnitsPerSecond{0.0} {}
     UnitsPerSecond( time_point time, size_t prevCount, size_t totalCount )
         : m_startTime{clock::now()},
@@ -69,12 +70,13 @@ struct UnitsPerSecond {
           m_lastTime{std::move( time )},
           m_prevPerSec{prevCount},
           m_total{totalCount},
+          m_total1{1},
           m_prevUnitsPerSecond{0.0} {}
 
     bool operator<( const UnitsPerSecond& unit1 ) const {
-        return std::tie( m_startTime, m_prevTime, m_lastTime, m_prevPerSec, m_total ) <
+        return std::tie( m_startTime, m_prevTime, m_lastTime, m_prevPerSec, m_total, m_total1 ) <
                std::tie( unit1.m_startTime, unit1.m_prevTime, unit1.m_lastTime, unit1.m_prevPerSec,
-                   unit1.m_total );
+                   unit1.m_total, unit1.m_total1 );
     }
     bool operator>( const UnitsPerSecond& unit1 ) const { return ( *this < unit1 ) ? false : true; }
     time_point m_startTime;
@@ -82,6 +84,7 @@ struct UnitsPerSecond {
     time_point m_lastTime;
     size_t m_prevPerSec;
     size_t m_total;
+    size_t m_total1;
     double m_prevUnitsPerSecond;
 };
 
@@ -123,10 +126,10 @@ public:
     bool event_add( const std::string& strQueueName );
     bool event_add( const std::string& strQueueName, size_t size );
     double compute_eps_from_start( const std::string& name, const time_point& tpNow ) const;
-    double compute_eps(
-        const std::string& name, const time_point& tpNow, size_t* p_nSummary = nullptr ) const;
-    double compute_eps(
-        t_NamedEventsIt& currentIt, const time_point& tpNow, size_t* p_nSummary = nullptr ) const;
+    double compute_eps( const std::string& name, const time_point& tpNow,
+        size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
+    double compute_eps( t_NamedEventsIt& currentIt, const time_point& tpNow,
+        size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
     virtual std::string getEventStatsDescription( time_point tpNow, bool isColored = false,
         bool bSkipEmptyStats = true, bool bWithSummaryAsSuffix = false ) const;
     std::string getEventStatsDescription( bool isColored = false, bool bSkipEmptyStats = true,

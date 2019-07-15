@@ -58,6 +58,7 @@
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
+#include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 
@@ -1027,7 +1028,8 @@ int main( int argc, char** argv ) try {
     if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
          nExplicitPortWSS > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
-            rpc::SkaleFace,  /// skale
+            rpc::SkaleFace,   /// skale
+            rpc::SkaleStats,  /// skaleStats
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
             rpc::AdminEthFace,  // SKALE rpc::AdminNetFace,
             rpc::DebugFace, rpc::TestFace >;
@@ -1039,9 +1041,12 @@ int main( int argc, char** argv ) try {
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
         auto skaleFace = new rpc::Skale( *client->skaleHost() );
+        /// skaleStatsFace
+        auto skaleStatsFace = new rpc::SkaleStats( *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
-            skaleFace,  /// skale
+            skaleFace,       /// skale
+            skaleStatsFace,  /// skaleStats
             new rpc::Net(), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
@@ -1170,6 +1175,10 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
+            //
+            skaleStatsFace->setProvider( skale_server_connector );
+            skale_server_connector->setConsumer( skaleStatsFace );
+            //
             skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
