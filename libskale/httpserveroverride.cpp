@@ -466,21 +466,21 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleStatsSunscriptionManager::SkaleStatsSunscriptionManager() : next_subscription_( 1 ) {}
-SkaleStatsSunscriptionManager::~SkaleStatsSunscriptionManager() {
+SkaleStatsSubscriptionManager::SkaleStatsSubscriptionManager() : next_subscription_( 1 ) {}
+SkaleStatsSubscriptionManager::~SkaleStatsSubscriptionManager() {
     unsubscribeAll();
 }
 
-SkaleStatsSunscriptionManager::subscription_id_t
-SkaleStatsSunscriptionManager::nextSubscriptionID() {
+SkaleStatsSubscriptionManager::subscription_id_t
+SkaleStatsSubscriptionManager::nextSubscriptionID() {
     lock_type lock( mtx_ );
     subscription_id_t idSubscription = next_subscription_;
     ++next_subscription_;
     return idSubscription;
 }
 
-bool SkaleStatsSunscriptionManager::subscribe(
-    SkaleStatsSunscriptionManager::subscription_id_t& idSubscription, SkaleWsPeer* pPeer,
+bool SkaleStatsSubscriptionManager::subscribe(
+    SkaleStatsSubscriptionManager::subscription_id_t& idSubscription, SkaleWsPeer* pPeer,
     size_t nIntervalMilliseconds ) {
     idSubscription = 0;
     if ( !pPeer )
@@ -544,8 +544,8 @@ bool SkaleStatsSunscriptionManager::subscribe(
     return true;
 }
 
-bool SkaleStatsSunscriptionManager::unsubscribe(
-    const SkaleStatsSunscriptionManager::subscription_id_t& idSubscription ) {
+bool SkaleStatsSubscriptionManager::unsubscribe(
+    const SkaleStatsSubscriptionManager::subscription_id_t& idSubscription ) {
     try {
         lock_type lock( mtx_ );
         map_subscriptions_t::iterator itFind = map_subscriptions_.find( idSubscription ),
@@ -564,7 +564,7 @@ bool SkaleStatsSunscriptionManager::unsubscribe(
     }
 }
 
-void SkaleStatsSunscriptionManager::unsubscribeAll() {
+void SkaleStatsSubscriptionManager::unsubscribeAll() {
     lock_type lock( mtx_ );
     std::list< subscription_id_t > lst;
     map_subscriptions_t::iterator itWalk = map_subscriptions_.begin();
@@ -1226,7 +1226,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
     SkaleServerOverride* pSO = pso();
     try {
         // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
-        SkaleStatsSunscriptionManager::subscription_id_t idSubscription = 0;
+        SkaleStatsSubscriptionManager::subscription_id_t idSubscription = 0;
         size_t nIntervalMilliseconds = 1000;
         if ( joRequest.count( "intervalMilliseconds" ) )
             nIntervalMilliseconds =
@@ -1352,8 +1352,8 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
             ethereum()->uninstallNewBlockWatch( iw );
             setInstalledWatchesNewBlocks_.erase( iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) {
-            SkaleStatsSunscriptionManager::subscription_id_t idSubscription =
-                SkaleStatsSunscriptionManager::subscription_id_t(
+            SkaleStatsSubscriptionManager::subscription_id_t idSubscription =
+                SkaleStatsSubscriptionManager::subscription_id_t(
                     iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) ) );
             bool bWasUnsubscribed = pSO->unsubscribe( idSubscription );
             if ( !bWasUnsubscribed ) {
@@ -2005,7 +2005,7 @@ skutils::tools::load_monitor& stat_get_load_monitor() {
     return g_lm;
 }
 
-SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSunscriptionManager
+SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSubscriptionManager
     return ( *this );
 }
 

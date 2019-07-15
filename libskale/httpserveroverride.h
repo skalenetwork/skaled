@@ -63,7 +63,7 @@ typedef intptr_t ssize_t;
 
 #include <libweb3jsonrpc/SkaleStatsSite.h>
 
-class SkaleStatsSunscriptionManager;
+class SkaleStatsSubscriptionManager;
 class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleRelayWS;
@@ -72,7 +72,7 @@ class SkaleServerOverride;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleStatsSunscriptionManager {
+class SkaleStatsSubscriptionManager {
 public:
     typedef int64_t subscription_id_t;
 
@@ -94,14 +94,14 @@ protected:
     map_subscriptions_t map_subscriptions_;
 
 public:
-    SkaleStatsSunscriptionManager();
-    virtual ~SkaleStatsSunscriptionManager();
+    SkaleStatsSubscriptionManager();
+    virtual ~SkaleStatsSubscriptionManager();
     bool subscribe(
         subscription_id_t& idSubscription, SkaleWsPeer* pPeer, size_t nIntervalMilliseconds );
     bool unsubscribe( const subscription_id_t& idSubscription );
     void unsubscribeAll();
     virtual SkaleServerOverride& getSSO() = 0;
-};  // class SkaleStatsSunscriptionManager
+};  // class SkaleStatsSubscriptionManager
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +246,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
-                            public SkaleStatsSunscriptionManager,
+                            public SkaleStatsSubscriptionManager,
                             public dev::rpc::SkaleStatsProviderImpl {
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
@@ -320,7 +320,7 @@ public:
     virtual void on_connection_overflow_peer_closed(
         const char* strProtocol, int nServerIndex, int nPort );
 
-    SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSunscriptionManager
+    SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
 
     friend class SkaleRelayWS;
