@@ -55,7 +55,7 @@ public:
         return RPCModules{RPCModule{"skaleStats", "1.0"}};
     }
 
-    virtual Json::Value skale_stats( Json::Value const& _val ) override;
+    virtual Json::Value skale_stats() override;
 
 protected:
     eth::Interface* client() { return &m_eth; }

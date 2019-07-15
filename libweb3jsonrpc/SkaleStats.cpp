@@ -37,7 +37,7 @@ namespace rpc {
 
 SkaleStats::SkaleStats( eth::Interface& _eth ) : m_eth( _eth ) {}
 
-Json::Value SkaleStats::skale_stats( Json::Value const& /*_val*/ ) {
+Json::Value SkaleStats::skale_stats() {
     try {
         nlohmann::json joStats = consumeSkaleStats();
         std::string strStatsJson = joStats.dump();

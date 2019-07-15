@@ -1,3 +1,4 @@
 [
-{ "name": "skale_stats", "params": [{}], "order": [], "returns": {}}
+{ "name": "skale_stats", "params": [], "order": [], "returns": {}}
 ];
+

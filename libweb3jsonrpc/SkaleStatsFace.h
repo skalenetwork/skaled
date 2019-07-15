@@ -9,20 +9,23 @@
 
 namespace dev {
 namespace rpc {
+
 class SkaleStatsFace : public ServerInterface< SkaleStatsFace > {
 public:
     SkaleStatsFace() {
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_stats", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_statsI );
     }
 
-
     inline virtual void skale_statsI( const Json::Value& request, Json::Value& response ) {
-        response = this->skale_stats( request[0u] );
+        ( void ) request;
+        response = this->skale_stats();
     }
-    virtual Json::Value skale_stats( const Json::Value& param1 ) = 0;
-};
+
+    virtual Json::Value skale_stats() = 0;
+
+};  /// class SkaleStatsFace
 
 }  // namespace rpc
 }  // namespace dev
