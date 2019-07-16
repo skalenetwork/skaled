@@ -96,7 +96,7 @@ jobs:
                     - release-candidate
                     - develop
             - provider: script
-              script: bash ../scripts/push_tag.sh v$VERSION
+              script: bash ../scripts/push_tag.sh "v$VERSION"
               on:
                 repo: DimaStebaev/skaled
                 branch:
