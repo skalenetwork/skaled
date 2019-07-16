@@ -67,6 +67,8 @@ jobs:
               export TRAVIS_TAG=v$VERSION &&
               git tag "$TRAVIS_TAG"
               ) || true
+            - echo $TRAVIS_TAG
+            - echo $VERSION
           deploy:
             - provider: releases
               api_key: "$GITHUB_OAUTH_TOKEN"
@@ -94,7 +96,7 @@ jobs:
 #                    - release-candidate
 #                    - develop
             - provider: script
-              script: bash ../scripts/push_tag.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
+              script: bash ../scripts/push_tag.sh $VERSION
               on:
                 repo: DimaStebaev/skaled
                 branch:
