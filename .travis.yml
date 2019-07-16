@@ -85,14 +85,14 @@ jobs:
               on:
                 repo: DimaStebaev/skaled
                 branch: release-candidate
-            - provider: script
-              script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
-              on:
-                repo: DimaStebaev/skaled
-                branch:
-                    - master
-                    - release-candidate
-                    - develop
+#            - provider: script
+#              script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
+#              on:
+#                repo: DimaStebaev/skaled
+#                branch:
+#                    - master
+#                    - release-candidate
+#                    - develop
             - provider: script
               script: bash ../scripts/push_tag.sh $TRAVIS_TAG
               on:
