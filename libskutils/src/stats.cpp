@@ -110,6 +110,7 @@ void named_event_stats::event_queue_add( const std::string& strQueueName, size_t
         } else {
             itEvent->second.m_prevPerSec += nSize;
             itEvent->second.m_total += itEvent->second.m_prevPerSec;
+            ++itEvent->second.m_total1;
         }
 
         itEvent->second.m_lastTime = clock::now();
@@ -159,16 +160,16 @@ double named_event_stats::compute_eps_from_start(
     return epsResult;
 }
 
-double named_event_stats::compute_eps(
-    const std::string& eventName, const time_point& tpNow, size_t* p_nSummary ) const {
+double named_event_stats::compute_eps( const std::string& eventName, const time_point& tpNow,
+    size_t* p_nSummary, size_t* p_nSummary1 ) const {
     auto itEvent = m_Events.find( eventName );
     if ( itEvent == std::end( m_Events ) )
         return 0.0;
-    return compute_eps( itEvent, tpNow, p_nSummary );
+    return compute_eps( itEvent, tpNow, p_nSummary, p_nSummary1 );
 }
 
-double named_event_stats::compute_eps(
-    t_NamedEventsIt& itEvent, const time_point& tpNow, size_t* p_nSummary ) const {
+double named_event_stats::compute_eps( t_NamedEventsIt& itEvent, const time_point& tpNow,
+    size_t* p_nSummary, size_t* p_nSummary1 ) const {
     const auto duration_milliseconds = std::chrono::duration_cast< std::chrono::milliseconds >(
         tpNow - itEvent->second.m_prevTime );
     const double seconds = static_cast< double >( duration_milliseconds.count() ) / 1000.0;
@@ -180,6 +181,8 @@ double named_event_stats::compute_eps(
     itEvent->second.m_prevUnitsPerSecond = epsResult;
     if ( p_nSummary )
         *p_nSummary = itEvent->second.m_total;
+    if ( p_nSummary1 )
+        *p_nSummary1 = itEvent->second.m_total1;
     return epsResult;
 }
 

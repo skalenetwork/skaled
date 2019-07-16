@@ -50,7 +50,9 @@ typedef intptr_t ssize_t;
 #include <string>
 
 #include <skutils/console_colors.h>
+#include <skutils/dispatch.h>
 #include <skutils/http.h>
+#include <skutils/stats.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
 #include <json.hpp>
@@ -59,10 +61,47 @@ typedef intptr_t ssize_t;
 #include <libethereum/Interface.h>
 #include <libethereum/LogFilter.h>
 
+#include <libweb3jsonrpc/SkaleStatsSite.h>
+
+class SkaleStatsSubscriptionManager;
 class SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleStatsSubscriptionManager {
+public:
+    typedef int64_t subscription_id_t;
+
+protected:
+    typedef skutils::multithreading::recursive_mutex_type mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+    mutex_type mtx_;
+
+    std::atomic< subscription_id_t > next_subscription_;
+    subscription_id_t nextSubscriptionID();
+
+    struct subscription_data_t {
+        subscription_id_t m_idSubscription = 0;
+        SkaleWsPeer* m_pPeer = nullptr;
+        size_t m_nIntervalMilliseconds = 0;
+        skutils::dispatch::job_id_t m_idDispatchJob;
+    };  /// struct subscription_data_t
+    typedef std::map< subscription_id_t, subscription_data_t > map_subscriptions_t;
+    map_subscriptions_t map_subscriptions_;
+
+public:
+    SkaleStatsSubscriptionManager();
+    virtual ~SkaleStatsSubscriptionManager();
+    bool subscribe(
+        subscription_id_t& idSubscription, SkaleWsPeer* pPeer, size_t nIntervalMilliseconds );
+    bool unsubscribe( const subscription_id_t& idSubscription );
+    void unsubscribeAll();
+    virtual SkaleServerOverride& getSSO() = 0;
+};  // class SkaleStatsSubscriptionManager
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +166,7 @@ protected:
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_newHeads(
         const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions );
+    void eth_subscribe_skaleStats( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
@@ -183,6 +223,10 @@ public:
     const SkaleServerOverride* pso() const { return m_pSO; }
     dev::eth::Interface* ethereum() const;
     mutex_type& mtxAllPeers() const { return m_mtxAllPeers; }
+
+    std::string nfoGetScheme() const { return m_strScheme_; }
+    std::string nfoGetSchemeUC() const { return m_strSchemeUC; }
+
     friend class SkaleWsPeer;
 };  /// class SkaleRelayWS
 
@@ -191,6 +235,7 @@ public:
 
 class SkaleRelayHTTP : public SkaleServerHelper {
 public:
+    const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
     SkaleRelayHTTP( const char* cert_path = nullptr, const char* private_key_path = nullptr,
         int nServerIndex = -1 );
@@ -200,7 +245,9 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleServerOverride : public jsonrpc::AbstractServerConnector {
+class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
+                            public SkaleStatsSubscriptionManager,
+                            public dev::rpc::SkaleStatsProviderImpl {
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
 
@@ -272,6 +319,9 @@ public:
     void max_connection_set( size_t cntConnectionsMax );
     virtual void on_connection_overflow_peer_closed(
         const char* strProtocol, int nServerIndex, int nPort );
+
+    SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
+    nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
