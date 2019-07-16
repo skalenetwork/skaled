@@ -99,7 +99,8 @@ jobs:
               git config --local user.name "skale-jenkins" &&
               git config --local user.email "$GITHUB_EMAIL" &&
               export TRAVIS_TAG=v$VERSION &&
-              git tag "$TRAVIS_TAG"
+              git tag "$TRAVIS_TAG" &&
+              git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_TAG
               ) || true
           deploy:
             - provider: releases
