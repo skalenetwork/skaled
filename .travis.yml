@@ -94,7 +94,8 @@ jobs:
 #                    - release-candidate
 #                    - develop
             - provider: script
-              script: bash ../scripts/push_tag.sh $TRAVIS_TAG
+#              script: bash ../scripts/push_tag.sh "$TRAVIS_TAG"
+              script: bash echo "Hello debug"
               on:
                 repo: DimaStebaev/skaled
                 branch:
