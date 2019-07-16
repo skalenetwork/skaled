@@ -93,6 +93,12 @@ jobs:
                     - master
                     - release-candidate
                     - develop
+            - provider: script
+              script: git push origin $TRAVIS_TAG
+              on:
+                repo: DimaStebaev/skaled
+                branch:
+                    - develop
 cache:
     ccache: true
     directories:
