@@ -56,6 +56,11 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_forceBlock", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_BOOLEAN, NULL ),
             &dev::rpc::DebugFace::debug_forceBlockI );
+
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "debug_forceBroadcast", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_forceBroadcastI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -96,7 +101,10 @@ public:
         this->debug_forceBlock();
         response = true;  // TODO make void
     }
-
+    virtual void debug_forceBroadcastI( const Json::Value& request, Json::Value& response ) {
+        this->debug_forceBroadcast( request[0u].asString() );
+        response = true;  // TODO make void
+    }
 
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
@@ -113,6 +121,7 @@ public:
     virtual void debug_pauseBroadcast( bool pause ) = 0;
     virtual void debug_pauseConsensus( bool pause ) = 0;
     virtual void debug_forceBlock() = 0;
+    virtual void debug_forceBroadcast( const std::string& _transactionHash ) = 0;
 };
 
 }  // namespace rpc

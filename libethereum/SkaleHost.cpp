@@ -156,6 +156,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
     if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
         this->emptyBlockIntervalMsForRestore.reset();
@@ -197,12 +199,14 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     try {
         for ( size_t i = 0; i < txns.size(); ++i ) {
-            std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
             Transaction& txn = txns[i];
 
             h256 sha = txn.sha3();
             m_transaction_cache[sha.asArray()] = txn;
             out_vector.push_back( txn.rlp() );
+
+            // assert( out_vector[total_sent][0] == 0xf8 );
+
             ++total_sent;
 
 #ifdef DEBUG_TX_BALANCE
@@ -232,6 +236,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID ) try {
+    LOG( m_traceLogger ) << "createBlock ID= " << _blockID << std::endl;
+
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
     std::vector< Transaction > out_txns;  // resultant Transaction vector
@@ -420,6 +426,10 @@ void SkaleHost::forceEmptyBlock() {
     this->emptyBlockIntervalMsForRestore = this->m_consensus->getEmptyBlockIntervalMs();
     // HACK it should be less than time-out in pendingTransactions - but not 0!
     this->m_consensus->setEmptyBlockIntervalMs( 50 );  // just 1-time!
+}
+
+void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
+    m_broadcaster->broadcast( toJS( _txn.rlp() ) );
 }
 
 void SkaleHost::noteNewTransactions() {}

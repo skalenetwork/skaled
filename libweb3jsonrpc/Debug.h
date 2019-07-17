@@ -40,6 +40,7 @@ public:
     void debug_pauseBroadcast( bool pause ) override;
     void debug_pauseConsensus( bool pause ) override;
     void debug_forceBlock() override;
+    void debug_forceBroadcast( const std::string& _transactionHash ) override;
 
 private:
     eth::Client const& m_eth;

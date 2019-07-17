@@ -125,6 +125,8 @@ public:
 
     void forceEmptyBlock();
 
+    void forcedBroadcast( const dev::eth::Transaction& _txn );
+
 private:
     bool working = false;
 
