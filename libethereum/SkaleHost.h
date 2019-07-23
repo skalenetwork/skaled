@@ -138,6 +138,9 @@ private:
     dev::h256Hash m_received;
     std::mutex m_receivedMutex;
 
+    // TODO implement more nicely and more fine-grained!
+    std::mutex m_pending_createMutex;            // for race conditions between pendingTransactions() and createBock()
+
     int m_bcast_counter = 0;
 
     void penalizePeer(){};  // fake function for now
