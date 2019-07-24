@@ -149,8 +149,9 @@ void ZmqBroadcaster::startService() {
         setThreadName( "ZmqBroadcaster" );
 
         while ( true ) {
+            zmq_msg_t msg;
+
             try {
-                zmq_msg_t msg;
                 int res = zmq_msg_init( &msg );
                 assert( res == 0 );
                 res = zmq_msg_recv( &msg, client_socket(), 0 );
@@ -178,13 +179,14 @@ void ZmqBroadcaster::startService() {
                 void* data = zmq_msg_data( &msg );
 
                 std::string str( static_cast< char* >( data ), size );
+
                 try {
                     m_skaleHost.receiveTransaction( str );
-                } catch ( dev::Exception& ex ) {
+                } catch ( const std::exception& ex ) {
                     clog( dev::VerbosityInfo, "skale-host" )
                         << "Received bad transaction through broadcast: " << ex.what();
                 }
-                zmq_msg_close( &msg );
+
             } catch ( const std::exception& ex ) {
                 cerror << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
                 sleep( 2 );
@@ -192,6 +194,8 @@ void ZmqBroadcaster::startService() {
                 cerror << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
                 sleep( 2 );
             }
+
+            zmq_msg_close( &msg );
         }  // while
     };
 

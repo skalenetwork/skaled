@@ -504,6 +504,22 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
     return ss.str();
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool convert_json_string_value_to_boolean( const std::string& r ) {
+    if ( r.empty() )
+        return false;
+    char c = r[0];
+    if ( c == 'f' || c == 'F' || c == 'n' || c == 'N' )
+        return false;
+    double lf = std::atof( r.c_str() );
+    return ( lf != 0.0 ) ? true : false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 size_t cpu_count() {
     static const size_t g_cntCPUs = size_t(::sysconf( _SC_NPROCESSORS_ONLN ) );
     return g_cntCPUs;
@@ -696,12 +712,15 @@ double load_monitor::last_cpu_load() const {
     return lf;
 }
 
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
 nlohmann::json load_monitor::last_disk_load() const {
+#if ( !defined __BUILDING_4_MAC_OS_X__ )
     std::lock_guard< std::mutex > lock{diskLoadMutex_};
     return diskLoad_;
-}
+#else
+    nlohmann::json jo = nullptr;
+    return jo;
 #endif
+}
 
 void load_monitor::thread_proc() {
     for ( ; !stop_flag_; )

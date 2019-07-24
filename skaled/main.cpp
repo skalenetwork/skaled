@@ -58,6 +58,7 @@
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
+#include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 
@@ -813,7 +814,7 @@ int main( int argc, char** argv ) try {
             unsigned block_no = static_cast< unsigned int >( -1 );
             cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-            while ( in.peek() != -1 && !exitHandler.shouldExit() ) {
+            while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
                 bytes block( 8 );
                 {
                     if ( block_no >= client->number() ) {
@@ -1027,7 +1028,8 @@ int main( int argc, char** argv ) try {
     if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
          nExplicitPortWSS > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
-            rpc::SkaleFace,  /// skale
+            rpc::SkaleFace,   /// skale
+            rpc::SkaleStats,  /// skaleStats
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
             rpc::AdminEthFace,  // SKALE rpc::AdminNetFace,
             rpc::DebugFace, rpc::TestFace >;
@@ -1039,9 +1041,12 @@ int main( int argc, char** argv ) try {
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
         auto skaleFace = new rpc::Skale( *client->skaleHost() );
+        /// skaleStatsFace
+        auto skaleStatsFace = new rpc::SkaleStats( *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
-            skaleFace,  /// skale
+            skaleFace,       /// skale
+            skaleStatsFace,  /// skaleStats
             new rpc::Net(), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
@@ -1170,6 +1175,10 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
+            //
+            skaleStatsFace->setProvider( skale_server_connector );
+            skale_server_connector->setConsumer( skaleStatsFace );
+            //
             skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
@@ -1180,24 +1189,89 @@ int main( int argc, char** argv ) try {
             int nStatHTTPS = skale_server_connector->getServerPortStatusHTTPS();
             int nStatWS = skale_server_connector->getServerPortStatusWS();
             int nStatWSS = skale_server_connector->getServerPortStatusWSS();
+            static const size_t g_cntWaitAttempts = 30;
+            static const std::chrono::milliseconds g_waitAttempt = std::chrono::milliseconds( 100 );
+            if ( nExplicitPortHTTP > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTP < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTP" )
+                            << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTP = skale_server_connector->getServerPortStatusHTTP();
+                }
+            }
+            if ( nExplicitPortHTTPS > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTPS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS" )
+                            << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS = skale_server_connector->getServerPortStatusHTTPS();
+                }
+            }
+            if ( nExplicitPortWS > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WS" )
+                            << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS = skale_server_connector->getServerPortStatusWS();
+                }
+            }
+            if ( nExplicitPortWSS > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WSS" )
+                            << cc::debug( " start... " );
+                    nStatWSS = skale_server_connector->getServerPortStatusWSS();
+                }
+            }
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTP" )
                 << cc::debug( "................................... " )
-                << ( ( nStatHTTP >= 0 ) ? cc::num10( nStatHTTP ) : cc::error( "off" ) );
+                << ( ( nStatHTTP >= 0 ) ?
+                           ( ( nExplicitPortHTTP > 0 ) ? cc::num10( nStatHTTP ) :
+                                                         cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTPS" )
                 << cc::debug( ".................................. " )
-                << ( ( nStatHTTPS >= 0 ) ? cc::num10( nStatHTTPS ) : cc::error( "off" ) );
+                << ( ( nStatHTTPS >= 0 ) ?
+                           ( ( nExplicitPortHTTPS > 0 ) ? cc::num10( nStatHTTPS ) :
+                                                          cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "WS" )
                 << cc::debug( "..................................... " )
-                << ( ( nStatWS >= 0 ) ? cc::num10( nStatWS ) : cc::error( "off" ) );
+                << ( ( nStatWS >= 0 ) ?
+                           ( ( nExplicitPortWS > 0 ) ? cc::num10( nStatWS ) :
+                                                       cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "WSS" )
                 << cc::debug( ".................................... " )
-                << ( ( nStatWSS >= 0 ) ? cc::num10( nStatWSS ) : cc::error( "off" ) );
+                << ( ( nStatWSS >= 0 ) ?
+                           ( ( nExplicitPortWSS > 0 ) ? cc::num10( nStatWSS ) :
+                                                        cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
         }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
            // nExplicitPortWSS > 0 )
 

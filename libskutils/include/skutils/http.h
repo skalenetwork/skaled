@@ -58,6 +58,7 @@ typedef int socket_t;
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <atomic>
 #include <fstream>
 #include <functional>
 #include <map>
@@ -81,8 +82,9 @@ typedef int socket_t;
 
 /// configuration
 
-#define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 3 * 1000 )
-#define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 20 * 1000 )
+#define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 5 * 1000 )
+#define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 30 * 1000 )
+#define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ( 5 )
 
 namespace skutils {
 namespace http {
@@ -226,7 +228,8 @@ public:
     void set_error_handler( Handler handler );
     void set_logger( Logger logger );
 
-    void set_keep_alive_max_count( size_t count );
+    size_t get_keep_alive_max_count() const;
+    void set_keep_alive_max_count( size_t cnt );
 
     int bind_to_any_port( const char* host, int socket_flags = 0 );
     bool listen_after_bind();
@@ -241,7 +244,7 @@ protected:
     bool process_request(
         const std::string& origin, stream& strm, bool last_connection, bool& connection_close );
 
-    size_t keep_alive_max_count_;
+    std::atomic< size_t > keep_alive_max_count_;
 
 private:
     typedef std::vector< std::pair< std::regex, Handler > > Handlers;
@@ -528,16 +531,16 @@ template < typename T >
 inline bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callback ) {
     bool ret = false;
     if ( keep_alive_max_count > 0 ) {
-        auto count = keep_alive_max_count;
-        while ( count > 0 &&
-                detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) ) {
+        size_t cnt = keep_alive_max_count;
+        for ( ; cnt > 0; --cnt ) {
+            if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
+                continue;
             socket_stream strm( sock );
-            auto last_connection = count == 1;
+            auto last_connection = ( cnt == 1 ) ? true : false;
             auto connection_close = false;
             ret = callback( strm, last_connection, connection_close );
-            if ( !ret || connection_close )
+            if ( ( !ret ) || connection_close )
                 break;
-            count--;
         }
     } else {
         socket_stream strm( sock );
@@ -1426,7 +1429,7 @@ inline const std::string& buffer_stream::get_buffer() const {
 /// HTTP server implementation
 
 inline server::server()
-    : keep_alive_max_count_( 5 ),
+    : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
       running_connectoin_handlers_( 0 ) {
@@ -1483,8 +1486,13 @@ inline void server::set_logger( Logger logger ) {
     logger_ = logger;
 }
 
-inline void server::set_keep_alive_max_count( size_t count ) {
-    keep_alive_max_count_ = count;
+inline size_t server::get_keep_alive_max_count() const {
+    size_t cnt = keep_alive_max_count_;
+    return cnt;
+}
+
+inline void server::set_keep_alive_max_count( size_t cnt ) {
+    keep_alive_max_count_ = cnt;
 }
 
 inline int server::bind_to_any_port( const char* host, int socket_flags ) {
@@ -1806,7 +1814,7 @@ inline bool server::is_valid() const {
 }
 
 inline bool server::read_and_close_socket( socket_t sock ) {
-    return detail::read_and_close_socket( sock, keep_alive_max_count_,
+    return detail::read_and_close_socket( sock, get_keep_alive_max_count(),
         [this, sock]( stream& strm, bool last_connection, bool& connection_close ) {
             std::string origin =
                 skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
@@ -2110,17 +2118,17 @@ inline bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_coun
     SSL_connect_or_accept( ssl );
     bool ret = false;
     if ( keep_alive_max_count > 0 ) {
-        auto count = keep_alive_max_count;
-        while ( count > 0 &&
-                detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) ) {
+        size_t cnt = keep_alive_max_count;
+        for ( ; cnt > 0; --cnt ) {
+            if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
+                continue;
             SSL_socket_stream strm( sock, ssl );
-            auto last_connection = count == 1;
+            auto last_connection = ( cnt == 1 ) ? true : false;
             auto connection_close = false;
             ret = callback( strm, last_connection, connection_close );
-            if ( !ret || connection_close ) {
+            if ( ( !ret ) || connection_close ) {
                 break;
             }
-            count--;
         }
     } else {
         SSL_socket_stream strm( sock, ssl );
@@ -2207,7 +2215,7 @@ inline bool SSL_server::is_valid() const {
 inline bool SSL_server::read_and_close_socket( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
-    return detail::read_and_close_socket_ssl( sock, keep_alive_max_count_, ctx_, ctx_mutex_,
+    return detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
         SSL_accept,
         [origin]( SSL*  // ssl
         ) {},

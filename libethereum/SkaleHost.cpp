@@ -171,6 +171,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     Transactions txns =
         m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
+            std::lock_guard lock( m_pending_createMutex );
+
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
 
@@ -190,6 +192,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
             return true;
         } );
+
+    std::lock_guard lock( m_pending_createMutex );
 
     for ( auto sha : to_delete )
         m_tq.drop( sha );
@@ -240,6 +244,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
+
+    std::lock_guard lock( m_pending_createMutex );
+
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
     bool have_consensus_born = false;  // means we need to re-verify old txns
@@ -289,12 +296,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     }  // for
     // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
-
-    if ( m_transaction_cache.size() != 0 ) {
-        clog( VerbosityInfo, "skale-host" )
-            << "Erasing " << m_transaction_cache.size() << " txns from m_transaction_cache";
-        m_transaction_cache.clear();
-    }
 
     total_arrived += out_txns.size();
 
