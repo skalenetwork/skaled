@@ -47,6 +47,12 @@ public:
         uint64_t _timeStamp, uint64_t _blockID ) {
         m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, 0 );
     }
+	
+	u256 getPriceForBlockId(uint64_t _blockId) override {
+		u256 aPrice;
+		aPrice = 1;
+		return aPrice;
+	}
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
