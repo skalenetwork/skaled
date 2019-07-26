@@ -42,6 +42,8 @@ public:
     void debug_forceBlock() override;
     void debug_forceBroadcast( const std::string& _transactionHash ) override;
 
+    std::string debug_callSkaleHost( const std::string& _arg ) override;
+
 private:
     eth::Client const& m_eth;
 

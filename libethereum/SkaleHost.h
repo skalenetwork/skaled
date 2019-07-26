@@ -26,6 +26,7 @@
 
 #include "ConsensusStub.h"
 
+#include <libskale/SkaleDebug.h>
 #include <libskale/broadcaster.h>
 
 #include <libconsensus/node/ConsensusInterface.h>
@@ -127,6 +128,8 @@ public:
 
     void forcedBroadcast( const dev::eth::Transaction& _txn );
 
+    std::string debugCall( const std::string& arg );
+
 private:
     bool working = false;
 
@@ -176,6 +179,9 @@ private:
 
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
+
+    SkaleDebugInterface m_debugInterface;
+    SkaleDebugTracer m_debugTracer;
 
 #ifdef DEBUG_TX_BALANCE
     std::map< dev::h256, int > sent;

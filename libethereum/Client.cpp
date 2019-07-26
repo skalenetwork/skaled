@@ -571,10 +571,13 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks( _ir.deadBlocks, changeds );
-    for ( auto const& t : _ir.goodTranactions ) {
-        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
-        m_tq.dropGood( t );
-    }
+
+    // this should be already done in SkaleHost::createBlock()
+    //    for ( auto const& t : _ir.goodTranactions ) {
+    //        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
+    //        m_tq.dropGood( t );
+    //    }
+
     onNewBlocks( _ir.liveBlocks, changeds );
     if ( !isMajorSyncing() )
         resyncStateFromChain();

@@ -7,6 +7,7 @@ set(sources
     httpserveroverride.cpp
     broadcaster.cpp
     SkaleClient.cpp
+    SkaleDebug.cpp
 )
 
 set(headers
@@ -15,6 +16,7 @@ set(headers
     httpserveroverride.h
     broadcaster.h
     SkaleClient.h
+    SkaleDebug.h
 )
 
 add_library(skale ${sources} ${headers})

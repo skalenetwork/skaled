@@ -101,6 +101,10 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       total_sent( 0 ),
       total_arrived( 0 ) {
+    m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    } );
+
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
     m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
@@ -133,6 +137,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
 
     h256 sha = transaction.sha3();
 
+    m_debugTracer.tracepoint( "receive_transaction" );
     {
         std::lock_guard< std::mutex > localGuard( m_receivedMutex );
         m_received.insert( sha );
@@ -169,6 +174,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     h256Hash to_delete;
 
+    m_debugTracer.tracepoint( "fetch_transactions" );
+
     Transactions txns =
         m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
             std::lock_guard lock( m_pending_createMutex );
@@ -195,8 +202,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     std::lock_guard lock( m_pending_createMutex );
 
-    for ( auto sha : to_delete )
+    m_debugTracer.tracepoint( "drop_bad_transactions" );
+
+    for ( auto sha : to_delete ) {
+        m_debugTracer.tracepoint( "drop_bad" );
         m_tq.drop( sha );
+    }
 
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
@@ -235,12 +246,15 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     logState();
 
+    m_debugTracer.tracepoint( "send_to_consensus" );
+
     return out_vector;
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID ) try {
     LOG( m_traceLogger ) << "createBlock ID= " << _blockID << std::endl;
+    m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
@@ -250,6 +264,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
     bool have_consensus_born = false;  // means we need to re-verify old txns
+
+    m_debugTracer.tracepoint( "drop_good_transactions" );
 
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
@@ -272,6 +288,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             Transaction& t = m_transaction_cache[sha.asArray()];
 
             out_txns.push_back( t );
+            LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
+            m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
             MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
             m_transaction_cache.erase( sha.asArray() );
@@ -285,6 +303,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
             out_txns.push_back( t );
             LOG( m_debugLogger ) << "Will import consensus-born txn!";
+            m_debugTracer.tracepoint( "import_consensus_born" );
             have_consensus_born = true;
         }  // else
 
@@ -292,6 +311,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // TODO fix this!!?
             clog( VerbosityWarning, "skale-host" )
                 << "Consensus returned 'future'' transaction that we didn't yet send!!";
+            m_debugTracer.tracepoint( "import_future" );
         }
 
     }  // for
@@ -300,6 +320,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     total_arrived += out_txns.size();
 
     assert( _blockID == m_client.number() + 1 );
+
+    m_debugTracer.tracepoint( "import_block" );
 
     size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _timeStamp );
     if ( n_succeeded != out_txns.size() )
@@ -360,6 +382,7 @@ void SkaleHost::stopWorking() {
         return;
 
     m_exitNeeded = true;
+    pauseConsensus( false );
     m_consensus->exitGracefully();
     m_consensusThread.join();
 
@@ -398,6 +421,7 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
+                        m_debugTracer.tracepoint( "broadcast" );
                         m_broadcaster->broadcast( toJS( txn.rlp() ) );
                     }
                 } catch ( const std::exception& ex ) {
@@ -431,6 +455,10 @@ void SkaleHost::forceEmptyBlock() {
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
     m_broadcaster->broadcast( toJS( _txn.rlp() ) );
+}
+
+std::string SkaleHost::debugCall( const std::string& arg ) {
+    return m_debugInterface.call( arg );
 }
 
 void SkaleHost::noteNewTransactions() {}

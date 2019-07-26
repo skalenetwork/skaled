@@ -264,3 +264,7 @@ void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
+
+std::string Debug::debug_callSkaleHost( const std::string& _arg ) {
+    return m_eth.skaleHost()->debugCall( _arg );
+}
