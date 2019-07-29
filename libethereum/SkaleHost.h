@@ -26,6 +26,7 @@
 
 #include "ConsensusStub.h"
 
+#include <libskale/SkaleDebug.h>
 #include <libskale/broadcaster.h>
 
 #include <libconsensus/node/ConsensusInterface.h>
@@ -123,6 +124,12 @@ public:
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
+    void forceEmptyBlock();
+
+    void forcedBroadcast( const dev::eth::Transaction& _txn );
+
+    std::string debugCall( const std::string& arg );
+
 private:
     bool working = false;
 
@@ -169,6 +176,12 @@ private:
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
     std::unique_ptr< ConsensusInterface > m_consensus;
+
+    std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
+                                                               // to 0
+
+    SkaleDebugInterface m_debugInterface;
+    SkaleDebugTracer m_debugTracer;
 
 #ifdef DEBUG_TX_BALANCE
     std::map< dev::h256, int > sent;

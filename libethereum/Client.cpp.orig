@@ -101,7 +101,14 @@ Client::~Client() {
     else
         cerror << "Instance of SkaleHost was not properly created.";
 
+<<<<<<< HEAD
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
+=======
+    if ( m_skaleHost )
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+                                     // workers
+    m_signalled.notify_all();        // to wake up the thread from Client::doWork()
+>>>>>>> develop
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
@@ -571,13 +578,10 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks( _ir.deadBlocks, changeds );
-
-    // this should be already done in SkaleHost::createBlock()
-    //    for ( auto const& t : _ir.goodTranactions ) {
-    //        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
-    //        m_tq.dropGood( t );
-    //    }
-
+    for ( auto const& t : _ir.goodTranactions ) {
+        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
+        m_tq.dropGood( t );
+    }
     onNewBlocks( _ir.liveBlocks, changeds );
     if ( !isMajorSyncing() )
         resyncStateFromChain();

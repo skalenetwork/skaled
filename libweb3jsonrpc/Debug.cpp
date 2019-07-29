@@ -246,3 +246,25 @@ void Debug::debug_pauseBroadcast( bool _pause ) {
 void Debug::debug_pauseConsensus( bool _pause ) {
     m_eth.skaleHost()->pauseConsensus( _pause );
 }
+void Debug::debug_forceBlock() {
+    m_eth.skaleHost()->forceEmptyBlock();
+}
+
+void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_eth.isKnownTransaction( h ) )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+
+        const Transaction tx = m_eth.transaction( h );
+        m_eth.skaleHost()->forcedBroadcast( tx );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+std::string Debug::debug_callSkaleHost( const std::string& _arg ) {
+    return m_eth.skaleHost()->debugCall( _arg );
+}

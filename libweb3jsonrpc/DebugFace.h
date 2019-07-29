@@ -52,6 +52,20 @@ public:
             jsonrpc::Procedure( "debug_pauseBroadcast", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_BOOLEAN, NULL ),
             &dev::rpc::DebugFace::debug_pauseBroadcastI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_forceBlock", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_BOOLEAN, NULL ),
+            &dev::rpc::DebugFace::debug_forceBlockI );
+
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "debug_forceBroadcast", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_forceBroadcastI );
+
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "debug_callSkaleHost", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_callSkaleHostI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -88,6 +102,17 @@ public:
         this->debug_pauseConsensus( request[0u].asBool() );
         response = true;  // TODO make void
     }
+    virtual void debug_forceBlockI( const Json::Value&, Json::Value& response ) {
+        this->debug_forceBlock();
+        response = true;  // TODO make void
+    }
+    virtual void debug_forceBroadcastI( const Json::Value& request, Json::Value& response ) {
+        this->debug_forceBroadcast( request[0u].asString() );
+        response = true;  // TODO make void
+    }
+    virtual void debug_callSkaleHostI( const Json::Value& request, Json::Value& response ) {
+        response = this->debug_callSkaleHost( request[0u].asString() );
+    }
 
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
@@ -103,6 +128,9 @@ public:
 
     virtual void debug_pauseBroadcast( bool pause ) = 0;
     virtual void debug_pauseConsensus( bool pause ) = 0;
+    virtual void debug_forceBlock() = 0;
+    virtual void debug_forceBroadcast( const std::string& _transactionHash ) = 0;
+    virtual std::string debug_callSkaleHost( const std::string& _arg ) = 0;
 };
 
 }  // namespace rpc
