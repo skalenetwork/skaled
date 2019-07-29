@@ -15,8 +15,8 @@ void SkaleDebugInterface::remove_handler( int pos ) {
 }
 
 std::string SkaleDebugInterface::call( const std::string& arg ) {
-    for ( auto h : handlers ) {
-        std::string res = h( arg );
+    for ( auto handler : handlers ) {
+        std::string res = handler( arg );
         if ( !res.empty() )
             return res;
     }
@@ -24,45 +24,45 @@ std::string SkaleDebugInterface::call( const std::string& arg ) {
 }
 
 void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count ) {
-    tracepoint_struct& obj = find_by_name( name );
+    tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::lock_guard< std::mutex > thread_lock( obj.thread_mutex );
+    std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
 
-    assert( !obj.need_break );
-    obj.need_break = true;
-    obj.needed_waiting_count = count;
+    assert( !tp_obj.need_break );
+    tp_obj.need_break = true;
+    tp_obj.needed_waiting_count = count;
 }
 
 void SkaleDebugTracer::wait_for_tracepoint( const std::string& name ) {
-    tracepoint_struct& obj = find_by_name( name );
+    tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::unique_lock< std::mutex > lock( obj.caller_mutex );
-    obj.caller_cond.wait( lock );
+    std::unique_lock< std::mutex > lock( tp_obj.caller_mutex );
+    tp_obj.caller_cond.wait( lock );
 }
 
 void SkaleDebugTracer::continue_on_tracepoint( const std::string& name ) {
-    tracepoint_struct& obj = find_by_name( name );
+    tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::lock_guard< std::mutex > lock( obj.thread_mutex );
-    assert( !obj.need_break );
-    obj.thread_cond.notify_all();
+    std::lock_guard< std::mutex > lock( tp_obj.thread_mutex );
+    assert( !tp_obj.need_break );
+    tp_obj.thread_cond.notify_all();
 }
 
 void SkaleDebugTracer::tracepoint( const std::string& name ) {
-    tracepoint_struct& obj = find_by_name( name );
+    tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::unique_lock< std::mutex > lock( obj.thread_mutex );
-    ++obj.pass_count;
-    if ( obj.need_break ) {
-        ++obj.waiting_count;
+    std::unique_lock< std::mutex > lock( tp_obj.thread_mutex );
+    ++tp_obj.pass_count;
+    if ( tp_obj.need_break ) {
+        ++tp_obj.waiting_count;
 
-        if ( obj.waiting_count == obj.needed_waiting_count ) {
-            std::unique_lock< std::mutex > lock2( obj.caller_mutex );
-            obj.need_break = false;
-            obj.caller_cond.notify_all();
+        if ( tp_obj.waiting_count == tp_obj.needed_waiting_count ) {
+            std::unique_lock< std::mutex > lock2( tp_obj.caller_mutex );
+            tp_obj.need_break = false;
+            tp_obj.caller_cond.notify_all();
         }
 
-        obj.thread_cond.wait( lock );
+        tp_obj.thread_cond.wait( lock );
     }
 }
 

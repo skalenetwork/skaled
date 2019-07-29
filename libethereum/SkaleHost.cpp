@@ -220,8 +220,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             m_transaction_cache[sha.asArray()] = txn;
             out_vector.push_back( txn.rlp() );
 
-            // assert( out_vector[total_sent][0] == 0xf8 );
-
             ++total_sent;
 
 #ifdef DEBUG_TX_BALANCE
