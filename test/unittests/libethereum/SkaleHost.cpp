@@ -149,6 +149,10 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     u256 balanceAfter = client->balanceAt( senderAddress ); \
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
 
+#define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
+    u256 balanceAfter = client->balanceAt( senderAddress );    \
+    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease )
+
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
 
 BOOST_AUTO_TEST_CASE( validTransaction ) {
@@ -665,7 +669,6 @@ BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
     json["from"] = toJS( senderAddress );
     json["to"] = toJS( receiver.address() );
     json["value"] = jsToDecimal( toJS( value1 ) );
-    json["gasPrice"] = jsToDecimal( "0x0" );
     json["nonce"] = 0;
 
     // 1st tx
@@ -708,7 +711,7 @@ BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
-    REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, value2 );
 
     // should not be accessible from queue
     ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );

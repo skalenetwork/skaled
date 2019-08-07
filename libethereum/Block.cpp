@@ -437,7 +437,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     for ( Transaction const& tr : _transactions ) {
         try {
             // TODO Move this checking logic into some single place - not in execute, of course
-            if ( !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+            if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
