@@ -16,14 +16,6 @@ public:
             jsonrpc::Procedure( "admin_eth_blockQueueStatus", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::AdminEthFace::admin_eth_blockQueueStatusI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "admin_eth_setAskPrice",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",
-                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::AdminEthFace::admin_eth_setAskPriceI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "admin_eth_setBidPrice",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",
-                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::AdminEthFace::admin_eth_setBidPriceI );
         this->bindAndAddMethod( jsonrpc::Procedure( "admin_eth_setMining",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",
                                     jsonrpc::JSON_BOOLEAN, "param2", jsonrpc::JSON_STRING, NULL ),
@@ -79,10 +71,6 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "miner_setExtra", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::AdminEthFace::miner_setExtraI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "miner_setGasPrice", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_BOOLEAN, "param1", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::AdminEthFace::miner_setGasPriceI );
         this->bindAndAddMethod( jsonrpc::Procedure( "miner_hashrate", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::AdminEthFace::miner_hashrateI );
@@ -91,14 +79,6 @@ public:
     inline virtual void admin_eth_blockQueueStatusI(
         const Json::Value& request, Json::Value& response ) {
         response = this->admin_eth_blockQueueStatus( request[0u].asString() );
-    }
-    inline virtual void admin_eth_setAskPriceI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->admin_eth_setAskPrice( request[0u].asString(), request[1u].asString() );
-    }
-    inline virtual void admin_eth_setBidPriceI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->admin_eth_setBidPrice( request[0u].asString(), request[1u].asString() );
     }
     inline virtual void admin_eth_setMiningI( const Json::Value& request, Json::Value& response ) {
         response = this->admin_eth_setMining( request[0u].asBool(), request[1u].asString() );
@@ -151,16 +131,11 @@ public:
     inline virtual void miner_setExtraI( const Json::Value& request, Json::Value& response ) {
         response = this->miner_setExtra( request[0u].asString() );
     }
-    inline virtual void miner_setGasPriceI( const Json::Value& request, Json::Value& response ) {
-        response = this->miner_setGasPrice( request[0u].asString() );
-    }
     inline virtual void miner_hashrateI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->miner_hashrate();
     }
     virtual Json::Value admin_eth_blockQueueStatus( const std::string& param1 ) = 0;
-    virtual bool admin_eth_setAskPrice( const std::string& param1, const std::string& param2 ) = 0;
-    virtual bool admin_eth_setBidPrice( const std::string& param1, const std::string& param2 ) = 0;
     virtual bool admin_eth_setMining( bool param1, const std::string& param2 ) = 0;
     virtual Json::Value admin_eth_findBlock(
         const std::string& param1, const std::string& param2 ) = 0;
@@ -181,7 +156,6 @@ public:
     virtual bool miner_stop() = 0;
     virtual bool miner_setEtherbase( const std::string& param1 ) = 0;
     virtual bool miner_setExtra( const std::string& param1 ) = 0;
-    virtual bool miner_setGasPrice( const std::string& param1 ) = 0;
     virtual std::string miner_hashrate() = 0;
 };
 

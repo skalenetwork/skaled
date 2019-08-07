@@ -417,7 +417,7 @@ pair< TransactionReceipts, bool > Block::sync(
 }
 
 tuple< TransactionReceipts, unsigned > Block::syncEveryone(
-    BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp ) {
+    BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -436,10 +436,36 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     unsigned count_bad = 0;
     for ( Transaction const& tr : _transactions ) {
         try {
+            // TODO Move this checking logic into some single place - not in execute, of course
+            if ( !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+                LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
+                                << tr.gasPrice() << " < " << _gasPrice;
+
+                // Add to the user-originated transactions that we've executed.
+                m_transactions.push_back( tr );
+                m_transactionSet.insert( tr.sha3() );
+
+                // TODO deduplicate
+                // "bad" transaction receipt for failed transactions
+                TransactionReceipt const null_receipt =
+                    info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+                        TransactionReceipt( 0, info().gasUsed(), LogEntries() ) :
+                        TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
+
+                m_receipts.push_back( null_receipt );
+                receipts.push_back( null_receipt );
+
+                ++count_bad;
+
+                continue;
+            }
+
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
             receipts.push_back( m_receipts.back() );
+
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
                 ++count_bad;
+
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
             // throw;
@@ -797,7 +823,8 @@ void Block::updateBlockhashContract() {
     if ( blockNumber >= forkBlock ) {
         DummyLastBlockHashes lastBlockHashes;  // assuming blockhash contract won't need BLOCKHASH
                                                // itself
-        Executive e( *this, lastBlockHashes );
+        // HACK 0 here is for gasPrice
+        Executive e( *this, lastBlockHashes, 0 );
         h256 const parentHash = m_previousBlock.hash();
         if ( !e.call( c_blockhashContractAddress, SystemAddress, 0, 0, parentHash.ref(), 1000000 ) )
             e.go();

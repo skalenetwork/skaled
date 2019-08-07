@@ -116,6 +116,8 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
+    u256 getGasPrice() const;
+
     void pauseConsensus( bool _pause ) {
         if ( _pause )
             m_consensusPauseMutex.lock();
@@ -138,7 +140,7 @@ private:
 private:
     virtual ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit );
     virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID );
+        uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice );
 
     std::thread m_broadcastThread;
     void broadcastFunc();

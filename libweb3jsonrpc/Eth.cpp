@@ -617,7 +617,7 @@ string dev::rpc::exceptionToErrorMessage() {
     catch ( ZeroSignatureTransaction const& ) {
         ret = "Zero signature transaction.";
     } catch ( GasPriceTooLow const& ) {
-        ret = "Pending transaction with same nonce but higher gas price exists.";
+        ret = "Transaction gas price lower than current eth_gasPrice.";
     } catch ( SameNonceAlreadyInQueue const& ) {
         ret = "Pending transaction with same nonce already exists (skale: we ignore gas price).";
     } catch ( OutOfGasIntrinsic const& ) {
