@@ -770,8 +770,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         throw;
     }
 
-    int n_transactions = 0;
-
     h256s route;
     h256 common;
     bool isImportedAndBest = false;
@@ -844,7 +842,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                 ta.blockHash = tbi.hash();
 
                 RLP txns_rlp = blockRLP[1];
-                n_transactions += txns_rlp.size();
 
                 for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
                     MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
@@ -974,7 +971,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             fresh.push_back( h );
 
     clog( VerbosityTrace, "BlockChain" )
-        << "Insterted block with " << n_transactions << " transactions";
+        << "Insterted block with " << _block.transactions.size() << " transactions";
 
     return ImportRoute{dead, fresh, _block.transactions};
 }
