@@ -83,6 +83,81 @@ private:
     // TestIpcServer& m_server; // l_sergiy: clang did detected this as unused
 };
 
+class SingleNodeConsensusFixture : public ConsensusExtFace {
+protected:
+    std::shared_ptr< ConsensusEngine > m_consensus;
+    std::thread m_consensusThread;
+
+    std::promise< transactions_vector > transaction_promise;
+
+    std::promise< std::tuple< const transactions_vector, uint64_t, uint32_t, uint64_t, u256 > >
+        block_promise;
+
+public:
+    SingleNodeConsensusFixture() {
+        ChainParams chainParams;
+        chainParams.sealEngineName = NoProof::name();
+        chainParams.allowFutureBlocks = true;
+        chainParams.difficulty = chainParams.minimumDifficulty;
+        chainParams.gasLimit = chainParams.maxGasLimit;
+        chainParams.extraData = h256::random().asBytes();
+
+        //////////////////////////////////////////////
+
+        m_consensus.reset( new ConsensusEngine(
+            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp() ) );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
+
+        m_consensusThread = std::thread( [this]() {
+            m_consensus->startAll();
+            m_consensus->bootStrapAll();
+        } );
+    }
+
+    virtual transactions_vector pendingTransactions( size_t /*_limit*/ ) override {
+        auto future = this->transaction_promise.get_future();
+        future.wait();
+        transactions_vector buffer = future.get();
+        return buffer;
+    }
+
+    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override {
+        transaction_promise = decltype( transaction_promise )();
+
+        std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
+
+        transactions_vector tmp_vec = _approvedTransactions;
+        block_promise.set_value(
+            std::make_tuple( tmp_vec, _timeStamp, _timeStampMs, _blockID, _gasPrice ) );
+    }
+
+    virtual ~SingleNodeConsensusFixture() override {
+        transaction_promise.set_value( transactions_vector() );
+        m_consensus->exitGracefully();
+        m_consensusThread.join();
+    }
+
+    std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
+        const ConsensusExtFace::transactions_vector& txns ) {
+        transaction_promise.set_value( txns );
+        auto future = block_promise.get_future();
+        future.wait();
+        auto res = future.get();
+        block_promise = decltype( block_promise )();
+
+        //        transactions_vector approvedTransactions = txns;
+        //        uint64_t timeStamp = 11;
+        //        uint32_t timeStampMs = 1;
+        //        uint64_t blockID = 1;
+        //        u256 gasPrice = 4000;
+
+        // return make_tuple( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice );
+
+        return res;
+    }
+};
+
 class ConsensusExtFaceFixture : public ConsensusExtFace {
 protected:
     std::shared_ptr< ConsensusEngine > m_consensus;
@@ -266,6 +341,54 @@ public:
         }
     }
 };
+
+BOOST_FIXTURE_TEST_SUITE( SingleConsensusTests, SingleNodeConsensusFixture )
+
+BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
+    transactions_vector approvedTransactions;
+    uint64_t timeStamp;
+    uint32_t timeStampMs;
+    uint64_t blockID;
+    u256 gasPrice;
+
+    // block 1
+
+    u256 price0 = m_consensus->getPriceForBlockId( 0 );
+
+    transactions_vector v( 1 );
+    v[0].push_back( 'a' );
+    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    BOOST_REQUIRE_EQUAL( gasPrice, price0 );
+
+    u256 price1 = m_consensus->getPriceForBlockId( 1 );
+
+    // block 2
+
+    v = transactions_vector( 9000 );
+    for ( auto& tx : v ) {
+        tx.push_back( 'b' );
+    }  // for
+
+    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    BOOST_REQUIRE_EQUAL( gasPrice, price1 );
+
+    u256 price2 = m_consensus->getPriceForBlockId( 2 );
+
+    BOOST_REQUIRE_EQUAL( price0, price1 );
+    BOOST_REQUIRE_GT( price2, price1 );
+
+    // block 3
+
+    v = transactions_vector( 1 );
+    v[0].push_back( 'c' );
+    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    BOOST_REQUIRE_EQUAL( gasPrice, price2 );
+    u256 price3 = m_consensus->getPriceForBlockId( 3 );
+
+    BOOST_REQUIRE_LT( price3, price2 );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 // Now there is an error in ConsensusExtFaceFixture on start
 

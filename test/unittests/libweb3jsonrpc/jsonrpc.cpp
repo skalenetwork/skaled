@@ -405,13 +405,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
     auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
     BOOST_REQUIRE( !txHash.empty() );
 
-    // whait for transaction processing
-    u256 currentNonce;
-    do {
-        usleep( 100 * 1000 );
-        currentNonce =
-            jsToU256( rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
-    } while ( currentNonce < 1 );
+    mineTransaction( *client, 1 );
 
     auto invalidNonce =
         jsToU256( rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) ) - 1;
@@ -532,14 +526,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
 
     string txHash = rpcClient->eth_sendTransaction( create );
-    // there was a mining
-
-    // wait for transaction processing
-    while ( jsToU256( rpcClient->eth_getTransactionCount(
-                toJS( coinbase.address() ), "latest" ) ) == 0 ) {
-        sleep( 1 );
-        cerr << "Wait for transaction processing" << endl;
-    };
+    dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
@@ -596,13 +583,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
         jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
 
     string txHash = rpcClient->eth_sendTransaction( create );
-
-    // wait for transaction processing
-    while ( jsToU256( rpcClient->eth_getTransactionCount(
-                toJS( coinbase.address() ), "latest" ) ) == 0 ) {
-        sleep( 1 );
-        cerr << "Wait for transaction processing" << endl;
-    };
+    dev::eth::mineTransaction( *( client ), 1 );
 
     u256 balanceAfter =
         jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
@@ -896,6 +877,45 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
 
     balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
+}
+
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // Mine to generate a non-zero account balance
+    const int blocksToMine = 1;
+    const u256 blockReward = 3 * dev::eth::ether;
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+
+    u256 initial_gasPrice = client->gasBidPrice();
+
+    Json::Value t;
+    t["from"] = toJS( senderAddress );
+    t["to"] = toJS( receiver.address() );
+    t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice ) );
+
+    auto signedTx = rpcClient->eth_signTransaction( t );
+    BOOST_REQUIRE( !signedTx["raw"].empty() );
+
+    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    mineTransaction( *client, 1 );
+    BOOST_REQUIRE_EQUAL(
+        rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ), "0x1" );
+
+
+    /////////////////////////
+
+    t["nonce"] = "1";
+    t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
+    auto signedTx2 = rpcClient->eth_signTransaction( t );
+
+    BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx2["raw"].asString() ),
+        "Transaction gas price lower than current eth_gasPrice." );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -2,6 +2,7 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
 #include <libconsensus/node/ConsensusEngine.h>
+#include <libskale/ConsensusGasPricer.h>
 
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
@@ -30,9 +31,12 @@ using namespace std;
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
+    std::vector< u256 > block_gas_prices;
 
 public:
-    ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {}
+    ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
+        block_gas_prices.push_back( 1000 );
+    }
     ~ConsensusTestStub() override {}
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
     void startAll() override {}
@@ -44,14 +48,18 @@ public:
         return m_extFace.pendingTransactions( _limit );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, 0 );
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0 ) {
+        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice );
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
-        u256 aPrice;
-        aPrice = 1;
-        return aPrice;
+        assert( _blockId < block_gas_prices.size() );
+        return block_gas_prices.at( _blockId );
+    }
+
+    u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
+        assert( _blockId == block_gas_prices.size() );
+        block_gas_prices.push_back( _gasPrice );
     }
 };
 
@@ -81,7 +89,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         TransientDirectory tempDir;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
-        accountHolder->setAccounts( {coinbase} );
+        accountHolder->setAccounts( {coinbase, account2} );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
@@ -95,6 +103,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         stub = test_stub_factory.result;
 
         client->injectSkaleHost( skaleHost );
+        client->setGasPricer( make_shared< ConsensusGasPricer >( *skaleHost ) );
         client->startWorking();
 
         // make money
@@ -106,10 +115,25 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( Address( 5 ) );
     }
 
+    Transaction tx_from_json( const Json::Value& json ) {
+        TransactionSkeleton ts = toTransactionSkeleton( json );
+        ts = client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = accountHolder->authenticate( ts );
+        return Transaction( ts, ar.second );
+    }
+
+    bytes bytes_from_json( const Json::Value& json ) {
+        Transaction tx = tx_from_json( json );
+        RLPStream stream;
+        tx.streamRLP( stream );
+        return stream.out();
+    }
+
     TransactionQueue* tq;
 
     unique_ptr< Client > client;
     dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
 
@@ -562,10 +586,7 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
     json["nonce"] = 0;
     json["gasPrice"] = 0;
 
-    TransactionSkeleton ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx1( ts, ar.second );
+    Transaction tx1 = tx_from_json( json );
 
     RLPStream stream1;
     tx1.streamRLP( stream1 );
@@ -577,10 +598,7 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
     json["nonce"] = 1;
     json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
 
-    ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    ar = accountHolder->authenticate( ts );
-    Transaction tx2( ts, ar.second );
+    Transaction tx2 = tx_from_json( json );
 
     RLPStream stream2;
     tx2.streamRLP( stream2 );
@@ -604,7 +622,63 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
 }
 
-BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
+// positive test for 4 next ones
+BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    u256 value1 = 10000 * dev::eth::szabo;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( value1 ) );
+    json["nonce"] = 1;
+
+    // 1st tx
+    Transaction tx1 = tx_from_json( json );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
+
+    // submit it!
+    tq->import( tx1 );
+
+    // 2nd tx
+    u256 value2 = 20000 * dev::eth::szabo;
+    json["value"] = jsToDecimal( toJS( value2 ) );
+    json["nonce"] = 0;
+    bytes tx2 = bytes_from_json( json );
+
+    // receive it!
+    skaleHost->receiveTransaction( toJS( tx2 ) );
+
+    sleep( 1 );
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 2 );
+
+    // 3rd transaction to trigger re-verification
+    u256 value3 = 30000 * dev::eth::szabo;
+    json["value"] = jsToDecimal( toJS( value3 ) );
+    json["nonce"] = 0;
+
+    bytes tx3 = bytes_from_json( json );
+
+    // return it from consensus!
+    CHECK_BLOCK_BEGIN;
+    CHECK_NONCE_BEGIN( senderAddress );
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx3}, utcTime(), 1U ) );
+    stub->setPriceForBlockId( 1, 1000 );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+
+    // both should be known, but
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 2 );
+    // 2nd should be dropped, 1st kept
+    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 3 );
+    BOOST_REQUIRE_EQUAL( txns.size(), 1 );
+}
+
+BOOST_AUTO_TEST_CASE( transactionDropQueue ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -614,27 +688,24 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     json["to"] = toJS( receiver.address() );
     json["value"] = jsToDecimal( toJS( value1 ) );
     json["gasPrice"] = jsToDecimal( "0x0" );
-    json["nonce"] = 0;
+    json["nonce"] = 1;
 
     // 1st tx
-    TransactionSkeleton ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx1( ts, ar.second );
+    Transaction tx1 = tx_from_json( json );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
     // submit it!
     tq->import( tx1 );
 
     sleep( 1 );
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
 
     // 2nd transaction will remove 1
     u256 value2 = 8000 * dev::eth::szabo;
     json["value"] = jsToDecimal( toJS( value2 ) );
+    json["nonce"] = 0;
 
-    ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    ar = accountHolder->authenticate( ts );
-    Transaction tx2( ts, ar.second );
+    Transaction tx2 = tx_from_json( json );
 
     RLPStream stream2;
     tx2.streamRLP( stream2 );
@@ -648,6 +719,7 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
 
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U ) );
+    stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
@@ -660,7 +732,8 @@ BOOST_AUTO_TEST_CASE( queueTransactionDrop ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
+// TODO Check exact dropping reason!
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -669,30 +742,25 @@ BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
     json["from"] = toJS( senderAddress );
     json["to"] = toJS( receiver.address() );
     json["value"] = jsToDecimal( toJS( value1 ) );
-    json["nonce"] = 0;
+    json["gasPrice"] = "1000";
+    json["nonce"] = 1;
 
     // 1st tx
-    TransactionSkeleton ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx1( ts, ar.second );
+    Transaction tx1 = tx_from_json( json );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
-    // receive it!
-    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    // submit it!
+    tq->import( tx1 );
 
     sleep( 1 );
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
 
-    // 2d transaction will remove 1
+    // 2nd transaction will remove 1
     u256 value2 = 8000 * dev::eth::szabo;
     json["value"] = jsToDecimal( toJS( value2 ) );
+    json["nonce"] = 0;
 
-    ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    ar = accountHolder->authenticate( ts );
-    Transaction tx2( ts, ar.second );
+    Transaction tx2 = tx_from_json( json );
 
     RLPStream stream2;
     tx2.streamRLP( stream2 );
@@ -704,14 +772,80 @@ BOOST_AUTO_TEST_CASE( queueTransactionDropReceive ) {
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U, 1000 ) );
+    stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
-    REQUIRE_BALANCE_DECREASE_GE( senderAddress, value2 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, value2 + 21000 * 1000 );
+
+    // should not be accessible from queue
+    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+}
+
+// TODO Check exact dropping reason!
+BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    {
+        auto wr_state = client->state().startWrite();
+        wr_state.addBalance( account2.address(), 1 * ether );
+        wr_state.commit();
+    }
+
+    Json::Value json;
+    u256 value1 = 10000 * dev::eth::szabo;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( value1 ) );
+    json["nonce"] = 0;
+    json["gasPrice"] = "1000";
+
+    // 1st tx
+    Transaction tx1 = tx_from_json( json );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // receive it!
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+
+    sleep( 1 );
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
+
+    // 2nd transaction will remove 1
+    u256 value2 = 8000 * dev::eth::szabo;
+    json["from"] = toJS( account2.address() );
+    json["value"] = jsToDecimal( toJS( value2 ) );
+    json["nonce"] = 0;
+
+    Transaction tx2 = tx_from_json( json );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash2 = tx2.sha3();
+
+    // return it from consensus!
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U, 1000 ) );
+    stub->setPriceForBlockId( 1, 1100 );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
+
+    REQUIRE_NONCE_INCREASE( account2.address(), 1 );
+    REQUIRE_BALANCE_DECREASE_GE( account2.address(), value2 );
 
     // should not be accessible from queue
     ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
@@ -731,10 +865,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     json["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
     json["nonce"] = 0;
 
-    TransactionSkeleton ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
+    Transaction tx = tx_from_json( json );
 
     RLPStream stream;
     tx.streamRLP( stream );
@@ -751,6 +882,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     // 2 get it from consensus
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+    stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -765,10 +897,7 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
 
     // 3 send new tx and see nonce
     json["nonce"] = 1;
-    ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    ar = accountHolder->authenticate( ts );
-    Transaction tx2( ts, ar.second );
+    Transaction tx2 = tx_from_json( json );
 
     client->importTransaction( tx2 );
 }
