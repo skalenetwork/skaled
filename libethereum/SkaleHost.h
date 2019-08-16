@@ -163,7 +163,7 @@ private:
     bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;
-    bool m_broadcastPauseFlag;  // not pause - just ignore
+    bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
     std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
         m_transaction_cache;  // used to find

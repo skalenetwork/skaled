@@ -344,6 +344,8 @@ void SkaleHost::startWorking() {
     if ( working )
         return;
 
+    m_broadcaster->startService();
+
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( bcast_func );
 

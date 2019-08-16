@@ -78,8 +78,6 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
       m_zmq_client_socket( nullptr ),
       m_need_exit( false ) {
     m_zmq_context = zmq_ctx_new();
-
-    startService();
 }
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
