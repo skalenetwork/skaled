@@ -29,7 +29,7 @@
 #include <libskale/SkaleDebug.h>
 #include <libskale/broadcaster.h>
 
-#include <libconsensus/node/ConsensusInterface.h>
+#include <libconsensus/node/ConsensusEngine.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/HashingThreadSafeQueue.h>
 #include <libdevcore/Log.h>
@@ -44,6 +44,7 @@
 #include <map>
 #include <memory>
 #include <queue>
+#include <string>
 
 namespace dev {
 namespace eth {
@@ -68,9 +69,10 @@ public:
 
 class DefaultConsensusFactory : public ConsensusFactory {
 public:
-    DefaultConsensusFactory( const dev::eth::Client& _client, const string& _blsPrivateKey = "",
-        const string& _blsPublicKey1 = "", const string& _blsPublicKey2 = "",
-        const string& _blsPublicKey3 = "", const string& _blsPublicKey4 = "" )
+    DefaultConsensusFactory( const dev::eth::Client& _client,
+        const std::string& _blsPrivateKey = "", const std::string& _blsPublicKey1 = "",
+        const std::string& _blsPublicKey2 = "", const std::string& _blsPublicKey3 = "",
+        const std::string& _blsPublicKey4 = "" )
         : m_client( _client ),
           m_blsPrivateKey( _blsPrivateKey ),
           m_blsPublicKey1( _blsPublicKey1 ),
