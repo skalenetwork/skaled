@@ -423,9 +423,10 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-size_t Client::importTransactionsAsBlock( const Transactions& _transactions, uint64_t _timestamp ) {
+size_t Client::importTransactionsAsBlock(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        size_t n_succeeded = syncTransactions( _transactions, _timestamp );
+        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
         return n_succeeded;
@@ -434,7 +435,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions, uin
     return 0;
 }
 
-size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _timestamp ) {
+size_t Client::syncTransactions(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -455,7 +457,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, uint64_t _ti
 
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state.updateToLatestVersion();
     }
 
@@ -889,9 +891,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
     const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
 
     // throws in case of error
+    // TODO potential race conditions in state and gasBidPrice (new block can arrive in between)
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
-        this->state().startRead(), *bc().sealEngine(), 0 );
+        this->state().startRead(), *bc().sealEngine(), 0, this->gasBidPrice() );
 
     ImportResult res = m_tq.import( _t );
     switch ( res ) {

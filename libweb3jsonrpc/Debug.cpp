@@ -89,7 +89,8 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
 
         u256 const gasUsed = k ? _block.receipt( k - 1 ).cumulativeGasUsed() : 0;
         EnvInfo envInfo( _block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed );
-        Executive e( s, envInfo, *m_eth.blockChain().sealEngine() );
+        // HACK 0 here is for gasPrice
+        Executive e( s, envInfo, *m_eth.blockChain().sealEngine(), 0 );
 
         eth::ExecutionResult er;
         e.setResultRecipient( er );
@@ -228,7 +229,8 @@ Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const&
         Transaction transaction( ts.value, gasPrice, gas, ts.to, ts.data, nonce );
         transaction.forceSender( ts.from );
         eth::ExecutionResult er;
-        Executive e( temp, m_eth.blockChain().lastBlockHashes() );
+        // HACK 0 here is for gasPrice
+        Executive e( temp, m_eth.blockChain().lastBlockHashes(), 0 );
         e.setResultRecipient( er );
         Json::Value trace = traceTransaction( e, transaction, _options );
         ret["gas"] = toJS( transaction.gas() );

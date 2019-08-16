@@ -103,20 +103,25 @@ class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
-        unsigned _level = 0 )
-        : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_sealEngine( _sealEngine ) {}
+        const u256& _gasPrice, unsigned _level = 0 )
+        : m_s( _s ),
+          m_envInfo( _envInfo ),
+          m_depth( _level ),
+          m_sealEngine( _sealEngine ),
+          m_systemGasPrice( _gasPrice ) {}
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
      * info from given Block and the LastHashes portion from the BlockChain.
      */
-    Executive( Block& _s, BlockChain const& _bc, unsigned _level = 0 );
+    Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level = 0 );
 
     /** LastHashes-split constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
      * info accordingly, with last hashes given explicitly.
      */
-    Executive( Block& _s, LastBlockHashesFace const& _lh, unsigned _level = 0 );
+    Executive(
+        Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level = 0 );
 
     /** Previous-state constructor.
      * Creates executive to operate on the state of a particular transaction in the given block,
@@ -124,7 +129,7 @@ public:
      * BlockChain. State is assigned the resultant value, but otherwise unused.
      */
     Executive( skale::State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
-        unsigned _level = 0 );
+        const u256& _gasPrice, unsigned _level = 0 );
 
     Executive( Executive const& ) = delete;
     void operator=( Executive ) = delete;
@@ -196,7 +201,8 @@ public:
     void revert();
 
     static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-        const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed );
+        const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
+        const u256& _gasPrice );
 
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
@@ -226,6 +232,7 @@ private:
 
     u256 m_gasCost;
     SealEngineFace const& m_sealEngine;
+    u256 m_systemGasPrice;
 
     bool m_isCreation = false;
     Address m_newAddress;

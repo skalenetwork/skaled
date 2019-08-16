@@ -722,7 +722,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
-    Executive e( *this, _envInfo, _sealEngine );
+    // HACK 0 here is for gasPrice
+    Executive e( *this, _envInfo, _sealEngine, 0 );
     ExecutionResult res;
     e.setResultRecipient( res );
 

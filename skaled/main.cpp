@@ -48,6 +48,8 @@
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
 
+#include <libskale/ConsensusGasPricer.h>
+
 #include <libdevcrypto/LibSnark.h>
 
 #include <libweb3jsonrpc/AccountHolder.h>
@@ -235,8 +237,6 @@ int main( int argc, char** argv ) try {
     strings presaleImports;
 
     /// Transaction params
-    u256 askPrice = 0;
-    u256 bidPrice = DefaultGasPrice;
     bool alwaysConfirm = true;
 
     /// Wallet password stuff
@@ -329,14 +329,6 @@ int main( int argc, char** argv ) try {
 
     po::options_description clientTransacting( "CLIENT TRANSACTING", c_lineWidth );
     auto addTransactingOption = clientTransacting.add_options();
-    addTransactingOption( "ask", po::value< u256 >()->value_name( "<wei>" ),
-        ( "Set the minimum ask gas price under which no transaction will be mined (default: " +
-            toString( DefaultGasPrice ) + ")" )
-            .c_str() );
-    addTransactingOption( "bid", po::value< u256 >()->value_name( "<wei>" ),
-        ( "Set the bid gas price to pay for transactions (default: " + toString( DefaultGasPrice ) +
-            ")" )
-            .c_str() );
     addTransactingOption( "unsafe-transactions",
         "Allow all transactions to proceed without verification; EXTREMELY UNSAFE\n" );
 
@@ -483,22 +475,6 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    if ( vm.count( "ask" ) ) {
-        try {
-            askPrice = vm["ask"].as< u256 >();
-        } catch ( ... ) {
-            cerr << "Bad --ask option: " << vm["ask"].as< string >() << "\n";
-            return -1;
-        }
-    }
-    if ( vm.count( "bid" ) ) {
-        try {
-            bidPrice = vm["bid"].as< u256 >();
-        } catch ( ... ) {
-            cerr << "Bad --bid option: " << vm["bid"].as< string >() << "\n";
-            return -1;
-        }
-    }
     if ( vm.count( "public-ip" ) ) {
         publicIP = vm["public-ip"].as< string >();
     }
@@ -724,6 +700,7 @@ int main( int argc, char** argv ) try {
 
     std::unique_ptr< Client > client;
     std::string snapshotPath = "";
+    std::shared_ptr< GasPricer > gasPricer;
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -747,7 +724,9 @@ int main( int argc, char** argv ) try {
             *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *client, &cons_fact );
+        gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
+        client->setGasPricer( gasPricer );
         client->injectSkaleHost( skaleHost );
         client->startWorking();
 
@@ -955,10 +934,7 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    std::shared_ptr< eth::TrivialGasPricer > gasPricer =
-        make_shared< eth::TrivialGasPricer >( askPrice, bidPrice );
     if ( nodeMode == NodeMode::Full ) {
-        client->setGasPricer( gasPricer );
         client->setSealer( m.minerType() );
         client->setAuthor( author );
         if ( networkID != NoNetworkID )

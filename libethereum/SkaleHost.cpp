@@ -87,9 +87,9 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions( siz
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 /* _gasPrice */ ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID );
+    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -187,7 +187,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
                 try {
                     Executive::verifyTransaction( tx,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0 );
+                        m_client.state().startRead(), *m_client.sealEngine(), 0, getGasPrice() );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
                         clog( VerbosityInfo, "skale-host" )
@@ -250,7 +250,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID ) try {
+    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice ) try {
     LOG( m_traceLogger ) << "createBlock ID= " << _blockID << std::endl;
     m_debugTracer.tracepoint( "create_block" );
 
@@ -321,7 +321,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     m_debugTracer.tracepoint( "import_block" );
 
-    size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _timeStamp );
+    size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
@@ -442,6 +442,10 @@ void SkaleHost::broadcastFunc() {
     }  // while
 
     m_broadcaster->stopService();
+}
+
+u256 SkaleHost::getGasPrice() const {
+    return m_consensus->getPriceForBlockId( m_client.number() );
 }
 
 void SkaleHost::forceEmptyBlock() {

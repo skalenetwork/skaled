@@ -160,17 +160,20 @@ string StandardTrace::json( bool _styled ) const {
         []( std::string a, Json::Value b ) { return a + Json::FastWriter().write( b ); } );
 }
 
-Executive::Executive( Block& _s, BlockChain const& _bc, unsigned _level )
+Executive::Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _bc.lastBlockHashes(), 0 ),
       m_depth( _level ),
-      m_sealEngine( *_bc.sealEngine() ) {}
+      m_sealEngine( *_bc.sealEngine() ),
+      m_systemGasPrice( _gasPrice ) {}
 
-Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, unsigned _level )
+Executive::Executive(
+    Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _lh, 0 ),
       m_depth( _level ),
-      m_sealEngine( *_s.sealEngine() ) {}
+      m_sealEngine( *_s.sealEngine() ),
+      m_systemGasPrice( _gasPrice ) {}
 
 u256 Executive::gasUsed() const {
     return m_t.gas() - m_gas;
@@ -182,8 +185,15 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 }
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed ) {
+    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
+    const u256& _gasPrice ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
+
+    if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
+        BOOST_THROW_EXCEPTION(
+            GasPriceTooLow() << RequirementError( static_cast< bigint >( _gasPrice ),
+                static_cast< bigint >( _transaction.gasPrice() ) ) );
+    }
 
     _sealEngine.verifyTransaction(
         ImportRequirements::Everything, _transaction, _blockHeader, _gasUsed );
@@ -225,8 +235,8 @@ void Executive::initialize( Transaction const& _transaction ) {
     m_baseGasRequired = m_t.baseGasRequired( m_sealEngine.evmSchedule( m_envInfo.number() ) );
 
     try {
-        verifyTransaction(
-            _transaction, m_envInfo.header(), m_s, m_sealEngine, m_envInfo.gasUsed() );
+        verifyTransaction( _transaction, m_envInfo.header(), m_s, m_sealEngine, m_envInfo.gasUsed(),
+            m_systemGasPrice );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;

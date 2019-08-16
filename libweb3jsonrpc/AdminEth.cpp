@@ -17,8 +17,8 @@ using namespace dev::eth;
 using namespace skale;
 
 
-AdminEth::AdminEth( eth::Client& _eth, eth::TrivialGasPricer& _gp, eth::KeyManager& _keyManager,
-    SessionManager& _sm )
+AdminEth::AdminEth(
+    eth::Client& _eth, eth::GasPricer& _gp, eth::KeyManager& _keyManager, SessionManager& _sm )
     : m_eth( _eth ), m_gp( _gp ), m_keyManager( _keyManager ), m_sm( _sm ) {}
 
 bool AdminEth::admin_eth_setMining( bool _on, string const& _session ) {
@@ -42,18 +42,6 @@ Json::Value AdminEth::admin_eth_blockQueueStatus( string const& _session ) {
     ret["unknown"] = ( int ) bqs.unknown;
     ret["bad"] = ( int ) bqs.bad;
     return ret;
-}
-
-bool AdminEth::admin_eth_setAskPrice( string const& _wei, string const& _session ) {
-    RPC_ADMIN;
-    m_gp.setAsk( jsToU256( _wei ) );
-    return true;
-}
-
-bool AdminEth::admin_eth_setBidPrice( string const& _wei, string const& _session ) {
-    RPC_ADMIN;
-    m_gp.setBid( jsToU256( _wei ) );
-    return true;
 }
 
 Json::Value AdminEth::admin_eth_findBlock( string const& _blockHash, string const& _session ) {
@@ -229,11 +217,6 @@ bool AdminEth::miner_setEtherbase( string const& _uuidOrAddress ) {
 
 bool AdminEth::miner_setExtra( string const& _extraData ) {
     m_eth.setExtraData( asBytes( _extraData ) );
-    return true;
-}
-
-bool AdminEth::miner_setGasPrice( string const& _gasPrice ) {
-    m_gp.setAsk( jsToU256( _gasPrice ) );
     return true;
 }
 
