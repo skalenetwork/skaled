@@ -257,15 +257,15 @@ public:
     std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
 
     // main entry point after consensus
-    size_t importTransactionsAsBlock(
-        const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
+    size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
-    size_t syncTransactions(
-        const Transactions& _transactions, uint64_t _timestamp = ( uint64_t ) utcTime() );
+    size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

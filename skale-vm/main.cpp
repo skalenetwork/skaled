@@ -305,7 +305,8 @@ int main( int argc, char** argv ) {
     unique_ptr< SealEngineFace > se( ChainParams( genesisInfo( networkName ) ).createSealEngine() );
     LastBlockHashes lastBlockHashes;
     EnvInfo const envInfo( blockHeader, lastBlockHashes, 0 );
-    Executive executive( state, envInfo, *se );
+    // HACK 0 here is for gasPrice
+    Executive executive( state, envInfo, *se, 0 );
     ExecutionResult res;
     executive.setResultRecipient( res );
     t.forceSender( sender );
