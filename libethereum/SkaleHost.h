@@ -29,7 +29,6 @@
 #include <libskale/SkaleDebug.h>
 #include <libskale/broadcaster.h>
 
-#include <libconsensus/node/ConsensusEngine.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/HashingThreadSafeQueue.h>
 #include <libdevcore/Log.h>
@@ -118,7 +117,7 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
-    u256 getGasPrice() const;
+    dev::u256 getGasPrice() const;
 
     void pauseConsensus( bool _pause ) {
         if ( _pause )
@@ -166,10 +165,11 @@ private:
     std::mutex m_consensusPauseMutex;
     bool m_broadcastPauseFlag;  // not pause - just ignore
 
-    std::map< array< uint8_t, 32 >, dev::eth::Transaction > m_transaction_cache;  // used to find
-                                                                                  // Transaction
-                                                                                  // objects when
-                                                                                  // creating block
+    std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
+        m_transaction_cache;  // used to find
+                              // Transaction
+                              // objects when
+                              // creating block
 
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus

@@ -28,6 +28,8 @@
 
 using namespace std;
 
+#include <libconsensus/node/ConsensusEngine.h>
+
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
