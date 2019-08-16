@@ -50,6 +50,7 @@ public:
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0 ) {
         m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice );
+        setPriceForBlockId( _blockID, _gasPrice );
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
@@ -58,8 +59,11 @@ public:
     }
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
-        assert( _blockId == block_gas_prices.size() );
-        block_gas_prices.push_back( _gasPrice );
+        assert( _blockId <= block_gas_prices.size() );
+        if ( _blockId == block_gas_prices.size() )
+            block_gas_prices.push_back( _gasPrice );
+        else
+            block_gas_prices[_blockId] = _gasPrice;
     }
 };
 
