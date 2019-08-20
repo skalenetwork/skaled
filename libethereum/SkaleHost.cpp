@@ -344,6 +344,10 @@ void SkaleHost::startWorking() {
     if ( working )
         return;
 
+    // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
+    // recursively calls this func - so working is still false!)
+    working = true;
+
     m_broadcaster->startService();
 
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
@@ -374,8 +378,6 @@ void SkaleHost::startWorking() {
     // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
     // m_consensus->bootStrapAll();
     m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
-
-    working = true;
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
