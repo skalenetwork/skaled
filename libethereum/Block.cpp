@@ -757,11 +757,13 @@ ExecutionResult Block::execute(
         // shoul not happen as exception in execute() means that tx should not be in block
         assert( false );
     } catch ( const std::exception& ex ) {
-        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: " << ex.what();
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
         _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: ...";
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
         _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
