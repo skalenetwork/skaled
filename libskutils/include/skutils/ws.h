@@ -205,6 +205,7 @@ public:
     // 				strCertificationChainFile_ = "/opt/nma/certs/server.ca";
     // 				strPrivateKeyFile_ = "/opt/nma/certs/server.key";
     // 			}
+    virtual ~security_args() = default;
 };  /// class security_args
 
 class basic_network_settings {
@@ -244,6 +245,7 @@ public:
     basic_network_settings& operator=( basic_network_settings&& ) = default;
     static basic_network_settings& default_instance();
     void bns_assign_from_default_instance();
+    virtual ~basic_network_settings() {}
 };  /// class basic_network_settings
 
 class generic_participant {
