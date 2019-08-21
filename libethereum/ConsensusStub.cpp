@@ -24,6 +24,8 @@
 
 #include "ConsensusStub.h"
 
+#include <libconsensus/node/ConsensusEngine.h>
+
 #include <libdevcore/Exceptions.h>
 
 #include <algorithm>

@@ -25,12 +25,14 @@
 #ifndef LIBETHEREUM_CONSENSUSSTUB_H_
 #define LIBETHEREUM_CONSENSUSSTUB_H_
 
-#include <libconsensus/node/ConsensusEngine.h>
+#include <libconsensus/node/ConsensusInterface.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Worker.h>
 #include <map>
 #include <vector>
+
+class ConsensusExtFace;
 
 class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:

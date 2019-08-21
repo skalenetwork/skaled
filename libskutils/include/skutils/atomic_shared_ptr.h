@@ -222,7 +222,7 @@ public:
     retain_release_ptr( retain_release_ptr< T, TR >&& refOther ) : stored_( nullptr ) {
         move( refOther );
     }
-    ~retain_release_ptr() { clear(); }
+    virtual ~retain_release_ptr() { clear(); }
     void reset( T* pRawOther = nullptr ) { assign( pRawOther ); }
     void reset( const retain_release_ptr< T, TR >& refOther ) { assign( refOther ); }
     bool empty() const {

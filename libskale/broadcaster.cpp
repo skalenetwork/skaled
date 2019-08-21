@@ -78,8 +78,6 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
       m_zmq_client_socket( nullptr ),
       m_need_exit( false ) {
     m_zmq_context = zmq_ctx_new();
-
-    startService();
 }
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
@@ -142,11 +140,11 @@ void ZmqBroadcaster::startService() {
     int timeo = 100;  // 100 milliseconds
     int res = zmq_setsockopt( client_socket(), ZMQ_RCVTIMEO, &timeo, sizeof( timeo ) );
     if ( res != 0 ) {
-        throw runtime_error( "zmq_setsockopt has failed" );
+        throw std::runtime_error( "zmq_setsockopt has failed" );
     }
 
     auto func = [this]() {
-        setThreadName( "ZmqBroadcaster" );
+        dev::setThreadName( "ZmqBroadcaster" );
 
         while ( true ) {
             zmq_msg_t msg;
@@ -224,6 +222,6 @@ void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
 
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
-        throw runtime_error( "Zmq can't send data" );
+        throw std::runtime_error( "Zmq can't send data" );
     }
 }

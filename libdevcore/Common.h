@@ -229,6 +229,7 @@ class HasInvariants {
 public:
     /// Reimplement to specify the invariants.
     virtual bool invariants() const = 0;
+    virtual ~HasInvariants() = default;
 };
 
 /// RAII checker for invariant assertions.
