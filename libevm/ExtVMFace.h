@@ -19,8 +19,6 @@
 
 #pragma once
 
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-
 #include "Instruction.h"
 
 #include <libdevcore/Common.h>

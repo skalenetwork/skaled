@@ -25,6 +25,7 @@ endif()
 eth_add_cxx_compiler_flag_if_supported(-Wimplicit-fallthrough)
 
 option( SKALED_HATE_WARNINGS "Treat most of warings as errors" ON )
+
 # Ensures that CMAKE_BUILD_TYPE has a default value
 if( NOT DEFINED CMAKE_BUILD_TYPE )
     set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Coverage." )
@@ -41,10 +42,12 @@ else()
     remove_definitions( -D_DEBUG )
     add_definitions(    -DNDEBUG )
 endif()
+
 if( SKALED_HATE_WARNINGS )
     add_compile_options( -Wall )
     add_compile_options( -Wextra )
     add_compile_options( -Werror )
+    add_compile_options( -Wno-error=non-virtual-dtor )
     #add_compile_options( -Wno-error=sign-compare )
     #add_compile_options( -Wno-error=reorder )
     #add_compile_options( -Wno-error=deprecated )
@@ -97,6 +100,11 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 else ()
     message(WARNING "Your compiler is not tested, if you run into any issues, we'd welcome any patches.")
 endif ()
+
+if(DEFINED ENV{TRAVIS})
+	message("Suppressing warnings with -w for TRAVIS")
+    add_compile_options( -w )
+endif()
 
 if (SANITIZE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=${SANITIZE}")
