@@ -734,7 +734,7 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state.startRead();
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
 
