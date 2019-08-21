@@ -734,7 +734,8 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state.startRead();
+    State stateSnapshot =
+        _p != Permanence::Reverted ? m_state.delegateWrite() : m_state.startRead();
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
 
@@ -759,12 +760,14 @@ ExecutionResult Block::execute(
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
-        _p = Permanence::CommittedWithoutState;
+        if ( _p != Permanence::Reverted )  // if it is not call
+            _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
-        _p = Permanence::CommittedWithoutState;
+        if ( _p != Permanence::Reverted )  // if it is not call
+            _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
