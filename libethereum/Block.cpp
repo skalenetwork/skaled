@@ -734,8 +734,10 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    State stateSnapshot =
-        _p != Permanence::Reverted ? m_state.delegateWrite() : m_state.startRead();
+    // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
+    // startRead() is called
+    // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
+    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
 
