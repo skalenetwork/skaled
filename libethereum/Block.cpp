@@ -734,6 +734,9 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
+    // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
+    // startRead() is called
+    // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
     State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
@@ -757,12 +760,16 @@ ExecutionResult Block::execute(
         // shoul not happen as exception in execute() means that tx should not be in block
         assert( false );
     } catch ( const std::exception& ex ) {
-        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: " << ex.what();
-        _p = Permanence::CommittedWithoutState;
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
+        if ( _p != Permanence::Reverted )  // if it is not call
+            _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        LOG( m_logger ) << "Transaction " << _t.sha3() << " WouldNotBeInBlock: ...";
-        _p = Permanence::CommittedWithoutState;
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
+        if ( _p != Permanence::Reverted )  // if it is not call
+            _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
