@@ -924,7 +924,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     try {
         Block temp = latestBlock();
         // TODO there can be race conditions between prev and next line!
-        State readStateForLock = temp.mutableState();
+        State readStateForLock = temp.mutableState().startRead();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
