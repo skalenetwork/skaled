@@ -121,12 +121,12 @@ Json::Value Eth::eth_pendingTransactions() {
     // Return list of transaction that being sent by local accounts
     Transactions ours;
     for ( Transaction const& pending : client()->pending() ) {
-        for ( Address const& account : m_ethAccounts.allAccounts() ) {
-            if ( pending.sender() == account ) {
-                ours.push_back( pending );
-                break;
-            }
-        }
+        // for ( Address const& account : m_ethAccounts.allAccounts() ) {
+        //    if ( pending.sender() == account ) {
+        ours.push_back( pending );
+        //        break;
+        //    }
+        //}
     }
 
     return toJson( ours );
