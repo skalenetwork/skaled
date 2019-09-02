@@ -36,9 +36,6 @@ ENTRYPOINT /skaled/skaled \
  --ssl-cert $SSL_CERT_PATH \
  -v 4  \
  --web3-trace \
- --aa no \
- --ask 0 \
- --bid 0 \
- >> $DATA_DIR/stdout.log 2>> $DATA_DIR/stderr.log
+ --aa no
 #CMD ["bash"]
 
