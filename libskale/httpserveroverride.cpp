@@ -997,19 +997,18 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                                "/TX <<< " ) )
                                             << ( pThis->desc() + cc::ws_tx( " <<< " ) +
                                                    cc::j( strNotification ) );
-                                    skutils::dispatch::async( pThis->m_strPeerQueueID,
-                                        [pThis, strNotification]() -> void {
-                                            const_cast< SkaleWsPeer* >( pThis.get() )
-                                                ->sendMessage(
-                                                    skutils::tools::trim_copy( strNotification ) );
-                                            stats::register_stats_answer(
-                                                ( std::string( "RPC/" ) +
-                                                    pThis->getRelay().m_strSchemeUC )
-                                                    .c_str(),
-                                                "eth_subscription/logs", strNotification.size() );
-                                            stats::register_stats_answer( "RPC",
-                                                "eth_subscription/logs", strNotification.size() );
-                                        } );
+                                    // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis,
+                                    // strNotification]() -> void {
+                                    const_cast< SkaleWsPeer* >( pThis.get() )
+                                        ->sendMessage(
+                                            skutils::tools::trim_copy( strNotification ) );
+                                    stats::register_stats_answer(
+                                        ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC )
+                                            .c_str(),
+                                        "eth_subscription/logs", strNotification.size() );
+                                    stats::register_stats_answer(
+                                        "RPC", "eth_subscription/logs", strNotification.size() );
+                                    //    } );
                                 }  // for ( const auto& joWalk : joResultLogs )
                             }      // if ( joResultLogs.is_array() )
                         }
@@ -1080,15 +1079,16 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 clog( dev::VerbosityInfo, cc::info( pThis->getRelay().m_strSchemeUC ) )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().m_strSchemeUC + "/TX <<< " ) +
                            pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
-            skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
-                const_cast< SkaleWsPeer* >( pThis.get() )
-                    ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
-                    "eth_subscription/newPendingTransactions", strNotification.size() );
-                stats::register_stats_answer(
-                    "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
-            } );
+            // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void
+            // {
+            const_cast< SkaleWsPeer* >( pThis.get() )
+                ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+            stats::register_stats_answer(
+                ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
+                "eth_subscription/newPendingTransactions", strNotification.size() );
+            stats::register_stats_answer(
+                "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
+            //} );
         };
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
@@ -1169,15 +1169,16 @@ void SkaleWsPeer::eth_subscribe_newHeads(
                 clog( dev::VerbosityInfo, cc::info( pThis->getRelay().m_strSchemeUC ) )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().m_strSchemeUC + "/TX <<< " ) +
                            pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
-            skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void {
-                const_cast< SkaleWsPeer* >( pThis.get() )
-                    ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
-                    "eth_subscription/newHeads", strNotification.size() );
-                stats::register_stats_answer(
-                    "RPC", "eth_subscription/newHeads", strNotification.size() );
-            } );
+            // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void
+            // {
+            const_cast< SkaleWsPeer* >( pThis.get() )
+                ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+            stats::register_stats_answer(
+                ( std::string( "RPC/" ) + pThis->getRelay().m_strSchemeUC ).c_str(),
+                "eth_subscription/newHeads", strNotification.size() );
+            stats::register_stats_answer(
+                "RPC", "eth_subscription/newHeads", strNotification.size() );
+            //} );
         };
         unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewBlocks_.insert( iw );
