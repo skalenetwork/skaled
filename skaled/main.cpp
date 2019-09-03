@@ -1306,6 +1306,8 @@ int main( int argc, char** argv ) try {
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
+    return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
+    return EXIT_FAILURE;
 }

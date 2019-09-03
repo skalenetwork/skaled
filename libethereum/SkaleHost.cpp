@@ -348,7 +348,12 @@ void SkaleHost::startWorking() {
     // recursively calls this func - so working is still false!)
     working = true;
 
-    m_broadcaster->startService();
+    try {
+        m_broadcaster->startService();
+    } catch ( const Broadcaster::StartupException& ) {
+        working = false;
+        std::throw_with_nested( SkaleHost::CreationException() );
+    }
 
     auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( bcast_func );
