@@ -51,6 +51,14 @@ bool client::open( const skutils::url& u ) {
                 close();
                 return false;
             }
+            size_t i, cnt = 30;
+            for ( i = 0; ( !cw_->isConnected() ) && i < cnt; ++i ) {
+                std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+            }
+            if ( !cw_->isConnected() ) {
+                close();
+                return false;
+            }
         } else
             return false;
         return true;
@@ -120,6 +128,21 @@ bool client::call( const std::string& strJsonIn, std::string& strOut ) {
         }
     } else if ( cw_ ) {
         if ( cw_->isConnected() ) {
+            volatile bool bHaveMessage = false;
+            cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,
+                                  skutils::ws::opcv eOpCode, const std::string& s ) -> void {
+                bHaveMessage = true;
+                strOut = s;
+            };
+            if ( !cw_->sendMessage( strJsonIn ) )
+                return false;
+            size_t i, cnt = 30;
+            for ( i = 0; ( cw_->isConnected() ) && i < cnt && ( !bHaveMessage ); ++i ) {
+                std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+            }
+            if ( !bHaveMessage )
+                return false;
+            return true;
         }
     }
     return false;
