@@ -1,5 +1,5 @@
-#if ( !defined __SKUTILS_NETWOKR_H )
-#define __SKUTILS_NETWOKR_H 1
+#if ( !defined __SKUTILS_NETWORK_H )
+#define __SKUTILS_NETWORK_H 1
 
 #include <inttypes.h>
 #include <algorithm>
@@ -86,4 +86,4 @@ extern std::pair< std::string, std::string > get_machine_ip_address_v6();  // fi
 };  // namespace network
 };  // namespace skutils
 
-#endif  /// (!defined __SKUTILS_NETWOKR_H)
+#endif  /// (!defined __SKUTILS_NETWORK_H)

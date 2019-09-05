@@ -3815,6 +3815,9 @@ bool client::isServerSide() const {
     return false;
 }
 
+bool client::is_ssl() const {
+    return api_.ssl_flags_ ? true : false;
+}
 std::string client::type() const {
     return api_.ssl_flags_ ? cc::success( "SSL/TLS" ) : cc::fatal( "non-secure" );
 }
