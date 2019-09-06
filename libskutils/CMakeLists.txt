@@ -15,6 +15,7 @@ add_library( skutils STATIC
     ./src/url.cpp                   ./include/skutils/url.h
     ./src/utils.cpp                 ./include/skutils/utils.h
     ./src/ws.cpp                    ./include/skutils/ws.h
+    ./src/btrfs.c                   ./include/skutils/btrfs.h
     )
 if( APPLE )
 	target_compile_definitions( skutils PRIVATE __BUILDING_4_MAC_OS_X__=1 )
