@@ -27,5 +27,5 @@ target_include_directories( skutils PRIVATE
 	"${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp"
     )
 target_link_libraries( skutils
-    websockets uv
+    websockets uv pthread
     )
