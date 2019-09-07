@@ -125,6 +125,8 @@ static nlohmann::json impl_skale_getSnapshot(
     std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" )
               << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
+    joResponse["dataSize"] = 1024 * 16;
+    joResponse["maxAllowedChunkSize"] = 1024;
     return joResponse;
 }
 
@@ -154,6 +156,7 @@ static nlohmann::json impl_skale_downloadSnapshotFragment(
     std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
               << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
+    joResponse["data"] = "0001111222333";
     return joResponse;
 }
 
