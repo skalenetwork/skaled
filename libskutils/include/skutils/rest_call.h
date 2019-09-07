@@ -1,10 +1,12 @@
 #if ( !defined __SKUTILS_REST_CALLS_H )
 #define __SKUTILS_REST_CALLS_H 1
 
+#include <stdint.h>
 #include <strings.h>
 #include <memory>
 #include <string>
 
+#include <chrono>
 #include <mutex>
 
 #include <skutils/url.h>
@@ -81,10 +83,19 @@ private:
         const std::string id = "" );
     static const char g_str_default_content_type[];
     static std::string stat_extract_short_content_type_string( const std::string& s );
+    static bool stat_auto_gen_json_id( nlohmann::json& jo );
+    static uint64_t stat_get_random_number( uint64_t const& min, uint64_t const& max );
+    static uint64_t stat_get_random_number();
 
 public:
-    data_t call( const std::string& strJsonIn,
-        e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default );
+    data_t call( const nlohmann::json& joIn, bool isAutoGenJsonID = true,
+        e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 100 ),
+        size_t cntSteps = 30 );
+    data_t call( const std::string& strJsonIn, bool isAutoGenJsonID = true,
+        e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 100 ),
+        size_t cntSteps = 30 );
 
 };  /// class client
 

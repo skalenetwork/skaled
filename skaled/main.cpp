@@ -79,6 +79,9 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
+#include <stdlib.h>
+#include <time.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -181,6 +184,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }  // namespace
 
 int main( int argc, char** argv ) try {
+    srand( time( nullptr ) );
     cc::_on_ = true;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;

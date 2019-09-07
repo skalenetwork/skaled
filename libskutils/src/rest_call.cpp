@@ -1,7 +1,10 @@
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
+#include <stdlib.h>
+
 #include <cstdlib>
+#include <thread>
 
 namespace skutils {
 namespace rest {
@@ -270,7 +273,36 @@ std::string client::stat_extract_short_content_type_string( const std::string& s
     return h;
 }
 
-data_t client::call( const std::string& strJsonIn, e_data_fetch_strategy edfs ) {
+uint64_t client::stat_get_random_number( uint64_t const& min, uint64_t const& max ) {
+    return ( ( ( uint64_t )( unsigned int ) rand() << 32 ) + ( uint64_t )( unsigned int ) rand() ) %
+               ( max - min ) +
+           min;
+}
+uint64_t client::stat_get_random_number() {
+    stat_get_random_number( 1, RAND_MAX );
+}
+
+bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
+    if ( !jo.is_object() )
+        return false;
+    if ( jo.count( "id" ) > 0 )
+        return false;
+    static mutex_type g_mtx;
+    lock_type lock( g_mtx );
+    static volatile uint64_t g_id = stat_get_random_number();
+    ++g_id;
+    if ( g_id == 0 )
+        ++g_id;
+    jo["id"] = g_id;
+    return true;  // "id" was generated and set
+}
+
+data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
+    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    nlohmann::json jo = joIn;
+    if ( isAutoGenJsonID )
+        stat_auto_gen_json_id( jo );
+    std::string strJsonIn = jo.dump();
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
@@ -292,17 +324,25 @@ data_t client::call( const std::string& strJsonIn, e_data_fetch_strategy edfs ) 
         if ( cw_->isConnected() ) {
             if ( !cw_->sendMessage( strJsonIn ) )
                 return data_t();
-            size_t i, cnt = 30;
-            for ( i = 0; ( cw_->isConnected() ) && i < cnt; ++i ) {
+            for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
                 data_t d = fetch_data_with_strategy( edfs );
                 if ( !d.empty() )
                     return d;
-                std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+                std::this_thread::sleep_for( wait_step );
             }
         }
     }
     data_t d = fetch_data_with_strategy( edfs );
     return d;
+}
+data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
+    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJsonIn );
+        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps );
+    } catch ( ... ) {
+    }
+    return data_t();
 }
 
 };  // namespace rest
