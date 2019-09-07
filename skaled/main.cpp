@@ -81,6 +81,13 @@
 
 #include <stdlib.h>
 #include <time.h>
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+#include <skutils/rest_call.h>
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 using namespace std;
 using namespace dev;
@@ -188,6 +195,35 @@ int main( int argc, char** argv ) try {
     cc::_on_ = true;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    //    std::string strW3url;
+    //    // strW3url = "http://127.0.0.1:7545";  // ganache - http
+    //    // strW3url = "ws://127.0.0.1:7545";    // ganache - ws
+    //    // strW3url = "http://127.0.0.1:7000";  // skaled - http
+    //    // strW3url = "https://127.0.0.1:7000";  // skaled - https
+    //    // strW3url = "ws://127.0.0.1:7020";  // skaled - ws
+    //    // strW3url = "wss://127.0.0.1:7020";   // skaled - wss
+    //    strW3url = "http://127.0.0.1:8545";  // geth - http
+    //    // strW3url = "ws://127.0.0.1:8546";  // geth - ws
+    //    skutils::rest::client cli;
+    //    if ( !cli.open( strW3url ) ) {
+    //        std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+    //        return 1;
+    //    }
+    //    std::string strIn;
+    //    strIn = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}";
+    //    skutils::rest::data_t d = cli.call( strIn );
+    //    if ( d.empty() ) {
+    //        std::cout << cc::fatal( "REST call failed" ) << "\n";
+    //        return 1;
+    //    }
+    //    std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
+    //    return 0;
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
     setCLocale();
 

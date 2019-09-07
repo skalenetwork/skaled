@@ -32,6 +32,15 @@
 #include <libethcore/Common.h>
 #include <libethcore/CommonJS.h>
 
+#include <jsonrpccpp/common/exception.h>
+#include <libweb3jsonrpc/JsonHelper.h>
+
+#include <skutils/console_colors.h>
+#include <skutils/eth_utils.h>
+
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
+
 //#include <jsonrpccpp/client.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
@@ -108,5 +117,63 @@ std::string dev::rpc::Skale::skale_receiveTransaction( std::string const& _rlp )
         return toJS( m_skaleHost.receiveTransaction( _rlp ) );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() );  // TODO test!
+    }
+}
+
+static nlohmann::json impl_skale_getSnapshot(
+    const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
+    std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" )
+              << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
+    nlohmann::json joResponse = nlohmann::json::object();
+    return joResponse;
+}
+
+Json::Value dev::rpc::Skale::skale_getSnapshot( const Json::Value& request ) {
+    try {
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        nlohmann::json joResponse = impl_skale_getSnapshot( joRequest, m_skaleHost );
+        std::string strResponse = joResponse.dump();
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
+//
+// call example:
+// curl http://127.0.0.1:7000 -X POST --data
+// '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
+// false },"id":73}'
+//
+static nlohmann::json impl_skale_downloadSnapshotFragment(
+    const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
+    std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
+              << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
+    nlohmann::json joResponse = nlohmann::json::object();
+    return joResponse;
+}
+
+//
+// call example:
+// curl http://127.0.0.1:7000 -X POST --data
+// '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
+// "from": 0, "to": -1 },"id":73}'
+//
+Json::Value dev::rpc::Skale::skale_downloadSnapshotFragment( const Json::Value& request ) {
+    try {
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest, m_skaleHost );
+        std::string strResponse = joResponse.dump();
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
 }
