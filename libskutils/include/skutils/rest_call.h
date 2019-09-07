@@ -69,9 +69,15 @@ public:
 
     const skutils::url& url() const { return u_; }
 
-    bool open( const skutils::url& u );
-    bool open( const std::string& url_str );
-    bool open( const char* url_str );
+    bool open( const skutils::url& u,
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
+        size_t cntSteps = 1000 );
+    bool open( const std::string& url_str,
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
+        size_t cntSteps = 1000 );
+    bool open( const char* url_str,
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
+        size_t cntSteps = 1000 );
     void close();
     std::string get_connected_url_scheme() const;
     bool is_open() const;
@@ -90,12 +96,12 @@ private:
 public:
     data_t call( const nlohmann::json& joIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
-        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 100 ),
-        size_t cntSteps = 30 );
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
+        size_t cntSteps = 1000 );
     data_t call( const std::string& strJsonIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
-        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 100 ),
-        size_t cntSteps = 30 );
+        std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
+        size_t cntSteps = 1000 );
 
 };  /// class client
 
