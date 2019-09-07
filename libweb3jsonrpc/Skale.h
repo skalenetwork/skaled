@@ -55,6 +55,8 @@ public:
     std::string skale_protocolVersion() override;
     std::string skale_receiveTransaction( std::string const& _rlp ) override;
     std::string skale_shutdownInstance() noexcept( false ) override;
+    Json::Value skale_getSnapshot( const Json::Value& request ) override;
+    Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
 
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
