@@ -93,7 +93,7 @@ client::~client() {
     close();
 }
 
-bool client::open( const skutils::url& u ) {
+bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, size_t cntSteps ) {
     try {
         std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u.scheme() ) );
         if ( strScheme.empty() )
@@ -129,9 +129,8 @@ bool client::open( const skutils::url& u ) {
                 close();
                 return false;
             }
-            size_t i, cnt = 30;
-            for ( i = 0; ( !cw_->isConnected() ) && i < cnt; ++i ) {
-                std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+            for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
+                std::this_thread::sleep_for( wait_step );
             }
             if ( !cw_->isConnected() ) {
                 close();
@@ -146,13 +145,14 @@ bool client::open( const skutils::url& u ) {
     return false;
 }
 
-bool client::open( const std::string& url_str ) {
+bool client::open(
+    const std::string& url_str, std::chrono::milliseconds wait_step, size_t cntSteps ) {
     skutils::url u( url_str );
-    return open( u );
+    return open( u, wait_step, cntSteps );
 }
 
-bool client::open( const char* url_str ) {
-    return open( std::string( url_str ? url_str : "" ) );
+bool client::open( const char* url_str, std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    return open( std::string( url_str ? url_str : "" ), wait_step, cntSteps );
 }
 
 void client::close() {
@@ -279,7 +279,7 @@ uint64_t client::stat_get_random_number( uint64_t const& min, uint64_t const& ma
            min;
 }
 uint64_t client::stat_get_random_number() {
-    stat_get_random_number( 1, RAND_MAX );
+    return stat_get_random_number( 1, RAND_MAX );
 }
 
 bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
