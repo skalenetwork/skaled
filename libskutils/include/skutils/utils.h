@@ -302,7 +302,8 @@ extern std::string encode( unsigned char const*, size_t len );
 inline std::string encode( const std::string& s ) {
     return encode( ( unsigned char* ) s.c_str(), s.length() );
 }
-extern std::string decode( std::string const& s );
+extern std::vector< uint8_t > decodeBin( std::string const& encoded_string );
+extern std::string decode( std::string const& encoded_string );
 };  // namespace base64
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
