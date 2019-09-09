@@ -127,8 +127,8 @@ std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     }
 }
 
-static const size_t g_nMaxChunckSize = 1024 * 1024;
-static const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
+size_t g_nMaxChunckSize = 1024 * 1024;
+const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
 
 //
 // call example:
@@ -170,7 +170,7 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 // call example:
 // curl http://127.0.0.1:7000 -X POST --data
 // '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
-// "from": 0, "size": 8192 },"id":73}'
+// "from": 0, "size": 1024, "isBinary": true },"id":73}'
 //
 static nlohmann::json impl_skale_downloadSnapshotFragment(
     const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
@@ -224,7 +224,8 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 
 namespace snapshot {
 
-bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress ) {
+bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress,
+    bool isBinaryDownload ) {
     std::ofstream f;
     try {
         boost::filesystem::remove( saveTo );
@@ -266,18 +267,27 @@ bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progres
             joParams["blockNumber"] = "latest";
             joParams["from"] = idxChunk * maxAllowedChunkSize;
             joParams["size"] = maxAllowedChunkSize;
+            joParams["isBinary"] = isBinaryDownload;
             joIn["params"] = joParams;
-            skutils::rest::data_t d = cli.call( joIn );
+            skutils::rest::data_t d = cli.call( joIn, true,
+                isBinaryDownload ? skutils::rest::e_data_fetch_strategy::edfs_nearest_binary :
+                                   skutils::rest::e_data_fetch_strategy::edfs_default );
             if ( d.empty() ) {
                 // std::cout << cc::fatal( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }
-            // std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n" <<
-            // cc::j( d.s_ ) << "\n";
-            nlohmann::json joFragment = nlohmann::json::parse( d.s_ )["result"];
-            // size_t sizeArrived = joFragment["size"];
-            std::string strBase64 = joFragment["data"];
-            std::vector< uint8_t > buffer = skutils::tools::base64::decodeBin( strBase64 );
+            std::vector< uint8_t > buffer;
+            if ( isBinaryDownload )
+                buffer.insert( buffer.end(), d.s_.begin(), d.s_.end() );
+            else {
+                // std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n" <<
+                // cc::j( d.s_ ) << "\n";
+                nlohmann::json joFragment = nlohmann::json::parse( d.s_ )["result"];
+                // size_t sizeArrived = joFragment["size"];
+                std::string strBase64orBinary = joFragment["data"];
+
+                buffer = skutils::tools::base64::decodeBin( strBase64orBinary );
+            }
             f.write( ( char* ) buffer.data(), buffer.size() );
             bool bContinue = true;
             if ( onProgress )
