@@ -424,13 +424,13 @@ int main( int argc, char** argv ) try {
                     std::cout << cc::normal( "... download progress ... " )
                               << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
                               << cc::num10( uint64_t( cntChunks ) ) << "\r";
-                    return true;
+                    return true;  // continue download
                 } );
             std::cout << "                                                  \r";  // clear progress
                                                                                   // line
             if ( !bOK ) {
                 std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
-                return 1;
+                return -1;
             }
             std::cout << cc::success( "Snapshot download success" ) << "\n";
             return 0;
