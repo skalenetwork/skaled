@@ -37,6 +37,7 @@
 #include <exception>
 #include <iostream>
 #include <list>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -58,6 +59,7 @@
 #include <libweb3jsonrpc/Skale.h>
 
 #include <skutils/multithreading.h>
+#include <skutils/url.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2128,9 +2130,21 @@ bool SkaleServerOverride::handleRequestWithBinaryAnswer(
 }
 
 bool SkaleServerOverride::handleAdminOriginFilter(
-    const std::string& strMethod, const std::string& strOrigin ) {
-    std::cout << cc::attention( "------------ " ) << cc::info( strOrigin )
-              << cc::attention( " ------------> " ) << cc::info( strMethod ) << "\n";
+    const std::string& strMethod, const std::string& strOriginURL ) {
+    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) << cc::attention( "
+    // ------------> " ) << cc::info( strMethod ) << "\n";
+    static const std::set< std::string > g_setAdminMethods = {
+        "skale_getSnapshot", "skale_downloadSnapshotFragment"};
+    if ( g_setAdminMethods.find( strMethod ) == g_setAdminMethods.end() )
+        return true;  // not an admin methhod
+    std::string origin = strOriginURL;
+    try {
+        skutils::url u( strOriginURL.c_str() );
+        origin = u.host();
+    } catch ( ... ) {
+    }
+    if ( !checkAdminOriginAllowed( origin ) )
+        return false;
     return true;
 }
 
