@@ -332,6 +332,7 @@ public:
 
     bool handleRequestWithBinaryAnswer(
         const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
+    bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOrigin );
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;

@@ -665,6 +665,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 try {
                     nlohmann::json joRequest = nlohmann::json::parse( strRequest );
                     strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                    if ( !pSO->handleAdminOriginFilter(
+                             strMethod, /*getOrigin()*/ getRemoteIp() ) ) {
+                        throw std::runtime_error( "origin not allowed for call attempt" );
+                    }
                     stats::register_stats_message(
                         getRelay().m_strSchemeUC.c_str(), "messages", strRequest.size() );
                     stats::register_stats_message(
@@ -1715,6 +1719,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
                 nID = joRequest["id"].get< int >();
                 strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                if ( !handleAdminOriginFilter( strMethod, req.origin_ ) ) {
+                    throw std::runtime_error( "origin not allowed for call attempt" );
+                }
                 jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
                 if ( handler == nullptr )
                     throw std::runtime_error( "No client connection handler found" );
@@ -2118,6 +2125,13 @@ bool SkaleServerOverride::handleRequestWithBinaryAnswer(
         }
     }
     return false;
+}
+
+bool SkaleServerOverride::handleAdminOriginFilter(
+    const std::string& strMethod, const std::string& strOrigin ) {
+    std::cout << cc::attention( "------------ " ) << cc::info( strOrigin )
+              << cc::attention( " ------------> " ) << cc::info( strMethod ) << "\n";
+    return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
