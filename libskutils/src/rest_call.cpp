@@ -129,7 +129,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
                 close();
                 return false;
             }
-            for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
+            for ( size_t i = 0; ( !cw_->isConnected() ) && i < cntSteps; ++i ) {
                 std::this_thread::sleep_for( wait_step );
             }
             if ( !cw_->isConnected() ) {

@@ -127,7 +127,7 @@ std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     }
 }
 
-static const size_t g_nMaxChunckSize = 1024 * 4;
+static const size_t g_nMaxChunckSize = 1024 * 1024;
 static const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
 
 //
@@ -138,8 +138,8 @@ static const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.
 //
 static nlohmann::json impl_skale_getSnapshot(
     const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
-    std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" )
-              << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
+    // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
+    // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
     //
     //
@@ -174,8 +174,8 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 //
 static nlohmann::json impl_skale_downloadSnapshotFragment(
     const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
-    std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
-              << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
+    // std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
+    // << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
     //
     //
@@ -232,7 +232,7 @@ bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progres
         //
         skutils::rest::client cli;
         if ( !cli.open( strURLWeb3 ) ) {
-            std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+            // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
             return false;
         }
         nlohmann::json joIn = nlohmann::json::object();
@@ -244,10 +244,10 @@ bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progres
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
         if ( d.empty() ) {
-            std::cout << cc::fatal( "REST call failed" ) << "\n";
+            // std::cout << cc::fatal( "REST call failed" ) << "\n";
             return false;
         }
-        std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
+        // std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
         nlohmann::json joSnapshotInfo = nlohmann::json::parse( d.s_ )["result"];
         size_t sizeOfFile = joSnapshotInfo["dataSize"].get< size_t >();
         size_t maxAllowedChunkSize = joSnapshotInfo["maxAllowedChunkSize"].get< size_t >();
@@ -269,11 +269,11 @@ bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progres
             joIn["params"] = joParams;
             skutils::rest::data_t d = cli.call( joIn );
             if ( d.empty() ) {
-                std::cout << cc::fatal( "REST call failed(fragment downloader)" ) << "\n";
+                // std::cout << cc::fatal( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }
-            std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n"
-                      << cc::j( d.s_ ) << "\n";
+            // std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n" <<
+            // cc::j( d.s_ ) << "\n";
             nlohmann::json joFragment = nlohmann::json::parse( d.s_ )["result"];
             // size_t sizeArrived = joFragment["size"];
             std::string strBase64 = joFragment["data"];
