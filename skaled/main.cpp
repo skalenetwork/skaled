@@ -438,7 +438,6 @@ int main( int argc, char** argv ) try {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " Exception while downloading snapshot: " )
                       << cc::warn( ex.what() ) << "\n";
-            return EXIT_FAILURE;
         } catch ( ... ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " Exception while downloading snapshot: " )
