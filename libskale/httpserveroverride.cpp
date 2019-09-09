@@ -1553,14 +1553,15 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( size_t cntServers, dev::eth::Interface* pEth,
-    const std::string& strAddrHTTP, int nBasePortHTTP, const std::string& strAddrHTTPS,
-    int nBasePortHTTPS, const std::string& strAddrWS, int nBasePortWS,
-    const std::string& strAddrWSS, int nBasePortWSS, const std::string& strPathSslKey,
-    const std::string& strPathSslCert )
+SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
+    dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
+    const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
+    int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
+    const std::string& strPathSslKey, const std::string& strPathSslCert )
     : AbstractServerConnector(),
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
+      chainParams_( chainParams ),
       m_strAddrHTTP( strAddrHTTP ),
       m_nBasePortHTTP( nBasePortHTTP ),
       m_strAddrHTTPS( strAddrHTTPS ),
@@ -1586,6 +1587,16 @@ dev::eth::Interface* SkaleServerOverride::ethereum() const {
         std::terminate();
     }
     return pEth_;
+}
+
+dev::eth::ChainParams& SkaleServerOverride::chainParams() {
+    return chainParams_;
+}
+const dev::eth::ChainParams& SkaleServerOverride::chainParams() const {
+    return chainParams_;
+}
+bool SkaleServerOverride::checkAdminOriginAllowed( const std::string& origin ) const {
+    return chainParams().checkAdminOriginAllowed( origin );
 }
 
 jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::string& url ) {

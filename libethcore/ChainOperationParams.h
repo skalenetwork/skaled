@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include <libdevcore/Common.h>
 #include <libethcore/Precompiled.h>
 
@@ -155,6 +158,8 @@ public:
     SChain sChain;
     u256 accountInitialFunds = 0;
     u256 externalGasDifficulty = ~u256( 0 );
+    typedef std::vector< std::string > vecAdminOrigins_t;
+    vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
 };
 
 }  // namespace eth
