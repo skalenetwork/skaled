@@ -44,24 +44,31 @@
 //#include <jsonrpccpp/client.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
+#include <skutils/rest_call.h>
+#include <skutils/utils.h>
+
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <vector>
+
 using namespace dev::eth;
 
 namespace dev {
 namespace rpc {
+
 std::string exceptionToErrorMessage();
-}
-}  // namespace dev
 
-dev::rpc::Skale::Skale( SkaleHost& _skale ) : m_skaleHost( _skale ) {}
+Skale::Skale( SkaleHost& _skale ) : m_skaleHost( _skale ) {}
 
-volatile bool dev::rpc::Skale::g_bShutdownViaWeb3Enabled = false;
-volatile bool dev::rpc::Skale::g_bNodeInstanceShouldShutdown = false;
-dev::rpc::Skale::list_fn_on_shutdown_t dev::rpc::Skale::g_list_fn_on_shutdown;
+volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
+volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
+Skale::list_fn_on_shutdown_t Skale::g_list_fn_on_shutdown;
 
-bool dev::rpc::Skale::isWeb3ShutdownEnabled() {
+bool Skale::isWeb3ShutdownEnabled() {
     return g_bShutdownViaWeb3Enabled;
 }
-void dev::rpc::Skale::enableWeb3Shutdown( bool bEnable /*= true*/ ) {
+void Skale::enableWeb3Shutdown( bool bEnable /*= true*/ ) {
     if ( ( g_bShutdownViaWeb3Enabled && bEnable ) ||
          ( ( !g_bShutdownViaWeb3Enabled ) && ( !bEnable ) ) )
         return;
@@ -70,16 +77,16 @@ void dev::rpc::Skale::enableWeb3Shutdown( bool bEnable /*= true*/ ) {
         g_list_fn_on_shutdown.clear();
 }
 
-bool dev::rpc::Skale::isShutdownNeeded() {
+bool Skale::isShutdownNeeded() {
     return g_bNodeInstanceShouldShutdown;
 }
-void dev::rpc::Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
+void Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
     if ( !fn )
         return;
     g_list_fn_on_shutdown.push_back( fn );
 }
 
-std::string dev::rpc::Skale::skale_shutdownInstance() {
+std::string Skale::skale_shutdownInstance() {
     if ( !g_bShutdownViaWeb3Enabled ) {
         std::cout << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
         return toJS( "disabled" );
@@ -108,29 +115,43 @@ std::string dev::rpc::Skale::skale_shutdownInstance() {
     return toJS( "will shutdown" );
 }
 
-std::string dev::rpc::Skale::skale_protocolVersion() {
+std::string Skale::skale_protocolVersion() {
     return toJS( "0.2" );
 }
 
-std::string dev::rpc::Skale::skale_receiveTransaction( std::string const& _rlp ) {
+std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     try {
         return toJS( m_skaleHost.receiveTransaction( _rlp ) );
     } catch ( Exception const& ) {
-        throw jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() );  // TODO test!
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );  // TODO test!
     }
 }
 
+static const size_t g_nMaxChunckSize = 1024 * 4;
+static const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
+
+//
+// call example:
+// curl http://127.0.0.1:7000 -X POST --data
+// '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
+// false },"id":73}'
+//
 static nlohmann::json impl_skale_getSnapshot(
     const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
     std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" )
               << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
-    joResponse["dataSize"] = 1024 * 16;
-    joResponse["maxAllowedChunkSize"] = 1024;
+    //
+    //
+    size_t sizeOfFile = fs::file_size( g_pathSnapshotFile );
+    //
+    //
+    joResponse["dataSize"] = sizeOfFile;
+    joResponse["maxAllowedChunkSize"] = g_nMaxChunckSize;
     return joResponse;
 }
 
-Json::Value dev::rpc::Skale::skale_getSnapshot( const Json::Value& request ) {
+Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
@@ -148,25 +169,45 @@ Json::Value dev::rpc::Skale::skale_getSnapshot( const Json::Value& request ) {
 //
 // call example:
 // curl http://127.0.0.1:7000 -X POST --data
-// '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
-// false },"id":73}'
+// '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
+// "from": 0, "size": 8192 },"id":73}'
 //
 static nlohmann::json impl_skale_downloadSnapshotFragment(
     const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
     std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
               << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
-    joResponse["data"] = "0001111222333";
+    //
+    //
+    size_t sizeOfFile = fs::file_size( g_pathSnapshotFile );
+    size_t idxFrom = joRequest["from"].get< size_t >();
+    size_t sizeOfChunk = joRequest["size"].get< size_t >();
+    if ( idxFrom >= sizeOfFile )
+        sizeOfChunk = 0;
+    if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+        sizeOfChunk = sizeOfFile - idxFrom;
+    if ( sizeOfChunk > g_nMaxChunckSize )
+        sizeOfChunk = g_nMaxChunckSize;
+    //
+    //
+    std::ifstream f;
+    f.open( g_pathSnapshotFile.native(), std::ios::in | std::ios::binary );
+    if ( !f.is_open() )
+        throw std::runtime_error( "failed to open snapshot file" );
+    size_t i;
+    std::vector< unsigned char > buffer;
+    for ( i = 0; i < sizeOfChunk; ++i )
+        buffer.push_back( ( unsigned char ) ( 0 ) );
+    f.seekg( idxFrom );
+    f.read( ( char* ) buffer.data(), sizeOfChunk );
+    f.close();
+    std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
+    joResponse["size"] = sizeOfChunk;
+    joResponse["data"] = strBase64;
     return joResponse;
 }
 
-//
-// call example:
-// curl http://127.0.0.1:7000 -X POST --data
-// '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
-// "from": 0, "to": -1 },"id":73}'
-//
-Json::Value dev::rpc::Skale::skale_downloadSnapshotFragment( const Json::Value& request ) {
+Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
@@ -180,3 +221,82 @@ Json::Value dev::rpc::Skale::skale_downloadSnapshotFragment( const Json::Value& 
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
 }
+
+namespace snapshot {
+
+bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress ) {
+    std::ofstream f;
+    try {
+        boost::filesystem::remove( saveTo );
+        //
+        //
+        skutils::rest::client cli;
+        if ( !cli.open( strURLWeb3 ) ) {
+            std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+            return false;
+        }
+        nlohmann::json joIn = nlohmann::json::object();
+        joIn["jsonrpc"] = "2.0";
+        joIn["method"] = "skale_getSnapshot";
+        nlohmann::json joParams = nlohmann::json::object();
+        joParams["autoCreate"] = false;
+        joParams["blockNumber"] = "latest";
+        joIn["params"] = joParams;
+        skutils::rest::data_t d = cli.call( joIn );
+        if ( d.empty() ) {
+            std::cout << cc::fatal( "REST call failed" ) << "\n";
+            return false;
+        }
+        std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
+        nlohmann::json joSnapshotInfo = nlohmann::json::parse( d.s_ )["result"];
+        size_t sizeOfFile = joSnapshotInfo["dataSize"].get< size_t >();
+        size_t maxAllowedChunkSize = joSnapshotInfo["maxAllowedChunkSize"].get< size_t >();
+        size_t idxChunk, cntChunks = sizeOfFile / maxAllowedChunkSize +
+                                     ( ( ( sizeOfFile % maxAllowedChunkSize ) > 0 ) ? 1 : 0 );
+        //
+        //
+        f.open( saveTo.native(), std::ios::out | std::ios::binary );
+        if ( !f.is_open() )
+            throw std::runtime_error( "failed to open snapshot file" );
+        for ( idxChunk = 0; idxChunk < cntChunks; ++idxChunk ) {
+            nlohmann::json joIn = nlohmann::json::object();
+            joIn["jsonrpc"] = "2.0";
+            joIn["method"] = "skale_downloadSnapshotFragment";
+            nlohmann::json joParams = nlohmann::json::object();
+            joParams["blockNumber"] = "latest";
+            joParams["from"] = idxChunk * maxAllowedChunkSize;
+            joParams["size"] = maxAllowedChunkSize;
+            joIn["params"] = joParams;
+            skutils::rest::data_t d = cli.call( joIn );
+            if ( d.empty() ) {
+                std::cout << cc::fatal( "REST call failed(fragment downloader)" ) << "\n";
+                return false;
+            }
+            std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n"
+                      << cc::j( d.s_ ) << "\n";
+            nlohmann::json joFragment = nlohmann::json::parse( d.s_ )["result"];
+            // size_t sizeArrived = joFragment["size"];
+            std::string strBase64 = joFragment["data"];
+            std::vector< uint8_t > buffer = skutils::tools::base64::decodeBin( strBase64 );
+            f.write( ( char* ) buffer.data(), buffer.size() );
+            bool bContinue = true;
+            if ( onProgress )
+                bContinue = onProgress( idxChunk, cntChunks );
+            if ( !bContinue ) {
+                f.close();
+                boost::filesystem::remove( saveTo );
+                return false;
+            }
+        }  // for ( idxChunk = 0; idxChunk < cntChunks; ++idxChunk )
+        f.close();
+        return true;
+    } catch ( ... ) {
+        boost::filesystem::remove( saveTo );
+    }
+    return false;
+}
+
+};  // namespace snapshot
+
+};  // namespace rpc
+};  // namespace dev

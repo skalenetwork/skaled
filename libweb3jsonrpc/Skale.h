@@ -33,12 +33,17 @@
 #include <iosfwd>
 #include <list>
 #include <memory>
+#include <string>
+
+#include <boost/filesystem/path.hpp>
 
 class SkaleHost;
 
 namespace dev {
 
 namespace rpc {
+
+namespace fs = boost::filesystem;
 
 /**
  * @brief Skale JSON-RPC api implementation
@@ -73,7 +78,19 @@ private:
 
     SkaleHost& m_skaleHost;
 };
-}  // namespace rpc
-}  // namespace dev
+
+namespace snapshot {
+
+typedef std::function< bool( size_t idxChunck, size_t cntChunks ) > fn_progress_t;  // returns false
+                                                                                    // to cancel
+                                                                                    // download
+
+extern bool download(
+    const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress );
+
+};  // namespace snapshot
+
+};  // namespace rpc
+};  // namespace dev
 
 #endif  // CPP_ETHEREUM_SKALE_H

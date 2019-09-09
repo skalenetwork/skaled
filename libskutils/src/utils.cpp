@@ -873,11 +873,11 @@ std::string encode( unsigned char const* bytes_to_encode, size_t in_len ) {
     return ret;
 }
 
-std::string decode( std::string const& encoded_string ) {
+std::vector< uint8_t > decodeBin( std::string const& encoded_string ) {
     size_t in_len = encoded_string.size();
     size_t i = 0, j = 0, in_ = 0;
     unsigned char char_array_4[4], char_array_3[3];
-    std::string ret;
+    std::vector< uint8_t > ret;
     while ( in_len-- && ( encoded_string[in_] != '=' ) && is_base64( encoded_string[in_] ) ) {
         char_array_4[i++] = encoded_string[in_];
         in_++;
@@ -889,7 +889,7 @@ std::string decode( std::string const& encoded_string ) {
                 ( ( char_array_4[1] & 0xf ) << 4 ) + ( ( char_array_4[2] & 0x3c ) >> 2 );
             char_array_3[2] = ( ( char_array_4[2] & 0x3 ) << 6 ) + char_array_4[3];
             for ( i = 0; ( i < 3 ); i++ )
-                ret += char_array_3[i];
+                ret.push_back( ( uint8_t ) char_array_3[i] );
             i = 0;
         }
     }
@@ -902,10 +902,18 @@ std::string decode( std::string const& encoded_string ) {
         char_array_3[1] = ( ( char_array_4[1] & 0xf ) << 4 ) + ( ( char_array_4[2] & 0x3c ) >> 2 );
         char_array_3[2] = ( ( char_array_4[2] & 0x3 ) << 6 ) + char_array_4[3];
         for ( j = 0; ( j < i - 1 ); j++ )
-            ret += char_array_3[j];
+            ret.push_back( ( uint8_t ) char_array_3[j] );
     }
     return ret;
 }
+std::string decode( std::string const& encoded_string ) {
+    std::vector< uint8_t > buffer = decodeBin( encoded_string );
+    std::string ret;
+    for ( uint8_t b : buffer )
+        ret += char( b );
+    return ret;
+}
+
 };  // namespace base64
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

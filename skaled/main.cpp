@@ -30,6 +30,8 @@
 #include <iostream>
 #include <thread>
 
+#include <stdint.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -60,6 +62,7 @@
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
@@ -198,17 +201,17 @@ int main( int argc, char** argv ) try {
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    //    std::string strW3url;
-    //    // strW3url = "http://127.0.0.1:7545";  // ganache - http
-    //    // strW3url = "ws://127.0.0.1:7545";    // ganache - ws
-    //    // strW3url = "http://127.0.0.1:7000";  // skaled - http
-    //    // strW3url = "https://127.0.0.1:7000";  // skaled - https
-    //    // strW3url = "ws://127.0.0.1:7020";  // skaled - ws
-    //    // strW3url = "wss://127.0.0.1:7020";   // skaled - wss
-    //    strW3url = "http://127.0.0.1:8545";  // geth - http
-    //    // strW3url = "ws://127.0.0.1:8546";  // geth - ws
+    std::string strURLWeb3;
+    // strURLWeb3 = "http://127.0.0.1:7545";  // ganache - http
+    // strURLWeb3 = "ws://127.0.0.1:7545";    // ganache - ws
+    strURLWeb3 = "http://127.0.0.1:7000";  // skaled - http
+    // strURLWeb3 = "https://127.0.0.1:7000";  // skaled - https
+    // strURLWeb3 = "ws://127.0.0.1:7020";  // skaled - ws
+    // strURLWeb3 = "wss://127.0.0.1:7020";   // skaled - wss
+    // strURLWeb3 = "http://127.0.0.1:8545";  // geth - http
+    // strURLWeb3 = "ws://127.0.0.1:8546";  // geth - ws
     //    skutils::rest::client cli;
-    //    if ( !cli.open( strW3url ) ) {
+    //    if ( !cli.open( strURLWeb3 ) ) {
     //        std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
     //        return 1;
     //    }
@@ -220,6 +223,24 @@ int main( int argc, char** argv ) try {
     //        return 1;
     //    }
     //    std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
+    //    return 0;
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    //    fs::path saveTo = "/Users/l_sergiy/Downloads/snapshot.gif";
+    //    std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() ) <<
+    //    "\n"; bool bOK = dev::rpc::snapshot::download(
+    //        strURLWeb3, saveTo, [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+    //            std::cout << cc::normal( "... download progress" ) << cc::num10( uint64_t(
+    //            idxChunck ) )
+    //                      << cc::normal( " of " ) << cc::num10( uint64_t( cntChunks ) ) << "\n";
+    //            return true;
+    //        } );
+    //    if ( !bOK ) {
+    //        std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+    //        return 1;
+    //    }
+    //    std::cout << cc::success( "Snapshot download success" ) << "\n";
     //    return 0;
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
