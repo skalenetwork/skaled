@@ -145,6 +145,8 @@ protected:
         setInstalledWatchesNewBlocks_;
     void uninstallAllWatches();
 
+    bool handleRequestWithBinaryAnswer( const nlohmann::json& joRequest );
+
     bool handleWebSocketSpecificRequest(
         const nlohmann::json& joRequest, std::string& strResponse );
     bool handleWebSocketSpecificRequest(
@@ -322,6 +324,9 @@ public:
 
     SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
+
+    bool handleRequestWithBinaryAnswer(
+        const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;

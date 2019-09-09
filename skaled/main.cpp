@@ -204,10 +204,10 @@ int main( int argc, char** argv ) try {
     std::string strURLWeb3;
     // strURLWeb3 = "http://127.0.0.1:7545";  // ganache - http
     // strURLWeb3 = "ws://127.0.0.1:7545";    // ganache - ws
-    // strURLWeb3 = "http://127.0.0.1:7000";  // skaled - http
+    strURLWeb3 = "http://127.0.0.1:7000";  // skaled - http
     // strURLWeb3 = "https://127.0.0.1:7010";  // skaled - https
     // strURLWeb3 = "ws://127.0.0.1:7020";  // skaled - ws
-    strURLWeb3 = "wss://127.0.0.1:7030";  // skaled - wss
+    // strURLWeb3 = "wss://127.0.0.1:7030";  // skaled - wss
     // strURLWeb3 = "http://127.0.0.1:8545";  // geth - http
     // strURLWeb3 = "ws://127.0.0.1:8546";  // geth - ws
     //    skutils::rest::client cli;

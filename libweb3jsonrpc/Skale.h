@@ -85,10 +85,13 @@ typedef std::function< bool( size_t idxChunck, size_t cntChunks ) > fn_progress_
                                                                                     // to cancel
                                                                                     // download
 
-extern bool download(
-    const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress );
+extern bool download( const std::string& strURLWeb3, const fs::path& saveTo,
+    fn_progress_t onProgress, bool isBinaryDownload = true );
 
 };  // namespace snapshot
+
+extern size_t g_nMaxChunckSize;
+extern const fs::path g_pathSnapshotFile;
 
 };  // namespace rpc
 };  // namespace dev
