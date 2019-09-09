@@ -1205,8 +1205,8 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
-                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
+                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             //

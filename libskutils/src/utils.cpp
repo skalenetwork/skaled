@@ -91,6 +91,33 @@ std::string to_lower( const std::string& strSrc ) {
     return strDst;
 }
 
+// based on https://www.codeproject.com/Articles/1088/Wildcard-string-compare-globbing
+bool wildcmp( const char* wild, const char* s ) {
+    const char *cp = nullptr, *mp = nullptr;
+    while ( ( *s ) && ( *wild != '*' ) ) {
+        if ( ( *wild != *s ) && ( *wild != '?' ) )
+            return false;
+        wild++;
+        s++;
+    }
+    while ( *s ) {
+        if ( *wild == '*' ) {
+            if ( !*++wild )
+                return true;
+            mp = wild;
+            cp = s + 1;
+        } else if ( ( *wild == *s ) || ( *wild == '?' ) ) {
+            wild++;
+            s++;
+        } else {
+            wild = mp;
+            s = cp++;
+        }
+    }
+    while ( *wild == '*' )
+        wild++;
+    return !*wild;
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

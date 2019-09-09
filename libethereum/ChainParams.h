@@ -79,6 +79,9 @@ private:
     ChainParams loadGenesis( std::string const& _json ) const;
 
     mutable std::string originalJSON;
+
+public:
+    bool checkAdminOriginAllowed( const std::string& origin ) const;
 };
 
 }  // namespace eth
