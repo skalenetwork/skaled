@@ -84,13 +84,8 @@
 
 #include <stdlib.h>
 #include <time.h>
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 #include <skutils/rest_call.h>
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 using namespace std;
 using namespace dev;
@@ -198,53 +193,6 @@ int main( int argc, char** argv ) try {
     cc::_on_ = true;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    std::string strURLWeb3;
-    // strURLWeb3 = "http://127.0.0.1:7545";  // ganache - http
-    // strURLWeb3 = "ws://127.0.0.1:7545";    // ganache - ws
-    strURLWeb3 = "http://127.0.0.1:7000";  // skaled - http
-    // strURLWeb3 = "https://127.0.0.1:7010";  // skaled - https
-    // strURLWeb3 = "ws://127.0.0.1:7020";  // skaled - ws
-    // strURLWeb3 = "wss://127.0.0.1:7030";  // skaled - wss
-    // strURLWeb3 = "http://127.0.0.1:8545";  // geth - http
-    // strURLWeb3 = "ws://127.0.0.1:8546";  // geth - ws
-    //    skutils::rest::client cli;
-    //    if ( !cli.open( strURLWeb3 ) ) {
-    //        std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
-    //        return 1;
-    //    }
-    //    std::string strIn;
-    //    strIn = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}";
-    //    skutils::rest::data_t d = cli.call( strIn );
-    //    if ( d.empty() ) {
-    //        std::cout << cc::fatal( "REST call failed" ) << "\n";
-    //        return 1;
-    //    }
-    //    std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
-    //    return 0;
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    //    fs::path saveTo = "/Users/l_sergiy/Downloads/snapshot.gif";
-    //    std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() ) <<
-    //    "\n"; bool bOK = dev::rpc::snapshot::download(
-    //        strURLWeb3, saveTo, [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-    //            std::cout << cc::normal( "... download progress" ) << cc::num10( uint64_t(
-    //            idxChunck ) )
-    //                      << cc::normal( " of " ) << cc::num10( uint64_t( cntChunks ) ) << "\n";
-    //            return true;
-    //        } );
-    //    if ( !bOK ) {
-    //        std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
-    //        return 1;
-    //    }
-    //    std::cout << cc::success( "Snapshot download success" ) << "\n";
-    //    return 0;
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
     setCLocale();
 
@@ -406,6 +354,12 @@ int main( int argc, char** argv ) try {
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
 
+    // skale - snapshot download command
+    addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
+        "Download snapshot from other skaled node specified by web3/json-rpc url" );
+    addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
+        "Path of file to save downloaded snapshot to" );
+
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
         createLoggingProgramOptions( c_lineWidth, loggingOptions ) );
@@ -453,6 +407,45 @@ int main( int argc, char** argv ) try {
 
     // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
     skutils::dispatch::default_domain( 48 );
+
+    if ( vm.count( "download-snapshot" ) ) {
+        try {
+            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
+            std::string strDownloadTarget = "snapshot.bin";
+            if ( vm.count( "download-target" ) )
+                strDownloadTarget = vm["download-target"].as< string >();
+            fs::path saveTo = strDownloadTarget.c_str();
+            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
+                      << "\n";
+            std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() )
+                      << "\n";
+            bool bOK = dev::rpc::snapshot::download(
+                strURLWeb3, saveTo, [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+                    std::cout << cc::normal( "... download progress ... " )
+                              << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
+                              << cc::num10( uint64_t( cntChunks ) ) << "\r";
+                    return true;
+                } );
+            std::cout << "                                                  \r";  // clear progress
+                                                                                  // line
+            if ( !bOK ) {
+                std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                return 1;
+            }
+            std::cout << cc::success( "Snapshot download success" ) << "\n";
+            return 0;
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+            return EXIT_FAILURE;
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+        }
+        return -1;
+    }
 
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
