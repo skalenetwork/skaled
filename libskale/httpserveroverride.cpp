@@ -656,7 +656,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::async( m_strPeerQueueID, [this, strRequest]() -> void {
             try {
                 SkaleServerOverride* pSO = pso();
-                int nID = -1;
+                nlohmann::json joID = "-1";
                 std::string strResponse, strMethod;
                 bool bPassed = false;
                 try {
@@ -668,7 +668,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest );
                     stats::register_stats_message( "RPC", joRequest );
                     if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
-                        nID = joRequest["id"].get< int >();
+                        joID = joRequest["id"];
                         jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
                         if ( handler == nullptr )
                             throw std::runtime_error( "No client connection handler found" );
@@ -691,7 +691,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                             "/ERR !!! " ) +
                                desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
                     nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
+                    joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
                     joErrorResponce["error"] = std::string( ex.what() );
                     strResponse = joErrorResponce.dump();
@@ -712,7 +712,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                             "/ERR !!! " ) +
                                desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
                     nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = nID;
+                    joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
                     joErrorResponce["error"] = std::string( e );
                     strResponse = joErrorResponce.dump();
@@ -1671,7 +1671,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             if ( m_bTraceCalls )
                 logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     req.origin_.c_str(), cc::j( req.body_ ) );
-            int nID = -1;
+            nlohmann::json joID = "-1";
             std::string strResponse, strMethod;
             bool bPassed = false;
             try {
@@ -1681,7 +1681,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     throw std::runtime_error( "server too busy" );
                 }
                 nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
-                nID = joRequest["id"].get< int >();
+                joID = joRequest["id"];
                 strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
                 jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
                 if ( handler == nullptr )
@@ -1708,7 +1708,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     req.origin_.c_str(), cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
-                joErrorResponce["id"] = nID;
+                joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
                 joErrorResponce["error"] = std::string( ex.what() );
                 strResponse = joErrorResponce.dump();
@@ -1722,7 +1722,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
-                joErrorResponce["id"] = nID;
+                joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
                 joErrorResponce["error"] = std::string( e );
                 strResponse = joErrorResponce.dump();
