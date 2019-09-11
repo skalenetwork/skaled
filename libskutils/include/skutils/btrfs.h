@@ -1,6 +1,7 @@
 typedef struct {
     const char* ( *strerror )();
     struct {
+        int ( *list )( const char* path );
         int ( *create )( const char* path );
         int ( *_delete )( const char* path );
         int ( *snapshot )( const char* from, const char* to );
