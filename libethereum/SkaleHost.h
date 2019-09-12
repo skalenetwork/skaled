@@ -149,8 +149,8 @@ private:
     std::mutex m_receivedMutex;
 
     // TODO implement more nicely and more fine-grained!
-    std::mutex m_pending_createMutex;  // for race conditions between pendingTransactions() and
-                                       // createBock()
+    std::recursive_mutex m_pending_createMutex;  // for race conditions between
+                                                 // pendingTransactions() and createBock()
 
     int m_bcast_counter = 0;
 

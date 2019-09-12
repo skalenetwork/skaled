@@ -180,7 +180,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     Transactions txns =
         m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
-            std::lock_guard lock( m_pending_createMutex );
+            std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
@@ -202,7 +202,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             return true;
         } );
 
-    std::lock_guard lock( m_pending_createMutex );
+    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
@@ -259,7 +259,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
 
-    std::lock_guard lock( m_pending_createMutex );
+    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
