@@ -684,7 +684,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::async( m_strPeerQueueID, [=]() -> void {
             std::string strRequest( msg );
             if ( pSO->m_bTraceCalls )
-                clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) +
+                                              cc::debug( "/" ) +
                                               cc::num10( getRelay().serverIndex() ) )
                     << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
@@ -698,7 +699,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     bool bPassed = false;
                     try {
                         nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-                        strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                        strMethod =
+                            skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
                         stats::register_stats_message(
                             getRelay().nfoGetSchemeUC().c_str(), "messages", strRequest.size() );
                         stats::register_stats_message(
@@ -716,8 +718,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         stats::register_stats_answer(
                             getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
                         stats::register_stats_answer(
-                            ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
-                            joResponse );
+                            ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(),
+                            joRequest, joResponse );
                         stats::register_stats_answer( "RPC", joRequest, joResponse );
                         bPassed = true;
                     } catch ( const std::exception& ex ) {
