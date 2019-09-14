@@ -1105,7 +1105,7 @@ void SkaleWsPeer::eth_subscribe_logs(
             } );
         };
         unsigned iw = ethereum()->installWatch(
-            logFilter, dev::eth::Reaping::Automatic, fnOnSunscriptionEvent );
+            logFilter, dev::eth::Reaping::Automatic, fnOnSunscriptionEvent, true );  // isWS = true
         setInstalledWatchesLogs_.insert( iw );
         std::string strIW = dev::toJS( iw );
         if ( pSO->m_bTraceCalls )
