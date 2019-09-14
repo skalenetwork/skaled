@@ -1005,94 +1005,103 @@ void SkaleWsPeer::eth_subscribe_logs(
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
-            skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
-                dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
-                nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
-                if ( joResult.is_array() ) {
-                    for ( const auto& joRW : joResult ) {
-                        if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
-                             joRW.count( "blockHash" ) > 0 && joRW.count( "blockNumber" ) > 0 ) {
-                            std::string strBlockHash = joRW["blockHash"].get< std::string >();
-                            unsigned nBlockBumber = joRW["blockNumber"].get< unsigned >();
-                            const nlohmann::json& joResultLogs = joRW["logs"];
-                            if ( joResultLogs.is_array() ) {
-                                for ( const auto& joWalk : joResultLogs ) {
-                                    if ( !joWalk.is_object() )
-                                        continue;
-                                    nlohmann::json joLog = joWalk;  // copy
-                                    joLog["blockHash"] = strBlockHash;
-                                    joLog["blockNumber"] = nBlockBumber;
-                                    nlohmann::json joParams = nlohmann::json::object();
-                                    joParams["subscription"] = dev::toJS( iw );
-                                    joParams["result"] = joLog;
-                                    nlohmann::json joNotification = nlohmann::json::object();
-                                    joNotification["jsonrpc"] = "2.0";
-                                    joNotification["method"] = "eth_subscription";
-                                    joNotification["params"] = joParams;
-                                    std::string strNotification = joNotification.dump();
-                                    const SkaleServerOverride* pSO = pThis->pso();
-                                    if ( pSO->m_bTraceCalls )
-                                        clog( dev::VerbosityInfo,
-                                            cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                cc::ws_tx_inv( " <<< " +
-                                                               pThis->getRelay().nfoGetSchemeUC() +
-                                                               "/TX <<< " ) )
-                                            << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                                   cc::j( strNotification ) );
-                                    // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis,
-                                    // strNotification]() -> void {
-                                    bool bMessageSentOK = false;
-                                    try {
-                                        bMessageSentOK =
-                                            const_cast< SkaleWsPeer* >( pThis.get() )
-                                                ->sendMessage(
-                                                    skutils::tools::trim_copy( strNotification ) );
-                                        if ( !bMessageSentOK )
-                                            throw std::runtime_error(
-                                                "eth_subscription/logs failed to sent message" );
-                                        stats::register_stats_answer(
-                                            ( std::string( "RPC/" ) +
-                                                pThis->getRelay().nfoGetSchemeUC() )
-                                                .c_str(),
-                                            "eth_subscription/logs", strNotification.size() );
-                                        stats::register_stats_answer( "RPC",
-                                            "eth_subscription/logs", strNotification.size() );
-                                    } catch ( std::exception& ex ) {
-                                        clog( dev::Verbosity::VerbosityError,
-                                            cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                cc::debug( "/" ) +
-                                                cc::num10( pThis->getRelay().serverIndex() ) )
-                                            << ( pThis->desc() + " " + cc::error( "error in " ) +
-                                                   cc::warn( "eth_subscription/logs" ) +
-                                                   cc::error( " will uninstall watcher callback "
-                                                              "because of exception: " ) +
-                                                   cc::warn( ex.what() ) );
-                                    } catch ( ... ) {
-                                        clog( dev::Verbosity::VerbosityError,
-                                            cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                cc::debug( "/" ) +
-                                                cc::num10( pThis->getRelay().serverIndex() ) )
-                                            << ( pThis->desc() + " " + cc::error( "error in " ) +
-                                                   cc::warn( "eth_subscription/logs" ) +
-                                                   cc::error( " will uninstall watcher callback "
-                                                              "because of unknown exception" ) );
-                                    }
-                                    if ( !bMessageSentOK ) {
-                                        stats::register_stats_error(
-                                            ( std::string( "RPC/" ) +
-                                                pThis->getRelay().nfoGetSchemeUC() )
-                                                .c_str(),
-                                            "eth_subscription/logs" );
-                                        stats::register_stats_error(
-                                            "RPC", "eth_subscription/logs" );
-                                        pThis->ethereum()->uninstallWatch( iw );
-                                    }
-                                    //    } );
-                                }  // for ( const auto& joWalk : joResultLogs )
-                            }      // if ( joResultLogs.is_array() )
-                        }
-                    }  // for ( const auto& joRW : joResult )
-                }      // if ( joResult.is_array() )
+            skutils::dispatch::async( [=]() -> void {
+                skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
+                    dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
+                    nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
+                    if ( joResult.is_array() ) {
+                        for ( const auto& joRW : joResult ) {
+                            if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
+                                 joRW.count( "blockHash" ) > 0 &&
+                                 joRW.count( "blockNumber" ) > 0 ) {
+                                std::string strBlockHash = joRW["blockHash"].get< std::string >();
+                                unsigned nBlockBumber = joRW["blockNumber"].get< unsigned >();
+                                const nlohmann::json& joResultLogs = joRW["logs"];
+                                if ( joResultLogs.is_array() ) {
+                                    for ( const auto& joWalk : joResultLogs ) {
+                                        if ( !joWalk.is_object() )
+                                            continue;
+                                        nlohmann::json joLog = joWalk;  // copy
+                                        joLog["blockHash"] = strBlockHash;
+                                        joLog["blockNumber"] = nBlockBumber;
+                                        nlohmann::json joParams = nlohmann::json::object();
+                                        joParams["subscription"] = dev::toJS( iw );
+                                        joParams["result"] = joLog;
+                                        nlohmann::json joNotification = nlohmann::json::object();
+                                        joNotification["jsonrpc"] = "2.0";
+                                        joNotification["method"] = "eth_subscription";
+                                        joNotification["params"] = joParams;
+                                        std::string strNotification = joNotification.dump();
+                                        const SkaleServerOverride* pSO = pThis->pso();
+                                        if ( pSO->m_bTraceCalls )
+                                            clog( dev::VerbosityInfo,
+                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                                    cc::ws_tx_inv(
+                                                        " <<< " +
+                                                        pThis->getRelay().nfoGetSchemeUC() +
+                                                        "/TX <<< " ) )
+                                                << ( pThis->desc() + cc::ws_tx( " <<< " ) +
+                                                       cc::j( strNotification ) );
+                                        // skutils::dispatch::async( pThis->m_strPeerQueueID,
+                                        // [pThis, strNotification]() -> void {
+                                        bool bMessageSentOK = false;
+                                        try {
+                                            bMessageSentOK =
+                                                const_cast< SkaleWsPeer* >( pThis.get() )
+                                                    ->sendMessage( skutils::tools::trim_copy(
+                                                        strNotification ) );
+                                            if ( !bMessageSentOK )
+                                                throw std::runtime_error(
+                                                    "eth_subscription/logs failed to sent "
+                                                    "message" );
+                                            stats::register_stats_answer(
+                                                ( std::string( "RPC/" ) +
+                                                    pThis->getRelay().nfoGetSchemeUC() )
+                                                    .c_str(),
+                                                "eth_subscription/logs", strNotification.size() );
+                                            stats::register_stats_answer( "RPC",
+                                                "eth_subscription/logs", strNotification.size() );
+                                        } catch ( std::exception& ex ) {
+                                            clog( dev::Verbosity::VerbosityError,
+                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                                    cc::debug( "/" ) +
+                                                    cc::num10( pThis->getRelay().serverIndex() ) )
+                                                << ( pThis->desc() + " " +
+                                                       cc::error( "error in " ) +
+                                                       cc::warn( "eth_subscription/logs" ) +
+                                                       cc::error(
+                                                           " will uninstall watcher callback "
+                                                           "because of exception: " ) +
+                                                       cc::warn( ex.what() ) );
+                                        } catch ( ... ) {
+                                            clog( dev::Verbosity::VerbosityError,
+                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                                    cc::debug( "/" ) +
+                                                    cc::num10( pThis->getRelay().serverIndex() ) )
+                                                << ( pThis->desc() + " " +
+                                                       cc::error( "error in " ) +
+                                                       cc::warn( "eth_subscription/logs" ) +
+                                                       cc::error(
+                                                           " will uninstall watcher callback "
+                                                           "because of unknown exception" ) );
+                                        }
+                                        if ( !bMessageSentOK ) {
+                                            stats::register_stats_error(
+                                                ( std::string( "RPC/" ) +
+                                                    pThis->getRelay().nfoGetSchemeUC() )
+                                                    .c_str(),
+                                                "eth_subscription/logs" );
+                                            stats::register_stats_error(
+                                                "RPC", "eth_subscription/logs" );
+                                            pThis->ethereum()->uninstallWatch( iw );
+                                        }
+                                        //    } );
+                                    }  // for ( const auto& joWalk : joResultLogs )
+                                }      // if ( joResultLogs.is_array() )
+                            }
+                        }  // for ( const auto& joRW : joResult )
+                    }      // if ( joResult.is_array() )
+                } );
             } );
         };
         unsigned iw = ethereum()->installWatch(
@@ -1142,62 +1151,67 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         std::function< void( const unsigned& iw, const dev::eth::Transaction& t ) >
             fnOnSunscriptionEvent =
                 [pThis]( const unsigned& iw, const dev::eth::Transaction& t ) -> void {
-            const SkaleServerOverride* pSO = pThis->pso();
-            dev::h256 h = t.sha3();
-            //
-            nlohmann::json joParams = nlohmann::json::object();
-            joParams["subscription"] =
-                dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION );
-            joParams["result"] = dev::toJS( h );  // h.hex()
-            nlohmann::json joNotification = nlohmann::json::object();
-            joNotification["jsonrpc"] = "2.0";
-            joNotification["method"] = "eth_subscription";
-            joNotification["params"] = joParams;
-            std::string strNotification = joNotification.dump();
-            if ( pSO->m_bTraceCalls )
-                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
-                    << ( cc::ws_tx_inv(
-                             " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
-            // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void
-            // {
-            bool bMessageSentOK = false;
-            try {
-                bMessageSentOK = const_cast< SkaleWsPeer* >( pThis.get() )
-                                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                if ( !bMessageSentOK )
-                    throw std::runtime_error(
-                        "eth_subscription/newPendingTransactions failed to sent message" );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                    "eth_subscription/newPendingTransactions", strNotification.size() );
-                stats::register_stats_answer(
-                    "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
-            } catch ( std::exception& ex ) {
-                clog( dev::Verbosity::VerbosityError,
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                        cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( pThis->desc() + " " + cc::error( "error in " ) +
-                           cc::warn( "eth_subscription/newPendingTransactions" ) +
-                           cc::error( " will uninstall watcher callback because of exception: " ) +
-                           cc::warn( ex.what() ) );
-            } catch ( ... ) {
-                clog( dev::Verbosity::VerbosityError,
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                        cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( pThis->desc() + " " + cc::error( "error in " ) +
-                           cc::warn( "eth_subscription/newPendingTransactions" ) +
-                           cc::error(
-                               " will uninstall watcher callback because of unknown exception" ) );
-            }
-            if ( !bMessageSentOK ) {
-                stats::register_stats_error(
-                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                    "eth_subscription/newPendingTransactions" );
-                stats::register_stats_error( "RPC", "eth_subscription/newPendingTransactions" );
-                pThis->ethereum()->uninstallNewPendingTransactionWatch( iw );
-            }
-            //} );
+            skutils::dispatch::async( [=]() -> void {
+                const SkaleServerOverride* pSO = pThis->pso();
+                dev::h256 h = t.sha3();
+                //
+                nlohmann::json joParams = nlohmann::json::object();
+                joParams["subscription"] =
+                    dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION );
+                joParams["result"] = dev::toJS( h );  // h.hex()
+                nlohmann::json joNotification = nlohmann::json::object();
+                joNotification["jsonrpc"] = "2.0";
+                joNotification["method"] = "eth_subscription";
+                joNotification["params"] = joParams;
+                std::string strNotification = joNotification.dump();
+                if ( pSO->m_bTraceCalls )
+                    clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
+                        << ( cc::ws_tx_inv(
+                                 " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
+                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
+                // void
+                // {
+                bool bMessageSentOK = false;
+                try {
+                    bMessageSentOK =
+                        const_cast< SkaleWsPeer* >( pThis.get() )
+                            ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+                    if ( !bMessageSentOK )
+                        throw std::runtime_error(
+                            "eth_subscription/newPendingTransactions failed to sent message" );
+                    stats::register_stats_answer(
+                        ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                        "eth_subscription/newPendingTransactions", strNotification.size() );
+                    stats::register_stats_answer(
+                        "RPC", "eth_subscription/newPendingTransactions", strNotification.size() );
+                } catch ( std::exception& ex ) {
+                    clog( dev::Verbosity::VerbosityError,
+                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                            cc::num10( pThis->getRelay().serverIndex() ) )
+                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                               cc::warn( "eth_subscription/newPendingTransactions" ) +
+                               cc::error(
+                                   " will uninstall watcher callback because of exception: " ) +
+                               cc::warn( ex.what() ) );
+                } catch ( ... ) {
+                    clog( dev::Verbosity::VerbosityError,
+                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                            cc::num10( pThis->getRelay().serverIndex() ) )
+                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                               cc::warn( "eth_subscription/newPendingTransactions" ) +
+                               cc::error( " will uninstall watcher callback because of unknown "
+                                          "exception" ) );
+                }
+                if ( !bMessageSentOK ) {
+                    stats::register_stats_error(
+                        ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                        "eth_subscription/newPendingTransactions" );
+                    stats::register_stats_error( "RPC", "eth_subscription/newPendingTransactions" );
+                    pThis->ethereum()->uninstallNewPendingTransactionWatch( iw );
+                }
+                //} );
+            } );
         };
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
@@ -1251,72 +1265,79 @@ void SkaleWsPeer::eth_subscribe_newHeads(
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
             fnOnSunscriptionEvent = [pThis, bIncludeTransactions](
                                         const unsigned& iw, const dev::eth::Block& block ) -> void {
-            const SkaleServerOverride* pSO = pThis->pso();
-            dev::h256 h = block.info().hash();
-            Json::Value jv;
-            if ( bIncludeTransactions )
-                jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
-                    pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
-                    pThis->ethereum()->transactions( h ), pThis->ethereum()->sealEngine() );
-            else
-                jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
-                    pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
-                    pThis->ethereum()->transactionHashes( h ), pThis->ethereum()->sealEngine() );
-            Json::FastWriter fastWriter;
-            std::string s = fastWriter.write( jv );
-            nlohmann::json joBlockDescription = nlohmann::json::parse( s );
-            //
-            nlohmann::json joParams = nlohmann::json::object();
-            joParams["subscription"] = dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK );
-            joParams["result"] = joBlockDescription;
-            nlohmann::json joNotification = nlohmann::json::object();
-            joNotification["jsonrpc"] = "2.0";
-            joNotification["method"] = "eth_subscription";
-            joNotification["params"] = joParams;
-            std::string strNotification = joNotification.dump();
-            if ( pSO->m_bTraceCalls )
-                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
-                    << ( cc::ws_tx_inv(
-                             " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
-            // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() -> void
-            // {
-            bool bMessageSentOK = false;
-            try {
-                bMessageSentOK = const_cast< SkaleWsPeer* >( pThis.get() )
-                                     ->sendMessage( skutils::tools::trim_copy( strNotification ) );
-                if ( !bMessageSentOK )
-                    throw std::runtime_error( "eth_subscription/newHeads failed to sent message" );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                    "eth_subscription/newHeads", strNotification.size() );
-                stats::register_stats_answer(
-                    "RPC", "eth_subscription/newHeads", strNotification.size() );
-            } catch ( std::exception& ex ) {
-                clog( dev::Verbosity::VerbosityError,
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                        cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( pThis->desc() + " " + cc::error( "error in " ) +
-                           cc::warn( "eth_subscription/newHeads" ) +
-                           cc::error( " will uninstall watcher callback because of exception: " ) +
-                           cc::warn( ex.what() ) );
-            } catch ( ... ) {
-                clog( dev::Verbosity::VerbosityError,
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                        cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( pThis->desc() + " " + cc::error( "error in " ) +
-                           cc::warn( "eth_subscription/newHeads" ) +
-                           cc::error(
-                               " will uninstall watcher callback because of unknown exception" ) );
-            }
-            if ( !bMessageSentOK ) {
-                stats::register_stats_error(
-                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                    "eth_subscription/newHeads" );
-                stats::register_stats_error( "RPC", "eth_subscription/newHeads" );
-                pThis->ethereum()->uninstallNewBlockWatch( iw );
-            }
-            //} );
+            skutils::dispatch::async( [=]() -> void {
+                const SkaleServerOverride* pSO = pThis->pso();
+                dev::h256 h = block.info().hash();
+                Json::Value jv;
+                if ( bIncludeTransactions )
+                    jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
+                        pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
+                        pThis->ethereum()->transactions( h ), pThis->ethereum()->sealEngine() );
+                else
+                    jv = dev::eth::toJson( pThis->ethereum()->blockInfo( h ),
+                        pThis->ethereum()->blockDetails( h ), pThis->ethereum()->uncleHashes( h ),
+                        pThis->ethereum()->transactionHashes( h ),
+                        pThis->ethereum()->sealEngine() );
+                Json::FastWriter fastWriter;
+                std::string s = fastWriter.write( jv );
+                nlohmann::json joBlockDescription = nlohmann::json::parse( s );
+                //
+                nlohmann::json joParams = nlohmann::json::object();
+                joParams["subscription"] = dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK );
+                joParams["result"] = joBlockDescription;
+                nlohmann::json joNotification = nlohmann::json::object();
+                joNotification["jsonrpc"] = "2.0";
+                joNotification["method"] = "eth_subscription";
+                joNotification["params"] = joParams;
+                std::string strNotification = joNotification.dump();
+                if ( pSO->m_bTraceCalls )
+                    clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
+                        << ( cc::ws_tx_inv(
+                                 " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
+                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
+                // void
+                // {
+                bool bMessageSentOK = false;
+                try {
+                    bMessageSentOK =
+                        const_cast< SkaleWsPeer* >( pThis.get() )
+                            ->sendMessage( skutils::tools::trim_copy( strNotification ) );
+                    if ( !bMessageSentOK )
+                        throw std::runtime_error(
+                            "eth_subscription/newHeads failed to sent message" );
+                    stats::register_stats_answer(
+                        ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                        "eth_subscription/newHeads", strNotification.size() );
+                    stats::register_stats_answer(
+                        "RPC", "eth_subscription/newHeads", strNotification.size() );
+                } catch ( std::exception& ex ) {
+                    clog( dev::Verbosity::VerbosityError,
+                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                            cc::num10( pThis->getRelay().serverIndex() ) )
+                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                               cc::warn( "eth_subscription/newHeads" ) +
+                               cc::error(
+                                   " will uninstall watcher callback because of exception: " ) +
+                               cc::warn( ex.what() ) );
+                } catch ( ... ) {
+                    clog( dev::Verbosity::VerbosityError,
+                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                            cc::num10( pThis->getRelay().serverIndex() ) )
+                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                               cc::warn( "eth_subscription/newHeads" ) +
+                               cc::error( " will uninstall watcher callback because of unknown "
+                                          "exception" ) );
+                }
+                if ( !bMessageSentOK ) {
+                    stats::register_stats_error(
+                        ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                        "eth_subscription/newHeads" );
+                    stats::register_stats_error( "RPC", "eth_subscription/newHeads" );
+                    pThis->ethereum()->uninstallNewBlockWatch( iw );
+                }
+                //} );
+            } );
         };
         unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewBlocks_.insert( iw );
