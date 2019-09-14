@@ -769,7 +769,8 @@ void Client::checkWatchGarbage() {
         vector< unsigned > toUninstall;
         DEV_GUARDED( x_filtersWatches )
         for ( auto key : keysOf( m_watches ) )
-            if ( m_watches[key].lastPoll != chrono::system_clock::time_point::max() &&
+            if ( ( !m_watches[key].isWS() ) &&
+                 m_watches[key].lastPoll != chrono::system_clock::time_point::max() &&
                  chrono::system_clock::now() - m_watches[key].lastPoll >
                      chrono::seconds( 200 ) )  // HACK Changed from 20 to 200 for debugging!
             {
