@@ -2,8 +2,8 @@
 
 #include <skutils/btrfs.h>
 
-#include <sstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 using namespace std;
@@ -24,32 +24,34 @@ SnapshotManager::SnapshotManager(
     volumes = _volumes;
     snapshots_dir = data_dir / "snapshots";
 
-    if ( !fs::exists( _dataDir ) ) try{
-        throw InvalidPath( _dataDir );
-    } catch(const fs::filesystem_error& ex){
-        throw_with_nested(CannotRead(ex.path1()));
-    }
+    if ( !fs::exists( _dataDir ) )
+        try {
+            throw InvalidPath( _dataDir );
+        } catch ( const fs::filesystem_error& ex ) {
+            throw_with_nested( CannotRead( ex.path1() ) );
+        }
 
     int res = btrfs.present( _dataDir.c_str() );
-    if ( 0 != res ){
+    if ( 0 != res ) {
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }
 
     try {
-        fprintf(stderr, "create: %d %d\n", geteuid(), getegid());
+        fprintf( stderr, "create: %d %d\n", geteuid(), getegid() );
         fs::create_directory( snapshots_dir );
     } catch ( ... ) {
         std::throw_with_nested( CannotCreate( snapshots_dir ) );
     }  // catch
 
-    for ( const auto& vol : _volumes ) try {
-        if ( !fs::exists( _dataDir / vol ) )
-            throw InvalidPath( _dataDir / vol );
-        if(0 != btrfs.present((_dataDir / vol).c_str()))
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    } catch(const fs::filesystem_error& ex){
-        throw_with_nested(CannotRead(ex.path1()));
-    }
+    for ( const auto& vol : _volumes )
+        try {
+            if ( !fs::exists( _dataDir / vol ) )
+                throw InvalidPath( _dataDir / vol );
+            if ( 0 != btrfs.present( ( _dataDir / vol ).c_str() ) )
+                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        } catch ( const fs::filesystem_error& ex ) {
+            throw_with_nested( CannotRead( ex.path1() ) );
+        }
 }
 
 // exceptions:
@@ -91,7 +93,7 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
     for ( const string& vol : volumes ) {
         if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
-            throw CannotDelete( data_dir / vol );
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
 
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
@@ -125,28 +127,28 @@ boost::filesystem::path SnapshotManager::makeDiff( unsigned _fromBlock, unsigned
     }
 
     stringstream cat_cmd;
-        cat_cmd << "cat ";
+    cat_cmd << "cat ";
     for ( const string& vol : volumes ) {
-
-        string part_path = path.string()+"_"+vol;
+        string part_path = path.string() + "_" + vol;
         cat_cmd << part_path << " ";
 
-        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(), part_path.c_str(),
-                 ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) )
+        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(),
+                 part_path.c_str(), ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }
 
     cat_cmd << ">" << path;
-    int res = system(cat_cmd.str().c_str());            // TODO check exit code
-    if(res != 0)
-        throw CannotWrite(path);
+    int res = system( cat_cmd.str().c_str() );  // TODO check exit code
+    if ( res != 0 )
+        throw CannotWrite( path );
 
-    for(const string& vol: volumes) try {
-        string part_path = path.string()+"_"+vol;
-        fs::remove(part_path);
-    } catch(const fs::filesystem_error& ex){
-        throw_with_nested( CannotDelete(ex.path1()) );
-    }
+    for ( const string& vol : volumes )
+        try {
+            string part_path = path.string() + "_" + vol;
+            fs::remove( part_path );
+        } catch ( const fs::filesystem_error& ex ) {
+            throw_with_nested( CannotDelete( ex.path1() ) );
+        }
 
     return path;
 }
