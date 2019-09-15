@@ -318,4 +318,10 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture ) {
     BOOST_REQUIRE_THROW( tmp = mgr.makeDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
+// TODO Tests to check no files left in /tmp?!
+
+BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
