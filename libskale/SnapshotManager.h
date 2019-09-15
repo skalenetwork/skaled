@@ -65,8 +65,14 @@ public:
         std::string what_str;
 
     public:
-        CannotPerformBtrfsOperation( const char* _msg ) {
-            what_str = "Cannnot perform BTRFS operation " + std::string( _msg );
+        std::string cmd;
+        std::string strerror;
+
+    public:
+        CannotPerformBtrfsOperation( const char* _cmd, const char* _msg ) {
+            this->cmd = _cmd;
+            this->strerror = _msg;
+            what_str = "BTRFS operation: " + this->cmd + " - failed: " + this->strerror;
         }
         virtual const char* what() const noexcept override { return what_str.c_str(); }
     };
