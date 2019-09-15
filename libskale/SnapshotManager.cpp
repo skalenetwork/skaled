@@ -2,10 +2,15 @@
 
 #include <skutils/btrfs.h>
 
+#include <sstream>
+#include <iostream>
 #include <string>
 
 using namespace std;
 namespace fs = boost::filesystem;
+
+// Can manage snapshots as non-prvivileged user
+// For send/receive neeeds root!
 
 // exceptions:
 // - bad data dir
@@ -15,26 +20,36 @@ SnapshotManager::SnapshotManager(
     const fs::path& _dataDir, const std::vector< std::string >& _volumes ) {
     assert( _volumes.size() > 0 );
 
-    if ( !fs::exists( _dataDir ) )
-        throw InvalidPath( _dataDir );
-
-    if ( btrfs.subvolume.list( _dataDir.c_str() ) )
-        throw CannotPerformBtrfsOperation( btrfs.strerror() );
-
-    for ( const auto& vol : _volumes ) {
-        if ( !fs::exists( _dataDir / vol ) )
-            throw InvalidPath( _dataDir / vol );
-    }  // for
-
     data_dir = _dataDir;
     volumes = _volumes;
     snapshots_dir = data_dir / "snapshots";
 
+    if ( !fs::exists( _dataDir ) ) try{
+        throw InvalidPath( _dataDir );
+    } catch(const fs::filesystem_error& ex){
+        throw_with_nested(CannotRead(ex.path1()));
+    }
+
+    int res = btrfs.present( _dataDir.c_str() );
+    if ( 0 != res ){
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
     try {
+        fprintf(stderr, "create: %d %d\n", geteuid(), getegid());
         fs::create_directory( snapshots_dir );
     } catch ( ... ) {
         std::throw_with_nested( CannotCreate( snapshots_dir ) );
     }  // catch
+
+    for ( const auto& vol : _volumes ) try {
+        if ( !fs::exists( _dataDir / vol ) )
+            throw InvalidPath( _dataDir / vol );
+        if(0 != btrfs.present((_dataDir / vol).c_str()))
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    } catch(const fs::filesystem_error& ex){
+        throw_with_nested(CannotRead(ex.path1()));
+    }
 }
 
 // exceptions:
@@ -47,20 +62,20 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
     try {
         if ( fs::exists( snapshot_dir ) )
             throw SnapshotPresent( _blockNumber );
-    } catch ( fs::filesystem_error ) {
+    } catch ( const fs::filesystem_error& ) {
         std::throw_with_nested( CannotRead( snapshot_dir ) );
     }  // catch
 
     try {
         fs::create_directory( snapshot_dir );
-    } catch ( fs::filesystem_error ) {
+    } catch ( const fs::filesystem_error& ) {
         std::throw_with_nested( CannotCreate( snapshot_dir ) );
     }  // catch
 
     for ( const string& vol : volumes ) {
         int res = btrfs.subvolume.snapshot_r( ( data_dir / vol ).c_str(), snapshot_dir.c_str() );
         if ( res )
-            throw CannotPerformBtrfsOperation( btrfs.strerror() );
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }
 }
 
@@ -80,7 +95,7 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
-            throw CannotPerformBtrfsOperation( btrfs.strerror() );
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }
 }
 
@@ -109,10 +124,28 @@ boost::filesystem::path SnapshotManager::makeDiff( unsigned _fromBlock, unsigned
         std::throw_with_nested( CannotRead( ex.path1() ) );
     }
 
+    stringstream cat_cmd;
+        cat_cmd << "cat ";
     for ( const string& vol : volumes ) {
-        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(), path.c_str(),
+
+        string part_path = path.string()+"_"+vol;
+        cat_cmd << part_path << " ";
+
+        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(), part_path.c_str(),
                  ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) )
-            throw CannotPerformBtrfsOperation( btrfs.strerror() );
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
+    cat_cmd << ">" << path;
+    int res = system(cat_cmd.str().c_str());            // TODO check exit code
+    if(res != 0)
+        throw CannotWrite(path);
+
+    for(const string& vol: volumes) try {
+        string part_path = path.string()+"_"+vol;
+        fs::remove(part_path);
+    } catch(const fs::filesystem_error& ex){
+        throw_with_nested( CannotDelete(ex.path1()) );
     }
 
     return path;

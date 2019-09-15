@@ -1,5 +1,7 @@
 typedef struct {
     const char* ( *strerror )();
+    const char* ( *last_cmd )();
+    int ( *present )( const char* path );
     struct {
         int ( *list )( const char* path );
         int ( *create )( const char* path );

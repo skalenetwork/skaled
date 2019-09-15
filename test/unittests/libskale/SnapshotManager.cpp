@@ -10,42 +10,81 @@
 #include <stdlib.h>
 
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 using namespace std;
 namespace fs = boost::filesystem;
 
-static void check_sudo() {
-    char* id_str = getenv( "SUDO_UID" );
-    if ( id_str == NULL ) {
-        cerr << "Please run under sudo" << endl;
-        exit( -1 );
+int setid_system(const char* cmd, uid_t uid, gid_t gid){
+    __pid_t pid = fork();
+    if(pid){
+        int status;
+        waitpid(pid, &status, 0);
+        return WEXITSTATUS(status);
     }
 
-    int id;
-    sscanf( id_str, "%d", &id );
+    setresuid( uid, uid, uid );
+    setresgid(gid, gid, gid);
 
-    uid_t ru, eu, su;
-    getresuid( &ru, &eu, &su );
-    cerr << ru << " " << eu << " " << su << endl;
-
-    if ( geteuid() != 0 ) {
-        cerr << "Need to be root" << endl;
-        exit( -1 );
-    }
+    execl("/bin/sh", "sh", "-c", cmd, (char*) NULL);
+    return 0;
 }
 
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
     const string BTRFS_DIR_PATH = "btrfs";
+    uid_t sudo_uid;
+    gid_t sudo_gid;
 
-    void dropRoot() {
+    void check_sudo() {
         char* id_str = getenv( "SUDO_UID" );
-        int id;
-        sscanf( id_str, "%d", &id );
-        seteuid( id );
+        if ( id_str == NULL ) {
+            cerr << "Please run under sudo" << endl;
+            exit( -1 );
+        }
+
+        sscanf( id_str, "%d", &sudo_uid );
+
+    //    uid_t ru, eu, su;
+    //    getresuid( &ru, &eu, &su );
+    //    cerr << ru << " " << eu << " " << su << endl;
+
+        if ( geteuid() != 0 ) {
+            cerr << "Need to be root" << endl;
+            exit( -1 );
+        }
+
+        id_str = getenv("SUDO_GID");
+        sscanf( id_str, "%d", &sudo_gid );
+
+        gid_t rgid, egid, sgid;
+        getresgid(&rgid, &egid, &sgid);
+        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
     }
 
-    void gainRoot() { seteuid( 0 ); }
+    void dropRoot() {
+        int res = setresgid( sudo_gid, sudo_gid, 0 );
+        cerr << "setresgid " << sudo_gid << " " << res << endl;
+        if(res < 0)
+            cerr << strerror(errno) << endl;
+        res = setresuid( sudo_uid, sudo_uid, 0 );
+        cerr << "setresuid " << sudo_uid << " " << res << endl;
+        if(res < 0)
+            cerr << strerror(errno) << endl;
+    }
+
+    void gainRoot() {
+        int res = setresuid( 0, 0, 0 );
+        if(res){
+            cerr << strerror(errno) << endl;
+            assert(false);
+        }
+        setresgid( 0, 0, 0 );
+        if(res){
+            cerr << strerror(errno) << endl;
+            assert(false);
+        }
+    }
 };
 
 struct BtrfsFixture : public FixtureCommon {
@@ -59,7 +98,8 @@ struct BtrfsFixture : public FixtureCommon {
         system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
-        system( ( "mount " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH ).c_str() );
+        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH ).c_str() );
+        chown(BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid);
         dropRoot();
 
         btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -70,6 +110,9 @@ struct BtrfsFixture : public FixtureCommon {
     }
 
     ~BtrfsFixture() {
+        const char* NC = getenv("NC");
+        if(NC)
+            return;
         gainRoot();
         system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
         system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
@@ -79,6 +122,7 @@ struct BtrfsFixture : public FixtureCommon {
 
 struct NoBtrfsFixture : public FixtureCommon {
     NoBtrfsFixture() {
+        check_sudo();
         dropRoot();
         system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
         system( ( "mkdir " + BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -147,12 +191,6 @@ BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture ) {
         SnapshotManager::CannotPerformBtrfsOperation );
 }
 
-BOOST_FIXTURE_TEST_CASE( NonRootTest, BtrfsFixture ) {
-    dropRoot();
-    BOOST_REQUIRE_THROW( SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ),
-        SnapshotManager::CannotCreate );
-}
-
 BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture ) {
     BOOST_REQUIRE_EXCEPTION(
         SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ) / "_invalid", {"vol1", "vol2"} ),
@@ -165,6 +203,51 @@ BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture ) {
         SnapshotManager::InvalidPath, [this]( const SnapshotManager::InvalidPath& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "invalid3";
         } );
+}
+
+BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture ) {
+
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_w");
+    chmod((BTRFS_DIR_PATH+"/_no_w").c_str(), 0775);
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_w" / "vol1");
+    chmod((BTRFS_DIR_PATH+"/_no_w/vol1").c_str(), 0777);
+
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_x");
+    chmod((BTRFS_DIR_PATH+"/_no_x").c_str(), 0774);
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_x" / "vol1");
+    chmod((BTRFS_DIR_PATH+"/_no_x/vol1").c_str(), 0777);
+
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_r");
+    chmod((BTRFS_DIR_PATH+"/_no_r").c_str(), 0770);
+
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_x" / "_no_parent_x");
+    chmod((BTRFS_DIR_PATH+"/_no_x/_no_parent_x").c_str(), 0777);
+
+    fs::create_directory(fs::path( BTRFS_DIR_PATH ) / "_no_r" / "_no_parent_r");
+    chmod((BTRFS_DIR_PATH+"/_no_r/_no_parent_r").c_str(), 0777);
+
+    dropRoot();
+
+    BOOST_REQUIRE_EXCEPTION(
+        SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ) / "_no_w", {"vol1"} ),
+        SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
+            return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_w" / "snapshots";
+        }
+    );
+
+    BOOST_REQUIRE_EXCEPTION(
+        SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ) / "_no_x", {"vol1"} ),
+        SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
+            return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
+        }
+    );
+
+    BOOST_REQUIRE_EXCEPTION(
+        SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ) / "_no_r", {"vol1"} ),
+        SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
+            return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
+        }
+    );
 }
 
 BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture ) {
@@ -234,7 +317,13 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture ) {
     dropRoot();
 
     fs::path tmp;
-    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 4 ) );
+    //BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 4 ) );
+    try {
+        tmp = mgr.makeDiff( 2, 4 );
+    } catch (const exception& ex) {
+        cerr << ex.what() << endl;
+        assert(false);
+    }
     fs::remove( tmp );
 
     BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 2 ) );
