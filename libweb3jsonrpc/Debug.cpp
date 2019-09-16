@@ -16,6 +16,8 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
+volatile bool Debug::g_bEnabledDebugBehaviorAPIs = false;
+
 Debug::Debug( eth::Client const& _eth ) : m_eth( _eth ) {}
 
 StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
@@ -101,6 +103,8 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
 
 Json::Value Debug::debug_traceTransaction(
     string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret;
     try {
         throw std::logic_error( "Historical state is not supported in Skale" );
@@ -117,6 +121,8 @@ Json::Value Debug::debug_traceTransaction(
 }
 
 Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const& _json ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     bytes bytes = fromHex( _blockRLP );
     BlockHeader blockHeader( bytes );
     return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
@@ -125,6 +131,8 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByHash(
     string const& /*_blockHash*/, Json::Value const& _json ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret;
     Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
@@ -133,6 +141,8 @@ Json::Value Debug::debug_traceBlockByHash(
 
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret;
     Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
@@ -141,6 +151,8 @@ Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value c
 
 Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_addressHash*/, int _maxResults ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret( Json::objectValue );
 
     if ( _maxResults <= 0 )
@@ -168,6 +180,8 @@ Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _
 
 Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret( Json::objectValue );
     ret["complete"] = true;
     ret["storage"] = Json::Value( Json::objectValue );
@@ -207,6 +221,8 @@ Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _
 }
 
 std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     throw std::logic_error( "Preimages do not exist in Skale state" );
     //    h256 const hashedKey(h256fromHex(_hashedKey));
     //    bytes const key = m_eth.state().lookupAux(hashedKey);
@@ -215,6 +231,8 @@ std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
 }
 
 Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     Json::Value ret;
     try {
         Block temp = m_eth.latestBlock();
@@ -243,16 +261,24 @@ Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const&
 }
 
 void Debug::debug_pauseBroadcast( bool _pause ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     m_eth.skaleHost()->pauseBroadcast( _pause );
 }
 void Debug::debug_pauseConsensus( bool _pause ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     m_eth.skaleHost()->pauseConsensus( _pause );
 }
 void Debug::debug_forceBlock() {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     m_eth.skaleHost()->forceEmptyBlock();
 }
 
 void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_eth.isKnownTransaction( h ) )
@@ -268,5 +294,7 @@ void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
 }
 
 std::string Debug::debug_callSkaleHost( const std::string& _arg ) {
+    if ( !g_bEnabledDebugBehaviorAPIs )
+        throw jsonrpc::JsonRpcException( "Operation is disabled" );
     return m_eth.skaleHost()->debugCall( _arg );
 }

@@ -318,6 +318,8 @@ int main( int argc, char** argv ) try {
         "default and "
         "minimal)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
+    addClientOption( "enable-debug-behavior-apis",
+        "Enables debug set of JSON RPC APIs which are changing app behavior" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
@@ -459,6 +461,8 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "web3-trace" ) )
         bTraceHttpCalls = true;
+    if ( vm.count( "enable-debug-behavior-apis" ) )
+        rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
     if ( vm.count( "db-path" ) )
