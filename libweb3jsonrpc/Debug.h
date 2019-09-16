@@ -16,6 +16,8 @@ class SessionManager;
 
 class Debug : public DebugFace {
 public:
+    static volatile bool g_bEnabledDebugBehaviorAPIs;
+
     explicit Debug( eth::Client const& _eth );
 
     virtual RPCModules implementedModules() const override {
