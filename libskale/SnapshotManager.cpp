@@ -199,6 +199,7 @@ void SnapshotManager::importDiff(
 
     if ( btrfs.receive(
              _diffPath.c_str(), ( snapshots_dir / to_string( _blockNumber ) ).c_str() ) ) {
+        fs::remove_all( snapshot_dir );
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }  // if
 }
