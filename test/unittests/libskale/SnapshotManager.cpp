@@ -334,11 +334,17 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture ) {
 
     BOOST_REQUIRE_THROW( mgr.importDiff( 4, diff24 ), SnapshotManager::SnapshotPresent );
 
+    // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol2" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     BOOST_REQUIRE_NO_THROW( mgr.importDiff( 4, diff24 ) );
+
+    // delete dest
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol2" ).c_str() );
+    fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     // no source
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" ).c_str() );
