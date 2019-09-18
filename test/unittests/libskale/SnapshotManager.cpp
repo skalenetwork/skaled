@@ -1,6 +1,8 @@
 #include <libskale/SnapshotManager.h>
 #include <skutils/btrfs.h>
 
+#include <test/tools/libtesteth/TestHelper.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -14,6 +16,10 @@
 
 using namespace std;
 namespace fs = boost::filesystem;
+
+boost::unit_test::assertion_result option_all( boost::unit_test::test_unit_id ) {
+    return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
+}
 
 int setid_system( const char* cmd, uid_t uid, gid_t gid ) {
     __pid_t pid = fork();
@@ -136,7 +142,7 @@ struct NoBtrfsFixture : public FixtureCommon {
     }
 };
 
-BOOST_AUTO_TEST_SUITE( BtrfsTestSuite )
+BOOST_AUTO_TEST_SUITE( BtrfsTestSuite, *boost::unit_test::precondition( option_all ) )
 
 BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
