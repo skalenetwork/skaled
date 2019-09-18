@@ -162,6 +162,9 @@ static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 /// Min size, below which we don't bother flushing it.
 static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
+string BlockChain::getChainDirName( const ChainParams& _cp ) {
+    return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
+}
 
 BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we,
     ProgressCallback const& _pc ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
@@ -202,7 +205,7 @@ void BlockChain::init( ChainParams const& _p ) {
 
 unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
-    fs::path chainPath = path / fs::path( toHex( m_genesisHash.ref().cropped( 0, 4 ) ) );
+    fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
 
     fs::create_directories( extrasPath );
