@@ -92,8 +92,10 @@ ChainParams ChainParams::loadConfig(
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         auto ip = infoObj.at( "bindIP" ).get_str();
         auto port = infoObj.at( "basePort" ).get_int();
+        int snapshotInterval =
+            infoObj.count( "snapshotInterval" ) ? infoObj.at( "snapshotInterval" ).get_int() : 0;
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port )};
+        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), snapshotInterval};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};

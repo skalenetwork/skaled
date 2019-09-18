@@ -699,8 +699,8 @@ int main( int argc, char** argv ) try {
     //        );
 
     std::unique_ptr< Client > client;
-    std::string snapshotPath = "";
     std::shared_ptr< GasPricer > gasPricer;
+    std::shared_ptr< SnapshotManager > snapshotManager;
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -708,13 +708,18 @@ int main( int argc, char** argv ) try {
         Ethash::init();
         NoProof::init();
 
+        if ( chainParams.nodeInfo.snapshotInterval > 0 ) {
+            snapshotManager.reset( new SnapshotManager(
+                getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+        }
+
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                 TransactionQueue::Limits{100000, 1024} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                 TransactionQueue::Limits{100000, 1024} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(

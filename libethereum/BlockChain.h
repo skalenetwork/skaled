@@ -112,6 +112,8 @@ public:
         virtual const char* what() const noexcept { return "Error creating blockchain"; }
     };
 
+    static std::string getChainDirName( const ChainParams& _cp );
+
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
     BlockChain( ChainParams const& _p, boost::filesystem::path const& _path,
@@ -540,6 +542,7 @@ private:
                                                   // m_lastBlockNumber
     h256 m_lastBlockHash;
     unsigned m_lastBlockNumber = 0;
+    boost::filesystem::path m_chainPath;
 
     ChainParams m_params;
     std::shared_ptr< SealEngineFace > m_sealEngine;  // consider shared_ptr.

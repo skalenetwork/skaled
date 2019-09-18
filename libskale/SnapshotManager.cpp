@@ -37,7 +37,6 @@ SnapshotManager::SnapshotManager(
     }
 
     try {
-        fprintf( stderr, "create: %d %d\n", geteuid(), getegid() );
         fs::create_directory( snapshots_dir );
     } catch ( ... ) {
         std::throw_with_nested( CannotCreate( snapshots_dir ) );
@@ -45,10 +44,12 @@ SnapshotManager::SnapshotManager(
 
     for ( const auto& vol : _volumes )
         try {
-            if ( !fs::exists( _dataDir / vol ) )
-                throw InvalidPath( _dataDir / vol );
-            if ( 0 != btrfs.present( ( _dataDir / vol ).c_str() ) )
+            // throw if it is present but is NOT btrfs
+            if ( fs::exists( _dataDir / vol ) && 0 != btrfs.present( ( _dataDir / vol ).c_str() ) )
                 throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+
+            btrfs.subvolume.create( ( _dataDir / vol ).c_str() );
+
         } catch ( const fs::filesystem_error& ex ) {
             throw_with_nested( CannotRead( ex.path1() ) );
         }
