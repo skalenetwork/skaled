@@ -52,6 +52,9 @@ void printHelp() {
          << "Set the transaction value array index when running GeneralStateTests\n";
     cout << setw( 30 ) << "--singletest <TestName>" << setw( 25 ) << "Run on a single test\n";
     cout << setw( 30 ) << "--singletest <TestFile> <TestName>\n";
+    cout << setw( 35 ) << "--singlenet <networkId>" << setw( 25 )
+         << "Run tests for a specific network "
+            "(Frontier|Homestead|EIP150|EIP158|Byzantium|Constantinople|ConstantinopleFix)\n";
     cout << setw( 30 ) << "--verbosity <level>" << setw( 25 )
          << "Set logs verbosity. 0 - silent, 1 - only errors, 2 - informative, >2 - detailed\n";
     cout << setw( 30 ) << "--vm <interpreter|jit|smart|hera>" << setw( 25 )
