@@ -18,10 +18,8 @@
 #include "Instruction.h"
 #include <map>
 
-namespace dev
-{
-namespace eth
-{
+namespace dev {
+namespace eth {
 // clang-format off
 static const std::map<Instruction,  InstructionInfo> c_instructionInfo =
 { //                                                   Args,  Ret,  GasPriceTier
@@ -220,14 +218,13 @@ static const std::map<Instruction,  InstructionInfo> c_instructionInfo =
 };
 // clang-format on
 
-InstructionInfo instructionInfo(Instruction _inst)
-{
-    auto it = c_instructionInfo.find(_inst);
-    if (it != c_instructionInfo.end())
+InstructionInfo instructionInfo( Instruction _inst ) {
+    auto it = c_instructionInfo.find( _inst );
+    if ( it != c_instructionInfo.end() )
         return it->second;
     return InstructionInfo{{}, 0, 0, Tier::Invalid};
 }
 
 
-}
-}
+}  // namespace eth
+}  // namespace dev
