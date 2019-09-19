@@ -1074,7 +1074,7 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client->skaleHost() );
+        auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( *client );
 
