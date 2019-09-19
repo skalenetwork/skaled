@@ -27,7 +27,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
-#include <libethereum/Interface.h>
+#include <libethereum/Client.h>
 #include <libweb3jsonrpc/SkaleFace.h>
 #include <functional>
 #include <iosfwd>
@@ -50,7 +50,7 @@ namespace fs = boost::filesystem;
  */
 class Skale : public dev::rpc::SkaleFace {
 public:
-    explicit Skale( SkaleHost& _skale );
+    explicit Skale( dev::eth::Client& _client );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skale", "0.1"}};
@@ -76,7 +76,7 @@ private:
     typedef std::list< fn_on_shutdown_t > list_fn_on_shutdown_t;
     static list_fn_on_shutdown_t g_list_fn_on_shutdown;
 
-    SkaleHost& m_skaleHost;
+    dev::eth::Client& m_client;
 };
 
 namespace snapshot {

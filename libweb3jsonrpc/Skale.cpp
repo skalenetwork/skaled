@@ -59,7 +59,7 @@ namespace rpc {
 
 std::string exceptionToErrorMessage();
 
-Skale::Skale( SkaleHost& _skale ) : m_skaleHost( _skale ) {}
+Skale::Skale( Client& _client ) : m_client( _client ) {}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
@@ -121,7 +121,7 @@ std::string Skale::skale_protocolVersion() {
 
 std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     try {
-        return toJS( m_skaleHost.receiveTransaction( _rlp ) );
+        return toJS( m_client.skaleHost()->receiveTransaction( _rlp ) );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );  // TODO test!
     }
@@ -136,8 +136,7 @@ const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
 // '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
 // false },"id":73}'
 //
-static nlohmann::json impl_skale_getSnapshot(
-    const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
+static nlohmann::json impl_skale_getSnapshot( const nlohmann::json& joRequest, Client& client ) {
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
     // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
@@ -156,7 +155,7 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
         nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-        nlohmann::json joResponse = impl_skale_getSnapshot( joRequest, m_skaleHost );
+        nlohmann::json joResponse = impl_skale_getSnapshot( joRequest, m_client );
         std::string strResponse = joResponse.dump();
         Json::Value response;
         Json::Reader().parse( strResponse, response );
@@ -173,7 +172,7 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 // "from": 0, "size": 1024, "isBinary": true },"id":73}'
 //
 static nlohmann::json impl_skale_downloadSnapshotFragment(
-    const nlohmann::json& joRequest, SkaleHost& refSkaleHost ) {
+    const nlohmann::json& joRequest, Client& client ) {
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
     // << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
@@ -212,7 +211,7 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
         nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest, m_skaleHost );
+        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest, m_client );
         std::string strResponse = joResponse.dump();
         Json::Value response;
         Json::Reader().parse( strResponse, response );
