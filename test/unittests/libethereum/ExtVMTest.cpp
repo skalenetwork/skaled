@@ -29,10 +29,10 @@ using namespace dev::eth;
 using namespace dev::test;
 using skale::State;
 
-class ExtVMTestFixture : public TestOutputHelperFixture {
+class ExtVMConstantinopleFixTestFixture : public TestOutputHelperFixture {
 public:
-    ExtVMTestFixture()
-        : networkSelector( eth::Network::ConstantinopleTransitionTest ),
+    ExtVMConstantinopleFixTestFixture()
+        : networkSelector( eth::Network::ConstantinopleFixTest ),
           testBlockchain( TestBlockChain::defaultGenesisBlock() ),
           genesisBlock( testBlockchain.testGenesis() ),
           genesisState( genesisBlock.state() ),
@@ -61,7 +61,7 @@ public:
     TestLastBlockHashes lastBlockHashes{{}};
 };
 
-BOOST_FIXTURE_TEST_SUITE( ExtVmSuite, ExtVMTestFixture )
+BOOST_FIXTURE_TEST_SUITE( ExtVmSuite, ExtVMConstantinopleFixTestFixture )
 
 BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero ) {
     Block block = blockchain.genesisBlock( genesisState );

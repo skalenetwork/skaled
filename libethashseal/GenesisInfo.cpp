@@ -28,6 +28,7 @@ using namespace dev;
 
 
 // Test configurations
+#include "genesis/test/byzantiumNoProofTest.cpp"
 #include "genesis/test/byzantiumTest.cpp"
 #include "genesis/test/byzantiumTransitionTest.cpp"
 #include "genesis/test/constantinopleFixTest.cpp"
@@ -36,14 +37,18 @@ using namespace dev;
 #include "genesis/test/constantinopleTransitionTest.cpp"
 #include "genesis/test/eip150Test.cpp"
 #include "genesis/test/eip158Test.cpp"
+#include "genesis/test/experimentalTransitionTest.cpp"
 #include "genesis/test/frontierNoProofTest.cpp"
 #include "genesis/test/frontierTest.cpp"
 #include "genesis/test/homesteadTest.cpp"
+#include "genesis/test/istanbulTest.cpp"
+#include "genesis/test/istanbulTransitionTest.cpp"
 #include "genesis/test/mainNetworkNoProofTest.cpp"
 #include "genesis/test/mainNetworkTest.cpp"
 
 // Transition configurations
 #include "genesis/test/ByzantiumToConstantinopleAt5Test.cpp"
+#include "genesis/test/ByzantiumToConstantinopleFixAt5Test.cpp"
 #include "genesis/test/EIP158ToByzantiumAt5Test.cpp"
 #include "genesis/test/frontierToHomesteadAt5Test.cpp"
 #include "genesis/test/homesteadToDaoAt5Test.cpp"
@@ -62,8 +67,7 @@ std::string const& dev::eth::genesisInfo( Network _n ) {
     case Network::Skale:
         return c_genesisInfoSkale;  /// skale
 
-
-        // Test genesis
+    // Test genesis
     case Network::MainNetworkTest:
         return c_genesisInfoMainNetworkTest;
     case Network::MainNetworkNoProofTest:
@@ -80,16 +84,23 @@ std::string const& dev::eth::genesisInfo( Network _n ) {
         return c_genesisInfoEIP158Test;
     case Network::ByzantiumTest:
         return c_genesisInfoByzantiumTest;
+    case Network::ByzantiumNoProofTest:
+        return c_genesisInfoByzantiumNoProofTest;
     case Network::ByzantiumTransitionTest:
         return c_genesisInfoByzantiumTransitionTest;
     case Network::ConstantinopleTest:
         return c_genesisInfoConstantinopleTest;
     case Network::ConstantinopleNoProofTest:
         return c_genesisInfoConstantinopleNoProofTest;
-    case Network::ConstantinopleTransitionTest:
-        return c_genesisInfoConstantinopleTransitionTest;
+    case Network::ExperimentalTransitionTest:
+        return c_genesisInfoExperimentalTransitionTest;
     case Network::ConstantinopleFixTest:
         return c_genesisInfoConstantinopleFixTest;
+    case Network::IstanbulTest:
+        return c_genesisInfoIstanbulTest;
+    case Network::IstanbulTransitionTest:
+        return c_genesisInfoIstanbulTransitionTest;
+
 
     // Transition test genesis
     case Network::FrontierToHomesteadAt5:
@@ -100,8 +111,8 @@ std::string const& dev::eth::genesisInfo( Network _n ) {
         return c_genesisInfoHomesteadToEIP150At5Test;
     case Network::EIP158ToByzantiumAt5:
         return c_genesisInfoEIP158ToByzantiumAt5Test;
-    case Network::ByzantiumToConstantinopleAt5:
-        return c_genesisInfoByzantiumToConstantinopleAt5Test;
+    case Network::ByzantiumToConstantinopleFixAt5:
+        return c_genesisInfoByzantiumToConstantinopleFixAt5Test;
     case Network::TransitionnetTest:
         return c_genesisInfoTest;
 
@@ -125,7 +136,9 @@ h256 const& dev::eth::genesisStateRoot( Network _n ) {
     case Network::ByzantiumTest:
     case Network::ConstantinopleTest:
     case Network::ConstantinopleFixTest:
-    case Network::ConstantinopleTransitionTest:
+    case Network::IstanbulTest:
+    case Network::IstanbulTransitionTest:
+    case Network::ExperimentalTransitionTest:
         return c_genesisDefaultStateRoot;
     default:
         throw std::invalid_argument( "Invalid network value" );
