@@ -147,7 +147,7 @@ int main( int argc, char** argv ) {
 
     po::options_description networkOptions( "Network options", c_lineWidth );
     networkOptions.add_options()( "network", po::value< string >(),
-        "Main|Ropsten|Homestead|Frontier|Byzantium|Constantinople\n" );
+        "Main|Ropsten|Homestead|Frontier|Byzantium|Constantinople|ConstantinopleFix\n" );
 
     po::options_description optionsForTrace( "Options for trace", c_lineWidth );
     auto addTraceOption = optionsForTrace.add_options();
@@ -285,12 +285,18 @@ int main( int argc, char** argv ) {
         }  // Ignore decoding errors.
     }
 
+    unique_ptr< SealEngineFace > se( ChainParams( genesisInfo( networkName ) ).createSealEngine() );
+    LastBlockHashes lastBlockHashes;
+    EnvInfo const envInfo(
+        blockHeader, lastBlockHashes, 0 /* gasUsed */, se->chainParams().chainID );
+
     Transaction t;
     Address contractDestination( "1122334455667788991011121314151617181920" );
     if ( !code.empty() ) {
         // Deploy the code on some fake account to be called later.
         Account account( 0, 0 );
-        account.setCode( bytes{code} );
+        auto const latestVersion = se->evmSchedule( envInfo.number() ).accountVersion;
+        account.setCode( bytes{code}, latestVersion );
         std::unordered_map< Address, Account > map;
         map[contractDestination] = account;
         state.populateFrom( map );
@@ -302,9 +308,6 @@ int main( int argc, char** argv ) {
 
     state.addBalance( sender, value );
 
-    unique_ptr< SealEngineFace > se( ChainParams( genesisInfo( networkName ) ).createSealEngine() );
-    LastBlockHashes lastBlockHashes;
-    EnvInfo const envInfo( blockHeader, lastBlockHashes, 0 );
     // HACK 0 here is for gasPrice
     Executive executive( state, envInfo, *se, 0 );
     ExecutionResult res;

@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -20,7 +18,7 @@
 #include "VM.h"
 #include "interpreter.h"
 
-#include <skale/buildinfo.h>
+#include <skale/version.h>
 
 namespace {
 void destroy( evmc_instance* _instance ) {
@@ -52,6 +50,8 @@ evmc_result execute( evmc_instance* _instance, evmc_context* _context, evmc_revi
         result.status_code = EVMC_REVERT;
         result.gas_left = vm->m_io_gas;
         output = ex.output();  // This moves the output from the exception!
+    } catch ( dev::eth::InvalidInstruction const& ) {
+        result.status_code = EVMC_INVALID_INSTRUCTION;
     } catch ( dev::eth::BadInstruction const& ) {
         result.status_code = EVMC_UNDEFINED_INSTRUCTION;
     } catch ( dev::eth::OutOfStack const& ) {
@@ -88,11 +88,13 @@ evmc_result execute( evmc_instance* _instance, evmc_context* _context, evmc_revi
 extern "C" evmc_instance* evmc_create_interpreter() noexcept {
     // TODO: Allow creating multiple instances with different configurations.
     static evmc_instance s_instance{
-        EVMC_ABI_VERSION, "interpreter", skale_get_buildinfo()->project_version, ::destroy,
-        ::execute, getCapabilities,
+        EVMC_ABI_VERSION, "interpreter", skale_version, ::destroy, ::execute, getCapabilities,
         nullptr,  // set_tracer
         nullptr,  // set_option
     };
+    static bool metricsInited = dev::eth::VM::initMetrics();
+    ( void ) metricsInited;
+
     return &s_instance;
 }
 
@@ -127,9 +129,9 @@ uint64_t VM::decodeJumpDest( const _byte_* const _code, uint64_t& _pc ) {
 
 uint64_t VM::decodeJumpvDest( const _byte_* const _code, uint64_t& _pc, _byte_ _voff ) {
     // Layout of jump table in bytecode...
-    //     _byte_ opcode
-    //     _byte_ n_jumps
-    //     _byte_ table[n_jumps][2]
+    //     byte opcode
+    //     byte n_jumps
+    //     byte table[n_jumps][2]
     //
     uint64_t pc = _pc;
     _byte_ n = _code[++pc];  // byte after opcode is number of jumps
@@ -197,7 +199,7 @@ void VM::logGasMem() {
 
 void VM::fetchInstruction() {
     m_OP = Instruction( m_code[m_PC] );
-    auto const metric = c_metrics[static_cast< size_t >( m_OP )];
+    auto const metric = ( *m_metrics )[static_cast< size_t >( m_OP )];
     adjustStack( metric.num_stack_arguments, metric.num_stack_returned_items );
 
     // FEES...
@@ -221,6 +223,7 @@ owning_bytes_ref VM::exec( evmc_context* _context, evmc_revision _rev, const evm
     uint8_t const* _code, size_t _codeSize ) {
     m_context = _context;
     m_rev = _rev;
+    m_metrics = &s_metrics[m_rev];
     m_message = _msg;
     m_io_gas = uint64_t( _msg->gas );
     m_PC = 0;
@@ -316,18 +319,18 @@ void VM::interpretCases() {
             if ( m_message->flags & EVMC_STATIC )
                 throwDisallowedStateChange();
 
-            m_runGas = m_rev >= EVMC_TANGERINE_WHISTLE ? 5000 : 0;
-            evmc_address destination = toEvmC( asAddress( m_SP[0] ) );
+            evmc_address const destination = toEvmC( asAddress( m_SP[0] ) );
 
-            // After EIP158 zero-value suicides do not have to pay account creation gas.
-            u256 const balance =
-                fromEvmC( m_context->host->get_balance( m_context, &m_message->destination ) );
-            if ( balance > 0 || m_rev < EVMC_SPURIOUS_DRAGON ) {
-                // After EIP150 hard fork charge additional cost of sending
-                // ethers to non-existing account.
-                int destinationExists = m_context->host->account_exists( m_context, &destination );
-                if ( m_rev >= EVMC_TANGERINE_WHISTLE && !destinationExists )
-                    m_runGas += VMSchedule::callNewAccount;
+            // Starting with EIP150 (Tangerine Whistle), self-destructs need to pay account creation
+            // gas. Starting with EIP158 (Spurious Dragon), 0-value suicides don't have to pay this
+            // charge.
+            if ( m_rev >= EVMC_TANGERINE_WHISTLE ) {
+                if ( m_rev == EVMC_TANGERINE_WHISTLE ||
+                     fromEvmC( m_context->host->get_balance(
+                         m_context, &m_message->destination ) ) > 0 ) {
+                    if ( !m_context->host->account_exists( m_context, &destination ) )
+                        m_runGas += VMSchedule::callNewAccount;
+                }
             }
 
             updateIOGas();
@@ -385,7 +388,9 @@ void VM::interpretCases() {
 
             uint64_t inOff = ( uint64_t ) m_SP[0];
             uint64_t inSize = ( uint64_t ) m_SP[1];
-            m_SPP[0] = ( u256 ) sha3( bytesConstRef( m_mem.data() + inOff, inSize ) );
+
+            const auto h = ethash::keccak256( m_mem.data() + inOff, inSize );
+            m_SPP[0] = static_cast< u256 >( h256{h.bytes, h256::ConstructFromPointer} );
         }
         NEXT
 
@@ -794,7 +799,6 @@ void VM::interpretCases() {
         NEXT
 
         CASE( BALANCE ) {
-            m_runGas = m_rev >= EVMC_TANGERINE_WHISTLE ? 400 : 20;
             ON_OP();
             updateIOGas();
 
@@ -872,7 +876,6 @@ void VM::interpretCases() {
         NEXT
 
         CASE( EXTCODESIZE ) {
-            m_runGas = m_rev >= EVMC_TANGERINE_WHISTLE ? 700 : 20;
             ON_OP();
             updateIOGas();
 
@@ -933,7 +936,6 @@ void VM::interpretCases() {
 
         CASE( EXTCODECOPY ) {
             ON_OP();
-            m_runGas = m_rev >= EVMC_TANGERINE_WHISTLE ? 700 : 20;
             uint64_t copyMemSize = toInt63( m_SP[3] );
             m_copyMemSize = copyMemSize;
             updateMem( memNeed( m_SP[1], m_SP[3] ) );
@@ -1016,6 +1018,32 @@ void VM::interpretCases() {
             updateIOGas();
 
             m_SPP[0] = getTxContext().block_gas_limit;
+        }
+        NEXT
+
+
+        CASE( CHAINID ) {
+            ON_OP();
+
+            if ( m_rev < EVMC_ISTANBUL )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] = fromEvmC( getTxContext().chain_id );
+        }
+        NEXT
+
+        CASE( SELFBALANCE ) {
+            ON_OP();
+
+            if ( m_rev < EVMC_ISTANBUL )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] =
+                fromEvmC( m_context->host->get_balance( m_context, &m_message->destination ) );
         }
         NEXT
 
@@ -1186,7 +1214,6 @@ void VM::interpretCases() {
 
 
         CASE( SLOAD ) {
-            m_runGas = m_rev >= EVMC_TANGERINE_WHISTLE ? 200 : 50;
             ON_OP();
             updateIOGas();
 
@@ -1206,16 +1233,19 @@ void VM::interpretCases() {
             auto const status =
                 m_context->host->set_storage( m_context, &m_message->destination, &key, &value );
 
-            if ( status == EVMC_STORAGE_ADDED )
+            switch ( status ) {
+            case EVMC_STORAGE_ADDED:
                 m_runGas = VMSchedule::sstoreSetGas;
-            else if ( status == EVMC_STORAGE_MODIFIED || status == EVMC_STORAGE_DELETED )
+                break;
+            case EVMC_STORAGE_MODIFIED:
+            case EVMC_STORAGE_DELETED:
                 m_runGas = VMSchedule::sstoreResetGas;
-            else if ( status == EVMC_STORAGE_UNCHANGED && m_rev < EVMC_CONSTANTINOPLE )
-                m_runGas = VMSchedule::sstoreResetGas;
-            else {
-                assert( status == EVMC_STORAGE_UNCHANGED || status == EVMC_STORAGE_MODIFIED_AGAIN );
-                assert( m_rev >= EVMC_CONSTANTINOPLE );
-                m_runGas = VMSchedule::sstoreUnchangedGas;
+                break;
+            case EVMC_STORAGE_UNCHANGED:
+            case EVMC_STORAGE_MODIFIED_AGAIN:
+                m_runGas = m_rev == EVMC_CONSTANTINOPLE ? VMSchedule::sstoreUnchangedGas :
+                                                          VMSchedule::sstoreResetGas;
+                break;
             }
 
             updateIOGas();
@@ -1254,7 +1284,10 @@ void VM::interpretCases() {
         NEXT
 
         CASE( INVALID ) DEFAULT {
-            throwBadInstruction();
+            if ( m_OP == Instruction::INVALID )
+                throwInvalidInstruction();
+            else
+                throwBadInstruction();
         }
     }
     WHILE_CASES

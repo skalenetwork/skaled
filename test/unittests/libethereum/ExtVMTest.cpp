@@ -47,11 +47,18 @@ public:
         testBlockchain.addBlock( testBlock );
     }
 
+    EnvInfo createEnvInfo( BlockHeader const& _header ) const {
+        return {_header, lastBlockHashes, 0, blockchain.chainID()};
+    }
+
     NetworkSelector networkSelector;
     TestBlockChain testBlockchain;
     TestBlock const& genesisBlock;
     State const& genesisState;
     BlockChain const& blockchain;
+    h256 preExperimentalBlockHash;
+    h256 experimentalBlockHash;
+    TestLastBlockHashes lastBlockHashes{{}};
 };
 
 BOOST_FIXTURE_TEST_SUITE( ExtVmSuite, ExtVMTestFixture )
@@ -61,10 +68,10 @@ BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero ) {
     block.sync( blockchain );
 
     TestLastBlockHashes lastBlockHashes( {} );
-    EnvInfo envInfo( block.info(), lastBlockHashes, 0 );
+    EnvInfo envInfo( createEnvInfo( block.info() ) );
     Address addr( "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" );
     ExtVM extVM( block.mutableState(), envInfo, *blockchain.sealEngine(), addr, addr, addr, 0, 0,
-        {}, {}, {}, 0, false, false );
+        {}, {}, {}, 0, 0, false, false );
 
     BOOST_CHECK_EQUAL( extVM.blockHash( 100 ), h256() );
 }
@@ -75,10 +82,10 @@ BOOST_AUTO_TEST_CASE( BlockhashBeforeConstantinopleReliesOnLastHashes ) {
 
     h256s lastHashes{h256( "0xaaabbbccc" ), h256( "0xdddeeefff" )};
     TestLastBlockHashes lastBlockHashes( lastHashes );
-    EnvInfo envInfo( block.info(), lastBlockHashes, 0 );
+    EnvInfo envInfo( block.info(), lastBlockHashes, 0, blockchain.chainID() );
     Address addr( "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" );
     ExtVM extVM( block.mutableState(), envInfo, *blockchain.sealEngine(), addr, addr, addr, 0, 0,
-        {}, {}, {}, 0, false, false );
+        {}, {}, {}, 0, 0, false, false );
     h256 hash = extVM.blockHash( 1 );
     BOOST_REQUIRE_EQUAL( hash, lastHashes[0] );
 }

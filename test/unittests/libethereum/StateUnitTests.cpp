@@ -46,7 +46,8 @@ BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     State s = state.startWrite();
     s.createContract( addr );
     uint8_t codeData[] = {'c', 'o', 'd', 'e'};
-    s.setCode( addr, {std::begin( codeData ), std::end( codeData )} );
+    u256 version = 123;
+    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
     s.commit( State::CommitBehaviour::RemoveEmptyAccounts );
 
     auto& loadedCode = s.code( addr );

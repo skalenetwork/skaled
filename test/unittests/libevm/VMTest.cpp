@@ -54,7 +54,7 @@ public:
 
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
 
@@ -65,7 +65,7 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ByzantiumTest ) ).createSealEngine() );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
     }
@@ -74,7 +74,7 @@ public:
         state.addBalance( expectedAddress, 1 * ether );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
 
@@ -82,10 +82,10 @@ public:
     }
 
     void testCreate2doesntChangeContractIfAddressExists() {
-        state.setCode( expectedAddress, bytes{inputData} );
+        state.setCode( expectedAddress, bytes{inputData}, 0 );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
         BOOST_REQUIRE( state.code( expectedAddress ) == inputData );
@@ -96,21 +96,22 @@ public:
         staticCall = true;
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), DisallowedStateChange );
     }
 
     BlockHeader blockHeader{initBlockHeader()};
     LastBlockHashes lastBlockHashes;
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0};
     Address address{KeyPair::create().address()};
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
+    u256 version = 0;
     unsigned int depth = 0;
     bool isCreate = true;
     bool staticCall = false;
