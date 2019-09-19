@@ -19,14 +19,11 @@
 
 #include <cstdint>
 
-namespace dev
-{
-namespace eth
-{
+namespace dev {
+namespace eth {
 
 /// Virtual machine bytecode instruction.
-enum class Instruction : uint8_t
-{
+enum class Instruction : uint8_t {
     STOP = 0x00,  ///< halts execution
     ADD,          ///< addition operation
     MUL,          ///< mulitplication operation
@@ -75,14 +72,14 @@ enum class Instruction : uint8_t
     RETURNDATACOPY = 0x3e,  ///< copy data returned from previous call to memory
     EXTCODEHASH = 0x3f,     ///< get external code hash
 
-    BLOCKHASH = 0x40, ///< get hash of most recent complete block
-    COINBASE,         ///< get the block's coinbase address
-    TIMESTAMP,        ///< get the block's timestamp
-    NUMBER,           ///< get the block's number
-    DIFFICULTY,       ///< get the block's difficulty
-    GASLIMIT,         ///< get the block's gas limit
-    CHAINID,          ///< get the network's ChainID
-    SELFBALANCE,      ///< get balance of the current address
+    BLOCKHASH = 0x40,  ///< get hash of most recent complete block
+    COINBASE,          ///< get the block's coinbase address
+    TIMESTAMP,         ///< get the block's timestamp
+    NUMBER,            ///< get the block's number
+    DIFFICULTY,        ///< get the block's difficulty
+    GASLIMIT,          ///< get the block's gas limit
+    CHAINID,           ///< get the network's ChainID
+    SELFBALANCE,       ///< get balance of the current address
 
     POP = 0x50,  ///< remove item from stack
     MLOAD,       ///< load word from memory
@@ -234,37 +231,36 @@ enum class Instruction : uint8_t
     SUICIDE = 0xff   ///< halt execution and register account for later deletion
 };
 
-enum class Tier : unsigned
-{
-    Zero = 0,   // 0, Zero
-    Base,       // 2, Quick
-    VeryLow,    // 3, Fastest
-    Low,        // 5, Fast
-    Mid,        // 8, Mid
-    High,       // 10, Slow
-    Ext,        // 20, Ext
-    Special,    // multiparam or otherwise special
-    Invalid     // Invalid.
+enum class Tier : unsigned {
+    Zero = 0,  // 0, Zero
+    Base,      // 2, Quick
+    VeryLow,   // 3, Fastest
+    Low,       // 5, Fast
+    Mid,       // 8, Mid
+    High,      // 10, Slow
+    Ext,       // 20, Ext
+    Special,   // multiparam or otherwise special
+    Invalid    // Invalid.
 };
 
 /// Information structure for a particular instruction.
-struct InstructionInfo
-{
-    char const* const name;   ///< The name of the instruction.
-    int const args;           ///< Number of items required on the stack for this instruction (and, for the purposes of ret, the number taken from the stack).
-    int const ret;            ///< Number of items placed (back) on the stack by this instruction, assuming args items were removed.
+struct InstructionInfo {
+    char const* const name;  ///< The name of the instruction.
+    int const args;  ///< Number of items required on the stack for this instruction (and, for the
+                     ///< purposes of ret, the number taken from the stack).
+    int const ret;   ///< Number of items placed (back) on the stack by this instruction, assuming
+                     ///< args items were removed.
     Tier const gasPriceTier;  ///< Tier for gas pricing.
 };
 
-struct InstructionMetric
-{
+struct InstructionMetric {
     Tier gasPriceTier;
     int args;
     int ret;
 };
 
 /// Information on all the instructions.
-InstructionInfo instructionInfo(Instruction _inst);
+InstructionInfo instructionInfo( Instruction _inst );
 
-}
-}
+}  // namespace eth
+}  // namespace dev
