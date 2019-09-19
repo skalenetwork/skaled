@@ -30,6 +30,8 @@
 #include <iostream>
 #include <thread>
 
+#include <stdint.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -60,6 +62,7 @@
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
@@ -78,6 +81,11 @@
 #include <skale/buildinfo.h>
 
 #include <boost/algorithm/string/replace.hpp>
+
+#include <stdlib.h>
+#include <time.h>
+
+#include <skutils/rest_call.h>
 
 using namespace std;
 using namespace dev;
@@ -181,6 +189,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }  // namespace
 
 int main( int argc, char** argv ) try {
+    srand( time( nullptr ) );
     cc::_on_ = true;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
@@ -345,6 +354,12 @@ int main( int argc, char** argv ) try {
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
 
+    // skale - snapshot download command
+    addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
+        "Download snapshot from other skaled node specified by web3/json-rpc url" );
+    addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
+        "Path of file to save downloaded snapshot to" );
+
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
         createLoggingProgramOptions( c_lineWidth, loggingOptions ) );
@@ -392,6 +407,44 @@ int main( int argc, char** argv ) try {
 
     // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
     skutils::dispatch::default_domain( 48 );
+
+    if ( vm.count( "download-snapshot" ) ) {
+        try {
+            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
+            std::string strDownloadTarget = "snapshot.bin";
+            if ( vm.count( "download-target" ) )
+                strDownloadTarget = vm["download-target"].as< string >();
+            fs::path saveTo = strDownloadTarget.c_str();
+            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
+                      << "\n";
+            std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() )
+                      << "\n";
+            bool bOK = dev::rpc::snapshot::download(
+                strURLWeb3, saveTo, [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+                    std::cout << cc::normal( "... download progress ... " )
+                              << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
+                              << cc::num10( uint64_t( cntChunks ) ) << "\r";
+                    return true;  // continue download
+                } );
+            std::cout << "                                                  \r";  // clear progress
+                                                                                  // line
+            if ( !bOK ) {
+                std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                return -1;
+            }
+            std::cout << cc::success( "Snapshot download success" ) << "\n";
+            return 0;
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+        }
+        return -1;
+    }
 
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
@@ -1152,8 +1205,8 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
-                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
+                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             //

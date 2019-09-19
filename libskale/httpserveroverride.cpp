@@ -37,6 +37,7 @@
 #include <exception>
 #include <iostream>
 #include <list>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -55,8 +56,10 @@
 #include <libethereum/Block.h>
 #include <libethereum/Transaction.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <libweb3jsonrpc/Skale.h>
 
 #include <skutils/multithreading.h>
+#include <skutils/url.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +85,8 @@
 #else
 #error "What kind of weird system are you on? We cannot detect size of int"
 #endif
+
+namespace fs = boost::filesystem;
 
 namespace skale {
 namespace server {
@@ -662,26 +667,34 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 try {
                     nlohmann::json joRequest = nlohmann::json::parse( strRequest );
                     strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                    if ( !pSO->handleAdminOriginFilter(
+                             strMethod, /*getOrigin()*/ getRemoteIp() ) ) {
+                        throw std::runtime_error( "origin not allowed for call attempt" );
+                    }
                     stats::register_stats_message(
                         getRelay().m_strSchemeUC.c_str(), "messages", strRequest.size() );
                     stats::register_stats_message(
                         ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest );
                     stats::register_stats_message( "RPC", joRequest );
-                    if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
-                        nID = joRequest["id"].get< int >();
-                        jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
-                        if ( handler == nullptr )
-                            throw std::runtime_error( "No client connection handler found" );
-                        handler->HandleRequest( strRequest, strResponse );
-                    }
-                    nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-                    stats::register_stats_answer(
-                        getRelay().m_strSchemeUC.c_str(), "messages", strResponse.size() );
-                    stats::register_stats_answer(
-                        ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest,
-                        joResponse );
-                    stats::register_stats_answer( "RPC", joRequest, joResponse );
-                    bPassed = true;
+                    if ( !handleRequestWithBinaryAnswer( joRequest ) ) {
+                        if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+                            nID = joRequest["id"].get< int >();
+                            jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
+                            if ( handler == nullptr )
+                                throw std::runtime_error( "No client connection handler found" );
+                            handler->HandleRequest( strRequest, strResponse );
+                        }
+                        nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                        stats::register_stats_answer(
+                            getRelay().m_strSchemeUC.c_str(), "messages", strResponse.size() );
+                        stats::register_stats_answer(
+                            ( std::string( "RPC/" ) + getRelay().m_strSchemeUC ).c_str(), joRequest,
+                            joResponse );
+                        stats::register_stats_answer( "RPC", joRequest, joResponse );
+                        bPassed = true;
+                    }  // if( ! handleRequestWithBinaryAnswer(joRequest) )
+                    else
+                        return;  // bPassed = true;
                 } catch ( const std::exception& ex ) {
                     clog( dev::VerbosityError, cc::info( getRelay().m_strSchemeUC ) +
                                                    cc::debug( "/" ) +
@@ -817,6 +830,20 @@ void SkaleWsPeer::uninstallAllWatches() {
         } catch ( ... ) {
         }
     }
+}
+
+bool SkaleWsPeer::handleRequestWithBinaryAnswer( const nlohmann::json& joRequest ) {
+    SkaleServerOverride* pSO = pso();
+    std::vector< uint8_t > buffer;
+    if ( pSO->handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+        std::string strMethodName =
+            skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+        std::string s( buffer.begin(), buffer.end() );
+        sendMessage( s, skutils::ws::opcv::binary );
+        stats::register_stats_answer( "RPC", strMethodName, buffer.size() );
+        return true;
+    }
+    return false;
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
@@ -1532,14 +1559,15 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( size_t cntServers, dev::eth::Interface* pEth,
-    const std::string& strAddrHTTP, int nBasePortHTTP, const std::string& strAddrHTTPS,
-    int nBasePortHTTPS, const std::string& strAddrWS, int nBasePortWS,
-    const std::string& strAddrWSS, int nBasePortWSS, const std::string& strPathSslKey,
-    const std::string& strPathSslCert )
+SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
+    dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
+    const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
+    int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
+    const std::string& strPathSslKey, const std::string& strPathSslCert )
     : AbstractServerConnector(),
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
+      chainParams_( chainParams ),
       m_strAddrHTTP( strAddrHTTP ),
       m_nBasePortHTTP( nBasePortHTTP ),
       m_strAddrHTTPS( strAddrHTTPS ),
@@ -1565,6 +1593,16 @@ dev::eth::Interface* SkaleServerOverride::ethereum() const {
         std::terminate();
     }
     return pEth_;
+}
+
+dev::eth::ChainParams& SkaleServerOverride::chainParams() {
+    return chainParams_;
+}
+const dev::eth::ChainParams& SkaleServerOverride::chainParams() const {
+    return chainParams_;
+}
+bool SkaleServerOverride::checkAdminOriginAllowed( const std::string& origin ) const {
+    return chainParams().checkAdminOriginAllowed( origin );
 }
 
 jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::string& url ) {
@@ -1683,6 +1721,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
                 nID = joRequest["id"].get< int >();
                 strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                if ( !handleAdminOriginFilter( strMethod, req.origin_ ) ) {
+                    throw std::runtime_error( "origin not allowed for call attempt" );
+                }
                 jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
                 if ( handler == nullptr )
                     throw std::runtime_error( "No client connection handler found" );
@@ -1693,6 +1734,16 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest );
                 stats::register_stats_message( "RPC", joRequest );
                 //
+                std::vector< uint8_t > buffer;
+                if ( handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+                    res.set_header( "access-control-allow-origin", "*" );
+                    res.set_header( "vary", "Origin" );
+                    res.set_content(
+                        ( char* ) buffer.data(), buffer.size(), "application/octet-stream" );
+                    stats::register_stats_answer(
+                        bIsSSL ? "HTTPS" : "HTTP", "POST", buffer.size() );
+                    return true;
+                }
                 handler->HandleRequest( req.body_.c_str(), strResponse );
                 //
                 stats::register_stats_answer(
@@ -1740,6 +1791,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             res.set_content( strResponse.c_str(), "application/json" );
             if ( !bPassed )
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
+            return true;
         } );
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
@@ -2036,6 +2088,65 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     return joStats;
 }
 
+bool SkaleServerOverride::handleRequestWithBinaryAnswer(
+    const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
+    buffer.clear();
+    std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+    if ( strMethodName == "skale_downloadSnapshotFragment" ) {
+        // std::cout << cc::attention( "------------ " ) << cc::info(
+        // "skale_downloadSnapshotFragment" ) << cc::normal( " call with " ) << cc::j( joRequest )
+        // <<
+        // "\n";
+        const nlohmann::json& joParams = joRequest["params"];
+        if ( joParams.count( "isBinary" ) > 0 ) {
+            bool isBinary = joParams["isBinary"].get< bool >();
+            if ( isBinary ) {
+                size_t sizeOfFile = fs::file_size( dev::rpc::g_pathSnapshotFile );
+                size_t idxFrom = joParams["from"].get< size_t >();
+                size_t sizeOfChunk = joParams["size"].get< size_t >();
+                if ( idxFrom >= sizeOfFile )
+                    sizeOfChunk = 0;
+                if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+                    sizeOfChunk = sizeOfFile - idxFrom;
+                if ( sizeOfChunk > dev::rpc::g_nMaxChunckSize )
+                    sizeOfChunk = dev::rpc::g_nMaxChunckSize;
+                //
+                //
+                std::ifstream f;
+                f.open( dev::rpc::g_pathSnapshotFile.native(), std::ios::in | std::ios::binary );
+                if ( !f.is_open() )
+                    throw std::runtime_error( "failed to open snapshot file" );
+                size_t i;
+                for ( i = 0; i < sizeOfChunk; ++i )
+                    buffer.push_back( ( unsigned char ) ( 0 ) );
+                f.seekg( idxFrom );
+                f.read( ( char* ) buffer.data(), sizeOfChunk );
+                f.close();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool SkaleServerOverride::handleAdminOriginFilter(
+    const std::string& strMethod, const std::string& strOriginURL ) {
+    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) << cc::attention( "
+    // ------------> " ) << cc::info( strMethod ) << "\n";
+    static const std::set< std::string > g_setAdminMethods = {
+        "skale_getSnapshot", "skale_downloadSnapshotFragment"};
+    if ( g_setAdminMethods.find( strMethod ) == g_setAdminMethods.end() )
+        return true;  // not an admin methhod
+    std::string origin = strOriginURL;
+    try {
+        skutils::url u( strOriginURL.c_str() );
+        origin = u.host();
+    } catch ( ... ) {
+    }
+    if ( !checkAdminOriginAllowed( origin ) )
+        return false;
+    return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
