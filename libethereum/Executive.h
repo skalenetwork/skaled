@@ -207,7 +207,8 @@ public:
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
-        u256 const& _gas, bytesConstRef _code, Address const& _originAddress );
+        u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
+        u256 const& _version );
 
     skale::State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE

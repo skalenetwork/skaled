@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -18,8 +16,10 @@
 */
 #pragma once
 
-namespace dev {
-namespace eth {
+namespace dev
+{
+namespace eth
+{
 ///////////////////////////////////////////////////////////////////////////////
 //
 // interpreter configuration macros for development, optimizations and tracing
@@ -56,7 +56,7 @@ namespace eth {
 #if EVM_OPTIMIZE
 #define EVM_REPLACE_CONST_JUMP true
 #define EVM_USE_CONSTANT_POOL true
-#define EVM_DO_FIRST_PASS_OPTIMIZATION ( EVM_REPLACE_CONST_JUMP || EVM_USE_CONSTANT_POOL )
+#define EVM_DO_FIRST_PASS_OPTIMIZATION (EVM_REPLACE_CONST_JUMP || EVM_USE_CONSTANT_POOL)
 #endif
 
 
@@ -72,47 +72,47 @@ namespace eth {
 #undef ON_OP
 #if EVM_TRACE > 2
 #define ON_OP() \
-    ( cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo( m_OP ).name << endl )
+    (cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo(m_OP).name << endl)
 #else
 #define ON_OP() onOperation()
 #endif
 
-#define TRACE_STR( level, str )   \
-    if ( ( level ) <= EVM_TRACE ) \
-        cerr << "$$$ " << ( str ) << endl;
+#define TRACE_STR(level, str) \
+    if ((level) <= EVM_TRACE) \
+        cerr << "$$$ " << (str) << endl;
 
-#define TRACE_VAL( level, name, val ) \
-    if ( ( level ) <= EVM_TRACE )     \
-        cerr << "=== " << ( name ) << " " << hex << ( val ) << endl;
-#define TRACE_OP( level, pc, op ) \
-    if ( ( level ) <= EVM_TRACE ) \
-        cerr << "*** " << ( pc ) << " " << instructionInfo( op ).name << endl;
+#define TRACE_VAL(level, name, val) \
+    if ((level) <= EVM_TRACE)       \
+        cerr << "=== " << (name) << " " << hex << (val) << endl;
+#define TRACE_OP(level, pc, op) \
+    if ((level) <= EVM_TRACE)   \
+        cerr << "*** " << (pc) << " " << instructionInfo(op).name << endl;
 
-#define TRACE_PRE_OPT( level, pc, op ) \
-    if ( ( level ) <= EVM_TRACE )      \
-        cerr << "<<< " << ( pc ) << " " << instructionInfo( op ).name << endl;
+#define TRACE_PRE_OPT(level, pc, op) \
+    if ((level) <= EVM_TRACE)        \
+        cerr << "<<< " << (pc) << " " << instructionInfo(op).name << endl;
 
-#define TRACE_POST_OPT( level, pc, op ) \
-    if ( ( level ) <= EVM_TRACE )       \
-        cerr << ">>> " << ( pc ) << " " << instructionInfo( op ).name << endl;
+#define TRACE_POST_OPT(level, pc, op) \
+    if ((level) <= EVM_TRACE)         \
+        cerr << ">>> " << (pc) << " " << instructionInfo(op).name << endl;
 #else
-#define TRACE_STR( level, str )
-#define TRACE_VAL( level, name, val )
-#define TRACE_OP( level, pc, op )
-#define TRACE_PRE_OPT( level, pc, op )
-#define TRACE_POST_OPT( level, pc, op )
+#define TRACE_STR(level, str)
+#define TRACE_VAL(level, name, val)
+#define TRACE_OP(level, pc, op)
+#define TRACE_PRE_OPT(level, pc, op)
+#define TRACE_POST_OPT(level, pc, op)
 #define ON_OP() onOperation()
 #endif
 
 // Executive swallows exceptions in some circumstances
 #if 0
-#define THROW_EXCEPTION( X ) ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() << endl ), abort() )
+#define THROW_EXCEPTION(X) ((cerr << "!!! EVM EXCEPTION " << (X).what() << endl), abort())
 #else
 #if EVM_TRACE > 0
-#define THROW_EXCEPTION( X ) \
-    ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() << endl ), BOOST_THROW_EXCEPTION( X ) )
+#define THROW_EXCEPTION(X) \
+    ((cerr << "!!! EVM EXCEPTION " << (X).what() << endl), BOOST_THROW_EXCEPTION(X))
 #else
-#define THROW_EXCEPTION( X ) BOOST_THROW_EXCEPTION( X )
+#define THROW_EXCEPTION(X) BOOST_THROW_EXCEPTION(X)
 #endif
 #endif
 
@@ -125,10 +125,12 @@ namespace eth {
 
 #define INIT_CASES
 #define DO_CASES            \
-    for ( ;; ) {            \
+    for (;;)                \
+    {                       \
         fetchInstruction(); \
-        switch ( m_OP ) {
-#define CASE( name ) case Instruction::name:
+        switch (m_OP)       \
+        {
+#define CASE(name) case Instruction::name:
 #define NEXT \
     ++m_PC;  \
     break;
@@ -220,8 +222,8 @@ namespace eth {
         &&NUMBER,                               \
         &&DIFFICULTY,                           \
         &&GASLIMIT,                             \
-        &&INVALID,                              \
-        &&INVALID,                              \
+        &&CHAINID,                              \
+        &&SELFBALANCE,                          \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
@@ -410,16 +412,16 @@ namespace eth {
 
 #define DO_CASES        \
     fetchInstruction(); \
-    goto* jumpTable[( int ) m_OP];
-#define CASE( name ) \
+    goto* jumpTable[(int)m_OP];
+#define CASE(name) \
     name:
 #define NEXT            \
     ++m_PC;             \
     fetchInstruction(); \
-    goto* jumpTable[( int ) m_OP];
+    goto* jumpTable[(int)m_OP];
 #define CONTINUE        \
     fetchInstruction(); \
-    goto* jumpTable[( int ) m_OP];
+    goto* jumpTable[(int)m_OP];
 #define BREAK return;
 #define DEFAULT
 #define WHILE_CASES
@@ -427,5 +429,5 @@ namespace eth {
 #else
 #error No opcode dispatch configured
 #endif
-}  // namespace eth
-}  // namespace dev
+}
+}

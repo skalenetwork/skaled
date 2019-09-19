@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -22,23 +20,31 @@
 
 #include <boost/program_options/options_description.hpp>
 
-namespace dev {
-namespace eth {
-enum class VMKind { Interpreter, Legacy, DLL };
+namespace dev
+{
+namespace eth
+{
+enum class VMKind
+{
+    Interpreter,
+    Legacy,
+    DLL
+};
 
 /// Returns the EVMC options parsed from command line.
-std::vector< std::pair< std::string, std::string > >& evmcOptions() noexcept;
+std::vector<std::pair<std::string, std::string>>& evmcOptions() noexcept;
 
 /// Provide a set of program options related to VMs.
 ///
 /// @param _lineLength  The line length for description text wrapping, the same as in
 ///                     boost::program_options::options_description::options_description().
 boost::program_options::options_description vmProgramOptions(
-    unsigned _lineLength = boost::program_options::options_description::m_default_line_length );
+    unsigned _lineLength = boost::program_options::options_description::m_default_line_length);
 
-using VMPtr = std::unique_ptr< VMFace, void ( * )( VMFace* ) >;
+using VMPtr = std::unique_ptr<VMFace, void (*)(VMFace*)>;
 
-class VMFactory {
+class VMFactory
+{
 public:
     VMFactory() = delete;
     ~VMFactory() = delete;
@@ -47,7 +53,7 @@ public:
     static VMPtr create();
 
     /// Creates a VM instance of the kind provided.
-    static VMPtr create( VMKind _kind );
+    static VMPtr create(VMKind _kind);
 };
 }  // namespace eth
 }  // namespace dev

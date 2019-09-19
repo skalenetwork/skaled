@@ -87,13 +87,15 @@ public:
           m_balance( _balance ) {}
 
     /// Explicit constructor for wierd cases of construction or a contract account.
-    Account( u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, Changedness _c )
+    Account( u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 const& _version,
+        Changedness _c )
         : m_isAlive( true ),
           m_isUnchanged( _c == Unchanged ),
           m_nonce( _nonce ),
           m_balance( _balance ),
           m_storageRoot( _contractRoot ),
-          m_codeHash( _codeHash ) {
+          m_codeHash( _codeHash ),
+          m_version( _version ) {
         assert( _contractRoot );
     }
 
@@ -107,6 +109,7 @@ public:
         m_storageRoot = EmptyTrie;
         m_balance = 0;
         m_nonce = 0;
+        m_version = 0;
         changed();
     }
 
@@ -198,14 +201,10 @@ public:
     bool hasNewCode() const { return m_hasNewCode; }
 
     /// Sets the code of the account. Used by "create" messages.
-    void setCode( bytes&& _code );
+    void setCode( bytes&& _code, dev::u256 const& version );
 
-    /// Reset the code set by previous CREATE message.
-    void resetCode() {
-        m_codeCache.clear();
-        m_hasNewCode = false;
-        m_codeHash = EmptySHA3;
-    }
+    /// Reset the code set by previous setCode
+    void resetCode();
 
     /// Specify to the object what the actual code is for the account. @a _code must have a SHA3
     /// equal to codeHash() and must only be called when isFreshCode() returns false.
@@ -216,6 +215,8 @@ public:
 
     /// @returns the account's code.
     bytes const& code() const { return m_codeCache; }
+
+    u256 version() const { return m_version; }
 
 private:
     /// Note that we've altered the account.
@@ -247,6 +248,9 @@ private:
      * otherwise, State::ensureCached() needs to be called with the correct args.
      */
     h256 m_codeHash = EmptySHA3;
+
+    /// Account's version
+    u256 m_version = 0;
 
     /// The map with is overlaid onto whatever storage is implied by the m_storageRoot in the trie.
     std::unordered_map< u256, u256 > m_storageOverlay;

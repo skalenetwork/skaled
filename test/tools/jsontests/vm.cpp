@@ -44,7 +44,7 @@ using skale::State;
 FakeExtVM::FakeExtVM( EnvInfo const& _envInfo, unsigned _depth )
     :  /// TODO: XXX: remove the default argument & fix.
       ExtVMFace( _envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(),
-          EmptySHA3, false, false, _depth ) {}
+          EmptySHA3, 0, _depth, false, false ) {}
 
 CreateResult FakeExtVM::create(
     u256 _endowment, u256& io_gas, bytesConstRef _init, Instruction, u256, OnOpFunc const& ) {
@@ -109,7 +109,7 @@ EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _las
     blockHeader.setTimestamp( toPositiveInt64( _o.at( "currentTimestamp" ) ) );
     blockHeader.setAuthor( Address( _o.at( "currentCoinbase" ).get_str() ) );
     blockHeader.setNumber( toPositiveInt64( _o.at( "currentNumber" ) ) );
-    return EnvInfo( blockHeader, _lastBlockHashes, 0 );
+    return EnvInfo( blockHeader, _lastBlockHashes, 0, 0 );
 }
 
 mObject FakeExtVM::exportState() {
@@ -442,7 +442,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_REQUIRE_MESSAGE( testInput.at( "logs" ).type() == str_type,
                     testname + " logs field is not a string." );
 
-                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 0} );
+                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 0, 0} );
                 test.importState( testInput.at( "post" ).get_obj() );
                 test.importCallCreates( testInput.at( "callcreates" ).get_array() );
 

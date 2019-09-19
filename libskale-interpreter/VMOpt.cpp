@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -21,21 +19,24 @@
 
 namespace dev {
 namespace eth {
-std::array< evmc_instruction_metrics, 256 > VM::c_metrics{{}};
-void VM::initMetrics() {
-    static bool done = []() noexcept {
-        // Copy the metrics of the top EVM revision.
-        std::memcpy( &c_metrics[0], evmc_get_instruction_metrics_table( EVMC_LATEST_REVISION ),
-            c_metrics.size() * sizeof( c_metrics[0] ) );
+std::array< std::array< evmc_instruction_metrics, 256 >, EVMC_MAX_REVISION + 1 > VM::s_metrics;
+
+bool VM::initMetrics() {
+    for ( auto revision = 0; revision <= EVMC_MAX_REVISION; ++revision ) {
+        auto& metrics = s_metrics[revision];
+
+        // Copy the metrics of the given EVM revision.
+        auto const metricsTable =
+            evmc_get_instruction_metrics_table( static_cast< evmc_revision >( revision ) );
+        std::memcpy( &metrics[0], metricsTable, metrics.size() * sizeof( metrics[0] ) );
 
         // Inject interpreter optimization opcodes.
-        c_metrics[uint8_t( Instruction::PUSHC )] = c_metrics[uint8_t( Instruction::PUSH1 )];
-        c_metrics[uint8_t( Instruction::JUMPC )] = c_metrics[uint8_t( Instruction::JUMP )];
-        c_metrics[uint8_t( Instruction::JUMPCI )] = c_metrics[uint8_t( Instruction::JUMPI )];
-        return true;
-    }
-    ();
-    ( void ) done;
+        metrics[uint8_t( Instruction::PUSHC )] = metrics[uint8_t( Instruction::PUSH1 )];
+        metrics[uint8_t( Instruction::JUMPC )] = metrics[uint8_t( Instruction::JUMP )];
+        metrics[uint8_t( Instruction::JUMPCI )] =
+            s_metrics[revision][uint8_t( Instruction::JUMPI )];
+    };
+    return true;
 }
 
 void VM::copyCode( int _extraBytes ) {
@@ -63,7 +64,7 @@ void VM::optimize() {
         // make synthetic ops in user code trigger invalid instruction if run
         if ( op == Instruction::PUSHC || op == Instruction::JUMPC || op == Instruction::JUMPCI ) {
             TRACE_OP( 1, pc, op );
-            m_code[pc] = ( _byte_ ) Instruction::INVALID;
+            m_code[pc] = ( _byte_ ) Instruction::UNDEFINED;
         }
 
         if ( op == Instruction::JUMPDEST ) {
@@ -151,7 +152,6 @@ void VM::optimize() {
 //
 void VM::initEntry() {
     m_bounce = &VM::interpretCases;
-    initMetrics();
     optimize();
 }
 

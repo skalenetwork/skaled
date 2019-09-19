@@ -160,7 +160,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 }
 
                 if ( account.hasNewCode() ) {
-                    setCode( address, account.code() );
+                    setCode( address, account.code(), account.version() );
                 }
             }
         }
@@ -271,10 +271,12 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+    // version is 0 if absent from RLP
+    auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
-        std::forward_as_tuple(
-            nonce, balance, EmptyTrie, codeHash, dev::eth::Account::Changedness::Unchanged ) );
+        std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
+            dev::eth::Account::Changedness::Unchanged ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -564,13 +566,16 @@ bytes const& State::code( Address const& _addr ) const {
     return a->code();
 }
 
-void State::setCode( Address const& _address, bytes&& _code ) {
+void State::setCode( Address const& _address, bytes&& _code, u256 const& _version ) {
+    // rollback assumes that overwriting of the code never happens
+    // (not allowed in contract creation logic in Executive)
+    assert( !addressHasCode( _address ) );
     m_changeLog.emplace_back( _address, code( _address ) );
-    m_cache[_address].setCode( std::move( _code ) );
+    m_cache[_address].setCode( std::move( _code ), _version );
 }
 
-void State::setCode( const Address& _address, const bytes& _code ) {
-    setCode( _address, bytes( _code ) );
+void State::setCode( const Address& _address, const bytes& _code, u256 const& _version ) {
+    setCode( _address, bytes( _code ), _version );
 }
 
 h256 State::codeHash( Address const& _a ) const {
@@ -595,6 +600,11 @@ size_t State::codeSize( Address const& _a ) const {
         }
     } else
         return 0;
+}
+
+u256 State::version( const Address& _contract ) const {
+    Account const* a = account( _contract );
+    return a ? a->version() : 0;
 }
 
 size_t State::savepoint() const {
@@ -628,7 +638,7 @@ void State::rollback( size_t _savepoint ) {
             m_cache.erase( change.address );
             break;
         case Change::Code:
-            account.setCode( std::move( change.oldCode ) );
+            account.resetCode();
             break;
         case Change::Touch:
             account.untouch();

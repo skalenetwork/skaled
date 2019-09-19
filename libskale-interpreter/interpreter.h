@@ -1,6 +1,5 @@
-/* SKALED: SKALE C++ client, tools and libraries.
- * Copyright 2018 Aleth Autors.
- * Modifications Copyright (C) 2019 SKALE Labs
+/* Aleth: Ethereum C++ client, tools and libraries.
+ * Copyright 2019 Aleth Authors.
  * Licensed under the GNU General Public License, Version 3. See the LICENSE file.
  */
 

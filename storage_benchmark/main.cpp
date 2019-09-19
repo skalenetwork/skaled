@@ -70,7 +70,7 @@ void debug() {
     for ( auto& b : code ) {
         b = rand();
     }
-    state.setCode( address, code );
+    state.setCode( address, code, 0 );
     state.commit( State::CommitBehaviour::KeepEmptyAccounts );
     return;
 
@@ -166,7 +166,7 @@ void testState() {
     cout << measure_performance(
                 [&state, &address, &code]() {
                     State writeState = state.startWrite();
-                    writeState.setCode( address, code );
+                    writeState.setCode( address, code, 0 );
                     writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
                 },
                 10 )
