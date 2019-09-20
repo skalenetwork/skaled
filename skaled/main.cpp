@@ -408,44 +408,6 @@ int main( int argc, char** argv ) try {
     // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
     skutils::dispatch::default_domain( 48 );
 
-    if ( vm.count( "download-snapshot" ) ) {
-        try {
-            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-            std::string strDownloadTarget = "snapshot.bin";
-            if ( vm.count( "download-target" ) )
-                strDownloadTarget = vm["download-target"].as< string >();
-            fs::path saveTo = strDownloadTarget.c_str();
-            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
-                      << "\n";
-            std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() )
-                      << "\n";
-            bool bOK = dev::rpc::snapshot::download(
-                strURLWeb3, saveTo, [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-                    std::cout << cc::normal( "... download progress ... " )
-                              << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
-                              << cc::num10( uint64_t( cntChunks ) ) << "\r";
-                    return true;  // continue download
-                } );
-            std::cout << "                                                  \r";  // clear progress
-                                                                                  // line
-            if ( !bOK ) {
-                std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
-                return -1;
-            }
-            std::cout << cc::success( "Snapshot download success" ) << "\n";
-            return 0;
-        } catch ( const std::exception& ex ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while downloading snapshot: " )
-                      << cc::warn( ex.what() ) << "\n";
-        } catch ( ... ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while downloading snapshot: " )
-                      << cc::warn( "Unknown exception" ) << "\n";
-        }
-        return -1;
-    }
-
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
         filename = vm["import-snapshot"].as< string >();
@@ -688,6 +650,92 @@ int main( int argc, char** argv ) try {
         // default to skale if not already set with `--config`
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
+    std::shared_ptr< SnapshotManager > snapshotManager;
+    snapshotManager.reset( new SnapshotManager(
+        getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+
+    if ( vm.count( "download-snapshot" ) ) {
+        try {
+            fs::path saveTo;
+
+            if ( vm.count( "download-target" ) )
+                saveTo = fs::path( vm["download-target"].as< string >() );
+            else {
+                string filename_string = "/tmp/skaled_snapshot_download_XXXXXX";
+                char buf[filename_string.length() + 1];
+                strcpy( buf, filename_string.c_str() );
+                int fd = mkstemp( buf );
+                if ( fd < 0 ) {
+                    throw system_error();
+                }
+                close( fd );
+                saveTo = buf;
+            }
+
+            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
+
+            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
+                      << "\n";
+            std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() )
+                      << "\n";
+            bool isBinaryDownload = false;
+
+            unsigned block_number;
+            {
+                skutils::rest::client cli;
+                nlohmann::json joIn = nlohmann::json::object();
+                joIn["jsonrpc"] = "2.0";
+                joIn["method"] = "eth_blockNumber";
+                joIn["params"] = nlohmann::json::object();
+                skutils::rest::data_t d = cli.call( joIn );
+                if ( d.empty() ) {
+                    std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                    return -1;
+                }
+                // TODO catch?
+                block_number = nlohmann::json::parse( d.s_ )["result"].get< unsigned >();
+                block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
+            }
+
+            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+                [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+                    std::cout << cc::normal( "... download progress ... " )
+                              << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
+                              << cc::num10( uint64_t( cntChunks ) ) << "\r";
+                    return true;  // continue download
+                },
+                isBinaryDownload );
+            std::cout << "                                                  \r";  // clear progress
+                                                                                  // line
+            if ( !bOK ) {
+                std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                return -1;
+            }
+            std::cout << cc::success( "Snapshot download success" ) << "\n";
+
+            snapshotManager->importDiff( block_number, saveTo );
+            snapshotManager->restoreSnapshot( block_number );
+
+            fs::remove( saveTo );
+
+            return 0;
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+        }
+        return -1;
+    }
+
+    // it was needed for snapshot downloading
+    if ( chainParams.nodeInfo.snapshotInterval <= 0 ) {
+        snapshotManager = nullptr;
+    }
+
     if ( loggingOptions.verbosity > 0 )
         cout << EthGrayBold "skaled, a C++ Skale client" EthReset << "\n";
 
@@ -753,18 +801,12 @@ int main( int argc, char** argv ) try {
 
     std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
-    std::shared_ptr< SnapshotManager > snapshotManager;
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
     if ( nodeMode == NodeMode::Full && caps.count( "eth" ) ) {
         Ethash::init();
         NoProof::init();
-
-        if ( chainParams.nodeInfo.snapshotInterval > 0 ) {
-            snapshotManager.reset( new SnapshotManager(
-                getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
-        }
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
