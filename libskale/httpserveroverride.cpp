@@ -2092,40 +2092,41 @@ bool SkaleServerOverride::handleRequestWithBinaryAnswer(
     const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
     buffer.clear();
     std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-    if ( strMethodName == "skale_downloadSnapshotFragment" ) {
-        // std::cout << cc::attention( "------------ " ) << cc::info(
-        // "skale_downloadSnapshotFragment" ) << cc::normal( " call with " ) << cc::j( joRequest )
-        // <<
-        // "\n";
-        const nlohmann::json& joParams = joRequest["params"];
-        if ( joParams.count( "isBinary" ) > 0 ) {
-            bool isBinary = joParams["isBinary"].get< bool >();
-            if ( isBinary ) {
-                size_t sizeOfFile = fs::file_size( dev::rpc::g_pathSnapshotFile );
-                size_t idxFrom = joParams["from"].get< size_t >();
-                size_t sizeOfChunk = joParams["size"].get< size_t >();
-                if ( idxFrom >= sizeOfFile )
-                    sizeOfChunk = 0;
-                if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
-                    sizeOfChunk = sizeOfFile - idxFrom;
-                if ( sizeOfChunk > dev::rpc::g_nMaxChunckSize )
-                    sizeOfChunk = dev::rpc::g_nMaxChunckSize;
-                //
-                //
-                std::ifstream f;
-                f.open( dev::rpc::g_pathSnapshotFile.native(), std::ios::in | std::ios::binary );
-                if ( !f.is_open() )
-                    throw std::runtime_error( "failed to open snapshot file" );
-                size_t i;
-                for ( i = 0; i < sizeOfChunk; ++i )
-                    buffer.push_back( ( unsigned char ) ( 0 ) );
-                f.seekg( idxFrom );
-                f.read( ( char* ) buffer.data(), sizeOfChunk );
-                f.close();
-                return true;
-            }
-        }
-    }
+    //    if ( strMethodName == "skale_downloadSnapshotFragment" ) {
+    //        // std::cout << cc::attention( "------------ " ) << cc::info(
+    //        // "skale_downloadSnapshotFragment" ) << cc::normal( " call with " ) << cc::j(
+    //        joRequest )
+    //        // <<
+    //        // "\n";
+    //        const nlohmann::json& joParams = joRequest["params"];
+    //        if ( joParams.count( "isBinary" ) > 0 ) {
+    //            bool isBinary = joParams["isBinary"].get< bool >();
+    //            if ( isBinary ) {
+    //                size_t sizeOfFile = fs::file_size( dev::rpc::g_pathSnapshotFile );
+    //                size_t idxFrom = joParams["from"].get< size_t >();
+    //                size_t sizeOfChunk = joParams["size"].get< size_t >();
+    //                if ( idxFrom >= sizeOfFile )
+    //                    sizeOfChunk = 0;
+    //                if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+    //                    sizeOfChunk = sizeOfFile - idxFrom;
+    //                if ( sizeOfChunk > dev::rpc::g_nMaxChunckSize )
+    //                    sizeOfChunk = dev::rpc::g_nMaxChunckSize;
+    //                //
+    //                //
+    //                std::ifstream f;
+    //                f.open( dev::rpc::g_pathSnapshotFile.native(), std::ios::in | std::ios::binary
+    //                ); if ( !f.is_open() )
+    //                    throw std::runtime_error( "failed to open snapshot file" );
+    //                size_t i;
+    //                for ( i = 0; i < sizeOfChunk; ++i )
+    //                    buffer.push_back( ( unsigned char ) ( 0 ) );
+    //                f.seekg( idxFrom );
+    //                f.read( ( char* ) buffer.data(), sizeOfChunk );
+    //                f.close();
+    //                return true;
+    //            }
+    //        }
+    //    }
     return false;
 }
 

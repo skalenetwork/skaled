@@ -52,6 +52,8 @@
 #include <iostream>
 #include <vector>
 
+#include <cstdlib>
+
 using namespace dev::eth;
 
 namespace dev {
@@ -128,7 +130,6 @@ std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
 }
 
 size_t g_nMaxChunckSize = 1024 * 1024;
-const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
 
 //
 // call example:
@@ -136,13 +137,32 @@ const fs::path g_pathSnapshotFile( "/Users/l_sergiy/Downloads/flying-cat.gif" );
 // '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
 // false },"id":73}'
 //
-static nlohmann::json impl_skale_getSnapshot( const nlohmann::json& joRequest, Client& client ) {
+nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, Client& client ) {
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
     // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
+
     nlohmann::json joResponse = nlohmann::json::object();
+
+    // exit if too early
+    if ( currentSnapshotBlockNumber >= 0 &&
+         time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) {
+        joResponse["error"] = "too early";
+        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        return joResponse;
+    }
+
+    if ( currentSnapshotBlockNumber >= 0 )
+        fs::remove( currentSnapshotPath );
+
+    // TODO check
+    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    currentSnapshotPath = client.createSnapshotFile( blockNumber );
+    currentSnapshotTime = time( NULL );
+    currentSnapshotBlockNumber = blockNumber;
+
     //
     //
-    size_t sizeOfFile = fs::file_size( g_pathSnapshotFile );
+    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
     //
     //
     joResponse["dataSize"] = sizeOfFile;
@@ -171,14 +191,13 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 // '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
 // "from": 0, "size": 1024, "isBinary": true },"id":73}'
 //
-static nlohmann::json impl_skale_downloadSnapshotFragment(
-    const nlohmann::json& joRequest, Client& client ) {
+nlohmann::json Skale::impl_skale_downloadSnapshotFragment( const nlohmann::json& joRequest ) {
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
     // << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
     nlohmann::json joResponse = nlohmann::json::object();
     //
     //
-    size_t sizeOfFile = fs::file_size( g_pathSnapshotFile );
+    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
     size_t idxFrom = joRequest["from"].get< size_t >();
     size_t sizeOfChunk = joRequest["size"].get< size_t >();
     if ( idxFrom >= sizeOfFile )
@@ -190,7 +209,7 @@ static nlohmann::json impl_skale_downloadSnapshotFragment(
     //
     //
     std::ifstream f;
-    f.open( g_pathSnapshotFile.native(), std::ios::in | std::ios::binary );
+    f.open( currentSnapshotPath.native(), std::ios::in | std::ios::binary );
     if ( !f.is_open() )
         throw std::runtime_error( "failed to open snapshot file" );
     size_t i;
@@ -211,7 +230,7 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
         nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest, m_client );
+        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest );
         std::string strResponse = joResponse.dump();
         Json::Value response;
         Json::Reader().parse( strResponse, response );
@@ -223,8 +242,8 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 
 namespace snapshot {
 
-bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progress_t onProgress,
-    bool isBinaryDownload ) {
+bool download( const std::string& strURLWeb3, unsigned block_number, const fs::path& saveTo,
+    fn_progress_t onProgress, bool isBinaryDownload ) {
     std::ofstream f;
     try {
         boost::filesystem::remove( saveTo );
@@ -235,12 +254,13 @@ bool download( const std::string& strURLWeb3, const fs::path& saveTo, fn_progres
             // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
             return false;
         }
+
         nlohmann::json joIn = nlohmann::json::object();
         joIn["jsonrpc"] = "2.0";
         joIn["method"] = "skale_getSnapshot";
         nlohmann::json joParams = nlohmann::json::object();
         joParams["autoCreate"] = false;
-        joParams["blockNumber"] = "latest";
+        joParams["blockNumber"] = block_number;
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
         if ( d.empty() ) {
