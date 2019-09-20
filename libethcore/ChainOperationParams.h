@@ -42,9 +42,12 @@ public:
           m_startingBlock( _startingBlock ),
           m_allowed_addresses( _allowedAddresses ) {}
     PrecompiledContract( unsigned _base, unsigned _word, PrecompiledExecutor const& _exec,
-        u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
+        u256 const& _startingBlock = 0 );
 
-    bigint cost( bytesConstRef _in ) const { return m_cost( _in ); }
+    bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
+        u256 const& _blockNumber ) const {
+        return m_cost( _in, _chainParams, _blockNumber );
+    }
     std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
 
     u256 const& startingBlock() const { return m_startingBlock; }
