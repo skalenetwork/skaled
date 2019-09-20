@@ -17,7 +17,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include "../../GenesisInfo.h"
 
 static std::string const c_genesisInfoExperimentalTransitionTest = std::string() +
-R"E(
+                                                                   R"E(
 {
     "sealEngine": "NoProof",
     "params": {

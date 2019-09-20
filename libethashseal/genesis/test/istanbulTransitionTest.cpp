@@ -5,7 +5,7 @@
 #include "../../GenesisInfo.h"
 
 static std::string const c_genesisInfoIstanbulTransitionTest = std::string() +
-R"E(
+                                                               R"E(
 {
     "sealEngine": "NoProof",
     "params": {
