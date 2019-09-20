@@ -25,17 +25,16 @@
 
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
-#include <libdevcore/FileSystem.h>
-#include <boost/filesystem.hpp>
 #include <functional>
-#include <memory>
 #include <unordered_map>
 
 namespace dev {
 namespace eth {
+struct ChainOperationParams;
 
 using PrecompiledExecutor = std::function< std::pair< bool, bytes >( bytesConstRef _in ) >;
-using PrecompiledPricer = std::function< bigint( bytesConstRef _in ) >;
+using PrecompiledPricer = std::function< bigint(
+    bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) >;
 
 DEV_SIMPLE_EXCEPTION( ExecutorNotFound );
 DEV_SIMPLE_EXCEPTION( PricerNotFound );
@@ -67,12 +66,13 @@ public:
 private:
     static PrecompiledRegistrar* get() {
         if ( !s_this )
-            s_this = std::make_unique< PrecompiledRegistrar >();
-        return s_this.get();
+            s_this = new PrecompiledRegistrar;
+        return s_this;
     }
+
     std::unordered_map< std::string, PrecompiledExecutor > m_execs;
     std::unordered_map< std::string, PrecompiledPricer > m_pricers;
-    static std::unique_ptr< PrecompiledRegistrar > s_this;
+    static PrecompiledRegistrar* s_this;
 };
 
 // TODO: unregister on unload with a static object.
@@ -82,11 +82,12 @@ private:
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                                       \
             #Name, &__eth_registerPrecompiledFunction##Name );                                    \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
-#define ETH_REGISTER_PRECOMPILED_PRICER( Name )                            \
-    static bigint __eth_registerPricerFunction##Name( bytesConstRef _in ); \
-    static PrecompiledPricer __eth_registerPricerFactory##Name =           \
-        ::dev::eth::PrecompiledRegistrar::registerPricer(                  \
-            #Name, &__eth_registerPricerFunction##Name );                  \
+#define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
+    static bigint __eth_registerPricerFunction##Name(                                            \
+        bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ); \
+    static PrecompiledPricer __eth_registerPricerFactory##Name =                                 \
+        ::dev::eth::PrecompiledRegistrar::registerPricer(                                        \
+            #Name, &__eth_registerPricerFunction##Name );                                        \
     static bigint __eth_registerPricerFunction##Name
 
 static constexpr size_t FILE_MAX_SIZE = 100000000;
