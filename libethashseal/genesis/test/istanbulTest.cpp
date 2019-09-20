@@ -5,7 +5,7 @@
 #include "../../GenesisInfo.h"
 
 static std::string const c_genesisInfoIstanbulTest = std::string() +
-R"E(
+                                                     R"E(
 {
     "sealEngine": "Ethash",
     "params": {
