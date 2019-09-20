@@ -203,7 +203,7 @@ set< eth::Network > const& getNetworks() {
     static set< eth::Network > const networks{
         {eth::Network::FrontierTest, eth::Network::HomesteadTest, eth::Network::EIP150Test,
             eth::Network::EIP158Test, eth::Network::ByzantiumTest, eth::Network::ConstantinopleTest,
-            eth::Network::ConstantinopleFixTest}};
+            eth::Network::ConstantinopleFixTest, eth::Network::IstanbulTest}};
     return networks;
 }
 
@@ -588,6 +588,51 @@ void requireJsonFields( json_spirit::mObject const& _o, string const& _section,
 
 string prepareVersionString() {
     return string{"testeth "} + skale_get_buildinfo()->project_version;
+}
+
+// A simple C++ implementation of the Levenshtein distance algorithm to measure the amount of
+// difference between two strings. https://gist.github.com/TheRayTracer/2644387
+size_t levenshteinDistance( char const* _s, size_t _n, char const* _t, size_t _m ) {
+    ++_n;
+    ++_m;
+    size_t* d = new size_t[_n * _m];
+
+    memset( d, 0, sizeof( size_t ) * _n * _m );
+    for ( size_t i = 1, im = 0; i < _m; ++i, ++im ) {
+        for ( size_t j = 1, jn = 0; j < _n; ++j, ++jn ) {
+            if ( _s[jn] == _t[im] )
+                d[( i * _n ) + j] = d[( ( i - 1 ) * _n ) + ( j - 1 )];
+            else {
+                d[( i * _n ) + j] = min( d[( i - 1 ) * _n + j] + 1, /* A deletion. */
+                    min( d[i * _n + ( j - 1 )] + 1,                 /* An insertion. */
+                        d[( i - 1 ) * _n + ( j - 1 )] + 1 ) );      /* A substitution. */
+            }
+        }
+    }
+
+    size_t r = d[_n * _m - 1];
+    delete[] d;
+    return r;
+}
+
+std::vector< std::string > testSuggestions(
+    vector< string > const& _testList, std::string const& _sMinusTArg ) {
+    vector< string > ret;
+    size_t allTestsElementIndex = 0;
+    // <index in availableTests, compared distance>
+    typedef std::pair< size_t, size_t > NameDistance;
+    // Use `vector` here because `set` does not work with sort
+    std::vector< NameDistance > distanceMap;
+    for ( auto& it : _testList ) {
+        int const dist = test::levenshteinDistance(
+            _sMinusTArg.c_str(), _sMinusTArg.size(), it.c_str(), it.size() );
+        distanceMap.emplace_back( allTestsElementIndex++, dist );
+    }
+    std::sort( distanceMap.begin(), distanceMap.end(),
+        []( NameDistance const& _a, NameDistance const& _b ) { return _a.second < _b.second; } );
+    for ( size_t i = 0; i < 3 && i < distanceMap.size(); i++ )
+        ret.push_back( _testList[distanceMap[i].first] );
+    return ret;
 }
 
 string prepareLLLCVersionString() {
