@@ -28,7 +28,8 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
-#include <libdevcore/Terminal.h>
+
+#include <skutils/console_colors.h>
 
 using namespace std;
 using namespace dev;
@@ -105,9 +106,9 @@ std::string formatBalance( bigint const& _b ) {
 }
 
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {
-    string const c_line = EthReset EthOnMaroon + string( 80, ' ' ) + EthReset;
-    string const c_border = EthReset EthOnMaroon + string( 2, ' ' ) + EthReset EthMaroonBold;
-    string const c_space = c_border + string( 76, ' ' ) + c_border + EthReset;
+    string const c_line = cc::debug( string( 80, ' ' ) );
+    string const c_border = cc::debug( string( 2, ' ' ) );
+    string const c_space = cc::debug( string( 76, ' ' ) ) + c_border;
     stringstream ss;
     ss << c_line << "\n";
     ss << c_space << "\n";

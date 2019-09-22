@@ -79,6 +79,8 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -181,7 +183,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }  // namespace
 
 int main( int argc, char** argv ) try {
-    cc::_on_ = true;
+    cc::_on_ = false;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -357,6 +359,8 @@ int main( int argc, char** argv ) try {
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
+    addGeneralOption( "colors", "Use ANSI colorized output and logging" );
+    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -391,6 +395,11 @@ int main( int argc, char** argv ) try {
             cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
             return -1;
         }
+
+    if ( vm.count( "no-colors" ) )
+        cc::_on_ = false;
+    if ( vm.count( "colors" ) )
+        cc::_on_ = true;
 
     // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
     skutils::dispatch::default_domain( 48 );
@@ -640,7 +649,7 @@ int main( int argc, char** argv ) try {
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     if ( loggingOptions.verbosity > 0 )
-        cout << EthGrayBold "skaled, a C++ Skale client" EthReset << "\n";
+        cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
     m.execute();
 
