@@ -21,7 +21,7 @@
 
 #include "CommonIO.h"
 #include "FixedHash.h"
-#include "Terminal.h"
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -29,6 +29,8 @@
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
+
+#include <skutils/console_colors.h>
 
 namespace dev {
 
@@ -136,93 +138,122 @@ inline Logger createLogger( int _severity, std::string const& _channel ) {
 // overload resolution.
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, bigint const& _value ) {
-    _strm.stream() << EthNavy << _value << EthReset;
+    std::stringstream ss;
+    ss << _value;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, bigint& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u256 const& _value ) {
-    _strm.stream() << EthNavy << _value << EthReset;
+    std::stringstream ss;
+    ss << _value;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u256& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u160 const& _value ) {
-    _strm.stream() << EthNavy << _value << EthReset;
+    std::stringstream ss;
+    ss << _value;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u160& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 template < unsigned N >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, FixedHash< N > const& _value ) {
-    _strm.stream() << EthTeal "#" << _value.abridged() << EthReset;
+    std::stringstream ss;
+    ss << _value.abridged();
+    _strm.stream() << cc::warn( "#" ) << cc::info( ss.str() );
     return _strm;
 }
 template < unsigned N >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, FixedHash< N >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h160 const& _value ) {
-    _strm.stream() << EthRed "@" << _value.abridged() << EthReset;
+    std::stringstream ss;
+    ss << _value.abridged();
+    _strm.stream() << cc::warn( "#" ) << cc::error( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h160& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::error( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h256 const& _value ) {
-    _strm.stream() << EthCyan "#" << _value.abridged() << EthReset;
+    std::stringstream ss;
+    ss << _value.abridged();
+    _strm.stream() << cc::warn( "#" ) << cc::found( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h256& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::found( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h512 const& _value ) {
-    _strm.stream() << EthTeal "##" << _value.abridged() << EthReset;
+    std::stringstream ss;
+    ss << _value.abridged();
+    _strm.stream() << cc::warn( "##" ) << cc::found( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h512& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::found( ss.str() );
     return _strm;
 }
 
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, bytesConstRef _value ) {
-    _strm.stream() << EthYellow "%" << toHex( _value ) << EthReset;
+    _strm.stream() << cc::binary_table(
+        ( const void* ) ( void* ) _value.begin(), size_t( _value.size() ) );
     return _strm;
 }
 }  // namespace dev
@@ -234,135 +265,169 @@ namespace boost {
 namespace log {
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, dev::bytes const& _value ) {
-    _strm.stream() << EthYellow "%" << dev::toHex( _value ) << EthReset;
+    _strm.stream() << cc::warn( "%" ) << cc::c( dev::toHex( _value ) );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, dev::bytes& _value ) {
-    auto const& constValue = _value;
-    _strm << constValue;
+    _strm.stream() << cc::binary_table(
+        ( const void* ) ( void* ) _value.data(), size_t( _value.size() ) );
     return _strm;
 }
 
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::vector< T > const& _value ) {
-    _strm.stream() << EthWhite "[" EthReset;
+    _strm.stream() << cc::attention( "[" );
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? EthWhite ", " EthReset : "" );
-        _strm << i;
+        _strm.stream() << ( n++ ? ( cc::debug( ", " ) ) : std::string( "" ) );
+        std::stringstream ss;
+        ss << i;
+        _strm << cc::notice( ss.str() );
     }
-    _strm.stream() << EthWhite "]" EthReset;
+    _strm.stream() << cc::attention( "]" );
     return _strm;
 }
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::vector< T >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::set< T > const& _value ) {
-    _strm.stream() << EthYellow "{" EthReset;
+    _strm.stream() << cc::attention( "{" );
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? EthYellow ", " EthReset : "" );
-        _strm << i;
+        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        std::stringstream ss;
+        ss << i;
+        _strm << cc::notice( ss.str() );
     }
-    _strm.stream() << EthYellow "}" EthReset;
+    _strm.stream() << cc::attention( "}" );
     return _strm;
 }
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::set< T >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_set< T > const& _value ) {
-    _strm.stream() << EthYellow "{" EthReset;
+    _strm.stream() << cc::attention( "{" );
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? EthYellow ", " EthReset : "" );
-        _strm << i;
+        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        std::stringstream ss;
+        ss << i;
+        _strm << cc::notice( ss.str() );
     }
-    _strm.stream() << EthYellow "}" EthReset;
+    _strm.stream() << cc::attention( "}" );
     return _strm;
 }
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_set< T >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::map< T, U > const& _value ) {
-    _strm.stream() << EthLime "{" EthReset;
+    _strm.stream() << cc::attention( "{" );
     int n = 0;
     for ( auto const& i : _value ) {
-        _strm << ( n++ ? EthLime ", " EthReset : "" );
-        _strm << i.first;
-        _strm << ( n++ ? EthLime ": " EthReset : "" );
-        _strm << i.second;
+        _strm << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        {  // block
+            std::stringstream ss;
+            ss << i.first;
+            _strm << cc::notice( ss.str() );
+        }  // block
+        _strm << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        {  // block
+            std::stringstream ss;
+            ss << i.second;
+            _strm << cc::notice( ss.str() );
+        }  // block
     }
-    _strm.stream() << EthLime "}" EthReset;
+    _strm.stream() << cc::attention( "}" );
     return _strm;
 }
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::map< T, U >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm << cc::info( ss.str() );
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_map< T, U > const& _value ) {
-    _strm << EthLime "{" EthReset;
+    _strm << cc::attention( "{" );
     int n = 0;
     for ( auto const& i : _value ) {
-        _strm.stream() << ( n++ ? EthLime ", " EthReset : "" );
-        _strm << i.first;
-        _strm.stream() << ( n++ ? EthLime ": " EthReset : "" );
-        _strm << i.second;
+        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        {  // block
+            std::stringstream ss;
+            ss << i.first;
+            _strm << cc::notice( ss.str() );
+        }  // block
+        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        {  // block
+            std::stringstream ss;
+            ss << i.second;
+            _strm << cc::notice( ss.str() );
+        }  // block
     }
-    _strm << EthLime "}" EthReset;
+    _strm << cc::attention( "}" );
     return _strm;
 }
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_map< T, U >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::pair< T, U > const& _value ) {
-    _strm.stream() << EthPurple "(" EthReset;
+    _strm.stream() << cc::attention( "(" );
     _strm << _value.first;
-    _strm.stream() << EthPurple ", " EthReset;
+    _strm.stream() << cc::debug( ", " );
     _strm << _value.second;
-    _strm.stream() << EthPurple ")" EthReset;
+    _strm.stream() << cc::attention( ")" );
     return _strm;
 }
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::pair< T, U >& _value ) {
     auto const& constValue = _value;
-    _strm << constValue;
+    std::stringstream ss;
+    ss << constValue;
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 }  // namespace log

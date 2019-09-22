@@ -39,6 +39,8 @@
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 
+#include <skutils/console_colors.h>
+
 #include <memory>
 #include <thread>
 
@@ -103,11 +105,29 @@ void setupLogging( LoggingOptions const& _options ) {
     } );
 
     namespace expr = boost::log::expressions;
+    std::string strTimeStamp;
+    {  // block
+        std::stringstream ss;
+        ss << expr::format_date_time( timestamp, "%Y-%m-%d %H:%M:%S" );
+        strTimeStamp = ss.str();
+    }  // block
+    std::string strThreadName;
+    {  // block
+        std::stringstream ss;
+        ss << threadName;
+        strThreadName = ss.str();
+    }  // block
+    std::string strChannel;
+    {  // block
+        std::stringstream ss;
+        ss << channel;
+        strChannel = ss.str();
+    }  // block
     sink->set_formatter( expr::stream
-                         << EthViolet << expr::format_date_time( timestamp, "%Y-%m-%d %H:%M:%S" )
-                         << EthReset " " EthNavy << threadName << EthReset " " << channel
+                         << cc::notice( strTimeStamp ) << " " << cc::info( strThreadName ) << " "
+                         << cc::warn( strChannel )
                          << expr::if_( expr::has_attr(
-                                context ) )[expr::stream << " " EthNavy << context << EthReset]
+                                context ) )[expr::stream << " " << cc::warn( strChannel )]
                          << " " << expr::smessage );
 
     boost::log::core::get()->add_sink( sink );
