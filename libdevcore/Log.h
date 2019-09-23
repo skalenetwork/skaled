@@ -279,12 +279,18 @@ template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::vector< T > const& _value ) {
     _strm.stream() << cc::attention( "[" );
+    size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
         _strm.stream() << ( n++ ? ( cc::debug( ", " ) ) : std::string( "" ) );
         std::stringstream ss;
         ss << i;
         _strm << cc::notice( ss.str() );
+        if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
+            _strm << cc::trimmed_str( _value.size() );
+            break;
+        }
+        ++idxWalk;
     }
     _strm.stream() << cc::attention( "]" );
     return _strm;
@@ -303,12 +309,18 @@ template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::set< T > const& _value ) {
     _strm.stream() << cc::attention( "{" );
+    size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
         _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
         std::stringstream ss;
         ss << i;
         _strm << cc::notice( ss.str() );
+        if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
+            _strm << cc::trimmed_str( _value.size() );
+            break;
+        }
+        ++idxWalk;
     }
     _strm.stream() << cc::attention( "}" );
     return _strm;
@@ -327,12 +339,18 @@ template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_set< T > const& _value ) {
     _strm.stream() << cc::attention( "{" );
+    size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
         _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
         std::stringstream ss;
         ss << i;
         _strm << cc::notice( ss.str() );
+        if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
+            _strm << cc::trimmed_str( _value.size() );
+            break;
+        }
+        ++idxWalk;
     }
     _strm.stream() << cc::attention( "}" );
     return _strm;
