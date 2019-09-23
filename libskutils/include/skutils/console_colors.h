@@ -16,6 +16,10 @@
 #include <skutils/url.h>
 
 namespace cc {
+
+typedef std::chrono::system_clock default_clock_t;
+// typedef std::chrono::high_resolution_clock default_clock_t;
+
 enum class e_reset_mode_t {
     __ERM_COLORS,
     __ERM_ZERO,
@@ -428,8 +432,7 @@ extern const char* dpart();
 extern const char* tpart();
 extern const char* tfrac();
 extern bool string2time( const char* s, std::tm& aTm, uint64_t& nMicroSeconds );
-extern bool string2time(
-    const std::string& timeStr, std::chrono::high_resolution_clock::time_point& ptTime );
+extern bool string2time( const std::string& timeStr, default_clock_t::time_point& ptTime );
 extern bool string2duration( const std::string& s, std::chrono::duration< uint64_t >& outDuration,
     const std::chrono::hours& hours = std::chrono::hours::zero(),
     const std::chrono::minutes& minutes = std::chrono::minutes::zero(),
@@ -438,8 +441,8 @@ extern std::string duration2string( std::chrono::nanoseconds time );
 extern std::string time2string(
     std::time_t tt, uint64_t nMicroSeconds, bool isUTC = false, bool isColored = true );
 extern std::string time2string( const std::tm& aTm, uint64_t nMicroSeconds, bool isColored = true );
-extern std::string time2string( const std::chrono::high_resolution_clock::time_point& ptTime,
-    bool isUTC = false, bool isDaysInsteadOfYMD = false, bool isColored = true );
+extern std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC = false,
+    bool isDaysInsteadOfYMD = false, bool isColored = true );
 extern std::string now2string(
     bool isUTC = false, bool isDaysInsteadOfYMD = false, bool isColored = true );
 extern std::string jsNow2string( bool isUTC = true );
@@ -493,8 +496,8 @@ inline std::string c( const double& x ) {
 inline std::string c( const nlohmann::json& x, const int indent = -1 ) {
     return json( x, ( indent >= 0 ) ? indent : _default_json_indent_ );
 }
-inline std::string c( const std::chrono::high_resolution_clock::time_point& x, bool isUTC = false,
-    bool isDaysInsteadOfYMD = false ) {
+inline std::string c(
+    const default_clock_t::time_point& x, bool isUTC = false, bool isDaysInsteadOfYMD = false ) {
     return time2string( x, isUTC, isDaysInsteadOfYMD );
 }
 extern volatile bool g_bEnableJsonColorization;
