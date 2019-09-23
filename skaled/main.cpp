@@ -184,6 +184,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
+    cc::_max_value_size_ = 1024;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -360,6 +361,9 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
+    addGeneralOption( "log-value-size-limit",
+        po::value< size_t >()->value_name( "<size in bytes>" ),
+        "Log value size limit(zero means unlimited)" );
     addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
@@ -400,6 +404,10 @@ int main( int argc, char** argv ) try {
         cc::_on_ = false;
     if ( vm.count( "colors" ) )
         cc::_on_ = true;
+    if ( vm.count( "log-value-size-limit" ) ) {
+        int n = vm["log-value-size-limit"].as< size_t >();
+        cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+    }
 
     // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
     skutils::dispatch::default_domain( 48 );
