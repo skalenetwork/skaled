@@ -50,7 +50,6 @@ std::string reset_mode_2_str( e_reset_mode_t eResetMode ) {
     }  // switch( eResetMode )
 }
 
-size_t g_nJsonStringValueOutputSizeLimit = 0;
 namespace control {
 namespace attribute {
 const char _console_[] = CC_CONSOLE_COLOR_DEFAULT;
@@ -99,6 +98,7 @@ const char _light_white_[] = CC_BACKCOLOR( 107 );
 
 bool volatile _on_ = false;
 volatile int _default_json_indent_ = -1;
+volatile size_t _max_value_size_ = std::string::npos;  // std::string::npos means unlimited
 
 std::string tune( attribute a, color f, color b ) {  // l_sergiy: does not work well, especially
                                                      // with resetting colors
@@ -520,14 +520,19 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
             new_indent += indent_step;
             os << "\n";
         }
+        size_t idxWalk = 0;
         auto b = jo.cbegin(), e = jo.cend();
-        for ( auto i = b; i != e; ++i ) {
+        for ( auto i = b; i != e; ++i, ++idxWalk ) {
             if ( i != b )
                 os << json_prefix_comma() << ( pretty_print ? ",\n" : "," ) << reset();
             os << reset() << std::string( new_indent, ' ' ) << json_prefix_member_name() << "\""
                << json_escape_string( i.key().c_str() ) << "\"" << reset()
                << json_prefix_double_colon() << ":" << ( pretty_print ? " " : "" ) << reset();
             json_internal( i.value(), os, pretty_print, indent_step, new_indent );
+            if ( _max_value_size_ != std::string::npos && idxWalk > _max_value_size_ ) {
+                os << cc::trimmed_str( jo.size() );
+                break;
+            }
         }
         if ( pretty_print ) {  // decrease indentation
             new_indent -= indent_step;
@@ -547,12 +552,17 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
             new_indent += indent_step;
             os << reset() << "\n";
         }
+        size_t idxWalk = 0;
         auto b = jo.cbegin(), e = jo.cend();
-        for ( auto i = b; i != e; ++i ) {
+        for ( auto i = b; i != e; ++i, ++idxWalk ) {
             if ( i != b )
                 os << json_prefix_comma() << ( pretty_print ? ",\n" : "," ) << reset();
             os << reset() << std::string( new_indent, ' ' );
             json_internal( *i, os, pretty_print, indent_step, new_indent );
+            if ( _max_value_size_ != std::string::npos && idxWalk > _max_value_size_ ) {
+                os << cc::trimmed_str( jo.size() );
+                break;
+            }
         }
         if ( pretty_print ) {  // decrease indentation
             new_indent -= indent_step;
@@ -562,10 +572,13 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
         return;
     }
     case nlohmann::json::value_t::string: {
-        std::string strValue = jo.get< std::string >();
-        if ( g_nJsonStringValueOutputSizeLimit > 0 ) {
-            if ( strValue.length() > g_nJsonStringValueOutputSizeLimit )
-                strValue = strValue.substr( 0, g_nJsonStringValueOutputSizeLimit ) + "...";
+        std::string strValue = jo.get< std::string >(), strTrimmedMarker;
+        if ( _max_value_size_ != std::string::npos ) {
+            size_t cntOriginal = strValue.length();
+            if ( cntOriginal > _max_value_size_ ) {
+                strValue = strValue.substr( 0, _max_value_size_ ) + "...";
+                strTrimmedMarker = cc::trimmed_str( cntOriginal );
+            }
         }
         strValue = json_escape_string( strValue );
         std::string s2;
@@ -575,7 +588,7 @@ static void json_internal( const nlohmann::json& jo, std::ostream& os, const boo
             strValue = s2;  // yes, it's e-mail
         else if ( p( s2, strValue, false ) )
             strValue = s2;  // yes, it's path
-        os << stc << std::string( "\"" ) << strValue << "\"" << reset();
+        os << stc << std::string( "\"" ) << strValue << strTrimmedMarker << "\"" << reset();
         return;
     }
     case nlohmann::json::value_t::boolean: {
@@ -1698,6 +1711,13 @@ std::string empty_str() {  // "empty"
 std::string null_str() {  // "null"
     return std::string( error() ) + "null" + std::string( reset() );
 }
+std::string trimmed_str( size_t cnt, size_t cntOriginal ) {  // "trimmed_str"
+    return cc::error( "<value trimmed from " ) + cc::num10( uint64_t( cntOriginal ) ) +
+           cc::error( " to " ) + cc::num10( uint64_t( cnt ) ) + cc::error( " bytes>" );
+}
+std::string trimmed_str( size_t cntOriginal ) {
+    return cc::trimmed_str( cc::_max_value_size_, cntOriginal );
+}
 
 std::string binary_singleline( const void* pBinary, size_t cnt,
     size_t cntAlign,          // = 16
@@ -1706,6 +1726,9 @@ std::string binary_singleline( const void* pBinary, size_t cnt,
 ) {
     if ( pBinary == nullptr )
         return null_str();
+    size_t cntOriginal = cnt;
+    if ( _max_value_size_ != std::string::npos && cnt > _max_value_size_ )
+        cnt = _max_value_size_;
     std::stringstream ss;
     const uint8_t* p = ( const uint8_t* ) pBinary;
     size_t i;
@@ -1720,6 +1743,8 @@ std::string binary_singleline( const void* pBinary, size_t cnt,
             ss << strSeparator;
         ss << chrEmptyPosition << chrEmptyPosition;
     }
+    if ( cnt != cntOriginal )
+        ss << cc::trimmed_str( cntOriginal );
     return ss.str();
 }
 std::string binary_singleline( const std::string& strBinaryBuffer,
@@ -1758,6 +1783,9 @@ std::string binary_singleline_ascii( const void* pBinary, size_t cnt,
 ) {
     if ( pBinary == nullptr )
         return null_str();
+    size_t cntOriginal = cnt;
+    if ( _max_value_size_ != std::string::npos && cnt > _max_value_size_ )
+        cnt = _max_value_size_;
     std::stringstream ss;
     const uint8_t* p = ( const uint8_t* ) pBinary;
     size_t i;
@@ -1776,6 +1804,8 @@ std::string binary_singleline_ascii( const void* pBinary, size_t cnt,
             ss << strSeparator;
         ss << chrEmptyPosition;
     }
+    if ( cnt != cntOriginal )
+        ss << cc::trimmed_str( cntOriginal );
     return ss.str();
 }
 std::string binary_singleline_ascii( const std::string& strBinaryBuffer,
@@ -1807,6 +1837,9 @@ std::string binary_table( const void* pBinary, size_t cnt,
 ) {
     if ( pBinary == nullptr )
         return null_str();
+    size_t cntOriginal = cnt;
+    if ( _max_value_size_ != std::string::npos && cnt > _max_value_size_ )
+        cnt = _max_value_size_;
     std::stringstream ss;
     const uint8_t* p = ( const uint8_t* ) pBinary;
     size_t i, stepRow = ( cntPerRow > 0 ) ? cntPerRow : 16;
@@ -1831,6 +1864,8 @@ std::string binary_table( const void* pBinary, size_t cnt,
         if ( strRowSuffix != nullptr && strRowSuffix[0] != '\0' )
             ss << strRowSuffix;
     }
+    if ( cnt != cntOriginal )
+        ss << cc::trimmed_str( cntOriginal );
     return ss.str();
 }
 std::string binary_table( const std::string& strBinaryBuffer,

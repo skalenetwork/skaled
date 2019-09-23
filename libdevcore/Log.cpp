@@ -128,8 +128,9 @@ void setupLogging( LoggingOptions const& _options ) {
     boost::log::core::get()->add_sink( sink );
     boost::log::core::get()->add_global_attribute(
         "ThreadName", boost::log::attributes::make_function( &getThreadName ) );
-    boost::log::core::get()->add_global_attribute( "TimeStamp",
-        boost::log::attributes::make_function( []() -> std::string { return cc::now2string(); } ) );
+    boost::log::core::get()->add_global_attribute(
+        "TimeStamp", boost::log::attributes::make_function(
+                         []() -> std::string { return cc::now2string( true ); } ) );
 
     boost::log::core::get()->set_exception_handler(
         boost::log::make_exception_handler< std::exception >( []( std::exception const& _ex ) {
