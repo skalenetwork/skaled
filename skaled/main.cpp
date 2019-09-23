@@ -652,7 +652,8 @@ int main( int argc, char** argv ) try {
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     snapshotManager.reset( new SnapshotManager(
-        getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+        getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
+                          "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
     if ( vm.count( "download-snapshot" ) ) {
         try {
@@ -675,25 +676,30 @@ int main( int argc, char** argv ) try {
             std::string strURLWeb3 = vm["download-snapshot"].as< string >();
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
-                      << "\n";
-            std::cout << cc::normal( "Will download snapshot to " ) << cc::info( saveTo.native() )
-                      << "\n";
+                      << cc::normal( " to " ) << cc::info( saveTo.native() ) << std::endl;
             bool isBinaryDownload = false;
 
             unsigned block_number;
             {
                 skutils::rest::client cli;
+                if ( !cli.open( strURLWeb3 ) ) {
+                    // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+                    return -1;
+                }
+
                 nlohmann::json joIn = nlohmann::json::object();
                 joIn["jsonrpc"] = "2.0";
                 joIn["method"] = "eth_blockNumber";
                 joIn["params"] = nlohmann::json::object();
                 skutils::rest::data_t d = cli.call( joIn );
                 if ( d.empty() ) {
-                    std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                    std::cout << cc::fatal( "Snapshot download failed - cannot get bockNumber" )
+                              << "\n";
                     return -1;
                 }
                 // TODO catch?
-                block_number = nlohmann::json::parse( d.s_ )["result"].get< unsigned >();
+                block_number = dev::eth::jsToBlockNumber(
+                    nlohmann::json::parse( d.s_ )["result"].get< string >() );
                 block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
             }
 
@@ -711,14 +717,31 @@ int main( int argc, char** argv ) try {
                 std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
                 return -1;
             }
-            std::cout << cc::success( "Snapshot download success" ) << "\n";
+            std::cout << cc::success( "Snapshot download success for block " )
+                      << cc::u( to_string( block_number ) ) << std::endl;
 
             snapshotManager->importDiff( block_number, saveTo );
+
+            // HACK refactor this shit!
+            fs::path price_db_path;
+            for ( auto& f : fs::directory_iterator() ) {
+                if ( f.path().string().find( "prices_" ) != string::npos ) {
+                    price_db_path = f.path();
+                    break;
+                }  // if
+            }
+            if ( price_db_path.empty() ) {
+                std::cout << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
+                return -1;
+            }
+            // TODO hope it won't throw
+            fs::rename( price_db_path, price_db_path.parent_path() /
+                                           ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+            //// HACK END ////
+
             snapshotManager->restoreSnapshot( block_number );
 
             fs::remove( saveTo );
-
-            return 0;
         } catch ( const std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " Exception while downloading snapshot: " )
@@ -728,7 +751,6 @@ int main( int argc, char** argv ) try {
                       << cc::error( " Exception while downloading snapshot: " )
                       << cc::warn( "Unknown exception" ) << "\n";
         }
-        return -1;
     }
 
     // it was needed for snapshot downloading

@@ -55,7 +55,7 @@ const char* btrfs_last_cmd(){
 
 
 int btrfs_present(const char* path){
-    const char fmt[] = "btrfs subvolume show %s";
+    const char fmt[] = "btrfs filesystem df %s";
 
     int len = 1 + snprintf(NULL, 0, fmt, path);
 
@@ -66,7 +66,7 @@ int btrfs_present(const char* path){
     int res = shell_call(cmd);
     free(cmd);
 
-    if(strstr(btrfs_strerror(), "Not a Btrfs") == NULL)
+    if(strstr(btrfs_strerror(), "not a btrfs") == NULL)
         return 0;
 
     return res;
