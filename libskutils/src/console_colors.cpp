@@ -1713,7 +1713,7 @@ std::string null_str() {  // "null"
 }
 std::string trimmed_str( size_t cnt, size_t cntOriginal ) {  // "trimmed_str"
     return cc::error( "<value trimmed from " ) + cc::num10( uint64_t( cntOriginal ) ) +
-           cc::error( " to " ) + cc::num10( uint64_t( cnt ) ) + cc::error( " bytes>" );
+           cc::error( " to " ) + cc::num10( uint64_t( cnt ) ) + cc::error( ">" );
 }
 std::string trimmed_str( size_t cntOriginal ) {
     return cc::trimmed_str( cc::_max_value_size_, cntOriginal );
