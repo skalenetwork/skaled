@@ -36,6 +36,8 @@
 
 #include <libdevcore/microprofile.h>
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -237,7 +239,7 @@ bool Client::isMajorSyncing() const {
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    LOG( m_loggerDetail ) << "startedWorking()";
+    LOG( m_loggerDetail ) << cc::debug( "startedWorking()" );
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
@@ -461,8 +463,9 @@ size_t Client::syncTransactions(
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
 
-    ctrace << "Processed " << newPendingReceipts.size() << " transactions in"
-           << ( timer.elapsed() * 1000 ) << "(" << ( bool ) m_syncTransactionQueue << ")";
+    ctrace << cc::debug( "Processed " ) << cc::num10( uint64_t( newPendingReceipts.size() ) )
+           << cc::debug( " transactions in " ) << cc::num10( uint64_t( timer.elapsed() * 1000 ) )
+           << cc::debug( "(" ) << ( bool ) m_syncTransactionQueue << cc::debug( ")" );
 
     return goodReceipts;
 }
@@ -470,11 +473,11 @@ size_t Client::syncTransactions(
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     // insert transactions that we are declaring the dead part of the chain
     for ( auto const& h : _blocks ) {
-        LOG( m_loggerDetail ) << "Dead block: " << h;
+        LOG( m_loggerDetail ) << cc::warn( "Dead block: " ) << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            LOG( m_loggerDetail ) << "Resubmitting dead-block transaction "
+            LOG( m_loggerDetail ) << cc::debug( "Resubmitting dead-block transaction " )
                                   << Transaction( t, CheckTransaction::None );
-            ctrace << "Resubmitting dead-block transaction "
+            ctrace << cc::debug( "Resubmitting dead-block transaction " )
                    << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
@@ -489,7 +492,7 @@ void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 
     // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
     for ( auto const& h : _blocks )
-        LOG( m_loggerDetail ) << "Live block: " << h;
+        LOG( m_loggerDetail ) << cc::debug( "Live block: " ) << h;
 
     m_skaleHost->noteNewBlocks();
 
@@ -580,7 +583,7 @@ bool Client::remoteActive() const {
 }
 
 void Client::onPostStateChanged() {
-    LOG( m_loggerDetail ) << "Post state changed.";
+    LOG( m_loggerDetail ) << cc::notice( "Post state changed." );
     m_signalled.notify_all();
     m_remoteWorking = false;
 }
@@ -588,12 +591,12 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_logger ) << "Mining Beneficiary: " << author();
+    LOG( m_logger ) << cc::notice( "Mining Beneficiary: " ) << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
     } else
-        LOG( m_logger ) << "You need to set an author in order to seal!";
+        LOG( m_logger ) << cc::warn( "You need to set an author in order to seal!" );
 }
 
 void Client::rejigSealing() {
@@ -601,14 +604,15 @@ void Client::rejigSealing() {
         if ( sealEngine()->shouldSeal( this ) ) {
             m_wouldButShouldnot = false;
 
-            LOG( m_loggerDetail ) << "Rejigging seal engine...";
+            LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
             DEV_WRITE_GUARDED( x_working ) {
                 if ( m_working.isSealed() ) {
-                    LOG( m_logger ) << "Tried to seal sealed block...";
+                    LOG( m_logger ) << cc::notice( "Tried to seal sealed block..." );
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerDetail ) << "Starting to seal block #" << m_working.info().number();
+                LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " "
+                                      << cc::warn( "#" ) << cc::num10( m_working.info().number() );
                 m_working.commitToSeal( bc(), m_extraData );
             }
             DEV_READ_GUARDED( x_working ) {
@@ -619,15 +623,15 @@ void Client::rejigSealing() {
 
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
-                    LOG( m_logger )
-                        << "Block sealed #" << BlockHeader( _header, HeaderData ).number();
+                    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
+                                    << cc::num10( BlockHeader( _header, HeaderData ).number() );
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
-                        LOG( m_logger ) << "Submitting block failed...";
+                        LOG( m_logger ) << cc::error( "Submitting block failed..." );
                 } );
-                ctrace << "Generating seal on " << m_sealingInfo.hash( WithoutSeal ) << " #"
-                       << m_sealingInfo.number();
+                ctrace << cc::notice( "Generating seal on " ) << m_sealingInfo.hash( WithoutSeal )
+                       << " " << cc::warn( "#" ) << cc::num10( m_sealingInfo.number() );
                 sealEngine()->generateSeal( m_sealingInfo );
             }
         } else
@@ -640,14 +644,15 @@ void Client::rejigSealing() {
 void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_wouldButShouldnot = false;
 
-    LOG( m_loggerDetail ) << "Rejigging seal engine...";
+    LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
     DEV_WRITE_GUARDED( x_working ) {
         if ( m_working.isSealed() ) {
-            LOG( m_logger ) << "Tried to seal sealed block...";
+            LOG( m_logger ) << cc::notice( "Tried to seal sealed block..." );
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerDetail ) << "Starting to seal block #" << m_working.info().number();
+        LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
+                              << cc::num10( m_working.info().number() );
         m_working.commitToSeal( bc(), m_extraData );
     }
     DEV_READ_GUARDED( x_working ) {
@@ -661,12 +666,13 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     RLPStream headerRlp;
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
-    LOG( m_logger ) << "Block sealed #" << BlockHeader( header, HeaderData ).number();
+    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
+                    << cc::num10( BlockHeader( header, HeaderData ).number() );
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
         else
-            LOG( m_logger ) << "Submitting block failed...";
+            LOG( m_logger ) << cc::error( "Submitting block failed..." );
     } else {
         UpgradableGuard l( x_working );
         {
@@ -674,7 +680,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             if ( m_working.sealBlock( header ) ) {
                 m_onBlockSealed( header );
             } else {
-                LOG( m_logger ) << "Sealing block failed...";
+                LOG( m_logger ) << cc::error( "Sealing block failed..." );
             }
         }
         DEV_WRITE_GUARDED( x_postSeal )
@@ -692,7 +698,7 @@ void Client::importWorkingBlock() {
 void Client::noteChanged( h256Hash const& _filters ) {
     Guard l( x_filtersWatches );
     if ( _filters.size() )
-        LOG( m_loggerWatch ) << "noteChanged: " << filtersToString( _filters );
+        LOG( m_loggerWatch ) << cc::notice( "noteChanged: " ) << filtersToString( _filters );
     // accrue all changes left in each filter into the watches.
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {

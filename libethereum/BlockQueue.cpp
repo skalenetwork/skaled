@@ -34,6 +34,8 @@
 #include "BlockChain.h"
 #include "VerifiedBlock.h"
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -336,13 +338,13 @@ void BlockQueue::tick() {
         if ( m_future.isEmpty() )
             return;
 
-        LOG( m_logger ) << "Checking past-future blocks...";
+        LOG( m_logger ) << cc::debug( "Checking past-future blocks..." );
 
         time_t t = utcTime();
         if ( t < m_future.firstKey() )
             return;
 
-        LOG( m_logger ) << "Past-future blocks ready.";
+        LOG( m_logger ) << cc::debug( "Past-future blocks ready." );
 
         {
             UpgradeGuard l2( l );
@@ -352,7 +354,8 @@ void BlockQueue::tick() {
                 m_futureSet.erase( hash.first );
         }
     }
-    LOG( m_logger ) << "Importing " << todo.size() << " past-future blocks.";
+    LOG( m_logger ) << cc::debug( "Importing " ) << todo.size()
+                    << cc::debug( " past-future blocks." );
 
     for ( auto const& b : todo )
         import( &b.second );

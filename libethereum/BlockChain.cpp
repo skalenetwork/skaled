@@ -45,6 +45,8 @@
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -271,9 +273,9 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    ctrace << "Opened blockchain DB. Latest: " << currentHash()
-           << ( lastMinor == c_minorProtocolVersion ? "(rebuild not needed)" :
-                                                      "*** REBUILD NEEDED ***" );
+    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash()
+           << ( lastMinor == c_minorProtocolVersion ? cc::success( "(rebuild not needed)" ) :
+                                                      cc::warn( "*** REBUILD NEEDED ***" ) );
 
     return lastMinor;
 }
@@ -875,23 +877,26 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             isImportedAndBest = true;
         }
 
-        LOG( m_logger ) << "   Imported and best " << _totalDifficulty << " (#"
-                        << _block.info.number() << "). Has "
+        LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty
+                        << cc::debug( " (" ) << cc::warn( "#" ) << cc::num10( _block.info.number() )
+                        << cc::debug( "). Has " )
                         << ( details( _block.info.parentHash() ).children.size() - 1 )
-                        << " siblings. Route: " << route;
+                        << cc::debug( " siblings. Route: " ) << route;
     } else {
-        LOG( m_loggerDetail ) << "   Imported but not best (oTD: "
-                              << details( last ).totalDifficulty << " > TD: " << _totalDifficulty
-                              << "; " << details( last ).number << ".." << _block.info.number()
-                              << ")";
+        LOG( m_loggerDetail ) << cc::debug( "   Imported but not best (oTD: " )
+                              << details( last ).totalDifficulty << cc::debug( " > TD: " )
+                              << _totalDifficulty << cc::debug( "; " )
+                              << cc::num10( details( last ).number ) << cc::debug( ".." )
+                              << _block.info.number() << cc::debug( ")" );
     }
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
         m_blocksDB->commit( std::move( blocksWriteBatch ) );
     } catch ( boost::exception& ex ) {
-        cwarn << "Error writing to blockchain database: " << boost::diagnostic_information( ex );
-        cwarn << "Fail writing to blockchain database. Bombing out.";
+        cwarn << cc::error( "Error writing to blockchain database: " )
+              << cc::warn( boost::diagnostic_information( ex ) );
+        cwarn << cc::error( "Fail writing to blockchain database. Bombing out." );
         exit( -1 );
     }
 
@@ -899,8 +904,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
         m_extrasDB->commit( std::move( extrasWriteBatch ) );
     } catch ( boost::exception& ex ) {
-        cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
-        cwarn << "Fail writing to extras database. Bombing out.";
+        cwarn << cc::error( "Error writing to extras database: " )
+              << cc::warn( boost::diagnostic_information( ex ) );
+        cwarn << cc::error( "Fail writing to extras database. Bombing out." );
         exit( -1 );
     }
 
@@ -974,7 +980,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             fresh.push_back( h );
 
     clog( VerbosityTrace, "BlockChain" )
-        << "Insterted block with " << _block.transactions.size() << " transactions";
+        << cc::debug( "Insterted block with " ) << _block.transactions.size()
+        << cc::debug( " transactions" );
 
     return ImportRoute{dead, fresh, _block.transactions};
 }
@@ -1034,7 +1041,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    cout << "Finding last likely block number..." << endl;
+    cout << cc::debug( "Finding last likely block number..." ) << endl;
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
         cout << " " << m << flush;
@@ -1046,14 +1053,15 @@ void BlockChain::rescue( State const& /*_state*/ ) {
     cout << "  lowest is " << l << endl;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        cout << "Checking validity of " << l << " (" << h << ")..." << flush;
+        cout << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
+             << cc::debug( ")..." ) << flush;
         try {
-            cout << "block..." << flush;
+            cout << cc::debug( "block..." ) << flush;
             BlockHeader bi( block( h ) );
-            cout << "extras..." << flush;
+            cout << cc::debug( "extras..." ) << flush;
             details( h );
-            cout << "state..." << flush;
-            cout << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
+            cout << cc::debug( "state..." ) << flush;
+            cout << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {

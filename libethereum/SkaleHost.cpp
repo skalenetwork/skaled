@@ -49,6 +49,8 @@ using namespace std;
 
 #include <libdevcore/microprofile.h>
 
+#include <skutils/console_colors.h>
+
 using namespace dev;
 using namespace dev::eth;
 
@@ -127,11 +129,11 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_debugLogger ) << "sent_to_consensus = " << total_sent
-                         << " got_from_consensus = " << total_arrived
-                         << " m_transaction_cache = " << m_transaction_cache.size()
-                         << " m_tq = " << m_tq.status().current
-                         << " m_bcast_counter = " << m_bcast_counter;
+    LOG( m_debugLogger ) << cc::debug( "sent_to_consensus = " ) << total_sent
+                         << cc::debug( " got_from_consensus = " ) << total_arrived
+                         << cc::debug( " m_transaction_cache = " ) << m_transaction_cache.size()
+                         << cc::debug( " m_tq = " ) << m_tq.status().current
+                         << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
@@ -253,7 +255,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice ) try {
-    LOG( m_traceLogger ) << "createBlock ID= " << _blockID << std::endl;
+    LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
+                         << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
@@ -270,11 +273,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
         h256 sha = sha3( data );
-        LOG( m_traceLogger ) << "Arrived txn: " << sha << std::endl;
+        LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
 
 #ifdef DEBUG_TX_BALANCE
         if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
-            std::cerr << "createBlock assert" << std::endl;
+            std::cerr << cc::error( "createBlock assert" ) << std::endl;
             //            sleep(200);
             assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
         }
@@ -327,8 +330,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
-    LOG( m_traceLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
-                         << " transactions" << std::endl;
+    LOG( m_traceLogger ) << cc::success( "Successfully imported " ) << n_succeeded
+                         << cc::success( " of " ) << out_txns.size()
+                         << cc::success( " transactions" ) << std::endl;
 
     if ( have_consensus_born )
         this->m_lastBlockWithBornTransactions = _blockID;

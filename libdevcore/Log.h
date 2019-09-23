@@ -222,7 +222,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h256 const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "#" ) << cc::found( ss.str() );
+    _strm.stream() << cc::warn( "#" ) << cc::info( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -230,7 +230,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::found( ss.str() );
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
@@ -238,7 +238,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h512 const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "##" ) << cc::found( ss.str() );
+    _strm.stream() << cc::warn( "##" ) << cc::info( ss.str() );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -246,7 +246,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::found( ss.str() );
+    _strm.stream() << cc::info( ss.str() );
     return _strm;
 }
 
