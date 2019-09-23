@@ -1093,8 +1093,7 @@ bool string2time( const char* s, std::tm& aTm, uint64_t& nMicroSeconds ) {
 
 // notice: requires exact time format
 // example: 2018-03-21 20:44:12.977332
-bool string2time(
-    const std::string& timeStr, std::chrono::high_resolution_clock::time_point& ptTime ) {
+bool string2time( const std::string& timeStr, default_clock_t::time_point& ptTime ) {
     std::tm aTm;
     uint64_t ms = 0;
 
@@ -1223,11 +1222,13 @@ std::string time2string( const std::tm& aTm, uint64_t nMicroSeconds, bool isColo
     return s;
 }
 
-template < typename clock_type_t = std::chrono::high_resolution_clock >
+template < typename clock_type_t = default_clock_t >
 inline time_t clock_2_time_t( const typename clock_type_t::time_point& ptTime ) {
 #if ( defined __BUILDING_4_MAC_OS_X__ )
+    // time_t tt =
+    //    std::chrono::time_point_cast< std::chrono::seconds >( ptTime ).time_since_epoch().count();
     time_t tt =
-        std::chrono::time_point_cast< std::chrono::seconds >( ptTime ).time_since_epoch().count();
+        std::chrono::duration_cast< std::chrono::seconds >( ptTime.time_since_epoch() ).count();
     return tt;
 #else   // (defined __BUILDING_4_MAC_OS_X__)
     time_t tt = clock_type_t::to_time_t( ptTime );
@@ -1235,13 +1236,13 @@ inline time_t clock_2_time_t( const typename clock_type_t::time_point& ptTime ) 
 #endif  // (defined __BUILDING_4_MAC_OS_X__)
 }
 
-std::string time2string( const std::chrono::high_resolution_clock::time_point& ptTime, bool isUTC,
+std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC,
     bool isDaysInsteadOfYMD, bool isColored /*= true*/ ) {
     std::stringstream ss;
     typedef std::chrono::duration< int,
         std::ratio_multiply< std::chrono::hours::period, std::ratio< 24 > >::type >
         days;
-    std::chrono::high_resolution_clock::duration tp = ptTime.time_since_epoch();
+    default_clock_t::duration tp = ptTime.time_since_epoch();
     days d = std::chrono::duration_cast< days >( tp );
     tp -= d;
     std::chrono::hours h = std::chrono::duration_cast< std::chrono::hours >( tp );
@@ -1341,8 +1342,7 @@ std::string time2string( const std::chrono::high_resolution_clock::time_point& p
     return s;
 }
 std::string now2string( bool isUTC, bool isDaysInsteadOfYMD, bool isColored /*= true*/ ) {
-    std::chrono::high_resolution_clock::time_point ptTimeNow =
-        std::chrono::high_resolution_clock::now();
+    default_clock_t::time_point ptTimeNow = default_clock_t::now();
     std::string s = time2string( ptTimeNow, isUTC, isDaysInsteadOfYMD, isColored );
     return s;
 }
