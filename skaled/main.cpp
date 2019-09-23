@@ -409,8 +409,8 @@ int main( int argc, char** argv ) try {
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
     }
 
-    // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
-    skutils::dispatch::default_domain( 48 );
+    skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
+    // skutils::dispatch::default_domain( 48 );
 
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
