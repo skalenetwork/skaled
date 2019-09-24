@@ -739,7 +739,7 @@ int main( int argc, char** argv ) try {
                       << cc::u( to_string( block_number ) ) << std::endl;
 
             snapshotManager->importDiff( block_number, saveTo );
-            fs::remove(saveTo);
+            fs::remove( saveTo );
 
             // HACK refactor this shit!
             fs::path price_db_path;
