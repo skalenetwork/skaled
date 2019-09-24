@@ -72,7 +72,7 @@ State::State(
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ) {
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << "Using existing database";
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -99,7 +99,7 @@ skale::OverlayDB State::openDB(
     fs::path state_path = path / fs::path( "state" );
     try {
         std::unique_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
-        clog( VerbosityTrace, "statedb" ) << "Opened state DB.";
+        clog( VerbosityTrace, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         cwarn << boost::diagnostic_information( ex ) << '\n';
@@ -803,7 +803,7 @@ bool State::checkVersion() const {
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
-    _out << "--- Cache ---" << std::endl;
+    _out << cc::debug( "--- Cache ---" ) << std::endl;
     std::set< Address > d;
     for ( auto i : _s.m_cache )
         d.insert( i.first );
@@ -814,11 +814,11 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
         assert( cache );
 
         if ( cache && !cache->isAlive() )
-            _out << "XXX  " << i << std::endl;
+            _out << cc::debug( "XXX  " ) << i << std::endl;
         else {
-            string lead = " +   ";
+            string lead = cc::debug( " +   " );
             if ( cache )
-                lead = " .   ";
+                lead = cc::debug( " .   " );
 
             stringstream contout;
 
@@ -841,9 +841,9 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
 
                 contout << " @:";
                 if ( cache && cache->hasNewCode() )
-                    contout << " $" << toHex( cache->code() );
+                    contout << cc::debug( " $" ) << toHex( cache->code() );
                 else
-                    contout << " $" << ( cache ? cache->codeHash() : dev::h256( 0 ) );
+                    contout << cc::debug( " $" ) << ( cache ? cache->codeHash() : dev::h256( 0 ) );
 
                 for ( auto const& j : mem )
                     if ( j.second )
@@ -855,12 +855,13 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                                 << std::setw( 0 ) << j.second;
                     else
                         contout << std::endl
-                                << "XXX    " << std::hex << nouppercase << std::setw( 64 )
-                                << j.first << "";
+                                << cc::debug( "XXX    " ) << std::hex << nouppercase
+                                << std::setw( 64 ) << j.first << "";
             } else
-                contout << " [SIMPLE]";
-            _out << lead << i << ": " << std::dec << ( cache ? cache->nonce() : u256( 0 ) )
-                 << " #:" << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
+                contout << cc::debug( " [SIMPLE]" );
+            _out << lead << i << cc::debug( ": " ) << std::dec
+                 << ( cache ? cache->nonce() : u256( 0 ) ) << cc::debug( " #:" )
+                 << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
         }
     }
     return _out;
