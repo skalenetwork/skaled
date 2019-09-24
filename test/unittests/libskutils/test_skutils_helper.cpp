@@ -30,7 +30,7 @@ std::string test_log_prefix_reformat(
     for ( size_t i = 0; itWalk != itEnd; ++itWalk, ++i ) {
         strResult += strPrefix;
         if ( i == 0 && isInsertTime ) {
-            strResult += cc::time2string( std::chrono::high_resolution_clock::now(), false );
+            strResult += cc::time2string( cc::default_clock_t::now(), false );
             strResult += " ";
             strResult += cc::debug( "N/A" );  // instead of message class
             strResult += ": ";
