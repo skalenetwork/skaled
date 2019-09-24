@@ -721,10 +721,12 @@ int main( int argc, char** argv ) try {
                       << cc::u( to_string( block_number ) ) << std::endl;
 
             snapshotManager->importDiff( block_number, saveTo );
+            fs::remove(saveTo);
 
             // HACK refactor this shit!
             fs::path price_db_path;
-            for ( auto& f : fs::directory_iterator() ) {
+            for ( auto& f :
+                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
                 if ( f.path().string().find( "prices_" ) != string::npos ) {
                     price_db_path = f.path();
                     break;
