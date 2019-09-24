@@ -41,9 +41,10 @@ static const int64_t c_maxGasEstimate = 50000000;
 ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
 
 ClientWatch::ClientWatch(
-    h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw )
+    bool isWS, h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw )
     : id( _id ),
       iw_( iw ),
+      isWS_( isWS ),
       fnOnNewChanges_( fnOnNewChanges ),
       lastPoll( ( _r == Reaping::Automatic ) ? std::chrono::system_clock::now() :
                                                std::chrono::system_clock::time_point::max() ) {}
@@ -242,7 +243,7 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
 }
 
 unsigned ClientBase::installWatch(
-    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
+    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     h256 h = _f.sha3();
     {
         Guard l( x_filtersWatches );
@@ -251,16 +252,16 @@ unsigned ClientBase::installWatch(
             m_filters.insert( make_pair( h, _f ) );
         }
     }
-    return installWatch( h, _r, fnOnNewChanges );
+    return installWatch( h, _r, fnOnNewChanges, isWS );
 }
 
 unsigned ClientBase::installWatch(
-    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges ) {
+    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-        m_watches[ret] = ClientWatch( _h, _r, fnOnNewChanges, ret );
+        m_watches[ret] = ClientWatch( isWS, _h, _r, fnOnNewChanges, ret );
         LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES

@@ -36,6 +36,8 @@
 #include <iosfwd>
 #include <thread>
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -405,10 +407,12 @@ public:
                     u = secretStore().importSecret(
                         b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
                 if ( !u ) {
-                    cerr << "Cannot import " << input << " not a file or secret." << endl;
+                    cerr << cc::warn( "Cannot import " ) << input
+                         << cc::warn( " not a file or secret." ) << endl;
                     continue;
                 }
-                cout << "Successfully imported " << input << " as " << toUUID( u );
+                cout << cc::success( "Successfully imported " ) << input << cc::success( " as " )
+                     << toUUID( u );
             }
             break;
         case OperationMode::InspectBare:
@@ -537,14 +541,15 @@ public:
                 u = keyManager().store().importSecret(
                     b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
             if ( !u ) {
-                cerr << "Cannot import " << i << " not a file or secret." << endl;
+                cerr << cc::warn( "Cannot import " ) << i << cc::warn( " not a file or secret." )
+                     << endl;
                 break;
             }
             keyManager().importExisting( u, m_name, m_address );
-            cout << "Successfully imported " << i << ":" << endl;
-            cout << "  Name: " << m_name << endl;
-            cout << "  UUID: " << toUUID( u ) << endl;
-            cout << "  Address: " << m_address << endl;
+            cout << cc::success( "Successfully imported " ) << i << cc::success( ":" ) << endl;
+            cout << cc::success( "  Name: " ) << m_name << endl;
+            cout << cc::success( "  UUID: " ) << toUUID( u ) << endl;
+            cout << cc::success( "  Address: " ) << m_address << endl;
             break;
         }
         case OperationMode::ImportPresale: {

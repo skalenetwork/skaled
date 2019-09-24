@@ -189,8 +189,8 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }  // namespace
 
 int main( int argc, char** argv ) try {
-    srand( time( nullptr ) );
-    cc::_on_ = true;
+    cc::_on_ = false;
+    cc::_max_value_size_ = 1024;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -318,6 +318,8 @@ int main( int argc, char** argv ) try {
         "default and "
         "minimal)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
+    addClientOption( "enable-debug-behavior-apis",
+        "Enables debug set of JSON RPC APIs which are changing app behavior" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
@@ -370,6 +372,11 @@ int main( int argc, char** argv ) try {
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
+    addGeneralOption( "colors", "Use ANSI colorized output and logging" );
+    addGeneralOption( "log-value-size-limit",
+        po::value< size_t >()->value_name( "<size in bytes>" ),
+        "Log value size limit(zero means unlimited)" );
+    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -405,8 +412,17 @@ int main( int argc, char** argv ) try {
             return -1;
         }
 
-    // skutils::dispatch::default_domain( skutils::tools::cpu_count() );
-    skutils::dispatch::default_domain( 48 );
+    if ( vm.count( "no-colors" ) )
+        cc::_on_ = false;
+    if ( vm.count( "colors" ) )
+        cc::_on_ = true;
+    if ( vm.count( "log-value-size-limit" ) ) {
+        int n = vm["log-value-size-limit"].as< size_t >();
+        cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+    }
+
+    skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
+    // skutils::dispatch::default_domain( 48 );
 
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
@@ -459,6 +475,8 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "web3-trace" ) )
         bTraceHttpCalls = true;
+    if ( vm.count( "enable-debug-behavior-apis" ) )
+        rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
     if ( vm.count( "db-path" ) )
@@ -761,7 +779,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( loggingOptions.verbosity > 0 )
-        cout << EthGrayBold "skaled, a C++ Skale client" EthReset << "\n";
+        cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
     m.execute();
 

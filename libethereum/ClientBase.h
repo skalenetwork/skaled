@@ -51,14 +51,15 @@ struct ClientWatch;
 
 struct ClientWatch {
     ClientWatch();
-    explicit ClientWatch(
-        h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw = 0 );
+    explicit ClientWatch( bool isWS, h256 _id, Reaping _r,
+        fnClientWatchHandlerMulti_t fnOnNewChanges, unsigned iw = 0 );
 
     h256 id;
     unsigned iw_ = 0;
 
+    bool isWS_ = false;  // WS watches does not need to be checked as garbage old watches
+
 private:
-    void init( h256 _id, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges );
     fnClientWatchHandlerMulti_t fnOnNewChanges_;
 #if INITIAL_STATE_AS_CHANGES
     LocalisedLogEntries changes_ = LocalisedLogEntries{InitialChange};
@@ -72,6 +73,8 @@ public:
     void append_changes( const LocalisedLogEntry& entry );
 
     mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
+
+    bool isWS() const { return isWS_; };
 };
 
 class ClientBase : public Interface {
@@ -105,9 +108,11 @@ public:
 
     /// Install, uninstall and query watches.
     unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
-        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) override;
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
+        bool isWS = false ) override;
     unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
-        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t() ) override;
+        fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
+        bool isWS = false ) override;
     bool uninstallWatch( unsigned _watchId ) override;
     LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;

@@ -34,6 +34,8 @@
 #include <iostream>
 #include <thread>
 
+#include <skutils/console_colors.h>
+
 using namespace dev;
 
 using namespace std;
@@ -83,7 +85,8 @@ void ConsensusStub::doWork() {
     if ( txns.size() == 0 )  // check for exit
         return;
 
-    std::cout << "Taken " << txns.size() << " transactions for consensus" << std::endl;
+    std::cout << cc::debug( "Taken " ) << txns.size() << cc::debug( " transactions for consensus" )
+              << std::endl;
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
@@ -103,7 +106,7 @@ void ConsensusStub::doWork() {
         m_extFace.createBlock( out_vector, ++blockCounter, time( NULL ), 0, 0 );  // TODO -
                                                                                   // implement
                                                                                   // pricing
-        std::cout << "createBlock" << std::endl;
+        std::cout << cc::debug( "createBlock" ) << std::endl;
     } catch ( const dev::Exception& x ) {
         std::cout << x.what() << std::endl;
     }  // catch
