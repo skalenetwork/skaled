@@ -41,6 +41,8 @@
 
 #include <libdevcore/microprofile.h>
 
+#include <skutils/console_colors.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -149,7 +151,7 @@ void Block::resetCurrent( int64_t _timestamp ) {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     // TODO: check.
-    LOG( m_logger ) << "Trying to reset state";
+    LOG( m_logger ) << cc::debug( "Trying to reset state" );
 
     m_committedToSeal = false;
 
@@ -860,8 +862,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
         // Find great-uncles (or second-cousins or whatever they are) - children of
         // great-grandparents, great-great-grandparents... that were not already uncles in previous
         // generations.
-        LOG( m_loggerDetailed ) << "Checking " << m_previousBlock.hash()
-                                << ", parent = " << m_previousBlock.parentHash();
+        LOG( m_loggerDetailed ) << cc::debug( "Checking " ) << m_previousBlock.hash()
+                                << cc::debug( ", parent = " ) << m_previousBlock.parentHash();
         h256Hash excluded = _bc.allKinFrom( m_currentBlock.parentHash(), 6 );
         auto p = m_previousBlock.parentHash();
         for ( unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2;
@@ -921,8 +923,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
     //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
-    LOG( m_loggerDetailed ) << "Post-reward stateRoot: "
-                            << "is not calculated in Skale state";
+    LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
+                            << cc::notice( "is not calculated in Skale state" );
     LOG( m_loggerDetailed ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );
