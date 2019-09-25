@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -196,9 +194,10 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
     Address destinationAddr = asAddress( m_SP[1] );
-    if ( m_OP == Instruction::CALL && !m_ext->exists( destinationAddr ) )
-        if ( m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas() )
-            m_runGas += toInt63( m_schedule->callNewAccountGas );
+    if ( m_OP == Instruction::CALL &&
+         ( m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas() ) &&
+         !m_ext->exists( destinationAddr ) )
+        m_runGas += toInt63( m_schedule->callNewAccountGas );
 
     if ( haveValueArg && m_SP[2] > 0 )
         m_runGas += toInt63( m_schedule->callValueTransferGas );

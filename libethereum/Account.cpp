@@ -40,10 +40,22 @@ std::unordered_map< u256, u256 > const& Account::originalStorageValue() const {
     return m_storageOriginal;
 }
 
-void Account::setCode( bytes&& _code ) {
-    m_codeCache = std::move( _code );
-    m_hasNewCode = true;
-    m_codeHash = sha3( m_codeCache );
+void Account::setCode( bytes&& _code, u256 const& _version ) {
+    auto const newHash = sha3( _code );
+    if ( newHash != m_codeHash ) {
+        m_codeCache = std::move( _code );
+        m_hasNewCode = true;
+        m_codeHash = newHash;
+    }
+    m_version = _version;
+}
+
+void Account::resetCode() {
+    m_codeCache.clear();
+    m_hasNewCode = false;
+    m_codeHash = EmptySHA3;
+    // Reset the version, as it was set together with code
+    m_version = 0;
 }
 
 namespace js = json_spirit;
@@ -75,29 +87,8 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         auto const& l = _precompiled.at( "linear" ).get_obj();
         unsigned base = toUnsigned( l.at( "base" ) );
         unsigned word = toUnsigned( l.at( "word" ) );
-
-        h160Set allowedAddresses;
-
-        auto restrictAccessIt = _precompiled.find( c_restrictAccess );
-        if ( restrictAccessIt != _precompiled.end() ) {
-            auto& obj = restrictAccessIt->second;
-            if ( obj.type() == json_spirit::array_type ) {
-                auto& arr = obj.get_array();
-                for ( auto& el : arr ) {
-                    if ( el.type() == json_spirit::str_type ) {
-                        allowedAddresses.insert( Address( fromHex( el.get_str() ) ) );
-                    } else
-                        cerr << "Error parsing access restrictions for precompiled " << n
-                             << "! It should contain strings!\n";
-                }  // for
-            } else {
-                cerr << "Error parsing access restrictions for precompiled " << n
-                     << "! It should be array!\n";
-            }
-        }  // restrictAccessIt
-
         return PrecompiledContract(
-            base, word, PrecompiledRegistrar::executor( n ), startingBlock, allowedAddresses );
+            base, word, PrecompiledRegistrar::executor( n ), startingBlock );
     } catch ( PricerNotFound const& ) {
         cwarn << "Couldn't create a precompiled contract account. Missing a pricer called:" << n;
         throw;
@@ -158,7 +149,7 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                         cerr << "Error importing code of account " << a
                              << "! Code needs to be hex bytecode prefixed by \"0x\".";
                     else
-                        ret[a].setCode( fromHex( codeStr ) );
+                        ret[a].setCode( fromHex( codeStr ), 0 );
                 } else
                     cerr << "Error importing code of account " << a
                          << "! Code field needs to be a string";
@@ -176,7 +167,7 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                     if ( code.empty() )
                         cerr << "Error importing code of account " << a << "! Code file "
                              << codePath << " empty or does not exist.\n";
-                    ret[a].setCode( std::move( code ) );
+                    ret[a].setCode( std::move( code ), 0 );
                 } else
                     cerr << "Error importing code of account " << a
                          << "! Code file path must be a string\n";

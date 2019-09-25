@@ -52,9 +52,11 @@ class Create2TestFixture : public TestOutputHelperFixture {
 public:
     explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
+    virtual ~Create2TestFixture() { state.stopWrite(); }
+
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
 
@@ -65,7 +67,7 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ByzantiumTest ) ).createSealEngine() );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
     }
@@ -74,7 +76,7 @@ public:
         state.addBalance( expectedAddress, 1 * ether );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
 
@@ -82,37 +84,103 @@ public:
     }
 
     void testCreate2doesntChangeContractIfAddressExists() {
-        state.setCode( expectedAddress, bytes{inputData} );
+        state.setCode( expectedAddress, bytes{inputData}, 0 );
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
         BOOST_REQUIRE( state.code( expectedAddress ) == inputData );
     }
 
     void testCreate2isForbiddenInStaticCall() {
-        isCreate = false;
         staticCall = true;
 
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
-            ref( inputData ), ref( code ), sha3( code ), depth, isCreate, staticCall );
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), DisallowedStateChange );
     }
 
+    void testCreate2collisionWithNonEmptyStorage() {
+        // Theoretical edge-case for an account with empty code and zero nonce and balance and
+        // non-empty storage. This account should be considered empty and CREATE2 over should be
+        // able to overwrite it and clear storage.
+        state.createContract( expectedAddress );
+        state.setStorage( expectedAddress, 1, 1 );
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        vm->exec( gas, extVm, OnOpFunc{} );
+        BOOST_REQUIRE( state.addressHasCode( expectedAddress ) );
+        BOOST_REQUIRE_EQUAL( state.storage( expectedAddress, 1 ), 0 );
+        BOOST_REQUIRE_EQUAL( state.getNonce( expectedAddress ), 1 );
+    }
+
+    void testCreate2collisionWithNonEmptyStorageEmptyInitCode() {
+        // Similar to previous case but with empty init code
+        inputData.clear();
+        expectedAddress = right160( sha3( fromHex( "ff" ) + address.asBytes() +
+                                          toBigEndian( 0x123_cppui256 ) + sha3( inputData ) ) );
+
+        state.createContract( expectedAddress );
+        state.setStorage( expectedAddress, 1, 1 );
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        vm->exec( gas, extVm, OnOpFunc{} );
+        BOOST_REQUIRE_EQUAL( state.storage( expectedAddress, 1 ), 0 );
+        BOOST_REQUIRE_EQUAL( state.getNonce( expectedAddress ), 1 );
+    }
+
+    void testCreate2costIncludesInitCodeHashing() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        uint64_t gasBefore = 0;
+        uint64_t gasAfter = 0;
+        auto onOp = [&gasBefore, &gasAfter]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /* newMemSize */, bigint /* gasCost */,
+                        bigint _gas, VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::CREATE2 ) {
+                // before CREATE2 instruction
+                gasBefore = static_cast< uint64_t >( _gas );
+            } else if ( gasBefore != 0 && gasAfter == 0 ) {
+                // first instruction of the init code
+                gasAfter = static_cast< uint64_t >( _gas );
+            }
+        };
+
+        vm->exec( gas, extVm, onOp );
+
+        // create cost
+        uint64_t expectedGasAfter = gasBefore - 32000;
+        // hashing cost, assuming no memory expansion needed
+        expectedGasAfter -=
+            static_cast< uint64_t >( std::ceil( static_cast< double >( inputData.size() ) / 32 ) ) *
+            6;
+        // EIP-150 adjustion of subcall gas
+        expectedGasAfter -= expectedGasAfter / 64;
+        BOOST_REQUIRE_EQUAL( gasAfter, expectedGasAfter );
+    }
+
+
     BlockHeader blockHeader{initBlockHeader()};
     LastBlockHashes lastBlockHashes;
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0};
     Address address{KeyPair::create().address()};
-    State state{0};
+    //        State state{0};
+    State state = State( 0 ).startWrite();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
-    unsigned int depth = 0;
-    bool isCreate = true;
+    u256 version = 0;
+    int depth = 0;
+    bool isCreate = false;
     bool staticCall = false;
     u256 gas = 1000000;
 
@@ -143,6 +211,451 @@ public:
         : Create2TestFixture{new EVMC{evmc_create_interpreter()}} {}
 };
 
+class ExtcodehashTestFixture : public TestOutputHelperFixture {
+public:
+    explicit ExtcodehashTestFixture( VMFace* _vm ) : vm{_vm} {
+        state.addBalance( address, 1 * ether );
+        state.setCode( extAddress, bytes{extCode}, 0 );
+    }
+
+    void testExtcodehashWorksInConstantinople() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE( ret.toBytes() == sha3( extCode ).asBytes() );
+    }
+
+    void testExtcodehashHasCorrectCost() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        bigint gasBefore;
+        bigint gasAfter;
+        auto onOp = [&gasBefore, &gasAfter]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::EXTCODEHASH )
+                gasBefore = _gas;
+            else if ( gasBefore != 0 && gasAfter == 0 )
+                gasAfter = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 400 );
+    }
+
+    void testExtCodeHashisInvalidBeforeConstantinople() {
+        se.reset( ChainParams( genesisInfo( Network::ByzantiumTest ) ).createSealEngine() );
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
+    }
+
+    void testExtCodeHashOfNonContractAccount() {
+        Address addressWithEmptyCode{KeyPair::create().address()};
+        state.addBalance( addressWithEmptyCode, 1 * ether );
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            addressWithEmptyCode.ref(), ref( code ), sha3( code ), version, depth, isCreate,
+            staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( toHex( ret.toBytes() ),
+            "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" );
+    }
+
+    void testExtCodeHashOfNonExistentAccount() {
+        Address addressNonExisting{0x1234};
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            addressNonExisting.ref(), ref( code ), sha3( code ), version, depth, isCreate,
+            staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( fromBigEndian< int >( ret.toBytes() ), 0 );
+    }
+
+    void testExtCodeHashOfPrecomileZeroBalance() {
+        Address addressPrecompile{0x1};
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            addressPrecompile.ref(), ref( code ), sha3( code ), version, depth, isCreate,
+            staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( fromBigEndian< int >( ret.toBytes() ), 0 );
+    }
+
+    void testExtCodeHashOfPrecomileNonZeroBalance() {
+        Address addressPrecompile{0x1};
+        state.addBalance( addressPrecompile, 1 * ether );
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            addressPrecompile.ref(), ref( code ), sha3( code ), version, depth, isCreate,
+            staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( toHex( ret.toBytes() ),
+            "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" );
+    }
+
+    void testExtcodehashIgnoresHigh12Bytes() {
+        // calldatacopy(0, 0, 32)
+        // let addr : = mload(0)
+        // let hash : = extcodehash(addr)
+        // mstore(0, hash)
+        // return(0, 32)
+        code = fromHex( "60206000600037600051803f8060005260206000f35050" );
+
+        bytes extAddressPrefixed =
+            bytes{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc} + extAddress.ref();
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+            ref( extAddressPrefixed ), ref( code ), sha3( code ), version, depth, isCreate,
+            staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE( ret.toBytes() == sha3( extCode ).asBytes() );
+    }
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address address{KeyPair::create().address()};
+    Address extAddress{KeyPair::create().address()};
+    State state{0};
+    std::unique_ptr< SealEngineFace > se{
+        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = 0;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+
+    // mstore(0, 0x60)
+    // return(0, 0x20)
+    bytes extCode = fromHex( "606060005260206000f3" );
+
+    // calldatacopy(12, 0, 20)
+    // let addr : = mload(0)
+    // let hash : = extcodehash(addr)
+    // mstore(0, hash)
+    // return(0, 32)
+    bytes code = fromHex( "60146000600c37600051803f8060005260206000f35050" );
+
+    std::unique_ptr< VMFace > vm;
+};
+
+class LegacyVMExtcodehashTestFixture : public ExtcodehashTestFixture {
+public:
+    LegacyVMExtcodehashTestFixture() : ExtcodehashTestFixture{new LegacyVM} {}
+};
+
+
+class SkaleInterpreterExtcodehashTestFixture : public ExtcodehashTestFixture {
+public:
+    SkaleInterpreterExtcodehashTestFixture()
+        : ExtcodehashTestFixture{new EVMC{evmc_create_interpreter()}} {}
+};
+
+class SstoreTestFixture : public TestOutputHelperFixture {
+public:
+    explicit SstoreTestFixture( VMFace* _vm ) : vm{_vm} {
+        state.addBalance( from, 1 * ether );
+        state.addBalance( to, 1 * ether );
+    }
+
+    virtual ~SstoreTestFixture() { state.stopWrite(); }
+
+    void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
+
+    void testEip1283Case2() { testGasConsumed( "0x60006000556001600055", 0, 20212, 0 ); }
+
+    void testEip1283Case3() { testGasConsumed( "0x60016000556000600055", 0, 20212, 19800 ); }
+
+    void testEip1283Case4() { testGasConsumed( "0x60016000556002600055", 0, 20212, 0 ); }
+
+    void testEip1283Case5() { testGasConsumed( "0x60016000556001600055", 0, 20212, 0 ); }
+
+    void testEip1283Case6() { testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 ); }
+
+    void testEip1283Case7() { testGasConsumed( "0x60006000556001600055", 1, 5212, 4800 ); }
+
+    void testEip1283Case8() { testGasConsumed( "0x60006000556002600055", 1, 5212, 0 ); }
+
+    void testEip1283Case9() { testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 ); }
+
+    void testEip1283Case10() { testGasConsumed( "0x60026000556003600055", 1, 5212, 0 ); }
+
+    void testEip1283Case11() { testGasConsumed( "0x60026000556001600055", 1, 5212, 4800 ); }
+
+    void testEip1283Case12() { testGasConsumed( "0x60026000556002600055", 1, 5212, 0 ); }
+
+    void testEip1283Case13() { testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 ); }
+
+    void testEip1283Case14() { testGasConsumed( "0x60016000556002600055", 1, 5212, 0 ); }
+
+    void testEip1283Case15() { testGasConsumed( "0x60016000556001600055", 1, 412, 0 ); }
+
+    void testEip1283Case16() {
+        testGasConsumed( "0x600160005560006000556001600055", 0, 40218, 19800 );
+    }
+
+    void testEip1283Case17() {
+        testGasConsumed( "0x600060005560016000556000600055", 1, 10218, 19800 );
+    }
+
+    void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
+        u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
+        state.setStorage( to, 0, _originalValue );
+        state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+
+        bytes const code = fromHex( _codeStr );
+        ExtVM extVm( state, envInfo, *se, to, from, from, value, gasPrice, inputData, ref( code ),
+            sha3( code ), version, depth, isCreate, staticCall );
+
+        u256 gasBefore = gas;
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_CHECK_EQUAL( gasBefore - gas, _expectedGasConsumed );
+        BOOST_CHECK_EQUAL( extVm.sub.refunds, _expectedRefund );
+    }
+
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address from{KeyPair::create().address()};
+    Address to{KeyPair::create().address()};
+    State state = State( 0 ).startWrite();
+    std::unique_ptr< SealEngineFace > se{
+        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = 0;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+    bytesConstRef inputData;
+
+    std::unique_ptr< VMFace > vm;
+};
+
+class LegacyVMSstoreTestFixture : public SstoreTestFixture {
+public:
+    LegacyVMSstoreTestFixture() : SstoreTestFixture{new LegacyVM} {}
+};
+
+class SkaleInterpreterSstoreTestFixture : public SstoreTestFixture {
+public:
+    SkaleInterpreterSstoreTestFixture() : SstoreTestFixture{new EVMC{evmc_create_interpreter()}} {}
+};
+
+class ChainIDTestFixture : public TestOutputHelperFixture {
+public:
+    explicit ChainIDTestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
+
+    void testChainIDWorksInIstanbul() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( fromBigEndian< int >( ret ), 1 );
+    }
+
+    void testChainIDHasCorrectCost() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        bigint gasBefore;
+        bigint gasAfter;
+        auto onOp = [&gasBefore, &gasAfter]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::CHAINID )
+                gasBefore = _gas;
+            else if ( gasBefore != 0 && gasAfter == 0 )
+                gasAfter = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 2 );
+    }
+
+    void testChainIDisInvalidBeforeIstanbul() {
+        se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
+        version = ConstantinopleFixSchedule.accountVersion;
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
+    }
+
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address address{KeyPair::create().address()};
+    State state{0};
+    std::unique_ptr< SealEngineFace > se{
+        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = IstanbulSchedule.accountVersion;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+
+    // let id : = chainid()
+    // mstore(0, id)
+    // return(0, 32)
+    bytes code = fromHex( "468060005260206000f350" );
+
+    std::unique_ptr< VMFace > vm;
+};
+
+class LegacyVMChainIDTestFixture : public ChainIDTestFixture {
+public:
+    LegacyVMChainIDTestFixture() : ChainIDTestFixture{new LegacyVM} {}
+};
+
+class SkaleInterpreterChainIDTestFixture : public ChainIDTestFixture {
+public:
+    SkaleInterpreterChainIDTestFixture()
+        : ChainIDTestFixture{new EVMC{evmc_create_interpreter()}} {}
+};
+
+class BalanceFixture : public TestOutputHelperFixture {
+public:
+    explicit BalanceFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
+
+    void testSelfBalanceWorksInIstanbul() {
+        ExtVM extVmSelfBalance( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref retSelfBalance = vm->exec( gas, extVmSelfBalance, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( retSelfBalance ), 1 * ether );
+
+        ExtVM extVmBalance( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref retBalance = vm->exec( gas, extVmBalance, OnOpFunc{} );
+
+        BOOST_REQUIRE_EQUAL(
+            fromBigEndian< u256 >( retBalance ), fromBigEndian< u256 >( retSelfBalance ) );
+    }
+
+    void testSelfBalanceHasCorrectCost() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+
+        bigint gasBefore;
+        bigint gasAfter;
+        auto onOp = [&gasBefore, &gasAfter]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::SELFBALANCE )
+                gasBefore = _gas;
+            else if ( gasBefore != 0 && gasAfter == 0 )
+                gasAfter = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 5 );
+    }
+
+    void testBalanceHasCorrectCost() {
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
+
+        bigint gasBefore;
+        bigint gasAfter;
+        auto onOp = [&gasBefore, &gasAfter]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::BALANCE )
+                gasBefore = _gas;
+            else if ( gasBefore != 0 && gasAfter == 0 )
+                gasAfter = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 700 );
+    }
+
+    void testSelfBalanceisInvalidBeforeIstanbul() {
+        se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
+        version = ConstantinopleFixSchedule.accountVersion;
+
+        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+
+        BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
+    }
+
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address address{KeyPair::create().address()};
+    State state{0};
+    std::unique_ptr< SealEngineFace > se{
+        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = IstanbulSchedule.accountVersion;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+
+    // let b : = selfbalance()
+    // mstore(0, b)
+    // return(0, 32)
+    bytes codeSelfBalance = fromHex( "478060005260206000f350" );
+
+    // let a := caller()
+    // let b := balance(a)
+    // mstore(0, b)
+    // return(0, 32)
+    bytes codeBalance = fromHex( "3380318060005260206000f35050" );
+
+    std::unique_ptr< VMFace > vm;
+};
+
+class LegacyVMBalanceFixture : public BalanceFixture {
+public:
+    LegacyVMBalanceFixture() : BalanceFixture{new LegacyVM} {}
+};
+
+class SkaleInterpreterBalanceFixture : public BalanceFixture {
+public:
+    SkaleInterpreterBalanceFixture() : BalanceFixture{new EVMC{evmc_create_interpreter()}} {}
+};
 }  // namespace
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMSuite, TestOutputHelperFixture )
@@ -168,31 +681,320 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2isForbiddenInStaticCall ) {
     testCreate2isForbiddenInStaticCall();
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage ) {
+    testCreate2collisionWithNonEmptyStorage();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2costIncludesInitCodeHashing ) {
+    testCreate2costIncludesInitCodeHashing();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_FIXTURE_TEST_SUITE( SkaledInterpreterSuite, TestOutputHelperFixture )
-BOOST_FIXTURE_TEST_SUITE( SkaledInterpreterCreate2Suite, SkaleInterpreterCreate2TestFixture )
+BOOST_FIXTURE_TEST_SUITE( LegacyVMExtcodehashSuite, LegacyVMExtcodehashTestFixture )
 
-BOOST_AUTO_TEST_CASE( SkaledInterpreterCreate2worksInConstantinople ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashWorksInConstantinople ) {
+    testExtcodehashWorksInConstantinople();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashHasCorrectCost ) {
+    testExtcodehashHasCorrectCost();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashIsInvalidConstantinople ) {
+    testExtCodeHashisInvalidBeforeConstantinople();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonContractAccount ) {
+    testExtCodeHashOfNonContractAccount();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonExistentAccount ) {
+    testExtCodeHashOfPrecomileZeroBalance();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileZeroBalance ) {
+    testExtCodeHashOfNonExistentAccount();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileNonZeroBalance ) {
+    testExtCodeHashOfPrecomileNonZeroBalance();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashIgnoresHigh12Bytes ) {
+    testExtcodehashIgnoresHigh12Bytes();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( LegacyVMSstoreSuite, LegacyVMSstoreTestFixture )
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case1 ) {
+    testEip1283Case1();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case2 ) {
+    testEip1283Case2();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case3 ) {
+    testEip1283Case3();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case4 ) {
+    testEip1283Case4();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case5 ) {
+    testEip1283Case5();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case6 ) {
+    testEip1283Case6();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case7 ) {
+    testEip1283Case7();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case8 ) {
+    testEip1283Case8();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case9 ) {
+    testEip1283Case9();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case10 ) {
+    testEip1283Case10();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case11 ) {
+    testEip1283Case11();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case12 ) {
+    testEip1283Case12();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case13 ) {
+    testEip1283Case13();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14 ) {
+    testEip1283Case14();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case15 ) {
+    testEip1283Case15();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case16 ) {
+    testEip1283Case16();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case17 ) {
+    testEip1283Case17();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+BOOST_FIXTURE_TEST_SUITE( LegacyVMChainIDSuite, LegacyVMChainIDTestFixture )
+
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDworksInIstanbul ) {
+    testChainIDWorksInIstanbul();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDHasCorrectCost ) {
+    testChainIDHasCorrectCost();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDisInvalidBeforeIstanbul ) {
+    testChainIDisInvalidBeforeIstanbul();
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( LegacyVMBalanceSuite, LegacyVMBalanceFixture )
+
+BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceworksInIstanbul ) {
+    testSelfBalanceWorksInIstanbul();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceHasCorrectCost ) {
+    testSelfBalanceHasCorrectCost();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMBalanceHasCorrectCost ) {
+    testBalanceHasCorrectCost();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceisInvalidBeforeIstanbul ) {
+    testSelfBalanceisInvalidBeforeIstanbul();
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSuite, TestOutputHelperFixture )
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterCreate2Suite, SkaleInterpreterCreate2TestFixture )
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2worksInConstantinople ) {
     testCreate2worksInConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( SkaledInterpreterCreate2isInvalidBeforeConstantinople ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isInvalidBeforeConstantinople ) {
     testCreate2isInvalidBeforeConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( SkaledInterpreterCreate2succeedsIfAddressHasEther ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2succeedsIfAddressHasEther ) {
     testCreate2succeedsIfAddressHasEther();
 }
 
-BOOST_AUTO_TEST_CASE( SkaledInterpreterCreate2doesntChangeContractIfAddressExists ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2doesntChangeContractIfAddressExists ) {
     testCreate2doesntChangeContractIfAddressExists();
 }
 
-BOOST_AUTO_TEST_CASE( SkaledInterpreterCreate2isForbiddenInStaticCall ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isForbiddenInStaticCall ) {
     testCreate2isForbiddenInStaticCall();
 }
 
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage ) {
+    testCreate2collisionWithNonEmptyStorage();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterExtcodehashSuite, SkaleInterpreterExtcodehashTestFixture )
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashWorksInConstantinople ) {
+    testExtcodehashWorksInConstantinople();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashIsInvalidConstantinople ) {
+    testExtCodeHashisInvalidBeforeConstantinople();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonContractAccount ) {
+    testExtCodeHashOfNonContractAccount();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonExistentAccount ) {
+    testExtCodeHashOfPrecomileZeroBalance();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileZeroBalance ) {
+    testExtCodeHashOfNonExistentAccount();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileNonZeroBalance ) {
+    testExtCodeHashOfPrecomileNonZeroBalance();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes ) {
+    testExtcodehashIgnoresHigh12Bytes();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSstoreSuite, SkaleInterpreterSstoreTestFixture )
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case1 ) {
+    testEip1283Case1();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case2 ) {
+    testEip1283Case2();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case3 ) {
+    testEip1283Case3();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case4 ) {
+    testEip1283Case4();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case5 ) {
+    testEip1283Case5();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case6 ) {
+    testEip1283Case6();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case7 ) {
+    testEip1283Case7();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case8 ) {
+    testEip1283Case8();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case9 ) {
+    testEip1283Case9();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case10 ) {
+    testEip1283Case10();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case11 ) {
+    testEip1283Case11();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case12 ) {
+    testEip1283Case12();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case13 ) {
+    testEip1283Case13();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case14 ) {
+    testEip1283Case14();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case15 ) {
+    testEip1283Case15();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case16 ) {
+    testEip1283Case16();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case17 ) {
+    testEip1283Case17();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterChainIDSuite, SkaleInterpreterChainIDTestFixture )
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDworksInIstanbul ) {
+    testChainIDWorksInIstanbul();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDisInvalidBeforeIstanbul ) {
+    testChainIDisInvalidBeforeIstanbul();
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterBalanceSuite, SkaleInterpreterBalanceFixture )
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceworksInIstanbul ) {
+    testSelfBalanceWorksInIstanbul();
+}
+
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceisInvalidBeforeIstanbul ) {
+    testSelfBalanceisInvalidBeforeIstanbul();
+}
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()

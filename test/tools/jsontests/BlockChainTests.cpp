@@ -1032,7 +1032,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( TransitionTests, bcTransitionFixture )
 
 BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
-BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinople ) {}
+BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 

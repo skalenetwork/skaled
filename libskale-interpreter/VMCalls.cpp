@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -41,6 +39,10 @@ void VM::copyDataToMemory( bytesConstRef _data, u256* _sp ) {
 
 void VM::throwOutOfGas() {
     BOOST_THROW_EXCEPTION( OutOfGas() );
+}
+
+void VM::throwInvalidInstruction() {
+    BOOST_THROW_EXCEPTION( InvalidInstruction() );
 }
 
 void VM::throwBadInstruction() {
@@ -208,11 +210,10 @@ bool VM::caseCallSetup( evmc_message& o_msg, bytesRef& o_output ) {
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
     evmc_address destination = toEvmC( asAddress( m_SP[1] ) );
-    int destinationExists = m_context->host->account_exists( m_context, &destination );
 
-    if ( m_OP == Instruction::CALL && !destinationExists ) {
-        if ( m_SP[2] > 0 || m_rev < EVMC_SPURIOUS_DRAGON )
-            m_runGas += VMSchedule::callNewAccount;
+    if ( m_OP == Instruction::CALL && ( m_SP[2] > 0 || m_rev < EVMC_SPURIOUS_DRAGON ) &&
+         !m_context->host->account_exists( m_context, &destination ) ) {
+        m_runGas += VMSchedule::callNewAccount;
     }
 
     if ( haveValueArg && m_SP[2] > 0 )
@@ -242,6 +243,7 @@ bool VM::caseCallSetup( evmc_message& o_msg, bytesRef& o_output ) {
     m_runGas = o_msg.gas;
     updateIOGas();
 
+    o_msg.depth = m_message->depth + 1;
     o_msg.destination = destination;
     o_msg.sender = m_message->destination;
     o_msg.input_data = m_mem.data() + size_t( inputOffset );

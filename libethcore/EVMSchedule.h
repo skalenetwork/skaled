@@ -32,6 +32,7 @@ struct EVMSchedule {
           haveDelegateCall( _hdc ),
           tierStepGas( std::array< unsigned, 8 >{{0, 2, 3, 5, 8, 10, 20, 0}} ),
           txCreateGas( _txCreateGas ) {}
+    unsigned accountVersion = 0;
     bool exceptionalFailedCodeDeposit = true;
     bool haveDelegateCall = true;
     bool eip150Mode = false;
@@ -43,6 +44,8 @@ struct EVMSchedule {
     bool haveStaticCall = false;
     bool haveCreate2 = false;
     bool haveExtcodehash = false;
+    bool haveChainID = false;
+    bool haveSelfbalance = false;
     std::array< unsigned, 8 > tierStepGas;
     unsigned expGas = 10;
     unsigned expByteGas = 10;
@@ -138,10 +141,41 @@ static const EVMSchedule ConstantinopleSchedule = [] {
     return schedule;
 }();
 
-static const EVMSchedule ExperimentalSchedule = [] {
+static const EVMSchedule ConstantinopleFixSchedule = [] {
     EVMSchedule schedule = ConstantinopleSchedule;
+    schedule.eip1283Mode = false;
+    return schedule;
+}();
+
+static const EVMSchedule IstanbulSchedule = [] {
+    EVMSchedule schedule = ConstantinopleFixSchedule;
+    schedule.txDataNonZeroGas = 16;
+    schedule.sloadGas = 800;
+    schedule.balanceGas = 700;
+    schedule.extcodehashGas = 700;
+    schedule.haveChainID = true;
+    schedule.haveSelfbalance = true;
+    return schedule;
+}();
+
+static const EVMSchedule ExperimentalSchedule = [] {
+    EVMSchedule schedule = IstanbulSchedule;
+    schedule.accountVersion = 1;
     schedule.blockhashGas = 800;
     return schedule;
 }();
+
+inline EVMSchedule const& latestScheduleForAccountVersion( u256 const& _version ) {
+    if ( _version == 0 )
+        return IstanbulSchedule;
+    else if ( _version == ExperimentalSchedule.accountVersion )
+        return ExperimentalSchedule;
+    else {
+        // This should not happen, as all existing accounts
+        // are created either with version 0 or with one of fork's versions
+        assert( false );
+        return DefaultSchedule;
+    }
+}
 }  // namespace eth
 }  // namespace dev

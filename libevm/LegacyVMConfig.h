@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -231,8 +229,8 @@ namespace eth {
         &&NUMBER,                               \
         &&DIFFICULTY,                           \
         &&GASLIMIT,                             \
-        &&INVALID,                              \
-        &&INVALID,                              \
+        &&CHAINID,                              \
+        &&SELFBALANCE,                          \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \

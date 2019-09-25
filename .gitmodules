@@ -12,3 +12,6 @@
 [submodule "test/jsontests"]
 	path = test/jsontests
 	url = https://github.com/skalenetwork/skaled-tests.git
+[submodule "cmake/cable"]
+	path = cmake/cable
+	url = https://github.com/ethereum/cable

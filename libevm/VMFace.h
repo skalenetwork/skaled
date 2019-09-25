@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -30,6 +28,7 @@ struct VMException : Exception {};
     struct X : VMException {                                      \
         const char* what() const noexcept override { return #X; } \
     }
+ETH_SIMPLE_EXCEPTION_VM( InvalidInstruction );
 ETH_SIMPLE_EXCEPTION_VM( BadInstruction );
 ETH_SIMPLE_EXCEPTION_VM( BadJumpDestination );
 ETH_SIMPLE_EXCEPTION_VM( OutOfGas );

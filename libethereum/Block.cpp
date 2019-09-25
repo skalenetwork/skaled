@@ -741,7 +741,7 @@ ExecutionResult Block::execute(
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
     State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
 
-    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed() );
+    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =
@@ -819,12 +819,14 @@ void Block::updateBlockhashContract() {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
                 State state = m_state.startWrite();
-                state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
+                state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
+                    m_sealEngine->evmSchedule( blockNumber ).accountVersion );
                 state.commit( State::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
-            m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ) );
+            m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
+                m_sealEngine->evmSchedule( blockNumber ).accountVersion );
             m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
         }
     }
