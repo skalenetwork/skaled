@@ -573,7 +573,7 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
 
 
     if ( chainParams().nodeInfo.snapshotInterval > 0 &&
-         ( number() == 0 || number() % chainParams().nodeInfo.snapshotInterval == 0 ) ) {
+         number() % chainParams().nodeInfo.snapshotInterval == 0 ) {
         m_snapshotManager->doSnapshot( number() );
     }  // if snapshot
 }
