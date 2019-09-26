@@ -1238,7 +1238,7 @@ void basic_api::configure_wsi( struct lws* wsi ) {
 }
 
 bool impl_frame_is_binary( struct lws* wsi, const uint8_t* /*in*/, size_t /*len*/ ) {
-    if (::lws_frame_is_binary( wsi ) )
+    if ( ::lws_frame_is_binary( wsi ) )
         return true;
     return false;
 }
@@ -2258,7 +2258,7 @@ bool server_api::init( bool isSSL, int nPort, security_args* pSA ) {
 
     switch ( srvmode_ ) {
     case srvmode_t::srvmode_external_poll: {
-        external_poll_max_elements_ = size_t(::getdtablesize() );
+        external_poll_max_elements_ = size_t( ::getdtablesize() );
         size_t cntBytesToAlloc = external_poll_max_elements_ * sizeof( struct lws_pollfd );
         external_poll_fds_ = ( lws_pollfd* ) ::malloc( cntBytesToAlloc );
         if ( external_poll_fds_ == nullptr ) {
@@ -2478,7 +2478,7 @@ bool server_api::service_poll( int& n ) {  // if returns true - continue service
                 if ( external_poll_fds_[n].revents )
                     // returns immediately if the fd does not match anything under libwebsockets
                     // control
-                    if (::lws_service_fd( ctx_, &external_poll_fds_[n] ) < 0 )
+                    if ( ::lws_service_fd( ctx_, &external_poll_fds_[n] ) < 0 )
                         return false;
             }
             // if needed, force-service wsis that may not have read all input
@@ -3091,7 +3091,7 @@ void server_api::run( uint64_t timeout ) {
 void server_api::wait( uint64_t timeout ) {
     if ( !initialized_ )
         return;
-    if (::lws_service( ctx_, timeout ) < 0 )
+    if ( ::lws_service( ctx_, timeout ) < 0 )
         throw std::runtime_error( "failyure while polling for socket activity" );
 }
 
@@ -3378,8 +3378,7 @@ void peer::async_close( const std::string& msg,
             } catch ( ... ) {
             }
             ref_release();
-        } )
-            .detach();
+        } ).detach();
         return;
     } catch ( ... ) {
         ref_release();
@@ -3886,8 +3885,7 @@ void client::async_close( const std::string& msg,
             } catch ( ... ) {
             }
             ref_release();
-        } )
-            .detach();
+        } ).detach();
         return;
     } catch ( ... ) {
         ref_release();
@@ -3968,8 +3966,7 @@ void client::impl_ensure_restart_timer_is_running() {
                 e_ws_log_message_type_t::eWSLMT_info, "NLWS: will re-connect to " + strLastURI_ );
             close();
             open( strLastURI_ );
-        } )
-            .detach();
+        } ).detach();
     } );
 }
 void client::onClose( hdl_t hdl, const std::string& reason, int local_close_code,

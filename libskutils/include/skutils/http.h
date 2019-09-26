@@ -1632,12 +1632,13 @@ inline bool server::handle_file_request( request& req, response& res ) {
 }
 
 inline socket_t server::create_server_socket( const char* host, int port, int socket_flags ) const {
-    return detail::create_socket( host, port,
+    return detail::create_socket(
+        host, port,
         []( socket_t sock, struct addrinfo& ai ) -> bool {
-            if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
+            if ( ::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
                 return false;
             }
-            if (::listen( sock, 5 ) ) {  // Listen through 5 channels
+            if ( ::listen( sock, 5 ) ) {  // Listen through 5 channels
                 return false;
             }
             return true;
@@ -2215,8 +2216,8 @@ inline bool SSL_server::is_valid() const {
 inline bool SSL_server::read_and_close_socket( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
-    return detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
-        SSL_accept,
+    return detail::read_and_close_socket_ssl(
+        sock, get_keep_alive_max_count(), ctx_, ctx_mutex_, SSL_accept,
         [origin]( SSL*  // ssl
         ) {},
         [this, origin]( stream& strm, bool last_connection, bool& connection_close ) {
@@ -2244,7 +2245,8 @@ inline bool SSL_client::is_valid() const {
 inline bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& res ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", false );
-    return is_valid() && detail::read_and_close_socket_ssl( sock, 0, ctx_, ctx_mutex_, SSL_connect,
+    return is_valid() && detail::read_and_close_socket_ssl(
+                             sock, 0, ctx_, ctx_mutex_, SSL_connect,
                              [&]( SSL* ssl ) { SSL_set_tlsext_host_name( ssl, host_.c_str() ); },
                              [&, origin]( stream& strm, bool,  // last_connection
                                  bool& connection_close ) {
