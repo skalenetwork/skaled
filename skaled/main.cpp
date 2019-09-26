@@ -722,8 +722,7 @@ int main( int argc, char** argv ) try {
                 block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
             }
 
-            bool bOK = dev::rpc::snapshot::download(
-                strURLWeb3, block_number, saveTo,
+            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     std::cout << cc::normal( "... download progress ... " )
                               << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
@@ -1129,8 +1128,7 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r =
-                getResponse( _t.userReadable(
-                                 isProxy,
+                getResponse( _t.userReadable( isProxy,
                                  [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                                      h256 contractCodeHash = client->postState().codeHash( _t.to );
                                      if ( contractCodeHash == EmptySHA3 )

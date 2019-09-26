@@ -306,7 +306,8 @@ void test_server::run_parallel() {
         run();
         test_log_s( cc::info( strScheme_ ) + cc::debug( " network server thread will exit" ) );
         thread_is_running_ = false;
-    } ).detach();
+    } )
+        .detach();
     while ( !thread_is_running_ )
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
     test_log_s(
@@ -444,7 +445,8 @@ void test_server_ws_base::run() {
         }
         test_log_s( cc::info( "Main loop" ) + cc::debug( " finish" ) );
         ws_server_thread_is_running_ = false;
-    } ).detach();
+    } )
+        .detach();
     test_log_s( cc::debug( "Waiting for " ) + cc::note( "test server" ) + cc::debug( " open..." ) );
     while ( !bServerOpenComplete )
         std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );

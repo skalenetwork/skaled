@@ -503,8 +503,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
     subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
     subscriptionData.m_pPeer->ref_retain();  // mamual retain-release(subscription map)
     subscriptionData.m_pPeer->ref_retain();  // mamual retain-release(async job)
-    skutils::dispatch::repeat(
-        subscriptionData.m_pPeer->m_strPeerQueueID,
+    skutils::dispatch::repeat( subscriptionData.m_pPeer->m_strPeerQueueID,
         [=]() -> void {
             if ( !subscriptionData.m_pPeer )
                 return;
@@ -1515,7 +1514,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
         } catch ( ... ) {
         }
         // m_isRunning = false;
-    } ).detach();
+    } )
+        .detach();
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
         << ( cc::success( "OK, server started on port " ) + cc::c( m_nPort ) );
     return true;
@@ -1801,7 +1801,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 return;
             }
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
-        } ).detach();
+        } )
+            .detach();
         logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
             cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::debug( "/" ) + cc::num10( pSrv->serverIndex() ) +

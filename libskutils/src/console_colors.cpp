@@ -1649,7 +1649,7 @@ std::string pe( const char* strPath ) {  // path with comment about file existan
 }
 
 static bool stat_is_email_enabled_char( char c ) {
-    if ( ::isalnum( c ) || c == '.' || c == '_' )
+    if (::isalnum( c ) || c == '.' || c == '_' )
         return true;
     return false;
 }
