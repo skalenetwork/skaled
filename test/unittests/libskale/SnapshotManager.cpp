@@ -109,8 +109,8 @@ struct BtrfsFixture : public FixtureCommon {
         chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
         dropRoot();
 
-        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
+//        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
+//        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
@@ -204,12 +204,6 @@ BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture ) {
         SnapshotManager::InvalidPath, [this]( const SnapshotManager::InvalidPath& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_invalid";
         } );
-
-    BOOST_REQUIRE_EXCEPTION(
-        SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "invalid3", "vol2"} ),
-        SnapshotManager::InvalidPath, [this]( const SnapshotManager::InvalidPath& ex ) -> bool {
-            return ex.path == fs::path( BTRFS_DIR_PATH ) / "invalid3";
-        } );
 }
 
 BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
@@ -275,8 +269,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture ) {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "snapshots" / "3";
         } );
 
-    // interesting that under normal user we still can do snapshot
-    BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 2 ) );
+    // cannot delete
+    BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture ) {
