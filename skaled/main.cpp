@@ -88,7 +88,6 @@
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
 
-
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -244,7 +243,6 @@ int main( int argc, char** argv ) try {
     unsigned networkID = NoNetworkID;
 
     /// Mining params
-    Address author;
     strings presaleImports;
 
     /// Transaction params
@@ -254,20 +252,10 @@ int main( int argc, char** argv ) try {
     string masterPassword;
     bool masterSet = false;
 
-    fs::path configFile = getDataDir() / fs::path( "config.rlp" );
-    bytes b = contents( configFile );
-
     std::string blsJson;
 
     strings passwordsToNote;
     Secrets toImport;
-    if ( b.size() ) {
-        try {
-            RLP config( b );
-            author = config[1].toHash< Address >();
-        } catch ( ... ) {
-        }
-    }
 
     MinerCLI m( MinerCLI::OperationMode::None );
 
@@ -680,7 +668,11 @@ int main( int argc, char** argv ) try {
             cerr << "error in parsing config json:\n";
             cerr << err.reason_ << " line " << err.line_ << endl;
             cerr << configJSON << endl;
-        } catch ( const std::exception& err ) {
+        } catch ( const std::exception& ex ) {
+            cerr << "provided configuration is not well formatted\n";
+            cerr << configJSON << endl;
+            cerr << ex.what() << endl;
+            return 0;
         } catch ( ... ) {
             cerr << "provided configuration is not well formatted\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
@@ -850,9 +842,6 @@ int main( int argc, char** argv ) try {
     for ( auto const& s : passwordsToNote )
         keyManager.notePassword( s );
 
-    // the first value is deprecated (never used)
-    writeFile( configFile, rlpList( author, author ) );
-
     string logbuf;
     std::string additional;
 
@@ -923,6 +912,8 @@ int main( int argc, char** argv ) try {
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
+
+        client->setAuthor( chainParams.sChain.owner );
 
         DefaultConsensusFactory cons_fact(
             *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
@@ -1140,17 +1131,11 @@ int main( int argc, char** argv ) try {
 
     if ( nodeMode == NodeMode::Full ) {
         client->setSealer( m.minerType() );
-        client->setAuthor( author );
         if ( networkID != NoNetworkID )
             client->setNetworkId( networkID );
     }
 
-    auto renderFullAddress = [&]( Address const& _a ) -> std::string {
-        return toUUID( keyManager.uuid( _a ) ) + " - " + _a.hex();
-    };
-
-    if ( author )
-        cout << "Mining Beneficiary: " << renderFullAddress( author ) << "\n";
+    cout << "Mining Beneficiary: " << client->author() << endl;
 
     unique_ptr< ModularServer<> > jsonrpcIpcServer;
     unique_ptr< rpc::SessionManager > sessionManager;
