@@ -11,8 +11,9 @@ static _Thread_local char last_cmd[256];
 static int shell_call(const char* cmd){
 
     strncpy(last_cmd, cmd, sizeof(last_cmd));
+    last_cmd[sizeof(last_cmd)-1] = 0;
 
-    char buf[strlen(cmd) + strlen(" 2>&1")];
+    char buf[strlen(cmd) + strlen(" 2>&1") + 1];
     strcpy(buf, cmd);
     strcat(buf, " 2>&1");
 
