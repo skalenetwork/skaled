@@ -39,6 +39,9 @@
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 
+#include <skutils/console_colors.h>
+
+#include <chrono>
 #include <memory>
 #include <thread>
 
@@ -85,7 +88,7 @@ void setThreadName( std::string const& _n ) {
 BOOST_LOG_ATTRIBUTE_KEYWORD( channel, "Channel", std::string )
 BOOST_LOG_ATTRIBUTE_KEYWORD( context, "Context", std::string )
 BOOST_LOG_ATTRIBUTE_KEYWORD( threadName, "ThreadName", std::string )
-BOOST_LOG_ATTRIBUTE_KEYWORD( timestamp, "TimeStamp", boost::posix_time::ptime )
+BOOST_LOG_ATTRIBUTE_KEYWORD( timestamp, "TimeStamp", std::string )
 
 void setupLogging( LoggingOptions const& _options ) {
     auto sink = boost::make_shared< log_sink< boost::log::sinks::text_ostream_backend > >();
@@ -103,19 +106,31 @@ void setupLogging( LoggingOptions const& _options ) {
     } );
 
     namespace expr = boost::log::expressions;
+    std::string strThreadName;
+    {  // block
+        std::stringstream ss;
+        ss << threadName;
+        strThreadName = ss.str();
+    }  // block
+    std::string strChannel;
+    {  // block
+        std::stringstream ss;
+        ss << channel;
+        strChannel = ss.str();
+    }  // block
     sink->set_formatter( expr::stream
-                         << EthViolet << expr::format_date_time( timestamp, "%Y-%m-%d %H:%M:%S" )
-                         << EthReset " " EthNavy << threadName << EthReset " " << channel
+                         << timestamp << " " << cc::info( strThreadName ) << " "
+                         << cc::warn( strChannel )
                          << expr::if_( expr::has_attr(
-                                context ) )[expr::stream << " " EthNavy << context << EthReset]
+                                context ) )[expr::stream << " " << cc::warn( strChannel )]
                          << " " << expr::smessage );
 
     boost::log::core::get()->add_sink( sink );
-
     boost::log::core::get()->add_global_attribute(
         "ThreadName", boost::log::attributes::make_function( &getThreadName ) );
     boost::log::core::get()->add_global_attribute(
-        "TimeStamp", boost::log::attributes::local_clock() );
+        "TimeStamp", boost::log::attributes::make_function(
+                         []() -> std::string { return cc::now2string( true ); } ) );
 
     boost::log::core::get()->set_exception_handler(
         boost::log::make_exception_handler< std::exception >( []( std::exception const& _ex ) {

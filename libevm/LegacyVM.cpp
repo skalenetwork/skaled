@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -51,9 +49,9 @@ uint64_t LegacyVM::decodeJumpDest( const _byte_* const _code, uint64_t& _pc ) {
 
 uint64_t LegacyVM::decodeJumpvDest( const _byte_* const _code, uint64_t& _pc, _byte_ _voff ) {
     // Layout of jump table in bytecode...
-    //     _byte_ opcode
-    //     _byte_ n_jumps
-    //     _byte_ table[n_jumps][2]
+    //     byte opcode
+    //     byte n_jumps
+    //     byte table[n_jumps][2]
     //
     uint64_t pc = _pc;
     _byte_ n = _code[++pc];  // byte after opcode is number of jumps
@@ -155,7 +153,6 @@ void LegacyVM::updateIOGas() {
     if ( m_io_gas < m_runGas )
         throwOutOfGas();
     m_io_gas -= m_runGas;
-    //    cerr << "Gas: " << dec << m_io_gas << " - " << m_runGas << " -> " << m_io_gas << endl;
 }
 
 void LegacyVM::updateGas() {
@@ -202,7 +199,7 @@ owning_bytes_ref LegacyVM::exec( u256& _io_gas, ExtVMFace& _ext, OnOpFunc const&
     m_ext = &_ext;
     m_schedule = &m_ext->evmSchedule();
     m_onOp = _onOp;
-    m_onFail = &LegacyVM::onOperation;  // this results ink operations that fail being logged twice
+    m_onFail = &LegacyVM::onOperation;  // this results in operations that fail being logged twice
                                         // in the trace
     m_PC = 0;
 
@@ -302,16 +299,18 @@ void LegacyVM::interpretCases() {
             if ( m_ext->staticCall )
                 throwDisallowedStateChange();
 
+            // Self-destructs only have gas cost starting with EIP 150
             m_runGas = toInt63( m_schedule->suicideGas );
-            Address dest = asAddress( m_SP[0] );
 
-            // After EIP158 zero-value suicides do not have to pay account creation gas.
-            if ( m_ext->balance( m_ext->myAddress ) > 0 ||
-                 m_schedule->zeroValueTransferChargesNewAccountGas() )
-                // After EIP150 hard fork charge additional cost of sending
-                // ethers to non-existing account.
-                if ( m_schedule->suicideChargesNewAccountGas() && !m_ext->exists( dest ) )
+            Address const dest = asAddress( m_SP[0] );
+            // Starting with EIP150, self-destructs need to pay both gas cost and account creation
+            // gas cost. Starting with EIP158, 0-value self-destructs don't need to pay this account
+            // creation cost.
+            if ( m_schedule->eip150Mode &&
+                 ( !m_schedule->eip158Mode || m_ext->balance( m_ext->myAddress ) > 0 ) ) {
+                if ( !m_ext->exists( dest ) )
                     m_runGas += m_schedule->callNewAccountGas;
+            }
 
             updateIOGas();
             m_ext->suicide( dest );
@@ -712,7 +711,7 @@ void LegacyVM::interpretCases() {
         CASE( JUMPV ) {
             ON_OP();
             updateIOGas();
-            m_PC = decodeJumpvDest( m_code.data(), m_PC, _byte_( m_SP[0] ) );
+            m_PC = decodeJumpvDest( m_code.data(), m_PC, byte( m_SP[0] ) );
         }
         CONTINUE
 
@@ -728,7 +727,7 @@ void LegacyVM::interpretCases() {
             ON_OP();
             updateIOGas();
             *m_RP++ = m_PC;
-            m_PC = decodeJumpvDest( m_code.data(), m_PC, _byte_( m_SP[0] ) );
+            m_PC = decodeJumpvDest( m_code.data(), m_PC, byte( m_SP[0] ) );
         }
         CONTINUE
 
@@ -1301,6 +1300,30 @@ void LegacyVM::interpretCases() {
             updateIOGas();
 
             m_SPP[0] = m_ext->envInfo().gasLimit();
+        }
+        NEXT
+
+        CASE( CHAINID ) {
+            ON_OP();
+
+            if ( !m_schedule->haveChainID )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->envInfo().chainID();
+        }
+        NEXT
+
+        CASE( SELFBALANCE ) {
+            ON_OP();
+
+            if ( !m_schedule->haveSelfbalance )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->balance( m_ext->myAddress );
         }
         NEXT
 

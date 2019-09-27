@@ -42,9 +42,12 @@ public:
           m_startingBlock( _startingBlock ),
           m_allowed_addresses( _allowedAddresses ) {}
     PrecompiledContract( unsigned _base, unsigned _word, PrecompiledExecutor const& _exec,
-        u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
+        u256 const& _startingBlock = 0 );
 
-    bigint cost( bytesConstRef _in ) const { return m_cost( _in ); }
+    bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
+        u256 const& _blockNumber ) const {
+        return m_cost( _in, _chainParams, _blockNumber );
+    }
     std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
 
     u256 const& startingBlock() const { return m_startingBlock; }
@@ -60,7 +63,7 @@ private:
     h160Set m_allowed_addresses;
 };
 
-static constexpr int64_t c_infiniteBlockNumer = std::numeric_limits< int64_t >::max();
+static constexpr int64_t c_infiniteBlockNumber = std::numeric_limits< int64_t >::max();
 
 /// skale
 struct NodeInfo {
@@ -130,14 +133,16 @@ public:
     u256 minGasLimit;
     u256 maxGasLimit;
     u256 gasLimitBoundDivisor;
-    u256 homesteadForkBlock = c_infiniteBlockNumer;
-    u256 EIP150ForkBlock = c_infiniteBlockNumer;
-    u256 EIP158ForkBlock = c_infiniteBlockNumer;
-    u256 byzantiumForkBlock = c_infiniteBlockNumer;
-    u256 eWASMForkBlock = c_infiniteBlockNumer;
-    u256 constantinopleForkBlock = c_infiniteBlockNumer;
-    u256 daoHardforkBlock = c_infiniteBlockNumer;
-    u256 experimentalForkBlock = c_infiniteBlockNumer;
+    u256 homesteadForkBlock = c_infiniteBlockNumber;
+    u256 EIP150ForkBlock = c_infiniteBlockNumber;
+    u256 EIP158ForkBlock = c_infiniteBlockNumber;
+    u256 byzantiumForkBlock = c_infiniteBlockNumber;
+    u256 eWASMForkBlock = c_infiniteBlockNumber;
+    u256 constantinopleForkBlock = c_infiniteBlockNumber;
+    u256 constantinopleFixForkBlock = c_infiniteBlockNumber;
+    u256 daoHardforkBlock = c_infiniteBlockNumber;
+    u256 experimentalForkBlock = c_infiniteBlockNumber;
+    u256 istanbulForkBlock = c_infiniteBlockNumber;
     int chainID = 0;    // Distinguishes different chains (mainnet, Ropsten, etc).
     int networkID = 0;  // Distinguishes different sub protocols.
 

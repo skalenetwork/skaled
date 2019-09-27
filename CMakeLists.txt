@@ -20,7 +20,11 @@ link_directories(${CMAKE_BINARY_DIR}/deps/lib)          # HACK for not-found -lf
 ############################################################################################################
 ############################################################################################################
 
-include(evmc/cmake/cable/bootstrap.cmake)
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmc/.git OR NOT EXISTS ${CMAKE_SOURCE_DIR}/cmake/cable/.git)
+    message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
+endif()
+
+include(cmake/cable/bootstrap.cmake)
 include(CableBuildInfo)
 include(CableBuildType)
 include(CableToolchains)
@@ -62,12 +66,9 @@ option( HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload} )
 include( HunterGate )
 HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.76.tar.gz" SHA1 "c7b60993e841850e2c449afd454f5d5aa4ec04e4" LOCAL )
 
-option( SKALED_LATEST_STANDARD "Use latest standards" ON )
-if( SKALED_LATEST_STANDARD )
-    set( CMAKE_CXX_STANDARD 17 )
-else()
-    set( CMAKE_CXX_STANDARD 14 )
-endif()
+set( CMAKE_CXX_STANDARD 17 )
+
+cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
 project(skale)
 file (READ VERSION PROJECT_VERSION)
@@ -76,8 +77,6 @@ string(STRIP ${PROJECT_VERSION} PROJECT_VERSION)
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/evmjit/.git)
     message(FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init")
 endif()
-
-cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
 cable_add_buildinfo_library(PROJECT_NAME skale)
 
@@ -113,13 +112,7 @@ find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #(jsoncpp CONFIG
 hunter_add_package(Snappy)
 find_package(Snappy CONFIG REQUIRED)
 
-if( SKALED_LATEST_STANDARD )
-    set( LIB_NAME_cryptopp "cryptopp" )
-else()
-    hunter_add_package(cryptopp)
-    find_package( cryptopp CONFIG REQUIRED )
-    set( LIB_NAME_cryptopp "cryptopp-static" )
-endif()
+set( LIB_NAME_cryptopp "cryptopp" )
 
 #hunter_add_package(libjson-rpc-cpp)
 find_package( libjson-rpc-cpp PATHS "${DEPS_SOURCES_ROOT}/libjson-rpc-cpp/cmake" ) #(libjson-rpc-cpp CONFIG REQUIRED)
@@ -154,20 +147,19 @@ add_subdirectory(evmc)
 #Global include path for all libs.
 include_directories("${CMAKE_SOURCE_DIR}")
 
-option(SKALE_INTERPRETER_SHARED "Build skale-interpreter as a shared library" OFF)
-add_subdirectory(libskale-interpreter)
-
-add_subdirectory(libdevcore)
-add_subdirectory(libdevcrypto)
-add_subdirectory(libp2p)
-
-
 set( SKUTILS_INCLUDE_DIRS
 	"${CMAKE_SOURCE_DIR}/libskutils/include"
 	"${CMAKE_SOURCE_DIR}/libconsensus/thirdparty"
 	)
 include_directories( ${SKUTILS_INCLUDE_DIRS} )
 add_subdirectory(libskutils)
+
+option(SKALE_INTERPRETER_SHARED "Build skale-interpreter as a shared library" OFF)
+add_subdirectory(libskale-interpreter)
+
+add_subdirectory(libdevcore)
+add_subdirectory(libdevcrypto)
+add_subdirectory(libp2p)
 
 add_subdirectory(libskale)
 
@@ -215,5 +207,8 @@ include(CPack)
 
 if (CONSENSUS)
     SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter") # hack to make libBLS compile
+
+    SET(SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards") # depricated option. TODO: remove from consensus
+    SET(BUILD_TESTS OFF CACHE BOOL "Build tests") # do not build libbls tests
     add_subdirectory(libconsensus)
 endif()

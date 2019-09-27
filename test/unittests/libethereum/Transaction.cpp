@@ -34,12 +34,28 @@ using namespace dev::test;
 BOOST_FIXTURE_TEST_SUITE( libethereum, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( TransactionGasRequired ) {
+    // Transaction data is 0358ac39584bc98a7c979f984b03, 14 bytes
     Transaction tr(
         fromHex( "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c9"
                  "79f984b031ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0ef"
                  "ffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" ),
         CheckTransaction::None );
-    BOOST_CHECK_EQUAL( tr.baseGasRequired( FrontierSchedule ), 21952 );
+    BOOST_CHECK_EQUAL( tr.baseGasRequired( FrontierSchedule ), 14 * 68 + 21000 );
+    BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
+}
+
+BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
+    // recipient RLP is 0x80 (empty array)
+    auto txRlp = fromHex(
+        "0xf84c8014830493e080808026a02f23977c68f851bbec8619510a4acdd34805270d97f5714b003efe7274914c"
+        "a2a05874022b26e0d88807bdcc59438f86f5a82e24afefad5b6a67ae853896fe2b37" );
+    Transaction tx( txRlp, CheckTransaction::None );  // shouldn't throw
+
+    // recipient RLP is 0xc0 (empty list)
+    txRlp = fromHex(
+        "0xf84c8014830493e0c0808026a02f23977c68f851bbec8619510a4acdd34805270d97f5714b003efe7274914c"
+        "a2a05874022b26e0d88807bdcc59438f86f5a82e24afefad5b6a67ae853896fe2b37" );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None ), InvalidTransactionFormat );
 }
 
 BOOST_AUTO_TEST_CASE( ExecutionResultOutput ) {

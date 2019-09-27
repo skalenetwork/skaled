@@ -268,10 +268,11 @@ public:
     void createContract( dev::Address const& _address );
 
     /// Sets the code of the account. Must only be called during / after contract creation.
-    void setCode( dev::Address const& _address, dev::bytes&& _code );
+    void setCode( dev::Address const& _address, dev::bytes&& _code, dev::u256 const& _version );
 
     /// Sets the code of the account.
-    void setCode( dev::Address const& _address, const dev::bytes& _code );
+    void setCode(
+        dev::Address const& _address, const dev::bytes& _code, dev::u256 const& _version );
 
     /// Delete an account (used for processing suicides).
     void kill( dev::Address _a );
@@ -297,6 +298,10 @@ public:
     /// Get the byte-size of the code of an account.
     /// @returns code(_contract).size(), but utilizes CodeSizeHash.
     size_t codeSize( dev::Address const& _contract ) const;
+
+    /// Get contract account's version.
+    /// @returns 0 if no account exists at that address.
+    dev::u256 version( dev::Address const& _contract ) const;
 
     /// Increament the account nonce.
     void incNonce( dev::Address const& _id );

@@ -22,9 +22,11 @@
  */
 
 #include "Precompiled.h"
+#include "ChainOperationParams.h"
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
+#include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/microprofile.h>
@@ -41,7 +43,7 @@ using namespace dev::eth;
 
 namespace fs = boost::filesystem;
 
-std::unique_ptr< PrecompiledRegistrar > PrecompiledRegistrar::s_this;
+PrecompiledRegistrar* PrecompiledRegistrar::s_this = nullptr;
 
 PrecompiledExecutor const& PrecompiledRegistrar::executor( std::string const& _name ) {
     if ( !get()->m_execs.count( _name ) )
@@ -167,7 +169,8 @@ bigint multComplexity( bigint const& _x ) {
 }
 }  // namespace
 
-ETH_REGISTER_PRECOMPILED_PRICER( modexp )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED_PRICER( modexp )
+( bytesConstRef _in, ChainOperationParams const&, u256 const& ) {
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
@@ -182,16 +185,28 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in ) {
     return dev::crypto::alt_bn128_G1_add( _in );
 }
 
+ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
+( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
+    return _blockNumber < _chainParams.istanbulForkBlock ? 500 : 150;
+}
+
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in ) {
     return dev::crypto::alt_bn128_G1_mul( _in );
+}
+
+ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
+( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
+    return _blockNumber < _chainParams.istanbulForkBlock ? 40000 : 6000;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in ) {
     return dev::crypto::alt_bn128_pairing_product( _in );
 }
 
-ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )( bytesConstRef _in ) {
-    return 100000 + ( _in.size() / 192 ) * 80000;
+ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )
+( bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
+    auto const k = _in.size() / 192;
+    return _blockNumber < _chainParams.istanbulForkBlock ? 100000 + k * 80000 : 45000 + k * 34000;
 }
 
 static Logger& getLogger( int a_severity = VerbosityTrace ) {

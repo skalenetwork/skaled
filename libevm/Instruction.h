@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -80,6 +78,8 @@ enum class Instruction : uint8_t {
     NUMBER,            ///< get the block's number
     DIFFICULTY,        ///< get the block's difficulty
     GASLIMIT,          ///< get the block's gas limit
+    CHAINID,           ///< get the network's ChainID
+    SELFBALANCE,       ///< get balance of the current address
 
     POP = 0x50,  ///< remove item from stack
     MLOAD,       ///< load word from memory
@@ -171,6 +171,7 @@ enum class Instruction : uint8_t {
     PUSHC = 0xac,  ///< push value from constant pool
     JUMPC,         ///< alter the program counter - pre-verified
     JUMPCI,        ///< conditionally alter the program counter - pre-verified
+    UNDEFINED,     ///< Replaces PUSHC/JUMPC/JUMPCI in the original code
 
     JUMPTO = 0xb0,  ///< alter the program counter to a jumpdest
     JUMPIF,         ///< conditionally alter the program counter

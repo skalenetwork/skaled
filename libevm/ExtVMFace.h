@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -29,8 +27,7 @@
 #include <libethcore/Common.h>
 #include <libethcore/LogEntry.h>
 
-#include <evmc/evmc.h>
-#include <evmc/helpers.h>
+#include <evmc/evmc.hpp>
 
 #include <boost/optional.hpp>
 #include <functional>
@@ -38,7 +35,6 @@
 
 namespace dev {
 namespace eth {
-
 /// Reference to a slice of buffer that also owns the buffer.
 ///
 /// This is extension to the concept C++ STL library names as array_view
@@ -135,13 +131,17 @@ struct CallParameters {
 
 class EnvInfo {
 public:
-    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed )
-        : m_headerInfo( _current ), m_lastHashes( _lh ), m_gasUsed( _gasUsed ) {}
+    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed,
+        u256 const& _chainID )
+        : m_headerInfo( _current ),
+          m_lastHashes( _lh ),
+          m_gasUsed( _gasUsed ),
+          m_chainID( _chainID ) {}
     // Constructor with custom gasLimit - used in some synthetic scenarios like eth_estimateGas RPC
     // method
     EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed,
-        u256 const& _gasLimit )
-        : EnvInfo( _current, _lh, _gasUsed ) {
+        u256 const& _gasLimit, u256 const& _chainID )
+        : EnvInfo( _current, _lh, _gasUsed, _chainID ) {
         m_headerInfo.setGasLimit( _gasLimit );
     }
 
@@ -154,11 +154,13 @@ public:
     u256 const& gasLimit() const { return m_headerInfo.gasLimit(); }
     LastBlockHashesFace const& lastHashes() const { return m_lastHashes; }
     u256 const& gasUsed() const { return m_gasUsed; }
+    u256 const& chainID() const { return m_chainID; }
 
 private:
     BlockHeader m_headerInfo;
     LastBlockHashesFace const& m_lastHashes;
     u256 m_gasUsed;
+    u256 m_chainID;
 };
 
 /// Represents a call result.
@@ -187,17 +189,17 @@ struct CreateResult {
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
  */
-class ExtVMFace : public evmc_context {
+class ExtVMFace {
 public:
     /// Full constructor.
     ExtVMFace( EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin,
         u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash,
-        unsigned _depth, bool _isCreate, bool _staticCall );
-
-    virtual ~ExtVMFace() = default;
+        u256 const& _version, unsigned _depth, bool _isCreate, bool _staticCall );
 
     ExtVMFace( ExtVMFace const& ) = delete;
     ExtVMFace& operator=( ExtVMFace const& ) = delete;
+
+    virtual ~ExtVMFace() = default;
 
     /// Read storage location.
     virtual u256 store( u256 ) { return 0; }
@@ -260,6 +262,7 @@ public:
     bytesConstRef data;       ///< Current input data.
     bytes code;               ///< Current code that is executing.
     h256 codeHash;            ///< SHA3 hash of the executing code
+    u256 version;             ///< Version of the VM to execute code
     u256 salt;                ///< Values used in new address construction by CREATE2
     SubState sub;             ///< Sub-band VM state (suicides, refund counter, logs).
     unsigned depth = 0;       ///< Depth of the present call.
@@ -267,7 +270,47 @@ public:
     bool staticCall = false;  ///< Throw on state changing.
 };
 
-inline evmc_address toEvmC( Address const& _addr ) {
+class EvmCHost : public evmc::Host {
+public:
+    explicit EvmCHost( ExtVMFace& _extVM ) : m_extVM{_extVM} {}
+
+    bool account_exists( const evmc::address& addr ) noexcept override;
+
+    evmc::bytes32 get_storage(
+        const evmc::address& addr, const evmc::bytes32& key ) noexcept override;
+
+    evmc_storage_status set_storage( const evmc::address& _addr, const evmc::bytes32& _key,
+        const evmc::bytes32& _value ) noexcept override;
+
+    evmc::uint256be get_balance( const evmc::address& _addr ) noexcept override;
+
+    size_t get_code_size( const evmc::address& _addr ) noexcept override;
+
+    evmc::bytes32 get_code_hash( const evmc::address& _addr ) noexcept override;
+
+    size_t copy_code( const evmc::address& _addr, size_t _codeOffset, uint8_t* _bufferData,
+        size_t _bufferSize ) noexcept override;
+
+    void selfdestruct(
+        const evmc::address& _addr, const evmc::address& _beneficiary ) noexcept override;
+
+    evmc::result call( const evmc_message& _msg ) noexcept override;
+
+    evmc_tx_context get_tx_context() noexcept override;
+
+    evmc::bytes32 get_block_hash( int64_t _blockNumber ) noexcept override;
+
+    void emit_log( const evmc::address& _addr, const uint8_t* _data, size_t _dataSize,
+        const evmc::bytes32 _topics[], size_t _numTopics ) noexcept override;
+
+private:
+    evmc::result create( evmc_message const& _msg ) noexcept;
+
+private:
+    ExtVMFace& m_extVM;
+};
+
+inline evmc::address toEvmC( Address const& _addr ) {
     return reinterpret_cast< evmc_address const& >( _addr );
 }
 
@@ -279,7 +322,7 @@ inline u256 fromEvmC( evmc_uint256be const& _n ) {
     return fromBigEndian< u256 >( _n.bytes );
 }
 
-inline Address fromEvmC( evmc_address const& _addr ) {
+inline Address fromEvmC( evmc::address const& _addr ) {
     return reinterpret_cast< Address const& >( _addr );
 }
 }  // namespace eth

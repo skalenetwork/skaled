@@ -72,7 +72,7 @@ State::State(
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ) {
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << "Using existing database";
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -99,7 +99,7 @@ skale::OverlayDB State::openDB(
     fs::path state_path = path / fs::path( "state" );
     try {
         std::unique_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
-        clog( VerbosityTrace, "statedb" ) << "Opened state DB.";
+        clog( VerbosityTrace, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         cwarn << boost::diagnostic_information( ex ) << '\n';
@@ -160,7 +160,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 }
 
                 if ( account.hasNewCode() ) {
-                    setCode( address, account.code() );
+                    setCode( address, account.code(), account.version() );
                 }
             }
         }
@@ -271,10 +271,12 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+    // version is 0 if absent from RLP
+    auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
-        std::forward_as_tuple(
-            nonce, balance, EmptyTrie, codeHash, dev::eth::Account::Changedness::Unchanged ) );
+        std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
+            dev::eth::Account::Changedness::Unchanged ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -564,13 +566,16 @@ bytes const& State::code( Address const& _addr ) const {
     return a->code();
 }
 
-void State::setCode( Address const& _address, bytes&& _code ) {
+void State::setCode( Address const& _address, bytes&& _code, u256 const& _version ) {
+    // rollback assumes that overwriting of the code never happens
+    // (not allowed in contract creation logic in Executive)
+    assert( !addressHasCode( _address ) );
     m_changeLog.emplace_back( _address, code( _address ) );
-    m_cache[_address].setCode( std::move( _code ) );
+    m_cache[_address].setCode( std::move( _code ), _version );
 }
 
-void State::setCode( const Address& _address, const bytes& _code ) {
-    setCode( _address, bytes( _code ) );
+void State::setCode( const Address& _address, const bytes& _code, u256 const& _version ) {
+    setCode( _address, bytes( _code ), _version );
 }
 
 h256 State::codeHash( Address const& _a ) const {
@@ -595,6 +600,11 @@ size_t State::codeSize( Address const& _a ) const {
         }
     } else
         return 0;
+}
+
+u256 State::version( const Address& _contract ) const {
+    Account const* a = account( _contract );
+    return a ? a->version() : 0;
 }
 
 size_t State::savepoint() const {
@@ -628,7 +638,7 @@ void State::rollback( size_t _savepoint ) {
             m_cache.erase( change.address );
             break;
         case Change::Code:
-            account.setCode( std::move( change.oldCode ) );
+            account.resetCode();
             break;
         case Change::Touch:
             account.untouch();
@@ -793,7 +803,7 @@ bool State::checkVersion() const {
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
-    _out << "--- Cache ---" << std::endl;
+    _out << cc::debug( "--- Cache ---" ) << std::endl;
     std::set< Address > d;
     for ( auto i : _s.m_cache )
         d.insert( i.first );
@@ -804,11 +814,11 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
         assert( cache );
 
         if ( cache && !cache->isAlive() )
-            _out << "XXX  " << i << std::endl;
+            _out << cc::debug( "XXX  " ) << i << std::endl;
         else {
-            string lead = " +   ";
+            string lead = cc::debug( " +   " );
             if ( cache )
-                lead = " .   ";
+                lead = cc::debug( " .   " );
 
             stringstream contout;
 
@@ -831,9 +841,9 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
 
                 contout << " @:";
                 if ( cache && cache->hasNewCode() )
-                    contout << " $" << toHex( cache->code() );
+                    contout << cc::debug( " $" ) << toHex( cache->code() );
                 else
-                    contout << " $" << ( cache ? cache->codeHash() : dev::h256( 0 ) );
+                    contout << cc::debug( " $" ) << ( cache ? cache->codeHash() : dev::h256( 0 ) );
 
                 for ( auto const& j : mem )
                     if ( j.second )
@@ -845,12 +855,13 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                                 << std::setw( 0 ) << j.second;
                     else
                         contout << std::endl
-                                << "XXX    " << std::hex << nouppercase << std::setw( 64 )
-                                << j.first << "";
+                                << cc::debug( "XXX    " ) << std::hex << nouppercase
+                                << std::setw( 64 ) << j.first << "";
             } else
-                contout << " [SIMPLE]";
-            _out << lead << i << ": " << std::dec << ( cache ? cache->nonce() : u256( 0 ) )
-                 << " #:" << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
+                contout << cc::debug( " [SIMPLE]" );
+            _out << lead << i << cc::debug( ": " ) << std::dec
+                 << ( cache ? cache->nonce() : u256( 0 ) ) << cc::debug( " #:" )
+                 << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
         }
     }
     return _out;

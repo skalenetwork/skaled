@@ -1,6 +1,4 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
-
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
@@ -19,9 +17,9 @@
 
 #include "LegacyVM.h"
 
-using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using byte = _byte_;
 
 std::array< InstructionMetric, 256 > LegacyVM::c_metrics;
 void LegacyVM::initMetrics() {
@@ -67,8 +65,8 @@ void LegacyVM::optimize() {
 
         if ( op == Instruction::JUMPDEST ) {
             m_jumpDests.push_back( pc );
-        } else if ( ( _byte_ ) Instruction::PUSH1 <= ( _byte_ ) op &&
-                    ( _byte_ ) op <= ( _byte_ ) Instruction::PUSH32 ) {
+        } else if ( ( byte ) Instruction::PUSH1 <= ( byte ) op &&
+                    ( byte ) op <= ( byte ) Instruction::PUSH32 ) {
             pc += ( _byte_ ) op - ( _byte_ ) Instruction::PUSH1 + 1;
         }
 #if EIP_615
@@ -94,9 +92,9 @@ void LegacyVM::optimize() {
         u256 val = 0;
         Instruction op = Instruction( m_code[pc] );
 
-        if ( ( _byte_ ) Instruction::PUSH1 <= ( _byte_ ) op &&
-             ( _byte_ ) op <= ( _byte_ ) Instruction::PUSH32 ) {
-            _byte_ nPush = ( _byte_ ) op - ( _byte_ ) Instruction::PUSH1 + 1;
+        if ( ( byte ) Instruction::PUSH1 <= ( byte ) op &&
+             ( byte ) op <= ( byte ) Instruction::PUSH32 ) {
+            byte nPush = ( byte ) op - ( byte ) Instruction::PUSH1 + 1;
 
             // decode pushed bytes to integral value
             val = m_code[pc + 1];
@@ -116,7 +114,7 @@ void LegacyVM::optimize() {
                 m_pool.push_back( val );
 
                 TRACE_PRE_OPT( 1, pc, op );
-                m_code[pc] = _byte_( op = Instruction::PUSHC );
+                m_code[pc] = byte( op = Instruction::PUSHC );
                 m_code[pc + 3] = nPush - 2;
                 m_code[pc + 2] = pool_off & 0xff;
                 m_code[pc + 1] = pool_off >> 8;
