@@ -109,8 +109,8 @@ struct BtrfsFixture : public FixtureCommon {
         chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
         dropRoot();
 
-//        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-//        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
