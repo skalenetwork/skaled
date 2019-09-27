@@ -25,7 +25,7 @@ cd skaled
 
 ⚠️ Note: Because this repository depends on additional submodules, it is important to pass`--recurse-submodules` to the `git clone` command to automatically initialize and update each submodule.
 
-If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init`.
+If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init --recursive`.
 
 ### Install dependencies (Ubuntu)
 
