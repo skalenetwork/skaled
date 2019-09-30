@@ -26,7 +26,7 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ### OS requirements
 
-Currently skaled builds and runs on Ubuntu 16.04 and 18.04
+Skaled builds and runs on Ubuntu 16.04 and 18.04
 
 ### Clone repository
 
