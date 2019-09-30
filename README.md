@@ -65,6 +65,20 @@ cmake --build build -- -j$(nproc)
 
 Note: Currently only Debug build is supported.
 
+
+## Testing
+
+To run the tests:
+
+``` 
+cd build/test
+./testeth -- --all
+```
+
+## Documentation
+
+_in process_
+
 ## Contributing
 
 **Please read [CONTRIBUTING](CONTRIBUTING.md) and [CODING_STYLE](CODING_STYLE.md) thoroughly before making alterations to the code base. This project adheres to SKALE's code of conduct. By participating, you are expected to uphold this code.**
@@ -82,18 +96,6 @@ All development goes in develop branch.
 
 The SKALE Network uses Proof-of-Stake, therefore this project is **not suitable for Ethereum mining**.
 
-## Testing
-
-To run the tests:
-
-```
-cd build/test
-./testeth -- --all
-```
-
-## Documentation
-
-_in process_
 
 ## For more information
 * [SKALE Labs Website](https://skalelabs.com)
