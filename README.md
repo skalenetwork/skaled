@@ -8,7 +8,9 @@
 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
-The collection of C++ libraries and tools for [SKALE Network](https://skalelabs.com). This EVM-compatible client is forked from [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). It has been modified to work with the SKALE network.
+Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It used [SKALE BFT Consensus engine)(https://github.com/skalenetwork/skale-consensus).
+
+Historically it started by forking [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project).
 
 This respository is maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
 
