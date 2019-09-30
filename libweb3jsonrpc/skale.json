@@ -1,4 +1,6 @@
 [
   { "name": "skale_protocolVersion", "params": [], "order": [], "returns" : "" },
   { "name": "skale_receiveTransaction", "params": [{}], "order": [], "returns": ""}
+  { "name": "skale_getSnapshot", "params": {}, "order": [], "returns": {}},
+  { "name": "skale_downloadSnapshotFragment", "params": {}, "order": [], "returns": {}},
 ]

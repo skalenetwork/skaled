@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include <libdevcore/Common.h>
 #include <libethcore/Precompiled.h>
 
@@ -72,14 +75,16 @@ public:
     u256 id;
     std::string ip;
     uint16_t port;
+    int snapshotInterval = 0;
     int emptyBlockIntervalMs = -1;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
-        uint16_t _port = 11111 ) {
+        uint16_t _port = 11111, int _snapshotInterval = 0 ) {
         name = _name;
         id = _id;
         ip = _ip;
         port = _port;
+        snapshotInterval = _snapshotInterval;
     }
 };
 
@@ -160,6 +165,8 @@ public:
     SChain sChain;
     u256 accountInitialFunds = 0;
     u256 externalGasDifficulty = ~u256( 0 );
+    typedef std::vector< std::string > vecAdminOrigins_t;
+    vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
 };
 
 }  // namespace eth

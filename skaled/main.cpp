@@ -30,6 +30,8 @@
 #include <iostream>
 #include <thread>
 
+#include <stdint.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -60,6 +62,7 @@
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
@@ -79,7 +82,12 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
+#include <stdlib.h>
+#include <time.h>
+
 #include <skutils/console_colors.h>
+#include <skutils/rest_call.h>
+
 
 using namespace std;
 using namespace dev;
@@ -184,7 +192,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
-    cc::_max_value_size_ = 1024;
+    cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -349,6 +357,12 @@ int main( int argc, char** argv ) try {
     addNetworkingOption(
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
+
+    // skale - snapshot download command
+    addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
+        "Download snapshot from other skaled node specified by web3/json-rpc url" );
+    addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
+        "Path of file to save downloaded snapshot to" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -715,6 +729,117 @@ int main( int argc, char** argv ) try {
         // default to skale if not already set with `--config`
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
+    std::shared_ptr< SnapshotManager > snapshotManager;
+    if ( chainParams.nodeInfo.snapshotInterval > 0 || vm.count( "download-snapshot" ) )
+        snapshotManager.reset( new SnapshotManager(
+            getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
+                              "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+
+    if ( vm.count( "download-snapshot" ) ) {
+        try {
+            fs::path saveTo;
+
+            if ( vm.count( "download-target" ) )
+                saveTo = fs::path( vm["download-target"].as< string >() );
+            else {
+                string filename_string = "/tmp/skaled_snapshot_download_XXXXXX";
+                char buf[filename_string.length() + 1];
+                strcpy( buf, filename_string.c_str() );
+                int fd = mkstemp( buf );
+                if ( fd < 0 ) {
+                    throw system_error();
+                }
+                close( fd );
+                saveTo = buf;
+            }
+
+            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
+
+            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
+                      << cc::normal( " to " ) << cc::info( saveTo.native() ) << std::endl;
+            bool isBinaryDownload = false;
+
+            unsigned block_number;
+            {
+                skutils::rest::client cli;
+                if ( !cli.open( strURLWeb3 ) ) {
+                    // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+                    return -1;
+                }
+
+                nlohmann::json joIn = nlohmann::json::object();
+                joIn["jsonrpc"] = "2.0";
+                joIn["method"] = "eth_blockNumber";
+                joIn["params"] = nlohmann::json::object();
+                skutils::rest::data_t d = cli.call( joIn );
+                if ( d.empty() ) {
+                    std::cout << cc::fatal( "Snapshot download failed - cannot get bockNumber" )
+                              << "\n";
+                    return -1;
+                }
+                // TODO catch?
+                block_number = dev::eth::jsToBlockNumber(
+                    nlohmann::json::parse( d.s_ )["result"].get< string >() );
+                block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
+            }
+
+            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+                [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+                    std::cout << cc::normal( "... download progress ... " )
+                              << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
+                              << cc::num10( uint64_t( cntChunks ) ) << "\r";
+                    return true;  // continue download
+                },
+                isBinaryDownload );
+            std::cout << "                                                  \r";  // clear progress
+                                                                                  // line
+            if ( !bOK ) {
+                std::cout << cc::fatal( "Snapshot download failed" ) << "\n";
+                return -1;
+            }
+            std::cout << cc::success( "Snapshot download success for block " )
+                      << cc::u( to_string( block_number ) ) << std::endl;
+
+            snapshotManager->importDiff( block_number, saveTo );
+            fs::remove( saveTo );
+
+            // HACK refactor this shit!
+            fs::path price_db_path;
+            for ( auto& f :
+                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
+                if ( f.path().string().find( "prices_" ) != string::npos ) {
+                    price_db_path = f.path();
+                    break;
+                }  // if
+            }
+            if ( price_db_path.empty() ) {
+                std::cout << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
+                return -1;
+            }
+            // TODO hope it won't throw
+            fs::rename( price_db_path, price_db_path.parent_path() /
+                                           ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+            //// HACK END ////
+
+            snapshotManager->restoreSnapshot( block_number );
+
+            fs::remove( saveTo );
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+        }
+    }
+
+    // it was needed for snapshot downloading
+    if ( chainParams.nodeInfo.snapshotInterval <= 0 ) {
+        snapshotManager = nullptr;
+    }
+
     if ( loggingOptions.verbosity > 0 )
         cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
@@ -779,7 +904,6 @@ int main( int argc, char** argv ) try {
     //        );
 
     std::unique_ptr< Client > client;
-    std::string snapshotPath = "";
     std::shared_ptr< GasPricer > gasPricer;
 
     if ( getDataDir().size() )
@@ -790,11 +914,11 @@ int main( int argc, char** argv ) try {
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                 TransactionQueue::Limits{100000, 1024} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), getDataDir(), snapshotPath, withExisting,
+                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                 TransactionQueue::Limits{100000, 1024} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
@@ -1096,7 +1220,7 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client->skaleHost() );
+        auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( *client );
 
@@ -1227,8 +1351,8 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
-                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
+                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             //

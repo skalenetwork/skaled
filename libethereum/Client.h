@@ -41,6 +41,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/SealEngine.h>
+#include <libskale/SnapshotManager.h>
 #include <libskale/State.h>
 
 #include "Block.h"
@@ -77,8 +78,8 @@ class Client : public ClientBase, protected Worker {
 
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
+        std::shared_ptr< SnapshotManager > _snapshotManager,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
-        boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
@@ -260,6 +261,10 @@ public:
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
+    boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
+        return m_snapshotManager->makeDiff( 0, _blockNumber );
+    }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -276,8 +281,7 @@ protected:
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
-    void init( boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
-        WithExisting _forceAction, u256 _networkId );
+    void init( boost::filesystem::path const& _dbPath, WithExisting _forceAction, u256 _networkId );
 
     /// InterfaceStub methods
     BlockChain& bc() override { return m_bc; }
@@ -451,6 +455,7 @@ protected:
 
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
+    std::shared_ptr< SnapshotManager > m_snapshotManager;
 
 public:
     FILE* performance_fd;

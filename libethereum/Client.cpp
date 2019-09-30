@@ -78,8 +78,9 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 }
 
 Client::Client( ChainParams const& _params, int _networkID,
-    std::shared_ptr< GasPricer > _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l )
+    std::shared_ptr< GasPricer > _gpForAdoption,
+    std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
+    WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction,
           []( unsigned d, unsigned t ) {
@@ -89,8 +90,9 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ) {
-    init( _dbPath, _snapshotPath, _forceAction, _networkID );
+      m_working( chainParams().accountStartNonce ),
+      m_snapshotManager( _snapshotManager ) {
+    init( _dbPath, _forceAction, _networkID );
 }
 
 Client::~Client() {
@@ -124,8 +126,7 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
         m_skaleHost->startWorking();
 }
 
-void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPath,
-    WithExisting _forceAction, u256 _networkId ) {
+void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
 
@@ -166,30 +167,12 @@ void Client::init( fs::path const& _dbPath, fs::path const& _snapshotDownloadPat
 
     m_gp->update( bc() );
 
-    // create Ethereum capability only if we're not downloading the snapshot
-    if ( _snapshotDownloadPath.empty() ) {
-        //        auto ethHostCapability =
-        //            make_shared<EthereumHost>(_extNet, bc(), m_stateDB, m_tq, m_bq, _networkId);
-        //        _extNet.registerCapability(ethHostCapability);
-        //        if(!m_skaleHost)
-        //            m_skaleHost = make_shared< SkaleHost >( *this, m_tq );
-        //        m_skaleHost->startWorking();
-    }
-
-    // create Warp capability if we either download snapshot or can give out snapshot
-    auto const importedSnapshot = importedSnapshotPath( _dbPath, bc().genesisHash() );
-    bool const importedSnapshotExists = fs::exists( importedSnapshot );
-    if ( !_snapshotDownloadPath.empty() || importedSnapshotExists ) {
-        std::shared_ptr< SnapshotStorageFace > snapshotStorage(
-            importedSnapshotExists ? createSnapshotStorage( importedSnapshot ) : nullptr );
-        //        auto warpHostCapability = make_shared<WarpHostCapability>(
-        //            _extNet, bc(), _networkId, _snapshotDownloadPath, snapshotStorage);
-        //        _extNet.registerCapability(warpHostCapability);
-        //        m_warpHost = warpHostCapability;
-    }
-
     if ( _dbPath.size() )
         Defaults::setDBPath( _dbPath );
+
+    if ( chainParams().nodeInfo.snapshotInterval > 0 && number() == 0 )
+        m_snapshotManager->doSnapshot( 0 );
+
     doWork( false );
 }
 
@@ -587,6 +570,12 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     if ( !isMajorSyncing() )
         resyncStateFromChain();
     noteChanged( changeds );
+
+
+    if ( chainParams().nodeInfo.snapshotInterval > 0 &&
+         number() % chainParams().nodeInfo.snapshotInterval == 0 ) {
+        m_snapshotManager->doSnapshot( number() );
+    }  // if snapshot
 }
 
 bool Client::remoteActive() const {

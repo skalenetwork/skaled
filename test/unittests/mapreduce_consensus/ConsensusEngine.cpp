@@ -214,7 +214,7 @@ public:
 
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                "", "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
@@ -229,7 +229,7 @@ public:
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
 
-        rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client->skaleHost() ),
+        rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client ),
             new rpc::Web3( /*web3->clientVersion()*/ ), new rpc::Debug( *client ),  // TODO add
                                                                                     // version here?
             new rpc::Test( *client ) ) );

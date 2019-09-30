@@ -38,8 +38,9 @@ class EthashClient : public Client {
 public:
     /// Trivial forwarding constructor.
     EthashClient( ChainParams const& _params, int _networkID,
-        std::shared_ptr< GasPricer > _gpForAdoption, boost::filesystem::path const& _dbPath = {},
-        boost::filesystem::path const& _snapshotPath = {},
+        std::shared_ptr< GasPricer > _gpForAdoption,
+        std::shared_ptr< SnapshotManager > _snapshotManager,
+        boost::filesystem::path const& _dbPath = {},
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     ~EthashClient();
