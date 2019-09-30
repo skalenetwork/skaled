@@ -16,7 +16,7 @@ This respository is maintained by SKALE Labs, and intended to be used for SKALE 
 
 Skaled is the only provably secure ETH compatible PoS client. The security is proven under assumption of maximum $t$ malicious nodes, where the total number of nodes N is more or equal 3t + 1.
 
-##  Historic origins.
+##  Historic origins
 
 Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). We are thankful to the original cpp-ethereum team for their contributions.
 
@@ -24,7 +24,11 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 ## Building from source
 
 
-###
+### OS requirements
+
+Currently skaled builds and runs on Ubuntu 16.04 and 18.04
+
+### Clone repository
 
 Clone this repository:
 
