@@ -14,7 +14,7 @@ This respository is maintained by SKALE Labs, and intended to be used for SKALE 
 
 ## Provable security
 
-Skaled is the only provably secure ETH compatible PoS client. The security is proven under assumption of maximum $t$ malicious nodes, where the total number of nodes $N$ is more or equal $3t + 1$.
+Skaled is the only provably secure ETH compatible PoS client. The security is proven under assumption of maximum $t$ malicious nodes, where the total number of nodes N is more or equal 3t + 1.
 
 ##  Historic origins.
 
