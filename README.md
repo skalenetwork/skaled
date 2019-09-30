@@ -29,14 +29,14 @@ cd skaled
 
 If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init --recursive`
 
-### Install dependencies (Ubuntu)
+### Install required packages (Ubuntu)
 
 ```
 sudo apt-get update
 sudo apt-get install autoconf build-essential cmake libboost-all-dev texinfo wget
 ```
 
-### Install internal dependencies
+### Build dependencies
 
 ```
 cd SkaleDeps
