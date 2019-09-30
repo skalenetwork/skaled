@@ -48,9 +48,9 @@ Configure the project build with the following command to create the
 
 ```shell
 # Configure the project and create a build directory.
-cmake -H. -Bbuild
+cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 # Build all default targets using all cores.
-cmake --build build -- -j$(nproc)
+cmake --build build -- -j$(nproc) 
 ```
 
 ## Contributing
