@@ -43,6 +43,7 @@ typedef intptr_t ssize_t;
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
 #include <atomic>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -256,7 +257,15 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
     dev::eth::ChainParams& chainParams_;
 
 public:
-    SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
+    typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
+        fn_binary_snapshot_download_t;
+
+private:
+    fn_binary_snapshot_download_t fn_binary_snapshot_download_;
+
+public:
+    SkaleServerOverride( dev::eth::ChainParams& chainParams,
+        fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
         dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
         const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
         int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,

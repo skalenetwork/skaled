@@ -757,7 +757,7 @@ int main( int argc, char** argv ) try {
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
                       << cc::normal( " to " ) << cc::info( saveTo.native() ) << std::endl;
-            bool isBinaryDownload = false;
+            bool isBinaryDownload = true;
 
             unsigned block_number;
             {
@@ -1351,10 +1351,15 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
-                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
-                nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
-                chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
+            SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
+                [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
+                return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
+            };
+            auto skale_server_connector = new SkaleServerOverride( chainParams,
+                fn_binary_snapshot_download, cntServers, client.get(), chainParams.nodeInfo.ip,
+                nExplicitPortHTTP, chainParams.nodeInfo.ip, nExplicitPortHTTPS,
+                chainParams.nodeInfo.ip, nExplicitPortWS, chainParams.nodeInfo.ip, nExplicitPortWSS,
+                strPathSslKey, strPathSslCert );
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );

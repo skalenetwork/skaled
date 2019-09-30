@@ -1706,7 +1706,8 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
+SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams,
+    fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
     dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
     const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
     int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
@@ -1715,6 +1716,7 @@ SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams, si
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
       chainParams_( chainParams ),
+      fn_binary_snapshot_download_( fn_binary_snapshot_download ),
       m_strAddrHTTP( strAddrHTTP ),
       m_nBasePortHTTP( nBasePortHTTP ),
       m_strAddrHTTPS( strAddrHTTPS ),
@@ -2239,47 +2241,27 @@ bool SkaleServerOverride::handleRequestWithBinaryAnswer(
     const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
     buffer.clear();
     std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-    //    if ( strMethodName == "skale_downloadSnapshotFragment" ) {
-    //        // std::cout << cc::attention( "------------ " ) << cc::info(
-    //        // "skale_downloadSnapshotFragment" ) << cc::normal( " call with " ) << cc::j(
-    //        joRequest )
-    //        // <<
-    //        // "\n";
-    //        const nlohmann::json& joParams = joRequest["params"];
-    //        if ( joParams.count( "isBinary" ) > 0 ) {
-    //            bool isBinary = joParams["isBinary"].get< bool >();
-    //            if ( isBinary ) {
-    //                size_t sizeOfFile = fs::file_size( dev::rpc::g_pathSnapshotFile );
-    //                size_t idxFrom = joParams["from"].get< size_t >();
-    //                size_t sizeOfChunk = joParams["size"].get< size_t >();
-    //                if ( idxFrom >= sizeOfFile )
-    //                    sizeOfChunk = 0;
-    //                if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
-    //                    sizeOfChunk = sizeOfFile - idxFrom;
-    //                if ( sizeOfChunk > dev::rpc::g_nMaxChunckSize )
-    //                    sizeOfChunk = dev::rpc::g_nMaxChunckSize;
-    //                //
-    //                //
-    //                std::ifstream f;
-    //                f.open( dev::rpc::g_pathSnapshotFile.native(), std::ios::in | std::ios::binary
-    //                ); if ( !f.is_open() )
-    //                    throw std::runtime_error( "failed to open snapshot file" );
-    //                size_t i;
-    //                for ( i = 0; i < sizeOfChunk; ++i )
-    //                    buffer.push_back( ( unsigned char ) ( 0 ) );
-    //                f.seekg( idxFrom );
-    //                f.read( ( char* ) buffer.data(), sizeOfChunk );
-    //                f.close();
-    //                return true;
-    //            }
-    //        }
-    //    }
+    if ( strMethodName == "skale_downloadSnapshotFragment" && fn_binary_snapshot_download_ ) {
+        //        std::cout << cc::attention( "------------ " )
+        //                  << cc::info( "skale_downloadSnapshotFragment" ) << cc::normal( " call
+        //                  with " )
+        //                  << cc::j( joRequest ) << "\n";
+        const nlohmann::json& joParams = joRequest["params"];
+        if ( joParams.count( "isBinary" ) > 0 ) {
+            bool isBinary = joParams["isBinary"].get< bool >();
+            if ( isBinary ) {
+                buffer = fn_binary_snapshot_download_( joParams );
+                return true;
+            }
+        }
+    }
     return false;
 }
 
 bool SkaleServerOverride::handleAdminOriginFilter(
     const std::string& strMethod, const std::string& strOriginURL ) {
-    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) << cc::attention( "
+    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) <<
+    // cc::attention( "
     // ------------> " ) << cc::info( strMethod ) << "\n";
     static const std::set< std::string > g_setAdminMethods = {
         "skale_getSnapshot", "skale_downloadSnapshotFragment"};

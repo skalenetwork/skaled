@@ -25,6 +25,8 @@
 #ifndef CPP_ETHEREUM_SKALE_H
 #define CPP_ETHEREUM_SKALE_H
 
+#include <stdint.h>
+
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
 #include <libethereum/Client.h>
@@ -71,10 +73,14 @@ public:
     typedef std::function< void() > fn_on_shutdown_t;
     static void onShutdownInvoke( fn_on_shutdown_t fn );
 
-private:
+public:
     nlohmann::json impl_skale_getSnapshot(
         const nlohmann::json& joRequest, dev::eth::Client& client );
-    nlohmann::json impl_skale_downloadSnapshotFragment( const nlohmann::json& joRequest );
+    std::vector< uint8_t > ll_impl_skale_downloadSnapshotFragment(
+        const fs::path& fp, size_t idxFrom, size_t sizeOfChunk );
+    std::vector< uint8_t > impl_skale_downloadSnapshotFragmentBinary(
+        const nlohmann::json& joRequest );
+    nlohmann::json impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest );
 
 private:
     static volatile bool g_bShutdownViaWeb3Enabled;
