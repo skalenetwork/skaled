@@ -22,9 +22,11 @@ Skaled is asynchronous, meaning that the consensus on the next block starts imme
 
 ## Provable security
 
-Skaled is the only provably secure ETH compatible PoS client. The security is proven under assumption of maximum t malicious nodes, where the total number of nodes N is more or equal 3t + 1. 
+Skaled is the only provably secure ETH compatible PoS client. Security is proven under assumption of maximum t malicious nodes, where the total number of nodes N is more or equal 3t + 1. 
 
-The network is assumed to be asynchronous meaning that there is no upper limit for the packet delivery time. In case of a network split, the protocol can wait indefinitely long until the split is resolved. 
+## Survivability
+
+The network is assumed to bef fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporarily network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
 
 ##  Historic origins
 
