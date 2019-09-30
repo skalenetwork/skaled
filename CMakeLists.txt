@@ -1,5 +1,6 @@
 # skale: Skale C++ client, tools and libraries.
 # Licensed under the GNU General Public License, Version 3. See the LICENSE file.
+#
 
 cmake_minimum_required(VERSION 3.5.1)
 

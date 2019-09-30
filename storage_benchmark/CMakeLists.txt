@@ -12,7 +12,7 @@ set(executable_name storage_benchmark)
 add_executable(${executable_name} ${sources} ${headers})
 target_link_libraries(
     ${executable_name}
-    PRIVATE ethereum skale
+    PRIVATE ethereum skutils skale devcore skutils
 #    PRIVATE ethereum ethashseal evm web3jsonrpc Boost::program_options
 )
 

@@ -10,11 +10,13 @@ add_library( skutils STATIC
                                     ./include/skutils/multifunction.h
     ./src/multithreading.cpp        ./include/skutils/multithreading.h
     ./src/network.cpp               ./include/skutils/network.h
+	./src/rest_call.cpp             ./include/skutils/rest_call.h
 	./src/stats.cpp                 ./include/skutils/stats.h
     ./src/thread_pool.cpp           ./include/skutils/thread_pool.h
     ./src/url.cpp                   ./include/skutils/url.h
     ./src/utils.cpp                 ./include/skutils/utils.h
     ./src/ws.cpp                    ./include/skutils/ws.h
+    ./src/btrfs.c                   ./include/skutils/btrfs.h
     )
 if( APPLE )
 	target_compile_definitions( skutils PRIVATE __BUILDING_4_MAC_OS_X__=1 )
@@ -25,5 +27,5 @@ target_include_directories( skutils PRIVATE
 	"${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp"
     )
 target_link_libraries( skutils
-    websockets uv
+    websockets uv pthread
     )

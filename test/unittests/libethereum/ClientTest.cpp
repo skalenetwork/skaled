@@ -55,7 +55,7 @@ public:
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, dir, WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<

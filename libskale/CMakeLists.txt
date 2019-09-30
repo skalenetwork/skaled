@@ -9,6 +9,7 @@ set(sources
     SkaleClient.cpp
     SkaleDebug.cpp
     ConsensusGasPricer.cpp
+    SnapshotManager.cpp
 )
 
 set(headers
@@ -19,6 +20,7 @@ set(headers
     SkaleClient.h
     SkaleDebug.h
     ConsensusGasPricer.h
+    SnapshotManager.h
 )
 
 add_library(skale ${sources} ${headers})

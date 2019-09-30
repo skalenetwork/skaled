@@ -35,6 +35,8 @@
 #include "GenesisInfo.h"
 #include "ValidationSchemes.h"
 
+#include <skutils/utils.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -92,8 +94,10 @@ ChainParams ChainParams::loadConfig(
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         auto ip = infoObj.at( "bindIP" ).get_str();
         auto port = infoObj.at( "basePort" ).get_int();
+        int snapshotInterval =
+            infoObj.count( "snapshotInterval" ) ? infoObj.at( "snapshotInterval" ).get_int() : 0;
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port )};
+        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), snapshotInterval};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -112,6 +116,16 @@ ChainParams ChainParams::loadConfig(
             s.nodes.push_back( node );
         }
         cp.sChain = s;
+
+        cp.vecAdminOrigins.clear();
+        if ( infoObj.count( "adminOrigins" ) ) {
+            for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
+                std::string strOriginWildcardFilter = nodeOrigun.get_str();
+                cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
+            }
+        } else {
+            cp.vecAdminOrigins.push_back( "*" );
+        }
     }  // if skale
 
     auto setOptionalU256Parameter = [&params]( u256& _destination, string const& _name ) {
@@ -352,4 +366,14 @@ const std::string& ChainParams::getOriginalJson() const {
     originalJSON = js::write_string( ( js::mValue ) obj, true );
 
     return originalJSON;
+}
+
+bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
+    if ( vecAdminOrigins.empty() )
+        return true;
+    for ( const std::string& wild : vecAdminOrigins ) {
+        if ( skutils::tools::wildcmp( wild.c_str(), origin.c_str() ) )
+            return true;
+    }
+    return false;
 }

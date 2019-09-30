@@ -65,7 +65,8 @@ static std::string const c_genesisInfoSkale = std::string() +
       "bindIP": "127.0.0.1",
       "basePort": 1231,
       "logLevel": "trace",
-      "logLevelProposal": "trace"
+      "logLevelProposal": "trace",
+      "adminOrigins": [ "*" ]
     },
     "sChain": {
         "schainName": "TestChain",

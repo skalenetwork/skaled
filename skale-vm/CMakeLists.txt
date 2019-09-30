@@ -5,7 +5,7 @@ target_include_directories( skale PRIVATE
 	${SKUTILS_INCLUDE_DIRS}
 	)
 
-target_link_libraries(skale-vm PRIVATE ethereum evm ethashseal devcore skutils Boost::program_options)
+target_link_libraries(skale-vm PRIVATE ethereum evm ethashseal devcore skutils Boost::program_options pthread)
 
 target_include_directories(skale-vm PRIVATE ../utils)
 

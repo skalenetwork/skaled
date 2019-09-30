@@ -917,6 +917,7 @@ public:
     client& operator=( client&& ) = delete;
     virtual ~client();
     bool isServerSide() const override;
+    bool is_ssl() const;
     std::string type() const;
     std::string uri() const;
     virtual bool open( const std::string& uri );

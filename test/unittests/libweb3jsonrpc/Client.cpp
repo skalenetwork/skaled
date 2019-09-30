@@ -70,8 +70,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     //    string(),
     //        chainParams, WithExisting::Kill, set< string >{"eth"} );
 
-    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-        getDataDir(), "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
+    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL,
+        getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
     client.injectSkaleHost();
     client.startWorking();
