@@ -420,20 +420,84 @@ int main( int argc, char** argv ) try {
         version();
         return 0;
     }
+
+    bool chainConfigIsSet = false, chainConfigParsed = false;
+    nlohmann::json joConfig;
+
     if ( vm.count( "import-presale" ) )
         presaleImports.push_back( vm["import-presale"].as< string >() );
     if ( vm.count( "admin" ) )
         jsonAdmin = vm["admin"].as< string >();
+
+    if ( vm.count( "config" ) ) {
+        try {
+            configPath = vm["config"].as< string >();
+            configJSON = contentsString( configPath.string() );
+            if ( configJSON.empty() )
+                throw "Config file probably not found";
+            joConfig = nlohmann::json::parse( configJSON );
+            chainConfigParsed = true;
+        } catch ( ... ) {
+            cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
+            return -1;
+        }
+    }
+
     if ( vm.count( "ipc" ) )
         is_ipc = true;
     if ( vm.count( "no-ipc" ) )
         is_ipc = false;
+
+    if ( chainConfigParsed ) {
+        try {
+            nExplicitPortHTTP = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortHTTP = -1;
+        }
+        if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
+            nExplicitPortHTTP = -1;
+        else
+            clog( VerbosityInfo, "main" ) << "Got HTTP port from config: " << nExplicitPortHTTP;
+        //
+        try {
+            nExplicitPortHTTPS = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortHTTPS = -1;
+        }
+        if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
+            nExplicitPortHTTPS = -1;
+        else
+            clog( VerbosityInfo, "main" ) << "Got HTTPS port from config: " << nExplicitPortHTTPS;
+        //
+        try {
+            nExplicitPortWS = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWS = -1;
+        }
+        if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
+            nExplicitPortWS = -1;
+        else
+            clog( VerbosityInfo, "main" ) << "Got WS port from config: " << nExplicitPortWS;
+        //
+        try {
+            nExplicitPortWSS = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWSS = -1;
+        }
+        if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
+            nExplicitPortWSS = -1;
+        else
+            clog( VerbosityInfo, "main" ) << "Got WSS port from config: " << nExplicitPortWSS;
+    }  // if ( chainConfigParsed )
     if ( vm.count( "http-port" ) ) {
         std::string strPort = vm["http-port"].as< string >();
         if ( !strPort.empty() ) {
             nExplicitPortHTTP = atoi( strPort.c_str() );
             if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
                 nExplicitPortHTTP = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << "Got HTTP port from command line: " << nExplicitPortHTTP;
         }
     }
     if ( vm.count( "https-port" ) ) {
@@ -442,6 +506,9 @@ int main( int argc, char** argv ) try {
             nExplicitPortHTTPS = atoi( strPort.c_str() );
             if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
                 nExplicitPortHTTPS = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << "Got HTTPS port from command line: " << nExplicitPortHTTPS;
         }
     }
     if ( vm.count( "ws-port" ) ) {
@@ -450,6 +517,9 @@ int main( int argc, char** argv ) try {
             nExplicitPortWS = atoi( strPort.c_str() );
             if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
                 nExplicitPortWS = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << "Got WS port from command line: " << nExplicitPortWS;
         }
     }
     if ( vm.count( "wss-port" ) ) {
@@ -458,6 +528,9 @@ int main( int argc, char** argv ) try {
             nExplicitPortWSS = atoi( strPort.c_str() );
             if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
                 nExplicitPortWSS = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << "Got WSS port from command line: " << nExplicitPortWSS;
         }
     }
 
@@ -471,18 +544,6 @@ int main( int argc, char** argv ) try {
         setDataDir( vm["db-path"].as< string >() );
     if ( vm.count( "ipcpath" ) )
         setIpcPath( vm["ipcpath"].as< string >() );
-
-    if ( vm.count( "config" ) ) {
-        try {
-            configPath = vm["config"].as< string >();
-            configJSON = contentsString( configPath.string() );
-            if ( configJSON.empty() )
-                throw "Config file probably not found";
-        } catch ( ... ) {
-            cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
-            return -1;
-        }
-    }
 
     if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
         try {
@@ -592,9 +653,6 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
-
-    bool chainConfigIsSet = false;
-
     if ( vm.count( "skale" ) ) {
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
         chainConfigIsSet = true;
@@ -608,6 +666,7 @@ int main( int argc, char** argv ) try {
             cerr << "error in parsing config json:\n";
             cerr << err.reason_ << " line " << err.line_ << endl;
             cerr << configJSON << endl;
+        } catch ( const std::exception& err ) {
         } catch ( ... ) {
             cerr << "provided configuration is not well formatted\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
