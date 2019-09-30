@@ -86,6 +86,8 @@
 #include <time.h>
 
 #include <skutils/rest_call.h>
+#include <skutils/console_colors.h>
+
 
 using namespace std;
 using namespace dev;
@@ -190,7 +192,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
-    cc::_max_value_size_ = 1024;
+    cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
@@ -1159,7 +1161,7 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client );
+        auto skaleFace = new rpc::Skale( *client->skaleHost() );
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( *client );
 
@@ -1290,8 +1292,8 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
-                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
+                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             //
