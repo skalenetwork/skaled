@@ -20,11 +20,13 @@ Skaled is the only provably secure ETH compatible PoS client. The security is pr
 
 Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). We are thankful to the original cpp-ethereum team for their contributions.
 
-## Getting Started
 
 ## Building from source
 
-GitHub is used to maintain this source code. Clone this repository by:
+
+###
+
+Clone this repository:
 
 ```
 git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
@@ -49,10 +51,10 @@ cd SkaleDeps
 ./build.sh
 ```
 
-### Build
+### Configure and build skaled
 
-Configure the project build with the following command to create the
-`build` directory with the configuration.
+Currently only Debug build is supported.
+
 
 ```shell
 # Configure the project and create a build directory.
