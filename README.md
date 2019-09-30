@@ -30,8 +30,6 @@ Skaled builds and runs on Ubuntu 16.04 and 18.04
 
 ### Clone repository
 
-Clone this repository:
-
 ```
 git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
 cd skaled
@@ -41,7 +39,7 @@ cd skaled
 
 If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init --recursive`
 
-### Install required packages (Ubuntu)
+### Install required Ubuntu packages
 
 ```
 sudo apt-get update
@@ -57,8 +55,6 @@ cd SkaleDeps
 
 ### Configure and build skaled
 
-Currently only Debug build is supported.
-
 
 ```shell
 # Configure the project and create a build directory.
@@ -66,6 +62,8 @@ cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 # Build all default targets using all cores.
 cmake --build build -- -j$(nproc) 
 ```
+
+Note: Currently only Debug build is supported.
 
 ## Contributing
 
