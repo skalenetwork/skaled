@@ -8,50 +8,91 @@
 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
-The collection of C++ libraries and tools for [SKALE Network](https://skalelabs.com). This EVM-compatible client is forked from [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). It has been modified to work with the SKALE network.
+Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
 
-This respository is maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
+## Forklessness
 
-## Getting Started
+Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized within finite time.
+
+
+## Asynchronous block production
+
+Skaled is asynchronous, meaning that the consensus on the next block starts immediately after the previous block is finalized.  There is no set block time interval. This allows for subsecond block production in case of a fast network, enabling interactive Dapps.
+
+## Provable security
+
+Skaled is the only provably secure ETH compatible PoS client. Security is proven under assumption of maximum t malicious nodes, where the total number of nodes N is more or equal 3t + 1. 
+
+## Survivability
+
+The network is assumed to bef fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporarily network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
+
+##  Historic origins
+
+Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth) (formerly known as the [cpp-ethereum](http://www.ethdocs.org/en/latest/ethereum-clients/cpp-ethereum/) project). We are thankful to the original cpp-ethereum team for their contributions.
+
 
 ## Building from source
 
-GitHub is used to maintain this source code. Clone this repository by:
+
+### OS requirements
+
+Skaled builds and runs on Ubuntu 16.04 and 18.04
+
+### Clone repository
 
 ```
 git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
 cd skaled
 ```
 
-⚠️ Note: Because this repository depends on additional submodules, it is important to pass`--recurse-submodules` to the `git clone` command to automatically initialize and update each submodule.
+⚠️ Note: Because this repository depends on additional submodules, it is important to pass`--recurse-submodules` to the `git clone` command.
 
-If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init --recursive`
+If you have already cloned the repo and forgot to pass `--recurse-submodules`, execute `git submodule update --init --recursive`
 
-### Install dependencies (Ubuntu)
+### Install required Ubuntu packages
 
 ```
 sudo apt-get update
 sudo apt-get install autoconf build-essential cmake libboost-all-dev texinfo wget
 ```
 
-### Install internal dependencies
+### Build dependencies
 
 ```
 cd SkaleDeps
 ./build.sh
 ```
 
-### Build
+### Configure and build skaled
 
-Configure the project build with the following command to create the
-`build` directory with the configuration.
 
 ```shell
-cmake . # Configure the project
-cmake -- -j$(nproc) # Build all default targets.
+# Configure the project and create a build directory.
+cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
+# Build all default targets using all cores.
+cmake --build build -- -j$(nproc) 
 ```
 
+Note: Currently only Debug build is supported.
+
+
+## Testing
+
+To run the tests:
+
+``` 
+cd build/test
+./testeth -- --all
+```
+
+## Documentation
+
+_in process_
+
 ## Contributing
+
+We are actively looking for contributors and have great bounties! 
 
 **Please read [CONTRIBUTING](CONTRIBUTING.md) and [CODING_STYLE](CODING_STYLE.md) thoroughly before making alterations to the code base. This project adheres to SKALE's code of conduct. By participating, you are expected to uphold this code.**
 
@@ -68,18 +109,6 @@ All development goes in develop branch.
 
 The SKALE Network uses Proof-of-Stake, therefore this project is **not suitable for Ethereum mining**.
 
-## Testing
-
-To run the tests:
-
-```
-cd build/test
-./testeth -- --all
-```
-
-## Documentation
-
-_in process_
 
 ## For more information
 * [SKALE Labs Website](https://skalelabs.com)
