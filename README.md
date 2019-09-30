@@ -35,9 +35,9 @@ git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
 cd skaled
 ```
 
-⚠️ Note: Because this repository depends on additional submodules, it is important to pass`--recurse-submodules` to the `git clone` command to automatically initialize and update each submodule.
+⚠️ Note: Because this repository depends on additional submodules, it is important to pass`--recurse-submodules` to the `git clone` command.
 
-If you have already cloned the repo and forgot to pass `--recurse-submodules`, then just execute `git submodule update --init --recursive`
+If you have already cloned the repo and forgot to pass `--recurse-submodules`, execute `git submodule update --init --recursive`
 
 ### Install required Ubuntu packages
 
