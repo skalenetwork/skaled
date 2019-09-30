@@ -803,7 +803,7 @@ int main( int argc, char** argv ) try {
             snapshotManager->importDiff( block_number, saveTo );
             fs::remove( saveTo );
 
-            // HACK refactor this shit!
+            // HACK refactor this piece of code!
             fs::path price_db_path;
             for ( auto& f :
                 fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
