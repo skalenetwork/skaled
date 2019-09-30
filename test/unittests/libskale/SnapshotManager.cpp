@@ -10,7 +10,9 @@
 #include <string>
 
 #include <stdlib.h>
+#include <unistd.h>
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -22,15 +24,17 @@ boost::unit_test::assertion_result option_all( boost::unit_test::test_unit_id ) 
 }
 
 int setid_system( const char* cmd, uid_t uid, gid_t gid ) {
-    __pid_t pid = fork();
+    pid_t pid = fork();
     if ( pid ) {
         int status;
         waitpid( pid, &status, 0 );
         return WEXITSTATUS( status );
     }
 
+#if(! defined __APPLE__)
     setresuid( uid, uid, uid );
     setresgid( gid, gid, gid );
+#endif
 
     execl( "/bin/sh", "sh", "-c", cmd, ( char* ) NULL );
     return 0;
@@ -43,6 +47,7 @@ struct FixtureCommon {
     gid_t sudo_gid;
 
     void check_sudo() {
+#if(! defined __APPLE__)
         char* id_str = getenv( "SUDO_UID" );
         if ( id_str == NULL ) {
             cerr << "Please run under sudo" << endl;
@@ -66,9 +71,11 @@ struct FixtureCommon {
         gid_t rgid, egid, sgid;
         getresgid( &rgid, &egid, &sgid );
         cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
+#endif
     }
 
     void dropRoot() {
+#if(! defined __APPLE__)
         int res = setresgid( sudo_gid, sudo_gid, 0 );
         cerr << "setresgid " << sudo_gid << " " << res << endl;
         if ( res < 0 )
@@ -77,9 +84,11 @@ struct FixtureCommon {
         cerr << "setresuid " << sudo_uid << " " << res << endl;
         if ( res < 0 )
             cerr << strerror( errno ) << endl;
+#endif
     }
 
     void gainRoot() {
+#if(! defined __APPLE__)
         int res = setresuid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
@@ -90,6 +99,7 @@ struct FixtureCommon {
             cerr << strerror( errno ) << endl;
             assert( false );
         }
+#endif
     }
 };
 

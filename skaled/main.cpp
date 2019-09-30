@@ -747,7 +747,7 @@ int main( int argc, char** argv ) try {
                 strcpy( buf, filename_string.c_str() );
                 int fd = mkstemp( buf );
                 if ( fd < 0 ) {
-                    throw system_error();
+                    throw std::runtime_error( "Failed to open " + filename_string );
                 }
                 close( fd );
                 saveTo = buf;
