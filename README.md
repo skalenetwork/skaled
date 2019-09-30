@@ -47,8 +47,10 @@ Configure the project build with the following command to create the
 `build` directory with the configuration.
 
 ```shell
-cmake . # Configure the project
-cmake -- -j$(nproc) # Build all default targets.
+# Configure the project and create a build directory.
+cmake -H. -Bbuild
+# Build all default targets using all cores.
+cmake --build build -- -j$(nproc)
 ```
 
 ## Contributing
