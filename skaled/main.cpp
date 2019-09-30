@@ -85,8 +85,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <skutils/rest_call.h>
 #include <skutils/console_colors.h>
+#include <skutils/rest_call.h>
 
 
 using namespace std;
@@ -1161,7 +1161,7 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client->skaleHost() );
+        auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( *client );
 
@@ -1292,8 +1292,8 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( cntServers, client.get(),
-                chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
+            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
+                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
                 nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
                 chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
             //
