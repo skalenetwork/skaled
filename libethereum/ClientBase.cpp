@@ -131,7 +131,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         while ( lowerBound + 1 < upperBound ) {
             auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
             if ( step.first ) {
-                if ( !haveGoodResult || ( haveGoodResult && goodGas > upperBound ) ) {
+                if ( !haveGoodResult || goodGas > upperBound ) {
                     haveGoodResult = true;
                     goodResult = step.second;
                     goodGas = upperBound;
@@ -140,7 +140,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
 
                 step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
                 if ( step.first ) {
-                    if ( !haveGoodResult || ( haveGoodResult && goodGas > gasUsed ) ) {
+                    if ( !haveGoodResult || goodGas > gasUsed ) {
                         haveGoodResult = true;
                         goodResult = step.second;
                         goodGas = gasUsed;
