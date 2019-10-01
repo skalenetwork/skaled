@@ -3,6 +3,7 @@
 #include <skutils/btrfs.h>
 
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 
@@ -23,6 +24,7 @@ SnapshotManager::SnapshotManager(
     data_dir = _dataDir;
     volumes = _volumes;
     snapshots_dir = data_dir / "snapshots";
+    diffs_dir = data_dir / "diffs";
 
     if ( !fs::exists( _dataDir ) )
         try {
@@ -38,8 +40,10 @@ SnapshotManager::SnapshotManager(
 
     try {
         fs::create_directory( snapshots_dir );
-    } catch ( ... ) {
-        std::throw_with_nested( CannotCreate( snapshots_dir ) );
+        fs::remove_all( diffs_dir );
+        fs::create_directory( diffs_dir );
+    } catch ( const fs::filesystem_error& ex ) {
+        std::throw_with_nested( CannotWrite( ex.path1() ) );
     }  // catch
 
     for ( const auto& vol : _volumes )
@@ -106,19 +110,13 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 // - no such snapshots
 // - cannot read
 // - cannot create tmp file
-boost::filesystem::path SnapshotManager::makeDiff( unsigned _fromBlock, unsigned _toBlock ) {
-    string filename_string = "/tmp/skaled_snapshot_" + to_string( _toBlock ) + "_XXXXXX";
-    char buf[filename_string.length() + 1];
-    strcpy( buf, filename_string.c_str() );
-    int fd = mkstemp( buf );
-    if ( fd < 0 ) {
-        throw CannotCreateTmpFile( strerror( errno ) );
-    }
-    close( fd );
-
-    fs::path path( buf );
+boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock ) {
+    fs::path path = getDiffPath( _fromBlock, _toBlock );
 
     try {
+        if ( fs::is_regular( path ) )
+            return path;
+
         if ( !fs::exists( snapshots_dir / to_string( _fromBlock ) ) ) {
             // TODO wrong error message if this fails
             fs::remove( path );
@@ -177,16 +175,16 @@ boost::filesystem::path SnapshotManager::makeDiff( unsigned _fromBlock, unsigned
 // exceptions:
 // - no such file/cannot read
 // - cannot input as diff (no base state?)
-void SnapshotManager::importDiff(
-    unsigned _blockNumber, const boost::filesystem::path& _diffPath ) {
-    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+void SnapshotManager::importDiff( unsigned _fromBlock, unsigned _toBlock ) {
+    fs::path diffPath = getDiffPath( _fromBlock, _toBlock );
+    fs::path snapshot_dir = snapshots_dir / to_string( _toBlock );
 
     try {
-        if ( !fs::is_regular_file( _diffPath ) )
-            throw InvalidPath( _diffPath );
+        if ( !fs::is_regular_file( diffPath ) )
+            throw InvalidPath( diffPath );
 
         if ( fs::exists( snapshot_dir ) )
-            throw SnapshotPresent( _blockNumber );
+            throw SnapshotPresent( _toBlock );
 
     } catch ( const fs::filesystem_error& ex ) {
         throw_with_nested( CannotRead( ex.path1() ) );
@@ -198,9 +196,46 @@ void SnapshotManager::importDiff(
         std::throw_with_nested( CannotCreate( snapshot_dir ) );
     }  // catch
 
-    if ( btrfs.receive(
-             _diffPath.c_str(), ( snapshots_dir / to_string( _blockNumber ) ).c_str() ) ) {
+    if ( btrfs.receive( diffPath.c_str(), ( snapshots_dir / to_string( _toBlock ) ).c_str() ) ) {
         fs::remove_all( snapshot_dir );
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }  // if
+}
+
+boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsigned _toBlock ) {
+    return diffs_dir / ( to_string( _fromBlock ) + "_" + to_string( _toBlock ) );
+}
+
+// exeptions: filesystem
+void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
+    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+    }  // for
+
+    // delete all efter n first
+    unsigned i = 1;
+    for ( const auto& p : time_map ) {
+        if ( i > n ) {
+            const fs::path& path = p.second;
+            btrfs.subvolume._delete( path.c_str() );
+        }  // if
+    }      // for
+}
+
+// exeptions: filesystem
+void SnapshotManager::leaveNLastDiffs( unsigned n ) {
+    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
+        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+    }  // for
+
+    // delete all efter n first
+    unsigned i = 1;
+    for ( const auto& p : time_map ) {
+        if ( i > n ) {
+            const fs::path& path = p.second;
+            fs::remove( path );
+        }  // if
+    }      // for
 }

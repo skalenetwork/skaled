@@ -262,7 +262,7 @@ public:
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
-        return m_snapshotManager->makeDiff( 0, _blockNumber );
+        return m_snapshotManager->makeOrGetDiff( 0, _blockNumber );
     }
 
 protected:
