@@ -19,6 +19,9 @@
 /** @date 2018
  */
 
+#include <libdevcore/CommonJS.h>
+#include <libdevcore/TransientDirectory.h>
+#include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
@@ -39,7 +42,7 @@ public:
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
-        fs::path dir = fs::temp_directory_path();
+        fs::path dir = m_tmpDir.path();
 
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
@@ -78,6 +81,7 @@ public:
 
 private:
     std::unique_ptr< dev::eth::Client > m_ethereum;
+    TransientDirectory m_tmpDir;
 };
 
 // genesis config string from solidity
@@ -125,6 +129,39 @@ BOOST_AUTO_TEST_CASE( ClientTest_setChainParamsAuthor ) {
     testClient->setChainParams( c_configString );
     BOOST_CHECK_EQUAL(
         testClient->author(), Address( "0000000000000010000000000000000000000000" ) );
+}
+
+BOOST_AUTO_TEST_CASE( ClientTest_estimateGas ) {
+    ClientTest* testClient = asClientTest( ethereum() );
+    testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+
+    //    This contract is predeployed on SKALE test network
+    //    on address 0xD2001300000000000000000000000000000000D2
+
+    //    pragma solidity ^0.5.3;
+
+    //    contract GasEstimate {
+    //        function spendGas(uint amount) external view {
+    //            uint initialGas = gasleft();
+    //            while (initialGas - gasleft() < amount) { }
+    //        }
+    //    }
+
+    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address contractAddress( "0xD2001300000000000000000000000000000000D2" );
+
+    // data to call method spendGas(50000)
+    bytes data =
+        jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    u256 estimate = testClient
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                            GasEstimationCallback() )
+                        .first;
+
+    cerr << estimate << endl;
+
+    BOOST_CHECK_EQUAL( estimate, u256( 71800 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
