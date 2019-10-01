@@ -231,7 +231,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWS6 = -1;
     int nExplicitPortWSS4 = -1;
     int nExplicitPortWSS6 = -1;
-    bool bTraceHttpCalls = false;
+    bool bTraceJsonRpcCalls = false;
 
     string jsonAdmin;
     ChainParams chainParams;
@@ -721,12 +721,15 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            bTraceHttpCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
+            bTraceJsonRpcCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
         } catch ( ... ) {
         }
     }
     if ( vm.count( "web3-trace" ) )
-        bTraceHttpCalls = true;
+        bTraceJsonRpcCalls = true;
+    clog( VerbosityInfo, "main" ) << cc::info( "JSON RPC" )
+                                  << cc::debug( " trace logging mode is " )
+                                  << cc::flag_ed( bTraceJsonRpcCalls );
 
     // First, get "enable-debug-behavior-apis" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -739,6 +742,10 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "enable-debug-behavior-apis" ) )
         rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "enable-debug-behavior-apis" )
+                                  << cc::debug( " mode is " )
+                                  << cc::flag_ed( rpc::Debug::g_bEnabledDebugBehaviorAPIs );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -752,6 +759,25 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
+                                  << cc::flag_ed( !alwaysConfirm );
+
+    // First, get "web3-shutdown" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    bool bEnabledShutdownViaWeb3 = false;
+    if ( chainConfigParsed ) {
+        try {
+            bEnabledShutdownViaWeb3 =
+                joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
+    if ( vm.count( "web3-shutdown" ) )
+        bEnabledShutdownViaWeb3 = true;
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
+                                  << cc::flag_ed( bEnabledShutdownViaWeb3 );
 
     // First, get "ipcpath" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1388,16 +1414,29 @@ int main( int argc, char** argv ) try {
 
     std::string autoAuthAnswer;
 
-    if ( vm.count( "aa" ) ) {
-        string m = vm["aa"].as< string >();
-        if ( m == "yes" || m == "no" || m == "always" )
-            autoAuthAnswer = m;
+    // First, get "aa" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strAA;
+    if ( chainConfigParsed ) {
+        try {
+            strAA = joConfig["skaleConfig"]["nodeInfo"]["aa"].get< std::string >();
+        } catch ( ... ) {
+            strAA.clear();
+        }
+    }
+    if ( vm.count( "aa" ) )
+        strAA = vm["aa"].as< string >();
+    if ( !strAA.empty() ) {
+        if ( strAA == "yes" || strAA == "no" || strAA == "always" )
+            autoAuthAnswer = strAA;
         else {
             cerr << "Bad "
                  << "--aa"
-                 << " option: " << m << "\n";
+                 << " option: " << strAA << "\n";
             return -1;
         }
+        clog( VerbosityInfo, "main" )
+            << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
     }
 
     std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
@@ -1703,7 +1742,7 @@ int main( int argc, char** argv ) try {
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
             //
-            skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
+            skale_server_connector->m_bTraceCalls = bTraceJsonRpcCalls;
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
@@ -1896,7 +1935,6 @@ int main( int argc, char** argv ) try {
     }  // if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0  || nExplicitPortWS > 0 ||
        // nExplicitPortWSS > 0 )
 
-    bool bEnabledShutdownViaWeb3 = vm.count( "web3-shutdown" ) ? true : false;
     if ( bEnabledShutdownViaWeb3 ) {
         std::cout << "Enabling programmatic shutdown via Web3...\n";
         dev::rpc::Skale::enableWeb3Shutdown( true );
