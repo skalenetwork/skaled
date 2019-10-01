@@ -1433,6 +1433,18 @@ int main( int argc, char** argv ) try {
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
         };
+    if ( chainParams.nodeInfo.ip.empty() ) {
+        clog( VerbosityWarning, "main" )
+            << cc::info( "IPv4" )
+            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        nExplicitPortHTTP4 = nExplicitPortHTTPS4 = nExplicitPortWS4 = nExplicitPortWSS4 = -1;
+    }
+    if ( chainParams.nodeInfo.ip6.empty() ) {
+        clog( VerbosityWarning, "main" )
+            << cc::info( "IPv6" )
+            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        nExplicitPortHTTP6 = nExplicitPortHTTPS6 = nExplicitPortWS6 = nExplicitPortWSS6 = -1;
+    }
     if ( is_ipc || nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
          nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
          nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
@@ -1593,10 +1605,10 @@ int main( int argc, char** argv ) try {
             if ( bHaveSSL ) {
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) << cc::info( "SSL key is" )
-                    << cc::debug( "............................. " ) << cc::p( strPathSslKey );
+                    << cc::debug( "............................... " ) << cc::p( strPathSslKey );
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) + cc::info( "SSL certificate is" )
-                    << cc::debug( "..................... " ) << cc::p( strPathSslCert );
+                    << cc::debug( "....................... " ) << cc::p( strPathSslCert );
             }
             //
             //
@@ -1661,20 +1673,20 @@ int main( int argc, char** argv ) try {
 
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "WS mode" )
-                << cc::debug( "........................ " )
+                << cc::debug( ".................................. " )
                 << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "....................." ) + cc::info( "WS logging" )
-                << cc::debug( "...... " )
+                << cc::debug( "...." ) + cc::info( "WS logging" )
+                << cc::debug( "............................... " )
                 << cc::info( skutils::ws::wsll2str( skutils::ws::g_eWSLL ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Max RPC connections" )
-                << cc::debug( ".................... " )
+                << cc::debug( "...................... " )
                 << ( ( maxConnections > 0 ) ? cc::num10( uint64_t( maxConnections ) ) :
                                               cc::error( "disabled" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
-                << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
+                << cc::debug( "........ " ) << cc::num10( uint64_t( cntServers ) );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );

@@ -1650,6 +1650,7 @@ void SkaleRelayWS::waitWhileInLoop() {
 bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     stop();
     m_pSO = pSO;
+    server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will start server on port " ) + cc::c( m_nPort ) );
     if ( !open( m_strScheme_, m_nPort ) ) {
@@ -1704,6 +1705,7 @@ SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
         m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
     else
         m_pServer.reset( new skutils::http::server );
+    m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
 SkaleRelayHTTP::~SkaleRelayHTTP() {
@@ -1842,8 +1844,6 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex ) {
-    if ( ipVer != 4 )
-        return true;  // l_sergiy: not implemented yet
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -1972,7 +1972,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
                 "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
-            if ( !pSrv->m_pServer->listen( strAddr.c_str(), nPort ) ) {
+            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
@@ -2004,8 +2004,6 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex ) {
-    if ( ipVer != 4 )
-        return true;  // l_sergiy: not implemented yet
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
