@@ -131,7 +131,9 @@ BOOST_AUTO_TEST_CASE( ClientTest_setChainParamsAuthor ) {
         testClient->author(), Address( "0000000000000010000000000000000000000000" ) );
 }
 
-BOOST_AUTO_TEST_CASE( ClientTest_estimateGas ) {
+BOOST_AUTO_TEST_SUITE( EstimateGas )
+
+BOOST_AUTO_TEST_CASE( constantConsumption ) {
     ClientTest* testClient = asClientTest( ethereum() );
     testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
 
@@ -140,10 +142,16 @@ BOOST_AUTO_TEST_CASE( ClientTest_estimateGas ) {
 
     //    pragma solidity ^0.5.3;
 
+
     //    contract GasEstimate {
-    //        function spendGas(uint amount) external view {
+    //        function spendHalfOfGas() external view {
     //            uint initialGas = gasleft();
-    //            while (initialGas - gasleft() < amount) { }
+    //            spendGas(initialGas / 2);
+    //        }
+
+    //        function spendGas(uint amount) public view {
+    //            uint initialGas = gasleft();
+    //            while (initialGas - gasleft() < amount) {}
     //        }
     //    }
 
@@ -159,9 +167,45 @@ BOOST_AUTO_TEST_CASE( ClientTest_estimateGas ) {
                             GasEstimationCallback() )
                         .first;
 
-    cerr << estimate << endl;
-
     BOOST_CHECK_EQUAL( estimate, u256( 71800 ) );
 }
+
+BOOST_AUTO_TEST_CASE( linearConsumption ) {
+    ClientTest* testClient = asClientTest( ethereum() );
+    testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+
+    //    This contract is predeployed on SKALE test network
+    //    on address 0xD2001300000000000000000000000000000000D2
+
+    //    pragma solidity ^0.5.3;
+
+
+    //    contract GasEstimate {
+    //        function spendHalfOfGas() external view {
+    //            uint initialGas = gasleft();
+    //            spendGas(initialGas / 2);
+    //        }
+
+    //        function spendGas(uint amount) public view {
+    //            uint initialGas = gasleft();
+    //            while (initialGas - gasleft() < amount) {}
+    //        }
+    //    }
+
+    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address contractAddress( "0xD2001300000000000000000000000000000000D2" );
+
+    // data to call method spendHalfOfGas()
+    bytes data = jsToBytes( "0x8273f754" );
+
+    u256 estimate = testClient
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                            GasEstimationCallback() )
+                        .first;
+
+    BOOST_CHECK_EQUAL( estimate, u256( 21694 ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
