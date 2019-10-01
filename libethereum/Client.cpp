@@ -575,6 +575,8 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     if ( chainParams().nodeInfo.snapshotInterval > 0 &&
          number() % chainParams().nodeInfo.snapshotInterval == 0 ) {
         m_snapshotManager->doSnapshot( number() );
+        // TODO Make this number configurable
+        m_snapshotManager->leaveNLastSnapshots( 2 );
     }  // if snapshot
 }
 
