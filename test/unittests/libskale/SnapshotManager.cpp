@@ -366,4 +366,42 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture ) {
     BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
+BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 0 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 3 ) );
+
+    BOOST_REQUIRE_NO_THROW( mgr.leaveNLastSnapshots( 2 ) );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+}
+
+BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    fs::path diff12 = mgr.getDiffPath( 1, 2 );
+    { std::ofstream os( diff12.c_str() ); }
+    sleep( 1 );
+    fs::path diff13 = mgr.getDiffPath( 1, 3 );
+    { std::ofstream os( diff13.c_str() ); }
+    sleep( 1 );
+    fs::path diff14 = mgr.getDiffPath( 1, 4 );
+    { std::ofstream os( diff14.c_str() ); }
+
+    BOOST_REQUIRE_NO_THROW( mgr.leaveNLastDiffs( 2 ) );
+
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_3" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_4" ) );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
