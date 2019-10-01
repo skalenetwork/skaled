@@ -64,15 +64,32 @@ static std::string const c_genesisInfoSkale = std::string() +
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
       "basePort": 1231,
+	  "bindIP6": "::1",
+	  "basePort6": 1231,
       "logLevel": "trace",
       "logLevelProposal": "trace",
-      "adminOrigins": [ "*" ]
+      "adminOrigins": [ "*" ],
+	  "emptyBlockIntervalMs": 1000,
+	  "ipc": false,
+	  "ipcpath": "./ipcx",
+	  "db-path": "./node",
+	  "httpRpcPort": 7000,
+	  "httpsRpcPort": 7010,
+	  "wsRpcPort": 7020,
+	  "wssRpcPort": 7030,
+	  "acceptors": 1,
+	  "max-connections": 0,
+	  "ws-mode": "simple",
+	  "ws-log": "none",
+	  "web3-trace": true,
+	  "enable-debug-behavior-apis": false,
+	  "unsafe-transactions": false
     },
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 0}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 0}
         ]
     }
   },

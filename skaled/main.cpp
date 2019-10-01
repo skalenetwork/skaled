@@ -457,11 +457,24 @@ int main( int argc, char** argv ) try {
         }
     }
 
+    // First, get "ipc" true/false from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
+        } catch ( ... ) {
+            is_ipc = false;
+        }
+    }
     if ( vm.count( "ipc" ) )
         is_ipc = true;
     if ( vm.count( "no-ipc" ) )
         is_ipc = false;
+    clog( VerbosityInfo, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
+                                  << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
 
+    // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
+    // Second, get them from command line parameters (higher priority source)
     if ( chainConfigParsed ) {
         try {
             nExplicitPortHTTP = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
@@ -471,7 +484,10 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
             nExplicitPortHTTP = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got HTTP port from config: " << nExplicitPortHTTP;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTP port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTP );
         //
         try {
             nExplicitPortHTTPS = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
@@ -481,7 +497,10 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
             nExplicitPortHTTPS = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got HTTPS port from config: " << nExplicitPortHTTPS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTPS port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTPS );
         //
         try {
             nExplicitPortWS = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
@@ -491,7 +510,10 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
             nExplicitPortWS = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got WS port from config: " << nExplicitPortWS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WS port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWS );
         //
         try {
             nExplicitPortWSS = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
@@ -501,7 +523,10 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
             nExplicitPortWSS = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got WSS port from config: " << nExplicitPortWSS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WSS port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWSS );
     }  // if ( chainConfigParsed )
     if ( vm.count( "http-port" ) ) {
         std::string strPort = vm["http-port"].as< string >();
@@ -511,7 +536,9 @@ int main( int argc, char** argv ) try {
                 nExplicitPortHTTP = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got HTTP port from command line: " << nExplicitPortHTTP;
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTP port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTP );
         }
     }
     if ( vm.count( "https-port" ) ) {
@@ -522,7 +549,9 @@ int main( int argc, char** argv ) try {
                 nExplicitPortHTTPS = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got HTTPS port from command line: " << nExplicitPortHTTPS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTPS port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTPS );
         }
     }
     if ( vm.count( "ws-port" ) ) {
@@ -533,7 +562,9 @@ int main( int argc, char** argv ) try {
                 nExplicitPortWS = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got WS port from command line: " << nExplicitPortWS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "WS port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWS );
         }
     }
     if ( vm.count( "wss-port" ) ) {
@@ -544,20 +575,81 @@ int main( int argc, char** argv ) try {
                 nExplicitPortWSS = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got WSS port from command line: " << nExplicitPortWSS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "WSS port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWSS );
         }
     }
 
+    // First, get "web3-trace" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            bTraceHttpCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "web3-trace" ) )
         bTraceHttpCalls = true;
+
+    // First, get "enable-debug-behavior-apis" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            rpc::Debug::g_bEnabledDebugBehaviorAPIs =
+                joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "enable-debug-behavior-apis" ) )
         rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+
+    // First, get "unsafe-transactions" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            alwaysConfirm =
+                joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >() ? false :
+                                                                                           true;
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
-    if ( vm.count( "db-path" ) )
-        setDataDir( vm["db-path"].as< string >() );
+
+    // First, get "ipcpath" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strPathIPC;
+    if ( chainConfigParsed ) {
+        try {
+            strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
+        } catch ( ... ) {
+            strPathIPC.clear();
+        }
+    }
+    clog( VerbosityInfo, "main" ) << cc::notice( "IPC path" ) + cc::debug( " is: " )
+                                  << cc::p( strPathIPC );
     if ( vm.count( "ipcpath" ) )
-        setIpcPath( vm["ipcpath"].as< string >() );
+        strPathIPC = vm["ipcpath"].as< std::string >();
+    if ( !strPathIPC.empty() )
+        setIpcPath( strPathIPC );
+
+    // First, get "db-path"" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strPathDB;
+    if ( chainConfigParsed ) {
+        try {
+            strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
+        } catch ( ... ) {
+            strPathDB.clear();
+        }
+    }
+    if ( vm.count( "db-path" ) )
+        strPathDB = vm["db-path"].as< std::string >();
+    clog( VerbosityInfo, "main" ) << cc::notice( "DB path" ) + cc::debug( " is: " )
+                                  << cc::p( strPathDB );
+    if ( !strPathDB.empty() )
+        setDataDir( strPathDB );
 
     if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
         try {
@@ -1319,22 +1411,64 @@ int main( int argc, char** argv ) try {
             //
             //
             size_t maxConnections = 0, cntServers = 1;
-            if ( vm.count( "max-connections" ) ) {
-                maxConnections = vm["max-connections"].as< size_t >();
+
+            // First, get "max-connections" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    maxConnections =
+                        joConfig["skaleConfig"]["nodeInfo"]["max-connections"].get< size_t >();
+                } catch ( ... ) {
+                    maxConnections = 0;
+                }
             }
-            if ( vm.count( "acceptors" ) ) {
-                cntServers = vm["acceptors"].as< size_t >();
-                if ( cntServers < 1 )
+            if ( vm.count( "max-connections" ) )
+                maxConnections = vm["max-connections"].as< size_t >();
+
+            // First, get "acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntServers = joConfig["skaleConfig"]["nodeInfo"]["acceptors"].get< size_t >();
+                } catch ( ... ) {
                     cntServers = 1;
+                }
+            }
+            if ( vm.count( "acceptors" ) )
+                cntServers = vm["acceptors"].as< size_t >();
+            if ( cntServers < 1 )
+                cntServers = 1;
+
+            // First, get "ws-mode" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-mode"].get< std::string >();
+                    skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
+                } catch ( ... ) {
+                }
             }
             if ( vm.count( "ws-mode" ) ) {
                 std::string s = vm["ws-mode"].as< std::string >();
                 skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
             }
+
+            // First, get "ws-log" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-log"].get< std::string >();
+                    skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
+                } catch ( ... ) {
+                }
+            }
             if ( vm.count( "ws-log" ) ) {
                 std::string s = vm["ws-log"].as< std::string >();
                 skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
             }
+
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "WS mode" )
                 << cc::debug( "........................ " )
