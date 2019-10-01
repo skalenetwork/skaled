@@ -195,7 +195,7 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 //
 std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
     const fs::path& fp, size_t idxFrom, size_t sizeOfChunk ) {
-    size_t sizeOfFile = fs::file_size( fp );
+    // size_t sizeOfFile = fs::file_size( fp );
     //
     //
     std::ifstream f;
