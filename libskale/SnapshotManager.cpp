@@ -210,15 +210,19 @@ boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsig
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     multimap< time_t, fs::path, std::greater< time_t > > time_map;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
-        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+        // HACK We exclude 0 snapshot forcefully
+        if ( fs::basename( f ) != "0" )
+            time_map.insert( make_pair( fs::last_write_time( f ), f ) );
     }  // for
 
     // delete all efter n first
     unsigned i = 1;
     for ( const auto& p : time_map ) {
-        if ( i > n ) {
+        if ( i++ > n ) {
             const fs::path& path = p.second;
-            btrfs.subvolume._delete( path.c_str() );
+            for ( const string& v : this->volumes )
+                btrfs.subvolume._delete( ( path / v ).c_str() );
+            fs::remove_all( path );
         }  // if
     }      // for
 }
@@ -233,7 +237,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     // delete all efter n first
     unsigned i = 1;
     for ( const auto& p : time_map ) {
-        if ( i > n ) {
+        if ( i++ > n ) {
             const fs::path& path = p.second;
             fs::remove( path );
         }  // if
