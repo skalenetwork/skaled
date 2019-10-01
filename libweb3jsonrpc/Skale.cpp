@@ -213,6 +213,10 @@ std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
 }
 std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     const nlohmann::json& joRequest ) {
+    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    //    ... ...
+    fs::path fp = currentSnapshotPath;
+    //
     size_t idxFrom = joRequest["from"].get< size_t >();
     size_t sizeOfChunk = joRequest["size"].get< size_t >();
     size_t sizeOfFile = fs::file_size( currentSnapshotPath );
@@ -223,13 +227,17 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     if ( sizeOfChunk > g_nMaxChunckSize )
         sizeOfChunk = g_nMaxChunckSize;
     std::vector< uint8_t > buffer =
-        Skale::ll_impl_skale_downloadSnapshotFragment( currentSnapshotPath, idxFrom, sizeOfChunk );
+        Skale::ll_impl_skale_downloadSnapshotFragment( fp, idxFrom, sizeOfChunk );
     return buffer;
 }
 nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
+    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    //    ... ...
+    fs::path fp = currentSnapshotPath;
+    //
     size_t idxFrom = joRequest["from"].get< size_t >();
     size_t sizeOfChunk = joRequest["size"].get< size_t >();
-    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
+    size_t sizeOfFile = fs::file_size( fp );
     if ( idxFrom >= sizeOfFile )
         sizeOfChunk = 0;
     if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
@@ -237,7 +245,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     if ( sizeOfChunk > g_nMaxChunckSize )
         sizeOfChunk = g_nMaxChunckSize;
     std::vector< uint8_t > buffer =
-        Skale::ll_impl_skale_downloadSnapshotFragment( currentSnapshotPath, idxFrom, sizeOfChunk );
+        Skale::ll_impl_skale_downloadSnapshotFragment( fp, idxFrom, sizeOfChunk );
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
@@ -262,11 +270,36 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 
 namespace snapshot {
 
-bool download( const std::string& strURLWeb3, unsigned block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload ) {
+bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
+    fn_progress_t onProgress, bool isBinaryDownload, int snapshotInterval ) {
     std::ofstream f;
     try {
         boost::filesystem::remove( saveTo );
+        //
+        //
+        if ( block_number == unsigned( -1 ) ) {
+            // this means "latest"
+            skutils::rest::client cli;
+            if ( !cli.open( strURLWeb3 ) ) {
+                // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+                return -1;
+            }
+
+            nlohmann::json joIn = nlohmann::json::object();
+            joIn["jsonrpc"] = "2.0";
+            joIn["method"] = "eth_blockNumber";
+            joIn["params"] = nlohmann::json::object();
+            skutils::rest::data_t d = cli.call( joIn );
+            if ( d.empty() ) {
+                std::cout << cc::fatal( "Snapshot download failed - cannot get bockNumber" )
+                          << "\n";
+                return -1;
+            }
+            // TODO catch?
+            block_number = dev::eth::jsToBlockNumber(
+                nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
+            block_number -= block_number % snapshotInterval;
+        }
         //
         //
         skutils::rest::client cli;

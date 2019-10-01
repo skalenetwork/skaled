@@ -101,8 +101,8 @@ typedef std::function< bool( size_t idxChunck, size_t cntChunks ) > fn_progress_
                                                                                     // to cancel
                                                                                     // download
 
-extern bool download( const std::string& strURLWeb3, unsigned block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload = true );
+extern bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
+    fn_progress_t onProgress, bool isBinaryDownload = true, int snapshotInterval = 1000 );
 
 };  // namespace snapshot
 
