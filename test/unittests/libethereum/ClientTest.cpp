@@ -206,6 +206,44 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     BOOST_CHECK_EQUAL( estimate, u256( 21694 ) );
 }
 
+BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
+    ClientTest* testClient = asClientTest( ethereum() );
+    testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+
+    //    This contract is predeployed on SKALE test network
+    //    on address 0xD2001300000000000000000000000000000000D2
+
+    //    pragma solidity ^0.5.3;
+
+
+    //    contract GasEstimate {
+    //        function spendHalfOfGas() external view {
+    //            uint initialGas = gasleft();
+    //            spendGas(initialGas / 2);
+    //        }
+
+    //        function spendGas(uint amount) public view {
+    //            uint initialGas = gasleft();
+    //            while (initialGas - gasleft() < amount) {}
+    //        }
+    //    }
+
+    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address contractAddress( "0xD2001300000000000000000000000000000000D2" );
+
+    // data to call method spendGas(50000)
+    bytes data =
+        jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    int64_t maxGas = 50000;
+    u256 estimate = testClient
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
+
+    BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
