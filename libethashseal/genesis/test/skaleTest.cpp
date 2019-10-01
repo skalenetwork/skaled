@@ -25,7 +25,7 @@
 #include "../../GenesisInfo.h"
 
 static std::string const c_genesisInfoSkaleTest = std::string() +
-                                              R"E(
+                                                  R"E(
 {
 	"sealEngine": "Ethash",
 	"params": {
