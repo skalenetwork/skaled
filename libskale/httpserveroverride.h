@@ -58,6 +58,7 @@ typedef intptr_t ssize_t;
 #include <json.hpp>
 
 #include <libdevcore/Log.h>
+#include <libethereum/ChainParams.h>
 #include <libethereum/Interface.h>
 #include <libethereum/LogFilter.h>
 
@@ -144,6 +145,8 @@ protected:
     set_watche_ids_t setInstalledWatchesLogs_, setInstalledWatchesNewPendingTransactions_,
         setInstalledWatchesNewBlocks_;
     void uninstallAllWatches();
+
+    bool handleRequestWithBinaryAnswer( const nlohmann::json& joRequest );
 
     bool handleWebSocketSpecificRequest(
         const nlohmann::json& joRequest, std::string& strResponse );
@@ -250,16 +253,20 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public dev::rpc::SkaleStatsProviderImpl {
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
+    dev::eth::ChainParams& chainParams_;
 
 public:
-    SkaleServerOverride( size_t cntServers, dev::eth::Interface* pEth,
-        const std::string& strAddrHTTP, int nBasePortHTTP, const std::string& strAddrHTTPS,
-        int nBasePortHTTPS, const std::string& strAddrWS, int nBasePortWS,
-        const std::string& strAddrWSS, int nBasePortWSS, const std::string& strPathSslKey,
-        const std::string& strPathSslCert );
+    SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
+        dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
+        const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
+        int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
+        const std::string& strPathSslKey, const std::string& strPathSslCert );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
+    dev::eth::ChainParams& chainParams();
+    const dev::eth::ChainParams& chainParams() const;
+    bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 private:
     bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, const std::string& strAddr,
@@ -322,6 +329,10 @@ public:
 
     SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
+
+    bool handleRequestWithBinaryAnswer(
+        const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
+    bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
