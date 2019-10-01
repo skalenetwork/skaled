@@ -120,6 +120,11 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         }
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
 
+        // We execute transaction with maximum gas limit
+        // to calculate how many of gas will be used.
+        // Then we execute transaction with this gas limit
+        // and check if it will be enough.
+        // If not repeat process iteratevly.
         ExecutionResult goodResult;
         int64_t goodGas = c_maxGasEstimate;
         bool haveGoodResult = false;
