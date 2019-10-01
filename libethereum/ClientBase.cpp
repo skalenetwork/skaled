@@ -31,6 +31,9 @@
 #include "Executive.h"
 
 using namespace std;
+using std::make_pair;
+using std::pair;
+
 using namespace dev;
 using namespace dev::eth;
 using skale::Permanence;
@@ -75,6 +78,33 @@ void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
         fnOnNewChanges_( iw_ );
 }
 
+std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Block& _latestBlock,
+    Address const& _from, Address const& _destination, u256 const& _value, u256 const& _gasPrice,
+    bytes const& _data ) {
+    u256 nonce = _latestBlock.transactionsFrom( _from );
+    Transaction t;
+    if ( _destination )
+        t = Transaction( _value, _gasPrice, _gas, _destination, _data, nonce );
+    else
+        t = Transaction( _value, _gasPrice, _gas, _data, nonce );
+    t.forceSender( _from );
+    t.checkOutExternalGas( ~u256( 0 ) );
+    EnvInfo const env( _latestBlock.info(), bc().lastBlockHashes(), 0, _gas );
+    State& tempState = _latestBlock.mutableState();
+    tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+    ExecutionResult executionResult =
+        tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
+    if ( executionResult.excepted == TransactionException::OutOfGas ||
+         executionResult.excepted == TransactionException::OutOfGasBase ||
+         executionResult.excepted == TransactionException::OutOfGasIntrinsic ||
+         executionResult.codeDeposit == CodeDeposit::Failed ||
+         executionResult.excepted == TransactionException::BadJumpDestination ||
+         executionResult.excepted == TransactionException::RevertInstruction ) {
+        return make_pair( false, executionResult );
+    } else {
+        return make_pair( true, executionResult );
+    }
+}
 
 std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
     Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
@@ -85,43 +115,56 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             upperBound = c_maxGasEstimate;
         int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
         Block bk = latestBlock();
+        if ( upperBound > bk.info().gasLimit() ) {
+            upperBound = bk.info().gasLimit().convert_to< int64_t >();
+        }
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        ExecutionResult er;
-        ExecutionResult lastGood;
-        bool good = false;
-        while ( upperBound != lowerBound ) {
-            int64_t mid = ( lowerBound + upperBound ) / 2;
-            u256 n = bk.transactionsFrom( _from );
-            Transaction t;
-            if ( _dest )
-                t = Transaction( _value, gasPrice, mid, _dest, _data, n );
-            else
-                t = Transaction( _value, gasPrice, mid, _data, n );
-            t.forceSender( _from );
-            t.checkOutExternalGas( ~u256( 0 ) );
-            EnvInfo const env( bk.info(), bc().lastBlockHashes(), 0, mid );
-            State& tempState = bk.mutableState();
-            tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-            er = tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
-            if ( er.excepted == TransactionException::OutOfGas ||
-                 er.excepted == TransactionException::OutOfGasBase ||
-                 er.excepted == TransactionException::OutOfGasIntrinsic ||
-                 er.codeDeposit == CodeDeposit::Failed ||
-                 er.excepted == TransactionException::BadJumpDestination ||
-                 er.excepted == TransactionException::RevertInstruction )
-                lowerBound = lowerBound == mid ? upperBound : mid;
-            else {
-                lastGood = er;
-                upperBound = upperBound == mid ? lowerBound : mid;
-                good = true;
+
+        ExecutionResult goodResult;
+        int64_t goodGas = c_maxGasEstimate;
+        bool haveGoodResult = false;
+        while ( lowerBound + 1 < upperBound ) {
+            auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
+            if ( step.first ) {
+                if ( !haveGoodResult || ( haveGoodResult && goodGas > upperBound ) ) {
+                    haveGoodResult = true;
+                    goodResult = step.second;
+                    goodGas = upperBound;
+                }
+                int64_t gasUsed = step.second.gasUsed.convert_to< int64_t >();
+
+                step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
+                if ( step.first ) {
+                    if ( !haveGoodResult || ( haveGoodResult && goodGas > gasUsed ) ) {
+                        haveGoodResult = true;
+                        goodResult = step.second;
+                        goodGas = gasUsed;
+                    }
+
+                    if ( step.second.gasUsed.convert_to< int64_t >() == gasUsed ) {
+                        upperBound = gasUsed;
+                        lowerBound = upperBound - 1;
+                    } else {
+                        upperBound = min( gasUsed, upperBound - 1 );
+                    }
+                } else {
+                    lowerBound = max( gasUsed, lowerBound + 1 );
+                }
+            } else {
+                lowerBound = upperBound;
             }
 
-            if ( _callback )
+            if ( _callback ) {
                 _callback( GasEstimationProgress{lowerBound, upperBound} );
+            }
         }
-        if ( _callback )
-            _callback( GasEstimationProgress{lowerBound, upperBound} );
-        return make_pair( upperBound, good ? lastGood : er );
+
+        if ( haveGoodResult ) {
+            return make_pair( goodGas, goodResult );
+        } else {
+            return make_pair( upperBound,
+                estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data ).second );
+        }
     } catch ( ... ) {
         // TODO: Some sort of notification of failure.
         return make_pair( u256(), ExecutionResult() );
