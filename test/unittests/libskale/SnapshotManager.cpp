@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 using namespace std;
@@ -31,7 +31,7 @@ int setid_system( const char* cmd, uid_t uid, gid_t gid ) {
         return WEXITSTATUS( status );
     }
 
-#if(! defined __APPLE__)
+#if ( !defined __APPLE__ )
     setresuid( uid, uid, uid );
     setresgid( gid, gid, gid );
 #endif
@@ -47,7 +47,7 @@ struct FixtureCommon {
     gid_t sudo_gid;
 
     void check_sudo() {
-#if(! defined __APPLE__)
+#if ( !defined __APPLE__ )
         char* id_str = getenv( "SUDO_UID" );
         if ( id_str == NULL ) {
             cerr << "Please run under sudo" << endl;
@@ -75,7 +75,7 @@ struct FixtureCommon {
     }
 
     void dropRoot() {
-#if(! defined __APPLE__)
+#if ( !defined __APPLE__ )
         int res = setresgid( sudo_gid, sudo_gid, 0 );
         cerr << "setresgid " << sudo_gid << " " << res << endl;
         if ( res < 0 )
@@ -88,7 +88,7 @@ struct FixtureCommon {
     }
 
     void gainRoot() {
-#if(! defined __APPLE__)
+#if ( !defined __APPLE__ )
         int res = setresuid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
