@@ -186,13 +186,13 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture ) {
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
 
-    fs::path diff12 = mgr.makeDiff( 1, 2 );
+    fs::path diff12 = mgr.makeOrGetDiff( 1, 2 );
     btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/vol1" ).c_str() );
     btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/vol2" ).c_str() );
     fs::remove_all( BTRFS_DIR_PATH + "/snapshots/2" );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
 
-    mgr.importDiff( 2, diff12 );
+    mgr.importDiff( 1, 2 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" / "d21" ) );
@@ -304,28 +304,29 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture ) {
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "dir" );
     mgr.doSnapshot( 4 );
 
-    BOOST_REQUIRE_THROW( mgr.makeDiff( 1, 3 ), SnapshotManager::SnapshotAbsent );
-    BOOST_REQUIRE_THROW( mgr.makeDiff( 2, 3 ), SnapshotManager::SnapshotAbsent );
-    BOOST_REQUIRE_THROW( mgr.makeDiff( 1, 2 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr.makeOrGetDiff( 1, 3 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr.makeOrGetDiff( 2, 3 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr.makeOrGetDiff( 1, 2 ), SnapshotManager::SnapshotAbsent );
 
     fs::path tmp;
-    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 4 ) );
+    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeOrGetDiff( 2, 4 ) );
     fs::remove( tmp );
 
-    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 2 ) );
+    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeOrGetDiff( 2, 2 ) );
     fs::remove( tmp );
 
-    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 4, 2 ) );
+    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeOrGetDiff( 4, 2 ) );
     fs::remove( tmp );
 
     // strange - but ok...
-    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeDiff( 2, 4 ) );
+    BOOST_REQUIRE_NO_THROW( tmp = mgr.makeOrGetDiff( 2, 4 ) );
     BOOST_REQUIRE_GT( fs::file_size( tmp ), 0 );
     fs::remove( tmp );
 
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
 
-    BOOST_REQUIRE_THROW( tmp = mgr.makeDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW(
+        tmp = mgr.makeOrGetDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 // TODO Tests to check no files left in /tmp?!
@@ -333,23 +334,22 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture ) {
 BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    BOOST_REQUIRE_THROW( mgr.importDiff( 1, fs::path( BTRFS_DIR_PATH ) / "_nonexistent" ),
-        SnapshotManager::InvalidPath );
+    BOOST_REQUIRE_THROW( mgr.importDiff( 8, 8 ), SnapshotManager::InvalidPath );
 
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 4 ) );
 
     fs::path diff24;
-    BOOST_REQUIRE_NO_THROW( diff24 = mgr.makeDiff( 2, 4 ) );
+    BOOST_REQUIRE_NO_THROW( diff24 = mgr.makeOrGetDiff( 2, 4 ) );
 
-    BOOST_REQUIRE_THROW( mgr.importDiff( 4, diff24 ), SnapshotManager::SnapshotPresent );
+    BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::SnapshotPresent );
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol2" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
-    BOOST_REQUIRE_NO_THROW( mgr.importDiff( 4, diff24 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.importDiff( 2, 4 ) );
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
@@ -359,13 +359,49 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture ) {
     // no source
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" ).c_str() );
 
-    BOOST_REQUIRE_THROW(
-        mgr.importDiff( 4, diff24 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" );
-    BOOST_REQUIRE_THROW(
-        mgr.importDiff( 4, diff24 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
+}
+
+BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 0 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
+    sleep( 1 );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 3 ) );
+
+    BOOST_REQUIRE_NO_THROW( mgr.leaveNLastSnapshots( 2 ) );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+}
+
+BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    fs::path diff12 = mgr.getDiffPath( 1, 2 );
+    { std::ofstream os( diff12.c_str() ); }
+    sleep( 1 );
+    fs::path diff13 = mgr.getDiffPath( 1, 3 );
+    { std::ofstream os( diff13.c_str() ); }
+    sleep( 1 );
+    fs::path diff14 = mgr.getDiffPath( 1, 4 );
+    { std::ofstream os( diff14.c_str() ); }
+
+    BOOST_REQUIRE_NO_THROW( mgr.leaveNLastDiffs( 2 ) );
+
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_3" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_4" ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
