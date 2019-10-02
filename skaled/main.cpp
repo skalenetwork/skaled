@@ -743,9 +743,6 @@ int main( int argc, char** argv ) try {
                       << std::endl;
             bool isBinaryDownload = true;
 
-<<<<<<< HEAD
-            unsigned block_number = unsigned( -1 );  // this means "latest"
-=======
             unsigned block_number;
             {
                 skutils::rest::client cli;
@@ -772,7 +769,6 @@ int main( int argc, char** argv ) try {
 
             fs::path saveTo = snapshotManager->getDiffPath( 0, block_number );
 
->>>>>>> 3721fdabf9de2105256aeea51c89095e17d8669d
             bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     std::cout << cc::normal( "... download progress ... " )
