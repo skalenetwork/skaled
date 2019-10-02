@@ -214,6 +214,11 @@ protected:
                                                   ///< filter.
 
     Logger m_loggerWatch{createLogger( VerbosityDebug, "watch" )};
+
+private:
+    std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
+        Address const& _from, Address const& _destination, u256 const& _value,
+        u256 const& _gasPrice, bytes const& _data );
 };
 
 }  // namespace eth
