@@ -451,11 +451,6 @@ protected:
     Logger m_loggerDetail{createLogger( VerbosityDebug, "client" )};
 
 
-    /// Skale additional fields
-
-    //  NodeInfo mNodeInfo;
-    //  std::vector<SChain> m_sChains;
-
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
