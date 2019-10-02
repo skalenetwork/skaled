@@ -55,6 +55,9 @@ using namespace dev;
 #include "genesis/test/homesteadToEIP150At5Test.cpp"
 #include "genesis/test/transitionnetTest.cpp"
 
+// SKALE tests
+#include "genesis/test/skaleTest.cpp"
+
 static dev::h256 const c_genesisDefaultStateRoot;
 
 std::string const& dev::eth::genesisInfo( Network _n ) {
@@ -115,6 +118,10 @@ std::string const& dev::eth::genesisInfo( Network _n ) {
         return c_genesisInfoByzantiumToConstantinopleFixAt5Test;
     case Network::TransitionnetTest:
         return c_genesisInfoTest;
+
+    // SKALE test
+    case Network::SkaleTest:
+        return c_genesisInfoSkaleTest;
 
     default:
         throw std::invalid_argument( "Invalid network value" );

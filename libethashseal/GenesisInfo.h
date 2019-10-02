@@ -84,6 +84,9 @@ enum class Network {
     EIP158ToByzantiumAt5 = 103,
     ByzantiumToConstantinopleFixAt5 = 104,
 
+    // SKALE tests
+    SkaleTest = 110,
+
     Special = 0xff  ///< Something else.
 };
 

@@ -103,9 +103,9 @@ void ConsensusStub::doWork() {
         static_cast< unsigned int >( rand() ) % ( max_sleep - 1000 ) + 1000 ) );
 
     try {
-        m_extFace.createBlock( out_vector, ++blockCounter, time( NULL ), 0, 0 );  // TODO -
-                                                                                  // implement
-                                                                                  // pricing
+        ++blockCounter;
+        m_extFace.createBlock(
+            out_vector, time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ) );
         std::cout << cc::debug( "createBlock" ) << std::endl;
     } catch ( const dev::Exception& x ) {
         std::cout << x.what() << std::endl;
