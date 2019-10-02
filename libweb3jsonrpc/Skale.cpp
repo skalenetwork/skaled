@@ -219,7 +219,7 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     //
     size_t idxFrom = joRequest["from"].get< size_t >();
     size_t sizeOfChunk = joRequest["size"].get< size_t >();
-    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
+    size_t sizeOfFile = fs::file_size( fp );
     if ( idxFrom >= sizeOfFile )
         sizeOfChunk = 0;
     if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
@@ -286,7 +286,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( !cli.open( strURLWeb3 ) ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
-                std::cout << cc::fatal( "FATAL:" )
+                std::cout << cc::fatal( "FATAL:" ) << " "
                           << cc::error( "REST failed to connect to server(1)" ) << "\n";
                 return false;
             }
@@ -299,8 +299,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( d.empty() ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
-                std::cout << cc::fatal( "FATAL:" ) << cc::error( "Failed to get latest bockNumber" )
-                          << "\n";
+                std::cout << cc::fatal( "FATAL:" ) << " "
+                          << cc::error( "Failed to get latest bockNumber" ) << "\n";
                 return false;
             }
             // TODO catch?
@@ -314,8 +314,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
-            std::cout << cc::fatal( "FATAL:" ) << cc::error( "REST failed to connect to server(2)" )
-                      << "\n";
+            std::cout << cc::fatal( "FATAL:" ) << " "
+                      << cc::error( "REST failed to connect to server(2)" ) << "\n";
             return false;
         }
 
@@ -330,7 +330,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( d.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed";
-            std::cout << cc::fatal( "FATAL:" ) << cc::error( "REST call failed" ) << "\n";
+            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed" ) << "\n";
             return false;
         }
         // std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
@@ -378,7 +378,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( d.empty() ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST call failed(fragment downloader)";
-                std::cout << cc::fatal( "FATAL:" )
+                std::cout << cc::fatal( "FATAL:" ) << " "
                           << cc::error( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }

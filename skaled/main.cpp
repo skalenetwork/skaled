@@ -997,7 +997,7 @@ int main( int argc, char** argv ) try {
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
                       << std::endl;
-            bool isBinaryDownload = false;
+            bool isBinaryDownload = true;
 
             unsigned block_number;
             {  // block
