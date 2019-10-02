@@ -382,8 +382,8 @@ int main( int argc, char** argv ) try {
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
-    addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
-        "Path of file to save downloaded snapshot to" );
+    // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
+    //    "Path of file to save downloaded snapshot to" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -997,7 +997,7 @@ int main( int argc, char** argv ) try {
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
                       << std::endl;
-            bool isBinaryDownload = true;
+            bool isBinaryDownload = false;
 
             unsigned block_number;
             {  // block
@@ -1016,13 +1016,15 @@ int main( int argc, char** argv ) try {
                     nImportResult = 3;
                     throw std::runtime_error( "download failed, cannot get bockNumber" );
                 }
+                nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                // std::cout << cc::normal( "Got answer " ) << cc::j( joAnswer ) << std::endl;
                 // TODO catch?
-                block_number = dev::eth::jsToBlockNumber(
-                    nlohmann::json::parse( d.s_ )["result"].get< string >() );
+                block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< string >() );
                 block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
             }  // block
 
             try {
+                std::string strErrorDescription;
                 saveTo = snapshotManager->getDiffPath( 0, block_number );
                 bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                     [&]( size_t idxChunck, size_t cntChunks ) -> bool {
@@ -1031,14 +1033,15 @@ int main( int argc, char** argv ) try {
                                   << cc::num10( uint64_t( cntChunks ) ) << "\r";
                         return true;  // continue download
                     },
-                    isBinaryDownload, chainParams.nodeInfo.snapshotInterval );
+                    isBinaryDownload, chainParams.nodeInfo.snapshotInterval, &strErrorDescription );
                 std::cout << "                                                  \r";  // clear
                                                                                       // progress
                                                                                       // line
                 if ( !bOK ) {
                     nImportResult = 4;
-                    throw std::runtime_error(
-                        "download failed, connection problem during download" );
+                    if ( strErrorDescription.empty() )
+                        strErrorDescription = "download failed, connection problem during download";
+                    throw std::runtime_error( strErrorDescription );
                 }
             } catch ( const std::exception& ex ) {
                 nImportResult = 5;

@@ -271,7 +271,10 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload, int snapshotInterval ) {
+    fn_progress_t onProgress, bool isBinaryDownload, int snapshotInterval,
+    std::string* pStrErrorDescription ) {
+    if ( pStrErrorDescription )
+        pStrErrorDescription->clear();
     std::ofstream f;
     try {
         boost::filesystem::remove( saveTo );
@@ -281,8 +284,11 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             // this means "latest"
             skutils::rest::client cli;
             if ( !cli.open( strURLWeb3 ) ) {
-                // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
-                return -1;
+                if ( pStrErrorDescription )
+                    ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
+                std::cout << cc::fatal( "FATAL:" )
+                          << cc::error( "REST failed to connect to server(1)" ) << "\n";
+                return false;
             }
 
             nlohmann::json joIn = nlohmann::json::object();
@@ -291,9 +297,11 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             joIn["params"] = nlohmann::json::object();
             skutils::rest::data_t d = cli.call( joIn );
             if ( d.empty() ) {
-                std::cout << cc::fatal( "Snapshot download failed - cannot get bockNumber" )
+                if ( pStrErrorDescription )
+                    ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
+                std::cout << cc::fatal( "FATAL:" ) << cc::error( "Failed to get latest bockNumber" )
                           << "\n";
-                return -1;
+                return false;
             }
             // TODO catch?
             block_number = dev::eth::jsToBlockNumber(
@@ -304,7 +312,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         //
         skutils::rest::client cli;
         if ( !cli.open( strURLWeb3 ) ) {
-            // std::cout << cc::fatal( "REST failed to connect to server" ) << "\n";
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
+            std::cout << cc::fatal( "FATAL:" ) << cc::error( "REST failed to connect to server(2)" )
+                      << "\n";
             return false;
         }
 
@@ -317,11 +328,24 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
         if ( d.empty() ) {
-            // std::cout << cc::fatal( "REST call failed" ) << "\n";
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = "REST call failed";
+            std::cout << cc::fatal( "FATAL:" ) << cc::error( "REST call failed" ) << "\n";
             return false;
         }
         // std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
-        nlohmann::json joSnapshotInfo = nlohmann::json::parse( d.s_ )["result"];
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        // std::cout << cc::normal( "Got answer(1) " ) << cc::j( joAnswer ) << std::endl;
+        nlohmann::json joSnapshotInfo = joAnswer["result"];
+        if ( joSnapshotInfo.count( "error" ) > 0 ) {
+            std::string s;
+            s += "skale_getSnapshot error: ";
+            s += joSnapshotInfo["error"].get< std::string >();
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = s;
+            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
+            return false;
+        }
         size_t sizeOfFile = joSnapshotInfo["dataSize"].get< size_t >();
         size_t maxAllowedChunkSize = joSnapshotInfo["maxAllowedChunkSize"].get< size_t >();
         size_t idxChunk, cntChunks = sizeOfFile / maxAllowedChunkSize +
@@ -329,8 +353,15 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         //
         //
         f.open( saveTo.native(), std::ios::out | std::ios::binary );
-        if ( !f.is_open() )
-            throw std::runtime_error( "failed to open snapshot file" );
+        if ( !f.is_open() ) {
+            std::string s;
+            s += "failed to open snapshot file \"";
+            s += saveTo.native();
+            s += "\"";
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = s;
+            throw std::runtime_error( s );
+        }
         for ( idxChunk = 0; idxChunk < cntChunks; ++idxChunk ) {
             nlohmann::json joIn = nlohmann::json::object();
             joIn["jsonrpc"] = "2.0";
@@ -345,7 +376,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 isBinaryDownload ? skutils::rest::e_data_fetch_strategy::edfs_nearest_binary :
                                    skutils::rest::e_data_fetch_strategy::edfs_default );
             if ( d.empty() ) {
-                // std::cout << cc::fatal( "REST call failed(fragment downloader)" ) << "\n";
+                if ( pStrErrorDescription )
+                    ( *pStrErrorDescription ) = "REST call failed(fragment downloader)";
+                std::cout << cc::fatal( "FATAL:" )
+                          << cc::error( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }
             std::vector< uint8_t > buffer;
@@ -353,8 +387,19 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 buffer.insert( buffer.end(), d.s_.begin(), d.s_.end() );
             else {
                 // std::cout << cc::success( "REST call success(fragment downloader)" ) << "\n" <<
+                nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                // std::cout << cc::normal( "Got answer(2) " ) << cc::j( joAnswer ) << std::endl;
                 // cc::j( d.s_ ) << "\n";
-                nlohmann::json joFragment = nlohmann::json::parse( d.s_ )["result"];
+                nlohmann::json joFragment = joAnswer["result"];
+                if ( joFragment.count( "error" ) > 0 ) {
+                    std::string s;
+                    s += "skale_downloadSnapshotFragment error: ";
+                    s += joFragment["error"].get< std::string >();
+                    if ( pStrErrorDescription )
+                        ( *pStrErrorDescription ) = s;
+                    std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
+                    return false;
+                }
                 // size_t sizeArrived = joFragment["size"];
                 std::string strBase64orBinary = joFragment["data"];
 
@@ -365,6 +410,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( onProgress )
                 bContinue = onProgress( idxChunk, cntChunks );
             if ( !bContinue ) {
+                if ( pStrErrorDescription )
+                    ( *pStrErrorDescription ) = "fragment downloader stopped by callback";
                 f.close();
                 boost::filesystem::remove( saveTo );
                 return false;
@@ -372,7 +419,12 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         }  // for ( idxChunk = 0; idxChunk < cntChunks; ++idxChunk )
         f.close();
         return true;
+    } catch ( const std::exception& ex ) {
+        if ( pStrErrorDescription )
+            ( *pStrErrorDescription ) = ex.what();
     } catch ( ... ) {
+        if ( pStrErrorDescription )
+            ( *pStrErrorDescription ) = "unknown exception";
         boost::filesystem::remove( saveTo );
     }
     return false;
