@@ -47,6 +47,7 @@ jobs:
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=ON
+            - TRAVIS_BUILD_TYPE=Debug
 
           after_success:
             - provider: releases
