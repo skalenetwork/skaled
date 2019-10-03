@@ -997,7 +997,6 @@ int main( int argc, char** argv ) try {
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
                       << std::endl;
-            bool isBinaryDownload = true;
 
             unsigned block_number;
             {  // block
@@ -1024,6 +1023,7 @@ int main( int argc, char** argv ) try {
             }  // block
 
             try {
+                bool isBinaryDownload = true;
                 std::string strErrorDescription;
                 saveTo = snapshotManager->getDiffPath( 0, block_number );
                 bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,

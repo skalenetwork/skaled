@@ -389,13 +389,22 @@ BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
     fs::path diff12 = mgr.getDiffPath( 1, 2 );
-    { std::ofstream os( diff12.c_str() ); }
+    {
+        std::ofstream os( diff12.c_str() );
+        os.close();
+    }
     sleep( 1 );
     fs::path diff13 = mgr.getDiffPath( 1, 3 );
-    { std::ofstream os( diff13.c_str() ); }
+    {
+        std::ofstream os( diff13.c_str() );
+        os.close();
+    }
     sleep( 1 );
     fs::path diff14 = mgr.getDiffPath( 1, 4 );
-    { std::ofstream os( diff14.c_str() ); }
+    {
+        std::ofstream os( diff14.c_str() );
+        os.close();
+    }
 
     BOOST_REQUIRE_NO_THROW( mgr.leaveNLastDiffs( 2 ) );
 

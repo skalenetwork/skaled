@@ -131,8 +131,16 @@ ChainParams ChainParams::loadConfig(
             node.id = nodeConfObj.at( "nodeID" ).get_uint64();
             node.ip = nodeConfObj.at( "ip" ).get_str();
             node.port = nodeConfObj.at( "basePort" ).get_uint64();
-            node.ip6 = nodeConfObj.at( "ip6" ).get_str();
-            node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+            try {
+                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
+            } catch ( ... ) {
+                node.ip6 = "";
+            }
+            try {
+                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+            } catch ( ... ) {
+                node.port6 = 0;
+            }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
             s.nodes.push_back( node );
         }
