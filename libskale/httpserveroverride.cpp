@@ -1576,9 +1576,12 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleRelayWS::SkaleRelayWS( const char* strScheme,  // "ws" or "wss"
+SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
+    const char* strScheme,  // "ws" or "wss"
     int nPort, int nServerIndex )
     : SkaleServerHelper( nServerIndex ),
+      ipVer_( ipVer ),
+      strBindAddr_( strBindAddr ),
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
       m_strSchemeUC( skutils::tools::to_upper( strScheme ) ),
       m_nPort( nPort ) {
@@ -1593,7 +1596,8 @@ SkaleRelayWS::SkaleRelayWS( const char* strScheme,  // "ws" or "wss"
         if ( pSO->is_connection_limit_overflow() ) {
             delete pSkalePeer;
             pSkalePeer = nullptr;  // WS will just close connection after we return nullptr here
-            pSO->on_connection_overflow_peer_closed( m_strSchemeUC.c_str(), serverIndex(), nPort );
+            pSO->on_connection_overflow_peer_closed(
+                ipVer, m_strSchemeUC.c_str(), serverIndex(), nPort );
         }
         return pSkalePeer;
     };
@@ -1646,6 +1650,7 @@ void SkaleRelayWS::waitWhileInLoop() {
 bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     stop();
     m_pSO = pSO;
+    server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will start server on port " ) + cc::c( m_nPort ) );
     if ( !open( m_strScheme_, m_nPort ) ) {
@@ -1687,9 +1692,12 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleRelayHTTP::SkaleRelayHTTP(
+SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
     const char* cert_path, const char* private_key_path, int nServerIndex )
     : SkaleServerHelper( nServerIndex ),
+      ipVer_( ipVer ),
+      strBindAddr_( strBindAddr ),
+      nPort_( nPort ),
       m_bHelperIsSSL( ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ?
                           true :
                           false ) {
@@ -1697,6 +1705,7 @@ SkaleRelayHTTP::SkaleRelayHTTP(
         m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
     else
         m_pServer.reset( new skutils::http::server );
+    m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
 SkaleRelayHTTP::~SkaleRelayHTTP() {
@@ -1706,23 +1715,36 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
-    dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
-    const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
-    int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
-    const std::string& strPathSslKey, const std::string& strPathSslCert )
+SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams,
+    fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
+    dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
+    const std::string& strAddrHTTP6, int nBasePortHTTP6, const std::string& strAddrHTTPS4,
+    int nBasePortHTTPS4, const std::string& strAddrHTTPS6, int nBasePortHTTPS6,
+    const std::string& strAddrWS4, int nBasePortWS4, const std::string& strAddrWS6,
+    int nBasePortWS6, const std::string& strAddrWSS4, int nBasePortWSS4,
+    const std::string& strAddrWSS6, int nBasePortWSS6, const std::string& strPathSslKey,
+    const std::string& strPathSslCert )
     : AbstractServerConnector(),
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
       chainParams_( chainParams ),
-      m_strAddrHTTP( strAddrHTTP ),
-      m_nBasePortHTTP( nBasePortHTTP ),
-      m_strAddrHTTPS( strAddrHTTPS ),
-      m_nBasePortHTTPS( nBasePortHTTPS ),
-      m_strAddrWS( strAddrWS ),
-      m_nBasePortWS( nBasePortWS ),
-      m_strAddrWSS( strAddrWSS ),
-      m_nBasePortWSS( nBasePortWSS ),
+      fn_binary_snapshot_download_( fn_binary_snapshot_download ),
+      m_strAddrHTTP4( strAddrHTTP4 ),
+      m_nBasePortHTTP4( nBasePortHTTP4 ),
+      m_strAddrHTTP6( strAddrHTTP6 ),
+      m_nBasePortHTTP6( nBasePortHTTP6 ),
+      m_strAddrHTTPS4( strAddrHTTPS4 ),
+      m_nBasePortHTTPS4( nBasePortHTTPS4 ),
+      m_strAddrHTTPS6( strAddrHTTPS6 ),
+      m_nBasePortHTTPS6( nBasePortHTTPS6 ),
+      m_strAddrWS4( strAddrWS4 ),
+      m_nBasePortWS4( nBasePortWS4 ),
+      m_strAddrWS6( strAddrWS6 ),
+      m_nBasePortWS6( nBasePortWS6 ),
+      m_strAddrWSS4( strAddrWSS4 ),
+      m_nBasePortWSS4( nBasePortWSS4 ),
+      m_strAddrWSS6( strAddrWSS6 ),
+      m_nBasePortWSS6( nBasePortWSS6 ),
       m_bTraceCalls( false ),
       m_strPathSslKey( strPathSslKey ),
       m_strPathSslCert( strPathSslCert ),
@@ -1762,15 +1784,17 @@ jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::s
     return nullptr;
 }
 
-void SkaleServerOverride::logTraceServerEvent(
-    bool isError, const char* strProtocol, int nServerIndex, const std::string& strMessage ) {
+void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const char* strProtocol,
+    int nServerIndex, const std::string& strMessage ) {
     if ( strMessage.empty() )
         return;
     std::stringstream ssProtocol;
     strProtocol = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
-    ssProtocol << cc::info( strProtocol );
+    ssProtocol << cc::info( strProtocol ) << cc::debug( "/" ) << cc::notice( "IPv" )
+               << cc::num10( ipVer );
     if ( nServerIndex >= 0 )
         ssProtocol << cc::debug( "/" ) << cc::num10( nServerIndex );
+    ;
     if ( isError )
         ssProtocol << cc::fatal( std::string( " ERROR:" ) );
     else
@@ -1782,8 +1806,9 @@ void SkaleServerOverride::logTraceServerEvent(
         clog( dev::VerbosityInfo, strProtocolDescription ) << strMessage;
 }
 
-void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol,
-    int nServerIndex, const char* strOrigin, const std::string& strPayload ) {
+void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ipVer,
+    const char* strProtocol, int nServerIndex, const char* strOrigin,
+    const std::string& strPayload ) {
     std::stringstream ssProtocol;
     std::string strProto =
         ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
@@ -1791,13 +1816,15 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const 
     std::string strErrorSuffix, strOriginSuffix, strDirect;
     if ( isRX ) {
         strDirect = cc::ws_rx( " >>> " );
-        ssProtocol << cc::ws_rx_inv( " >>> " + strProto );
+        ssProtocol << cc::ws_rx_inv( " >>> " + strProto ) << cc::debug( "/" ) << cc::notice( "IPv" )
+                   << cc::num10( ipVer );
         if ( nServerIndex >= 0 )
             ssProtocol << cc::ws_rx_inv( "/" + std::to_string( nServerIndex ) );
         ssProtocol << cc::ws_rx_inv( "/RX >>> " );
     } else {
         strDirect = cc::ws_tx( " <<< " );
-        ssProtocol << cc::ws_tx_inv( " <<< " + strProto );
+        ssProtocol << cc::ws_tx_inv( " <<< " + strProto ) << cc::debug( "/" ) << cc::notice( "IPv" )
+                   << cc::num10( ipVer );
         if ( nServerIndex >= 0 )
             ssProtocol << cc::ws_tx_inv( "/" + std::to_string( nServerIndex ) );
         ssProtocol << cc::ws_tx_inv( "/TX <<< " );
@@ -1814,55 +1841,57 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, const 
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
-bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv,
+bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
     try {
-        implStopListening( pSrv, bIsSSL );
+        implStopListening( pSrv, ipVer, bIsSSL );
         if ( strAddr.empty() || nPort <= 0 )
             return true;
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", -1,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", -1,
             cc::debug( "starting " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
                 cc::num10( nServerIndex ) + cc::debug( " server on address " ) +
                 cc::info( strAddr ) + cc::debug( " and port " ) + cc::c( nPort ) +
                 cc::debug( "..." ) );
         if ( bIsSSL )
-            pSrv.reset(
-                new SkaleRelayHTTP( strPathSslCert.c_str(), strPathSslKey.c_str(), nServerIndex ) );
+            pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, strPathSslCert.c_str(),
+                strPathSslKey.c_str(), nServerIndex ) );
         else
-            pSrv.reset( new SkaleRelayHTTP( nullptr, nullptr, nServerIndex ) );
-        pSrv->m_pServer->Options( "/", [=]( const skutils::http::request& req,
-                                           skutils::http::response& res ) {
-            stats::register_stats_message(
-                bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
-            if ( m_bTraceCalls )
-                logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    req.origin_.c_str(), cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
-            res.set_header( "access-control-allow-headers", "Content-Type" );
-            res.set_header( "access-control-allow-methods", "POST" );
-            res.set_header( "access-control-allow-origin", "*" );
-            res.set_header( "content-length", "0" );
-            res.set_header(
-                "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
-            stats::register_stats_answer(
-                bIsSSL ? "HTTPS" : "HTTP", "query options", res.body_.size() );
-        } );
+            pSrv.reset( new SkaleRelayHTTP(
+                ipVer, strAddr.c_str(), nPort, nullptr, nullptr, nServerIndex ) );
+        pSrv->m_pServer->Options(
+            "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
+                stats::register_stats_message(
+                    bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
+                if ( m_bTraceCalls )
+                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                        pSrv->serverIndex(), req.origin_.c_str(),
+                        cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
+                res.set_header( "access-control-allow-headers", "Content-Type" );
+                res.set_header( "access-control-allow-methods", "POST" );
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "content-length", "0" );
+                res.set_header( "vary",
+                    "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
+                stats::register_stats_answer(
+                    bIsSSL ? "HTTPS" : "HTTP", "query options", res.body_.size() );
+            } );
         pSrv->m_pServer->Post( "/", [=]( const skutils::http::request& req,
                                         skutils::http::response& res ) {
             SkaleServerConnectionsTrackHelper sscth( *this );
             if ( m_bTraceCalls )
-                logTraceServerTraffic( true, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    req.origin_.c_str(), cc::j( req.body_ ) );
+                logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), cc::j( req.body_ ) );
             nlohmann::json joID = "-1";
             std::string strResponse, strMethod;
             bool bPassed = false;
             try {
                 if ( is_connection_limit_overflow() ) {
                     on_connection_overflow_peer_closed(
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
+                        ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
                     throw std::runtime_error( "server too busy" );
                 }
                 nlohmann::json joRequest = nlohmann::json::parse( req.body_ );
@@ -1903,8 +1932,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 //
                 bPassed = true;
             } catch ( const std::exception& ex ) {
-                logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    req.origin_.c_str(), cc::warn( ex.what() ) );
+                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
@@ -1917,8 +1946,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 }
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
-                logTraceServerTraffic( false, true, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    req.origin_.c_str(), cc::warn( e ) );
+                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
@@ -1931,8 +1960,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 }
             }
             if ( m_bTraceCalls )
-                logTraceServerTraffic( false, false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    req.origin_.c_str(), cc::j( strResponse ) );
+                logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), cc::j( strResponse ) );
             res.set_header( "access-control-allow-origin", "*" );
             res.set_header( "vary", "Origin" );
             res.set_content( strResponse.c_str(), "application/json" );
@@ -1943,88 +1972,92 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
                 "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
-            if ( !pSrv->m_pServer->listen( strAddr.c_str(), nPort ) ) {
+            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
         } )
             .detach();
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
             cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::debug( "/" ) + cc::num10( pSrv->serverIndex() ) +
                 cc::success( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
             cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
             cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
     }
     try {
-        implStopListening( pSrv, bIsSSL );
+        implStopListening( pSrv, ipVer, bIsSSL );
     } catch ( ... ) {
     }
     return false;
 }
 
-bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv,
+bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
     try {
-        implStopListening( pSrv, bIsSSL );
+        implStopListening( pSrv, ipVer, bIsSSL );
         if ( strAddr.empty() || nPort <= 0 )
             return true;
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", nServerIndex,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", nServerIndex,
             cc::debug( "starting " ) + cc::info( bIsSSL ? "WSS" : "WS" ) + cc::debug( "/" ) +
                 cc::num10( nServerIndex ) + cc::debug( " server on address " ) +
                 cc::info( strAddr ) + cc::debug( " and port " ) + cc::c( nPort ) +
                 cc::debug( "..." ) );
-        pSrv.reset( new SkaleRelayWS( bIsSSL ? "wss" : "ws", nPort, nServerIndex ) );
+        pSrv.reset( new SkaleRelayWS(
+            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, nServerIndex ) );
         if ( bIsSSL ) {
             pSrv->strCertificateFile_ = strPathSslCert;
             pSrv->strPrivateKeyFile_ = strPathSslKey;
         }
         if ( !pSrv->start( this ) )
             throw std::runtime_error( "Failed to start server" );
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
             cc::success( "OK, started " ) + cc::info( bIsSSL ? "WSS" : "WS" ) + cc::debug( "/" ) +
                 cc::num10( pSrv->serverIndex() ) + cc::success( " server on address " ) +
                 cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
                 cc::debug( "..." ) );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
             cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
             cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
     }
     try {
-        implStopListening( pSrv, bIsSSL );
+        implStopListening( pSrv, ipVer, bIsSSL );
     } catch ( ... ) {
     }
     return false;
 }
 
 bool SkaleServerOverride::implStopListening(
-    std::shared_ptr< SkaleRelayHTTP >& pSrv, bool bIsSSL ) {
+    std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL ) {
     try {
         if ( !pSrv )
             return true;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr = bIsSSL ? m_strAddrHTTPS : m_strAddrHTTP;
-        int nPort = ( bIsSSL ? m_nBasePortHTTPS : m_nBasePortHTTP ) + nServerIndex;
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? m_strAddrHTTPS4 : m_strAddrHTTP4 ) :
+                                               ( bIsSSL ? m_strAddrHTTPS6 : m_strAddrHTTP6 );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? m_nBasePortHTTPS4 : m_nBasePortHTTP4 ) :
+                                       ( bIsSSL ? m_nBasePortHTTPS6 : m_nBasePortHTTP6 ) ) +
+                    nServerIndex;
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
             cc::notice( "Will stop " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::notice( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
@@ -2033,7 +2066,7 @@ bool SkaleServerOverride::implStopListening(
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "STOP" );
         }
         pSrv.reset();
-        logTraceServerEvent( false, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex,
             cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::success( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) );
@@ -2042,21 +2075,25 @@ bool SkaleServerOverride::implStopListening(
     return true;
 }
 
-bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, bool bIsSSL ) {
+bool SkaleServerOverride::implStopListening(
+    std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL ) {
     try {
         if ( !pSrv )
             return true;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr = bIsSSL ? m_strAddrWSS : m_strAddrWS;
-        int nPort = ( bIsSSL ? m_nBasePortWSS : m_nBasePortWS ) + nServerIndex;
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", nServerIndex,
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? m_strAddrWSS4 : m_strAddrWS4 ) :
+                                               ( bIsSSL ? m_strAddrWSS6 : m_strAddrWS6 );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? m_nBasePortWSS4 : m_nBasePortWS4 ) :
+                                       ( bIsSSL ? m_nBasePortWSS6 : m_nBasePortWS6 ) ) +
+                    nServerIndex;
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", nServerIndex,
             cc::notice( "Will stop " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
                 cc::notice( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) + cc::notice( "..." ) );
         if ( pSrv->isRunning() )
             pSrv->stop();
         pSrv.reset();
-        logTraceServerEvent( false, bIsSSL ? "WSS" : "WS", nServerIndex,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", nServerIndex,
             cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "WSS" : "WS" ) +
                 cc::success( " server on address " ) + cc::info( strAddr ) +
                 cc::success( " and port " ) + cc::c( nPort ) );
@@ -2067,48 +2104,92 @@ bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayWS >& pS
 
 bool SkaleServerOverride::StartListening() {
     size_t nServerIndex, cntServers;
-    if ( 0 <= m_nBasePortHTTP && m_nBasePortHTTP <= 65535 ) {
+    if ( 0 <= m_nBasePortHTTP4 && m_nBasePortHTTP4 <= 65535 ) {
         cntServers = m_cntServers;
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, m_strAddrHTTP, m_nBasePortHTTP + nServerIndex, "",
+            if ( !implStartListening( pServer, 4, m_strAddrHTTP4, m_nBasePortHTTP4 + nServerIndex,
+                     "", "", nServerIndex ) )
+                return false;
+            m_serversHTTP4.push_back( pServer );
+        }
+    }
+    if ( 0 <= m_nBasePortHTTP6 && m_nBasePortHTTP6 <= 65535 ) {
+        cntServers = m_cntServers;
+        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayHTTP > pServer;
+            if ( !implStartListening( pServer, 6, m_strAddrHTTP6, m_nBasePortHTTP6 + nServerIndex,
+                     "", "", nServerIndex ) )
+                return false;
+            m_serversHTTP6.push_back( pServer );
+        }
+    }
+    if ( 0 <= m_nBasePortHTTPS4 && m_nBasePortHTTPS4 <= 65535 && ( !m_strPathSslKey.empty() ) &&
+         ( !m_strPathSslCert.empty() ) && m_nBasePortHTTPS4 != m_nBasePortHTTP4 ) {
+        cntServers = m_cntServers;
+        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayHTTP > pServer;
+            if ( !implStartListening( pServer, 4, m_strAddrHTTPS4, m_nBasePortHTTPS4 + nServerIndex,
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                return false;
+            m_serversHTTPS4.push_back( pServer );
+        }
+    }
+    if ( 0 <= m_nBasePortHTTPS6 && m_nBasePortHTTPS6 <= 65535 && ( !m_strPathSslKey.empty() ) &&
+         ( !m_strPathSslCert.empty() ) && m_nBasePortHTTPS6 != m_nBasePortHTTP6 ) {
+        cntServers = m_cntServers;
+        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayHTTP > pServer;
+            if ( !implStartListening( pServer, 6, m_strAddrHTTPS6, m_nBasePortHTTPS6 + nServerIndex,
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                return false;
+            m_serversHTTPS6.push_back( pServer );
+        }
+    }
+    if ( 0 <= m_nBasePortWS4 && m_nBasePortWS4 <= 65535 && m_nBasePortWS4 != m_nBasePortHTTP4 &&
+         m_nBasePortWS4 != m_nBasePortHTTPS4 ) {
+        cntServers = m_cntServers;
+        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayWS > pServer;
+            if ( !implStartListening( pServer, 4, m_strAddrWS4, m_nBasePortWS4 + nServerIndex, "",
                      "", nServerIndex ) )
                 return false;
-            m_serversHTTP.push_back( pServer );
+            m_serversWS4.push_back( pServer );
         }
     }
-    if ( 0 <= m_nBasePortHTTPS && m_nBasePortHTTPS <= 65535 && ( !m_strPathSslKey.empty() ) &&
-         ( !m_strPathSslCert.empty() ) && m_nBasePortHTTPS != m_nBasePortHTTP ) {
-        cntServers = m_cntServers;
-        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, m_strAddrHTTPS, m_nBasePortHTTPS + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
-                return false;
-            m_serversHTTPS.push_back( pServer );
-        }
-    }
-    if ( 0 <= m_nBasePortWS && m_nBasePortWS <= 65535 && m_nBasePortWS != m_nBasePortHTTP &&
-         m_nBasePortWS != m_nBasePortHTTPS ) {
+    if ( 0 <= m_nBasePortWS6 && m_nBasePortWS6 <= 65535 && m_nBasePortWS6 != m_nBasePortHTTP6 &&
+         m_nBasePortWS6 != m_nBasePortHTTPS6 ) {
         cntServers = m_cntServers;
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening(
-                     pServer, m_strAddrWS, m_nBasePortWS + nServerIndex, "", "", nServerIndex ) )
+            if ( !implStartListening( pServer, 6, m_strAddrWS6, m_nBasePortWS6 + nServerIndex, "",
+                     "", nServerIndex ) )
                 return false;
-            m_serversWS.push_back( pServer );
+            m_serversWS6.push_back( pServer );
         }
     }
-    if ( 0 <= m_nBasePortWSS && m_nBasePortWSS <= 65535 && ( !m_strPathSslKey.empty() ) &&
-         ( !m_strPathSslCert.empty() ) && m_nBasePortWSS != m_nBasePortWS &&
-         m_nBasePortWSS != m_nBasePortHTTP && m_nBasePortWSS != m_nBasePortHTTPS ) {
+    if ( 0 <= m_nBasePortWSS4 && m_nBasePortWSS4 <= 65535 && ( !m_strPathSslKey.empty() ) &&
+         ( !m_strPathSslCert.empty() ) && m_nBasePortWSS4 != m_nBasePortWS4 &&
+         m_nBasePortWSS4 != m_nBasePortHTTP4 && m_nBasePortWSS4 != m_nBasePortHTTPS4 ) {
         cntServers = m_cntServers;
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening( pServer, m_strAddrWSS, m_nBasePortWSS + nServerIndex,
+            if ( !implStartListening( pServer, 4, m_strAddrWSS4, m_nBasePortWSS4 + nServerIndex,
                      m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
                 return false;
-            m_serversWSS.push_back( pServer );
+            m_serversWSS4.push_back( pServer );
+        }
+    }
+    if ( 0 <= m_nBasePortWSS6 && m_nBasePortWSS6 <= 65535 && ( !m_strPathSslKey.empty() ) &&
+         ( !m_strPathSslCert.empty() ) && m_nBasePortWSS6 != m_nBasePortWS6 &&
+         m_nBasePortWSS6 != m_nBasePortHTTP6 && m_nBasePortWSS6 != m_nBasePortHTTPS6 ) {
+        cntServers = m_cntServers;
+        for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayWS > pServer;
+            if ( !implStartListening( pServer, 6, m_strAddrWSS6, m_nBasePortWSS6 + nServerIndex,
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                return false;
+            m_serversWSS6.push_back( pServer );
         }
     }
     return true;
@@ -2116,54 +2197,79 @@ bool SkaleServerOverride::StartListening() {
 
 bool SkaleServerOverride::StopListening() {
     bool bRetVal = true;
-    for ( auto pServer : m_serversHTTP ) {
-        if ( !implStopListening( pServer, false ) )
+    for ( auto pServer : m_serversHTTP4 ) {
+        if ( !implStopListening( pServer, 4, false ) )
             bRetVal = false;
     }
-    m_serversHTTP.clear();
-    for ( auto pServer : m_serversHTTPS ) {
-        if ( !implStopListening( pServer, true ) )
+    m_serversHTTP4.clear();
+    for ( auto pServer : m_serversHTTP6 ) {
+        if ( !implStopListening( pServer, 6, false ) )
             bRetVal = false;
     }
-    m_serversHTTPS.clear();
-    for ( auto pServer : m_serversWS ) {
-        if ( !implStopListening( pServer, false ) )
+    m_serversHTTP6.clear();
+    //
+    for ( auto pServer : m_serversHTTPS4 ) {
+        if ( !implStopListening( pServer, 4, true ) )
             bRetVal = false;
     }
-    m_serversWS.clear();
-    for ( auto pServer : m_serversWSS ) {
-        if ( !implStopListening( pServer, true ) )
+    m_serversHTTPS4.clear();
+    for ( auto pServer : m_serversHTTPS6 ) {
+        if ( !implStopListening( pServer, 6, true ) )
             bRetVal = false;
     }
-    m_serversWSS.clear();
+    m_serversHTTPS6.clear();
+    //
+    for ( auto pServer : m_serversWS4 ) {
+        if ( !implStopListening( pServer, 4, false ) )
+            bRetVal = false;
+    }
+    m_serversWS4.clear();
+    for ( auto pServer : m_serversWS6 ) {
+        if ( !implStopListening( pServer, 6, false ) )
+            bRetVal = false;
+    }
+    m_serversWS6.clear();
+    //
+    for ( auto pServer : m_serversWSS4 ) {
+        if ( !implStopListening( pServer, 4, true ) )
+            bRetVal = false;
+    }
+    m_serversWSS4.clear();
+    for ( auto pServer : m_serversWSS6 ) {
+        if ( !implStopListening( pServer, 6, true ) )
+            bRetVal = false;
+    }
+    m_serversWSS6.clear();
     return bRetVal;
 }
 
-int SkaleServerOverride::getServerPortStatusHTTP() const {
-    for ( auto pServer : m_serversHTTP ) {
+int SkaleServerOverride::getServerPortStatusHTTP( int ipVer ) const {
+    for ( auto pServer : ( ( ipVer == 4 ) ? m_serversHTTP4 : m_serversHTTP6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return m_nBasePortHTTP + pServer->serverIndex();
+            return ( ( ipVer == 4 ) ? m_nBasePortHTTP4 : m_nBasePortHTTP6 ) +
+                   pServer->serverIndex();
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusHTTPS() const {
-    for ( auto pServer : m_serversHTTPS ) {
+int SkaleServerOverride::getServerPortStatusHTTPS( int ipVer ) const {
+    for ( auto pServer : ( ( ipVer == 4 ) ? m_serversHTTPS4 : m_serversHTTPS6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return m_nBasePortHTTPS + pServer->serverIndex();
+            return ( ( ipVer == 4 ) ? m_nBasePortHTTPS4 : m_nBasePortHTTPS6 ) +
+                   pServer->serverIndex();
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusWS() const {
-    for ( auto pServer : m_serversWS ) {
+int SkaleServerOverride::getServerPortStatusWS( int ipVer ) const {
+    for ( auto pServer : ( ( ipVer == 4 ) ? m_serversWS4 : m_serversWS6 ) ) {
         if ( pServer && pServer->isRunning() )
-            return m_nBasePortWS + pServer->serverIndex();
+            return ( ( ipVer == 4 ) ? m_nBasePortWS4 : m_nBasePortWS6 ) + pServer->serverIndex();
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusWSS() const {
-    for ( auto pServer : m_serversWSS ) {
+int SkaleServerOverride::getServerPortStatusWSS( int ipVer ) const {
+    for ( auto pServer : ( ( ipVer == 4 ) ? m_serversWSS4 : m_serversWSS6 ) ) {
         if ( pServer && pServer->isRunning() )
-            return m_nBasePortWSS + pServer->serverIndex();
+            return ( ( ipVer == 4 ) ? m_nBasePortWSS4 : m_nBasePortWSS6 ) + pServer->serverIndex();
     }
     return -1;
 }
@@ -2192,12 +2298,12 @@ void SkaleServerOverride::max_connection_set( size_t cntConnectionsMax ) {
 }
 
 void SkaleServerOverride::on_connection_overflow_peer_closed(
-    const char* strProtocol, int nServerIndex, int nPort ) {
+    int ipVer, const char* strProtocol, int nServerIndex, int nPort ) {
     std::string strMessage = cc::info( strProtocol ) + cc::debug( "/" ) +
                              cc::num10( nServerIndex ) + cc::warn( " server on port " ) +
                              cc::num10( nPort ) +
                              cc::warn( " did closed peer because of connection limit overflow" );
-    logTraceServerEvent( false, strProtocol, nServerIndex, strMessage );
+    logTraceServerEvent( false, ipVer, strProtocol, nServerIndex, strMessage );
 }
 
 skutils::tools::load_monitor& stat_get_load_monitor() {
@@ -2212,16 +2318,17 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
-    joStats["protocols"]["http"]["listenerCount"] = m_serversHTTP.size();
+    joStats["protocols"]["http"]["listenerCount"] = m_serversHTTP4.size() + m_serversHTTP6.size();
     joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
     joStats["protocols"]["http"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTP" );
-    joStats["protocols"]["https"]["listenerCount"] = m_serversHTTPS.size();
+    joStats["protocols"]["https"]["listenerCount"] =
+        m_serversHTTPS4.size() + m_serversHTTPS6.size();
     joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
     joStats["protocols"]["https"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTPS" );
-    joStats["protocols"]["ws"]["listenerCount"] = m_serversWS.size();
+    joStats["protocols"]["ws"]["listenerCount"] = m_serversWS4.size() + m_serversWS6.size();
     joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
     joStats["protocols"]["ws"]["rpc"] = stats::generate_subsystem_stats( "RPC/WS" );
-    joStats["protocols"]["wss"]["listenerCount"] = m_serversWSS.size();
+    joStats["protocols"]["wss"]["listenerCount"] = m_serversWSS4.size() + m_serversWSS6.size();
     joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
     joStats["protocols"]["wss"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
     joStats["rpc"] = stats::generate_subsystem_stats( "RPC" );
@@ -2239,47 +2346,27 @@ bool SkaleServerOverride::handleRequestWithBinaryAnswer(
     const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
     buffer.clear();
     std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-    //    if ( strMethodName == "skale_downloadSnapshotFragment" ) {
-    //        // std::cout << cc::attention( "------------ " ) << cc::info(
-    //        // "skale_downloadSnapshotFragment" ) << cc::normal( " call with " ) << cc::j(
-    //        joRequest )
-    //        // <<
-    //        // "\n";
-    //        const nlohmann::json& joParams = joRequest["params"];
-    //        if ( joParams.count( "isBinary" ) > 0 ) {
-    //            bool isBinary = joParams["isBinary"].get< bool >();
-    //            if ( isBinary ) {
-    //                size_t sizeOfFile = fs::file_size( dev::rpc::g_pathSnapshotFile );
-    //                size_t idxFrom = joParams["from"].get< size_t >();
-    //                size_t sizeOfChunk = joParams["size"].get< size_t >();
-    //                if ( idxFrom >= sizeOfFile )
-    //                    sizeOfChunk = 0;
-    //                if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
-    //                    sizeOfChunk = sizeOfFile - idxFrom;
-    //                if ( sizeOfChunk > dev::rpc::g_nMaxChunckSize )
-    //                    sizeOfChunk = dev::rpc::g_nMaxChunckSize;
-    //                //
-    //                //
-    //                std::ifstream f;
-    //                f.open( dev::rpc::g_pathSnapshotFile.native(), std::ios::in | std::ios::binary
-    //                ); if ( !f.is_open() )
-    //                    throw std::runtime_error( "failed to open snapshot file" );
-    //                size_t i;
-    //                for ( i = 0; i < sizeOfChunk; ++i )
-    //                    buffer.push_back( ( unsigned char ) ( 0 ) );
-    //                f.seekg( idxFrom );
-    //                f.read( ( char* ) buffer.data(), sizeOfChunk );
-    //                f.close();
-    //                return true;
-    //            }
-    //        }
-    //    }
+    if ( strMethodName == "skale_downloadSnapshotFragment" && fn_binary_snapshot_download_ ) {
+        //        std::cout << cc::attention( "------------ " )
+        //                  << cc::info( "skale_downloadSnapshotFragment" ) << cc::normal( " call
+        //                  with " )
+        //                  << cc::j( joRequest ) << "\n";
+        const nlohmann::json& joParams = joRequest["params"];
+        if ( joParams.count( "isBinary" ) > 0 ) {
+            bool isBinary = joParams["isBinary"].get< bool >();
+            if ( isBinary ) {
+                buffer = fn_binary_snapshot_download_( joParams );
+                return true;
+            }
+        }
+    }
     return false;
 }
 
 bool SkaleServerOverride::handleAdminOriginFilter(
     const std::string& strMethod, const std::string& strOriginURL ) {
-    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) << cc::attention( "
+    // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) <<
+    // cc::attention( "
     // ------------> " ) << cc::info( strMethod ) << "\n";
     static const std::set< std::string > g_setAdminMethods = {
         "skale_getSnapshot", "skale_downloadSnapshotFragment"};

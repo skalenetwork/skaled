@@ -73,7 +73,7 @@ jobs:
             - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
             - lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info # filter dependency files
             - lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-            - lcov --list coverage.info # debug info
+            #- lcov --list coverage.info # debug info
 
             # Uploading report to CodeCov
             - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
@@ -149,10 +149,11 @@ script:
     # configure
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. &> ./log_of_cmake.txt || ( cat ./log_of_cmake.txt && travis_terminate 1 );
 
     # check code style
     - make format-check || travis_terminate 1;
 
     # build    
+    #- cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
     - cmake --build . --target $TARGET -- -j$(nproc)

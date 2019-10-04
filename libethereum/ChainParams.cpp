@@ -23,6 +23,8 @@
 
 #include "ChainParams.h"
 
+#include <stdint.h>
+
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcore/Log.h>
@@ -92,12 +94,29 @@ ChainParams ChainParams::loadConfig(
 
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
-        auto ip = infoObj.at( "bindIP" ).get_str();
-        auto port = infoObj.at( "basePort" ).get_int();
+        std::string ip, ip6;
+        uint64_t port = 0, port6 = 0;
+        try {
+            ip = infoObj.at( "bindIP" ).get_str();
+        } catch ( ... ) {
+        }
+        try {
+            port = infoObj.at( "basePort" ).get_int();
+        } catch ( ... ) {
+        }
+        try {
+            ip6 = infoObj.at( "bindIP6" ).get_str();
+        } catch ( ... ) {
+        }
+        try {
+            port6 = infoObj.at( "basePort6" ).get_int();
+        } catch ( ... ) {
+        }
         int snapshotInterval =
             infoObj.count( "snapshotInterval" ) ? infoObj.at( "snapshotInterval" ).get_int() : 0;
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), snapshotInterval};
+        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+            static_cast< uint16_t >( port6 ), snapshotInterval};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -112,6 +131,16 @@ ChainParams ChainParams::loadConfig(
             node.id = nodeConfObj.at( "nodeID" ).get_uint64();
             node.ip = nodeConfObj.at( "ip" ).get_str();
             node.port = nodeConfObj.at( "basePort" ).get_uint64();
+            try {
+                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
+            } catch ( ... ) {
+                node.ip6 = "";
+            }
+            try {
+                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+            } catch ( ... ) {
+                node.port6 = 0;
+            }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
             s.nodes.push_back( node );
         }
@@ -314,6 +343,8 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["nodeID"] = ( int64_t ) nodeInfo.id;
     infoObj["bindIP"] = nodeInfo.ip;
     infoObj["basePort"] = ( int64_t ) nodeInfo.port;  // TODO not so many bits!
+    infoObj["bindIP6"] = nodeInfo.ip6;
+    infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
     infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
@@ -333,6 +364,8 @@ const std::string& ChainParams::getOriginalJson() const {
         nodeConfObj["nodeID"] = ( int64_t ) node.id;
         nodeConfObj["ip"] = node.ip;
         nodeConfObj["basePort"] = ( int64_t ) node.port;
+        nodeConfObj["ip6"] = node.ip6;
+        nodeConfObj["basePort6"] = ( int64_t ) node.port6;
         nodeConfObj["schainIndex"] = ( int64_t ) node.sChainIndex;
 
         nodes.push_back( nodeConfObj );
