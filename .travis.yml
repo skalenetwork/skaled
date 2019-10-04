@@ -155,4 +155,5 @@ script:
     - make format-check || travis_terminate 1;
 
     # build    
-    - cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
+    #- cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
+    - cmake --build . --target $TARGET -- -j$(nproc)
