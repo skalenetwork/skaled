@@ -149,10 +149,10 @@ script:
     # configure
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. &> ./log_of_cmake.txt || ( cat ./log_of_cmake.txt && travis_terminate 1 );
 
     # check code style
     - make format-check || travis_terminate 1;
 
     # build    
-    - cmake --build . --target $TARGET -- -j$(nproc)
+    - cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
