@@ -79,6 +79,7 @@ typedef int socket_t;
 
 #include <skutils/dispatch.h>
 #include <skutils/network.h>
+#include <skutils/url.h>
 
 /// configuration
 
@@ -206,6 +207,7 @@ private:
 
 class server {
 public:
+    mutable int ipVer_ = -1;  // not known before listen
     typedef std::function< void( const request&, response& ) > Handler;
     typedef std::function< void( const request&, const response& ) > Logger;
 
@@ -231,10 +233,10 @@ public:
     size_t get_keep_alive_max_count() const;
     void set_keep_alive_max_count( size_t cnt );
 
-    int bind_to_any_port( const char* host, int socket_flags = 0 );
+    int bind_to_any_port( int ipVer, const char* host, int socket_flags = 0 );
     bool listen_after_bind();
 
-    bool listen( const char* host, int port, int socket_flags = 0 );
+    bool listen( int ipVer, const char* host, int port, int socket_flags = 0 );
 
     bool is_running() const;
     void stop();
@@ -249,8 +251,8 @@ protected:
 private:
     typedef std::vector< std::pair< std::regex, Handler > > Handlers;
 
-    socket_t create_server_socket( const char* host, int port, int socket_flags ) const;
-    int bind_internal( const char* host, int port, int socket_flags );
+    socket_t create_server_socket( int ipVer, const char* host, int port, int socket_flags ) const;
+    int bind_internal( int ipVer, const char* host, int port, int socket_flags );
     bool listen_internal();
 
     bool routing( request& req, response& res );
@@ -302,7 +304,8 @@ public:
 
 class client {
 public:
-    client( const char* host, int port = 80, int timeout_milliseconds = 60 * 1000 );
+    mutable int ipVer_ = -1;  // not known before connect
+    client( int ipVer, const char* host, int port = 80, int timeout_milliseconds = 60 * 1000 );
 
     virtual ~client();
 
@@ -352,7 +355,7 @@ protected:
     const std::string host_and_port_;
 
 private:
-    socket_t create_client_socket() const;
+    socket_t create_client_socket( int ipVer ) const;
     bool read_response_line( stream& strm, response& res );
     void write_request( stream& strm, request& req );
     virtual bool read_and_close_socket( socket_t sock, request& req, response& res );
@@ -387,7 +390,7 @@ private:
 
 class SSL_client : public client {
 public:
-    SSL_client( const char* host, int port = 443, int timeout_milliseconds = 60 * 1000 );
+    SSL_client( int ipVer, const char* host, int port = 443, int timeout_milliseconds = 60 * 1000 );
     ~SSL_client() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
@@ -559,8 +562,61 @@ inline int shutdown_socket( socket_t sock ) {
 #endif
 }
 
+inline void auto_detect_ipVer( int& ipVer, const char* host ) {
+    if ( ipVer == 4 || ipVer == 6 )
+        return;
+    if ( host == nullptr || host[0] == '\0' ) {
+        ipVer = 4;
+        return;
+    }
+    std::string s;
+    s = host;
+    if ( skutils::is_valid_ipv6( s ) ) {
+        ipVer = 6;
+        return;
+    }
+    ipVer = 4;
+}
+
 template < typename Fn >
-socket_t create_socket( const char* host, int port, Fn fn, int socket_flags = 0 ) {
+socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0 ) {
+#ifdef _WIN32
+#define SO_SYNCHRONOUS_NONALERT 0x20
+#define SO_OPENTYPE 0x7008
+    int opt = SO_SYNCHRONOUS_NONALERT;
+    setsockopt( INVALID_SOCKET, SOL_SOCKET, SO_OPENTYPE, ( char* ) &opt, sizeof( opt ) );
+#endif
+    struct addrinfo hints;
+    struct addrinfo* result;
+    memset( &hints, 0, sizeof( struct addrinfo ) );
+    hints.ai_family = ( ipVer == 4 ) ? AF_INET : AF_INET6;  // AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = socket_flags;
+    hints.ai_protocol = 0;  // ( ipVer == 4 ) ? IPPROTO_IPV4 : IPPROTO_IPV6;  // 0
+    auto service = std::to_string( port );
+    if ( getaddrinfo( host, service.c_str(), &hints, &result ) )
+        return INVALID_SOCKET;
+    for ( auto rp = result; rp; rp = rp->ai_next ) {
+        auto sock = socket( rp->ai_family, rp->ai_socktype, rp->ai_protocol );
+        if ( sock == INVALID_SOCKET ) {
+            continue;
+        }
+        // make "reuse address" option available
+        int yes = 1;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
+        // bind or connect
+        if ( fn( sock, *rp ) ) {
+            freeaddrinfo( result );
+            return sock;
+        }
+        close_socket( sock );
+    }
+    freeaddrinfo( result );
+    return INVALID_SOCKET;
+}
+
+template < typename Fn >
+socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0 ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
@@ -1495,16 +1551,16 @@ inline void server::set_keep_alive_max_count( size_t cnt ) {
     keep_alive_max_count_ = cnt;
 }
 
-inline int server::bind_to_any_port( const char* host, int socket_flags ) {
-    return bind_internal( host, 0, socket_flags );
+inline int server::bind_to_any_port( int ipVer, const char* host, int socket_flags ) {
+    return bind_internal( ipVer, host, 0, socket_flags );
 }
 
 inline bool server::listen_after_bind() {
     return listen_internal();
 }
 
-inline bool server::listen( const char* host, int port, int socket_flags ) {
-    if ( bind_internal( host, port, socket_flags ) < 0 )
+inline bool server::listen( int ipVer, const char* host, int port, int socket_flags ) {
+    if ( bind_internal( ipVer, host, port, socket_flags ) < 0 )
         return false;
     return listen_internal();
 }
@@ -1631,8 +1687,11 @@ inline bool server::handle_file_request( request& req, response& res ) {
     return false;
 }
 
-inline socket_t server::create_server_socket( const char* host, int port, int socket_flags ) const {
-    return detail::create_socket( host, port,
+inline socket_t server::create_server_socket(
+    int ipVer, const char* host, int port, int socket_flags ) const {
+    detail::auto_detect_ipVer( ipVer, host );
+    ipVer_ = ipVer;
+    return detail::create_socket( ipVer, host, port,
         []( socket_t sock, struct addrinfo& ai ) -> bool {
             if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
                 return false;
@@ -1645,11 +1704,11 @@ inline socket_t server::create_server_socket( const char* host, int port, int so
         socket_flags );
 }
 
-inline int server::bind_internal( const char* host, int port, int socket_flags ) {
+inline int server::bind_internal( int ipVer, const char* host, int port, int socket_flags ) {
     if ( !is_valid() ) {
         return -1;
     }
-    svr_sock_ = create_server_socket( host, port, socket_flags );
+    svr_sock_ = create_server_socket( ipVer, host, port, socket_flags );
     if ( svr_sock_ == INVALID_SOCKET ) {
         return -1;
     }
@@ -1823,8 +1882,9 @@ inline bool server::read_and_close_socket( socket_t sock ) {
 }
 
 // HTTP client implementation
-inline client::client( const char* host, int port, int timeout_milliseconds )
-    : host_( host ),
+inline client::client( int ipVer, const char* host, int port, int timeout_milliseconds )
+    : ipVer_( ipVer ),
+      host_( host ),
       port_( port ),
       timeout_milliseconds_( timeout_milliseconds ),
       host_and_port_( host_ + ":" + std::to_string( port_ ) ) {}
@@ -1835,9 +1895,11 @@ inline bool client::is_valid() const {
     return true;
 }
 
-inline socket_t client::create_client_socket() const {
+inline socket_t client::create_client_socket( int ipVer ) const {
+    detail::auto_detect_ipVer( ipVer, host_.c_str() );
+    ipVer_ = ipVer;
     return detail::create_socket(
-        host_.c_str(), port_, [=]( socket_t sock, struct addrinfo& ai ) -> bool {
+        ipVer, host_.c_str(), port_, [=]( socket_t sock, struct addrinfo& ai ) -> bool {
             detail::set_nonblocking( sock, true );
             auto ret = connect( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) );
             if ( ret < 0 ) {
@@ -1873,7 +1935,7 @@ inline bool client::send( request& req, response& res ) {
     if ( req.path_.empty() ) {
         return false;
     }
-    auto sock = create_client_socket();
+    auto sock = create_client_socket( ipVer_ );
     if ( sock == INVALID_SOCKET ) {
         return false;
     }
@@ -2226,8 +2288,8 @@ inline bool SSL_server::read_and_close_socket( socket_t sock ) {
 
 /// SSL HTTP client implementation
 ///
-inline SSL_client::SSL_client( const char* host, int port, int timeout_milliseconds )
-    : client( host, port, timeout_milliseconds ) {
+inline SSL_client::SSL_client( int ipVer, const char* host, int port, int timeout_milliseconds )
+    : client( ipVer, host, port, timeout_milliseconds ) {
     ctx_ = SSL_CTX_new( SSLv23_client_method() );
 }
 

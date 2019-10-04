@@ -176,7 +176,8 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
     const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
-        "ws-log", "ssl-key", "ssl-cert", "acceptors"};
+        "http-port6", "https-port6", "ws-port6", "wss-port6", "ws-log", "ssl-key", "ssl-cert",
+        "acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -221,11 +222,15 @@ int main( int argc, char** argv ) try {
     NodeMode nodeMode = NodeMode::Full;
 
     bool is_ipc = false;
-    int nExplicitPortHTTP = -1;
-    int nExplicitPortHTTPS = -1;
-    int nExplicitPortWS = -1;
-    int nExplicitPortWSS = -1;
-    bool bTraceHttpCalls = false;
+    int nExplicitPortHTTP4 = -1;
+    int nExplicitPortHTTP6 = -1;
+    int nExplicitPortHTTPS4 = -1;
+    int nExplicitPortHTTPS6 = -1;
+    int nExplicitPortWS4 = -1;
+    int nExplicitPortWS6 = -1;
+    int nExplicitPortWSS4 = -1;
+    int nExplicitPortWSS6 = -1;
+    bool bTraceJsonRpcCalls = false;
 
     string jsonAdmin;
     ChainParams chainParams;
@@ -285,13 +290,29 @@ int main( int argc, char** argv ) try {
     addClientOption( "no-ipc", "Disable IPC server" );
 
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTP server(s) on specified port(and next set of ports if --acceptors > 1)" );
+        "Run web3 HTTP(IPv4) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
     addClientOption( "https-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTPS server(s) on specified port(and next set of ports if --acceptors > 1)" );
+        "Run web3 HTTPS(IPv4) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
     addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 WS server on specified port(and next set of ports if --acceptors > 1)" );
+        "Run web3 WS(IPv4) server on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "wss-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 WSS server(s) on specified port(and next set of ports if --acceptors > 1)" );
+        "Run web3 WSS(IPv4) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
+
+    addClientOption( "http-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 HTTP(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
+    addClientOption( "https-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 HTTPS(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
+    addClientOption( "ws-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 WS(IPv6) server on specified port(and next set of ports if --acceptors > 1)" );
+    addClientOption( "wss-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 WSS(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
+        "1)" );
+
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
         skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
@@ -445,107 +466,340 @@ int main( int argc, char** argv ) try {
         }
     }
 
+    // First, get "ipc" true/false from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
+        } catch ( ... ) {
+            is_ipc = false;
+        }
+    }
     if ( vm.count( "ipc" ) )
         is_ipc = true;
     if ( vm.count( "no-ipc" ) )
         is_ipc = false;
+    clog( VerbosityInfo, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
+                                  << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
 
+    // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
+    // Second, get them from command line parameters (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            nExplicitPortHTTP = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
+            nExplicitPortHTTP4 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTP = -1;
+            nExplicitPortHTTP4 = -1;
         }
-        if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
-            nExplicitPortHTTP = -1;
+        if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
+            nExplicitPortHTTP4 = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got HTTP port from config: " << nExplicitPortHTTP;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTP/4 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTP4 );
         //
         try {
-            nExplicitPortHTTPS = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
+            nExplicitPortHTTP6 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTPS = -1;
+            nExplicitPortHTTP6 = -1;
         }
-        if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
-            nExplicitPortHTTPS = -1;
+        if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
+            nExplicitPortHTTP6 = nExplicitPortHTTP4;
+        if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
+            nExplicitPortHTTP6 = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got HTTPS port from config: " << nExplicitPortHTTPS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTP/6 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTP6 );
+        //
         //
         try {
-            nExplicitPortWS = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
+            nExplicitPortHTTPS4 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWS = -1;
+            nExplicitPortHTTPS4 = -1;
         }
-        if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
-            nExplicitPortWS = -1;
+        if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
+            nExplicitPortHTTPS4 = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got WS port from config: " << nExplicitPortWS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTPS/4 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTPS4 );
         //
         try {
-            nExplicitPortWSS = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
+            nExplicitPortHTTPS6 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWSS = -1;
+            nExplicitPortHTTPS6 = -1;
         }
-        if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
-            nExplicitPortWSS = -1;
+        if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
+            nExplicitPortHTTPS6 = nExplicitPortHTTPS4;
+        if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
+            nExplicitPortHTTPS6 = -1;
         else
-            clog( VerbosityInfo, "main" ) << "Got WSS port from config: " << nExplicitPortWSS;
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "HTTPS/6 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortHTTPS6 );
+        //
+        //
+        try {
+            nExplicitPortWS4 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWS4 = -1;
+        }
+        if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
+            nExplicitPortWS4 = -1;
+        else
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WS/4 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWS4 );
+        //
+        try {
+            nExplicitPortWS6 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWS6 = -1;
+        }
+        if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
+            nExplicitPortWS6 = nExplicitPortWS4;
+        if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
+            nExplicitPortWS6 = -1;
+        else
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WS/6 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWS6 );
+        //
+        //
+        try {
+            nExplicitPortWSS4 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWSS4 = -1;
+        }
+        if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
+            nExplicitPortWSS4 = -1;
+        else
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WSS/4 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWSS4 );
+        //
+        try {
+            nExplicitPortWSS6 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
+        } catch ( ... ) {
+            nExplicitPortWSS6 = -1;
+        }
+        if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
+            nExplicitPortWSS6 = nExplicitPortWSS4;
+        if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
+            nExplicitPortWSS6 = -1;
+        else
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "Got " )
+                << cc::notice( "WSS/6 port" ) + cc::debug( " from configuration JSON: " )
+                << cc::num10( nExplicitPortWSS6 );
     }  // if ( chainConfigParsed )
     if ( vm.count( "http-port" ) ) {
         std::string strPort = vm["http-port"].as< string >();
         if ( !strPort.empty() ) {
-            nExplicitPortHTTP = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTP && nExplicitPortHTTP <= 65535 ) )
-                nExplicitPortHTTP = -1;
+            nExplicitPortHTTP4 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
+                nExplicitPortHTTP4 = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got HTTP port from command line: " << nExplicitPortHTTP;
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTP/4 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTP4 );
+        }
+    }
+    if ( vm.count( "http-port6" ) ) {
+        std::string strPort = vm["http-port6"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortHTTP6 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
+                nExplicitPortHTTP6 = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTP/6 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTP6 );
         }
     }
     if ( vm.count( "https-port" ) ) {
         std::string strPort = vm["https-port"].as< string >();
         if ( !strPort.empty() ) {
-            nExplicitPortHTTPS = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTPS && nExplicitPortHTTPS <= 65535 ) )
-                nExplicitPortHTTPS = -1;
+            nExplicitPortHTTPS4 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
+                nExplicitPortHTTPS4 = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got HTTPS port from command line: " << nExplicitPortHTTPS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTPS/4 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTPS4 );
+        }
+    }
+    if ( vm.count( "https-port6" ) ) {
+        std::string strPort = vm["https-port6"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortHTTPS6 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
+                nExplicitPortHTTPS6 = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "Got " )
+                    << cc::notice( "HTTPS/6 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortHTTPS6 );
         }
     }
     if ( vm.count( "ws-port" ) ) {
         std::string strPort = vm["ws-port"].as< string >();
         if ( !strPort.empty() ) {
-            nExplicitPortWS = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWS && nExplicitPortWS <= 65535 ) )
-                nExplicitPortWS = -1;
+            nExplicitPortWS4 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
+                nExplicitPortWS4 = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got WS port from command line: " << nExplicitPortWS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "WS/4 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWS4 );
+        }
+    }
+    if ( vm.count( "ws-port6" ) ) {
+        std::string strPort = vm["ws-port6"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortWS6 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
+                nExplicitPortWS6 = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "Got " )
+                    << cc::notice( "WS/6 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWS6 );
         }
     }
     if ( vm.count( "wss-port" ) ) {
         std::string strPort = vm["wss-port"].as< string >();
         if ( !strPort.empty() ) {
-            nExplicitPortWSS = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWSS && nExplicitPortWSS <= 65535 ) )
-                nExplicitPortWSS = -1;
+            nExplicitPortWSS4 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
+                nExplicitPortWSS4 = -1;
             else
                 clog( VerbosityInfo, "main" )
-                    << "Got WSS port from command line: " << nExplicitPortWSS;
+                    << cc::debug( "Got " )
+                    << cc::notice( "WSS/4 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWSS4 );
+        }
+    }
+    if ( vm.count( "wss-port6" ) ) {
+        std::string strPort = vm["wss-port6"].as< string >();
+        if ( !strPort.empty() ) {
+            nExplicitPortWSS6 = atoi( strPort.c_str() );
+            if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
+                nExplicitPortWSS6 = -1;
+            else
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "Got " )
+                    << cc::notice( "WSS/6 port" ) + cc::debug( " from command line: " )
+                    << cc::num10( nExplicitPortWSS6 );
         }
     }
 
+    // First, get "web3-trace" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            bTraceJsonRpcCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "web3-trace" ) )
-        bTraceHttpCalls = true;
+        bTraceJsonRpcCalls = true;
+    clog( VerbosityInfo, "main" ) << cc::info( "JSON RPC" )
+                                  << cc::debug( " trace logging mode is " )
+                                  << cc::flag_ed( bTraceJsonRpcCalls );
+
+    // First, get "enable-debug-behavior-apis" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            rpc::Debug::g_bEnabledDebugBehaviorAPIs =
+                joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "enable-debug-behavior-apis" ) )
         rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "enable-debug-behavior-apis" )
+                                  << cc::debug( " mode is " )
+                                  << cc::flag_ed( rpc::Debug::g_bEnabledDebugBehaviorAPIs );
+
+    // First, get "unsafe-transactions" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            alwaysConfirm =
+                joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >() ? false :
+                                                                                           true;
+        } catch ( ... ) {
+        }
+    }
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
-    if ( vm.count( "db-path" ) )
-        setDataDir( vm["db-path"].as< string >() );
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
+                                  << cc::flag_ed( !alwaysConfirm );
+
+    // First, get "web3-shutdown" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    bool bEnabledShutdownViaWeb3 = false;
+    if ( chainConfigParsed ) {
+        try {
+            bEnabledShutdownViaWeb3 =
+                joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
+    if ( vm.count( "web3-shutdown" ) )
+        bEnabledShutdownViaWeb3 = true;
+    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+                                  << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
+                                  << cc::flag_ed( bEnabledShutdownViaWeb3 );
+
+    // First, get "ipcpath" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strPathIPC;
+    if ( chainConfigParsed ) {
+        try {
+            strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
+        } catch ( ... ) {
+            strPathIPC.clear();
+        }
+    }
+    clog( VerbosityInfo, "main" ) << cc::notice( "IPC path" ) + cc::debug( " is: " )
+                                  << cc::p( strPathIPC );
     if ( vm.count( "ipcpath" ) )
-        setIpcPath( vm["ipcpath"].as< string >() );
+        strPathIPC = vm["ipcpath"].as< std::string >();
+    if ( !strPathIPC.empty() )
+        setIpcPath( strPathIPC );
+
+    // First, get "db-path"" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strPathDB;
+    if ( chainConfigParsed ) {
+        try {
+            strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
+        } catch ( ... ) {
+            strPathDB.clear();
+        }
+    }
+    if ( vm.count( "db-path" ) )
+        strPathDB = vm["db-path"].as< std::string >();
+    clog( VerbosityInfo, "main" ) << cc::notice( "DB path" ) + cc::debug( " is: " )
+                                  << cc::p( strPathDB );
+    if ( !strPathDB.empty() )
+        setDataDir( strPathDB );
 
     if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
         try {
@@ -739,7 +993,7 @@ int main( int argc, char** argv ) try {
                 strcpy( buf, filename_string.c_str() );
                 int fd = mkstemp( buf );
                 if ( fd < 0 ) {
-                    throw system_error();
+                    throw std::runtime_error( "Failed to open " + filename_string );
                 }
                 close( fd );
                 saveTo = buf;
@@ -749,7 +1003,7 @@ int main( int argc, char** argv ) try {
 
             std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
                       << cc::normal( " to " ) << cc::info( saveTo.native() ) << std::endl;
-            bool isBinaryDownload = false;
+            bool isBinaryDownload = true;
 
             unsigned block_number;
             {
@@ -795,7 +1049,7 @@ int main( int argc, char** argv ) try {
             snapshotManager->importDiff( block_number, saveTo );
             fs::remove( saveTo );
 
-            // HACK refactor this shit!
+            // HACK refactor this piece of code!
             fs::path price_db_path;
             for ( auto& f :
                 fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
@@ -1145,16 +1399,29 @@ int main( int argc, char** argv ) try {
 
     std::string autoAuthAnswer;
 
-    if ( vm.count( "aa" ) ) {
-        string m = vm["aa"].as< string >();
-        if ( m == "yes" || m == "no" || m == "always" )
-            autoAuthAnswer = m;
+    // First, get "aa" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strAA;
+    if ( chainConfigParsed ) {
+        try {
+            strAA = joConfig["skaleConfig"]["nodeInfo"]["aa"].get< std::string >();
+        } catch ( ... ) {
+            strAA.clear();
+        }
+    }
+    if ( vm.count( "aa" ) )
+        strAA = vm["aa"].as< string >();
+    if ( !strAA.empty() ) {
+        if ( strAA == "yes" || strAA == "no" || strAA == "always" )
+            autoAuthAnswer = strAA;
         else {
             cerr << "Bad "
                  << "--aa"
-                 << " option: " << m << "\n";
+                 << " option: " << strAA << "\n";
             return -1;
         }
+        clog( VerbosityInfo, "main" )
+            << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
     }
 
     std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
@@ -1190,8 +1457,21 @@ int main( int argc, char** argv ) try {
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
         };
-    if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
-         nExplicitPortWSS > 0 ) {
+    if ( chainParams.nodeInfo.ip.empty() ) {
+        clog( VerbosityWarning, "main" )
+            << cc::info( "IPv4" )
+            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        nExplicitPortHTTP4 = nExplicitPortHTTPS4 = nExplicitPortWS4 = nExplicitPortWSS4 = -1;
+    }
+    if ( chainParams.nodeInfo.ip6.empty() ) {
+        clog( VerbosityWarning, "main" )
+            << cc::info( "IPv6" )
+            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        nExplicitPortHTTP6 = nExplicitPortHTTPS6 = nExplicitPortWS6 = nExplicitPortWSS6 = -1;
+    }
+    if ( is_ipc || nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
+         nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
+         nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,   /// skale
             rpc::SkaleStats,  /// skaleStats
@@ -1234,208 +1514,397 @@ int main( int argc, char** argv ) try {
             }  // catch
         }      // if ( is_ipc )
 
-        if ( nExplicitPortHTTP >= 65536 ) {
+        if ( nExplicitPortHTTP4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
-        if ( nExplicitPortHTTPS >= 65536 ) {
+        if ( nExplicitPortHTTP6 >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
+        if ( nExplicitPortHTTPS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
-        if ( nExplicitPortWS >= 65536 ) {
+        if ( nExplicitPortHTTPS6 >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
+        if ( nExplicitPortWS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
-        if ( nExplicitPortWSS >= 65536 ) {
+        if ( nExplicitPortWS6 >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
+        if ( nExplicitPortWSS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
             return EXIT_FAILURE;
         }
+        if ( nExplicitPortWSS6 >= 65536 ) {
+            clog( VerbosityError, "main" )
+                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                << cc::warn( "--wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
+            return EXIT_FAILURE;
+        }
 
-        if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
-             nExplicitPortWSS > 0 ) {
+        if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
+             nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
+             nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
+            //
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP port" )
+                << cc::debug( "...." ) << cc::info( "HTTP/4 port" )
                 << cc::debug( ".............................. " )
-                << ( ( nExplicitPortHTTP >= 0 ) ? cc::num10( nExplicitPortHTTP ) :
-                                                  cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS port" )
-                << cc::debug( "............................. " )
-                << ( ( nExplicitPortHTTPS >= 0 ) ? cc::num10( nExplicitPortHTTPS ) :
+                << ( ( nExplicitPortHTTP4 >= 0 ) ? cc::num10( nExplicitPortHTTP4 ) :
                                                    cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WS port" )
-                << cc::debug( "................................ " )
-                << ( ( nExplicitPortWS >= 0 ) ? cc::num10( nExplicitPortWS ) : cc::error( "off" ) );
+                << cc::debug( "...." ) << cc::info( "HTTP/6 port" )
+                << cc::debug( ".............................. " )
+                << ( ( nExplicitPortHTTP6 >= 0 ) ? cc::num10( nExplicitPortHTTP6 ) :
+                                                   cc::error( "off" ) );
+            //
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS port" )
-                << cc::debug( "............................... " )
-                << ( ( nExplicitPortWSS >= 0 ) ? cc::num10( nExplicitPortWSS ) :
+                << cc::debug( "...." ) << cc::info( "HTTPS/4 port" )
+                << cc::debug( "............................. " )
+                << ( ( nExplicitPortHTTPS4 >= 0 ) ? cc::num10( nExplicitPortHTTPS4 ) :
+                                                    cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTPS/6 port" )
+                << cc::debug( "............................. " )
+                << ( ( nExplicitPortHTTPS6 >= 0 ) ? cc::num10( nExplicitPortHTTPS6 ) :
+                                                    cc::error( "off" ) );
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS/4 port" )
+                << cc::debug( "................................ " )
+                << ( ( nExplicitPortWS4 >= 0 ) ? cc::num10( nExplicitPortWS4 ) :
                                                  cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS/6 port" )
+                << cc::debug( "................................ " )
+                << ( ( nExplicitPortWS6 >= 0 ) ? cc::num10( nExplicitPortWS6 ) :
+                                                 cc::error( "off" ) );
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS/4 port" )
+                << cc::debug( "............................... " )
+                << ( ( nExplicitPortWSS4 >= 0 ) ? cc::num10( nExplicitPortWSS4 ) :
+                                                  cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS/6 port" )
+                << cc::debug( "............................... " )
+                << ( ( nExplicitPortWSS6 >= 0 ) ? cc::num10( nExplicitPortWSS6 ) :
+                                                  cc::error( "off" ) );
+            //
             std::string strPathSslKey, strPathSslCert;
             bool bHaveSSL = false;
-            if ( ( nExplicitPortHTTPS > 0 || nExplicitPortWSS > 0 ) && vm.count( "ssl-key" ) > 0 &&
-                 vm.count( "ssl-cert" ) > 0 ) {
+            if ( ( nExplicitPortHTTPS4 > 0 || nExplicitPortWSS4 > 0 || nExplicitPortHTTPS6 > 0 ||
+                     nExplicitPortWSS6 > 0 ) &&
+                 vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
                 strPathSslKey = vm["ssl-key"].as< std::string >();
                 strPathSslCert = vm["ssl-cert"].as< std::string >();
                 if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
                     bHaveSSL = true;
             }
             if ( !bHaveSSL )
-                nExplicitPortHTTPS = nExplicitPortWSS = -1;
+                nExplicitPortHTTPS4 = nExplicitPortWSS4 = nExplicitPortHTTPS6 = nExplicitPortWSS6 =
+                    -1;
             if ( bHaveSSL ) {
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) << cc::info( "SSL key is" )
-                    << cc::debug( "............................. " ) << cc::p( strPathSslKey );
+                    << cc::debug( "............................... " ) << cc::p( strPathSslKey );
                 clog( VerbosityInfo, "main" )
                     << cc::debug( "...." ) + cc::info( "SSL certificate is" )
-                    << cc::debug( "..................... " ) << cc::p( strPathSslCert );
+                    << cc::debug( "....................... " ) << cc::p( strPathSslCert );
             }
             //
             //
             size_t maxConnections = 0, cntServers = 1;
-            if ( vm.count( "max-connections" ) ) {
-                maxConnections = vm["max-connections"].as< size_t >();
+
+            // First, get "max-connections" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    maxConnections =
+                        joConfig["skaleConfig"]["nodeInfo"]["max-connections"].get< size_t >();
+                } catch ( ... ) {
+                    maxConnections = 0;
+                }
             }
-            if ( vm.count( "acceptors" ) ) {
-                cntServers = vm["acceptors"].as< size_t >();
-                if ( cntServers < 1 )
+            if ( vm.count( "max-connections" ) )
+                maxConnections = vm["max-connections"].as< size_t >();
+
+            // First, get "acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntServers = joConfig["skaleConfig"]["nodeInfo"]["acceptors"].get< size_t >();
+                } catch ( ... ) {
                     cntServers = 1;
+                }
+            }
+            if ( vm.count( "acceptors" ) )
+                cntServers = vm["acceptors"].as< size_t >();
+            if ( cntServers < 1 )
+                cntServers = 1;
+
+            // First, get "ws-mode" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-mode"].get< std::string >();
+                    skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
+                } catch ( ... ) {
+                }
             }
             if ( vm.count( "ws-mode" ) ) {
                 std::string s = vm["ws-mode"].as< std::string >();
                 skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
             }
+
+            // First, get "ws-log" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-log"].get< std::string >();
+                    skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
+                } catch ( ... ) {
+                }
+            }
             if ( vm.count( "ws-log" ) ) {
                 std::string s = vm["ws-log"].as< std::string >();
                 skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
             }
+
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "WS mode" )
-                << cc::debug( "........................ " )
+                << cc::debug( ".................................. " )
                 << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "....................." ) + cc::info( "WS logging" )
-                << cc::debug( "...... " )
+                << cc::debug( "...." ) + cc::info( "WS logging" )
+                << cc::debug( "............................... " )
                 << cc::info( skutils::ws::wsll2str( skutils::ws::g_eWSLL ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Max RPC connections" )
-                << cc::debug( ".................... " )
+                << cc::debug( "...................... " )
                 << ( ( maxConnections > 0 ) ? cc::num10( uint64_t( maxConnections ) ) :
                                               cc::error( "disabled" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
-                << cc::debug( "...... " ) << cc::num10( uint64_t( cntServers ) );
-            auto skale_server_connector = new SkaleServerOverride( chainParams, cntServers,
-                client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP, chainParams.nodeInfo.ip,
-                nExplicitPortHTTPS, chainParams.nodeInfo.ip, nExplicitPortWS,
-                chainParams.nodeInfo.ip, nExplicitPortWSS, strPathSslKey, strPathSslCert );
+                << cc::debug( "........ " ) << cc::num10( uint64_t( cntServers ) );
+            SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
+                [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
+                return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
+            };
+            auto skale_server_connector =
+                new SkaleServerOverride( chainParams, fn_binary_snapshot_download, cntServers,
+                    client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP4,
+                    chainParams.nodeInfo.ip6, nExplicitPortHTTP6, chainParams.nodeInfo.ip,
+                    nExplicitPortHTTPS4, chainParams.nodeInfo.ip6, nExplicitPortHTTPS6,
+                    chainParams.nodeInfo.ip, nExplicitPortWS4, chainParams.nodeInfo.ip6,
+                    nExplicitPortWS6, chainParams.nodeInfo.ip, nExplicitPortWSS4,
+                    chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey, strPathSslCert );
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
             //
-            skale_server_connector->m_bTraceCalls = bTraceHttpCalls;
+            skale_server_connector->m_bTraceCalls = bTraceJsonRpcCalls;
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;
             }
-            int nStatHTTP = skale_server_connector->getServerPortStatusHTTP();
-            int nStatHTTPS = skale_server_connector->getServerPortStatusHTTPS();
-            int nStatWS = skale_server_connector->getServerPortStatusWS();
-            int nStatWSS = skale_server_connector->getServerPortStatusWSS();
+            int nStatHTTP4 = skale_server_connector->getServerPortStatusHTTP( 4 );
+            int nStatHTTP6 = skale_server_connector->getServerPortStatusHTTP( 6 );
+            int nStatHTTPS4 = skale_server_connector->getServerPortStatusHTTPS( 4 );
+            int nStatHTTPS6 = skale_server_connector->getServerPortStatusHTTPS( 6 );
+            int nStatWS4 = skale_server_connector->getServerPortStatusWS( 4 );
+            int nStatWS6 = skale_server_connector->getServerPortStatusWS( 6 );
+            int nStatWSS4 = skale_server_connector->getServerPortStatusWSS( 4 );
+            int nStatWSS6 = skale_server_connector->getServerPortStatusWSS( 6 );
             static const size_t g_cntWaitAttempts = 30;
             static const std::chrono::milliseconds g_waitAttempt = std::chrono::milliseconds( 100 );
-            if ( nExplicitPortHTTP > 0 ) {
+            if ( nExplicitPortHTTP4 > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatHTTP < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      nStatHTTP4 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityInfo, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/4" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTP = skale_server_connector->getServerPortStatusHTTP();
+                    nStatHTTP4 = skale_server_connector->getServerPortStatusHTTP( 4 );
                 }
             }
-            if ( nExplicitPortHTTPS > 0 ) {
+            if ( nExplicitPortHTTP6 > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatHTTPS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      nStatHTTP6 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityInfo, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/6" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTPS = skale_server_connector->getServerPortStatusHTTPS();
+                    nStatHTTP6 = skale_server_connector->getServerPortStatusHTTP( 6 );
                 }
             }
-            if ( nExplicitPortWS > 0 ) {
+            if ( nExplicitPortHTTPS4 > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatWS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      nStatHTTPS4 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityInfo, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatWS = skale_server_connector->getServerPortStatusWS();
+                    nStatHTTPS4 = skale_server_connector->getServerPortStatusHTTPS( 4 );
                 }
             }
-            if ( nExplicitPortWSS > 0 ) {
+            if ( nExplicitPortHTTPS6 > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatWSS < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      nStatHTTPS6 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityInfo, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WSS" )
+                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6" )
                             << cc::debug( " start... " );
-                    nStatWSS = skale_server_connector->getServerPortStatusWSS();
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS6 = skale_server_connector->getServerPortStatusHTTPS( 6 );
+                }
+            }
+            if ( nExplicitPortWS4 > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS4 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WS/4" )
+                            << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS4 = skale_server_connector->getServerPortStatusWS( 4 );
+                }
+            }
+            if ( nExplicitPortWS6 > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS6 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WS/6" )
+                            << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS6 = skale_server_connector->getServerPortStatusWS( 6 );
+                }
+            }
+            if ( nExplicitPortWSS4 > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS4 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WSS/4" )
+                            << cc::debug( " start... " );
+                    nStatWSS4 = skale_server_connector->getServerPortStatusWSS( 4 );
+                }
+            }
+            if ( nExplicitPortWSS6 > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS6 < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !exitHandler.shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityInfo, "main" )
+                            << cc::debug( "Waiting for " ) + cc::info( "WSS/6" )
+                            << cc::debug( " start... " );
+                    nStatWSS6 = skale_server_connector->getServerPortStatusWSS( 6 );
                 }
             }
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP" )
-                << cc::debug( "................................... " )
-                << ( ( nStatHTTP >= 0 ) ?
-                           ( ( nExplicitPortHTTP > 0 ) ? cc::num10( nStatHTTP ) :
-                                                         cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS" )
-                << cc::debug( ".................................. " )
-                << ( ( nStatHTTPS >= 0 ) ?
-                           ( ( nExplicitPortHTTPS > 0 ) ? cc::num10( nStatHTTPS ) :
+                << cc::debug( "...." ) << cc::info( "HTTP/4" )
+                << cc::debug( "................................. " )
+                << ( ( nStatHTTP4 >= 0 ) ?
+                           ( ( nExplicitPortHTTP4 > 0 ) ? cc::num10( nStatHTTP4 ) :
                                                           cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WS" )
-                << cc::debug( "..................................... " )
-                << ( ( nStatWS >= 0 ) ?
-                           ( ( nExplicitPortWS > 0 ) ? cc::num10( nStatWS ) :
-                                                       cc::warn( "still starting..." ) ) :
+                << cc::debug( "...." ) << cc::info( "HTTP/6" )
+                << cc::debug( "................................. " )
+                << ( ( nStatHTTP6 >= 0 ) ?
+                           ( ( nExplicitPortHTTP6 > 0 ) ? cc::num10( nStatHTTP6 ) :
+                                                          cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "HTTPS/4" )
+                << cc::debug( "................................ " )
+                << ( ( nStatHTTPS4 >= 0 ) ?
+                           ( ( nExplicitPortHTTPS4 > 0 ) ? cc::num10( nStatHTTPS4 ) :
+                                                           cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
             clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS" )
-                << cc::debug( ".................................... " )
-                << ( ( nStatWSS >= 0 ) ?
-                           ( ( nExplicitPortWSS > 0 ) ? cc::num10( nStatWSS ) :
+                << cc::debug( "...." ) << cc::info( "HTTPS/6" )
+                << cc::debug( "................................ " )
+                << ( ( nStatHTTPS6 >= 0 ) ?
+                           ( ( nExplicitPortHTTPS6 > 0 ) ? cc::num10( nStatHTTPS6 ) :
+                                                           cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS/4" )
+                << cc::debug( "................................... " )
+                << ( ( nStatWS4 >= 0 ) ?
+                           ( ( nExplicitPortWS4 > 0 ) ? cc::num10( nStatWS4 ) :
                                                         cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WS/6" )
+                << cc::debug( "................................... " )
+                << ( ( nStatWS6 >= 0 ) ?
+                           ( ( nExplicitPortWS6 > 0 ) ? cc::num10( nStatWS6 ) :
+                                                        cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS/4" )
+                << cc::debug( ".................................. " )
+                << ( ( nStatWSS4 >= 0 ) ?
+                           ( ( nExplicitPortWSS4 > 0 ) ? cc::num10( nStatWSS4 ) :
+                                                         cc::warn( "still starting..." ) ) :
+                           cc::error( "off" ) );
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "WSS/6" )
+                << cc::debug( ".................................. " )
+                << ( ( nStatWSS6 >= 0 ) ?
+                           ( ( nExplicitPortWSS6 > 0 ) ? cc::num10( nStatWSS6 ) :
+                                                         cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
         }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
            // nExplicitPortWSS > 0 )
@@ -1451,7 +1920,6 @@ int main( int argc, char** argv ) try {
     }  // if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0  || nExplicitPortWS > 0 ||
        // nExplicitPortWSS > 0 )
 
-    bool bEnabledShutdownViaWeb3 = vm.count( "web3-shutdown" ) ? true : false;
     if ( bEnabledShutdownViaWeb3 ) {
         std::cout << "Enabling programmatic shutdown via Web3...\n";
         dev::rpc::Skale::enableWeb3Shutdown( true );

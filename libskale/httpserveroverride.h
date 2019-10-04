@@ -43,6 +43,7 @@ typedef intptr_t ssize_t;
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
 #include <atomic>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -196,6 +197,8 @@ class SkaleRelayWS : public skutils::ws::server, public SkaleServerHelper {
 protected:
     volatile bool m_isRunning = false;
     volatile bool m_isInLoop = false;
+    int ipVer_;
+    std::string strBindAddr_;
     std::string m_strScheme_;
     std::string m_strSchemeUC;
     int m_nPort = -1;
@@ -213,7 +216,7 @@ protected:
     mutable map_skale_peers_t m_mapAllPeers;
 
 public:
-    SkaleRelayWS( const char* strScheme,  // "ws" or "wss"
+    SkaleRelayWS( int ipVer, const char* strBindAddr, const char* strScheme,  // "ws" or "wss"
         int nPort, int nServerIndex = -1 );
     ~SkaleRelayWS() override;
     void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
@@ -238,10 +241,13 @@ public:
 
 class SkaleRelayHTTP : public SkaleServerHelper {
 public:
+    int ipVer_;
+    std::string strBindAddr_;
+    int nPort_;
     const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
-    SkaleRelayHTTP( const char* cert_path = nullptr, const char* private_key_path = nullptr,
-        int nServerIndex = -1 );
+    SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort, const char* cert_path = nullptr,
+        const char* private_key_path = nullptr, int nServerIndex = -1 );
     ~SkaleRelayHTTP() override;
 };  /// class SkaleRelayHTTP
 
@@ -256,11 +262,22 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
     dev::eth::ChainParams& chainParams_;
 
 public:
-    SkaleServerOverride( dev::eth::ChainParams& chainParams, size_t cntServers,
-        dev::eth::Interface* pEth, const std::string& strAddrHTTP, int nBasePortHTTP,
-        const std::string& strAddrHTTPS, int nBasePortHTTPS, const std::string& strAddrWS,
-        int nBasePortWS, const std::string& strAddrWSS, int nBasePortWSS,
-        const std::string& strPathSslKey, const std::string& strPathSslCert );
+    typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
+        fn_binary_snapshot_download_t;
+
+private:
+    fn_binary_snapshot_download_t fn_binary_snapshot_download_;
+
+public:
+    SkaleServerOverride( dev::eth::ChainParams& chainParams,
+        fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
+        dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
+        const std::string& strAddrHTTP6, int nBasePortHTTP6, const std::string& strAddrHTTPS4,
+        int nBasePortHTTPS4, const std::string& strAddrHTTPS6, int nBasePortHTTPS6,
+        const std::string& strAddrWS4, int nBasePortWS4, const std::string& strAddrWS6,
+        int nBasePortWS6, const std::string& strAddrWSS4, int nBasePortWSS4,
+        const std::string& strAddrWSS6, int nBasePortWSS6, const std::string& strPathSslKey,
+        const std::string& strPathSslCert );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
@@ -269,14 +286,14 @@ public:
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 private:
-    bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, const std::string& strAddr,
-        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
-        int nServerIndex );
-    bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, const std::string& strAddr,
-        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
-        int nServerIndex );
-    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, bool bIsSSL );
-    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, bool bIsSSL );
+    bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
+        const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+        const std::string& strPathSslCert, int nServerIndex );
+    bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
+        const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+        const std::string& strPathSslCert, int nServerIndex );
+    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL );
+    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL );
 
 public:
     virtual bool StartListening() override;
@@ -285,18 +302,26 @@ public:
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
 private:
-    void logTraceServerEvent(
-        bool isError, const char* strProtocol, int nServerIndex, const std::string& strMessage );
-    void logTraceServerTraffic( bool isRX, bool isError, const char* strProtocol, int nServerIndex,
-        const char* strOrigin, const std::string& strPayload );
-    const std::string m_strAddrHTTP;
-    const int m_nBasePortHTTP;
-    const std::string m_strAddrHTTPS;
-    const int m_nBasePortHTTPS;
-    const std::string m_strAddrWS;
-    const int m_nBasePortWS;
-    const std::string m_strAddrWSS;
-    const int m_nBasePortWSS;
+    void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
+        const std::string& strMessage );
+    void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
+        int nServerIndex, const char* strOrigin, const std::string& strPayload );
+    const std::string m_strAddrHTTP4;
+    const int m_nBasePortHTTP4;
+    const std::string m_strAddrHTTP6;
+    const int m_nBasePortHTTP6;
+    const std::string m_strAddrHTTPS4;
+    const int m_nBasePortHTTPS4;
+    const std::string m_strAddrHTTPS6;
+    const int m_nBasePortHTTPS6;
+    const std::string m_strAddrWS4;
+    const int m_nBasePortWS4;
+    const std::string m_strAddrWS6;
+    const int m_nBasePortWS6;
+    const std::string m_strAddrWSS4;
+    const int m_nBasePortWSS4;
+    const std::string m_strAddrWSS6;
+    const int m_nBasePortWSS6;
 
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
@@ -305,19 +330,21 @@ public:
     bool m_bTraceCalls;
 
 private:
-    std::list< std::shared_ptr< SkaleRelayHTTP > > m_serversHTTP, m_serversHTTPS;
+    std::list< std::shared_ptr< SkaleRelayHTTP > > m_serversHTTP4, m_serversHTTP6, m_serversHTTPS4,
+        m_serversHTTPS6;
     std::string m_strPathSslKey, m_strPathSslCert;
-    std::list< std::shared_ptr< SkaleRelayWS > > m_serversWS, m_serversWSS;
+    std::list< std::shared_ptr< SkaleRelayWS > > m_serversWS4, m_serversWS6, m_serversWSS4,
+        m_serversWSS6;
 
     std::atomic_size_t m_cntConnections;
     std::atomic_size_t m_cntConnectionsMax;  // 0 is unlimited
 
 public:
     // status API, returns running server port or -1 if server is not started
-    int getServerPortStatusHTTP() const;
-    int getServerPortStatusHTTPS() const;
-    int getServerPortStatusWS() const;
-    int getServerPortStatusWSS() const;
+    int getServerPortStatusHTTP( int ipVer ) const;
+    int getServerPortStatusHTTPS( int ipVer ) const;
+    int getServerPortStatusWS( int ipVer ) const;
+    int getServerPortStatusWSS( int ipVer ) const;
 
     bool is_connection_limit_overflow() const;
     void connection_counter_inc();
@@ -325,7 +352,7 @@ public:
     size_t max_connection_get() const;
     void max_connection_set( size_t cntConnectionsMax );
     virtual void on_connection_overflow_peer_closed(
-        const char* strProtocol, int nServerIndex, int nPort );
+        int ipVer, const char* strProtocol, int nServerIndex, int nPort );
 
     SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl

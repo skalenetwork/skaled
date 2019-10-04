@@ -146,7 +146,9 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 &&
          time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) {
-        joResponse["error"] = "too early";
+        joResponse["error"] =
+            "snapshot info request received too early, no snapshot available yet, please try later "
+            "or request earlier block number";
         joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
         return joResponse;
     }
@@ -191,35 +193,53 @@ Json::Value Skale::skale_getSnapshot( const Json::Value& request ) {
 // '{"jsonrpc":"2.0","method":"skale_downloadSnapshotFragment","params":{ "blockNumber": "latest",
 // "from": 0, "size": 1024, "isBinary": true },"id":73}'
 //
-nlohmann::json Skale::impl_skale_downloadSnapshotFragment( const nlohmann::json& joRequest ) {
-    // std::cout << cc::attention( "------------ " ) << cc::info( "skale_downloadSnapshotFragment" )
-    // << cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
-    nlohmann::json joResponse = nlohmann::json::object();
+std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
+    const fs::path& fp, size_t idxFrom, size_t sizeOfChunk ) {
+    // size_t sizeOfFile = fs::file_size( fp );
     //
     //
-    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
+    std::ifstream f;
+    f.open( fp.native(), std::ios::in | std::ios::binary );
+    if ( !f.is_open() )
+        throw std::runtime_error( "failed to open snapshot file" );
+    size_t i;
+    std::vector< uint8_t > buffer;
+    for ( i = 0; i < sizeOfChunk; ++i )
+        buffer.push_back( ( uint8_t )( 0 ) );
+    f.seekg( idxFrom );
+    f.read( ( char* ) buffer.data(), sizeOfChunk );
+    f.close();
+    return buffer;
+}
+std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
+    const nlohmann::json& joRequest ) {
     size_t idxFrom = joRequest["from"].get< size_t >();
     size_t sizeOfChunk = joRequest["size"].get< size_t >();
+    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
     if ( idxFrom >= sizeOfFile )
         sizeOfChunk = 0;
     if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
         sizeOfChunk = sizeOfFile - idxFrom;
     if ( sizeOfChunk > g_nMaxChunckSize )
         sizeOfChunk = g_nMaxChunckSize;
-    //
-    //
-    std::ifstream f;
-    f.open( currentSnapshotPath.native(), std::ios::in | std::ios::binary );
-    if ( !f.is_open() )
-        throw std::runtime_error( "failed to open snapshot file" );
-    size_t i;
-    std::vector< unsigned char > buffer;
-    for ( i = 0; i < sizeOfChunk; ++i )
-        buffer.push_back( ( unsigned char ) ( 0 ) );
-    f.seekg( idxFrom );
-    f.read( ( char* ) buffer.data(), sizeOfChunk );
-    f.close();
+    std::vector< uint8_t > buffer =
+        Skale::ll_impl_skale_downloadSnapshotFragment( currentSnapshotPath, idxFrom, sizeOfChunk );
+    return buffer;
+}
+nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
+    size_t idxFrom = joRequest["from"].get< size_t >();
+    size_t sizeOfChunk = joRequest["size"].get< size_t >();
+    size_t sizeOfFile = fs::file_size( currentSnapshotPath );
+    if ( idxFrom >= sizeOfFile )
+        sizeOfChunk = 0;
+    if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+        sizeOfChunk = sizeOfFile - idxFrom;
+    if ( sizeOfChunk > g_nMaxChunckSize )
+        sizeOfChunk = g_nMaxChunckSize;
+    std::vector< uint8_t > buffer =
+        Skale::ll_impl_skale_downloadSnapshotFragment( currentSnapshotPath, idxFrom, sizeOfChunk );
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
+    nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
     return joResponse;
@@ -230,7 +250,7 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
         Json::FastWriter fastWriter;
         std::string strRequest = fastWriter.write( request );
         nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-        nlohmann::json joResponse = impl_skale_downloadSnapshotFragment( joRequest );
+        nlohmann::json joResponse = impl_skale_downloadSnapshotFragmentJSON( joRequest );
         std::string strResponse = joResponse.dump();
         Json::Value response;
         Json::Reader().parse( strResponse, response );

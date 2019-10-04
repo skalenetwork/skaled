@@ -110,10 +110,10 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         //
         if ( strScheme == "http" ) {
             close();
-            ch_.reset( new skutils::http::client( strHost.c_str(), nPort ) );
+            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort ) );
         } else if ( strScheme == "https" ) {
             close();
-            ch_.reset( new skutils::http::SSL_client( strHost.c_str(), nPort ) );
+            ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort ) );
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             cw_.reset( new skutils::ws::client );
             cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,

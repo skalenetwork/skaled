@@ -75,15 +75,20 @@ public:
     u256 id;
     std::string ip;
     uint16_t port;
+    std::string ip6;
+    uint16_t port6;
     int snapshotInterval = 0;
     int emptyBlockIntervalMs = -1;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
-        uint16_t _port = 11111, int _snapshotInterval = 0 ) {
+        uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
+        int _snapshotInterval = 0 ) {
         name = _name;
         id = _id;
         ip = _ip;
         port = _port;
+        ip6 = _ip6;
+        port6 = _port6;
         snapshotInterval = _snapshotInterval;
     }
 };
@@ -94,6 +99,8 @@ public:
     u256 id;
     std::string ip;
     u256 port;
+    std::string ip6;
+    u256 port6;
     u256 sChainIndex;
 };
 
@@ -111,7 +118,7 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), u256( 1 )};
+        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 )};
         nodes.push_back( me );
     }
 };

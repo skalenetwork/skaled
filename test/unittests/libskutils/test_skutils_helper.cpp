@@ -542,7 +542,7 @@ void test_server_http_base::stop() {
 }
 
 void test_server_http_base::run() {
-    pServer_->listen( "localhost", nListenPort_ );
+    pServer_->listen( 4, "localhost", nListenPort_ );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -782,9 +782,9 @@ test_client_http_base::test_client_http_base( const char* strClientName, int nTa
     const char* strScheme, const size_t /*nConnectAttempts*/ )
     : test_client( strClientName, nTargetPort, strScheme ) {
     if ( strScheme_ == "https" )
-        pClient_.reset( new skutils::http::SSL_client( "localhost", nTargetPort_ ) );
+        pClient_.reset( new skutils::http::SSL_client( -1, "localhost", nTargetPort_ ) );
     else
-        pClient_.reset( new skutils::http::client( "localhost", nTargetPort_ ) );
+        pClient_.reset( new skutils::http::client( -1, "localhost", nTargetPort_ ) );
 }
 test_client_http_base::~test_client_http_base() {
     stop();
