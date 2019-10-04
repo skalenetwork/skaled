@@ -61,7 +61,7 @@ public:
     template < class... Args >
     void emplace( Args&&... args ) {
         boost::unique_lock< boost::shared_mutex > lock( mutex );
-        queue.emplace( args... );  // Crazy shit %)
+        queue.emplace( args... );  // This is somethin crazy %)
         if ( USE_HASH )
             hash.insert( queue.back() );
         assert( num_waiting <= 1 );
