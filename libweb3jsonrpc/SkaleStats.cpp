@@ -32,6 +32,7 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
+#include <skutils/rest_call.h>
 
 namespace dev {
 namespace rpc {
@@ -44,22 +45,22 @@ SkaleStats::SkaleStats( const nlohmann::json& joConfig, eth::Interface& _eth )
 int SkaleStats::findThisNodeIndex() {
     try {
         if ( joConfig_.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "bad skaled config.json, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"sChain\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         //
         if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
         const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
         //
         int nID = joSkaleConfig_nodeInfo["nodeID"].get< int >();
@@ -97,22 +98,22 @@ Json::Value SkaleStats::skale_stats() {
 Json::Value SkaleStats::skale_nodesRpcInfo() {
     try {
         if ( joConfig_.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "bad skaled config.json, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"sChain\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         //
         if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
         const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
         //
         nlohmann::json jo = nlohmann::json::object();
@@ -288,22 +289,22 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
 Json::Value SkaleStats::skale_imaInfo() {
     try {
         if ( joConfig_.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "bad skaled config.json, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         //
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
-                "bad skaled config.json, cannot find "
+                "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
@@ -333,6 +334,39 @@ Json::Value SkaleStats::skale_imaInfo() {
 
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     try {
+        if ( joConfig_.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
+        //
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        //
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        //
+        std::string strWalletURL = joSkaleConfig_nodeInfo_wallets_ima["url"];
+        if ( strWalletURL.empty() )
+            throw std::runtime_error(
+                "error config.json file, cannot find valid value for "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"url\" parameter" );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        //
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
