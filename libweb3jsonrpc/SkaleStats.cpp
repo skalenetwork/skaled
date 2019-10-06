@@ -355,13 +355,75 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
-        std::string strWalletURL = joSkaleConfig_nodeInfo_wallets_ima["url"];
-        if ( strWalletURL.empty() )
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        if ( joRequest.count( "messages" ) == 0 )
+            throw std::runtime_error( "missing \"messages\" in call parameters" );
+        const nlohmann::json& jarrMessags = joRequest["messages"];
+        if ( !jarrMessags.is_array() )
+            throw std::runtime_error( "parameter \"messages\" must be array" );
+        size_t idxMessage, cntMessagesToSign = jarrMessags.size();
+        if ( cntMessagesToSign == 0 )
+            throw std::runtime_error(
+                "parameter \"messages\" is empty array, nothing to verify and sign" );
+        for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+            const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
+            if ( !joMessageToSign.is_string() )
+                throw std::runtime_error(
+                    "parameter \"messages\" must be array containing strings" );
+            std::string strMessageToSign = joMessageToSign.get< std::string >();
+            if ( strMessageToSign.empty() )
+                throw std::runtime_error(
+                    "parameter \"messages\" must be array containing non-empty strings" );
+        }
+        //
+        skutils::url u;
+        try {
+            std::string strWalletURL =
+                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >();
+            if ( strWalletURL.empty() )
+                throw std::runtime_error( "empty wallet url" );
+            u = skutils::url( strWalletURL );
+            if ( u.scheme().empty() || u.host().empty() )
+                throw std::runtime_error( "bad wallet url" );
+        } catch ( ... ) {
             throw std::runtime_error(
                 "error config.json file, cannot find valid value for "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"url\" parameter" );
+        }
+        std::string keyShareName =
+            joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >();
+        if ( keyShareName.empty() )
+            throw std::runtime_error(
+                "error config.json file, cannot find valid value for "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"keyShareName\" parameter" );
+        //
+        std::string strAllTogetherMessages;
+        for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+            std::string strMessageToSign = jarrMessags[idxMessage].get< std::string >();
+            //
+            // TO-DO: l_sergiy:
+            // here strMessageToSign must be disassembled and validated
+            // it must be valid transaction reference
+            //
+            strAllTogetherMessages += strMessageToSign;
+        }
         //
         nlohmann::json jo = nlohmann::json::object();
+        //
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "blsSignMessageHash";
+        joCall["params"] = nlohmann::json::object();
+        joCall["params"]["keyShareName"] = keyShareName;
+        joCall["params"]["messageHash"] = strAllTogetherMessages;
+        skutils::rest::client cli( u );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( d.empty() )
+            throw std::runtime_error( "failed to sign message(s) with wallet" );
+        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        jo["signResult"] = joSignResult;
         //
         std::string s = jo.dump();
         Json::Value ret;
