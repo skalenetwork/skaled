@@ -1,4 +1,7 @@
 [
-{ "name": "skale_stats", "params": [], "order": [], "returns": {}}
+{ "name": "skale_stats", "params": [], "order": [], "returns": {}},
+{ "name": "skale_nodesRpcInfo", "params": [], "order": [], "returns": {}}
+{ "name": "skale_imaInfo", "params": [], "order": [], "returns": {}}
+{ "name": "skale_imaVerifyAndSign", "params": [], "order": [], "returns": {}}
 ];
 
