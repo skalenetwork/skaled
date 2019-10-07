@@ -369,13 +369,39 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "parameter \"messages\" is empty array, nothing to verify and sign" );
         for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
-            if ( !joMessageToSign.is_string() )
+            if ( !joMessageToSign.is_object() )
                 throw std::runtime_error(
-                    "parameter \"messages\" must be array containing strings" );
-            std::string strMessageToSign = joMessageToSign.get< std::string >();
+                    "parameter \"messages\" must be array containing message objects" );
+            // each message in array looks like
+            // {
+            //     "amount": joValues.amount,
+            //     "data": joValues.data,
+            //     "destinationContract": joValues.dstContract,
+            //     "sender": joValues.srcContract,
+            //     "to": joValues.to
+            // }
+            if ( joMessageToSign.count( "amount" ) == 0 )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field \"amount\"" );
+            if ( joMessageToSign.count( "data" ) == 0 )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field \"data\"" );
+            if ( joMessageToSign.count( "destinationContract" ) == 0 )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field "
+                    "\"destinationContract\"" );
+            if ( joMessageToSign.count( "sender" ) == 0 )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field \"sender\"" );
+            if ( joMessageToSign.count( "to" ) == 0 )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field \"to\"" );
+            //
+            //
+            std::string strMessageToSign = joMessageToSign["data"].get< std::string >();
             if ( strMessageToSign.empty() )
                 throw std::runtime_error(
-                    "parameter \"messages\" must be array containing non-empty strings" );
+                    "parameter \"messages\" contains message object with empty field \"data\"" );
         }
         //
         skutils::url u;
@@ -401,7 +427,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         std::string strAllTogetherMessages;
         for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
-            std::string strMessageToSign = jarrMessags[idxMessage].get< std::string >();
+            const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
+            std::string strMessageToSign = joMessageToSign["data"].get< std::string >();
             //
             // TO-DO: l_sergiy:
             // here strMessageToSign must be disassembled and validated
@@ -409,6 +436,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             strAllTogetherMessages += strMessageToSign;
         }
+        dev::h256 h = dev::sha3( strAllTogetherMessages );
+        std::string sh = h.hex();
         //
         nlohmann::json jo = nlohmann::json::object();
         //
@@ -417,7 +446,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         joCall["method"] = "blsSignMessageHash";
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["keyShareName"] = keyShareName;
-        joCall["params"]["messageHash"] = strAllTogetherMessages;
+        joCall["params"]["messageHash"] = sh;
         skutils::rest::client cli( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
