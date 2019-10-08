@@ -102,6 +102,12 @@ std::string DebugTracer_handler( const std::string& arg, SkaleDebugTracer& trace
             stream >> name;
 
             return to_string( tracer.get_tracepoint_count( name ) );
+        } else if ( arg.find( "trace list" ) == 0 ) {
+            set< string > keys = tracer.get_tracepoints();
+            ostringstream out;
+            for ( const string& key : keys )
+                out << key << " ";
+            return out.str();
         } else
             assert( false );
 

@@ -24,6 +24,7 @@
 
 #include "SkaleStats.h"
 #include "Eth.h"
+#include "libethereum/Client.h"
 #include <jsonrpccpp/common/exception.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -40,6 +41,24 @@ SkaleStats::SkaleStats( eth::Interface& _eth ) : m_eth( _eth ) {}
 Json::Value SkaleStats::skale_stats() {
     try {
         nlohmann::json joStats = consumeSkaleStats();
+
+        // HACK Add stats from SkaleDebug
+        // TODO Why we need all this absatract infrastructure?
+        const dev::eth::Client* c = dynamic_cast< dev::eth::Client* const >( this->client() );
+        if ( c ) {
+            nlohmann::json joTrace;
+            std::shared_ptr< SkaleHost > h = c->skaleHost();
+            std::istringstream list( h->debugCall( "trace list" ) );
+            std::string key;
+            while ( list >> key ) {
+                std::string count_str = h->debugCall( "trace count " + key );
+                joTrace[key] = atoi( count_str.c_str() );
+            }  // while
+
+            joStats["tracepoints"] = joTrace;
+
+        }  // if client
+
         std::string strStatsJson = joStats.dump();
         Json::Value ret;
         Json::Reader().parse( strStatsJson, ret );

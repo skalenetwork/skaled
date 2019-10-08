@@ -58,7 +58,7 @@ public:
     virtual Json::Value skale_stats() override;
 
 protected:
-    eth::Interface* client() { return &m_eth; }
+    eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
 };
 

@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,14 @@ public:
     void wait_for_tracepoint( const std::string& name );
     void continue_on_tracepoint( const std::string& name );
     int get_tracepoint_count( const std::string& name ) { return find_by_name( name ).pass_count; }
+
+    std::set< std::string > get_tracepoints() const {
+        std::set< std::string > res;
+        for ( const auto& p : tracepoints ) {
+            res.insert( p.first );
+        }  // for
+        return res;
+    }
 
 private:
     struct tracepoint_struct {
