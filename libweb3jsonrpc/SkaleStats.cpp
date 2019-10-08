@@ -309,9 +309,42 @@ Json::Value SkaleStats::skale_imaInfo() {
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
+        // validate wallet description
+        static const char* g_arrMustHaveWalletFields[] = {"url", "keyShareName", "t", "n",
+            "insecureCommonBLSPublicKey0", "insecureCommonBLSPublicKey1",
+            "insecureCommonBLSPublicKey2", "insecureCommonBLSPublicKey3"};
+        size_t i, cnt =
+                      sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
+        for ( i = 0; i < cnt; ++i ) {
+            std::string strFieldName = g_arrMustHaveWalletFields[i];
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( strFieldName ) == 0 )
+                throw std::runtime_error(
+                    "error config.json file, cannot find field "
+                    "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
+                    strFieldName );
+            const nlohmann::json& joField = joSkaleConfig_nodeInfo_wallets_ima[strFieldName];
+            if ( strFieldName == "t" || strFieldName == "n" ) {
+                if ( !joField.is_number() )
+                    throw std::runtime_error(
+                        "error config.json file, field "
+                        "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
+                        strFieldName + " must be a number" );
+                continue;
+            }
+            if ( !joField.is_string() )
+                throw std::runtime_error(
+                    "error config.json file, field "
+                    "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
+                    strFieldName + " must be a string" );
+        }
+        //
         nlohmann::json jo = nlohmann::json::object();
         //
         jo["thisNodeIndex"] = nThisNodeIndex_;  // 1-based "schainIndex"
+        //
+        jo["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
+        jo["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
+        //
         jo["insecureCommonBLSPublicKey0"] =
             joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey0"];
         jo["insecureCommonBLSPublicKey1"] =
