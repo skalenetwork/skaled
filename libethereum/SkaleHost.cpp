@@ -222,7 +222,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             Transaction& txn = txns[i];
 
             h256 sha = txn.sha3();
-            m_transaction_cache[sha.asArray()] = txn;
+            if ( m_transaction_cache.count( sha.asArray() ) == 0 ) {
+                m_debugTracer.tracepoint( "sent_txn_new" );
+                m_transaction_cache[sha.asArray()] = txn;
+            } else
+                m_debugTracer.tracepoint( "sent_txn_again" );
             out_vector.push_back( txn.rlp() );
 
             ++total_sent;
