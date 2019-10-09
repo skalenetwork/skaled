@@ -156,6 +156,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     assert( sha == sha2 );
 #endif
 
+    m_debugTracer.tracepoint( "receive_transaction_success" );
     LOG( m_debugLogger ) << "Successfully received through broadcast " << sha;
 
     return sha;
@@ -240,6 +241,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             sent[sha] = total_sent + i;
 #endif
 
+            m_debugTracer.tracepoint( "sent_txn" );
             LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
         }
     } catch ( ... ) {
@@ -443,6 +445,8 @@ void SkaleHost::broadcastFunc() {
                 }  // catch
 
             }  // if
+            else
+                m_debugTracer.tracepoint( "broadcast_already_have" );
 
             ++m_bcast_counter;
 
