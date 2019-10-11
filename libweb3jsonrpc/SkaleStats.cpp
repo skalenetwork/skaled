@@ -480,6 +480,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["keyShareName"] = keyShareName;
         joCall["params"]["messageHash"] = sh;
+        joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
+        joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
+        joCall["params"]["signerIndex"] = nThisNodeIndex_; // 1-based
         skutils::rest::client cli( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
