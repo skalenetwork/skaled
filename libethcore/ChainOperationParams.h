@@ -109,6 +109,7 @@ struct SChain {
 public:
     std::string name;
     u256 id;
+    Address owner;
     std::vector< sChainNode > nodes;
 
     SChain() {

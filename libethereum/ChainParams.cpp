@@ -30,6 +30,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
+#include <libethcore/CommonJS.h>
 #include <libethcore/Precompiled.h>
 #include <libethcore/SealEngine.h>
 
@@ -124,6 +125,8 @@ ChainParams ChainParams::loadConfig(
 
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
+        if ( sChainObj.count( "schainOwner" ) )
+            s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
