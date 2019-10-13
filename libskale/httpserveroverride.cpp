@@ -711,6 +711,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         joRequest );
                     stats::register_stats_message( "RPC", joRequest );
                     if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+                        if ( handleRequestWithBinaryAnswer( joRequest ) )
+                            return;
+                        //
                         joID = joRequest["id"];
                         jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
                         if ( handler == nullptr )
