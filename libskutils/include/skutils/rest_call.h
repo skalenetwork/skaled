@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <strings.h>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -14,6 +15,7 @@
 #include <skutils/http.h>
 #include <skutils/ws.h>
 
+#include <skutils/dispatch.h>
 #include <skutils/multithreading.h>
 
 //#include <nlohmann/json.hpp>
@@ -47,6 +49,20 @@ struct data_t {
     std::string extract_json_id() const;
 };  /// struct data_t
 
+typedef std::function< void( nlohmann::json& joIn, const data_t& dataOut ) >
+    fn_async_call_data_handler_t;
+typedef std::function< void( nlohmann::json& joIn, const std::string& strError ) >
+    fn_async_call_error_handler_t;
+
+struct await_t {
+    std::string strCallID;
+    nlohmann::json joIn;
+    std::chrono::milliseconds wait_timeout;
+    skutils::dispatch::job_id_t idTimeoutNotificationJob;
+    fn_async_call_data_handler_t onData;
+    fn_async_call_error_handler_t onError;
+};  // struct await_t
+
 class client {
 private:
     skutils::url u_;
@@ -56,7 +72,7 @@ private:
 private:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
-    mutex_type mtxData_;
+    mutable mutex_type mtxData_;
     typedef std::list< data_t > data_list_t;
     data_list_t lstData_;
 
@@ -102,6 +118,26 @@ public:
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
         size_t cntSteps = 1000 );
+
+private:
+    typedef std::map< std::string, await_t > map_await_t;
+    mutable map_await_t map_await_;
+    skutils::dispatch::queue_id_t async_get_dispatch_queue_id( const std::string& strCallID ) const;
+    await_t async_get( const std::string& strCallID ) const;
+    void async_add( await_t& a );
+    void async_remove_impl( await_t& a );
+    bool async_remove_by_call_id( const std::string& strCallID );
+    void async_remove_all();
+
+public:
+    void async_call( const nlohmann::json& joIn, fn_async_call_data_handler_t onData,
+        fn_async_call_error_handler_t onError, bool isAutoGenJsonID = true,
+        e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
+        std::chrono::milliseconds wait_timeout = std::chrono::milliseconds( 20000 ) );
+    void async_call( const std::string& strJsonIn, fn_async_call_data_handler_t onData,
+        fn_async_call_error_handler_t onError, bool isAutoGenJsonID = true,
+        e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
+        std::chrono::milliseconds wait_timeout = std::chrono::milliseconds( 20000 ) );
 
 };  /// class client
 

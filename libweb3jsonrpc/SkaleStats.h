@@ -30,6 +30,9 @@
 #include <jsonrpccpp/server.h>
 #include <libdevcore/Common.h>
 
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
+
 namespace dev {
 class NetworkFace;
 class KeyPair;
@@ -48,14 +51,21 @@ namespace rpc {
  * @brief JSON-RPC api implementation
  */
 class SkaleStats : public dev::rpc::SkaleStatsFace, public dev::rpc::SkaleStatsConsumerImpl {
+    const nlohmann::json& joConfig_;
+    int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
+    int findThisNodeIndex();
+
 public:
-    SkaleStats( eth::Interface& _eth );
+    SkaleStats( const nlohmann::json& joConfig, eth::Interface& _eth );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skaleStats", "1.0"}};
     }
 
     virtual Json::Value skale_stats() override;
+    virtual Json::Value skale_nodesRpcInfo() override;
+    virtual Json::Value skale_imaInfo() override;
+    virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
 
 protected:
     eth::Interface* client() { return &m_eth; }

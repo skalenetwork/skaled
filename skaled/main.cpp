@@ -445,7 +445,7 @@ int main( int argc, char** argv ) try {
     }
 
     bool chainConfigIsSet = false, chainConfigParsed = false;
-    nlohmann::json joConfig;
+    static nlohmann::json joConfig;
 
     if ( vm.count( "import-presale" ) )
         presaleImports.push_back( vm["import-presale"].as< string >() );
@@ -1512,7 +1512,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( *client );
+        auto skaleStatsFace = new rpc::SkaleStats( joConfig, *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
