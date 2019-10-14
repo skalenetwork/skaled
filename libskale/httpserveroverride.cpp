@@ -685,8 +685,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    cc::warn( msg ) );
     }
     SkaleServerOverride* pSO = pso();
-    SkaleWsPeer * pThis = this;
-    pThis->ref_retain(); // mamual retain-release
+    SkaleWsPeer* pThis = this;
+    pThis->ref_retain();  // mamual retain-release
     skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, msg, pSO]() -> void {
         std::string strRequest( msg );
         if ( pSO->m_bTraceCalls )
@@ -694,7 +694,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                           cc::debug( "/" ) +
                                           cc::num10( pThis->getRelay().serverIndex() ) )
                 << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                    std::to_string( pThis->getRelay().serverIndex() ) + "/RX >>> " ) +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/RX >>> " ) +
                        pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( strRequest ) );
         nlohmann::json joID = "-1";
         std::string strResponse, strMethod;
@@ -706,10 +707,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             stats::register_stats_message(
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strRequest.size() );
             stats::register_stats_message(
-                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                joRequest );
+                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest );
             stats::register_stats_message( "RPC", joRequest );
-            if ( !( const_cast < SkaleWsPeer * > ( pThis ) ) ->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+            if ( !( const_cast< SkaleWsPeer* >( pThis ) )
+                      ->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
                 joID = joRequest["id"];
                 jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
                 if ( handler == nullptr )
@@ -775,11 +776,12 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                     std::to_string( pThis->getRelay().serverIndex() ) +
                                     "/TX <<< " ) +
                        pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
-        ( const_cast < SkaleWsPeer * > ( pThis ) )->sendMessage( skutils::tools::trim_copy( strResponse ) );
+        ( const_cast< SkaleWsPeer* >( pThis ) )
+            ->sendMessage( skutils::tools::trim_copy( strResponse ) );
         if ( !bPassed )
             stats::register_stats_answer(
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-        pThis->ref_release(); // mamual retain-release
+        pThis->ref_release();  // mamual retain-release
     } );
     // skutils::ws::peer::onMessage( msg, eOpCode );
 }

@@ -1470,7 +1470,7 @@ int basic_api::stat_callback_server(
         ctx = ::lws_get_context( wsi );
         self = server_api::stat_get( ctx );
         if ( self ) {
-            //bool bCallWriteable = false;
+            // bool bCallWriteable = false;
             int fd = ::lws_get_socket_fd( wsi );
             volatile bool bCloseAction = false;
             {  // block
@@ -1501,7 +1501,7 @@ int basic_api::stat_callback_server(
                         cached_delayed_close_reason.length() );
                     /// impl_lws_close_free_wsi( wsi, cached_delayed_close_status, 0 );
                     bCloseAction = true;
-                    //bCallWriteable = true;
+                    // bCallWriteable = true;
                     // self->onDisconnect( cid, msg );
                 }  // if( ! cached_delayed_close_reason.empty() )
                 else {
@@ -1535,8 +1535,8 @@ int basic_api::stat_callback_server(
                         if ( cntLeft > 0 )
                             break;
                         pq.pop_front();  // only pop the message if it was sent successfully
-                        //bCallWriteable = true;
-                    }                    // while( ! pq.empty() )
+                        // bCallWriteable = true;
+                    }  // while( ! pq.empty() )
                     if ( pcd->delayed_adjustment_pong_timeout_ >=
                          0 ) {  // -1 for no adjustment, otherwise change pong timeout
                         int64_t timeout_pong = pcd->delayed_adjustment_pong_timeout_;
@@ -1550,12 +1550,12 @@ int basic_api::stat_callback_server(
                                 tto *= 10;  // l_sergiy: for safety
                             ::lws_set_timeout( wsi, g_arrPingPongTimeoutTypes[i], tto );
                         }
-                        //bCallWriteable = true;
+                        // bCallWriteable = true;
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
             }      // block
-            //if( bCallWriteable )
-                ::lws_callback_on_writable( wsi );
+                   // if( bCallWriteable )
+            ::lws_callback_on_writable( wsi );
             if ( bCloseAction )
                 return -1;  // this closes connection accoriding to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
@@ -2509,18 +2509,17 @@ bool server_api::service_poll( int& n ) {  // if returns true - continue service
             }
         }
     } break;
-    default:
-        {
-            auto n = ::lws_service( ctx_, g_lws_service_timeout_ms );
-            if( n == 0 ) {
-                ++ nZeroLwsServiceAttemtIndex_;
-                if( nZeroLwsServiceAttemtIndex_ >= nZeroLwsServiceAttemtCount_ ) {
-                    nZeroLwsServiceAttemtIndex_ = 0;
-                    std::this_thread::sleep_for( std::chrono::milliseconds( nZeroLwsServiceAttemtTimeoutMS_ ) );
-                }
+    default: {
+        auto n = ::lws_service( ctx_, g_lws_service_timeout_ms );
+        if ( n == 0 ) {
+            ++nZeroLwsServiceAttemtIndex_;
+            if ( nZeroLwsServiceAttemtIndex_ >= nZeroLwsServiceAttemtCount_ ) {
+                nZeroLwsServiceAttemtIndex_ = 0;
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds( nZeroLwsServiceAttemtTimeoutMS_ ) );
             }
         }
-        break;
+    } break;
     }  // switch( srvmode_ )
     return true;
 }

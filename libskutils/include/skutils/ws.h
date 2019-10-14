@@ -578,7 +578,7 @@ public:
     //
     unsigned int nHttpStatusToReturn_;
     std::string strHttpBodyToReturn_;
-    
+
     volatile int nZeroLwsServiceAttemtIndex_;
     volatile int nZeroLwsServiceAttemtCount_;
     volatile int nZeroLwsServiceAttemtTimeoutMS_;
