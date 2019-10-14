@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <thread>
 
+#include <skutils/utils.h>
+
 namespace skutils {
 namespace rest {
 
@@ -75,7 +77,9 @@ std::string data_t::extract_json_id() const {
     return id;
 }
 
-client::client() {}
+client::client() {
+    async_remove_all();
+}
 
 client::client( const skutils::url& u ) {
     open( u );
@@ -194,8 +198,23 @@ bool client::is_open() const {
 bool client::handle_data_arrived( const data_t& d ) {
     if ( d.empty() )
         return false;
-    lock_type lock( mtxData_ );
-    lstData_.push_back( d );
+    await_t a;
+    {  // block
+        lock_type lock( mtxData_ );
+        // try to find async handler
+        std::string strCallID = d.extract_json_id();
+        if ( !strCallID.empty() )
+            a = async_get( strCallID );
+        // push it, if not found
+        if ( a.strCallID.empty() )
+            lstData_.push_back( d );
+        else
+            async_remove_by_call_id( strCallID );
+    }  // block
+    if ( !a.strCallID.empty() ) {
+        if ( a.onData )
+            a.onData( a.joIn, d );
+    }
     return true;
 }
 
@@ -343,6 +362,147 @@ data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_
     } catch ( ... ) {
     }
     return data_t();
+}
+
+skutils::dispatch::queue_id_t client::async_get_dispatch_queue_id(
+    const std::string& strCallID ) const {
+    return skutils::dispatch::generate_id(
+        ( void* ) this, ( !strCallID.empty() ) ? strCallID.c_str() : "noID" );
+}
+await_t client::async_get( const std::string& strCallID ) const {
+    if ( strCallID.empty() )
+        return await_t();
+    lock_type lock( mtxData_ );
+    map_await_t::const_iterator itFind = map_await_.find( strCallID ), itEnd = map_await_.cend();
+    if ( itFind == itEnd )
+        return await_t();
+    return itFind->second;
+}
+void client::async_add( await_t& a ) {
+    auto strCallID = a.strCallID;
+    if ( strCallID.empty() )
+        throw std::runtime_error( "rest async call must have non-empty \"id\"" );
+    lock_type lock( mtxData_ );
+    map_await_t::const_iterator itFind = map_await_.find( a.strCallID ), itEnd = map_await_.cend();
+    if ( itFind != itEnd )
+        throw std::runtime_error( "rest async call must have unique \"id\"" );
+    skutils::dispatch::job_t fnTimeout = [=]() -> void {
+        await_t a2 = async_get( strCallID );
+        async_remove_by_call_id( strCallID );
+        if ( a2.onError )
+            a2.onError( a2.joIn, "timeout" );
+    };
+    skutils::dispatch::once( async_get_dispatch_queue_id( strCallID ), fnTimeout,
+        skutils::dispatch::duration_from_milliseconds( a.wait_timeout.count() ),
+        &a.idTimeoutNotificationJob );
+    map_await_[strCallID] = a;
+}
+void client::async_remove_impl( await_t& a ) {
+    // no lock needed here
+    if ( a.strCallID.empty() )
+        return;
+    if ( !a.idTimeoutNotificationJob.empty() ) {
+        skutils::dispatch::stop( a.idTimeoutNotificationJob );
+        a.idTimeoutNotificationJob.clear();
+    }
+    skutils::dispatch::remove( async_get_dispatch_queue_id( a.strCallID ) );
+}
+bool client::async_remove_by_call_id( const std::string& strCallID ) {
+    lock_type lock( mtxData_ );
+    map_await_t::iterator itFind = map_await_.find( strCallID ), itEnd = map_await_.end();
+    if ( itFind == itEnd )
+        return false;
+    async_remove_impl( itFind->second );
+    map_await_.erase( itFind );
+    return true;
+}
+void client::async_remove_all() {
+    lock_type lock( mtxData_ );
+    map_await_t::iterator itWalk = map_await_.begin(), itEnd = map_await_.end();
+    for ( ; itWalk != itEnd; ++itWalk )
+        async_remove_impl( itWalk->second );
+    map_await_.clear();
+}
+
+void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_t onData,
+    fn_async_call_error_handler_t onError, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
+    std::chrono::milliseconds wait_timeout ) {
+    if ( !onData )
+        throw std::runtime_error(
+            "skutils::reset::client::async_call() cannot be used without onData() handler" );
+    if ( !onError )
+        throw std::runtime_error(
+            "skutils::reset::client::async_call() cannot be used without onError() handler" );
+    nlohmann::json jo = joIn;
+    if ( isAutoGenJsonID )
+        stat_auto_gen_json_id( jo );
+    std::string strCallID = jo["id"].dump();
+    std::string strJsonIn = jo.dump();
+    if ( ch_ ) {
+        if ( ch_->is_valid() ) {
+            data_t d;
+            std::shared_ptr< skutils::http::response > resp =
+                ch_->Post( "/", strJsonIn, "application/json" );
+            if ( !resp ) {
+                onError( jo, "empty responce" );
+                return;
+            }
+            if ( resp->status_ != 200 ) {
+                onError( jo, skutils::tools::format( "returned status %d from call to %s",
+                                 int( resp->status_ ), u_.str().c_str() ) );
+                return;
+            }
+            d.s_ = resp->body_;
+            std::string h;
+            if ( resp->has_header( "Content-Type" ) )
+                h = stat_extract_short_content_type_string(
+                    resp->get_header_value( "Content-Type" ) );
+            d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+            handle_data_arrived( d );
+            data_t dataOut = fetch_data_with_strategy( edfs );
+            onData( jo, dataOut );
+            return;
+        };
+        onError( jo, skutils::tools::format( "not connected to %s", u_.str().c_str() ) );
+        return;
+    }
+    if ( cw_ ) {
+        if ( cw_->isConnected() ) {
+            await_t a;
+            a.strCallID = strCallID;
+            a.joIn = jo;
+            a.wait_timeout = wait_timeout;
+            // a.idTimeoutNotificationJob = ....
+            a.onData = onData;
+            a.onError = onError;
+            async_add( a );
+            if ( !cw_->sendMessage( strJsonIn ) ) {
+                onError(
+                    jo, skutils::tools::format( "data transfer error to %s", u_.str().c_str() ) );
+                return;
+            }
+            //            for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
+            //                data_t d = fetch_data_with_strategy( edfs );
+            //                if ( !d.empty() )
+            //                    return d;
+            //                std::this_thread::sleep_for( wait_step );
+            //            }
+            //            return;
+            return;
+        }
+        onError( jo, skutils::tools::format( "not connected to %s", u_.str().c_str() ) );
+        return;
+    }
+    onError( jo, skutils::tools::format( "connection not initialized for %s", u_.str().c_str() ) );
+}
+void client::async_call( const std::string& strJsonIn, fn_async_call_data_handler_t onData,
+    fn_async_call_error_handler_t onError, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
+    std::chrono::milliseconds wait_timeout ) {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJsonIn );
+        return async_call( jo, onData, onError, isAutoGenJsonID, edfs, wait_timeout );
+    } catch ( ... ) {
+    }
 }
 
 };  // namespace rest
