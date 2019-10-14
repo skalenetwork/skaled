@@ -1470,6 +1470,7 @@ int basic_api::stat_callback_server(
         ctx = ::lws_get_context( wsi );
         self = server_api::stat_get( ctx );
         if ( self ) {
+            //bool bCallWriteable = false;
             int fd = ::lws_get_socket_fd( wsi );
             volatile bool bCloseAction = false;
             {  // block
@@ -1486,14 +1487,13 @@ int basic_api::stat_callback_server(
                 std::string cached_delayed_close_reason = pcd->delayed_close_reason_;
                 lws_close_status cached_delayed_close_status =
                     ( lws_close_status ) pcd->delayed_close_status_;
-                std::string strDesc = pcd->description( false );
-                std::string strDescC = pcd->description( true );
                 pcd->delayed_close_reason_.clear();
                 pcd->delayed_close_status_ = 0;
                 //
                 // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, cc::debug("Processing
                 // writable state for ") + strDescC );
                 if ( !cached_delayed_close_reason.empty() ) {
+                    std::string strDescC = pcd->description( true );
                     self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
                         cc::debug( "Processing close action for " ) + strDescC );
                     ::lws_close_reason( wsi, cached_delayed_close_status,
@@ -1501,6 +1501,7 @@ int basic_api::stat_callback_server(
                         cached_delayed_close_reason.length() );
                     /// impl_lws_close_free_wsi( wsi, cached_delayed_close_status, 0 );
                     bCloseAction = true;
+                    //bCallWriteable = true;
                     // self->onDisconnect( cid, msg );
                 }  // if( ! cached_delayed_close_reason.empty() )
                 else {
@@ -1522,6 +1523,7 @@ int basic_api::stat_callback_server(
                             std::string strFailMessage;
                             strFailMessage +=
                                 "NLWS: error writing to socket(server writable callback), pcd is ";
+                            std::string strDesc = pcd->description( false );
                             strFailMessage += strDesc;
                             if ( !strErrorDescription.empty() ) {
                                 strFailMessage += ", error description: ";
@@ -1533,6 +1535,7 @@ int basic_api::stat_callback_server(
                         if ( cntLeft > 0 )
                             break;
                         pq.pop_front();  // only pop the message if it was sent successfully
+                        //bCallWriteable = true;
                     }                    // while( ! pq.empty() )
                     if ( pcd->delayed_adjustment_pong_timeout_ >=
                          0 ) {  // -1 for no adjustment, otherwise change pong timeout
@@ -1547,10 +1550,12 @@ int basic_api::stat_callback_server(
                                 tto *= 10;  // l_sergiy: for safety
                             ::lws_set_timeout( wsi, g_arrPingPongTimeoutTypes[i], tto );
                         }
+                        //bCallWriteable = true;
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
             }      // block
-            ::lws_callback_on_writable( wsi );
+            //if( bCallWriteable )
+                ::lws_callback_on_writable( wsi );
             if ( bCloseAction )
                 return -1;  // this closes connection accoriding to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
@@ -1852,7 +1857,7 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
         clientThreadWasStopped_ = false;
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: start" );
         while ( !clientThreadStopFlag_ ) {
-            ::lws_service( ctx_, 50 );
+            ::lws_service( ctx_, g_lws_service_timeout_ms );
             do_writable_callbacks_all_protocol();
         }
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: stop" );
@@ -2039,6 +2044,8 @@ std::string list_srvmodes_as_str() {
     return s;
 }
 
+int g_lws_service_timeout_ms = 1000;
+
 srvmode_t g_default_srvmode = srvmode_t::
     //#if ( defined LWS_WITH_LIBUV )
     //    srvmode_uv;
@@ -2049,7 +2056,9 @@ srvmode_t g_default_srvmode = srvmode_t::
     //#if ( defined LWS_WITH_LIBEVENT )
     //    srvmode_event;
     //#else
+
     srvmode_simple;
+
 //#endif
 //#endif
 //#endif
@@ -2165,6 +2174,11 @@ void server_api::clear_fields() {
     //
     nHttpStatusToReturn_ = HTTP_STATUS_NOT_FOUND;
     strHttpBodyToReturn_ = "<html><body>HTTP is not enabled on this server.</body></html>";
+    //
+    nZeroLwsServiceAttemtIndex_ = 0;
+    nZeroLwsServiceAttemtCount_ = 3;
+    nZeroLwsServiceAttemtTimeoutMS_ = 10;
+    //
 #if ( defined LWS_WITH_LIBUV )
     memset( &foreign_loops_, 0, sizeof( foreign_loops_ ) );
 #endif  // (defined LWS_WITH_LIBUV)
@@ -2451,7 +2465,7 @@ void server_api::external_poll_service_loop(
             // if libwebsockets sockets are all we care about, you can use this api which takes care
             // of the poll() and looping through finding who needed service if no socket needs
             // service, it'll return anyway after the number of ms in the second argument
-            n = ::lws_service( ctx_, 50 );
+            n = ::lws_service( ctx_, g_lws_service_timeout_ms );
         } break;
         }  // switch( srvmode_ )
         //
@@ -2496,7 +2510,16 @@ bool server_api::service_poll( int& n ) {  // if returns true - continue service
         }
     } break;
     default:
-        ::lws_service( ctx_, 50 );
+        {
+            auto n = ::lws_service( ctx_, g_lws_service_timeout_ms );
+            if( n == 0 ) {
+                ++ nZeroLwsServiceAttemtIndex_;
+                if( nZeroLwsServiceAttemtIndex_ >= nZeroLwsServiceAttemtCount_ ) {
+                    nZeroLwsServiceAttemtIndex_ = 0;
+                    std::this_thread::sleep_for( std::chrono::milliseconds( nZeroLwsServiceAttemtTimeoutMS_ ) );
+                }
+            }
+        }
         break;
     }  // switch( srvmode_ )
     return true;

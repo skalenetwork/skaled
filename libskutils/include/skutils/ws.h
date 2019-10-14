@@ -540,6 +540,7 @@ enum class srvmode_t {
     srvmode_uv
 #endif  // (defined LWS_WITH_LIBUV)
 };      // enum class srvmode_t
+extern int g_lws_service_timeout_ms;
 extern srvmode_t g_default_srvmode;
 extern bool g_default_explicit_vhost_enable;  // srvmode_simple and srvmode_external_poll only
 extern bool g_default_dynamic_vhost_enable;   // srvmode_external_poll only
@@ -577,6 +578,10 @@ public:
     //
     unsigned int nHttpStatusToReturn_;
     std::string strHttpBodyToReturn_;
+    
+    volatile int nZeroLwsServiceAttemtIndex_;
+    volatile int nZeroLwsServiceAttemtCount_;
+    volatile int nZeroLwsServiceAttemtTimeoutMS_;
 
 #if ( defined LWS_WITH_LIBUV )
     std::unique_ptr< uv_loop_t > pUvLoop_ = nullptr;
@@ -637,8 +642,8 @@ public:
     bool service_poll( int& n );  // if returns true - continue service loop
     void poll( fn_continue_status_flag_t fnContinueStatusFlag );
 
-    void run( uint64_t timeout = 50 );
-    void wait( uint64_t timeout = 50 );
+    void run( uint64_t timeout = 1000 );
+    void wait( uint64_t timeout = 1000 );
     bool send( connection_identifier_t cid, const message_payload_data& data );
     // size_t broadcast( const message_payload_data & data ); // ugly simple, we do not need it)
 
