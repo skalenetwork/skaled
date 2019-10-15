@@ -685,104 +685,103 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    cc::warn( msg ) );
     }
     SkaleServerOverride* pSO = pso();
-    skutils::dispatch::async( [=]() -> void {
-        skutils::dispatch::async( m_strPeerQueueID, [=]() -> void {
-            std::string strRequest( msg );
-            if ( pSO->m_bTraceCalls )
-                clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                              cc::debug( "/" ) +
-                                              cc::num10( getRelay().serverIndex() ) )
-                    << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                           desc() + cc::ws_rx( " >>> " ) + cc::j( strRequest ) );
-            this->ref_retain();  // manual ref management
-            skutils::dispatch::async( m_strPeerQueueID, [this, strRequest]() -> void {
-                SkaleServerOverride* pSO = pso();
-                nlohmann::json joID = "-1";
-                std::string strResponse, strMethod;
-                bool bPassed = false;
-                try {
-                    nlohmann::json joRequest = nlohmann::json::parse( strRequest );
-                    strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-                    stats::register_stats_message(
-                        getRelay().nfoGetSchemeUC().c_str(), "messages", strRequest.size() );
-                    stats::register_stats_message(
-                        ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(),
-                        joRequest );
-                    stats::register_stats_message( "RPC", joRequest );
-                    if ( !handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
-                        joID = joRequest["id"];
-                        jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
-                        if ( handler == nullptr )
-                            throw std::runtime_error( "No client connection handler found" );
-                        handler->HandleRequest( strRequest, strResponse );
-                    }
-                    nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-                    stats::register_stats_answer(
-                        getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-                    stats::register_stats_answer(
-                        ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
-                        joResponse );
-                    stats::register_stats_answer( "RPC", joRequest, joResponse );
-                    bPassed = true;
-                } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                   cc::debug( "/" ) +
-                                                   cc::num10( getRelay().serverIndex() ) )
-                        << ( cc::ws_tx_inv( " !!! " + getRelay().nfoGetSchemeUC() + "/" +
-                                            std::to_string( getRelay().serverIndex() ) +
-                                            "/ERR !!! " ) +
-                               desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = joID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( ex.what() );
-                    strResponse = joErrorResponce.dump();
-                    stats::register_stats_exception(
-                        ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(), "" );
-                    if ( !strMethod.empty() ) {
-                        stats::register_stats_exception(
-                            getRelay().nfoGetSchemeUC().c_str(), "messages" );
-                        stats::register_stats_exception( "RPC", strMethod.c_str() );
-                    }
-                } catch ( ... ) {
-                    const char* e = "unknown exception in SkaleServerOverride";
-                    clog( dev::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                   cc::debug( "/" ) +
-                                                   cc::num10( getRelay().serverIndex() ) )
-                        << ( cc::ws_tx_inv( " !!! " + getRelay().nfoGetSchemeUC() + "/" +
-                                            std::to_string( getRelay().serverIndex() ) +
-                                            "/ERR !!! " ) +
-                               desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = joID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( e );
-                    strResponse = joErrorResponce.dump();
-                    stats::register_stats_exception(
-                        ( std::string( "RPC/" ) + getRelay().nfoGetSchemeUC() ).c_str(),
-                        "messages" );
-                    if ( !strMethod.empty() ) {
-                        stats::register_stats_exception(
-                            getRelay().nfoGetSchemeUC().c_str(), "messages" );
-                        stats::register_stats_exception( "RPC", strMethod.c_str() );
-                    }
-                }
-                if ( pSO->m_bTraceCalls )
-                    clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                  cc::debug( "/" ) +
-                                                  cc::num10( getRelay().serverIndex() ) )
-                        << ( cc::ws_tx_inv( " <<< " + getRelay().nfoGetSchemeUC() + "/" +
-                                            std::to_string( getRelay().serverIndex() ) +
-                                            "/TX <<< " ) +
-                               desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
-                sendMessage( skutils::tools::trim_copy( strResponse ) );
-                if ( !bPassed )
-                    stats::register_stats_answer(
-                        getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-                this->ref_release();  // manual ref management
-            } );
-        } );
+    SkaleWsPeer* pThis = this;
+    pThis->ref_retain();  // mamual retain-release
+    skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, msg, pSO]() -> void {
+        std::string strRequest( msg );
+        if ( pSO->m_bTraceCalls )
+            clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                          cc::debug( "/" ) +
+                                          cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/RX >>> " ) +
+                       pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( strRequest ) );
+        nlohmann::json joID = "-1";
+        std::string strResponse, strMethod;
+        bool bPassed = false;
+        try {
+            nlohmann::json joRequest;
+            joRequest = nlohmann::json::parse( strRequest );
+            strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+            stats::register_stats_message(
+                pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strRequest.size() );
+            stats::register_stats_message(
+                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest );
+            stats::register_stats_message( "RPC", joRequest );
+            if ( !( const_cast< SkaleWsPeer* >( pThis ) )
+                      ->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+                joID = joRequest["id"];
+                jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
+                if ( handler == nullptr )
+                    throw std::runtime_error( "No client connection handler found" );
+                handler->HandleRequest( strRequest, strResponse );
+            }
+            nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+            stats::register_stats_answer(
+                pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
+            stats::register_stats_answer(
+                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
+                joResponse );
+            stats::register_stats_answer( "RPC", joRequest, joResponse );
+            bPassed = true;
+        } catch ( const std::exception& ex ) {
+            clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                           cc::debug( "/" ) +
+                                           cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/ERR !!! " ) +
+                       pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
+            nlohmann::json joErrorResponce;
+            joErrorResponce["id"] = joID;
+            joErrorResponce["result"] = "error";
+            joErrorResponce["error"] = std::string( ex.what() );
+            strResponse = joErrorResponce.dump();
+            stats::register_stats_exception(
+                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
+            if ( !strMethod.empty() ) {
+                stats::register_stats_exception(
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
+                stats::register_stats_exception( "RPC", strMethod.c_str() );
+            }
+        } catch ( ... ) {
+            const char* e = "unknown exception in SkaleServerOverride";
+            clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                           cc::debug( "/" ) +
+                                           cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/ERR !!! " ) +
+                       pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+            nlohmann::json joErrorResponce;
+            joErrorResponce["id"] = joID;
+            joErrorResponce["result"] = "error";
+            joErrorResponce["error"] = std::string( e );
+            strResponse = joErrorResponce.dump();
+            stats::register_stats_exception(
+                ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                "messages" );
+            if ( !strMethod.empty() ) {
+                stats::register_stats_exception(
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
+                stats::register_stats_exception( "RPC", strMethod.c_str() );
+            }
+        }
+        if ( pSO->m_bTraceCalls )
+            clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                          cc::debug( "/" ) +
+                                          cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/TX <<< " ) +
+                       pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+        ( const_cast< SkaleWsPeer* >( pThis ) )
+            ->sendMessage( skutils::tools::trim_copy( strResponse ) );
+        if ( !bPassed )
+            stats::register_stats_answer(
+                pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
+        pThis->ref_release();  // mamual retain-release
     } );
     // skutils::ws::peer::onMessage( msg, eOpCode );
 }

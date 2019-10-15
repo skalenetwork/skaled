@@ -16,14 +16,38 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_stats", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_statsI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_nodesRpcInfo",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_nodesRpcInfoI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaInfo", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaInfoI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaVerifyAndSign",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaVerifyAndSignI );
     }
 
     inline virtual void skale_statsI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->skale_stats();
     }
+    inline virtual void skale_nodesRpcInfoI( const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_nodesRpcInfo();
+    }
+    inline virtual void skale_imaInfoI( const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_imaInfo();
+    }
+    inline virtual void skale_imaVerifyAndSignI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaVerifyAndSign( request );
+    }
 
     virtual Json::Value skale_stats() = 0;
+    virtual Json::Value skale_nodesRpcInfo() = 0;
+    virtual Json::Value skale_imaInfo() = 0;
+    virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) = 0;
 
 };  /// class SkaleStatsFace
 

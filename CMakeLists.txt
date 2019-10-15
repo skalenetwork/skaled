@@ -15,6 +15,7 @@ set( DEPS_INSTALL_ROOT "${DEPS_SOURCES_ROOT}/deps_inst/x86_or_x64" )
 include_directories( "${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp" ${CMAKE_BINARY_DIR}/deps/include )
 link_directories( "${DEPS_INSTALL_ROOT}/lib" )
 set( CMAKE_PREFIX_PATH "${DEPS_INSTALL_ROOT}" )
+list(APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake)
 
 link_directories(${CMAKE_BINARY_DIR}/deps/lib)          # HACK for not-found -lff in testeth
 ############################################################################################################
@@ -115,8 +116,11 @@ find_package(Snappy CONFIG REQUIRED)
 
 set( LIB_NAME_cryptopp "cryptopp" )
 
-#hunter_add_package(libjson-rpc-cpp)
-find_package( libjson-rpc-cpp PATHS "${DEPS_SOURCES_ROOT}/libjson-rpc-cpp/cmake" ) #(libjson-rpc-cpp CONFIG REQUIRED)
+#set( MHD_DIR "${DEPS_INSTALL_ROOT}" )
+#find_package( MHD PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" )
+#find_library( MHD microhttpd )
+
+#find_package( libjson-rpc-cpp PATHS "${DEPS_SOURCES_ROOT}/libjson-rpc-cpp/cmake" ) #(libjson-rpc-cpp CONFIG REQUIRED)
 
 hunter_add_package(libscrypt)
 find_package(libscrypt CONFIG REQUIRED)
