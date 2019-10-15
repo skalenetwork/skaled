@@ -24,7 +24,7 @@
 
 language: cpp
 env:
-    global:        
+    global:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
         - TARGET=all
 os: linux
@@ -139,7 +139,7 @@ cache:
         # Cache whole deps dir hoping you will not need to download and
         # build external dependencies next build.
         - $TRAVIS_BUILD_DIR/build/deps
-        - $TRAVIS_BUILD_DIR/SkaleDeps
+        #- $TRAVIS_BUILD_DIR/SkaleDeps
 
 before_install:
     - eval "${MATRIX_EVAL}"
@@ -154,6 +154,6 @@ script:
     # check code style
     - make format-check || travis_terminate 1;
 
-    # build    
+    # build
     #- cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
     - cmake --build . --target $TARGET -- -j$(nproc)

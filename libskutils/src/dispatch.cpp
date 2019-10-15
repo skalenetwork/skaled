@@ -488,7 +488,7 @@ bool loop::job_present( const job_id_t& id,
     void** pp_uvTimer        // = nullptr
 ) {
     lock_type lock( loop_mtx() );
-    return job_present( id, p_timeout, p_interval, pp_uvTimer );
+    return impl_job_present( id, p_timeout, p_interval, pp_uvTimer );
 }
 size_t loop::job_remove_all() {
     lock_type lock( loop_mtx() );

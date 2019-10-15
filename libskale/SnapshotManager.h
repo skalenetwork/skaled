@@ -113,13 +113,18 @@ public:
         const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
-    boost::filesystem::path makeDiff( unsigned _fromBlock, unsigned _toBlock );
-    void importDiff( unsigned _blockNumber, const boost::filesystem::path& _diffPath );
+    boost::filesystem::path makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock );
+    void importDiff( unsigned _fromBlock, unsigned _toBlock );
+    boost::filesystem::path getDiffPath( unsigned _fromBlock, unsigned _toBlock );
+
+    void leaveNLastSnapshots( unsigned n );
+    void leaveNLastDiffs( unsigned n );
 
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
+    boost::filesystem::path diffs_dir;
 };
 
 #endif  // SNAPSHOTAGENT_H

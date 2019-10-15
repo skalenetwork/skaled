@@ -147,6 +147,7 @@ protected:
         setInstalledWatchesNewBlocks_;
     void uninstallAllWatches();
 
+public:
     bool handleRequestWithBinaryAnswer( const nlohmann::json& joRequest );
 
     bool handleWebSocketSpecificRequest(
@@ -154,6 +155,7 @@ protected:
     bool handleWebSocketSpecificRequest(
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
+protected:
     typedef void ( SkaleWsPeer::*rpc_method_t )(
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
     typedef std::map< std::string, rpc_method_t > rpc_map_t;
