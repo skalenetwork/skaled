@@ -386,6 +386,14 @@ Json::Value SkaleStats::skale_imaInfo() {
 
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     try {
+        //
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Processing " )
+                  << cc::notice( "IMA Verify and Sign" ) << cc::debug( " request: " )
+                  << cc::j( joRequest ) << "\n";
+        //
         if ( joConfig_.count( "skaleConfig" ) == 0 )
             throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
@@ -394,6 +402,26 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             throw std::runtime_error(
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        //
+        if ( joSkaleConfig_nodeInfo.count( "imaMessageProxy" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxy\"" );
+        const nlohmann::json& joAddressImaMessageProxy = joSkaleConfig_nodeInfo["imaMessageProxy"];
+        if ( !joAddressImaMessageProxy.is_string() )
+            throw std::runtime_error(
+                "error config.json file, bad type of value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxy\"" );
+        std::string strAddressImaMessageProxy = joAddressImaMessageProxy.get< std::string >();
+        if ( strAddressImaMessageProxy.empty() )
+            throw std::runtime_error(
+                "error config.json file, bad empty value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxy\"" );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Using " )
+                  << cc::notice( "IMA Message Proxy" ) << cc::debug( " contract at address " )
+                  << cc::info( strAddressImaMessageProxy ) << "\n";
+        //
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
@@ -407,9 +435,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
-        Json::FastWriter fastWriter;
-        std::string strRequest = fastWriter.write( request );
-        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
         if ( joRequest.count( "messages" ) == 0 )
             throw std::runtime_error( "missing \"messages\" in call parameters" );
         const nlohmann::json& jarrMessags = joRequest["messages"];
@@ -419,6 +444,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( cntMessagesToSign == 0 )
             throw std::runtime_error(
                 "parameter \"messages\" is empty array, nothing to verify and sign" );
+        std::cout << cc::deep_info( "IMA Verify+Sign" )
+                  << cc::debug( " Composing summary message to sign from " )
+                  << cc::num10( cntMessagesToSign ) << cc::debug( " message(s)..." ) << "\n";
         for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
             if ( !joMessageToSign.is_object() )
@@ -486,10 +514,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             // here strMessageToSign must be disassembled and validated
             // it must be valid transaction reference
             //
+            std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying message " )
+                      << cc::num10( idxMessage ) << cc::debug( " of " )
+                      << cc::num10( cntMessagesToSign ) << cc::debug( " with content: " )
+                      << cc::info( strMessageToSign ) << "\n";
+            //
+            //
+            //
             strAllTogetherMessages += strMessageToSign;
         }
         dev::h256 h = dev::sha3( strAllTogetherMessages );
         std::string sh = h.hex();
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Calling wallet to sign " )
+                  << cc::notice( sh ) << cc::debug( " ..." ) << "\n";
         //
         nlohmann::json jo = nlohmann::json::object();
         //
@@ -502,6 +539,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Will send " )
+                  << cc::notice( "sign query" ) << cc::debug( " to wallet: " ) << cc::j( joCall )
+                  << "\n";
         skutils::rest::client cli( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
@@ -510,13 +550,30 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         jo["signResult"] = joSignResult;
         //
         std::string s = jo.dump();
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::success( " Success, got " )
+                  << cc::notice( "sign result" ) << cc::success( " from wallet: " )
+                  << cc::j( joSignResult ) << "\n";
         Json::Value ret;
         Json::Reader().parse( s, ret );
         return ret;
-    } catch ( Exception const& ) {
+    } catch ( Exception const& ex ) {
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing " )
+                  << cc::info( "IMA Verify and Sign" ) << cc::error( " request: " )
+                  << cc::warn( ex.what() ) << "\n";
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing " )
+                  << cc::info( "IMA Verify and Sign" ) << cc::error( " request: " )
+                  << cc::warn( ex.what() ) << "\n";
         throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing " )
+                  << cc::info( "IMA Verify and Sign" ) << cc::error( " request: " )
+                  << cc::warn( "unknown exception" ) << "\n";
+        throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
