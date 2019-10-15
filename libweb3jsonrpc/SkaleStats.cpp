@@ -28,12 +28,14 @@
 #include <jsonrpccpp/common/exception.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
-#include <csignal>
-#include <exception>
+#include <libdevcore/CommonJS.h>
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
 #include <skutils/rest_call.h>
+
+#include <csignal>
+#include <exception>
 
 namespace dev {
 namespace rpc {
@@ -518,6 +520,75 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                       << cc::num10( idxMessage ) << cc::debug( " of " )
                       << cc::num10( cntMessagesToSign ) << cc::debug( " with content: " )
                       << cc::info( strMessageToSign ) << "\n";
+            bytes vecBytes = dev::jsToBytes( strMessageToSign, dev::OnFailed::Throw );
+            size_t cntMessageBytes = vecBytes.size();
+            if ( cntMessageBytes == 0 )
+                throw std::runtime_error( "bad empty message data to sign" );
+            //            _byte_ b0 = vecBytes[0];
+            //            switch ( b0 ) {
+            //            case 1:
+            //                // ETH transfer, see
+            //                //
+            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/DepositBox.sol
+            //                break;
+            //            case 3:
+            //                // ERC20 transfer, see encodeData() in
+            //                //
+            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
+            //                /*
+            //                function encodeData(
+            //                    address contractHere,
+            //                    uint contractPosition,
+            //                    address to,
+            //                    uint amount) internal view returns (bytes memory data)
+            //                    {
+            //                    string memory name = ERC20Detailed(contractHere).name();
+            //                    uint8 decimals = ERC20Detailed(contractHere).decimals();
+            //                    string memory symbol = ERC20Detailed(contractHere).symbol();
+            //                    uint totalSupply = ERC20Detailed(contractHere).totalSupply();
+            //                    data = abi.encodePacked(
+            //                        bytes1(uint8(3)),
+            //                        bytes32(contractPosition),
+            //                        bytes32(bytes20(to)),
+            //                        bytes32(amount),
+            //                        bytes(name).length,
+            //                        name,
+            //                        bytes(symbol).length,
+            //                        symbol,
+            //                        decimals,
+            //                        totalSupply
+            //                        );
+            //                }
+            //                */
+            //                break;
+            //            case 5:
+            //                // ERC 721 transfer, see encodeData() in
+            //                //
+            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+            //                /*
+            //                function encodeData(
+            //                    address contractHere,
+            //                    uint contractPosition,
+            //                    address to,
+            //                    uint tokenId) internal view returns (bytes memory data)
+            //                {
+            //                    string memory name = IERC721Full(contractHere).name();
+            //                    string memory symbol = IERC721Full(contractHere).symbol();
+            //                    data = abi.encodePacked(
+            //                        bytes1(uint8(5)),
+            //                        bytes32(contractPosition),
+            //                        bytes32(bytes20(to)),
+            //                        bytes32(tokenId),
+            //                        bytes(name).length,
+            //                        name,
+            //                        bytes(symbol).length,
+            //                        symbol
+            //                        );
+            //                }
+            //                */
+            //                break;
+            //            }  // switch( b0 )
+
             //
             //
             //
