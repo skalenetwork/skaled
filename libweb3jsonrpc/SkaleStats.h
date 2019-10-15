@@ -68,7 +68,7 @@ public:
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
 
 protected:
-    eth::Interface* client() { return &m_eth; }
+    eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
 };
 
