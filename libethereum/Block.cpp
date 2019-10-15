@@ -430,7 +430,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
 
-    m_currentBlock.setTimestamp( _timestamp );
+    //    m_currentBlock.setTimestamp( _timestamp );
+    this->resetCurrent( _timestamp );
 
     m_state = m_state.delegateWrite();  // mainly for debugging
 
