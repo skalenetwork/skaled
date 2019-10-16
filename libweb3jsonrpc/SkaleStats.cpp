@@ -28,6 +28,8 @@
 #include <jsonrpccpp/common/exception.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <libdevcore/BMPBN.h>
+#include <libdevcore/Common.h>
 #include <libdevcore/CommonJS.h>
 
 #include <skutils/console_colors.h>
@@ -386,6 +388,7 @@ Json::Value SkaleStats::skale_imaInfo() {
     }
 }
 
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     try {
         //
@@ -427,7 +430,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         //
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
@@ -483,7 +487,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             std::string strMessageToSign = joMessageToSign["data"].get< std::string >();
             if ( strMessageToSign.empty() )
                 throw std::runtime_error(
-                    "parameter \"messages\" contains message object with empty field \"data\"" );
+                    "parameter \"messages\" contains message object with empty field "
+                    "\"data\"" );
         }
         //
         skutils::url u;
@@ -524,70 +529,240 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             size_t cntMessageBytes = vecBytes.size();
             if ( cntMessageBytes == 0 )
                 throw std::runtime_error( "bad empty message data to sign" );
-            //            _byte_ b0 = vecBytes[0];
-            //            switch ( b0 ) {
-            //            case 1:
-            //                // ETH transfer, see
-            //                //
-            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/DepositBox.sol
-            //                break;
-            //            case 3:
-            //                // ERC20 transfer, see encodeData() in
-            //                //
-            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
-            //                /*
-            //                function encodeData(
-            //                    address contractHere,
-            //                    uint contractPosition,
-            //                    address to,
-            //                    uint amount) internal view returns (bytes memory data)
-            //                    {
-            //                    string memory name = ERC20Detailed(contractHere).name();
-            //                    uint8 decimals = ERC20Detailed(contractHere).decimals();
-            //                    string memory symbol = ERC20Detailed(contractHere).symbol();
-            //                    uint totalSupply = ERC20Detailed(contractHere).totalSupply();
-            //                    data = abi.encodePacked(
-            //                        bytes1(uint8(3)),
-            //                        bytes32(contractPosition),
-            //                        bytes32(bytes20(to)),
-            //                        bytes32(amount),
-            //                        bytes(name).length,
-            //                        name,
-            //                        bytes(symbol).length,
-            //                        symbol,
-            //                        decimals,
-            //                        totalSupply
-            //                        );
-            //                }
-            //                */
-            //                break;
-            //            case 5:
-            //                // ERC 721 transfer, see encodeData() in
-            //                //
-            //                https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
-            //                /*
-            //                function encodeData(
-            //                    address contractHere,
-            //                    uint contractPosition,
-            //                    address to,
-            //                    uint tokenId) internal view returns (bytes memory data)
-            //                {
-            //                    string memory name = IERC721Full(contractHere).name();
-            //                    string memory symbol = IERC721Full(contractHere).symbol();
-            //                    data = abi.encodePacked(
-            //                        bytes1(uint8(5)),
-            //                        bytes32(contractPosition),
-            //                        bytes32(bytes20(to)),
-            //                        bytes32(tokenId),
-            //                        bytes(name).length,
-            //                        name,
-            //                        bytes(symbol).length,
-            //                        symbol
-            //                        );
-            //                }
-            //                */
-            //                break;
-            //            }  // switch( b0 )
+            _byte_ b0 = vecBytes[0];
+            size_t nPos = 1, nFiledSize = 0;
+            switch ( b0 ) {
+            case 1: {
+                // ETH transfer, see
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/DepositBox.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 1
+                // 1      | 1        | Message data
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ETH";
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying " )
+                          << cc::sunny( strImaMessageTypeName ) << cc::debug( " thransfer..." )
+                          << "\n";
+                //
+                nFiledSize = 1;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                uint8_t nDataValue = uint8_t( vecBytes[nPos] );
+                nPos += nFiledSize;
+                //
+                std::cout << "    " << cc::info( "dataValue" ) << cc::debug( ".............." )
+                          << cc::num10( nDataValue ) << "\n";
+            } break;
+            case 3: {
+                // ERC20 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 3
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | amount, number
+                // 97     | 32       | size of name (next field)
+                // 129    | variable | name, string memory
+                //        | 32       | size of symbol (next field)
+                //        | variable | symbol, string memory
+                //        | 1        | decimals, uint8
+                //        | 32       | totalSupply, uint
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ERC20";
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying " )
+                          << cc::sunny( strImaMessageTypeName ) << cc::debug( " thransfer..." )
+                          << "\n";
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 contractPosition =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 addressTo =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 amount = BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 sizeOfName =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 sizeOfSymbol =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                std::string strSymbol( "" );
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 1;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                uint8_t nDecimals = uint8_t( vecBytes[nPos] );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 totalSupply =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    size_t nExtra = cntMessageBytes - nPos;
+                    std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::warn( " Extra " )
+                              << cc::num10( nExtra )
+                              << cc::warn( " unused bytes found in message." ) << "\n";
+                }
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Extracted " )
+                          << cc::sunny( strImaMessageTypeName ) << cc::debug( " data fields:" )
+                          << "\n";
+                std::cout << "    " << cc::info( "contractPosition" ) << cc::debug( "......." )
+                          << cc::info( contractPosition.str() ) << "\n";
+                std::cout << "    " << cc::info( "to" ) << cc::debug( "....................." )
+                          << cc::info( addressTo.str() ) << "\n";
+                std::cout << "    " << cc::info( "amount" ) << cc::debug( "................." )
+                          << cc::info( amount.str() ) << "\n";
+                std::cout << "    " << cc::info( "name" ) << cc::debug( "..................." )
+                          << cc::info( strName ) << "\n";
+                std::cout << "    " << cc::info( "symbol" ) << cc::debug( "................." )
+                          << cc::info( strSymbol ) << "\n";
+                std::cout << "    " << cc::info( "decimals" ) << cc::debug( "..............." )
+                          << cc::num10( nDecimals ) << "\n";
+                std::cout << "    " << cc::info( "totalSupply" ) << cc::debug( "............" )
+                          << cc::info( totalSupply.str() ) << "\n";
+            } break;
+            case 5: {
+                // ERC 721 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 5
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | tokenId
+                // 97     | 32       | size of name (next field)
+                // 129    | variable | name, string memory
+                //        | 32       | size of symbol (next field)
+                //        | variable | symbol, string memory
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ERC721";
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying " )
+                          << cc::sunny( strImaMessageTypeName ) << cc::debug( " thransfer..." )
+                          << "\n";
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 contractPosition =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 addressTo =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 tokenID =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 sizeOfName =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                dev::u256 sizeOfSymbol =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error( "IMA message to short" );
+                std::string strSymbol( "" );
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    size_t nExtra = cntMessageBytes - nPos;
+                    std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::warn( " Extra " )
+                              << cc::num10( nExtra )
+                              << cc::warn( " unused bytes found in message." ) << "\n";
+                }
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Extracted " )
+                          << cc::sunny( strImaMessageTypeName ) << cc::debug( " data fields:" )
+                          << "\n";
+                std::cout << "    " << cc::info( "contractPosition" ) << cc::debug( "......." )
+                          << cc::info( contractPosition.str() ) << "\n";
+                std::cout << "    " << cc::info( "to" ) << cc::debug( "....................." )
+                          << cc::info( addressTo.str() ) << "\n";
+                std::cout << "    " << cc::info( "tokenID" ) << cc::debug( "................" )
+                          << cc::info( tokenID.str() ) << "\n";
+                std::cout << "    " << cc::info( "name" ) << cc::debug( "..................." )
+                          << cc::info( strName ) << "\n";
+                std::cout << "    " << cc::info( "symbol" ) << cc::debug( "................." )
+                          << cc::info( strSymbol ) << "\n";
+            } break;
+            default: {
+                std::cout << cc::deep_info( "IMA Verify+Sign" ) << " "
+                          << cc::fatal( " UNKNOWN IMA MESSAGE: " )
+                          << cc::error( " Message code is " ) << cc::num10( b0 )
+                          << cc::error( ", message binary data is:\n" )
+                          << cc::binary_table( ( void* ) vecBytes.data(), vecBytes.size() ) << "\n";
+                throw std::runtime_error( "bad IMA message type " + std::to_string( b0 ) );
+            } break;
+            }  // switch( b0 )
 
             //
             //
