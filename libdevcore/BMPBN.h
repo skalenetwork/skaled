@@ -29,6 +29,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <iostream>
+#include <sstream>
 #include <string>
 
 #include "Common.h"
@@ -84,6 +86,18 @@ inline T decode( const uint8_t* input, size_t length ) {
     if ( a >= 0x80 )
         result |= T( -1 ) << ( bits + 8 );
     return result;
+}
+
+template < class T >
+inline std::string toHexStringWithPadding(
+    const T& value, size_t nPadding = std::string::npos, bool bWith0x = true ) {
+    std::stringstream ss;
+    if ( bWith0x )
+        ss << "0x";
+    if ( nPadding != std::string::npos )
+        ss << std::setfill( '0' ) << std::setw( nPadding );
+    ss << std::hex << value;
+    return ss.str();
 }
 
 };  // namespace BMPBN
