@@ -38,6 +38,7 @@
 
 #include <csignal>
 #include <exception>
+#include <set>
 
 namespace dev {
 namespace rpc {
@@ -392,8 +393,8 @@ Json::Value SkaleStats::skale_imaInfo() {
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
-        std::string strRequest = fastWriter.write( request );
-        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
         std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Processing " )
                   << cc::notice( "IMA Verify and Sign" ) << cc::debug( " request: " )
                   << cc::j( joRequest ) << "\n";
@@ -428,7 +429,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Using " )
                   << cc::notice( "IMA Message Proxy" ) << cc::debug( " contract at address " )
                   << cc::info( strAddressImaMessageProxy ) << "\n";
-        std::string strAddressImaMessageProxyLC =
+        const std::string strAddressImaMessageProxyLC =
             skutils::tools::to_lower( strAddressImaMessageProxy );
         //
         //
@@ -455,30 +456,49 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( !joStartMessageIdx.is_number_unsigned() )
             throw std::runtime_error(
                 "bad value type of \"messages\"/\"startMessageIdx\" must be unsigned number" );
-        size_t nStartMessageIdx = joStartMessageIdx.get< size_t >();
+        const size_t nStartMessageIdx = joStartMessageIdx.get< size_t >();
         //
         if ( joRequest.count( "srcChainID" ) == 0 )
             throw std::runtime_error( "missing \"messages\"/\"srcChainID\" in call parameters" );
         const nlohmann::json& joSrcChainID = joRequest["srcChainID"];
         if ( !joSrcChainID.is_string() )
             throw std::runtime_error(
-                "bad value type of \"messages\"/\"srcChainID\" must be unsigned number" );
-        std::string strSrcChainID = joSrcChainID.get< std::string >();
+                "bad value type of \"messages\"/\"srcChainID\" must be string" );
+        const std::string strSrcChainID = joSrcChainID.get< std::string >();
+        if ( strSrcChainID.empty() )
+            throw std::runtime_error(
+                "value of \"messages\"/\"dstChainID\" must be non-empty string" );
         //
         if ( joRequest.count( "dstChainID" ) == 0 )
             throw std::runtime_error( "missing \"messages\"/\"dstChainID\" in call parameters" );
         const nlohmann::json& joDstChainID = joRequest["dstChainID"];
         if ( !joDstChainID.is_string() )
             throw std::runtime_error(
-                "bad value type of \"messages\"/\"dstChainID\" must be unsigned number" );
-        std::string strDstChainID = joDstChainID.get< std::string >();
+                "bad value type of \"messages\"/\"dstChainID\" must be string" );
+        const std::string strDstChainID = joDstChainID.get< std::string >();
+        if ( strDstChainID.empty() )
+            throw std::runtime_error(
+                "value of \"messages\"/\"dstChainID\" must be non-empty string" );
+        std::string strDstChainID_hex_32;
+        size_t tmp = 0;
+        for ( const char& c : strDstChainID ) {
+            strDstChainID_hex_32 += skutils::tools::format( "%02x", int( c ) );
+            ++tmp;
+            if ( tmp == 32 )
+                break;
+        }
+        while ( tmp < 32 ) {
+            strDstChainID_hex_32 += "00";
+            ++tmp;
+        }
+        dev::u256 uDestinationChainID_32_max( "0x" + strDstChainID_hex_32 );
         //
         if ( joRequest.count( "messages" ) == 0 )
             throw std::runtime_error( "missing \"messages\" in call parameters" );
         const nlohmann::json& jarrMessags = joRequest["messages"];
         if ( !jarrMessags.is_array() )
             throw std::runtime_error( "parameter \"messages\" must be array" );
-        size_t idxMessage, cntMessagesToSign = jarrMessags.size();
+        const size_t cntMessagesToSign = jarrMessags.size();
         if ( cntMessagesToSign == 0 )
             throw std::runtime_error(
                 "parameter \"messages\" is empty array, nothing to verify and sign" );
@@ -488,12 +508,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                   << cc::debug( " message(s), IMA index of first message is " )
                   << cc::num10( nStartMessageIdx ) << cc::debug( ", src chain id is " )
                   << cc::info( strSrcChainID ) << cc::debug( ", dst chain id is " )
-                  << cc::info( strDstChainID ) << cc::debug( "..." ) << "\n";
+                  << cc::info( strDstChainID ) << cc::debug( "(" )
+                  << cc::info( dev::toJS( uDestinationChainID_32_max ) ) << cc::debug( ")..." )
+                  << "\n";
         //
         //
         // Perform basic validation of arrived messages we will sign
         //
-        for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+        for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
             if ( !joMessageToSign.is_object() )
                 throw std::runtime_error(
@@ -509,10 +531,13 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             if ( joMessageToSign.count( "amount" ) == 0 )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"amount\"" );
-            if ( joMessageToSign.count( "data" ) == 0 )
+            if ( joMessageToSign.count( "data" ) == 0 || ( !joMessageToSign["data"].is_string() ) ||
+                 joMessageToSign["data"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"data\"" );
-            if ( joMessageToSign.count( "destinationContract" ) == 0 )
+            if ( joMessageToSign.count( "destinationContract" ) == 0 ||
+                 ( !joMessageToSign["destinationContract"].is_string() ) ||
+                 joMessageToSign["destinationContract"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field "
                     "\"destinationContract\"" );
@@ -521,21 +546,27 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                  joMessageToSign["sender"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"sender\"" );
-            if ( joMessageToSign.count( "to" ) == 0 )
+            if ( joMessageToSign.count( "to" ) == 0 || ( !joMessageToSign["to"].is_string() ) ||
+                 joMessageToSign["to"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"to\"" );
-            std::string strMessageToSign = joMessageToSign["data"].get< std::string >();
-            if ( strMessageToSign.empty() )
+            const std::string strData = joMessageToSign["data"].get< std::string >();
+            if ( strData.empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object with empty field "
                     "\"data\"" );
+            if ( joMessageToSign.count( "amount" ) == 0 ||
+                 ( !joMessageToSign["amount"].is_string() ) ||
+                 joMessageToSign["amount"].get< std::string >().empty() )
+                throw std::runtime_error(
+                    "parameter \"messages\" contains message object without field \"amount\"" );
         }
         //
         // Check wallet URL and keyShareName for future use
         //
         skutils::url u;
         try {
-            std::string strWalletURL =
+            const std::string strWalletURL =
                 joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >();
             if ( strWalletURL.empty() )
                 throw std::runtime_error( "empty wallet url" );
@@ -547,7 +578,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "error config.json file, cannot find valid value for "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"url\" parameter" );
         }
-        std::string keyShareName =
+        const std::string keyShareName =
             joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >();
         if ( keyShareName.empty() )
             throw std::runtime_error(
@@ -559,12 +590,25 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // message present in contract events
         //
         std::string strAllTogetherMessages;
-        for ( idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+        for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
-            std::string strMessageSender =
+            const std::string strMessageSender =
                 skutils::tools::trim_copy( joMessageToSign["sender"].get< std::string >() );
-            std::string strMessageSenderLC = skutils::tools::to_lower( strMessageSender );
-            std::string strMessageToSign = joMessageToSign["data"].get< std::string >();
+            const std::string strMessageSenderLC = skutils::tools::to_lower( strMessageSender );
+            const std::string strMessageData = joMessageToSign["data"].get< std::string >();
+            const std::string strMessageData_linear_LC = skutils::tools::to_lower(
+                skutils::tools::trim_copy( skutils::tools::replace_all_copy(
+                    strMessageData, std::string( "0x" ), std::string( "" ) ) ) );
+            const std::string strDestinationContract = skutils::tools::trim_copy(
+                joMessageToSign["destinationContract"].get< std::string >() );
+            const dev::u256 uDestinationContract( strDestinationContract );
+            const std::string strDestinationAddressTo =
+                skutils::tools::trim_copy( joMessageToSign["to"].get< std::string >() );
+            const dev::u256 uDestinationAddressTo( strDestinationAddressTo );
+            const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
+            const dev::u256 uMessageAmount( strMessageAmount );
+            //
+            const std::string strMessageToSign = strMessageData;
             //
             // here strMessageToSign must be disassembled and validated
             // it must be valid transver reference
@@ -573,11 +617,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                       << cc::num10( idxMessage ) << cc::debug( " of " )
                       << cc::num10( cntMessagesToSign ) << cc::debug( " with content: " )
                       << cc::info( strMessageToSign ) << "\n";
-            bytes vecBytes = dev::jsToBytes( strMessageToSign, dev::OnFailed::Throw );
-            size_t cntMessageBytes = vecBytes.size();
+            const bytes vecBytes = dev::jsToBytes( strMessageToSign, dev::OnFailed::Throw );
+            const size_t cntMessageBytes = vecBytes.size();
             if ( cntMessageBytes == 0 )
                 throw std::runtime_error( "bad empty message data to sign" );
-            _byte_ b0 = vecBytes[0];
+            const _byte_ b0 = vecBytes[0];
             size_t nPos = 1, nFiledSize = 0;
             switch ( b0 ) {
             case 1: {
@@ -621,27 +665,28 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 contractPosition =
+                const dev::u256 contractPosition =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 addressTo =
+                const dev::u256 addressTo =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 amount = BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                const dev::u256 amount =
+                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 sizeOfName =
+                const dev::u256 sizeOfName =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 nFiledSize = sizeOfName.convert_to< size_t >();
@@ -655,7 +700,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 sizeOfSymbol =
+                const dev::u256 sizeOfSymbol =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += 32;
                 nFiledSize = sizeOfSymbol.convert_to< size_t >();
@@ -669,18 +714,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 1;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                uint8_t nDecimals = uint8_t( vecBytes[nPos] );
+                const uint8_t nDecimals = uint8_t( vecBytes[nPos] );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 totalSupply =
+                const dev::u256 totalSupply =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 if ( nPos > cntMessageBytes ) {
-                    size_t nExtra = cntMessageBytes - nPos;
+                    const size_t nExtra = cntMessageBytes - nPos;
                     std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::warn( " Extra " )
                               << cc::num10( nExtra )
                               << cc::warn( " unused bytes found in message." ) << "\n";
@@ -727,28 +772,28 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 contractPosition =
+                const dev::u256 contractPosition =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 addressTo =
+                const dev::u256 addressTo =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 tokenID =
+                const dev::u256 tokenID =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 sizeOfName =
+                const dev::u256 sizeOfName =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 nFiledSize = sizeOfName.convert_to< size_t >();
@@ -762,7 +807,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error( "IMA message to short" );
-                dev::u256 sizeOfSymbol =
+                const dev::u256 sizeOfSymbol =
                     BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += 32;
                 nFiledSize = sizeOfSymbol.convert_to< size_t >();
@@ -822,12 +867,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "uint256)" );
             static const std::string strTopic_signature = dev::toJS( dev::sha3( strSignature ) );
             static const dev::u256 uTopic_signature( strTopic_signature );
-            std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
-            dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
+            const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
+            const dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
             static const size_t nPaddoingZeroesForUint256 = 64;
-            std::string strTopic_msgCounter = dev::BMPBN::toHexStringWithPadding< dev::u256 >(
+            const std::string strTopic_msgCounter = dev::BMPBN::toHexStringWithPadding< dev::u256 >(
                 dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 );
-            dev::u256 uTopic_msgCounter( strTopic_msgCounter );
+            const dev::u256 uTopic_msgCounter( strTopic_msgCounter );
             nlohmann::json jarrTopic_dstChainHash = nlohmann::json::array();
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
             jarrTopic_dstChainHash.push_back( strTopic_dstChainHash );
@@ -891,6 +936,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 throw std::runtime_error( "IMA message " +
                                           std::to_string( nStartMessageIdx + idxMessage ) +
                                           " verification failed - not found in logs" );
+            // prepare "destinationContract" value for comparison
+
             //
             //
             // Find transaction, simlar to call tp eth_getTransactionByHash
@@ -905,7 +952,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 const nlohmann::json& joTransactionHash = joFoundLogRecord["transactionHash"];
                 if ( !joTransactionHash.is_string() )
                     continue;  // bad log record??? this should never happen
-                std::string strTransactionHash = joTransactionHash.get< std::string >();
+                const std::string strTransactionHash = joTransactionHash.get< std::string >();
                 if ( strTransactionHash.empty() )
                     continue;  // bad log record??? this should never happen
                 std::cout << cc::deep_info( "IMA Verify+Sign" )
@@ -937,13 +984,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                           << cc::debug( "..." ) << "\n";
                 // extract "to" address from transaction, then compare it with "sender" from IMA
                 // message
-                std::string strTransactionTo = skutils::tools::trim_copy(
+                const std::string strTransactionTo = skutils::tools::trim_copy(
                     ( joTransaction.count( "to" ) > 0 && joTransaction["to"].is_string() ) ?
                         joTransaction["to"].get< std::string >() :
                         "" );
                 if ( strTransactionTo.empty() )
                     continue;
-                std::string strTransactionTorLC = skutils::tools::to_lower( strTransactionTo );
+                const std::string strTransactionTorLC =
+                    skutils::tools::to_lower( strTransactionTo );
                 if ( strMessageSenderLC != strTransactionTorLC ) {
                     std::cout << cc::deep_info( "IMA Verify+Sign" )
                               << cc::debug( " Skipping transaction " )
@@ -1012,10 +1060,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     The last log record in receipt abaove contains "topics" and "data" field we
                    should verify by comparing fields of IMA message
                 */
+                //
                 nlohmann::json joTransactionReceipt;
                 try {
                     Json::Value jvTransactionReceipt;
-                    h256 h = dev::jsToFixed< 32 >( strTransactionHash );
+                    const h256 h = dev::jsToFixed< 32 >( strTransactionHash );
                     if ( !this->client()->isKnownTransaction( h ) )
                         jvTransactionReceipt = Json::Value( Json::nullValue );
                     else
@@ -1050,11 +1099,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     if ( joReceiptLogRecord.count( "address" ) == 0 ||
                          ( !joReceiptLogRecord["address"].is_string() ) )
                         continue;
-                    std::string strReceiptLogRecord =
+                    const std::string strReceiptLogRecord =
                         joReceiptLogRecord["address"].get< std::string >();
                     if ( strReceiptLogRecord.empty() )
                         continue;
-                    std::string strReceiptLogRecordLC =
+                    const std::string strReceiptLogRecordLC =
                         skutils::tools::to_lower( strReceiptLogRecord );
                     if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC )
                         continue;
@@ -1072,7 +1121,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         const nlohmann::json& joReceiptTopic = jarrReceiptTopics[idxReceiptTopic];
                         if ( !joReceiptTopic.is_string() )
                             continue;
-                        dev::u256 uTopic( joReceiptTopic.get< std::string >() );
+                        const dev::u256 uTopic( joReceiptTopic.get< std::string >() );
                         if ( uTopic == uTopic_signature )
                             bTopicSignatureFound = true;
                         if ( uTopic == uTopic_msgCounter )
@@ -1088,12 +1137,49 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     if ( joReceiptLogRecord.count( "data" ) == 0 ||
                          ( !joReceiptLogRecord["data"].is_string() ) )
                         continue;
-                    std::string strData = joReceiptLogRecord["data"].get< std::string >();
+                    const std::string strData = joReceiptLogRecord["data"].get< std::string >();
                     if ( strData.empty() )
                         continue;
-                    std::string strDataLC = skutils::tools::to_lower( strData );
-
-
+                    const std::string strDataLC_linear = skutils::tools::trim_copy(
+                        skutils::tools::replace_all_copy( skutils::tools::to_lower( strData ),
+                            std::string( "0x" ), std::string( "" ) ) );
+                    const size_t nDataLength = strDataLC_linear.size();
+                    if ( strDataLC_linear.find( strMessageData_linear_LC ) == std::string::npos )
+                        continue;  // no IMA messahe data
+                    // std::set< std::string > setChunksLC;
+                    std::set< dev::u256 > setChunksU256;
+                    static const size_t nChunkSize = 64;
+                    const size_t cntChunks = nDataLength / nChunkSize +
+                                             ( ( ( nDataLength % nChunkSize ) != 0 ) ? 1 : 0 );
+                    for ( size_t idxChunk = 0; idxChunk < cntChunks; ++idxChunk ) {
+                        const size_t nChunkStart = idxChunk * nChunkSize;
+                        size_t nChunkEnd = nChunkStart + nChunkSize;
+                        if ( nChunkEnd > nDataLength )
+                            nChunkEnd = nDataLength;
+                        const size_t nChunkSize = nChunkEnd - nChunkStart;
+                        const std::string strChunk =
+                            strDataLC_linear.substr( nChunkStart, nChunkSize );
+                        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( "    chunk " )
+                                  << cc::info( strChunk ) << "\n";
+                        try {
+                            const dev::u256 uChunk( "0x" + strChunk );
+                            // setChunksLC.insert( strChunk );
+                            setChunksU256.insert( uChunk );
+                        } catch ( ... ) {
+                            std::cout << cc::deep_info( "IMA Verify+Sign" )
+                                      << cc::debug( "            skipped chunk " ) << "\n";
+                            continue;
+                        }
+                    }
+                    if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() )
+                        continue;
+                    if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
+                        continue;
+                    if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() )
+                        continue;
+                    if ( setChunksU256.find( uDestinationChainID_32_max ) == setChunksU256.end() )
+                        continue;
+                    //
                     bReceiptVerified = true;
                     break;
                 }
@@ -1136,8 +1222,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // If we are here, then all IMA messages are valid
         // Perform call to wallet to sign messages
         //
-        dev::h256 h = dev::sha3( strAllTogetherMessages );
-        std::string sh = h.hex();
+        const dev::h256 h = dev::sha3( strAllTogetherMessages );
+        const std::string sh = h.hex();
         std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Calling wallet to sign " )
                   << cc::notice( sh ) << cc::debug( "..." ) << "\n";
         //
