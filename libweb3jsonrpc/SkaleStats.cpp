@@ -1216,32 +1216,42 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             // compose message to sign
             //
-
+            auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
+                size_t n = cnt / 2;
+                for ( size_t i = 0; i < n; ++i ) {
+                    uint8_t b1 = arr[i];
+                    uint8_t b2 = arr[cnt - i - 1];
+                    arr[i] = b2;
+                    arr[cnt - i - 1] = b1;
+                }
+            };
+            auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
+                while ( v.size() < cnt )
+                    v.push_back( 0 );
+            };
             uint8_t arr[32];
+            bytes v;
+            const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
             //
-            dev::BMPBN::encode< dev::u256 >(
-                uMessageSender, arr, sizeof( arr ) / sizeof( arr[0] ) );
-            vecAllTogetherMessages.insert(
-                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
+            fnAlignRight( v, 32 );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             //
-            dev::BMPBN::encode< dev::u256 >(
-                uDestinationContract, arr, sizeof( arr ) / sizeof( arr[0] ) );
-            vecAllTogetherMessages.insert(
-                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
-
-            dev::BMPBN::encode< dev::u256 >(
-                uDestinationAddressTo, arr, sizeof( arr ) / sizeof( arr[0] ) );
-            vecAllTogetherMessages.insert(
-                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationContract, true );
+            fnAlignRight( v, 32 );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             //
-            dev::BMPBN::encode< dev::u256 >(
-                uMessageAmount, arr, sizeof( arr ) / sizeof( arr[0] ) );
-            vecAllTogetherMessages.insert(
-                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
+            fnAlignRight( v, 32 );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             //
-            dev::bytes vecData = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
-            vecAllTogetherMessages.insert(
-                vecAllTogetherMessages.end(), vecData.begin(), vecData.end() );
+            dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
+            fnInvert( arr, cntArr );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
+            //
+            v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
+            fnInvert( v.data(), v.size() );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
         }
         //
         //

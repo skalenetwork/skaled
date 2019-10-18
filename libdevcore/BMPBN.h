@@ -33,6 +33,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "Common.h"
 
@@ -59,10 +60,10 @@ inline size_t lengthOf( T value ) {  // we need non-cost copied value here
 
 template < class T >
 inline void encode( T value, uint8_t* output, size_t length ) {  // we need non-cost copied value
+                                                                 // here
     if ( output == nullptr || length == 0 )
         return;
     memset( output, 0, length );
-    // here
     if ( value.is_zero() )
         ( *output ) = 0;
     else if ( value.sign() > 0 )
@@ -77,6 +78,35 @@ inline void encode( T value, uint8_t* output, size_t length ) {  // we need non-
             value >>= 8;
         }
     }
+}
+
+template < class T >
+inline std::vector< uint8_t > encode2vec(
+    T value, bool bIsInversive = false ) {  // we need non-cost copied value here
+    std::vector< uint8_t > vec;
+    if ( value.is_zero() )
+        vec.push_back( 0 );
+    else if ( value.sign() > 0 )
+        while ( !value.is_zero() ) {
+            uint8_t b = value.template convert_to< uint8_t >();
+            if ( bIsInversive )
+                vec.insert( vec.begin(), b );
+            else
+                vec.push_back( b );
+            value >>= 8;
+        }
+    else {
+        value = ~value;
+        while ( value.is_zero() ) {
+            uint8_t b = ~value.template convert_to< uint8_t >();
+            if ( bIsInversive )
+                vec.insert( vec.begin(), b );
+            else
+                vec.push_back( b );
+            value >>= 8;
+        }
+    }
+    return vec;
 }
 
 template < class T >
