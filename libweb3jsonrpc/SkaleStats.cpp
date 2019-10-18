@@ -36,9 +36,16 @@
 #include <skutils/eth_utils.h>
 #include <skutils/rest_call.h>
 
+#include <array>
 #include <csignal>
 #include <exception>
 #include <set>
+
+//#include "../libconsensus/libBLS/bls/bls.h"
+
+#include <bls/bls.h>
+
+#include <bls/BLSutils.h>
 
 namespace dev {
 namespace rpc {
@@ -1255,11 +1262,51 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         }
         //
         //
+        const dev::h256 h = dev::sha3( vecAllTogetherMessages );
+        const std::string sh = h.hex();
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got hash to sign " )
+                  << cc::info( sh ) << "\n";
+        //
+        // G1 helper
+        //
+        // std::pair<libff::alt_bn128_G1, std::string> HashtoG1withHint(std::shared_ptr< std::array<
+        // uint8_t, 32>>);
+        std::array< uint8_t, 32 > tmpArr;
+        std::shared_ptr< std::array< uint8_t, 32 > > pHashData =
+            std::make_shared< std::array< uint8_t, 32 > >( tmpArr );
+        dev::u256 uh( "0x" + sh );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got U of hash to sign " )
+                  << cc::info( dev::toJS( uh ) ) << "\n";
+        dev::BMPBN::encode( uh, pHashData->data(), 32 );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got U of hash to sign " )
+                  << cc::binary_singleline( ( void* ) pHashData->data(), 32, "," ) << "\n";
+        //
+        auto t = joSkaleConfig_nodeInfo_wallets_ima["t"].get< int >();
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got  " ) << cc::info( "t" )
+                  << cc::debug( "=" ) << cc::num10( t ) << "\n";
+        auto n = joSkaleConfig_nodeInfo_wallets_ima["n"].get< int >();
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got  " ) << cc::info( "n" )
+                  << cc::debug( "=" ) << cc::num10( n ) << "\n";
+        signatures::Bls aBls( t, n );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " BLS instance constructed" )
+                  << "\n";
+        ////////////////////////////std::pair< libff::alt_bn128_G1, std::string > p2vals =
+        /// aBls.HashtoG1withHint( pHashData );
+        std::pair< libff::alt_bn128_G1, std::string > p2vals;
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " G1 computation passed" )
+                  << "\n";
+        std::string str_G1_X = BLSutils::ConvertToString< libff::alt_bn128_Fq >( p2vals.first.X );
+        std::string str_G1_Y = BLSutils::ConvertToString< libff::alt_bn128_Fq >( p2vals.first.Y );
+        std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Got G1 point with " )
+                  << cc::info( "X" ) << cc::debug( "=" ) << cc::info( str_G1_X )
+                  << cc::debug( ", " ) << cc::info( "Y" ) << cc::debug( "=" )
+                  << cc::info( str_G1_Y ) << cc::debug( ", " ) << cc::info( "hint" )
+                  << cc::debug( "=" ) << cc::info( p2vals.second ) << "\n";
+        //
+        //
         // If we are here, then all IMA messages are valid
         // Perform call to wallet to sign messages
         //
-        const dev::h256 h = dev::sha3( vecAllTogetherMessages );
-        const std::string sh = h.hex();
         std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Calling wallet to sign " )
                   << cc::notice( sh ) << cc::debug( " composed from " )
                   << cc::binary_singleline( ( void* ) vecAllTogetherMessages.data(),
@@ -1286,6 +1333,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             throw std::runtime_error( "failed to sign message(s) with wallet" );
         nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
         jo["signResult"] = joSignResult;
+        jo["signResult"]["hashPoint"] = nlohmann::json::object();
+        jo["signResult"]["hashPoint"]["X"] = str_G1_X;
+        jo["signResult"]["hashPoint"]["Y"] = str_G1_Y;
+        jo["signResult"]["hint"] = p2vals.second;
         //
         //
         // Done, provide result to caller
