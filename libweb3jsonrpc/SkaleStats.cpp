@@ -589,12 +589,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // Walk through all messages, parse and validate data of each message, then verify each
         // message present in contract events
         //
-        std::string strAllTogetherMessages;
+        dev::bytes vecAllTogetherMessages;
         for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
             const std::string strMessageSender =
                 skutils::tools::trim_copy( joMessageToSign["sender"].get< std::string >() );
-            const std::string strMessageSenderLC = skutils::tools::to_lower( strMessageSender );
+            const std::string strMessageSenderLC =
+                skutils::tools::to_lower( skutils::tools::trim_copy( strMessageSender ) );
+            const dev::u256 uMessageSender( strMessageSenderLC );
             const std::string strMessageData = joMessageToSign["data"].get< std::string >();
             const std::string strMessageData_linear_LC = skutils::tools::to_lower(
                 skutils::tools::trim_copy( skutils::tools::replace_all_copy(
@@ -608,16 +610,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
             const dev::u256 uMessageAmount( strMessageAmount );
             //
-            const std::string strMessageToSign = strMessageData;
-            //
-            // here strMessageToSign must be disassembled and validated
-            // it must be valid transver reference
+            // here strMessageData must be disassembled and validated
+            // it must be valid transfer reference
             //
             std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying message " )
                       << cc::num10( idxMessage ) << cc::debug( " of " )
                       << cc::num10( cntMessagesToSign ) << cc::debug( " with content: " )
-                      << cc::info( strMessageToSign ) << "\n";
-            const bytes vecBytes = dev::jsToBytes( strMessageToSign, dev::OnFailed::Throw );
+                      << cc::info( strMessageData ) << "\n";
+            const bytes vecBytes = dev::jsToBytes( strMessageData, dev::OnFailed::Throw );
             const size_t cntMessageBytes = vecBytes.size();
             if ( cntMessageBytes == 0 )
                 throw std::runtime_error( "bad empty message data to sign" );
@@ -936,8 +936,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 throw std::runtime_error( "IMA message " +
                                           std::to_string( nStartMessageIdx + idxMessage ) +
                                           " verification failed - not found in logs" );
-            // prepare "destinationContract" value for comparison
-
             //
             //
             // Find transaction, simlar to call tp eth_getTransactionByHash
@@ -1215,17 +1213,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                       << cc::success( " Success, IMA message " )
                       << cc::num10( nStartMessageIdx + idxMessage )
                       << cc::success( " was found in logs." ) << "\n";
-            strAllTogetherMessages += strMessageToSign;
+            //
+            // compose message to sign
+            //
+
+            uint8_t arr[32];
+            //
+            dev::BMPBN::encode< dev::u256 >(
+                uMessageSender, arr, sizeof( arr ) / sizeof( arr[0] ) );
+            vecAllTogetherMessages.insert(
+                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            //
+            dev::BMPBN::encode< dev::u256 >(
+                uDestinationContract, arr, sizeof( arr ) / sizeof( arr[0] ) );
+            vecAllTogetherMessages.insert(
+                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+
+            dev::BMPBN::encode< dev::u256 >(
+                uDestinationAddressTo, arr, sizeof( arr ) / sizeof( arr[0] ) );
+            vecAllTogetherMessages.insert(
+                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            //
+            dev::BMPBN::encode< dev::u256 >(
+                uMessageAmount, arr, sizeof( arr ) / sizeof( arr[0] ) );
+            vecAllTogetherMessages.insert(
+                vecAllTogetherMessages.end(), arr + 0, arr + sizeof( arr ) / sizeof( arr[0] ) );
+            //
+            dev::bytes vecData = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
+            vecAllTogetherMessages.insert(
+                vecAllTogetherMessages.end(), vecData.begin(), vecData.end() );
         }
         //
         //
         // If we are here, then all IMA messages are valid
         // Perform call to wallet to sign messages
         //
-        const dev::h256 h = dev::sha3( strAllTogetherMessages );
+        const dev::h256 h = dev::sha3( vecAllTogetherMessages );
         const std::string sh = h.hex();
         std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Calling wallet to sign " )
-                  << cc::notice( sh ) << cc::debug( "..." ) << "\n";
+                  << cc::notice( sh ) << cc::debug( " composed from " )
+                  << cc::binary_singleline( ( void* ) vecAllTogetherMessages.data(),
+                         vecAllTogetherMessages.size(), "" )
+                  << cc::debug( "...`" ) << "\n";
         //
         nlohmann::json jo = nlohmann::json::object();
         //

@@ -29,6 +29,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -58,6 +59,9 @@ inline size_t lengthOf( T value ) {  // we need non-cost copied value here
 
 template < class T >
 inline void encode( T value, uint8_t* output, size_t length ) {  // we need non-cost copied value
+    if ( output == nullptr || length == 0 )
+        return;
+    memset( output, 0, length );
     // here
     if ( value.is_zero() )
         ( *output ) = 0;
@@ -78,6 +82,8 @@ inline void encode( T value, uint8_t* output, size_t length ) {  // we need non-
 template < class T >
 inline T decode( const uint8_t* input, size_t length ) {
     T result( 0 );
+    if ( input == nullptr || length == 0 )
+        return result;
     int bits = -8;
     while ( length-- > 1 )
         result |= T( *( input++ ) ) << ( bits += 8 );
