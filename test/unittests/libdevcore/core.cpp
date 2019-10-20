@@ -22,10 +22,15 @@
  * CORE test functions.
  */
 
+#include <libdevcore/BMPBN.h>
+#include <libdevcore/BMPBN_tests.h>
+#include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
+
+#include <skutils/console_colors.h>
 
 using namespace dev::test;
 
@@ -73,6 +78,50 @@ BOOST_AUTO_TEST_CASE( isHex ) {
     BOOST_CHECK( !dev::isHex( " " ) );
     BOOST_CHECK( dev::isHex( "aa" ) );
     BOOST_CHECK( dev::isHex( "003" ) );
+}
+
+BOOST_AUTO_TEST_CASE( BMPBN ) {
+    auto bPrev = cc::_on_;
+    cc::_on_ = true;
+
+    bool bIsVerbose = true;
+
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::bigint >( false, true, bIsVerbose, "dev::bigint" ),
+        "BMPBN set of simple checks failed for dev::bigint" );
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::u64 >( true, false, bIsVerbose, "dev::u64" ),
+        "BMPBN set of simple checks failed for dev::u64" );
+
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::u128 >( false, false, bIsVerbose, "dev::u128" ),
+        "BMPBN set of simple checks failed for dev::u128" );
+
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::u160 >( false, false, bIsVerbose, "dev::u160" ),
+        "BMPBN set of simple checks failed for dev::u160" );
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::s160 >( true, false, bIsVerbose, "dev::s160" ),
+        "BMPBN set of simple checks failed for dev::s160" );
+
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::u256 >( false, true, bIsVerbose, "dev::u256" ),
+        "BMPBN set of simple checks failed for dev::u256" );
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::s256 >( true, true, bIsVerbose, "dev::s256" ),
+        "BMPBN set of simple checks failed for dev::s256" );
+
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::u512 >( false, true, bIsVerbose, "dev::u512" ),
+        "BMPBN set of simple checks failed for dev::u512" );
+    BOOST_CHECK_MESSAGE( dev::BMPBN::test< dev::s512 >( true, true, bIsVerbose, "dev::s512" ),
+        "BMPBN set of simple checks failed for dev::s512" );
+
+    BOOST_CHECK( dev::BMPBN::test_limit_limbs_and_halves< dev::u64 >(
+        "9223372036854775807", 64, bIsVerbose ) );
+    BOOST_CHECK( dev::BMPBN::test_limit_limbs_and_halves< dev::u128 >(
+        "170141183460469231731687303715884105727", 128, bIsVerbose ) );
+    BOOST_CHECK( dev::BMPBN::test_limit_limbs_and_halves< dev::u256 >(
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935", 256,
+        bIsVerbose ) );
+    BOOST_CHECK( dev::BMPBN::test_limit_limbs_and_halves< dev::u512 >(
+        "134078079299425970995740249982058461274793658205923933777235614437217640300735469768018742"
+        "98166903427690031858186486050853753882811946569946433649006084095",
+        512, bIsVerbose ) );
+
+    cc::_on_ = bPrev;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

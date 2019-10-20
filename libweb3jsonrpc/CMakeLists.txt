@@ -108,14 +108,20 @@ jsonrpcstub_create(web3jsonrpc skaleStats.json
 	SkaleStatsClient ${CMAKE_CURRENT_BINARY_DIR} SkaleStatsClient
 )
 
-target_include_directories( skale PRIVATE
+link_directories(${BLS_WITH_FF_LIBRARY_DIR})
+
+target_include_directories( web3jsonrpc PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
+        ${BLS_WITH_FF_INCLUDE_DIR}
+        ${BLS_INCLUDE_DIRS}
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}
 	)
 
 target_link_libraries( web3jsonrpc
+    bls
     ethashseal
-	skutils
+    skutils
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-common.a
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
