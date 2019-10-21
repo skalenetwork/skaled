@@ -38,7 +38,7 @@ addons:
             - texinfo
             - lcov
             - clang-format-6.0
-            - libprocps
+            - libprocps-dev
             - yasm
             - flex
             - bison
