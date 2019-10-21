@@ -1021,8 +1021,8 @@ int main( int argc, char** argv ) try {
                 bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                     [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                         std::cout << cc::normal( "... download progress ... " )
-                                  << cc::num10( uint64_t( idxChunck ) ) << cc::normal( " of " )
-                                  << cc::num10( uint64_t( cntChunks ) ) << "\r";
+                                  << cc::size10( idxChunck ) << cc::normal( " of " )
+                                  << cc::size10( cntChunks ) << "\r";
                         return true;  // continue download
                     },
                     isBinaryDownload, chainParams.nodeInfo.snapshotInterval, &strErrorDescription );
@@ -1731,11 +1731,11 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Max RPC connections" )
                 << cc::debug( "...................... " )
-                << ( ( maxConnections > 0 ) ? cc::num10( uint64_t( maxConnections ) ) :
+                << ( ( maxConnections > 0 ) ? cc::size10( maxConnections ) :
                                               cc::error( "disabled" ) );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
-                << cc::debug( "........ " ) << cc::num10( uint64_t( cntServers ) );
+                << cc::debug( "........ " ) << cc::size10( cntServers );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
