@@ -67,7 +67,7 @@ endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR})
 target_link_libraries(testeth PRIVATE
     ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
-    skutils
+    boost_system boost_program_options skutils
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
     ${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
     ${DEPS_INSTALL_ROOT}/lib/libcurl.a
@@ -102,4 +102,3 @@ eth_add_test(ClientBase
 #   ARGS --eth_testfile=BlockTests/bcJS_API_Test
 #   ARGS --eth_testfile=BlockTests/bcValidBlockTest
 #)
-
