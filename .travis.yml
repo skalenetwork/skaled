@@ -38,6 +38,8 @@ addons:
             - texinfo
             - lcov
             - clang-format-6.0
+            - libprocps
+            - yasm
             - flex
             - bison
 jobs:
@@ -145,6 +147,7 @@ before_install:
     - eval "${MATRIX_EVAL}"
 install:
     - ./SkaleDeps/build.sh
+    - ./libconsensus/libBLS/deps/build.sh
 script:
     # configure
     - mkdir -p build

@@ -21,7 +21,7 @@ Skaled is asynchronous, meaning that the consensus on the next block starts imme
 
 ## Provable security
 
-Skaled is the only provably secure ETH compatible PoS client. Security is proven under assumption of maximum t malicious nodes, where the total number of nodes N is more or equal 3t + 1. 
+Skaled is the only provably secure ETH compatible PoS client. Security is proven under assumption of maximum t malicious nodes, where the total number of nodes N is more or equal 3t + 1.
 
 ## Survivability
 
@@ -54,7 +54,7 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 
 ```
 sudo apt-get update
-sudo apt-get install autoconf build-essential cmake libboost-all-dev texinfo wget
+sudo apt-get install autoconf build-essential cmake libprocps libtool texinfo wget yasm flex bison
 ```
 
 ### Build dependencies
@@ -62,6 +62,8 @@ sudo apt-get install autoconf build-essential cmake libboost-all-dev texinfo wge
 ```
 cd SkaleDeps
 ./build.sh
+cd ..
+./libconsensus/libBLS/deps/build.sh
 ```
 
 ### Configure and build skaled
@@ -71,7 +73,7 @@ cd SkaleDeps
 # Configure the project and create a build directory.
 cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 # Build all default targets using all cores.
-cmake --build build -- -j$(nproc) 
+cmake --build build -- -j$(nproc)
 ```
 
 Note: Currently only Debug build is supported.
@@ -81,7 +83,7 @@ Note: Currently only Debug build is supported.
 
 To run the tests:
 
-``` 
+```
 cd build/test
 ./testeth -- --all
 ```
@@ -92,7 +94,7 @@ _in process_
 
 ## Contributing
 
-We are actively looking for contributors and have great bounties! 
+We are actively looking for contributors and have great bounties!
 
 **Please read [CONTRIBUTING](CONTRIBUTING.md) and [CODING_STYLE](CODING_STYLE.md) thoroughly before making alterations to the code base. This project adheres to SKALE's code of conduct. By participating, you are expected to uphold this code.**
 
