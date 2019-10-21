@@ -73,6 +73,11 @@ set( CMAKE_CXX_STANDARD 17 )
 cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
 project(skale)
+
+include_directories( "${BLS_DEPS_INSTALL_ROOT}/include" ${CMAKE_BINARY_DIR}/deps/include )
+link_directories( "${BLS_DEPS_INSTALL_ROOT}/lib" )
+set( CMAKE_PREFIX_PATH "${BLS_DEPS_INSTALL_ROOT}" )
+
 file (READ VERSION PROJECT_VERSION)
 string(STRIP ${PROJECT_VERSION} PROJECT_VERSION)
 
