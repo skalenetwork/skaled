@@ -67,7 +67,8 @@ endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR})
 target_link_libraries(testeth PRIVATE
     ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
-    boost_system boost_program_options skutils
+    skutils
+    Boost::system Boost::program_options
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
     ${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
     ${DEPS_INSTALL_ROOT}/lib/libcurl.a

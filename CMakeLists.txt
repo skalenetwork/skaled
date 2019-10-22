@@ -6,7 +6,6 @@ cmake_minimum_required(VERSION 3.5.1)
 
 option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
 
-
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
@@ -109,6 +108,8 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log chrono)
 find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono)
+
+set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
 hunter_add_package( leveldb )
 find_package( leveldb CONFIG REQUIRED )
