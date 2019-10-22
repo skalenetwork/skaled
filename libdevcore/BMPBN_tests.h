@@ -172,7 +172,7 @@ template < class T >
 inline bool test_limit_limbs_and_halves(
     const char* strStartValue, size_t nBits, bool bIsVerbose ) {
     if ( bIsVerbose )
-        std::cout << cc::debug( "Testing limit margin of " ) << cc::num10( nBits )
+        std::cout << cc::debug( "Testing limit margin of " ) << cc::size10( nBits )
                   << cc::debug( " bit values..." ) << "\n";
     bool bOKay = true;
     if ( !test1< T >( std::string( strStartValue ), bIsVerbose ) )
@@ -187,12 +187,11 @@ inline bool test_limit_limbs_and_halves(
     }
     if ( bIsVerbose ) {
         if ( bOKay )
-            std::cout << cc::success( "Successfull conversion test of " ) << cc::num10( nBits )
+            std::cout << cc::success( "Successfull conversion test of " ) << cc::size10( nBits )
                       << cc::success( " bit values." ) << "\n";
         else
             std::cout << cc::fatal( "FAILED" ) << cc::error( " conversion test of " )
-                      << cc::num10( nBits ) << cc::num10( nBits ) << cc::debug( " bit values" )
-                      << "\n";
+                      << cc::size10( nBits ) << cc::debug( " bit values" ) << "\n";
     }
     return bOKay;
 }

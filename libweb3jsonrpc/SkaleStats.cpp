@@ -511,9 +511,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "parameter \"messages\" is empty array, nothing to verify and sign" );
         std::cout << cc::deep_info( "IMA Verify+Sign" )
                   << cc::debug( " Composing summary message to sign from " )
-                  << cc::num10( cntMessagesToSign )
+                  << cc::size10( cntMessagesToSign )
                   << cc::debug( " message(s), IMA index of first message is " )
-                  << cc::num10( nStartMessageIdx ) << cc::debug( ", src chain id is " )
+                  << cc::size10( nStartMessageIdx ) << cc::debug( ", src chain id is " )
                   << cc::info( strSrcChainID ) << cc::debug( ", dst chain id is " )
                   << cc::info( strDstChainID ) << cc::debug( "(" )
                   << cc::info( dev::toJS( uDestinationChainID_32_max ) ) << cc::debug( ")..." )
@@ -621,8 +621,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             // it must be valid transfer reference
             //
             std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Verifying message " )
-                      << cc::num10( idxMessage ) << cc::debug( " of " )
-                      << cc::num10( cntMessagesToSign ) << cc::debug( " with content: " )
+                      << cc::size10( idxMessage ) << cc::debug( " of " )
+                      << cc::size10( cntMessagesToSign ) << cc::debug( " with content: " )
                       << cc::info( strMessageData ) << "\n";
             const bytes vecBytes = dev::jsToBytes( strMessageData, dev::OnFailed::Throw );
             const size_t cntMessageBytes = vecBytes.size();
@@ -734,7 +734,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 if ( nPos > cntMessageBytes ) {
                     const size_t nExtra = cntMessageBytes - nPos;
                     std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::warn( " Extra " )
-                              << cc::num10( nExtra )
+                              << cc::size10( nExtra )
                               << cc::warn( " unused bytes found in message." ) << "\n";
                 }
                 std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Extracted " )
@@ -828,7 +828,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 if ( nPos > cntMessageBytes ) {
                     size_t nExtra = cntMessageBytes - nPos;
                     std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::warn( " Extra " )
-                              << cc::num10( nExtra )
+                              << cc::size10( nExtra )
                               << cc::warn( " unused bytes found in message." ) << "\n";
                 }
                 std::cout << cc::deep_info( "IMA Verify+Sign" ) << cc::debug( " Extracted " )
@@ -1200,7 +1200,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 std::cout << cc::deep_info( "IMA Verify+Sign" )
                           << cc::success( " Found transaction for IMA message " )
-                          << cc::num10( nStartMessageIdx + idxMessage ) << cc::success( ": " )
+                          << cc::size10( nStartMessageIdx + idxMessage ) << cc::success( ": " )
                           << cc::j( joTransaction ) << "\n";
                 bTransactionWasFound = true;
                 break;
@@ -1208,7 +1208,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             if ( !bTransactionWasFound ) {
                 std::cout << cc::deep_info( "IMA Verify+Sign" ) << " "
                           << cc::error( "No transaction was found for IMA message " )
-                          << cc::num10( nStartMessageIdx + idxMessage ) << cc::error( "." ) << "\n";
+                          << cc::size10( nStartMessageIdx + idxMessage ) << cc::error( "." )
+                          << "\n";
                 throw std::runtime_error( "No transaction was found for IMA message " +
                                           std::to_string( nStartMessageIdx + idxMessage ) );
             }
@@ -1218,7 +1219,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             std::cout << cc::deep_info( "IMA Verify+Sign" )
                       << cc::success( " Success, IMA message " )
-                      << cc::num10( nStartMessageIdx + idxMessage )
+                      << cc::size10( nStartMessageIdx + idxMessage )
                       << cc::success( " was found in logs." ) << "\n";
             //
             // compose message to sign
