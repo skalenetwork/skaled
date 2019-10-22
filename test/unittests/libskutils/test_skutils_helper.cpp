@@ -1074,8 +1074,7 @@ extern void with_test_clients(
     for ( size_t idxWait = 0; cntRunningThreads > 0; ++idxWait ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
         if ( idxWait % 1000 == 0 && idxWait != 0 )
-            test_log_e( cc::debug( "Waiting for " ) +
-                        cc::num10( uint64_t( size_t( cntRunningThreads ) ) ) +
+            test_log_e( cc::debug( "Waiting for " ) + cc::size10( cntRunningThreads ) +
                         cc::debug( " client thread(s)" ) );
     }
     for ( i = 0; i < cnt; ++i ) {

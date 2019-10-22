@@ -1712,8 +1712,8 @@ std::string null_str() {  // "null"
     return std::string( error() ) + "null" + std::string( reset() );
 }
 std::string trimmed_str( size_t cnt, size_t cntOriginal ) {  // "trimmed_str"
-    return cc::error( "<value trimmed from " ) + cc::num10( uint64_t( cntOriginal ) ) +
-           cc::error( " to " ) + cc::num10( uint64_t( cnt ) ) + cc::error( ">" );
+    return cc::error( "<value trimmed from " ) + cc::size10( cntOriginal ) + cc::error( " to " ) +
+           cc::size10( cnt ) + cc::error( ">" );
 }
 std::string trimmed_str( size_t cntOriginal ) {
     return cc::trimmed_str( cc::_max_value_size_, cntOriginal );

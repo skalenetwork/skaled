@@ -6,7 +6,6 @@ cmake_minimum_required(VERSION 3.5.1)
 
 option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
 
-
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
@@ -73,6 +72,11 @@ set( CMAKE_CXX_STANDARD 17 )
 cable_set_build_type(DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
 
 project(skale)
+
+include_directories( "${BLS_DEPS_INSTALL_ROOT}/include" ${CMAKE_BINARY_DIR}/deps/include )
+link_directories( "${BLS_DEPS_INSTALL_ROOT}/lib" )
+set( CMAKE_PREFIX_PATH "${BLS_DEPS_INSTALL_ROOT}" )
+
 file (READ VERSION PROJECT_VERSION)
 string(STRIP ${PROJECT_VERSION} PROJECT_VERSION)
 
@@ -104,6 +108,8 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber log chrono)
 find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono)
+
+set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
 hunter_add_package( leveldb )
 find_package( leveldb CONFIG REQUIRED )
@@ -179,14 +185,14 @@ if (EVMJIT)
     add_subdirectory(evmjit)
 endif()
 
-if (CONSENSUS)
-    set( BLS_WITH_SECP256K1_INCLUDE_DIR ${CMAKE_BINARY_DIR}/deps/include )
-    set( BLS_WITH_SECP256K1_LIBRARY_DIR ${CMAKE_BINARY_DIR}/deps/lib )
-    set( BLS_WITH_FF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/deps/include )
-    set( BLS_WITH_FF_LIBRARY_DIR ${CMAKE_BINARY_DIR}/deps/lib )
-    message( INFO " - Using root BLS INC=${BLS_WITH_FF_INCLUDE_DIR}")
-    message( INFO " - Using root BLS LIB=${BLS_WITH_FF_LIBRARY_DIR}")
-endif()
+#if (CONSENSUS)
+#    set( BLS_WITH_SECP256K1_INCLUDE_DIR ${CMAKE_BINARY_DIR}/deps/include )
+#    set( BLS_WITH_SECP256K1_LIBRARY_DIR ${CMAKE_BINARY_DIR}/deps/lib )
+#    set( BLS_WITH_FF_INCLUDE_DIR ${CMAKE_BINARY_DIR}/deps/include )
+#    set( BLS_WITH_FF_LIBRARY_DIR ${CMAKE_BINARY_DIR}/deps/lib )
+#    message( INFO " - Using root BLS INC=${BLS_WITH_FF_INCLUDE_DIR}")
+#    message( INFO " - Using root BLS LIB=${BLS_WITH_FF_LIBRARY_DIR}")
+#endif()
 
 add_subdirectory(skaled)
 
