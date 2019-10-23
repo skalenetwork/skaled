@@ -166,8 +166,10 @@ BOOST_AUTO_TEST_CASE( bcBasicInsert ) {
     cnote << "Prep block";
     block.sync( tcFull.bc() );
     cnote << block.state();
-    while ( utcTime() < block.info().timestamp() )
+    while ( utcTime() <= block.info().timestamp() )
         std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+
+    block.resetCurrent();
 
     // Inject a transaction to transfer funds from miner to me.
     Transaction t( 1000, 10000, 100000, me.address(), bytes(),
@@ -176,6 +178,7 @@ BOOST_AUTO_TEST_CASE( bcBasicInsert ) {
 
     // Seal and import into both.
     cnote << "Seal and import";
+    cnote << "time = " << utcTime() << " stamp = " << block.info().timestamp() << endl;
     tcFull.sealAndImport( block );
     cnote << "Import into light";
     tcLight.import( block );
