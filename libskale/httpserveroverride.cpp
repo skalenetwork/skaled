@@ -836,19 +836,18 @@ void SkaleWsPeer::uninstallAllWatches() {
     sw = setInstalledWatchesLogs_;
     setInstalledWatchesLogs_.clear();
     auto pEthereum = ethereum();
-    for ( auto iw : sw )
-        skutils::dispatch::async( [=]() -> void {
-            try {
-                pEthereum->uninstallWatch( iw );
-            } catch ( ... ) {
-            }
-        } );
+    for ( auto iw : sw ) {
+        try {
+            pEthereum->uninstallWatch( iw );
+        } catch ( ... ) {
+        }
+    }
     //
     sw = setInstalledWatchesNewPendingTransactions_;
     setInstalledWatchesNewPendingTransactions_.clear();
     for ( auto iw : sw ) {
         try {
-            ethereum()->uninstallNewPendingTransactionWatch( iw );
+            pEthereum->uninstallNewPendingTransactionWatch( iw );
         } catch ( ... ) {
         }
     }
@@ -857,7 +856,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     setInstalledWatchesNewBlocks_.clear();
     for ( auto iw : sw ) {
         try {
-            ethereum()->uninstallNewBlockWatch( iw );
+            pEthereum->uninstallNewBlockWatch( iw );
         } catch ( ... ) {
         }
     }

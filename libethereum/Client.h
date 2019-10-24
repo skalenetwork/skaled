@@ -53,6 +53,8 @@
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
+#include <skutils/atomic_shared_ptr.h>
+#include <skutils/multithreading.h>
 
 class ConsensusHost;
 
@@ -466,9 +468,9 @@ protected:
         typedef std::function< void( const unsigned&, const parameter_type& ) > handler_type;
 
     private:
-        typedef std::recursive_mutex mutex_type;
+        typedef skutils::multithreading::recursive_mutex_type mutex_type;
         typedef std::lock_guard< mutex_type > lock_type;
-        mutable mutex_type mtx_;
+        static mutex_type& mtx() { return skutils::get_ref_mtx(); }
 
         typedef std::map< key_type, handler_type > map_type;
         map_type map_;
@@ -480,7 +482,7 @@ protected:
         virtual ~genericWatch() { uninstallAll(); }
         key_type create_subscription_id() { return subscription_counter_++; }
         virtual bool is_installed( const key_type& k ) const {
-            lock_type lock( mtx_ );
+            lock_type lock( mtx() );
             if ( map_.find( k ) == map_.end() )
                 return false;
             return true;
@@ -488,13 +490,13 @@ protected:
         virtual key_type install( handler_type& h ) {
             if ( !h )
                 return false;  // not call-able
-            lock_type lock( mtx_ );
+            lock_type lock( mtx() );
             key_type k = create_subscription_id();
             map_[k] = h;
             return k;
         }
         virtual bool uninstall( const key_type& k ) {
-            lock_type lock( mtx_ );
+            lock_type lock( mtx() );
             auto itFind = map_.find( k );
             if ( itFind == map_.end() )
                 return false;
@@ -502,13 +504,13 @@ protected:
             return true;
         }
         virtual void uninstallAll() {
-            lock_type lock( mtx_ );
+            lock_type lock( mtx() );
             map_.clear();
         }
         virtual void invoke( const parameter_type& p ) {
             map_type map2;
             {  // block
-                lock_type lock( mtx_ );
+                lock_type lock( mtx() );
                 map2 = map_;
             }  // block
             auto itWalk = map2.begin();
