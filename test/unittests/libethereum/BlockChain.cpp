@@ -89,6 +89,8 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     TestBlock uncleBlock2;
     uncleBlock2.mine( bc );
 
+    sleep( 1 );
+
     TestTransaction tr2 = TestTransaction::defaultTransaction( 2 );
     TestBlock block2;
     block2.addTransaction( tr2 );

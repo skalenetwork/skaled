@@ -173,7 +173,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
         this->emptyBlockIntervalMsForRestore.reset();
     }
 
-    MICROPROFILE_SCOPEI( "SkaleHost", "pendintTransactions", MP_LAWNGREEN );
+    MICROPROFILE_SCOPEI( "SkaleHost", "pendingTransactions", MP_LAWNGREEN );
+
 
     ConsensusExtFace::transactions_vector out_vector;
 
@@ -181,12 +182,16 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     m_debugTracer.tracepoint( "fetch_transactions" );
 
-    Transactions txns =
-        m_tq.topTransactionsSync( _limit, [this, &to_delete]( const Transaction& tx ) -> bool {
-            std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+    int counter = 0;
 
+    Transactions txns = m_tq.topTransactionsSync(
+        _limit, [this, &to_delete, &counter]( const Transaction& tx ) -> bool {
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
+
+            // XXX TODO Invent good way to do this
+            if ( counter++ == 0 )
+                m_pending_createMutex.lock();
 
             if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
                 try {
@@ -205,7 +210,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             return true;
         } );
 
-    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+    if ( counter++ == 0 )
+        m_pending_createMutex.lock();
+
+    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 

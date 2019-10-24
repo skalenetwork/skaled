@@ -70,6 +70,8 @@ BOOST_AUTO_TEST_CASE( BlockQueueImport ) {
     BOOST_REQUIRE_MESSAGE( res == ImportResult::FutureTimeKnown,
         "Simple block import to BlockQueue should have return FutureTimeKnown" );
 
+    sleep( 1 );
+
     TestBlock block3;
     block3.mine( blockchain );
     BlockHeader block3Header = block3.blockHeader();
@@ -91,6 +93,8 @@ BOOST_AUTO_TEST_CASE( BlockQueueImport ) {
     res = blockQueue.import( &block5.bytes() );
     BOOST_REQUIRE_MESSAGE( res == ImportResult::FutureTimeUnknown,
         "Simple block import to BlockQueue should have return FutureTimeUnknown" );
+
+    sleep( 1 );
 
     blockQueue.clear();
     TestBlock block3a;
