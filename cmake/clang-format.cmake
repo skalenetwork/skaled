@@ -8,14 +8,9 @@ file(GLOB_RECURSE ALL_SOURCE_FILES ${CLANG_FORMAT_CXX_FILE_EXTENSIONS})
 set(CLANG_FORMAT_EXCLUDE_PATTERNS ${CLANG_FORMAT_EXCLUDE_PATTERNS} "/CMakeFiles/" "cmake")
 
 # get all project files file
-foreach (SOURCE_FILE ${ALL_SOURCE_FILES}) 
-    foreach (EXCLUDE_PATTERN ${CLANG_FORMAT_EXCLUDE_PATTERNS})
-        string(FIND ${SOURCE_FILE} ${EXCLUDE_PATTERN} EXCLUDE_FOUND) 
-        if (NOT ${EXCLUDE_FOUND} EQUAL -1) 
-            list(REMOVE_ITEM ALL_SOURCE_FILES ${SOURCE_FILE})
-        endif () 
-    endforeach ()
-endforeach ()
+foreach (EXCLUDE_PATTERN ${CLANG_FORMAT_EXCLUDE_PATTERNS})
+    list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX ${EXCLUDE_PATTERN})
+endforeach()
 
 add_custom_target(format
     COMMENT "Running clang-format to change files"
