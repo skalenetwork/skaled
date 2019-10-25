@@ -1,10 +1,10 @@
 [submodule "evmjit"]
 	path = evmjit
-	url = https://github.com/ethereum/evmjit
+	url = https://github.com/ethereum/evmjit.git
 	branch = develop
 [submodule "evmc"]
 	path = evmc
-	url = https://github.com/ethereum/evmc
+	url = https://github.com/ethereum/evmc.git
 	branch = a4f7029371961b2ac4727e76eb721b86627a78d3
 [submodule "libconsensus"]
 	path = libconsensus
@@ -14,4 +14,4 @@
 	url = https://github.com/skalenetwork/skaled-tests.git
 [submodule "cmake/cable"]
 	path = cmake/cable
-	url = https://github.com/ethereum/cable
+	url = https://github.com/ethereum/cable.git
