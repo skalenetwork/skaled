@@ -197,8 +197,8 @@ public:
 
 class SkaleRelayWS : public skutils::ws::server, public SkaleServerHelper {
 protected:
-    volatile bool m_isRunning = false;
-    volatile bool m_isInLoop = false;
+    std::atomic_bool m_isRunning = false;
+    std::atomic_bool m_isInLoop = false;
     int ipVer_;
     std::string strBindAddr_;
     std::string m_strScheme_;

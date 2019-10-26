@@ -44,6 +44,9 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <atomic>
+#include <mutex>
+#include <atomic>
 
 namespace dev {
 namespace eth {
@@ -134,7 +137,7 @@ public:
     std::string debugCall( const std::string& arg );
 
 private:
-    bool working = false;
+    std::atomic_bool working = false;
 
     std::unique_ptr< Broadcaster > m_broadcaster;
 
@@ -152,7 +155,7 @@ private:
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
                                                  // pendingTransactions() and createBock()
 
-    int m_bcast_counter = 0;
+    std::atomic_int m_bcast_counter = 0;
 
     void penalizePeer(){};  // fake function for now
 
@@ -160,16 +163,54 @@ private:
 
     std::thread m_consensusThread;
 
-    bool m_exitNeeded = false;
+    std::atomic_bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;
-    bool m_broadcastPauseFlag = false;  // not pause - just ignore
+    std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
-    std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
-        m_transaction_cache;  // used to find
-                              // Transaction
-                              // objects when
-                              // creating block
+    mutable std::recursive_mutex m_mtx_4_safe_transaction_cache;
+    typedef std::array< uint8_t, 32 > array_32_bytes_t;
+    typedef std::map< array_32_bytes_t, dev::eth::Transaction > map_safe_transaction_cache_t;
+    map_safe_transaction_cache_t m_safe_transaction_cache;  // used to find Transaction objects when creating block
+    size_t safe_transaction_cache_size() const {
+        std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+        size_t cnt = m_safe_transaction_cache.size();
+        return cnt;
+    }
+//    size_t safe_transaction_cache_count_of( const array_32_bytes_t & refWhat ) const {
+//        std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+//        size_t cnt = m_safe_transaction_cache.count( refWhat );
+//        return cnt;
+//    }
+//    dev::eth::Transaction safe_transaction_cache_get( const array_32_bytes_t & k ) const {
+//        std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+//        dev::eth::Transaction v = m_safe_transaction_cache.at( k );
+//        return v;
+//    }
+    void safe_transaction_cache_set( const array_32_bytes_t & k, const dev::eth::Transaction & v ) {
+        std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+        m_safe_transaction_cache[ k ] = v;
+    }
+    void safe_transaction_cache_unset( const array_32_bytes_t & k ) {
+        std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+        m_safe_transaction_cache.erase( k );
+    }
+    typedef std::function < void( const dev::eth::Transaction & ) > fn_safe_transaction_cache_then_func_t;
+    typedef std::function < void() > fn_safe_transaction_cache_else_func_t;
+    void safe_transaction_cache_access_if_else( const array_32_bytes_t & k, fn_safe_transaction_cache_then_func_t fnThen, fn_safe_transaction_cache_else_func_t fnElse ) const {
+        { // block
+            std::lock_guard <std::recursive_mutex> lock( m_mtx_4_safe_transaction_cache );
+            if( m_safe_transaction_cache.find( k ) != m_safe_transaction_cache.cend() ) {
+                if( fnThen ) {
+                    const dev::eth::Transaction &v = m_safe_transaction_cache.at( k );
+                    fnThen( v );
+                }
+                return;
+            }
+        }// block
+        if( fnElse )
+            fnElse();
+    }
 
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
@@ -191,5 +232,5 @@ private:
     std::map< dev::h256, int > sent;
     std::set< dev::h256 > arrived;
 #endif
-    int total_sent, total_arrived;
+    std::atomic_int total_sent, total_arrived;
 };
