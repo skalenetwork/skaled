@@ -24,6 +24,8 @@
 
 #include "State.h"
 
+#include <mutex>
+
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -62,6 +64,10 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
+typedef std::recursive_mutex mutex_type_state;
+typedef std::lock_guard< mutex_type_state > lock_type_state;
+
+static mutex_type_state g_mtx_state;
 
 State::State(
     u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
@@ -650,6 +656,7 @@ void State::rollback( size_t _savepoint ) {
 }
 
 void State::updateToLatestVersion() {
+    lock_type_state lock( g_mtx_state );
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -662,6 +669,7 @@ void State::updateToLatestVersion() {
 }
 
 State State::startRead() const {
+    lock_type_state lock( g_mtx_state );
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
@@ -669,6 +677,7 @@ State State::startRead() const {
 }
 
 State State::startWrite() const {
+    lock_type_state lock( g_mtx_state );
     State stateCopy = State( *this );
     stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
