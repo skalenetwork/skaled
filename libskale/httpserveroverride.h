@@ -66,7 +66,7 @@ typedef intptr_t ssize_t;
 #include <libweb3jsonrpc/SkaleStatsSite.h>
 
 class SkaleStatsSubscriptionManager;
-class SkaleServerConnectionsTrackHelper;
+struct SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;

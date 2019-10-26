@@ -1,6 +1,7 @@
 #ifndef SKALEDEBUG_H
 #define SKALEDEBUG_H
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -11,6 +12,9 @@
 
 class SkaleDebugInterface {
 public:
+    typedef std::recursive_mutex mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+
     typedef std::function< std::string( const std::string& arg ) > handler;
 
     SkaleDebugInterface();
@@ -22,20 +26,29 @@ public:
 
 
 private:
-    std::vector< handler > handlers;
-    std::mutex global_mutex;
+    mutable mutex_type mtx_;
+    typedef std::vector< handler > vec_handlers_t;
+    vec_handlers_t handlers;
 };
 
 class SkaleDebugTracer {
 public:
+    typedef std::recursive_mutex mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+
     void tracepoint( const std::string& name );
 
     void break_on_tracepoint( const std::string& name, int count );
     void wait_for_tracepoint( const std::string& name );
     void continue_on_tracepoint( const std::string& name );
-    int get_tracepoint_count( const std::string& name ) { return find_by_name( name ).pass_count; }
+    int get_tracepoint_count( const std::string& name ) {
+        lock_type lock( mtx_ );
+        int rv = find_by_name( name ).pass_count;
+        return rv;
+    }
 
     std::set< std::string > get_tracepoints() const {
+        lock_type lock( mtx_ );
         std::set< std::string > res;
         for ( const auto& p : tracepoints ) {
             res.insert( p.first );
@@ -54,11 +67,12 @@ private:
     };
 
     std::map< std::string, tracepoint_struct > tracepoints;
-    std::mutex map_mutex;
     tracepoint_struct& find_by_name( const std::string& name ) {
-        std::lock_guard< std::mutex > lock( map_mutex );
+        lock_type lock( mtx_ );
         return tracepoints[name];
     }
+
+    mutable mutex_type mtx_;
 };
 
 std::string DebugTracer_handler( const std::string& arg, SkaleDebugTracer& tracer );
