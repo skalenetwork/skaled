@@ -58,8 +58,13 @@ void thread_pool::shutdown() {
     shutdown_flag_ = true;
     conditional_lock_.notify_all();
     size_t i, cnt = threads_.size();
-    for ( i = 0; i < cnt; ++i )
-        threads_[i].join();
+    for ( i = 0; i < cnt; ++i ) {
+        try {
+            if ( threads_[i].joinable() )
+                threads_[i].join();
+        } catch ( ... ) {
+        }
+    }
 }
 
 };  // namespace skutils
