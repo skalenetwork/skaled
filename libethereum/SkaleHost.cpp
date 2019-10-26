@@ -313,9 +313,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 m_tq.dropGood( t );
                 MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
                 safe_transaction_cache_unset( sha.asArray() );
-                m_received.erase( sha );
-
-                LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+                {  // block
+                    std::lock_guard< std::mutex > localGuard( m_receivedMutex );
+                    m_received.erase( sha );
+                    LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+                }  // block
             },
             [&]() -> void {
                 Transaction t( data, CheckTransaction::Everything, true );
