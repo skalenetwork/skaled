@@ -24,8 +24,8 @@
 
 #include "SkaleHost.h"
 
-#include <string>
 #include <atomic>
+#include <string>
 
 using namespace std;
 
@@ -231,12 +231,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             Transaction& txn = txns[i];
 
             h256 sha = txn.sha3();
-            safe_transaction_cache_access_if_else(
-                sha.asArray(),
-                [&] ( const dev::eth::Transaction & ) -> void {
+            safe_transaction_cache_access_if_else( sha.asArray(),
+                [&]( const dev::eth::Transaction& ) -> void {
                     m_debugTracer.tracepoint( "sent_txn_again" );
                 },
-                [&] () -> void {
+                [&]() -> void {
                     m_debugTracer.tracepoint( "sent_txn_new" );
                     safe_transaction_cache_set( sha.asArray(), txn );
                 } );
@@ -306,9 +305,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         // if already known
         // TODO clear occasionally this cache?!
-        safe_transaction_cache_access_if_else(
-            sha.asArray(),
-            [&] ( const dev::eth::Transaction & t) -> void {
+        safe_transaction_cache_access_if_else( sha.asArray(),
+            [&]( const dev::eth::Transaction& t ) -> void {
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -319,7 +317,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
                 LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
             },
-            [&] () -> void {
+            [&]() -> void {
                 Transaction t( data, CheckTransaction::Everything, true );
                 t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
                 out_txns.push_back( t );

@@ -858,7 +858,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             }
 
             // Update database with them.
-            //ReadGuard l1( x_blocksBlooms );
+            // ReadGuard l1( x_blocksBlooms );
             WriteGuard l1( x_blocksBlooms );
             {
                 MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );

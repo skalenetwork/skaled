@@ -33,12 +33,12 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <functional>
-#include <thread>
-#include <atomic>
 #include <mutex>
+#include <thread>
 
 namespace dev {
 namespace eth {
@@ -266,7 +266,7 @@ private:
     mutable SharedMutex m_lock;                    ///< General lock.
     mutable boost::condition_variable_any m_cond;  // for wait/notify
     Handler<> m_readyCondNotifier;
-    
+
     h256Hash m_known;  ///< Headers of transactions in both sets.
 
     std::unordered_map< h256, std::function< void( ImportResult ) > > m_callbacks;  ///< Called

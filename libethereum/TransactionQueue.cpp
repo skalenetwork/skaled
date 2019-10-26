@@ -112,7 +112,7 @@ ImportResult TransactionQueue::import( Transaction const& _transaction, IfDroppe
     ImportResult ret;
     {
         MICROPROFILE_SCOPEI( "TransactionQueue", "import", MP_THISTLE );
-        //WriteGuard l2( m_lock );
+        // WriteGuard l2( m_lock );
         UpgradableGuard l( m_lock );
         auto ir = check_WITH_LOCK( h, _ik );
         if ( ir != ImportResult::Success )
@@ -178,10 +178,10 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
 
 const h256Hash TransactionQueue::knownTransactions() const {
     h256Hash rv;
-    { // block
+    {  // block
         ReadGuard l( m_lock );
         rv = m_known;
-    } // block
+    }  // block
     return rv;
 }
 
