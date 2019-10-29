@@ -89,9 +89,7 @@ jobs:
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
             - export VERSION=$(cat ../VERSION)
-            - export VERSION=$( (test $TRAVIS_BRANCH = "master" && echo $VERSION) ||
-                                (test $TRAVIS_BRANCH = "release-candidate" && ../scripts/calculate_rc_version.sh $VERSION) ||
-                                ../scripts/calculate_develop_version.sh $VERSION)
+            - export VERSION=$( ../scripts/calculate_version.sh $TRAVIS_BRANCH $VERSION )
             - echo "Version $VERSION"
             - cd ../scripts/skale_build
             - ./build_image.sh $VERSION
