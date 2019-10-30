@@ -167,13 +167,11 @@ private:
     std::mutex m_consensusPauseMutex;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
-    mutable std::recursive_mutex m_mtx_4_safe_transaction_cache;
     typedef std::array< uint8_t, 32 > array_32_bytes_t;
     typedef std::map< array_32_bytes_t, dev::eth::Transaction > map_safe_transaction_cache_t;
     map_safe_transaction_cache_t m_safe_transaction_cache;  // used to find Transaction objects when
                                                             // creating block
     size_t safe_transaction_cache_size() const {
-        std::lock_guard< std::recursive_mutex > lock( m_mtx_4_safe_transaction_cache );
         size_t cnt = m_safe_transaction_cache.size();
         return cnt;
     }
@@ -188,11 +186,9 @@ private:
     //        return v;
     //    }
     void safe_transaction_cache_set( const array_32_bytes_t& k, const dev::eth::Transaction& v ) {
-        std::lock_guard< std::recursive_mutex > lock( m_mtx_4_safe_transaction_cache );
         m_safe_transaction_cache[k] = v;
     }
     void safe_transaction_cache_unset( const array_32_bytes_t& k ) {
-        std::lock_guard< std::recursive_mutex > lock( m_mtx_4_safe_transaction_cache );
         m_safe_transaction_cache.erase( k );
     }
     typedef std::function< void( const dev::eth::Transaction& ) >
@@ -202,7 +198,6 @@ private:
         fn_safe_transaction_cache_then_func_t fnThen,
         fn_safe_transaction_cache_else_func_t fnElse ) const {
         {  // block
-            std::lock_guard< std::recursive_mutex > lock( m_mtx_4_safe_transaction_cache );
             if ( m_safe_transaction_cache.find( k ) != m_safe_transaction_cache.cend() ) {
                 if ( fnThen ) {
                     const dev::eth::Transaction& v = m_safe_transaction_cache.at( k );
