@@ -376,6 +376,11 @@ Json::Value SkaleStats::skale_imaInfo() {
         jo["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         jo["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         //
+        jo["insecureBLSPublicKey0"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey0"];
+        jo["insecureBLSPublicKey1"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey1"];
+        jo["insecureBLSPublicKey2"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey2"];
+        jo["insecureBLSPublicKey3"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey3"];
+        //
         jo["insecureCommonBLSPublicKey0"] =
             joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey0"];
         jo["insecureCommonBLSPublicKey1"] =
