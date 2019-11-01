@@ -147,8 +147,6 @@ before_install:
     - eval "${MATRIX_EVAL}"
 install:
     - ./SkaleDeps/build.sh
-    - sh -c "while :; do clear; date; sleep 300; done" &
-    - ./libconsensus/libBLS/deps/build.sh &> ./log_of_deps_build.txt || (cat ./log_of_deps_build.txt && travis_terminate 1)
 script:
     # configure
     - mkdir -p build
