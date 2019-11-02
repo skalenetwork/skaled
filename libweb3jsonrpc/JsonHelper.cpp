@@ -174,7 +174,18 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["blockNumber"] = _t.blockNumber();
     res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["gasUsed"] = toJS( _t.gasUsed() );
-    res["contractAddress"] = toJS( _t.contractAddress() );
+    //
+    // The "contractAddress" field must be null for all types of trasactions but contract deployment
+    // ones. The contract deployment transaction is special because it's the only type of
+    // transaction with "to" filed set to null.
+    //
+    dev::Address contractAddress = _t.contractAddress();
+    if ( contractAddress == dev::Address( 0 ) )
+        res["contractAddress"] = Json::Value::nullRef;
+    else
+        res["contractAddress"] = toJS( contractAddress );
+    //
+    //
     res["logs"] = dev::toJson( _t.localisedLogs() );
     res["logsBloom"] = toJS( _t.bloom() );
     if ( _t.hasStatusCode() )
