@@ -416,8 +416,21 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )
         gasUsed -= bc().transactionReceipt( tl.first, tl.second - 1 ).cumulativeGasUsed();
-    return LocalisedTransactionReceipt( tr, t.sha3(), tl.first, numberFromHash( tl.first ),
-        tl.second, gasUsed, toAddress( t.from(), t.nonce() ) );
+    //
+    // The "contractAddress" field must be null for all types of trasactions but contract deployment
+    // ones. The contract deployment transaction is special because it's the only type of
+    // transaction with "to" filed set to null.
+    //
+    dev::Address contractAddress;
+    dev::Address to = t.to();
+    if ( to == dev::Address( 0 ) ) {
+        // if this transaction is contract deployment
+        contractAddress = toAddress( t.from(), t.nonce() );
+    }
+    //
+    //
+    return LocalisedTransactionReceipt(
+        tr, t.sha3(), tl.first, numberFromHash( tl.first ), tl.second, gasUsed, contractAddress );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
