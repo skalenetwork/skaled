@@ -338,8 +338,6 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    void updateToLatestVersion();
-
     /// Create State copy to get access to data.
     /// Different copies can be safely used in different threads
     /// but single object is not thread safe.
@@ -353,6 +351,8 @@ public:
     State delegateWrite();
 
     void stopWrite();
+
+    State startNew() const;
 
     /**
      * @brief clearAll removes all data from database
@@ -368,6 +368,8 @@ public:
     bool empty() const;
 
 private:
+    void updateToLatestVersion();
+
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0 );
 

@@ -649,7 +649,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state.updateToLatestVersion();
+//!!!        _state.updateToLatestVersion();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 

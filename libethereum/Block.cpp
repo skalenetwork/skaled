@@ -321,7 +321,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         ret = true;
     }
 #endif
-    m_state.updateToLatestVersion();
+    m_state = m_state.startNew();
     return ret;
 }
 

@@ -694,6 +694,12 @@ void State::stopWrite() {
     m_db_write_lock = boost::none;
 }
 
+State State::startNew() const {
+    State copy = State(*this);
+    copy.updateToLatestVersion();
+    return copy;
+}
+
 void State::clearAll() {
     if ( m_db_ptr ) {
         if ( !m_db_write_lock ) {

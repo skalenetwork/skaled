@@ -443,7 +443,7 @@ size_t Client::syncTransactions(
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
-        m_state.updateToLatestVersion();
+        m_state = m_state.startNew();
     }
 
     DEV_READ_GUARDED( x_working )
@@ -515,7 +515,7 @@ void Client::restartMining() {
     newPreMine = m_preSeal;
 
     // TODO: use m_postSeal to avoid re-evaluating our own blocks.
-    m_state.updateToLatestVersion();
+    m_state = m_state.startNew();
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
