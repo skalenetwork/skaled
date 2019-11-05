@@ -889,10 +889,17 @@ h256 Client::importTransaction( Transaction const& _t ) {
     const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
 
     // throws in case of error
-    // TODO potential race conditions in state and gasBidPrice (new block can arrive in between)
+    State state;
+    u256 gasBidPrice;
+
+    DEV_GUARDED(m_blockImportMutex){
+        state =  this->state().startRead();
+        gasBidPrice = this->gasBidPrice();
+    }
+
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
-        this->state().startRead(), *bc().sealEngine(), 0, this->gasBidPrice() );
+        state, *bc().sealEngine(), 0, gasBidPrice );
 
     ImportResult res = m_tq.import( _t );
     switch ( res ) {
