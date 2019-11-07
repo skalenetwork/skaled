@@ -530,6 +530,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
+    BOOST_REQUIRE( contractAddress != "null" );
 
     Json::Value call;
     call["to"] = contractAddress;
@@ -629,16 +630,21 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
+    BOOST_REQUIRE( contractAddress != "null" );
 
     Json::Value transact;
     transact["to"] = contractAddress;
     transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
-    rpcClient->eth_sendTransaction( transact );
+    string txHash2 = rpcClient->eth_sendTransaction( transact );
     dev::eth::mineTransaction( *( client ), 1 );
 
     string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
     BOOST_CHECK_EQUAL(
         storage, "0x0000000000000000000000000000000000000000000000000000000000000003" );
+
+    Json::Value receipt2 = rpcClient->eth_getTransactionReceipt( txHash2 );
+    string contractAddress2 = receipt2["contractAddress"].asString();
+    BOOST_REQUIRE( contractAddress2 == "null" );
 }
 
 BOOST_AUTO_TEST_CASE( web3_sha3 ) {
