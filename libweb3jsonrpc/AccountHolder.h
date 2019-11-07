@@ -141,6 +141,21 @@ private:
     std::unordered_map< dev::Address, dev::Secret > m_accounts;
 };
 
+class NoAccountHolder : public AccountHolder {
+public:
+    NoAccountHolder() : AccountHolder( std::function< Interface*() >() ) {}
+    ~NoAccountHolder() override {}
+    AddressHash realAccounts() const override {
+        AddressHash ah;
+        return ah;
+    }
+    std::pair< bool, Secret > authenticate( dev::eth::TransactionSkeleton const& ) override {
+        std::pair< bool, Secret > p;
+        p.first = false;
+        return p;
+    }
+};
+
 
 }  // namespace eth
 }  // namespace dev
