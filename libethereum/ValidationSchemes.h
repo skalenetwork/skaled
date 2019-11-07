@@ -60,6 +60,16 @@ extern std::string const c_constantinopleForkBlock;
 extern std::string const c_constantinopleFixForkBlock;
 extern std::string const c_istanbulForkBlock;
 extern std::string const c_experimentalForkBlock;
+
+extern std::string const c_skale16ForkBlock;
+extern std::string const c_skale32ForkBlock;
+extern std::string const c_skale64ForkBlock;
+extern std::string const c_skale128ForkBlock;
+extern std::string const c_skale256ForkBlock;
+extern std::string const c_skale512ForkBlock;
+extern std::string const c_skale1024ForkBlock;
+extern std::string const c_skaleUnlimitedForkBlock;
+
 extern std::string const c_accountStartNonce;
 extern std::string const c_maximumExtraDataSize;
 extern std::string const c_tieBreakingGas;
