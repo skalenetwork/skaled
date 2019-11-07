@@ -27,8 +27,14 @@ namespace dev {
   dev::h256 LevelDbHash256(dev::db::LevelDB* level_db) noexcept {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize(&ctx);
-    
-    secp256k1_sha256_write(&ctx, _input.data(), _input.size());
+    dev::db::LevelDB::Iterator* it = db->NewIterator(dev::db::LevelDB::ReadOptions());
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+      std::string key_ = it->key.ToString();
+      std::string value_ = it->value.ToString();
+      std::string key_value = key_ + value_;
+      bytesConstRef str_key_value(key_value.begin(), key_value.length());
+      secp256k1_sha256_write(&ctx, str_key_value.data(), str_key_value.size());
+    }
     h256 hash;
     secp256k1_sha256_finalize(&ctx, hash.data());
     return hash;

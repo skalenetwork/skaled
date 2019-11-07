@@ -150,7 +150,12 @@ simple_find_tool_program "autoconf" "AUTOCONF" "no"
 simple_find_tool_program "autogen" "AUTOGEN" "yes"
 simple_find_tool_program "automake" "AUTOMAKE" "yes"
 simple_find_tool_program "m4" "M4" "yes"
-simple_find_tool_program "libtool" "LIBTOOL" "yes"
+if [ ! "$UNIX_SYSTEM_NAME" = "Darwin" ];
+then
+	simple_find_tool_program "libtoolize" "LIBTOOLIZE" "no"
+else
+	simple_find_tool_program "glibtoolize" "LIBTOOLIZE" "no"
+fi
 simple_find_tool_program "shtool" "SHTOOL" "yes"
 simple_find_tool_program "pkg-config" "PKG_CONFIG" "yes"
 simple_find_tool_program "sed" "SED" "no"
@@ -2141,7 +2146,7 @@ then
         echo "    CXXFLAGS = $CXXFLAGS"
         echo "    CPPFLAGS = $CPPFLAGS"
         echo "    LDFLAGS  = $LDFLAGS"
-        libtoolize --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
+        $LIBTOOLIZE --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
         ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC $CONF_DEBUG_OPTIONS --with-pic --enable-static --disable-shared --prefix=$INSTALL_ROOT
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE $PARALLEL_MAKE_OPTIONS
