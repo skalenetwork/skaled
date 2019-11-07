@@ -122,10 +122,15 @@ public:
     dev::u256 getGasPrice() const;
 
     void pauseConsensus( bool _pause ) {
-        if ( _pause )
+        if ( _pause && !m_consensusPaused){
+            m_consensusPaused = true;
             m_consensusPauseMutex.lock();
-        else
+        }
+        else if(!_pause && m_consensusPaused){
+            m_consensusPaused = false;
             m_consensusPauseMutex.unlock();
+        }
+        // else do nothing
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
@@ -165,6 +170,7 @@ private:
     std::atomic_bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;
+    std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
     std::map< std::array< uint8_t, 32 >, dev::eth::Transaction > m_m_transaction_cache;  // used to find Transaction objects when

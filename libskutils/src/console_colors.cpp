@@ -8,11 +8,14 @@
 #include <exception>
 #include <map>
 #include <stdexcept>
+#include <mutex>
 
 #define CC_CONSOLE_COLOR_DEFAULT "\033[0m"
 #define CC_FORECOLOR( C ) "\033[" #C "m"
 #define CC_BACKCOLOR( C ) "\033[" #C "m"
 #define CC_ATTR( A ) "\033[" #A "m"
+
+static std::mutex g_libcall_mutex;
 
 namespace cc {
 e_reset_mode_t g_eResetMode = e_reset_mode_t::__ERM_FULL;
@@ -1182,6 +1185,7 @@ std::string duration2string( std::chrono::nanoseconds time ) {
 
 std::string time2string(
     std::time_t tt, uint64_t nMicroSeconds, bool isUTC, bool isColored /*= true*/ ) {
+    std::lock_guard<std::mutex> lock(g_libcall_mutex);
     struct std::tm aTm = isUTC ? ( *std::gmtime( &tt ) ) : ( *std::localtime( &tt ) );
     return time2string( aTm, nMicroSeconds, isColored );
 }
@@ -1308,7 +1312,11 @@ std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC,
         time_t tt = clock_2_time_t( ptTime );
         // tm utc_tm = *gmtime( &tt );
         // tm local_tm = *localtime( &tt );
-        tm effective_tm = isUTC ? ( *gmtime( &tt ) ) : ( *localtime( &tt ) );
+        tm effective_tm;
+        {
+            std::lock_guard<std::mutex> lock(g_libcall_mutex);
+            effective_tm = isUTC ? ( *gmtime( &tt ) ) : ( *localtime( &tt ) );
+        }
         if ( isColored )
             ss << dpart();
         ss << std::setw( 4 ) << ( effective_tm.tm_year + 1900 );
