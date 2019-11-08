@@ -46,7 +46,7 @@ BlockHeader Interface::blockInfo( BlockNumber _block ) const {
 }
 
 BlockDetails Interface::blockDetails( BlockNumber _block ) const {
-    if ( _block == PendingBlock ){
+    if ( _block == PendingBlock ) {
         BlockDetails res = pendingDetails();
         bytes rlp = res.rlp();
         res.size = rlp.size();

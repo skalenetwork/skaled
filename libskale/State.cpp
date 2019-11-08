@@ -695,7 +695,7 @@ void State::stopWrite() {
 }
 
 State State::startNew() const {
-    State copy = State(*this);
+    State copy = State( *this );
     copy.updateToLatestVersion();
     return copy;
 }

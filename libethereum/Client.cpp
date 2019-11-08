@@ -892,14 +892,14 @@ h256 Client::importTransaction( Transaction const& _t ) {
     State state;
     u256 gasBidPrice;
 
-    DEV_GUARDED(m_blockImportMutex){
-        state =  this->state().startRead();
+    DEV_GUARDED( m_blockImportMutex ) {
+        state = this->state().startRead();
         gasBidPrice = this->gasBidPrice();
     }
 
     Executive::verifyTransaction( _t,
-        bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
-        state, *bc().sealEngine(), 0, gasBidPrice );
+        bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
+        *bc().sealEngine(), 0, gasBidPrice );
 
     ImportResult res = m_tq.import( _t );
     switch ( res ) {

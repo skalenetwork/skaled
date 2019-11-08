@@ -59,7 +59,7 @@ private:
     std::map< std::string, tracepoint_struct > tracepoints;
     std::mutex local_mutex;
     tracepoint_struct& find_by_name( const std::string& name ) {
-        std::lock_guard<std::mutex> lock(local_mutex);
+        std::lock_guard< std::mutex > lock( local_mutex );
         return tracepoints[name];
     }
 };

@@ -234,9 +234,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() )
                 m_debugTracer.tracepoint( "sent_txn_again" );
-            else{
+            else {
                 m_debugTracer.tracepoint( "sent_txn_new" );
-                m_m_transaction_cache[sha.asArray() ] = txn;
+                m_m_transaction_cache[sha.asArray()] = txn;
             }
 
             out_vector.push_back( txn.rlp() );
@@ -305,8 +305,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         // if already known
         // TODO clear occasionally this cache?!
-        if(m_m_transaction_cache.find(sha.asArray()) != m_m_transaction_cache.cend()){
-            Transaction t = m_m_transaction_cache.at(sha.asArray());
+        if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
+            Transaction t = m_m_transaction_cache.at( sha.asArray() );
             out_txns.push_back( t );
             LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
             m_debugTracer.tracepoint( "drop_good" );
@@ -316,8 +316,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             std::lock_guard< std::mutex > localGuard( m_receivedMutex );
             m_received.erase( sha );
             LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-        }
-        else{
+        } else {
             Transaction t( data, CheckTransaction::Everything, true );
             t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
             out_txns.push_back( t );
