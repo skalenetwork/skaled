@@ -176,6 +176,16 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.constantinopleFixForkBlock, c_constantinopleFixForkBlock );
     setOptionalU256Parameter( cp.istanbulForkBlock, c_istanbulForkBlock );
     setOptionalU256Parameter( cp.experimentalForkBlock, c_experimentalForkBlock );
+
+    setOptionalU256Parameter( cp.skale16ForkBlock, c_skale16ForkBlock );
+    setOptionalU256Parameter( cp.skale32ForkBlock, c_skale32ForkBlock );
+    setOptionalU256Parameter( cp.skale64ForkBlock, c_skale64ForkBlock );
+    setOptionalU256Parameter( cp.skale128ForkBlock, c_skale128ForkBlock );
+    setOptionalU256Parameter( cp.skale256ForkBlock, c_skale256ForkBlock );
+    setOptionalU256Parameter( cp.skale512ForkBlock, c_skale512ForkBlock );
+    setOptionalU256Parameter( cp.skale1024ForkBlock, c_skale1024ForkBlock );
+    setOptionalU256Parameter( cp.skaleUnlimitedForkBlock, c_skaleUnlimitedForkBlock );
+
     setOptionalU256Parameter( cp.daoHardforkBlock, c_daoHardforkBlock );
     setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
     setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );

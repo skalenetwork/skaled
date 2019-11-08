@@ -63,6 +63,16 @@ string const c_constantinopleForkBlock = "constantinopleForkBlock";
 string const c_constantinopleFixForkBlock = "constantinopleFixForkBlock";
 string const c_istanbulForkBlock = "istanbulForkBlock";
 string const c_experimentalForkBlock = "experimentalForkBlock";
+
+string const c_skale16ForkBlock = "skale16ForkBlock";
+string const c_skale32ForkBlock = "skale32ForkBlock";
+string const c_skale64ForkBlock = "skale64ForkBlock";
+string const c_skale128ForkBlock = "skale128ForkBlock";
+string const c_skale256ForkBlock = "skale256ForkBlock";
+string const c_skale512ForkBlock = "skale512ForkBlock";
+string const c_skale1024ForkBlock = "skale1024ForkBlock";
+string const c_skaleUnlimitedForkBlock = "skaleUnlimitedForkBlock";
+
 string const c_accountStartNonce = "accountStartNonce";
 string const c_maximumExtraDataSize = "maximumExtraDataSize";
 string const c_tieBreakingGas = "tieBreakingGas";
