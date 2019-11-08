@@ -62,8 +62,6 @@ sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinf
 ```
 cd SkaleDeps
 ./build.sh
-cd ..
-./libconsensus/libBLS/deps/build.sh
 ```
 
 ### Configure and build skaled
