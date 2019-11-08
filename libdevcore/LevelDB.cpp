@@ -176,22 +176,22 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 }
 
 h256 LevelDB::HashBase() const {
-    std::unique_ptr<leveldb::Iterator> it(m_db->NewIterator(m_readOptions));
-    if (it == nullptr) {
+    std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
+    if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
     secp256k1_sha256_t ctx;
-    secp256k1_sha256_initialize(&ctx);
-    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    secp256k1_sha256_initialize( &ctx );
+    for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         std::string key_ = it->key().ToString();
         std::string value_ = it->value().ToString();
         std::string key_value = key_ + value_;
-        const std::vector<uint8_t> usc(key_value.begin(), key_value.end());
-        bytesConstRef str_key_value(usc.data(), usc.size());
-        secp256k1_sha256_write(&ctx, str_key_value.data(), str_key_value.size());
+        const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
+        bytesConstRef str_key_value( usc.data(), usc.size() );
+        secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
     }
     h256 hash;
-    secp256k1_sha256_finalize(&ctx, hash.data());
+    secp256k1_sha256_finalize( &ctx, hash.data() );
     return hash;
 }
 
