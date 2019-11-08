@@ -48,6 +48,8 @@ public:
 
     void forEach( std::function< bool( Slice, Slice ) > f ) const override;
 
+    h256 HashBase() const;
+
 private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;
