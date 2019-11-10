@@ -155,15 +155,78 @@ static const EVMSchedule IstanbulSchedule = [] {
     schedule.extcodehashGas = 700;
     schedule.haveChainID = true;
     schedule.haveSelfbalance = true;
+    // schedule.eip2200Mode = true;
+    schedule.sstoreUnchangedGas = 800;
+    return schedule;
+}();
+
+static const EVMSchedule BerlinSchedule = [] {
+    EVMSchedule schedule = IstanbulSchedule;
+    // schedule.precompileStaticCallGas = 40;
+    // schedule.callSelfGas = 40;
     return schedule;
 }();
 
 static const EVMSchedule ExperimentalSchedule = [] {
-    EVMSchedule schedule = IstanbulSchedule;
+    EVMSchedule schedule = BerlinSchedule;
     schedule.accountVersion = 1;
     schedule.blockhashGas = 800;
     return schedule;
 }();
+
+static const EVMSchedule SkaleSchedule_base = [] {
+    EVMSchedule schedule = ConstantinopleSchedule;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_16k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 16;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_32k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 32;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_64k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 64;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_128k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 128;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_256k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 256;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_512k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 512;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_1024k = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = 1024 * 1024;
+    return schedule;
+}();
+
+static const EVMSchedule SkaleSchedule_Unlimited = [] {
+    EVMSchedule schedule = SkaleSchedule_base;
+    schedule.maxCodeSize = std::numeric_limits< unsigned >::max();
+    return schedule;
+}();
+
 
 inline EVMSchedule const& latestScheduleForAccountVersion( u256 const& _version ) {
     if ( _version == 0 )
