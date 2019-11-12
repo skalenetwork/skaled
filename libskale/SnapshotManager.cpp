@@ -25,6 +25,8 @@
 #include "SnapshotManager.h"
 
 #include <secp256k1_sha256.h>
+#include <libdevcore/LevelDB.h>
+#include <libdevcore/TransientDirectory.h>
 #include <skutils/btrfs.h>
 
 #include <fstream>
@@ -286,6 +288,12 @@ bool SnapshotManager::isSnapshotHashPresent() {
 }
 
 void SnapshotManager::computeSnapshotHash() {
+    dev::TransientDirectory td(this->snapshots_dir.string());
 
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path() ) );
+    dev::h256 hash = m_db->hashBase();
+    
+    std::ofstream out(this->snapshot_hash_file_name);
+    out << hash;
 }
 
