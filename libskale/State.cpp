@@ -694,8 +694,14 @@ void State::stopWrite() {
     m_db_write_lock = boost::none;
 }
 
-State State::startNew() const {
-    State copy = State( *this );
+State State::startNew() {
+    State copy;
+    if ( m_db_write_lock )
+        copy = delegateWrite();
+    else
+        copy = State( *this );
+    if ( m_db_read_lock )
+        copy.m_db_read_lock.emplace( *copy.x_db_ptr );
     copy.updateToLatestVersion();
     return copy;
 }

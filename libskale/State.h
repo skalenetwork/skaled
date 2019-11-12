@@ -352,7 +352,7 @@ public:
 
     void stopWrite();
 
-    State startNew() const;
+    State startNew();
 
     /**
      * @brief clearAll removes all data from database
@@ -399,8 +399,10 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+public:
     bool checkVersion() const;
 
+private:
     enum Auxiliary { CODE = 1 };
 
     boost::optional< boost::shared_lock< boost::shared_mutex > > m_db_read_lock;

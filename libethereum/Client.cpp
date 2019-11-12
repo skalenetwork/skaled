@@ -138,6 +138,7 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
+        m_state = m_state.startNew();
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this
     // just take the root from the genesis block.
