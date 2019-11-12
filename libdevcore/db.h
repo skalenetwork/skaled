@@ -66,6 +66,7 @@ public:
     // of each record in the database. If `f` returns false, the `forEach`
     // method must return immediately.
     virtual void forEach( std::function< bool( Slice, Slice ) > f ) const = 0;
+    virtual h256 hashBase() const = 0;
 };
 
 DEV_SIMPLE_EXCEPTION( DatabaseError );
