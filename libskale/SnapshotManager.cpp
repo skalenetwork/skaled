@@ -1,7 +1,33 @@
+/*
+    Copyright (C) 2019-present, SKALE Labs
+
+    This file is part of skaled.
+
+    skaled is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    skaled is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/**
+ * @file SnapshotManager.cpp
+ * @author Dima Litvinov
+ * @date 2019
+ */
+
 #include "SnapshotManager.h"
 
+#include <secp256k1_sha256.h>
 #include <skutils/btrfs.h>
 
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -243,3 +269,23 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
         }  // if
     }      // for
 }
+
+dev::h256 SnapshotManager::getSnapshotHash() {
+    std::string hash_file = (this->snapshots_dir / this->snapshot_hash_file_name).string();
+    std::ifstream in(hash_file);
+
+    dev::h256 hash;
+    in >> hash;
+
+    return hash;
+}
+
+bool SnapshotManager::isSnapshotHashPresent() {
+    boost::filesystem::path hash_file = this->snapshots_dir / this->snapshot_hash_file_name;
+    return boost::filesystem::exists(hash_file);
+}
+
+void SnapshotManager::computeSnapshotHash() {
+
+}
+

@@ -1,5 +1,31 @@
+/*
+    Copyright (C) 2019-present, SKALE Labs
+
+    This file is part of skaled.
+
+    skaled is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    skaled is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/**
+ * @file SnapshotManager.h
+ * @author Dima Litvinov
+ * @date 2019
+ */
+
 #ifndef SNAPSHOTAGENT_H
 #define SNAPSHOTAGENT_H
+
+#include <libdevcore/FixedHash.h>
 
 #include <boost/filesystem.hpp>
 #include <string>
@@ -120,11 +146,16 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
+    dev::h256 getSnapshotHash();
+    inline bool isSnapshotHashPresent();
+    void computeSnapshotHash();
+
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
+    std::string snapshot_hash_file_name = "snapshot_hash.txt";
 };
 
 #endif  // SNAPSHOTAGENT_H
