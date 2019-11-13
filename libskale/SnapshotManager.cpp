@@ -279,10 +279,15 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
 
+    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLockRead" );
+    m_lock.lock();
+
     std::ifstream in( hash_file );
 
     dev::h256 hash;
     in >> hash;
+
+    m_lock.unlock();
 
     return hash;
 }
@@ -299,7 +304,7 @@ void SnapshotManager::computeSnapshotHash( unsigned block_number ) {
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path() ) );
     dev::h256 hash = m_db->hashBase();
 
-    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLock" );
+    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLockWrite" );
     m_lock.lock();
 
     std::ofstream out( this->snapshot_hash_file_name );
