@@ -25,8 +25,6 @@
 #include "SnapshotManager.h"
 
 #include <libdevcore/LevelDB.h>
-#include <libdevcore/TransientDirectory.h>
-#include <secp256k1_sha256.h>
 #include <skutils/btrfs.h>
 
 #include <boost/interprocess/sync/named_mutex.hpp>
@@ -41,7 +39,7 @@ using namespace std;
 namespace fs = boost::filesystem;
 
 // Can manage snapshots as non-prvivileged user
-// For send/receive neeeds root!
+// For send/receive needs root!
 
 // exceptions:
 // - bad data dir
@@ -292,19 +290,42 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
     return hash;
 }
 
-bool SnapshotManager::isSnapshotHashPresent( unsigned block_number ) {
+bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) {
     boost::filesystem::path hash_file =
-        this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name;
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshot_hash_file_name;
     return boost::filesystem::exists( hash_file );
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned block_number ) {
-    dev::TransientDirectory td( ( this->snapshots_dir / std::to_string( block_number ) ).string() );
+void SnapshotManager::computeVolumeHash(
+    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) {
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
+    dev::h256 hash_volume = m_db->hashBase();
 
-    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path() ) );
-    dev::h256 hash = m_db->hashBase();
+    secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
+}
 
-    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLockWrite" );
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "12041" / "extras",
+        &ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "12041" / "state",
+        &ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "blocks", &ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[1], &ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[2], &ctx );
+
+    dev::h256 hash;
+    secp256k1_sha256_finalize( &ctx, hash.data() );
+
+    boost::interprocess::named_mutex m_lock(
+        boost::interprocess::create_only, "hashFileLockWrite" );
     m_lock.lock();
 
     std::ofstream out( this->snapshot_hash_file_name );

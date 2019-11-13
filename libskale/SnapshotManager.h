@@ -26,6 +26,7 @@
 #define SNAPSHOTAGENT_H
 
 #include <libdevcore/FixedHash.h>
+#include <secp256k1_sha256.h>
 
 #include <boost/filesystem.hpp>
 #include <string>
@@ -146,9 +147,10 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash( unsigned block_number );
-    inline bool isSnapshotHashPresent( unsigned block_number );
-    void computeSnapshotHash( unsigned block_number );
+    dev::h256 getSnapshotHash( unsigned _blockNumber );
+    bool isSnapshotHashPresent( unsigned _blockNumber );
+    void computeSnapshotHash( unsigned _blockNumber );
+    void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
 
 private:
     boost::filesystem::path data_dir;
