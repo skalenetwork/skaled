@@ -1,14 +1,14 @@
-#include <libskale/SnapshotManager.h>
-#include <libweb3jsonrpc/Eth.h>
-#include <libethereum/ClientTest.h>
-#include <libweb3jsonrpc/AccountHolder.h>
-#include <libweb3jsonrpc/Web3.h>
-#include <libethcore/KeyManager.h>
-#include <libp2p/Network.h>
 #include <libdevcore/TransientDirectory.h>
+#include <libethcore/KeyManager.h>
+#include <libethereum/ClientTest.h>
+#include <libp2p/Network.h>
+#include <libskale/SnapshotManager.h>
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/Debug.h>
+#include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/Test.h>
+#include <libweb3jsonrpc/Web3.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -128,7 +128,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
 };
-} // namespace
+}  // namespace
 
 BOOST_FIXTURE_TEST_SUITE( SnapshotHashingSuite, JsonRpcFixture )
 
@@ -158,18 +158,18 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( SnapshotHashing ) {
-	SnapshotManager mgr( boost::filesystem::path( "btrfs" ), {"vol1", "vol2"} );
+    SnapshotManager mgr( boost::filesystem::path( "btrfs" ), {"vol1", "vol2"} );
 
-	mgr.doSnapshot( 1 );
-	/*fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" );
+    mgr.doSnapshot( 1 );
+    /*fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" );
     fs::remove( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" );*/
     mgr.doSnapshot( 2 );
 
     mgr.computeSnapshotHash( 1 );
     mgr.computeSnapshotHash( 2 );
 
-    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 1 ));
-    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 2 ));
+    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 1 ) );
+    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 2 ) );
 
     auto hash1 = mgr.getSnapshotHash( 1 );
     auto hash2 = mgr.getSnapshotHash( 2 );

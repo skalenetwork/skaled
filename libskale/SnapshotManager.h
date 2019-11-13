@@ -150,7 +150,7 @@ public:
     dev::h256 getSnapshotHash( unsigned _blockNumber );
     bool isSnapshotHashPresent( unsigned _blockNumber );
     void computeSnapshotHash( unsigned _blockNumber );
-    
+
     void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx );
     void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
 
