@@ -232,7 +232,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
 
-    string jsonAdmin;
+    string strJsonAdminSessionKey;
     ChainParams chainParams;
     string privateChain;
 
@@ -450,7 +450,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "import-presale" ) )
         presaleImports.push_back( vm["import-presale"].as< string >() );
     if ( vm.count( "admin" ) )
-        jsonAdmin = vm["admin"].as< string >();
+        strJsonAdminSessionKey = vm["admin"].as< string >();
 
     if ( vm.count( "config" ) ) {
         try {
@@ -1934,28 +1934,30 @@ int main( int argc, char** argv ) try {
         }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
            // nExplicitPortWSS > 0 )
 
-        if ( jsonAdmin.empty() )
-            jsonAdmin =
+        if ( strJsonAdminSessionKey.empty() )
+            strJsonAdminSessionKey =
                 sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
         else
             sessionManager->addSession(
-                jsonAdmin, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+                strJsonAdminSessionKey, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
-        cout << "JSONRPC Admin Session Key: " << jsonAdmin << "\n";
+        clog( VerbosityInfo, "main" )
+            << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
     }  // if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0  || nExplicitPortWS > 0 ||
        // nExplicitPortWSS > 0 )
 
     if ( bEnabledShutdownViaWeb3 ) {
-        std::cout << "Enabling programmatic shutdown via Web3...\n";
+        clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
         dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( 0 ); } );
-        cout << "Done, programmatic shutdown via Web3 is enabled\n";
+        clog( VerbosityInfo, "main" )
+            << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
-        std::cout << "Disabling programmatic shutdown via Web3...\n";
+        clog( VerbosityInfo, "main" ) << cc::debug( "Disabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( false );
-        std::cout << "Done, programmatic shutdown via Web3 is disabled\n";
+        clog( VerbosityInfo, "main" )
+            << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
-
 
     if ( client ) {
         unsigned int n = client->blockChain().details().number;

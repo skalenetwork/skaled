@@ -24,6 +24,7 @@
 
 #include "SkaleHost.h"
 
+#include <atomic>
 #include <string>
 
 using namespace std;
@@ -131,7 +132,7 @@ SkaleHost::~SkaleHost() {}
 void SkaleHost::logState() {
     LOG( m_debugLogger ) << cc::debug( "sent_to_consensus = " ) << total_sent
                          << cc::debug( " got_from_consensus = " ) << total_arrived
-                         << cc::debug( " m_transaction_cache = " ) << m_transaction_cache.size()
+                         << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
 }
@@ -230,11 +231,14 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             Transaction& txn = txns[i];
 
             h256 sha = txn.sha3();
-            if ( m_transaction_cache.count( sha.asArray() ) == 0 ) {
-                m_debugTracer.tracepoint( "sent_txn_new" );
-                m_transaction_cache[sha.asArray()] = txn;
-            } else
+
+            if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() )
                 m_debugTracer.tracepoint( "sent_txn_again" );
+            else {
+                m_debugTracer.tracepoint( "sent_txn_new" );
+                m_m_transaction_cache[sha.asArray()] = txn;
+            }
+
             out_vector.push_back( txn.rlp() );
 
             ++total_sent;
@@ -280,7 +284,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
-    bool have_consensus_born = false;  // means we need to re-verify old txns
+    std::atomic_bool have_consensus_born = false;  // means we need to re-verify old txns
 
     m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -301,29 +305,25 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         // if already known
         // TODO clear occasionally this cache?!
-        if ( m_transaction_cache.count( sha.asArray() ) ) {
-            Transaction& t = m_transaction_cache[sha.asArray()];
-
+        if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
+            Transaction t = m_m_transaction_cache.at( sha.asArray() );
             out_txns.push_back( t );
             LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
             MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
-            m_transaction_cache.erase( sha.asArray() );
+            m_m_transaction_cache.erase( sha.asArray() );
+            std::lock_guard< std::mutex > localGuard( m_receivedMutex );
             m_received.erase( sha );
-
             LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-        }
-        // if new
-        else {
+        } else {
             Transaction t( data, CheckTransaction::Everything, true );
             t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
             out_txns.push_back( t );
             LOG( m_debugLogger ) << "Will import consensus-born txn!";
             m_debugTracer.tracepoint( "import_consensus_born" );
             have_consensus_born = true;
-        }  // else
-
+        }
         if ( m_tq.knownTransactions().count( sha ) != 0 ) {
             // TODO fix this!!?
             clog( VerbosityWarning, "skale-host" )

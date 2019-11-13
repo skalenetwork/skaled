@@ -264,8 +264,8 @@ private:
 
     virtual bool read_and_close_socket( socket_t sock );
 
-    volatile bool is_in_loop_ = false;
-    bool is_running_;
+    std::atomic_bool is_in_loop_ = false;
+    std::atomic_bool is_running_ = false;
     socket_t svr_sock_;
     std::string base_dir_;
     Handlers get_handlers_;
@@ -278,7 +278,7 @@ private:
     Logger logger_;
 
     std::mutex running_connectoin_handlers_mutex_;
-    volatile int running_connectoin_handlers_;
+    std::atomic_int running_connectoin_handlers_;
     int running_connectoin_handlers_get() {
         int n = 0;
         std::lock_guard< std::mutex > guard( running_connectoin_handlers_mutex_ );

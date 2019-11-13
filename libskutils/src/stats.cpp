@@ -170,6 +170,7 @@ double named_event_stats::compute_eps( const std::string& eventName, const time_
 
 double named_event_stats::compute_eps( t_NamedEventsIt& itEvent, const time_point& tpNow,
     size_t* p_nSummary, size_t* p_nSummary1 ) const {
+    lock_type lock( const_cast< named_event_stats& >( *this ) );
     const auto duration_milliseconds = std::chrono::duration_cast< std::chrono::milliseconds >(
         tpNow - itEvent->second.m_prevTime );
     const double seconds = static_cast< double >( duration_milliseconds.count() ) / 1000.0;

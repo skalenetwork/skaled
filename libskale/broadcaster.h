@@ -98,7 +98,7 @@ private:
     void* client_socket() const;
 
     // threading
-    bool m_need_exit;
+    std::atomic_bool m_need_exit;
     std::thread m_thread;
 };
 

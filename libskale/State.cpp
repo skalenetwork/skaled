@@ -24,6 +24,8 @@
 
 #include "State.h"
 
+#include <mutex>
+
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -61,7 +63,6 @@ using dev::eth::TransactionReceipt;
 #ifndef ETH_VMTRACE
 #define ETH_VMTRACE 0
 #endif
-
 
 State::State(
     u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
@@ -691,6 +692,18 @@ State State::delegateWrite() {
 
 void State::stopWrite() {
     m_db_write_lock = boost::none;
+}
+
+State State::startNew() {
+    State copy;
+    if ( m_db_write_lock )
+        copy = delegateWrite();
+    else
+        copy = State( *this );
+    if ( m_db_read_lock )
+        copy.m_db_read_lock.emplace( *copy.x_db_ptr );
+    copy.updateToLatestVersion();
+    return copy;
 }
 
 void State::clearAll() {

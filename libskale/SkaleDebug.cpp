@@ -36,14 +36,14 @@ void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count )
 void SkaleDebugTracer::wait_for_tracepoint( const std::string& name ) {
     tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::unique_lock< std::mutex > lock( tp_obj.caller_mutex );
-    tp_obj.caller_cond.wait( lock );
+    std::unique_lock< std::mutex > lock2( tp_obj.caller_mutex );
+    tp_obj.caller_cond.wait( lock2 );
 }
 
 void SkaleDebugTracer::continue_on_tracepoint( const std::string& name ) {
     tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::lock_guard< std::mutex > lock( tp_obj.thread_mutex );
+    std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
     assert( !tp_obj.need_break );
     tp_obj.thread_cond.notify_all();
 }
@@ -51,7 +51,7 @@ void SkaleDebugTracer::continue_on_tracepoint( const std::string& name ) {
 void SkaleDebugTracer::tracepoint( const std::string& name ) {
     tracepoint_struct& tp_obj = find_by_name( name );
 
-    std::unique_lock< std::mutex > lock( tp_obj.thread_mutex );
+    std::unique_lock< std::mutex > lock2( tp_obj.thread_mutex );
     ++tp_obj.pass_count;
     if ( tp_obj.need_break ) {
         ++tp_obj.waiting_count;
@@ -62,7 +62,7 @@ void SkaleDebugTracer::tracepoint( const std::string& name ) {
             tp_obj.caller_cond.notify_all();
         }
 
-        tp_obj.thread_cond.wait( lock );
+        tp_obj.thread_cond.wait( lock2 );
     }
 }
 
