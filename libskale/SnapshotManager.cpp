@@ -29,6 +29,8 @@
 #include <secp256k1_sha256.h>
 #include <skutils/btrfs.h>
 
+#include <boost/interprocess/sync/named_mutex.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -272,8 +274,11 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     }      // for
 }
 
-dev::h256 SnapshotManager::getSnapshotHash() {
-    std::string hash_file = ( this->snapshots_dir / this->snapshot_hash_file_name ).string();
+dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
+    std::string hash_file =
+        ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
+            .string();
+
     std::ifstream in( hash_file );
 
     dev::h256 hash;
@@ -282,17 +287,23 @@ dev::h256 SnapshotManager::getSnapshotHash() {
     return hash;
 }
 
-bool SnapshotManager::isSnapshotHashPresent() {
-    boost::filesystem::path hash_file = this->snapshots_dir / this->snapshot_hash_file_name;
+bool SnapshotManager::isSnapshotHashPresent( unsigned block_number ) {
+    boost::filesystem::path hash_file =
+        this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name;
     return boost::filesystem::exists( hash_file );
 }
 
-void SnapshotManager::computeSnapshotHash() {
-    dev::TransientDirectory td( this->snapshots_dir.string() );
+void SnapshotManager::computeSnapshotHash( unsigned block_number ) {
+    dev::TransientDirectory td( ( this->snapshots_dir / std::to_string( block_number ) ).string() );
 
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path() ) );
     dev::h256 hash = m_db->hashBase();
 
+    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLock" );
+    m_lock.lock();
+
     std::ofstream out( this->snapshot_hash_file_name );
     out << hash;
+
+    m_lock.unlock();
 }

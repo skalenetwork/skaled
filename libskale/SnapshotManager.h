@@ -146,9 +146,9 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash();
-    inline bool isSnapshotHashPresent();
-    void computeSnapshotHash();
+    dev::h256 getSnapshotHash( unsigned block_number );
+    inline bool isSnapshotHashPresent( unsigned block_number );
+    void computeSnapshotHash( unsigned block_number );
 
 private:
     boost::filesystem::path data_dir;
