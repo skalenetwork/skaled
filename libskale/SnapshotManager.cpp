@@ -304,22 +304,26 @@ void SnapshotManager::computeVolumeHash(
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
 }
 
+void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) {
+    this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
+                                 this->volumes[0] / "12041" / "extras",
+        ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
+        ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[1], ctx );
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[2], ctx );
+}
+
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "12041" / "extras",
-        &ctx );
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "12041" / "state",
-        &ctx );
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[0] / "blocks", &ctx );
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[1], &ctx );
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / volumes[2], &ctx );
+    this->computeAllVolumesHash( _blockNumber, &ctx );
 
     dev::h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
