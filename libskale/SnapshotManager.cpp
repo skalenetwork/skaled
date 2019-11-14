@@ -277,6 +277,10 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
 
+    if ( !boost::filesystem::exists( hash_file ) ) {
+        throw std::logic_error( "hash doesn't exist" );
+    }
+
     boost::interprocess::named_mutex m_lock(
         boost::interprocess::open_or_create, "hashFileLockRead" );
     m_lock.lock();
@@ -299,6 +303,11 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) {
 
 void SnapshotManager::computeVolumeHash(
     const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) {
+    if ( !boost::filesystem::exists( _volumeDir ) ) {
+        throw std::logic_error(
+            "btrfs volume was corrupted - folder " + _volumeDir.string() + " doesn't exist" );
+    }
+
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
 
@@ -306,14 +315,21 @@ void SnapshotManager::computeVolumeHash(
 }
 
 void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) {
+    if ( this->volumes.size() == 0 ) {
+        throw std::logic_error( "No btrfs volumes present - nothing to calculate hash of" );
+    }
+
     this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
                                  this->volumes[0] / "12041" / "extras",
         ctx );
+
     this->computeVolumeHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
+
     this->computeVolumeHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
+
     for ( size_t i = 1; i < this->volumes.size(); ++i ) {
         this->computeVolumeHash(
             this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
@@ -325,17 +341,25 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
     secp256k1_sha256_initialize( &ctx );
 
     for ( const auto& volume : this->volumes ) {
-        btrfs.btrfs_subvolume_property_set(
+        int res = btrfs.btrfs_subvolume_property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "false" );
+
+        if ( res != 0 ) {
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
     }
 
     this->computeAllVolumesHash( _blockNumber, &ctx );
 
     for ( const auto& volume : this->volumes ) {
-        btrfs.btrfs_subvolume_property_set(
+        int res = btrfs.btrfs_subvolume_property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "true" );
+
+        if ( res != 0 ) {
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
     }
 
     dev::h256 hash;

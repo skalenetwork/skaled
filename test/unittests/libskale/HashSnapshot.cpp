@@ -196,6 +196,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     }
 
     ~SnapshotHashingFixture() {
+    	client.reset();
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
