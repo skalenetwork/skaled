@@ -338,8 +338,6 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    void updateToLatestVersion();
-
     /// Create State copy to get access to data.
     /// Different copies can be safely used in different threads
     /// but single object is not thread safe.
@@ -353,6 +351,8 @@ public:
     State delegateWrite();
 
     void stopWrite();
+
+    State startNew();
 
     /**
      * @brief clearAll removes all data from database
@@ -368,6 +368,8 @@ public:
     bool empty() const;
 
 private:
+    void updateToLatestVersion();
+
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0 );
 
@@ -397,8 +399,10 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+public:
     bool checkVersion() const;
 
+private:
     enum Auxiliary { CODE = 1 };
 
     boost::optional< boost::shared_lock< boost::shared_mutex > > m_db_read_lock;

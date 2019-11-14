@@ -66,7 +66,7 @@ typedef intptr_t ssize_t;
 #include <libweb3jsonrpc/SkaleStatsSite.h>
 
 class SkaleStatsSubscriptionManager;
-class SkaleServerConnectionsTrackHelper;
+struct SkaleServerConnectionsTrackHelper;
 class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
@@ -197,8 +197,8 @@ public:
 
 class SkaleRelayWS : public skutils::ws::server, public SkaleServerHelper {
 protected:
-    volatile bool m_isRunning = false;
-    volatile bool m_isInLoop = false;
+    std::atomic_bool m_isRunning = false;
+    std::atomic_bool m_isInLoop = false;
     int ipVer_;
     std::string strBindAddr_;
     std::string m_strScheme_;

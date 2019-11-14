@@ -275,6 +275,7 @@ map_method_call_stats_t g_map_method_traffic_stats_out;
 static size_t g_nDefaultQueueSize = 10;
 
 static skutils::stats::named_event_stats& stat_sybsystem_call_queue( const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_call_stats.find( strSubSystem ),
                                       itEnd = g_map_method_call_stats.end();
     if ( itFind != itEnd ) {
@@ -287,6 +288,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_call_queue( const char*
     return ( *x );
 }
 static skutils::stats::named_event_stats& stat_sybsystem_answer_queue( const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_answer_stats.find( strSubSystem ),
                                       itEnd = g_map_method_answer_stats.end();
     if ( itFind != itEnd ) {
@@ -299,6 +301,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_answer_queue( const cha
     return ( *x );
 }
 static skutils::stats::named_event_stats& stat_sybsystem_error_queue( const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_error_stats.find( strSubSystem ),
                                       itEnd = g_map_method_error_stats.end();
     if ( itFind != itEnd ) {
@@ -312,6 +315,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_error_queue( const char
 }
 static skutils::stats::named_event_stats& stat_sybsystem_exception_queue(
     const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_exception_stats.find( strSubSystem ),
                                       itEnd = g_map_method_exception_stats.end();
     if ( itFind != itEnd ) {
@@ -326,6 +330,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_exception_queue(
 
 static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_in(
     const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     const auto itFind = g_map_method_traffic_stats_in.find( strSubSystem );
     if ( itFind != std::end( g_map_method_traffic_stats_in ) ) {
         skutils::stats::named_event_stats* x = itFind->second;
@@ -338,6 +343,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_in(
 }
 static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_out(
     const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     const auto itFind = g_map_method_traffic_stats_out.find( strSubSystem );
     if ( itFind != std::end( g_map_method_traffic_stats_out ) ) {
         skutils::stats::named_event_stats* x = itFind->second;
@@ -407,6 +413,7 @@ void register_stats_exception( const char* strSubSystem, const nlohmann::json& j
 }
 
 static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
+    lock_type_stats lock( g_mtx_stats );
     nlohmann::json jo = nlohmann::json::object();
     skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
     skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );

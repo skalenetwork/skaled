@@ -40,8 +40,10 @@
 
 #include <jsonrpccpp/client/client.h>
 
+#include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 
@@ -120,10 +122,14 @@ public:
     dev::u256 getGasPrice() const;
 
     void pauseConsensus( bool _pause ) {
-        if ( _pause )
+        if ( _pause && !m_consensusPaused ) {
+            m_consensusPaused = true;
             m_consensusPauseMutex.lock();
-        else
+        } else if ( !_pause && m_consensusPaused ) {
+            m_consensusPaused = false;
             m_consensusPauseMutex.unlock();
+        }
+        // else do nothing
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
@@ -134,7 +140,7 @@ public:
     std::string debugCall( const std::string& arg );
 
 private:
-    bool working = false;
+    std::atomic_bool working = false;
 
     std::unique_ptr< Broadcaster > m_broadcaster;
 
@@ -152,7 +158,7 @@ private:
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
                                                  // pendingTransactions() and createBock()
 
-    int m_bcast_counter = 0;
+    std::atomic_int m_bcast_counter = 0;
 
     void penalizePeer(){};  // fake function for now
 
@@ -160,17 +166,15 @@ private:
 
     std::thread m_consensusThread;
 
-    bool m_exitNeeded = false;
+    std::atomic_bool m_exitNeeded = false;
 
     std::mutex m_consensusPauseMutex;
-    bool m_broadcastPauseFlag = false;  // not pause - just ignore
+    std::atomic_bool m_consensusPaused = false;
+    std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
     std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
-        m_transaction_cache;  // used to find
-                              // Transaction
-                              // objects when
-                              // creating block
-
+        m_m_transaction_cache;  // used to find Transaction objects when
+                                // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
 
@@ -191,5 +195,5 @@ private:
     std::map< dev::h256, int > sent;
     std::set< dev::h256 > arrived;
 #endif
-    int total_sent, total_arrived;
+    std::atomic_int total_sent, total_arrived;
 };
