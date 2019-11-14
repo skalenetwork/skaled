@@ -9,6 +9,7 @@
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
+#include <skutils/btrfs.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -46,10 +47,93 @@ private:
     TestIpcServer& m_server;
 };
 
-struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture() {
-        dev::p2p::NetworkPreferences nprefs;
+struct FixtureCommon {
+    const string BTRFS_FILE_PATH = "btrfs.file";
+    const string BTRFS_DIR_PATH = "btrfs";
+    uid_t sudo_uid;
+    gid_t sudo_gid;
+
+    void check_sudo() {
+#if ( !defined __APPLE__ )
+        char* id_str = getenv( "SUDO_UID" );
+        if ( id_str == NULL ) {
+            cerr << "Please run under sudo" << endl;
+            exit( -1 );
+        }
+
+        sscanf( id_str, "%d", &sudo_uid );
+
+        //    uid_t ru, eu, su;
+        //    getresuid( &ru, &eu, &su );
+        //    cerr << ru << " " << eu << " " << su << endl;
+
+        if ( geteuid() != 0 ) {
+            cerr << "Need to be root" << endl;
+            exit( -1 );
+        }
+
+        id_str = getenv( "SUDO_GID" );
+        sscanf( id_str, "%d", &sudo_gid );
+
+        gid_t rgid, egid, sgid;
+        getresgid( &rgid, &egid, &sgid );
+        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
+#endif
+    }
+
+    void dropRoot() {
+#if ( !defined __APPLE__ )
+        int res = setresgid( sudo_gid, sudo_gid, 0 );
+        cerr << "setresgid " << sudo_gid << " " << res << endl;
+        if ( res < 0 )
+            cerr << strerror( errno ) << endl;
+        res = setresuid( sudo_uid, sudo_uid, 0 );
+        cerr << "setresuid " << sudo_uid << " " << res << endl;
+        if ( res < 0 )
+            cerr << strerror( errno ) << endl;
+#endif
+    }
+
+    void gainRoot() {
+#if ( !defined __APPLE__ )
+        int res = setresuid( 0, 0, 0 );
+        if ( res ) {
+            cerr << strerror( errno ) << endl;
+            assert( false );
+        }
+        setresgid( 0, 0, 0 );
+        if ( res ) {
+            cerr << strerror( errno ) << endl;
+            assert( false );
+        }
+#endif
+    }
+};
+
+struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
+    SnapshotHashingFixture() {
+        check_sudo();
+
+        dropRoot();
+
+        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
+        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+
+        gainRoot();
+        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+                    .c_str() );
+        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        dropRoot();
+
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
+        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
+
+        gainRoot();
+
         ChainParams chainParams;
+        dev::p2p::NetworkPreferences nprefs;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
         chainParams.difficulty = chainParams.minimumDifficulty;
@@ -66,8 +150,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
+        mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
+            {BlockChain::getChainDirName( chainParams )} ) );
+
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, tempDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
+            WithExisting::Kill ) );
 
         //        client.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -107,6 +195,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
+    ~SnapshotHashingFixture() {
+        const char* NC = getenv( "NC" );
+        if ( NC )
+            return;
+        gainRoot();
+        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+    }
+
     string sendingRawShouldFail( string const& _t ) {
         try {
             rpcClient->eth_sendRawTransaction( _t );
@@ -127,12 +225,13 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
+    unique_ptr< SnapshotManager > mgr;
 };
 }  // namespace
 
-BOOST_FIXTURE_TEST_SUITE( SnapshotHashingSuite, JsonRpcFixture )
+BOOST_FIXTURE_TEST_SUITE( SnapshotHashingSuite, SnapshotHashingFixture )
 
-BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
+BOOST_AUTO_TEST_CASE( SnapshotHashing ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -142,37 +241,22 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
     // Mine to generate a non-zero account balance
-    const int blocksToMine = 2;
-    const u256 blockReward = 3 * dev::eth::ether;
-    cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << client->balanceAt( senderAddress ) << endl;
+    const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
-    cerr << "Balance after: " << client->balanceAt( senderAddress ) << endl;
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
-    BOOST_REQUIRE( !signedTx["raw"].empty() );
+    mgr->doSnapshot( 1 );
+    mgr->computeSnapshotHash( 1 );
 
-    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
-    BOOST_REQUIRE( !txHash.empty() );
-}
+    dev::eth::simulateMining( *( client ), blocksToMine );
+    mgr->doSnapshot( 2 );
 
-BOOST_AUTO_TEST_CASE( SnapshotHashing ) {
-    SnapshotManager mgr( boost::filesystem::path( "btrfs" ), {"vol1", "vol2"} );
+    mgr->computeSnapshotHash( 2 );
 
-    mgr.doSnapshot( 1 );
-    /*fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" );
-    fs::remove( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" );*/
-    mgr.doSnapshot( 2 );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 2 ) );
 
-    mgr.computeSnapshotHash( 1 );
-    mgr.computeSnapshotHash( 2 );
-
-    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 1 ) );
-    BOOST_REQUIRE( mgr.isSnapshotHashPresent( 2 ) );
-
-    auto hash1 = mgr.getSnapshotHash( 1 );
-    auto hash2 = mgr.getSnapshotHash( 2 );
+    auto hash1 = mgr->getSnapshotHash( 1 );
+    auto hash2 = mgr->getSnapshotHash( 2 );
 
     BOOST_REQUIRE( hash1 != hash2 );
 }
