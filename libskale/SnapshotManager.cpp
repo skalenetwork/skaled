@@ -277,7 +277,8 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
 
-    boost::interprocess::named_mutex m_lock( boost::interprocess::create_only, "hashFileLockRead" );
+    boost::interprocess::named_mutex m_lock(
+        boost::interprocess::open_or_create, "hashFileLockRead" );
     m_lock.lock();
 
     std::ifstream in( hash_file );
@@ -341,10 +342,11 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
     secp256k1_sha256_finalize( &ctx, hash.data() );
 
     boost::interprocess::named_mutex m_lock(
-        boost::interprocess::create_only, "hashFileLockWrite" );
+        boost::interprocess::open_or_create, "hashFileLockWrite" );
     m_lock.lock();
 
-    std::ofstream out( this->snapshot_hash_file_name );
+    std::ofstream out( ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+                       this->snapshot_hash_file_name );
     out << hash;
 
     m_lock.unlock();

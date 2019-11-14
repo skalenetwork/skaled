@@ -151,15 +151,15 @@ public:
     bool isSnapshotHashPresent( unsigned _blockNumber );
     void computeSnapshotHash( unsigned _blockNumber );
 
-    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx );
-    void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
-
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
     std::string snapshot_hash_file_name = "snapshot_hash.txt";
+
+    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx );
+    void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
 };
 
 #endif  // SNAPSHOTAGENT_H

@@ -259,6 +259,16 @@ BOOST_AUTO_TEST_CASE( SnapshotHashing ) {
     auto hash2 = mgr->getSnapshotHash( 2 );
 
     BOOST_REQUIRE( hash1 != hash2 );
+
+    mgr->doSnapshot( 3 );
+
+    mgr->computeSnapshotHash( 3 );
+
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
+
+    auto hash2_dbl = mgr->getSnapshotHash( 3 );
+
+    BOOST_REQUIRE( hash2 == hash2_dbl );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
