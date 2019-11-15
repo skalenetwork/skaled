@@ -24,6 +24,10 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
+boost::unit_test::assertion_result option_all( boost::unit_test::test_unit_id ) {
+    return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
+}
+
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
 public:
@@ -230,9 +234,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 };
 }  // namespace
 
-BOOST_FIXTURE_TEST_SUITE( SnapshotHashingSuite, SnapshotHashingFixture )
+BOOST_AUTO_TEST_SUITE ( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all ) )
 
-BOOST_AUTO_TEST_CASE( SnapshotHashing ) {
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
