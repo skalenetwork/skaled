@@ -136,10 +136,9 @@ void Ethash::verifyTransaction( ImportRequirements::value _ir, TransactionBase c
 
     if ( _ir & ImportRequirements::TransactionSignatures ) {
         if ( _header.number() >= chainParams().EIP158ForkBlock ) {
-            int chainID = chainParams().chainID;
+            uint64_t chainID = chainParams().chainID;
             _t.checkChainId( chainID );
-        } else
-            _t.checkChainId( -4 );
+        }  // if
     }
 }
 
