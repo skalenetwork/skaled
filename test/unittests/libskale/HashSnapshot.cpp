@@ -274,6 +274,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
     auto hash2_dbl = mgr->getSnapshotHash( 3 );
 
     BOOST_REQUIRE( hash2 == hash2_dbl );
+
+    BOOST_REQUIRE( !mgr->isSnapshotHashPresent( 4 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
