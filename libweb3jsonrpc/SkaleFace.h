@@ -57,11 +57,17 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_downloadSnapshotFragment( request );
     }
 
+    inline virtual void skale_getSnapshotHashI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_getSnapshotHash( request );
+    }
+
     virtual std::string skale_protocolVersion() = 0;
     virtual std::string skale_receiveTransaction( std::string const& _rlp ) = 0;
     virtual std::string skale_shutdownInstance() = 0;
     virtual Json::Value skale_getSnapshot( const Json::Value& request ) = 0;
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
+    virtual Json::Value skale_getSnapshotHash( const Json::Value& request ) = 0;
 
 public:
     SkaleFace() {
@@ -84,6 +90,9 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_downloadSnapshotFragment",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_downloadSnapshotFragmentI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getSnapshotHash",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
+            &dev::rpc::SkaleFace::skale_getSnapshotHashI );
     }
 };
 

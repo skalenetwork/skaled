@@ -268,6 +268,10 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
+Json::Value Skale::skale_getSnapshotHash( const Json::Value& request ) {
+    return request;
+}
+
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,

@@ -272,7 +272,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     }      // for
 }
 
-dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
+dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
     std::string hash_file =
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
@@ -295,14 +295,14 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
     return hash;
 }
 
-bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) {
+bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
     boost::filesystem::path hash_file =
         this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshot_hash_file_name;
     return boost::filesystem::exists( hash_file );
 }
 
 void SnapshotManager::computeVolumeHash(
-    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) {
+    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const {
     if ( !boost::filesystem::exists( _volumeDir ) ) {
         throw std::logic_error(
             "btrfs volume was corrupted - folder " + _volumeDir.string() + " doesn't exist" );
@@ -314,7 +314,8 @@ void SnapshotManager::computeVolumeHash(
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
 }
 
-void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) {
+void SnapshotManager::computeAllVolumesHash(
+    unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     if ( this->volumes.size() == 0 ) {
         throw std::logic_error( "No btrfs volumes present - nothing to calculate hash of" );
     }
@@ -336,7 +337,7 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
     }
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) const {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 

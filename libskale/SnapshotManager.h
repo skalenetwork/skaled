@@ -147,19 +147,20 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber );
-    bool isSnapshotHashPresent( unsigned _blockNumber );
-    void computeSnapshotHash( unsigned _blockNumber );
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
+    bool isSnapshotHashPresent( unsigned _blockNumber ) const;
+    void computeSnapshotHash( unsigned _blockNumber ) const;
 
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
-    std::string snapshot_hash_file_name = "snapshot_hash.txt";
+    const std::string snapshot_hash_file_name = "snapshot_hash.txt";
 
-    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx );
-    void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
+    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
+    void computeVolumeHash(
+        const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
 };
 
 #endif  // SNAPSHOTAGENT_H
