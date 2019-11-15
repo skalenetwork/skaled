@@ -118,7 +118,7 @@ void simulateMining( Client& client, size_t numBlocks ) {
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
         reward += client.sealEngine()->blockReward( blockNumber );
     }
-    state.addBalance( client.author(), numBlocks * reward );
+    state.addBalance( client.author(), reward );
     state.commit();
 }
 

@@ -1,7 +1,35 @@
+/*
+    Copyright (C) 2019-present, SKALE Labs
+
+    This file is part of skaled.
+
+    skaled is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    skaled is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/**
+ * @file SnapshotManager.cpp
+ * @author Dima Litvinov
+ * @date 2019
+ */
+
 #include "SnapshotManager.h"
 
+#include <libdevcore/LevelDB.h>
 #include <skutils/btrfs.h>
 
+#include <boost/interprocess/sync/named_mutex.hpp>
+
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -11,7 +39,7 @@ using namespace std;
 namespace fs = boost::filesystem;
 
 // Can manage snapshots as non-prvivileged user
-// For send/receive neeeds root!
+// For send/receive needs root!
 
 // exceptions:
 // - bad data dir
@@ -242,4 +270,108 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
             fs::remove( path );
         }  // if
     }      // for
+}
+
+dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) {
+    std::string hash_file =
+        ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
+            .string();
+
+    if ( !boost::filesystem::exists( hash_file ) ) {
+        throw std::logic_error( "hash doesn't exist" );
+    }
+
+    boost::interprocess::named_mutex m_lock(
+        boost::interprocess::open_or_create, "hashFileLockRead" );
+    m_lock.lock();
+
+    std::ifstream in( hash_file );
+
+    dev::h256 hash;
+    in >> hash;
+
+    m_lock.unlock();
+
+    return hash;
+}
+
+bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) {
+    boost::filesystem::path hash_file =
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshot_hash_file_name;
+    return boost::filesystem::exists( hash_file );
+}
+
+void SnapshotManager::computeVolumeHash(
+    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) {
+    if ( !boost::filesystem::exists( _volumeDir ) ) {
+        throw std::logic_error(
+            "btrfs volume was corrupted - folder " + _volumeDir.string() + " doesn't exist" );
+    }
+
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
+    dev::h256 hash_volume = m_db->hashBase();
+
+    secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
+}
+
+void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) {
+    if ( this->volumes.size() == 0 ) {
+        throw std::logic_error( "No btrfs volumes present - nothing to calculate hash of" );
+    }
+
+    this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
+                                 this->volumes[0] / "12041" / "extras",
+        ctx );
+
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
+        ctx );
+
+    this->computeVolumeHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
+
+    for ( size_t i = 1; i < this->volumes.size(); ++i ) {
+        this->computeVolumeHash(
+            this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
+    }
+}
+
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    for ( const auto& volume : this->volumes ) {
+        int res = btrfs.btrfs_subvolume_property_set(
+            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
+            "ro", "false" );
+
+        if ( res != 0 ) {
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
+    }
+
+    this->computeAllVolumesHash( _blockNumber, &ctx );
+
+    for ( const auto& volume : this->volumes ) {
+        int res = btrfs.btrfs_subvolume_property_set(
+            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
+            "ro", "true" );
+
+        if ( res != 0 ) {
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
+    }
+
+    dev::h256 hash;
+    secp256k1_sha256_finalize( &ctx, hash.data() );
+
+    boost::interprocess::named_mutex m_lock(
+        boost::interprocess::open_or_create, "hashFileLockWrite" );
+    m_lock.lock();
+
+    std::ofstream out( ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+                       this->snapshot_hash_file_name );
+    out << hash;
+
+    m_lock.unlock();
 }

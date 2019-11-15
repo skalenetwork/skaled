@@ -171,4 +171,18 @@ int btrfs_send(const char* parent, const char* file, const char* vol){
     return res;
 }
 
-btrfs_t btrfs = {btrfs_strerror, btrfs_last_cmd, btrfs_present, {btrfs_subvolume_list, btrfs_subvolume_create, btrfs_subvolume_delete, btrfs_subvolume_snapshot, btrfs_subvolume_snapshot_r}, btrfs_receive, btrfs_send};
+int btrfs_subvolume_property_set(const char* path, const char* name, const char* value){
+    char fmt[] = "btrfs property set -ts %s %s %s";
+
+    int len = 1 + snprintf(NULL, 0, fmt, path, name, value);
+
+    char* cmd = (char*) malloc(len);
+
+    snprintf(cmd, len, fmt, path, name, value);
+
+    int res = shell_call(cmd);
+    free(cmd);
+    return res;
+}
+
+btrfs_t btrfs = {btrfs_strerror, btrfs_last_cmd, btrfs_present, {btrfs_subvolume_list, btrfs_subvolume_create, btrfs_subvolume_delete, btrfs_subvolume_snapshot, btrfs_subvolume_snapshot_r}, btrfs_receive, btrfs_send, btrfs_subvolume_property_set};
