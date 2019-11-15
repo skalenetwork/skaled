@@ -68,7 +68,7 @@ jobs:
             - cd test
             - ./testeth || travis_terminate 1;
             - sudo ./testeth -t BtrfsTestSuite -- --all || travis_terminate 1;
-            - sudo ./testeth -t HashSnapshotSuite -- --all || travis_terminate 1;
+            - sudo ./testeth -t HashSnapshotTestSuite -- --all || travis_terminate 1;
             - cd ..
 
             # Create lcov report

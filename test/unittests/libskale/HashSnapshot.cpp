@@ -24,7 +24,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-boost::unit_test::assertion_result option_all( boost::unit_test::test_unit_id ) {
+boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
 }
 
@@ -234,7 +234,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 };
 }  // namespace
 
-BOOST_AUTO_TEST_SUITE ( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all ) )
+BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
 
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
     auto senderAddress = coinbase.address();
