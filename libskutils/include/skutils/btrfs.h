@@ -11,6 +11,7 @@ typedef struct {
     } subvolume;
     int ( *receive )( const char* file, const char* path );
     int ( *send )( const char* parent, const char* file, const char* vol );
+    int ( *btrfs_subvolume_property_set )( const char* path, const char* name, const char* value );
 } btrfs_t;
 
 extern btrfs_t btrfs;
