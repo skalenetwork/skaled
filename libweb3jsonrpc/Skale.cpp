@@ -268,8 +268,29 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
+nlohmann::json Skale::impl_skale_getSnapshotHash( const nlohmann::json& joRequest, Client& client) {
+    nlohmann::json joResponse = nlohmann::json::object();
+
+    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    dev::h256 snapshot_hash = client.getSnapshotHash( blockNumber );
+       
+    joResponse["snapshotHash"] = snapshot_hash.hex();
+    return joResponse;
+}
+
 Json::Value Skale::skale_getSnapshotHash( const Json::Value& request ) {
-    return request;
+    try {
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        nlohmann::json joResponse = impl_skale_getSnapshotHash( joRequest, this->m_client );
+        std::string strResponse = joResponse.dump();
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
 }
 
 namespace snapshot {
