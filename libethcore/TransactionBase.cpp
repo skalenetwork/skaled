@@ -109,6 +109,7 @@ TransactionBase::TransactionBase(
                 BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                            "too many fields in the transaction RLP" ) );
             // XXX Strange "catch"-s %)
+
         } catch ( Exception& _e ) {
             _e << errinfo_name(
                 "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -198,7 +199,7 @@ void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _for
         if ( hasZeroSignature() )
             _s << *m_chainId;
         else {
-            int const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
+            uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
             _s << ( m_vrs->v + vOffset );
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
