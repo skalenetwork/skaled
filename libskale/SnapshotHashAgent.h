@@ -30,20 +30,26 @@
 class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chain_params )
-        : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {}
+        : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ), idx_( 0 ) {
+        this->hashes_.resize( n_ );
+    }
 
     unsigned getBlockNumber( const std::string& strURLWeb3 );
 
-    void getHashFromOthers() const;
+    void getHashFromOthers();
 
-    dev::h256 voteForHash() const;
+    dev::h256 voteForHash();
+
+    std::string getNodeToDownloadSnapshotFrom();
 
 private:
-    unsigned block_number_;
-    unsigned n_;
     dev::eth::ChainParams chain_params_;
+    unsigned n_;
+
+    unsigned block_number_;
     std::vector< dev::h256 > hashes_;
-    std::vector< size_t > nodes_to_download_snapshot_;
+    std::vector< size_t > nodes_to_download_snapshot_from_;
+    unsigned idx_;
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

@@ -1078,8 +1078,9 @@ int main( int argc, char** argv ) try {
         unsigned blockNumber = snapshotHashAgent->getBlockNumber( strURLWeb3 );
         snapshotHashAgent->getHashFromOthers();
 
+        dev::h256 voted_hash;
         try {
-            dev::h256 voted_hash = snapshotHashAgent->voteForHash();
+            voted_hash = snapshotHashAgent->voteForHash();
         } catch ( std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error(
@@ -1087,10 +1088,24 @@ int main( int argc, char** argv ) try {
                       << cc::warn( ex.what() ) << "\n";
         }
 
-        downloadSnapshot( blockNumber, snapshotManager, strURLWeb3, chainParams );
+        dev::h256 calculated_hash;
+        for ( ; calculated_hash != voted_hash; ) {
+            std::string urlToDownloadSnapshot;
+            try {
+                urlToDownloadSnapshot = snapshotHashAgent->getNodeToDownloadSnapshotFrom();
+            } catch ( std::exception& ex ) {
+                std::cerr << cc::fatal( "FATAL:" )
+                          << cc::error(
+                                 " Exception while choosing node to download snapshot from: " )
+                          << cc::warn( ex.what() ) << "\n";
+            }
 
-        snapshotManager->computeSnapshotHash( blockNumber );
-        dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+            downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+
+            snapshotManager->computeSnapshotHash( blockNumber );
+
+            calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+        }
     }
 
     // it was needed for snapshot downloading

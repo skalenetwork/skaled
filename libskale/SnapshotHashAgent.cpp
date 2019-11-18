@@ -25,6 +25,7 @@
 #include "SnapshotHashAgent.h"
 
 #include <libethcore/CommonJS.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
 unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
@@ -48,7 +49,7 @@ unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
     return this->block_number_;
 }
 
-dev::h256 SnapshotHashAgent::voteForHash() const {
+dev::h256 SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
     for ( const auto& hash : this->hashes_ ) {
         map_hash[hash] += 1;
@@ -56,6 +57,11 @@ dev::h256 SnapshotHashAgent::voteForHash() const {
 
     for ( const auto& hash : map_hash ) {
         if ( 3 * hash.second > 2 * ( n_ + 2 ) ) {
+            for ( size_t i = 0; i < this->n_; ++i ) {
+                if ( this->hashes_[i] == hash.first ) {
+                    this->nodes_to_download_snapshot_from_.push_back( i );
+                }
+            }
             return hash.first;
         }
     }
@@ -63,7 +69,35 @@ dev::h256 SnapshotHashAgent::voteForHash() const {
     throw std::logic_error( "note enough votes to choose hash" );
 }
 
-void SnapshotHashAgent::getHashFromOthers() const {
-    int a = 2 + 2;
-    a *= 2;
+void SnapshotHashAgent::getHashFromOthers() {
+    for ( size_t i = 0; i < this->n_; ++i ) {
+        if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
+            continue;
+        }
+
+        std::thread( [this, i]() {
+            nlohmann::json joCall = nlohmann::json::object();
+            joCall["jsonrpc"] = "2.0";
+            joCall["method"] = "skale_getSnapshotHash";
+            joCall["params"] = this->block_number_;
+            skutils::rest::client cli( this->chain_params_.sChain.nodes[i].ip );
+            skutils::rest::data_t d = cli.call( joCall );
+            if ( d.empty() ) {
+                throw std::runtime_error( "Main Net call to skale_getSnapshotHash failed" );
+            }
+            std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
+            this->hashes_[i] = dev::h256( str_hash );
+        } )
+            .detach();
+    }
+}
+
+std::string SnapshotHashAgent::getNodeToDownloadSnapshotFrom() {
+    if ( this->idx_ == this->n_ ) {
+        throw std::logic_error(
+            "allready tried to download snapshot from all nodes with voted hash" );
+    }
+
+    return this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_++]]
+        .ip;
 }
