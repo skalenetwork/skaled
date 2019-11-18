@@ -59,7 +59,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 
     inline virtual void skale_getSnapshotHashI(
         const Json::Value& request, Json::Value& response ) {
-        unsigned blockNumber = request["blockNumber"].asInt();
+        unsigned blockNumber = request[0u].asInt();
         response = this->skale_getSnapshotHash( blockNumber );
     }
 
@@ -93,7 +93,7 @@ public:
             &dev::rpc::SkaleFace::skale_downloadSnapshotFragmentI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "skale_getSnapshotHash", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_INTEGER, jsonrpc::JSON_STRING, NULL ),
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getSnapshotHashI );
     }
 };
