@@ -270,7 +270,7 @@ public:
         return path;
     }
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber ) {
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
         return this->m_snapshotManager->getSnapshotHash( _blockNumber );
     }
 

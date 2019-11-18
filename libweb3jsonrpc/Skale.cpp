@@ -269,7 +269,7 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 }
 
 nlohmann::json Skale::impl_skale_getSnapshotHash(
-    const nlohmann::json& joRequest, Client& client ) {
+    const nlohmann::json& joRequest, const Client& client ) {
     nlohmann::json joResponse = nlohmann::json::object();
 
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();

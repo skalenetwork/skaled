@@ -83,7 +83,7 @@ public:
         const nlohmann::json& joRequest );
     nlohmann::json impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest );
     nlohmann::json impl_skale_getSnapshotHash(
-        const nlohmann::json& joRequest, dev::eth::Client& client );
+        const nlohmann::json& joRequest, const dev::eth::Client& client );
 
 private:
     static volatile bool g_bShutdownViaWeb3Enabled;
