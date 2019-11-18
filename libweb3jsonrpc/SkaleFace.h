@@ -59,7 +59,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 
     inline virtual void skale_getSnapshotHashI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->skale_getSnapshotHash( request );
+        unsigned blockNumber = request["blockNumber"].asInt();
+        response = this->skale_getSnapshotHash( blockNumber );
     }
 
     virtual std::string skale_protocolVersion() = 0;
@@ -67,7 +68,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_shutdownInstance() = 0;
     virtual Json::Value skale_getSnapshot( const Json::Value& request ) = 0;
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
-    virtual Json::Value skale_getSnapshotHash( const Json::Value& request ) = 0;
+    virtual std::string skale_getSnapshotHash( unsigned blockNumber ) = 0;
 
 public:
     SkaleFace() {
@@ -90,8 +91,9 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_downloadSnapshotFragment",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_downloadSnapshotFragmentI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getSnapshotHash",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "skale_getSnapshotHash", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_INTEGER, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_getSnapshotHashI );
     }
 };

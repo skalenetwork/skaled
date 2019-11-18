@@ -72,6 +72,7 @@
 #include <libp2p/Network.h>
 
 #include <libskale/httpserveroverride.h>
+#include <libskale/SnapshotHashAgent.h>
 
 #include "../libdevcore/microprofile.h"
 
@@ -186,6 +187,94 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
                                          emptyValues.count( option.value.front() );
                               } ),
         parsed.options.end() );
+}
+
+void downloadSnapshot(unsigned block_number, std::shared_ptr<SnapshotManager>& snapshotManager, const std::string& strURLWeb3, const ChainParams& chainParams) {
+    fs::path saveTo;
+    try {
+        std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
+                  << std::endl;
+
+        try {
+            bool isBinaryDownload = true;
+            std::string strErrorDescription;
+            saveTo = snapshotManager->getDiffPath( 0, block_number );
+            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+                [&]( size_t idxChunck, size_t cntChunks ) -> bool {
+                    std::cout << cc::normal( "... download progress ... " )
+                              << cc::size10( idxChunck ) << cc::normal( " of " )
+                              << cc::size10( cntChunks ) << "\r";
+                    return true;  // continue download
+                },
+                isBinaryDownload, chainParams.nodeInfo.snapshotInterval, &strErrorDescription );
+            std::cout << "                                                  \r";  // clear
+                                                                                  // progress
+                                                                                  // line
+            if ( !bOK ) {
+                if ( strErrorDescription.empty() )
+                    strErrorDescription = "download failed, connection problem during download";
+                throw std::runtime_error( strErrorDescription );
+            }
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+            throw;
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while downloading snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+            throw;
+        }
+        std::cout << cc::success( "Snapshot download success for block " )
+                  << cc::u( to_string( block_number ) ) << std::endl;
+        try {
+            snapshotManager->importDiff( 0, block_number );
+        } catch ( const std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while importing downloaded snapshot: " )
+                      << cc::warn( ex.what() ) << "\n";
+            throw;
+        } catch ( ... ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while importing downloaded snapshot: " )
+                      << cc::warn( "Unknown exception" ) << "\n";
+            throw;
+        }
+
+        // HACK refactor this piece of code!
+        fs::path price_db_path;
+        for ( auto& f :
+            fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
+            if ( f.path().string().find( "prices_" ) != string::npos ) {
+                price_db_path = f.path();
+                break;
+            }  // if
+        }
+        if ( price_db_path.empty() ) {
+            std::cout << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
+            return;
+        }
+        // TODO hope it won't throw
+        fs::rename( price_db_path, price_db_path.parent_path() /
+                                       ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+        //// HACK END ////
+
+        snapshotManager->restoreSnapshot( block_number );
+        std::cout << cc::success( "Snapshot restore success for block " )
+                  << cc::u( to_string( block_number ) ) << std::endl;
+
+    } catch ( const std::exception& ex ) {
+        std::cerr << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing downloaded snapshot: " )
+                  << cc::warn( ex.what() ) << "\n";
+    } catch ( ... ) {
+        std::cerr << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing downloaded snapshot: " )
+                  << cc::warn( "Unknown exception" ) << "\n";
+    }
+    if ( !saveTo.empty() )
+        fs::remove( saveTo );
 }
 
 }  // namespace
@@ -982,128 +1071,24 @@ int main( int argc, char** argv ) try {
                               "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
     if ( vm.count( "download-snapshot" ) ) {
-        int nImportResult = 0;
-        fs::path saveTo;
+        std::string strURLWeb3 = vm["download-snapshot"].as< string >();
+        std::unique_ptr<SnapshotHashAgent> snapshotHashAgent;
+        snapshotHashAgent.reset( new SnapshotHashAgent(chainParams));
+        unsigned blockNumber = snapshotHashAgent->getBlockNumber(strURLWeb3);
+        snapshotHashAgent->getHashFromOthers();
+
         try {
-            std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-
-            std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
-                      << std::endl;
-
-            unsigned block_number;
-            {  // block
-                skutils::rest::client cli;
-                if ( !cli.open( strURLWeb3 ) ) {
-                    nImportResult = 2;
-                    throw std::runtime_error( "REST failed to connect to server" );
-                }
-
-                nlohmann::json joIn = nlohmann::json::object();
-                joIn["jsonrpc"] = "2.0";
-                joIn["method"] = "eth_blockNumber";
-                joIn["params"] = nlohmann::json::object();
-                skutils::rest::data_t d = cli.call( joIn );
-                if ( d.empty() ) {
-                    nImportResult = 3;
-                    throw std::runtime_error( "download failed, cannot get bockNumber" );
-                }
-                nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-                // std::cout << cc::normal( "Got answer " ) << cc::j( joAnswer ) << std::endl;
-                // TODO catch?
-                block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< string >() );
-                block_number -= block_number % chainParams.nodeInfo.snapshotInterval;
-            }  // block
-
-            try {
-                bool isBinaryDownload = true;
-                std::string strErrorDescription;
-                saveTo = snapshotManager->getDiffPath( 0, block_number );
-                bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
-                    [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-                        std::cout << cc::normal( "... download progress ... " )
-                                  << cc::size10( idxChunck ) << cc::normal( " of " )
-                                  << cc::size10( cntChunks ) << "\r";
-                        return true;  // continue download
-                    },
-                    isBinaryDownload, chainParams.nodeInfo.snapshotInterval, &strErrorDescription );
-                std::cout << "                                                  \r";  // clear
-                                                                                      // progress
-                                                                                      // line
-                if ( !bOK ) {
-                    nImportResult = 4;
-                    if ( strErrorDescription.empty() )
-                        strErrorDescription = "download failed, connection problem during download";
-                    throw std::runtime_error( strErrorDescription );
-                }
-            } catch ( const std::exception& ex ) {
-                nImportResult = 5;
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error( " Exception while downloading snapshot: " )
-                          << cc::warn( ex.what() ) << "\n";
-                throw;
-            } catch ( ... ) {
-                nImportResult = 6;
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error( " Exception while downloading snapshot: " )
-                          << cc::warn( "Unknown exception" ) << "\n";
-                throw;
-            }
-            std::cout << cc::success( "Snapshot download success for block " )
-                      << cc::u( to_string( block_number ) ) << std::endl;
-            try {
-                snapshotManager->importDiff( 0, block_number );
-            } catch ( const std::exception& ex ) {
-                nImportResult = 7;
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error( " Exception while importing downloaded snapshot: " )
-                          << cc::warn( ex.what() ) << "\n";
-                throw;
-            } catch ( ... ) {
-                nImportResult = 8;
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error( " Exception while importing downloaded snapshot: " )
-                          << cc::warn( "Unknown exception" ) << "\n";
-                throw;
-            }
-
-            // HACK refactor this piece of code!
-            fs::path price_db_path;
-            for ( auto& f :
-                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
-                if ( f.path().string().find( "prices_" ) != string::npos ) {
-                    price_db_path = f.path();
-                    break;
-                }  // if
-            }
-            if ( price_db_path.empty() ) {
-                std::cout << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
-                return -1;
-            }
-            // TODO hope it won't throw
-            fs::rename( price_db_path, price_db_path.parent_path() /
-                                           ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
-            //// HACK END ////
-
-            snapshotManager->restoreSnapshot( block_number );
-            std::cout << cc::success( "Snapshot restore success for block " )
-                      << cc::u( to_string( block_number ) ) << std::endl;
-
-        } catch ( const std::exception& ex ) {
-            if ( nImportResult == 0 )
-                nImportResult = 1000;
+            dev::h256 voted_hash = snapshotHashAgent->voteForHash();
+        } catch ( std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while processing downloaded snapshot: " )
+                      << cc::error( " Exception while collecting snapshot hash from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
-        } catch ( ... ) {
-            if ( nImportResult == 0 )
-                nImportResult = 1001;
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while processing downloaded snapshot: " )
-                      << cc::warn( "Unknown exception" ) << "\n";
         }
-        if ( !saveTo.empty() )
-            fs::remove( saveTo );
-        return nImportResult;
+
+        downloadSnapshot(blockNumber, snapshotManager, strURLWeb3, chainParams);
+
+        snapshotManager->computeSnapshotHash( blockNumber );
+        dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
     }
 
     // it was needed for snapshot downloading

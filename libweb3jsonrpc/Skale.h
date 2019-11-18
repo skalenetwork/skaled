@@ -65,7 +65,7 @@ public:
     std::string skale_shutdownInstance() noexcept( false ) override;
     Json::Value skale_getSnapshot( const Json::Value& request ) override;
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
-    Json::Value skale_getSnapshotHash( const Json::Value& request ) override;
+    std::string skale_getSnapshotHash( unsigned blockNumber ) override;
 
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
@@ -82,8 +82,6 @@ public:
     std::vector< uint8_t > impl_skale_downloadSnapshotFragmentBinary(
         const nlohmann::json& joRequest );
     nlohmann::json impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest );
-    nlohmann::json impl_skale_getSnapshotHash(
-        const nlohmann::json& joRequest, const dev::eth::Client& client );
 
 private:
     static volatile bool g_bShutdownViaWeb3Enabled;
