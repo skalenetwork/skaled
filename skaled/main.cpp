@@ -71,8 +71,8 @@
 
 #include <libp2p/Network.h>
 
-#include <libskale/httpserveroverride.h>
 #include <libskale/SnapshotHashAgent.h>
+#include <libskale/httpserveroverride.h>
 
 #include "../libdevcore/microprofile.h"
 
@@ -189,7 +189,8 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
         parsed.options.end() );
 }
 
-void downloadSnapshot(unsigned block_number, std::shared_ptr<SnapshotManager>& snapshotManager, const std::string& strURLWeb3, const ChainParams& chainParams) {
+void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >& snapshotManager,
+    const std::string& strURLWeb3, const ChainParams& chainParams ) {
     fs::path saveTo;
     try {
         std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
@@ -256,8 +257,8 @@ void downloadSnapshot(unsigned block_number, std::shared_ptr<SnapshotManager>& s
             return;
         }
         // TODO hope it won't throw
-        fs::rename( price_db_path, price_db_path.parent_path() /
-                                       ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+        fs::rename( price_db_path,
+            price_db_path.parent_path() / ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
         //// HACK END ////
 
         snapshotManager->restoreSnapshot( block_number );
@@ -1072,20 +1073,21 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        std::unique_ptr<SnapshotHashAgent> snapshotHashAgent;
-        snapshotHashAgent.reset( new SnapshotHashAgent(chainParams));
-        unsigned blockNumber = snapshotHashAgent->getBlockNumber(strURLWeb3);
+        std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
+        snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
+        unsigned blockNumber = snapshotHashAgent->getBlockNumber( strURLWeb3 );
         snapshotHashAgent->getHashFromOthers();
 
         try {
             dev::h256 voted_hash = snapshotHashAgent->voteForHash();
         } catch ( std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while collecting snapshot hash from other skaleds: " )
+                      << cc::error(
+                             " Exception while collecting snapshot hash from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
         }
 
-        downloadSnapshot(blockNumber, snapshotManager, strURLWeb3, chainParams);
+        downloadSnapshot( blockNumber, snapshotManager, strURLWeb3, chainParams );
 
         snapshotManager->computeSnapshotHash( blockNumber );
         dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );

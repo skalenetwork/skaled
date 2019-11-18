@@ -27,7 +27,7 @@
 #include <libethcore/CommonJS.h>
 #include <skutils/rest_call.h>
 
-unsigned SnapshotHashAgent::getBlockNumber(const std::string& strURLWeb3) {
+unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
     skutils::rest::client cli;
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
@@ -49,18 +49,18 @@ unsigned SnapshotHashAgent::getBlockNumber(const std::string& strURLWeb3) {
 }
 
 dev::h256 SnapshotHashAgent::voteForHash() const {
-    std::map<dev::h256, size_t> map_hash;
-    for (const auto& hash : this->hashes_) {
+    std::map< dev::h256, size_t > map_hash;
+    for ( const auto& hash : this->hashes_ ) {
         map_hash[hash] += 1;
     }
 
-    for (const auto& hash : map_hash) {
-        if (3 * hash.second > 2 * (n_ + 2)) {
+    for ( const auto& hash : map_hash ) {
+        if ( 3 * hash.second > 2 * ( n_ + 2 ) ) {
             return hash.first;
         }
     }
 
-    throw std::logic_error("note enough votes to choose hash");
+    throw std::logic_error( "note enough votes to choose hash" );
 }
 
 void SnapshotHashAgent::getHashFromOthers() const {
