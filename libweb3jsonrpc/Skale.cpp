@@ -268,12 +268,13 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
-nlohmann::json Skale::impl_skale_getSnapshotHash( const nlohmann::json& joRequest, Client& client) {
+nlohmann::json Skale::impl_skale_getSnapshotHash(
+    const nlohmann::json& joRequest, Client& client ) {
     nlohmann::json joResponse = nlohmann::json::object();
 
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
     dev::h256 snapshot_hash = client.getSnapshotHash( blockNumber );
-       
+
     joResponse["snapshotHash"] = snapshot_hash.hex();
     return joResponse;
 }
