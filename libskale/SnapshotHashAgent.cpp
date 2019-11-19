@@ -51,13 +51,21 @@ unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
 
 dev::h256 SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
-    for ( const auto& hash : this->hashes_ ) {
-        map_hash[hash] += 1;
+    for ( size_t i = 0; i < this->n_; ++i ) {
+        if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
+            continue;
+        }
+
+        map_hash[this->hashes_[i]] += 1;
     }
 
     for ( const auto& hash : map_hash ) {
-        if ( 3 * hash.second > 2 * ( n_ + 2 ) ) {
+        if ( 3 * hash.second > 2 * ( this->n_ + 2 ) ) {
             for ( size_t i = 0; i < this->n_; ++i ) {
+                if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
+                    continue;
+                }
+
                 if ( this->hashes_[i] == hash.first ) {
                     this->nodes_to_download_snapshot_from_.push_back( i );
                 }
@@ -79,7 +87,8 @@ void SnapshotHashAgent::getHashFromOthers() {
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "skale_getSnapshotHash";
-            joCall["params"] = this->block_number_;
+            nlohmann::json obj = {this->block_number_};
+            joCall["params"] = obj;
             skutils::rest::client cli( this->chain_params_.sChain.nodes[i].ip );
             skutils::rest::data_t d = cli.call( joCall );
             if ( d.empty() ) {

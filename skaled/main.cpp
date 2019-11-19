@@ -1076,7 +1076,15 @@ int main( int argc, char** argv ) try {
         std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
         unsigned blockNumber = snapshotHashAgent->getBlockNumber( strURLWeb3 );
-        snapshotHashAgent->getHashFromOthers();
+
+        try {
+            snapshotHashAgent->getHashFromOthers();
+        } catch ( std::exception& ex ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error(
+                             " Exception while collecting snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << "\n";
+        }
 
         dev::h256 voted_hash;
         try {
