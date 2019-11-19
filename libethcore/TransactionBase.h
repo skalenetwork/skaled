@@ -129,7 +129,7 @@ public:
     /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
     /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
     /// after EIP155
-    void checkChainId( int chainId = -4 ) const;
+    void checkChainId( uint64_t chainId ) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction && m_type != Invalid; }
@@ -211,7 +211,7 @@ public:
     /// @returns true if the transaction uses EIP155 replay protection
     bool isReplayProtected() const {
         assert( !isInvalid() );
-        return m_chainId != -4;
+        return m_chainId.has_value();
     }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
@@ -262,8 +262,8 @@ public:
 protected:
     Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
                                     ///< transaction?
-    int m_chainId = -4;             ///< EIP155 value for calculating transaction hash
-                                    ///< https://github.com/ethereum/EIPs/issues/155
+    boost::optional< uint64_t > m_chainId;        ///< EIP155 value for calculating transaction hash
+                                                  ///< https://github.com/ethereum/EIPs/issues/155
     boost::optional< SignatureStruct > m_vrs;     ///< The signature of the transaction. Encodes the
                                                   ///< sender.
     mutable h256 m_hashWith;                      ///< Cached hash of transaction with signature.
