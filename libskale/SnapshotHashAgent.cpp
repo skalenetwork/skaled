@@ -89,29 +89,37 @@ void SnapshotHashAgent::getHashFromOthers() {
         }
 
         threads.push_back( std::thread( [this, i]() {
-            nlohmann::json joCall = nlohmann::json::object();
-            joCall["jsonrpc"] = "2.0";
-            joCall["method"] = "skale_getSnapshotHash";
-            nlohmann::json obj = {this->block_number_};
-            joCall["params"] = obj;
-            skutils::rest::client cli;
-            bool fl = cli.open(
-                "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
-                ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
-            if ( !fl ) {
+            try {
+                nlohmann::json joCall = nlohmann::json::object();
+                joCall["jsonrpc"] = "2.0";
+                joCall["method"] = "skale_getSnapshotHash";
+                nlohmann::json obj = {this->block_number_};
+                joCall["params"] = obj;
+                skutils::rest::client cli;
+                bool fl = cli.open(
+                    "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
+                    ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
+                if ( !fl ) {
+                    std::cerr << cc::fatal( "FATAL:" )
+                              << cc::error(
+                                     " Exception while trying to connect to another skaled: " )
+                              << cc::warn( "connection refused" ) << "\n";
+                }
+                skutils::rest::data_t d = cli.call( joCall );
+                if ( d.empty() ) {
+                    throw std::runtime_error( "Main Net call to skale_getSnapshotHash failed" );
+                }
+                std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
+
+                const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
+                this->hashes_[i] = dev::h256( str_hash );
+            } catch ( std::exception& ex ) {
                 std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error( " Exception while trying to connect to another skaled: " )
-                          << cc::warn( "connection refused" ) << "\n";
+                          << cc::error(
+                                 " Exception while collecting snapshot hash from other skaleds: " )
+                          << cc::warn( ex.what() ) << "\n";
             }
-            skutils::rest::data_t d = cli.call( joCall );
-            if ( d.empty() ) {
-                throw std::runtime_error( "Main Net call to skale_getSnapshotHash failed" );
-            }
-            std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
-
-            const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-
-            this->hashes_[i] = dev::h256( str_hash );
         } ) );
     }
 
