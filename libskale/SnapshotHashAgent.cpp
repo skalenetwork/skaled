@@ -18,7 +18,7 @@
 */
 /**
  * @file SnapshotHashAgent.cpp
- * @author oleh Nikolaiev
+ * @author Oleh Nikolaiev
  * @date 2019
  */
 
@@ -55,35 +55,36 @@ dev::h256 SnapshotHashAgent::voteForHash() {
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
+        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
         map_hash[this->hashes_[i]] += 1;
     }
 
-    for ( const auto& hash : map_hash ) {
-        if ( 3 * hash.second > 2 * this->n_ ) {
-            for ( size_t i = 0; i < this->n_; ++i ) {
-                if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
-                    continue;
-                }
+    auto it = std::find_if( map_hash.begin(), map_hash.end(),
+        [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
 
-                if ( this->hashes_[i] == hash.first ) {
-                    this->nodes_to_download_snapshot_from_.push_back( i );
-                }
+    if ( it == map_hash.end() ) {
+        throw std::logic_error( "note enough votes to choose hash" );
+    } else {
+        for ( size_t i = 0; i < this->n_; ++i ) {
+            if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+                continue;
             }
-            return hash.first;
-        }
-    }
 
-    throw std::logic_error( "note enough votes to choose hash" );
+            if ( this->hashes_[i] == ( *it ).first ) {
+                this->nodes_to_download_snapshot_from_.push_back( i );
+            }
+        }
+        return ( *it ).first;
+    }
 }
 
 void SnapshotHashAgent::getHashFromOthers() {
     std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
+        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 

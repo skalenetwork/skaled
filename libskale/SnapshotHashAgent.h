@@ -18,7 +18,7 @@
 */
 /**
  * @file SnapshotHashAgent.h
- * @author oleh Nikolaiev
+ * @author Oleh Nikolaiev
  * @date 2019
  */
 
