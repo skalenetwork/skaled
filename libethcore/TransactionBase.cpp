@@ -197,7 +197,7 @@ void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _for
             BOOST_THROW_EXCEPTION( TransactionIsUnsigned() );
 
         if ( hasZeroSignature() )
-            _s << *m_chainId;
+            _s << ( m_chainId.has_value() ? *m_chainId : 0 );
         else {
             uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
             _s << ( m_vrs->v + vOffset );
@@ -242,7 +242,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     MICROPROFILE_SCOPEI( "TransactionBase", "sha3", MP_KHAKI2 );
 
     RLPStream s;
-    streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature );
+    streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
 
     auto ret = dev::sha3( s.out() );
     if ( _sig == WithSignature )
