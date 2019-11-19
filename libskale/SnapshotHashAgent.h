@@ -50,6 +50,7 @@ private:
     std::vector< dev::h256 > hashes_;
     std::vector< size_t > nodes_to_download_snapshot_from_;
     unsigned idx_;
+    std::mutex hashes_mutex;
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

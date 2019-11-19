@@ -1092,7 +1092,7 @@ int main( int argc, char** argv ) try {
         } catch ( std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error(
-                             " Exception while collecting snapshot hash from other skaleds: " )
+                             " Exception while voting for snapshot hash from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
         }
 

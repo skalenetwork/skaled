@@ -51,6 +51,9 @@ unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
 
 dev::h256 SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
+
+    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
             continue;
@@ -89,13 +92,25 @@ void SnapshotHashAgent::getHashFromOthers() {
             joCall["method"] = "skale_getSnapshotHash";
             nlohmann::json obj = {this->block_number_};
             joCall["params"] = obj;
-            skutils::rest::client cli( this->chain_params_.sChain.nodes[i].ip );
+            skutils::rest::client cli;
+            bool fl = cli.open(
+                "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
+                ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
+            if ( !fl ) {
+                std::cerr << cc::fatal( "FATAL:" )
+                          << cc::error( " Exception while trying to connect to another skaled: " )
+                          << cc::warn( "connection refused" ) << "\n";
+            }
             skutils::rest::data_t d = cli.call( joCall );
             if ( d.empty() ) {
                 throw std::runtime_error( "Main Net call to skale_getSnapshotHash failed" );
             }
             std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
+
+            const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
             this->hashes_[i] = dev::h256( str_hash );
+            std::cerr << "ANOTHER HASH: " << this->hashes_[i] << '\n';
         } )
             .detach();
     }
