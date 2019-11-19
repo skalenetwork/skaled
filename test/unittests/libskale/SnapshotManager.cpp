@@ -201,6 +201,12 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture ) {
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
+
+    BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 1 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 2 ) );
+
+    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 3 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture ) {
