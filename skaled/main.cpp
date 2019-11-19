@@ -1096,8 +1096,7 @@ int main( int argc, char** argv ) try {
                       << cc::warn( ex.what() ) << "\n";
         }
 
-        dev::h256 calculated_hash;
-        for ( ; calculated_hash != voted_hash; ) {
+        while ( true ) {
             std::string urlToDownloadSnapshot;
             try {
                 urlToDownloadSnapshot = snapshotHashAgent->getNodeToDownloadSnapshotFrom();
@@ -1112,7 +1111,13 @@ int main( int argc, char** argv ) try {
 
             snapshotManager->computeSnapshotHash( blockNumber );
 
-            calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+            dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+            if ( calculated_hash == voted_hash ) {
+                break;
+            } else {
+                snapshotManager->removeSnapshot( blockNumber );
+            }
         }
     }
 

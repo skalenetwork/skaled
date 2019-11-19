@@ -63,7 +63,7 @@ dev::h256 SnapshotHashAgent::voteForHash() {
     }
 
     for ( const auto& hash : map_hash ) {
-        if ( 3 * hash.second > 2 * ( this->n_ + 2 ) ) {
+        if ( 3 * hash.second > 2 * this->n_ ) {
             for ( size_t i = 0; i < this->n_; ++i ) {
                 if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
                     continue;
@@ -81,12 +81,13 @@ dev::h256 SnapshotHashAgent::voteForHash() {
 }
 
 void SnapshotHashAgent::getHashFromOthers() {
+    std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.ip == this->chain_params_.sChain.nodes[i].ip ) {
             continue;
         }
 
-        std::thread( [this, i]() {
+        threads.push_back( std::thread( [this, i]() {
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "skale_getSnapshotHash";
@@ -110,9 +111,12 @@ void SnapshotHashAgent::getHashFromOthers() {
             const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
             this->hashes_[i] = dev::h256( str_hash );
-            std::cerr << "ANOTHER HASH: " << this->hashes_[i] << '\n';
-        } )
-            .detach();
+        } ) );
+    }
+
+    for ( auto& thr : threads ) {
+        std::cout << "WAITING FOR THREAD TO JOIN " << thr.get_id() << '\n';
+        thr.join();
     }
 }
 
@@ -122,6 +126,18 @@ std::string SnapshotHashAgent::getNodeToDownloadSnapshotFrom() {
             "allready tried to download snapshot from all nodes with voted hash" );
     }
 
-    return this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_++]]
-        .ip;
+    std::string ret_value =
+        std::string( "http://" ) +
+        std::string(
+            this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_]]
+                .ip ) +
+        std::string( ":" ) +
+        ( this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_]]
+                .port +
+            3 )
+            .convert_to< std::string >();
+
+    ++this->idx_;
+
+    return ret_value;
 }

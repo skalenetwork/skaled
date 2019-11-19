@@ -143,6 +143,7 @@ public:
     boost::filesystem::path makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock );
     void importDiff( unsigned _fromBlock, unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _fromBlock, unsigned _toBlock );
+    void removeSnapshot( unsigned _blockNumber );
 
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );

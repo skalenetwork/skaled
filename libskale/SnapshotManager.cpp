@@ -234,6 +234,17 @@ boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsig
     return diffs_dir / ( to_string( _fromBlock ) + "_" + to_string( _toBlock ) );
 }
 
+void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
+    for ( const auto& volume : this->volumes ) {
+        int res = btrfs.subvolume._delete(
+            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str() );
+
+        if ( res != 0 ) {
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
+    }
+}
+
 // exeptions: filesystem
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     multimap< time_t, fs::path, std::greater< time_t > > time_map;
