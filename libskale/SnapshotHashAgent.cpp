@@ -116,6 +116,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             std::string( "http://" ) + std::string( this->chain_params_.sChain.nodes[idx].ip ) +
             std::string( ":" ) +
             ( this->chain_params_.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+        ret.push_back( ret_value );
     }
 
     return ret;
