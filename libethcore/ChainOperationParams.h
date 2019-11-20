@@ -164,8 +164,8 @@ public:
     u256 skale512ForkBlock = c_infiniteBlockNumber;
     u256 skale1024ForkBlock = c_infiniteBlockNumber;
     u256 skaleUnlimitedForkBlock = c_infiniteBlockNumber;
-    int chainID = 0;    // Distinguishes different chains (mainnet, Ropsten, etc).
-    int networkID = 0;  // Distinguishes different sub protocols.
+    uint64_t chainID = 0;  // Distinguishes different chains (mainnet, Ropsten, etc).
+    int networkID = 0;     // Distinguishes different sub protocols.
 
     u256 minimumDifficulty;
     u256 difficultyBoundDivisor;

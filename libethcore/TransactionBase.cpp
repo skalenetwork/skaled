@@ -76,22 +76,27 @@ TransactionBase::TransactionBase(
 
             m_data = rlp[5].toBytes();
 
-            int const v = rlp[6].toInt< int >();
+            u256 const v = rlp[6].toInt< u256 >();
             h256 const r = rlp[7].toInt< u256 >();
             h256 const s = rlp[8].toInt< u256 >();
 
             if ( isZeroSignature( r, s ) ) {
-                m_chainId = v;
+                m_chainId = static_cast< uint64_t >( v );
                 m_vrs = SignatureStruct{r, s, 0};
             } else {
-                if ( v > 36 )
-                    m_chainId = ( v - 35 ) / 2;
-                else if ( v == 27 || v == 28 )
-                    m_chainId = -4;
-                else
+                if ( v > 36 ) {
+                    auto const chainId = ( v - 35 ) / 2;
+                    if ( chainId > std::numeric_limits< uint64_t >::max() )
+                        BOOST_THROW_EXCEPTION( InvalidSignature() );
+                    m_chainId = static_cast< uint64_t >( chainId );
+                } else if ( v != 27 && v != 28 )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
+                // else leave m_chainId as is (unitialized)
 
-                m_vrs = SignatureStruct{r, s, static_cast< _byte_ >( v - ( m_chainId * 2 + 35 ) )};
+                auto const recoveryID = m_chainId.has_value() ?
+                                            _byte_{v - ( u256{*m_chainId} * 2 + 35 )} :
+                                            _byte_{v - 27};
+                m_vrs = SignatureStruct{r, s, recoveryID};
 
                 if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
@@ -104,6 +109,7 @@ TransactionBase::TransactionBase(
                 BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                            "too many fields in the transaction RLP" ) );
             // XXX Strange "catch"-s %)
+
         } catch ( Exception& _e ) {
             _e << errinfo_name(
                 "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -191,14 +197,14 @@ void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _for
             BOOST_THROW_EXCEPTION( TransactionIsUnsigned() );
 
         if ( hasZeroSignature() )
-            _s << m_chainId;
+            _s << ( m_chainId.has_value() ? *m_chainId : 0 );
         else {
-            int const vOffset = m_chainId * 2 + 35;
+            uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
             _s << ( m_vrs->v + vOffset );
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
     } else if ( _forEip155hash )
-        _s << m_chainId << 0 << 0;
+        _s << *m_chainId << 0 << 0;
 }
 
 static const u256 c_secp256k1n(
@@ -212,8 +218,8 @@ void TransactionBase::checkLowS() const {
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
-void TransactionBase::checkChainId( int chainId ) const {
-    if ( m_chainId != chainId && m_chainId != -4 )
+void TransactionBase::checkChainId( uint64_t chainId ) const {
+    if ( m_chainId.has_value() && m_chainId != chainId )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
@@ -236,7 +242,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     MICROPROFILE_SCOPEI( "TransactionBase", "sha3", MP_KHAKI2 );
 
     RLPStream s;
-    streamRLP( s, _sig, m_chainId > 0 && _sig == WithoutSignature );
+    streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
 
     auto ret = dev::sha3( s.out() );
     if ( _sig == WithSignature )
