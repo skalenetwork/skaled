@@ -1094,9 +1094,9 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
-        unsigned blockNumber = getBlockNumber( strURLWeb3, chainParams );
+        const unsigned blockNumber = getBlockNumber( strURLWeb3, chainParams );
 
+        std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
 
         dev::h256 voted_hash;
@@ -1112,7 +1112,7 @@ int main( int argc, char** argv ) try {
                       << cc::warn( ex.what() ) << "\n";
         }
 
-        bool success = false;
+        bool successfullDownload = false;
         for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
             std::string urlToDownloadSnapshot;
             urlToDownloadSnapshot = list_urls_to_download[i];
@@ -1124,14 +1124,14 @@ int main( int argc, char** argv ) try {
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == voted_hash ) {
-                success = true;
+                successfullDownload = true;
                 break;
             } else {
                 snapshotManager->removeSnapshot( blockNumber );
             }
         }
 
-        if ( !success ) {
+        if ( !successfullDownload ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " already tried to download hash from all sources " );
         }
