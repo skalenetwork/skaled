@@ -543,7 +543,7 @@ public:
     ~RLPStream() {}
 
     /// Append given datum to the byte stream.
-    RLPStream& append( unsigned _s ) { return append( bigint( _s ) ); }
+    RLPStream& append( unsigned long _s ) { return append( bigint( _s ) ); }
     RLPStream& append( u160 _s ) { return append( bigint( _s ) ); }
     RLPStream& append( u256 _s ) { return append( bigint( _s ) ); }
     RLPStream& append( bigint _s );
