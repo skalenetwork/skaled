@@ -189,6 +189,27 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
         parsed.options.end() );
 }
 
+unsigned getBlockNumber( const std::string& strURLWeb3, const ChainParams& chain_params ) {
+    skutils::rest::client cli;
+    if ( !cli.open( strURLWeb3 ) ) {
+        throw std::runtime_error( "REST failed to connect to server" );
+    }
+
+    nlohmann::json joIn = nlohmann::json::object();
+    joIn["jsonrpc"] = "2.0";
+    joIn["method"] = "eth_blockNumber";
+    joIn["params"] = nlohmann::json::object();
+    skutils::rest::data_t d = cli.call( joIn );
+    if ( d.empty() ) {
+        throw std::runtime_error( "cannot get blockNumber to download snapshot" );
+    }
+    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+    unsigned block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
+    block_number -= block_number % chain_params.nodeInfo.snapshotInterval;
+
+    return block_number;
+}
+
 void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     fs::path saveTo;
@@ -1074,11 +1095,16 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
-        snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
-        unsigned blockNumber = snapshotHashAgent->getBlockNumber( strURLWeb3 );
+        unsigned blockNumber = getBlockNumber( strURLWeb3, chainParams );
 
+        snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
+
+        dev::h256 voted_hash;
+        std::vector< std::string > list_urls_to_download;
         try {
-            snapshotHashAgent->getHashFromOthers();
+            list_urls_to_download =
+                snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
+            voted_hash = snapshotHashAgent->getVotedHash();
         } catch ( std::exception& ex ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error(
@@ -1086,26 +1112,10 @@ int main( int argc, char** argv ) try {
                       << cc::warn( ex.what() ) << "\n";
         }
 
-        dev::h256 voted_hash;
-        try {
-            voted_hash = snapshotHashAgent->voteForHash();
-        } catch ( std::exception& ex ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error(
-                             " Exception while voting for snapshot hash from other skaleds: " )
-                      << cc::warn( ex.what() ) << "\n";
-        }
-
-        while ( true ) {
+        bool success = false;
+        for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
             std::string urlToDownloadSnapshot;
-            try {
-                urlToDownloadSnapshot = snapshotHashAgent->getNodeToDownloadSnapshotFrom();
-            } catch ( std::exception& ex ) {
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error(
-                                 " Exception while choosing node to download snapshot from: " )
-                          << cc::warn( ex.what() ) << "\n";
-            }
+            urlToDownloadSnapshot = list_urls_to_download[i];
 
             downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
@@ -1114,10 +1124,16 @@ int main( int argc, char** argv ) try {
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == voted_hash ) {
+                success = true;
                 break;
             } else {
                 snapshotManager->removeSnapshot( blockNumber );
             }
+        }
+
+        if ( !success ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " already tried to download hash from all sources " );
         }
     }
 

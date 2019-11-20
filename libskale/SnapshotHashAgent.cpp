@@ -28,27 +28,6 @@
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
-unsigned SnapshotHashAgent::getBlockNumber( const std::string& strURLWeb3 ) {
-    skutils::rest::client cli;
-    if ( !cli.open( strURLWeb3 ) ) {
-        throw std::runtime_error( "REST failed to connect to server" );
-    }
-
-    nlohmann::json joIn = nlohmann::json::object();
-    joIn["jsonrpc"] = "2.0";
-    joIn["method"] = "eth_blockNumber";
-    joIn["params"] = nlohmann::json::object();
-    skutils::rest::data_t d = cli.call( joIn );
-    if ( d.empty() ) {
-        throw std::runtime_error( "cannot get blockNumber to download snapshot" );
-    }
-    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-    this->block_number_ = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
-    this->block_number_ -= this->block_number_ % this->chain_params_.nodeInfo.snapshotInterval;
-
-    return this->block_number_;
-}
-
 dev::h256 SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
@@ -81,19 +60,20 @@ dev::h256 SnapshotHashAgent::voteForHash() {
     }
 }
 
-void SnapshotHashAgent::getHashFromOthers() {
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
+    unsigned block_number ) {
     std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
-        threads.push_back( std::thread( [this, i]() {
+        threads.push_back( std::thread( [this, i, block_number]() {
             try {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
                 joCall["method"] = "skale_getSnapshotHash";
-                nlohmann::json obj = {this->block_number_};
+                nlohmann::json obj = {block_number};
                 joCall["params"] = obj;
                 skutils::rest::client cli;
                 bool fl = cli.open(
@@ -127,26 +107,20 @@ void SnapshotHashAgent::getHashFromOthers() {
         std::cout << "WAITING FOR THREAD TO JOIN " << thr.get_id() << '\n';
         thr.join();
     }
-}
 
-std::string SnapshotHashAgent::getNodeToDownloadSnapshotFrom() {
-    if ( this->idx_ == this->n_ ) {
-        throw std::logic_error(
-            "allready tried to download snapshot from all nodes with voted hash" );
+    this->voted_hash_ = this->voteForHash();
+
+    std::vector< std::string > ret;
+    for ( const size_t idx : this->nodes_to_download_snapshot_from_ ) {
+        std::string ret_value =
+            std::string( "http://" ) + std::string( this->chain_params_.sChain.nodes[idx].ip ) +
+            std::string( ":" ) +
+            ( this->chain_params_.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
     }
 
-    std::string ret_value =
-        std::string( "http://" ) +
-        std::string(
-            this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_]]
-                .ip ) +
-        std::string( ":" ) +
-        ( this->chain_params_.sChain.nodes[this->nodes_to_download_snapshot_from_[this->idx_]]
-                .port +
-            3 )
-            .convert_to< std::string >();
+    return ret;
+}
 
-    ++this->idx_;
-
-    return ret_value;
+dev::h256 SnapshotHashAgent::getVotedHash() const {
+    return this->voted_hash_;
 }

@@ -204,9 +204,6 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture ) {
 
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 1 ) );
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 2 ) );
-
-    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
-    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 3 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture ) {
@@ -417,6 +414,19 @@ BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture ) {
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_2" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_3" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" / "1_4" ) );
+}
+
+BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    mgr.doSnapshot( 1 );
+    mgr.doSnapshot( 2 );
+
+    mgr.removeSnapshot( 1 );
+    mgr.removeSnapshot( 2 );
+
+    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 3 ), SnapshotManager::SnapshotAbsent );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

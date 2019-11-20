@@ -235,6 +235,10 @@ boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsig
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
+    if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) ) {
+        throw SnapshotAbsent( _blockNumber );
+    }
+
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.subvolume._delete(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str() );
@@ -289,7 +293,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
             .string();
 
     if ( !boost::filesystem::exists( hash_file ) ) {
-        throw std::logic_error( "hash doesn't exist" );
+        BOOST_THROW_EXCEPTION( dev::NoSuchFileOrDirectory() );
     }
 
     boost::interprocess::named_mutex m_lock( boost::interprocess::open_or_create, "hashFileLock" );
