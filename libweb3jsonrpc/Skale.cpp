@@ -272,7 +272,7 @@ std::string Skale::skale_getSnapshotHash( unsigned blockNumber ) {
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
         return snapshot_hash.hex();
-    } catch ( Exception const& ) {
+    } catch ( const std::exception& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
 }

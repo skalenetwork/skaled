@@ -29,6 +29,8 @@
 #include <secp256k1_sha256.h>
 
 #include <boost/filesystem.hpp>
+
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -150,14 +152,16 @@ public:
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber ) const;
+    void computeSnapshotHash( unsigned _blockNumber );
 
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
-    const std::string snapshot_hash_file_name = "snapshot_hash.txt";
+
+    static const std::string snapshot_hash_file_name;
+    mutable std::mutex hash_file_mutex;
 
     void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
     void computeVolumeHash(
