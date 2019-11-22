@@ -282,6 +282,17 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
             file.write( "0", 1 );
         }
 
+        const std::string filePathStr = ( fsFilePath / filePath.filename() ).string();
+
+        const std::vector< uint8_t > usc( filePathStr.begin(), filePathStr.end() );
+        bytesConstRef bytesFilePath( usc.data(), usc.size() );
+
+        dev::h256 filePathHash = dev::sha256( bytesFilePath );
+
+        std::ofstream hashFile(
+            ( fsFilePath / ( filePath.filename().string() + "._hash" ) ).string() );
+        hashFile << filePathHash;
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -432,6 +443,13 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
         if ( remove( filePath.c_str() ) != 0 ) {
             throw std::runtime_error( "File cannot be deleted" );
         }
+
+        const fs::path fileHashPath =
+            getFileStorageDir( Address( address ) ) / ( filename + "._hash" );
+        if ( remove( fileHashPath.c_str() ) != 0 ) {
+            throw std::runtime_error( "File's hash cannot be deleted" );
+        }
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -462,6 +480,18 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         if ( !isCreated ) {
             throw std::runtime_error( "createDirectory() failed because cannot create directory" );
         }
+
+        const std::string absolutePathStr = absolutePath.string();
+
+        const std::vector< uint8_t > usc( absolutePathStr.begin(), absolutePathStr.end() );
+        bytesConstRef bytesDirectoryPath( usc.data(), usc.size() );
+
+        dev::h256 directoryPathHash = dev::sha256( bytesDirectoryPath );
+
+        std::ofstream hashFile(
+            ( absolutePath.parent_path() / ( absolutePathStr + "._hash" ) ).string() );
+        hashFile << directoryPathHash;
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -491,6 +521,44 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         if ( !fs::exists( absolutePath ) ) {
             throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
         }
+
+        const std::string absolutePathStr = absolutePath.string();
+        fs::remove( absolutePath.parent_path() / ( absolutePathStr + "._hash" ) );
+
+        fs::remove_all( absolutePath );
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};
+}
+
+ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+        size_t directoryPathLength;
+        std::string directoryPath;
+        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
+
+        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        if ( !fs::exists( absolutePath ) ) {
+            throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+        }
+
+        const std::string absolutePathStr = absolutePath.string();
+        fs::remove( absolutePath.parent_path() / ( absolutePathStr + "._hash" ) );
+
         fs::remove_all( absolutePath );
         u256 code = 1;
         bytes response = toBigEndian( code );

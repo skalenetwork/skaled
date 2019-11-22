@@ -159,6 +159,8 @@ private:
     boost::filesystem::path diffs_dir;
     const std::string snapshot_hash_file_name = "snapshot_hash.txt";
 
+    void computeFileSystemHash(
+        const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const;
     void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
     void computeVolumeHash(
         const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
