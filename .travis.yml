@@ -68,6 +68,7 @@ jobs:
             - cd test
             - ./testeth || travis_terminate 1;
             - sudo ./testeth -t BtrfsTestSuite -- --all || travis_terminate 1;
+            - sudo ./testeth -t HashSnapshotTestSuite -- --all || travis_terminate 1;
             - cd ..
 
             # Create lcov report
@@ -140,14 +141,12 @@ cache:
         # Cache whole deps dir hoping you will not need to download and
         # build external dependencies next build.
         - $TRAVIS_BUILD_DIR/build/deps
-        #- $TRAVIS_BUILD_DIR/SkaleDeps
+        - $TRAVIS_BUILD_DIR/SkaleDeps
 
 before_install:
     - eval "${MATRIX_EVAL}"
 install:
     - ./SkaleDeps/build.sh
-    - sh -c "while :; do clear; date; sleep 300; done" &
-    - ./libconsensus/libBLS/deps/build.sh &> ./log_of_deps_build.txt || (cat ./log_of_deps_build.txt && travis_terminate 1)
 script:
     # configure
     - mkdir -p build

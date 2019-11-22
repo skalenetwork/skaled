@@ -144,19 +144,24 @@ simple_find_tool_program "make" "MAKE" "no"
 simple_find_tool_program "makeinfo" "MAKEINFO" "no"
 simple_find_tool_program "cmake" "CMAKE" "no"
 simple_find_tool_program "ccmake" "CCMAKE" "yes"
-#simple_find_tool_program "scons" "SCONS" "yes"
+simple_find_tool_program "scons" "SCONS" "yes"
 simple_find_tool_program "wget" "WGET" "no"
 simple_find_tool_program "autoconf" "AUTOCONF" "no"
 simple_find_tool_program "autogen" "AUTOGEN" "yes"
 simple_find_tool_program "automake" "AUTOMAKE" "yes"
 simple_find_tool_program "m4" "M4" "yes"
-#simple_find_tool_program "libtool" "LIBTOOL" "no"
-#simple_find_tool_program "shtool" "SHTOOL" "no"
+if [ ! "$UNIX_SYSTEM_NAME" = "Darwin" ];
+then
+	simple_find_tool_program "libtoolize" "LIBTOOLIZE" "no"
+else
+	simple_find_tool_program "glibtoolize" "LIBTOOLIZE" "no"
+fi
+simple_find_tool_program "shtool" "SHTOOL" "yes"
 simple_find_tool_program "pkg-config" "PKG_CONFIG" "yes"
 simple_find_tool_program "sed" "SED" "no"
 simple_find_tool_program "awk" "AWK" "no"
-#simple_find_tool_program "yasm" "YASM" "no"
-#simple_find_tool_program "nasm" "NASM" "no"
+simple_find_tool_program "yasm" "YASM" "no"
+simple_find_tool_program "nasm" "NASM" "yes"
 
 echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}PREPARE BUILD${COLOR_SEPARATOR} ================================${COLOR_RESET}"
 
@@ -211,38 +216,68 @@ else
 	WITH_GTEST=1
 fi
 
+export CFLAGS="$CFLAGS -fPIC"
 export CXXFLAGS="$CXXFLAGS -fPIC"
-WITH_ZLIB="yes"
-WITH_OPENSSL="yes"
-WITH_CURL="yes"
-WITH_LZMA="no"
-WITH_SSH="no"
-WITH_SDL="no"
-WITH_SDL_TTF="no"
-WITH_EV="no"
-WITH_EVENT="no"
-WITH_UV="yes"
-WITH_LWS="yes"
-WITH_V8="no"
-WITH_SOURCEY="no"
+
+setup_variable() {
+    TMP_VAL=$1
+    TMP_CMD="echo ${!TMP_VAL}"
+    TMP_VAL=`$TMP_CMD`
+    #echo $TMP_VAL
+    #if [ -z "$TMP_VAL" ]
+    #then
+    #      echo "$1 is empty"
+    #else
+    #      echo "$1 is NOT empty, it is:" $TMP_VAL
+    #fi
+    TMP_CMD="export $1=$2"
+    $TMP_CMD
+}
+## test:
+#export WITH_SOMETHING="pre-defined!!!"
+#setup_variable "WITH_SOMETHING" "yeah!!!"
+#echo "WITH_SOMETHING outside is " $WITH_SOMETHING
+
+setup_variable WITH_ZLIB "yes"
+setup_variable WITH_OPENSSL "yes"
+setup_variable WITH_CURL "yes"
+setup_variable WITH_LZMA "no"
+setup_variable WITH_SSH "no"
+
+setup_variable WITH_SDL "no"
+setup_variable WITH_SDL_TTF "no"
+
 # notice: WITH_EV and WITH_EVENT should not be used at a same time
-WITH_BOOST="no"
-WITH_PUPNP="no"
-WITH_ARGTABLE2="yes"
+setup_variable WITH_EV "no"
+setup_variable WITH_EVENT "no"
+setup_variable WITH_UV "yes"
+setup_variable WITH_LWS "yes"
+
+setup_variable WITH_V8 "no"
+setup_variable WITH_SOURCEY "no"
+
+setup_variable WITH_BOOST "no"
+setup_variable WITH_PUPNP "no"
+setup_variable WITH_ARGTABLE2 "yes"
+
 #
 # notice: nettle and gnutls are needed for microhttpd on ubuntu 18.04
 # sudo apt-get install nettle-dev gnutls-dev
 #
-WITH_NETTLE="no"
-WITH_TASN1="no"
-WITH_GNU_TLS="no"
+setup_variable WITH_NETTLE "no"
+setup_variable WITH_TASN1 "no"
+setup_variable WITH_GNU_TLS "no"
 #
-WITH_GPGERROR="no"
-WITH_GCRYPT="no"
-WITH_MICRO_HTTP_D="yes"
-WITH_JSONCPP="yes"
-WITH_JSONRPCCPP="yes"
-WITH_CRYPTOPP="yes"
+setup_variable WITH_GPGERROR "no"
+setup_variable WITH_GCRYPT "no"
+setup_variable WITH_MICRO_HTTP_D "yes"
+setup_variable WITH_JSONCPP "yes"
+setup_variable WITH_JSONRPCCPP "yes"
+setup_variable WITH_CRYPTOPP "yes"
+
+setup_variable WITH_FF "yes"
+setup_variable WITH_GMP "yes"
+setup_variable WITH_PBC "yes"
 
 if [ -z "${PARALLEL_COUNT}" ];
 then
@@ -285,8 +320,6 @@ export ARM_TOOLCHAIN_PATH=$TOOLCHAINS_PATH/$ARM_TOOLCHAIN_NAME
 export ADDITIONAL_INCLUDES="-I$INSTALL_ROOT/include"
 export ADDITIONAL_LIBRARIES="-L$INSTALL_ROOT/lib"
 export TOOLCHAIN=no
-
-export CFLAGS=" -fPIC ${CFLAGS}"
 
 if [[ ! -z $CXX ]];
 then
@@ -485,6 +518,10 @@ echo -e "${COLOR_VAR_NAME}PARALLEL_COUNT${COLOR_DOTS}...........................
 echo -e "${COLOR_VAR_NAME}PARALLEL_MAKE_OPTIONS${COLOR_DOTS}.........................................${COLOR_VAR_VAL}$PARALLEL_MAKE_OPTIONS${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}DYLD_LIBRARY_PATH${COLOR_DOTS}.............................................${COLOR_VAR_VAL}$DYLD_LIBRARY_PATH${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}USE_LLVM${COLOR_DOTS}......................................................${COLOR_VAR_VAL}$USE_LLVM${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}ADDITIONAL_INCLUDES${COLOR_DOTS}...........................................${COLOR_VAR_VAL}$ADDITIONAL_INCLUDES${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}ADDITIONAL_LIBRARIES${COLOR_DOTS}..........................................${COLOR_VAR_VAL}$ADDITIONAL_LIBRARIES${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}CFLAGS${COLOR_DOTS}........................................................${COLOR_VAR_VAL}$CFLAGS${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}CXXFLAGS${COLOR_DOTS}......................................................${COLOR_VAR_VAL}$CXXFLAGS${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}CC${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$CC${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}CXX${COLOR_DOTS}...........................................................${COLOR_VAR_VAL}$CXX${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}MAKE${COLOR_DOTS}..........................................................${COLOR_VAR_VAL}$MAKE${COLOR_RESET}"
@@ -538,6 +575,9 @@ echo -e "${COLOR_VAR_NAME}WITH_MICRO_HTTP_D${COLOR_DOTS}......${COLOR_VAR_DESC}l
 echo -e "${COLOR_VAR_NAME}WITH_JSONCPP${COLOR_DOTS}...........${COLOR_VAR_DESC}LibJsonC++${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_JSONCPP${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_JSONRPCCPP${COLOR_DOTS}........${COLOR_VAR_DESC}LibJsonRpcC++${COLOR_DOTS}..........................${COLOR_VAR_VAL}$WITH_JSONRPCCPP${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_CRYPTOPP${COLOR_DOTS}..........${COLOR_VAR_DESC}LibCrypto++${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_CRYPTOPP${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GMP${COLOR_DOTS}...............${COLOR_VAR_DESC}LibGMP${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_GMP${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_FF${COLOR_DOTS}................${COLOR_VAR_DESC}LibFF${COLOR_DOTS}..................................${COLOR_VAR_VAL}$WITH_FF${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_PBC${COLOR_DOTS}...............${COLOR_VAR_DESC}LibPBC${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_PBC${COLOR_RESET}"
 
 #
 #
@@ -2007,25 +2047,114 @@ fi
 
 if [ "$WITH_CRYPTOPP" = "yes" ];
 then
-	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libCrypto++${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
-	if [ ! -f "$INSTALL_ROOT/lib/libcryptopp.a" ];
-	then
-		env_restore
-		cd $SOURCES_ROOT
-		if [ ! -d "libcryptopp" ];
-		then
-			mkdir libcryptopp
-			git clone https://github.com/DimaStebaev/cryptopp.git libcryptopp
-			#git clone http://github.com/weidai11/cryptopp.git libcryptopp
-			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-		fi
-		cd $SOURCES_ROOT/libcryptopp
-		$MAKE $PARALLEL_MAKE_OPTIONS static
-		$MAKE $PARALLEL_MAKE_OPTIONS install PREFIX=$INSTALL_ROOT
-		cd $SOURCES_ROOT
-	else
-		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
-	fi
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libCrypto++${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libcryptopp.a" ];
+    then
+        env_restore
+        cd $SOURCES_ROOT
+        if [ ! -d "libcryptopp" ];
+        then
+            mkdir libcryptopp
+            git clone https://github.com/DimaStebaev/cryptopp.git libcryptopp
+            #git clone http://github.com/weidai11/cryptopp.git libcryptopp
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+        fi
+        cd $SOURCES_ROOT/libcryptopp
+        $MAKE $PARALLEL_MAKE_OPTIONS static
+        $MAKE $PARALLEL_MAKE_OPTIONS install PREFIX=$INSTALL_ROOT
+        cd $SOURCES_ROOT
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
+
+if [ "$WITH_GMP" = "yes" ];
+then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}GMP${COLOR_SEPARATOR} ==========================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libgmp.a" ] || [ ! -f "$INSTALL_ROOT/lib/libgmpxx.a" ] || [ ! -f "$INSTALL_ROOT/lib/libgmp.la" ] || [ ! -f "$INSTALL_ROOT/lib/libgmpxx.la" ];
+    then
+        env_restore
+        cd $SOURCES_ROOT
+        if [ ! -d "gmp-6.1.2" ];
+        then
+            if [ ! -f "gmp-6.1.2.tar.xz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from gmp website${COLOR_DOTS}...${COLOR_RESET}"
+                $WGET https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.xz
+            fi
+            echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+            tar -xf gmp-6.1.2.tar.xz
+        fi
+        cd gmp-6.1.2
+        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+        ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC $CONF_DEBUG_OPTIONS --enable-cxx --enable-static --disable-shared --prefix=$INSTALL_ROOT
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        $MAKE $PARALLEL_MAKE_OPTIONS
+        $MAKE $PARALLEL_MAKE_OPTIONS install
+        cd ..
+        cd $SOURCES_ROOT
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
+
+if [ "$WITH_FF" = "yes" ];
+then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}FF${COLOR_SEPARATOR} ===========================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libff.a" ];
+    then
+        env_restore
+        cd $SOURCES_ROOT
+        if [ ! -d "libff" ];
+        then
+            echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            git clone https://github.com/scipr-lab/libff.git --recursive
+        fi
+        cd libff
+        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+        mkdir -p build
+        cd build
+        $CMAKE $CMAKE_CROSSCOMPILING_OPTS -DCMAKE_INSTALL_PREFIX=$INSTALL_ROOT -DCMAKE_BUILD_TYPE=$TOP_CMAKE_BUILD_TYPE .. -DWITH_PROCPS=OFF
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        $MAKE $PARALLEL_MAKE_OPTIONS
+        $MAKE $PARALLEL_MAKE_OPTIONS install
+        cd $SOURCES_ROOT
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
+
+if [ "$WITH_PBC" = "yes" ];
+then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}PBC${COLOR_SEPARATOR} ==========================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libpbc.a" ] || [ ! -f "$INSTALL_ROOT/lib/libpbc.la" ];
+    then
+        env_restore
+        cd $SOURCES_ROOT
+        if [ ! -d "pbc" ];
+        then
+            echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            git clone https://github.com/skalenetwork/pbc.git # pbc
+        fi
+        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+        cd pbc
+        export CFLAGS="$CFLAGS -I${INSTALL_ROOT}/include"
+        export CXXFLAGS="$CXXFLAGS -I${INSTALL_ROOT}/include"
+        export CPPFLAGS="$CPPFLAGS -I${INSTALL_ROOT}/include"
+        export LDFLAGS="$LDFLAGS -L${INSTALL_ROOT}/lib"
+        echo "    CFLAGS   = $CFLAGS"
+        echo "    CXXFLAGS = $CXXFLAGS"
+        echo "    CPPFLAGS = $CPPFLAGS"
+        echo "    LDFLAGS  = $LDFLAGS"
+        $LIBTOOLIZE --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
+        ./configure $CONF_CROSSCOMPILING_OPTS_GENERIC $CONF_DEBUG_OPTIONS --with-pic --enable-static --disable-shared --prefix=$INSTALL_ROOT
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        $MAKE $PARALLEL_MAKE_OPTIONS
+        $MAKE $PARALLEL_MAKE_OPTIONS install
+        cd $SOURCES_ROOT
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
 fi
 
 echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}FINISH${COLOR_SEPARATOR} =======================================${COLOR_RESET}"

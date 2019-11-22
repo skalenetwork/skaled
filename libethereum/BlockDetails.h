@@ -53,7 +53,7 @@ struct BlockDetails {
     h256 parent;
     h256s children;
 
-    mutable unsigned size;
+    unsigned size;
 };
 
 struct BlockLogBlooms {

@@ -1,6 +1,7 @@
 #ifndef SKALEDEBUG_H
 #define SKALEDEBUG_H
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -23,7 +24,6 @@ public:
 
 private:
     std::vector< handler > handlers;
-    std::mutex global_mutex;
 };
 
 class SkaleDebugTracer {
@@ -33,7 +33,10 @@ public:
     void break_on_tracepoint( const std::string& name, int count );
     void wait_for_tracepoint( const std::string& name );
     void continue_on_tracepoint( const std::string& name );
-    int get_tracepoint_count( const std::string& name ) { return find_by_name( name ).pass_count; }
+    int get_tracepoint_count( const std::string& name ) {
+        int rv = find_by_name( name ).pass_count;
+        return rv;
+    }
 
     std::set< std::string > get_tracepoints() const {
         std::set< std::string > res;
@@ -54,9 +57,9 @@ private:
     };
 
     std::map< std::string, tracepoint_struct > tracepoints;
-    std::mutex map_mutex;
+    std::mutex local_mutex;
     tracepoint_struct& find_by_name( const std::string& name ) {
-        std::lock_guard< std::mutex > lock( map_mutex );
+        std::lock_guard< std::mutex > lock( local_mutex );
         return tracepoints[name];
     }
 };

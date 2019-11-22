@@ -257,8 +257,10 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
         // Insert details of genesis block.
-        m_details[m_genesisHash] = BlockDetails( 0, gb.difficulty(), h256(), {} );
-        auto r = m_details[m_genesisHash].rlp();
+        BlockDetails details( 0, gb.difficulty(), h256(), {} );
+        auto r = details.rlp();
+        details.size = r.size();
+        m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
         assert( isKnown( gb.hash() ) );
     }
@@ -567,8 +569,11 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
 
     BlockDetails bd( ( unsigned ) pd.number + 1, pd.totalDifficulty + _block.info.difficulty(),
         _block.info.parentHash(), {} );
+    bytes bd_rlp = bd.rlp();
+    bd.size = bd_rlp.size();
+
     extrasWriteBatch->insert(
-        toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( bd.rlp() ) );
+        toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( bd_rlp ) );
     extrasWriteBatch->insert(
         toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
     extrasWriteBatch->insert(
@@ -649,7 +654,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state.updateToLatestVersion();
+        _state = _state.startNew();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 
@@ -755,10 +760,12 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-        BlockDetails const details(
+        BlockDetails details(
             ( unsigned ) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {} );
+        bytes details_rlp = details.rlp();
+        details.size = details_rlp.size();
         extrasWriteBatch->insert(
-            toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details.rlp() ) );
+            toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
 
         BlockLogBlooms blb;
         for ( auto i : RLP( _receipts ) )
@@ -858,7 +865,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             }
 
             // Update database with them.
-            ReadGuard l1( x_blocksBlooms );
+            // ReadGuard l1( x_blocksBlooms );
+            WriteGuard l1( x_blocksBlooms );
             {
                 MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
 

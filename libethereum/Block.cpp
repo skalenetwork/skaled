@@ -158,6 +158,9 @@ void Block::resetCurrent( int64_t _timestamp ) {
 
     performIrregularModifications();
     updateBlockhashContract();
+
+    //    if ( !m_state.checkVersion() )
+    m_state = m_state.startNew();
 }
 
 SealEngineFace* Block::sealEngine() const {
@@ -263,7 +266,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         // We mined the last block.
         // Our state is good - we just need to move on to next.
         m_previousBlock = m_currentBlock;
-        resetCurrent();
+        // see at end        resetCurrent();
         ret = true;
     } else if ( bi == m_previousBlock ) {
         // No change since last sync.
@@ -321,7 +324,9 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         ret = true;
     }
 #endif
-    m_state.updateToLatestVersion();
+    // m_state = m_state.startNew();
+    resetCurrent();
+    assert( m_state.checkVersion() );
     return ret;
 }
 
@@ -485,8 +490,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     MICROPROFILE_SCOPEI( "Block", "enactOn", MP_INDIANRED );
 
-    m_state = m_state.startWrite();
-
     noteChain( _bc );
 
 #if ETH_TIMED_ENACTMENTS
@@ -517,6 +520,8 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     sync( _bc, _block.info.parentHash(), BlockHeader() );
     resetCurrent();
+
+    m_state = m_state.startWrite();
 
 #if ETH_TIMED_ENACTMENTS
     syncReset = t.elapsed();

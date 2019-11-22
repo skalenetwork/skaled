@@ -33,9 +33,11 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <functional>
+#include <mutex>
 #include <thread>
 
 namespace dev {
@@ -111,7 +113,7 @@ public:
 
     /// Get a hash set of transactions in the queue
     /// @returns A hash set of all transactions in the queue
-    const h256Hash& knownTransactions() const;
+    const h256Hash knownTransactions() const;
 
     /// Get max nonce for an account
     /// @returns Max transaction nonce for account in the queue

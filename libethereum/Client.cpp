@@ -138,6 +138,7 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
+        m_state = m_state.startNew();
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this
     // just take the root from the genesis block.
@@ -443,7 +444,7 @@ size_t Client::syncTransactions(
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
-        m_state.updateToLatestVersion();
+        m_state = m_state.startNew();
     }
 
     DEV_READ_GUARDED( x_working )
@@ -515,7 +516,7 @@ void Client::restartMining() {
     newPreMine = m_preSeal;
 
     // TODO: use m_postSeal to avoid re-evaluating our own blocks.
-    m_state.updateToLatestVersion();
+    m_state = m_state.startNew();
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
@@ -889,10 +890,17 @@ h256 Client::importTransaction( Transaction const& _t ) {
     const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
 
     // throws in case of error
-    // TODO potential race conditions in state and gasBidPrice (new block can arrive in between)
+    State state;
+    u256 gasBidPrice;
+
+    DEV_GUARDED( m_blockImportMutex ) {
+        state = this->state().startRead();
+        gasBidPrice = this->gasBidPrice();
+    }
+
     Executive::verifyTransaction( _t,
-        bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(),
-        this->state().startRead(), *bc().sealEngine(), 0, this->gasBidPrice() );
+        bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
+        *bc().sealEngine(), 0, gasBidPrice );
 
     ImportResult res = m_tq.import( _t );
     switch ( res ) {

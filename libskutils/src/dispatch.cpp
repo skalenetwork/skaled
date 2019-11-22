@@ -988,44 +988,50 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
     if ( cntThreads == 0 )
         throw std::runtime_error( "dispatch domain failed to initialize thread pool" );
     // init thread pool
-    std::atomic_size_t cntFailedToStartThreads;
-    cntFailedToStartThreads = 0;
     size_t cntThreadsToStart = cntThreads;
-    for ( ; true; ) {
+    for ( size_t cntThreadStartupAttempts = cntThreads * 2; cntThreadStartupAttempts != 0;
+          --cntThreadStartupAttempts ) {
+        std::atomic_size_t cntFailedToStartThreads;
+        cntFailedToStartThreads = 0;
         for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
-            bool bThreadStartedOK = thread_pool_.safe_submit_without_future( [this]() {
-                ++cntRunningThreads_;
-                try {
-                    for ( ; true; ) {
-                        if ( shutdown_flag_ )
-                            break;
-                        {  // block
-                            std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
-                            fetch_lock_.wait( lock );
-                        }  // block
-                        if ( shutdown_flag_ )
-                            break;
-                        //
-                        // run_one();
-                        //
-                        for ( ; run_one(); ) {
+            try {
+                bool bThreadStartedOK = thread_pool_.safe_submit_without_future( [this]() {
+                    ++cntRunningThreads_;
+                    try {
+                        for ( ; true; ) {
                             if ( shutdown_flag_ )
                                 break;
-                            // fetch_lock_.notify_one(); // spread the work into other threads
-                        }
-                    }  /// for( ; true ; )
-                } catch ( ... ) {
-                }
-                --cntRunningThreads_;
-            } );
-            if ( !bThreadStartedOK )
+                            {  // block
+                                std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
+                                fetch_lock_.wait( lock );
+                            }  // block
+                            if ( shutdown_flag_ )
+                                break;
+                            //
+                            // run_one();
+                            //
+                            for ( ; run_one(); ) {
+                                if ( shutdown_flag_ )
+                                    break;
+                                // fetch_lock_.notify_one(); // spread the work into other threads
+                            }
+                        }  /// for( ; true ; )
+                    } catch ( ... ) {
+                    }
+                    --cntRunningThreads_;
+                } );
+                if ( !bThreadStartedOK )
+                    throw std::runtime_error( "failed to start thread in dispatch pool" );
+            } catch ( ... ) {
                 ++cntFailedToStartThreads;
-        }  // for( idxThread = 0; idxThread < cntThreadsToStart; ++ idxThread )
+            }
+        }  // for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
         cntThreadsToStart = size_t( cntFailedToStartThreads );
         if ( cntThreadsToStart == 0 )
             break;
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
-    }  // for ( ; true; )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+    }  // for ( size_t cntThreadStartupAttempts = 1; cntThreadStartupAttempts != 0;
+    // --cntThreadStartupAttempts )
     size_t cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
     size_t cntWaitAttempts =
         ( nWaitMilliSeconds == 0 || nWaitMilliSeconds == size_t( -1 ) ) ? 3000 : nWaitMilliSeconds;
@@ -1035,9 +1041,11 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
     }
-    if ( cntStartedAndRunningThreads != cntThreads )
+    if ( cntStartedAndRunningThreads != cntThreads ) {
+        fetch_lock_.notify_all();  // notrify earlier
         throw std::runtime_error(
             "dispatch domain failed to initialize all threads in thread pool" );
+    }
 }
 void domain::impl_shutdown() {
     // tell threads to shutdown
