@@ -277,8 +277,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                   << cc::u( to_string( block_number ) ) << std::endl;
 
     } catch ( ... ) {
-        std::throw_with_nested( std::runtime_error(
-                                    cc::fatal( "FATAL:" ) + " " + cc::error( "Exception while processing downloaded snapshot: " ) ) );
+        std::throw_with_nested(
+            std::runtime_error( cc::fatal( "FATAL:" ) + " " +
+                                cc::error( "Exception while processing downloaded snapshot: " ) ) );
     }
     if ( !saveTo.empty() )
         fs::remove( saveTo );
