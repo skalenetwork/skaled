@@ -194,8 +194,8 @@ ChainParams ChainParams::loadConfig(
     setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
 
     if ( params.count( c_chainID ) )
-        cp.chainID =
-            int( u256( fromBigEndian< u256 >( fromHex( params.at( c_chainID ).get_str() ) ) ) );
+        cp.chainID = uint64_t(
+            u256( fromBigEndian< u256 >( fromHex( params.at( c_chainID ).get_str() ) ) ) );
     if ( params.count( c_networkID ) )
         cp.networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
