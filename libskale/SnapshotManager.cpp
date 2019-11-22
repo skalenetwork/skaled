@@ -290,6 +290,15 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
 }
 
 dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( block_number );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( block_number );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }  // catch
+
     std::string hash_file =
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
@@ -312,6 +321,15 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
 }
 
 bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( _blockNumber );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }  // catch
+
     boost::filesystem::path hash_file =
         this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshot_hash_file_name;
     try {
