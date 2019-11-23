@@ -189,7 +189,8 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
         parsed.options.end() );
 }
 
-unsigned getBlockNumber( const std::string& strURLWeb3, const ChainParams& chain_params ) {
+unsigned getLatestSnapshotBlockNumber(
+    const std::string& strURLWeb3, const ChainParams& chain_params ) {
     skutils::rest::client cli;
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
@@ -237,34 +238,22 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                     strErrorDescription = "download failed, connection problem during download";
                 throw std::runtime_error( strErrorDescription );
             }
-        } catch ( const std::exception& ex ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while downloading snapshot: " )
-                      << cc::warn( ex.what() ) << "\n";
-            throw;
         } catch ( ... ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while downloading snapshot: " )
-                      << cc::warn( "Unknown exception" ) << "\n";
-            throw;
+            std::throw_with_nested(
+                std::runtime_error( cc::fatal( "FATAL:" ) + " " +
+                                    cc::error( "Exception while downloading snapshot" ) ) );
         }
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
         try {
             snapshotManager->importDiff( 0, block_number );
-        } catch ( const std::exception& ex ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while importing downloaded snapshot: " )
-                      << cc::warn( ex.what() ) << "\n";
-            throw;
         } catch ( ... ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while importing downloaded snapshot: " )
-                      << cc::warn( "Unknown exception" ) << "\n";
-            throw;
+            std::throw_with_nested( std::runtime_error(
+                cc::fatal( "FATAL:" ) + " " +
+                cc::error( "Exception while importing downloaded snapshot: " ) ) );
         }
 
-        // HACK refactor this piece of code!
+        /// HACK refactor this piece of code! ///
         fs::path price_db_path;
         for ( auto& f :
             fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
@@ -274,10 +263,11 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             }  // if
         }
         if ( price_db_path.empty() ) {
-            std::cout << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
+            clog( VerbosityError, "downloadSnapshot" )
+                << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
             return;
         }
-        // TODO hope it won't throw
+
         fs::rename( price_db_path,
             price_db_path.parent_path() / ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
         //// HACK END ////
@@ -286,14 +276,10 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         std::cout << cc::success( "Snapshot restore success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
 
-    } catch ( const std::exception& ex ) {
-        std::cerr << cc::fatal( "FATAL:" )
-                  << cc::error( " Exception while processing downloaded snapshot: " )
-                  << cc::warn( ex.what() ) << "\n";
     } catch ( ... ) {
-        std::cerr << cc::fatal( "FATAL:" )
-                  << cc::error( " Exception while processing downloaded snapshot: " )
-                  << cc::warn( "Unknown exception" ) << "\n";
+        std::throw_with_nested(
+            std::runtime_error( cc::fatal( "FATAL:" ) + " " +
+                                cc::error( "Exception while processing downloaded snapshot: " ) ) );
     }
     if ( !saveTo.empty() )
         fs::remove( saveTo );
@@ -1094,22 +1080,19 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        const unsigned blockNumber = getBlockNumber( strURLWeb3, chainParams );
+        const unsigned blockNumber = getLatestSnapshotBlockNumber( strURLWeb3, chainParams );
 
-        std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
-        snapshotHashAgent.reset( new SnapshotHashAgent( chainParams ) );
+        SnapshotHashAgent snapshotHashAgent( chainParams );
 
         dev::h256 voted_hash;
         std::vector< std::string > list_urls_to_download;
         try {
-            list_urls_to_download =
-                snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
-            voted_hash = snapshotHashAgent->getVotedHash();
+            list_urls_to_download = snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+            voted_hash = snapshotHashAgent.getVotedHash();
         } catch ( std::exception& ex ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error(
-                             " Exception while collecting snapshot hash from other skaleds: " )
-                      << cc::warn( ex.what() ) << "\n";
+            std::throw_with_nested( std::runtime_error(
+                cc::fatal( "FATAL:" ) + " " +
+                cc::error( "Exception while collecting snapshot hash from other skaleds " ) ) );
         }
 
         bool successfullDownload = false;
@@ -1132,8 +1115,7 @@ int main( int argc, char** argv ) try {
         }
 
         if ( !successfullDownload ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " already tried to download hash from all sources " );
+            throw std::runtime_error( "FATAL: already tried to download hash from all sources" );
         }
     }
 

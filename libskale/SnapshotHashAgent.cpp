@@ -95,16 +95,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                 this->hashes_[i] = dev::h256( str_hash );
             } catch ( std::exception& ex ) {
-                std::cerr << cc::fatal( "FATAL:" )
-                          << cc::error(
-                                 " Exception while collecting snapshot hash from other skaleds: " )
+                std::cerr << cc::error(
+                                 "Exception while collecting snapshot hash from other skaleds: " )
                           << cc::warn( ex.what() ) << "\n";
             }
         } ) );
     }
 
     for ( auto& thr : threads ) {
-        std::cout << "WAITING FOR THREAD TO JOIN " << thr.get_id() << '\n';
         thr.join();
     }
 
@@ -123,5 +121,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 }
 
 dev::h256 SnapshotHashAgent::getVotedHash() const {
+    assert( voted_hash_ != dev::h256() );
     return this->voted_hash_;
 }

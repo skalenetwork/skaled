@@ -41,6 +41,8 @@ namespace fs = boost::filesystem;
 // Can manage snapshots as non-prvivileged user
 // For send/receive needs root!
 
+const std::string SnapshotManager::snapshot_hash_file_name = "snapshot_hash.txt";
+
 // exceptions:
 // - bad data dir
 // - not btrfs
@@ -288,44 +290,68 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
 }
 
 dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( block_number );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( block_number );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }  // catch
+
     std::string hash_file =
         ( this->snapshots_dir / std::to_string( block_number ) / this->snapshot_hash_file_name )
             .string();
 
-    if ( !boost::filesystem::exists( hash_file ) ) {
-        BOOST_THROW_EXCEPTION( dev::NoSuchFileOrDirectory() );
+    if ( !isSnapshotHashPresent( block_number ) ) {
+        BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hash_file ) );
     }
 
-    boost::interprocess::named_mutex m_lock( boost::interprocess::open_or_create, "hashFileLock" );
-    m_lock.lock();
-
-    std::ifstream in( hash_file );
+    std::lock_guard< std::mutex > lock( hash_file_mutex );
 
     dev::h256 hash;
-    in >> hash;
 
-    m_lock.unlock();
-
+    try {
+        std::ifstream in( hash_file );
+        in >> hash;
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( SnapshotManager::CannotRead( hash_file ) );
+    }
     return hash;
 }
 
 bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( _blockNumber );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }  // catch
+
     boost::filesystem::path hash_file =
         this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshot_hash_file_name;
-    return boost::filesystem::exists( hash_file );
+    try {
+        std::lock_guard< std::mutex > lock( hash_file_mutex );
+        return boost::filesystem::exists( hash_file );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( hash_file ) );
+    }
 }
 
 void SnapshotManager::computeVolumeHash(
-    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const {
+    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const try {
     if ( !boost::filesystem::exists( _volumeDir ) ) {
-        throw std::logic_error(
-            "btrfs volume was corrupted - folder " + _volumeDir.string() + " doesn't exist" );
+        BOOST_THROW_EXCEPTION( InvalidPath( _volumeDir ) );
     }
 
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
 
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
+} catch ( const fs::filesystem_error& ex ) {
+    std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
 void SnapshotManager::computeFileSystemHash(
@@ -338,9 +364,7 @@ void SnapshotManager::computeFileSystemHash(
 
 void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
-    if ( this->volumes.size() == 0 ) {
-        throw std::logic_error( "No btrfs volumes present - nothing to calculate hash of" );
-    }
+    assert( this->volumes.size() != 0 );
 
     this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
                                  this->volumes[0] / "12041" / "extras",
@@ -352,17 +376,17 @@ void SnapshotManager::computeAllVolumesHash(
 
     this->computeVolumeHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
-
-    this->computeFileSystemHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
-
-    for ( size_t i = 1; i < this->volumes.size(); ++i ) {
-        this->computeVolumeHash(
-            this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
-    }
+  
+    this->computeFileSystemHash(this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
+  
+    for ( const string& vol : this->volumes ) {
+        if ( vol.find( "prices_" ) == 0 )
+            this->computeVolumeHash(
+                this->snapshots_dir / std::to_string( _blockNumber ) / vol, ctx );
+    }  // for
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) const {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
@@ -391,12 +415,14 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) const {
     dev::h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
 
-    boost::interprocess::named_mutex m_lock( boost::interprocess::open_or_create, "hashFileLock" );
-    m_lock.lock();
+    string hash_file = ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+                       this->snapshot_hash_file_name;
 
-    std::ofstream out( ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
-                       this->snapshot_hash_file_name );
-    out << hash;
-
-    m_lock.unlock();
+    try {
+        std::lock_guard< std::mutex > lock( hash_file_mutex );
+        std::ofstream out( hash_file );
+        out << hash;
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
+    }
 }
