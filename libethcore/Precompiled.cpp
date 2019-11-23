@@ -37,6 +37,8 @@
 #include <boost/algorithm/hex.hpp>
 #include <mutex>
 
+#include <secp256k1_sha256.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -547,19 +549,46 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        size_t directoryPathLength;
-        std::string directoryPath;
-        convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
-        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
-        if ( !fs::exists( absolutePath ) ) {
-            throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+        size_t filenameLength;
+        std::string filename;
+        convertBytesToString( _in, 32, filename, filenameLength );
+
+        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+
+        if (!fs::exists(filePath)) {
+            throw std::runtime_error("calculateFileHash() failed because file does not exist");
         }
 
-        const std::string absolutePathStr = absolutePath.string();
-        fs::remove( absolutePath.parent_path() / ( absolutePathStr + "._hash" ) );
+        std::string fileContent;
+        std::ifstream file(filePath.string());
+        file >> fileContent;
 
-        fs::remove_all( absolutePath );
+        const fs::path fileHashPath = filePath.parent_path() / (filePath.string() + "._hash");
+
+        if (!fs::exists(fileHashPath)) {
+            throw std::runtime_error("calculateFileHash() failed because file with hash does not exist");
+        }
+
+        std::fstream fileHash;
+        fileHash.open(fileHashPath.string(), ios::binary | ios::out | ios::in);
+
+        dev::h256 filePathHash;
+        fileHash >> filePathHash;
+
+        dev::h256 fileContentHash = dev::sha256(fileContent);
+
+        secp256k1_sha256_t ctx;
+        secp256k1_sha256_write(&ctx, filePathHash.data(), filePathHash.size);
+        secp256k1_sha256_write(&ctx, fileContentHash.data(), fileContentHash.size);
+
+        dev::h256 commonFileHash;
+        secp256k1_sha256_finalize(&ctx, commonFileHash.data());
+
+        fileHash.clear();
+        fileHash << commonFileHash;
+        fileHash.close();
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
