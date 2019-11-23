@@ -354,6 +354,14 @@ void SnapshotManager::computeVolumeHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
+void SnapshotManager::computeFileSystemHash(
+    const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const {
+    if ( !boost::filesystem::exists( _fileSystemDir ) ) {
+        throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
+                                _fileSystemDir.string() + " doesn't exist" );
+    }
+}
+
 void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     assert( this->volumes.size() != 0 );
@@ -368,7 +376,9 @@ void SnapshotManager::computeAllVolumesHash(
 
     this->computeVolumeHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
-
+  
+    this->computeFileSystemHash(this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
+  
     for ( const string& vol : this->volumes ) {
         if ( vol.find( "prices_" ) == 0 )
             this->computeVolumeHash(

@@ -163,6 +163,8 @@ private:
     static const std::string snapshot_hash_file_name;
     mutable std::mutex hash_file_mutex;
 
+    void computeFileSystemHash(
+        const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const;
     void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
     void computeVolumeHash(
         const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
