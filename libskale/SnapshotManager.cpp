@@ -354,12 +354,33 @@ void SnapshotManager::computeVolumeHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
+void SnapshotManager::proceedFileSystemDirectory(const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx) const {
+    boost::filesystem::recursive_directory_iterator it(_fileSystemDir), end;
+
+    while (it != end) {
+        if (fs::is_regular_file(*it)) {
+            if (boost::filesystem::extension(it->path()) != "._hash") {
+                std::ifstream hash_file(it->path().string());
+                dev::h256 hash;
+                hash_file >> hash;
+                secp256k1_sha256_write( ctx, hash.data(), hash.size);
+            }
+        } else {
+            this->proceedFileSystemDirectory(*it, ctx);
+        }
+
+        ++it;
+    }
+}
+
 void SnapshotManager::computeFileSystemHash(
     const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
         throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
                                 _fileSystemDir.string() + " doesn't exist" );
     }
+
+    this->proceedFileSystemDirectory(_fileSystemDir, ctx);
 }
 
 void SnapshotManager::computeAllVolumesHash(
