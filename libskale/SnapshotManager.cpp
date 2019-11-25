@@ -360,7 +360,7 @@ void SnapshotManager::proceedFileSystemDirectory(
 
     while ( it != end ) {
         if ( fs::is_regular_file( *it ) ) {
-            if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
+            if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
                 std::ifstream hash_file( it->path().string() );
                 dev::h256 hash;
                 hash_file >> hash;

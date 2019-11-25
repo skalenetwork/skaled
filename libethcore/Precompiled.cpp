@@ -448,9 +448,6 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
 
         const fs::path fileHashPath =
             getFileStorageDir( Address( address ) ) / ( filename + "._hash" );
-        if ( remove( fileHashPath.c_str() ) != 0 ) {
-            throw std::runtime_error( "File's hash cannot be deleted" );
-        }
 
         u256 code = 1;
         bytes response = toBigEndian( code );
