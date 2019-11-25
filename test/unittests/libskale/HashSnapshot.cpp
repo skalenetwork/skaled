@@ -155,7 +155,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            true ) );
 
         mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
-            {BlockChain::getChainDirName( chainParams )} ) );
+            {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
 
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
