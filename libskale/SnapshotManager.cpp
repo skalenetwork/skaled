@@ -354,19 +354,20 @@ void SnapshotManager::computeVolumeHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
-void SnapshotManager::proceedFileSystemDirectory(const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx) const {
-    boost::filesystem::recursive_directory_iterator it(_fileSystemDir), end;
+void SnapshotManager::proceedFileSystemDirectory(
+    const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const {
+    boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
 
-    while (it != end) {
-        if (fs::is_regular_file(*it)) {
-            if (boost::filesystem::extension(it->path()) != "._hash") {
-                std::ifstream hash_file(it->path().string());
+    while ( it != end ) {
+        if ( fs::is_regular_file( *it ) ) {
+            if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
+                std::ifstream hash_file( it->path().string() );
                 dev::h256 hash;
                 hash_file >> hash;
-                secp256k1_sha256_write( ctx, hash.data(), hash.size);
+                secp256k1_sha256_write( ctx, hash.data(), hash.size );
             }
         } else {
-            this->proceedFileSystemDirectory(*it, ctx);
+            this->proceedFileSystemDirectory( *it, ctx );
         }
 
         ++it;
@@ -380,7 +381,7 @@ void SnapshotManager::computeFileSystemHash(
                                 _fileSystemDir.string() + " doesn't exist" );
     }
 
-    this->proceedFileSystemDirectory(_fileSystemDir, ctx);
+    this->proceedFileSystemDirectory( _fileSystemDir, ctx );
 }
 
 void SnapshotManager::computeAllVolumesHash(
@@ -397,9 +398,10 @@ void SnapshotManager::computeAllVolumesHash(
 
     this->computeVolumeHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
-  
-    this->computeFileSystemHash(this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
-  
+
+    this->computeFileSystemHash(
+        this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
+
     for ( const string& vol : this->volumes ) {
         if ( vol.find( "prices_" ) == 0 )
             this->computeVolumeHash(

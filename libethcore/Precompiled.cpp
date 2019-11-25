@@ -556,34 +556,35 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
 
-        if (!fs::exists(filePath)) {
-            throw std::runtime_error("calculateFileHash() failed because file does not exist");
+        if ( !fs::exists( filePath ) ) {
+            throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
         }
 
         std::string fileContent;
-        std::ifstream file(filePath.string());
+        std::ifstream file( filePath.string() );
         file >> fileContent;
 
-        const fs::path fileHashPath = filePath.parent_path() / (filePath.string() + "._hash");
+        const fs::path fileHashPath = filePath.parent_path() / ( filePath.string() + "._hash" );
 
-        if (!fs::exists(fileHashPath)) {
-            throw std::runtime_error("calculateFileHash() failed because file with hash does not exist");
+        if ( !fs::exists( fileHashPath ) ) {
+            throw std::runtime_error(
+                "calculateFileHash() failed because file with hash does not exist" );
         }
 
         std::fstream fileHash;
-        fileHash.open(fileHashPath.string(), ios::binary | ios::out | ios::in);
+        fileHash.open( fileHashPath.string(), ios::binary | ios::out | ios::in );
 
         dev::h256 filePathHash;
         fileHash >> filePathHash;
 
-        dev::h256 fileContentHash = dev::sha256(fileContent);
+        dev::h256 fileContentHash = dev::sha256( fileContent );
 
         secp256k1_sha256_t ctx;
-        secp256k1_sha256_write(&ctx, filePathHash.data(), filePathHash.size);
-        secp256k1_sha256_write(&ctx, fileContentHash.data(), fileContentHash.size);
+        secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
 
         dev::h256 commonFileHash;
-        secp256k1_sha256_finalize(&ctx, commonFileHash.data());
+        secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
 
         fileHash.clear();
         fileHash << commonFileHash;
