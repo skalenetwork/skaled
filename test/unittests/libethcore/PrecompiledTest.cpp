@@ -21,10 +21,13 @@
  */
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcrypto/Hash.h>
 #include <libethcore/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+
+#include <secp256k1_sha256.h>
 
 using namespace std;
 using namespace dev;
@@ -1657,6 +1660,48 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
+}
+
+BOOST_AUTO_TEST_CASE( calculateFileHash ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "calculateFileHash" );
+
+    boost::filesystem::path fileHashPath = pathToFile.parent_path() / ( fileName + "._hash" );
+
+    std::ofstream fileHash( fileHashPath.string() );
+    dev::h256 hash = dev::sha256( fileHashPath.string() );
+    fileHash << hash;
+
+    fileHash.close();
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE(
+        boost::filesystem::exists( pathToFile.parent_path() / ( fileName + "._hash" ) ) );
+
+    std::ifstream resultFile( ( pathToFile.parent_path() / ( fileName + "._hash" ) ).string() );
+    dev::h256 calculatedHash;
+    resultFile >> calculatedHash;
+
+    std::ifstream originFile( pathToFile.string() );
+    std::string content;
+    originFile >> content;
+
+    dev::h256 fileContentHash = dev::sha256( content );
+
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+    secp256k1_sha256_write( &ctx, hash.data(), hash.size );
+    secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
+
+    dev::h256 commonFileHash;
+    secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
+
+    BOOST_REQUIRE( calculatedHash == commonFileHash );
+
+    remove( ( pathToFile.parent_path() / ( fileName + "._hash" ) ).c_str() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

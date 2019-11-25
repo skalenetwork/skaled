@@ -561,7 +561,8 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         std::ifstream file( filePath.string() );
         file >> fileContent;
 
-        const fs::path fileHashPath = filePath.parent_path() / ( filePath.string() + "._hash" );
+        const fs::path fileHashPath =
+            filePath.parent_path() / ( filePath.filename().string() + "._hash" );
 
         if ( !fs::exists( fileHashPath ) ) {
             throw std::runtime_error(
@@ -577,6 +578,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         dev::h256 fileContentHash = dev::sha256( fileContent );
 
         secp256k1_sha256_t ctx;
+        secp256k1_sha256_initialize( &ctx );
         secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
         secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
 
@@ -594,9 +596,10 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in calculateFileHash: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in calculateFileHash\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
