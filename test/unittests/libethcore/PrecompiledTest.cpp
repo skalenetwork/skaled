@@ -1665,7 +1665,10 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
 BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "calculateFileHash" );
 
-    boost::filesystem::path fileHashPath = pathToFile.parent_path() / ( fileName + "._hash" );
+    std::string fileHashName = pathToFile.string();
+    fileHashName.replace( fileHashName.begin(), fileHashName.end(), '/', '-' );
+
+    boost::filesystem::path fileHashPath = pathToFile.parent_path() / ( fileHashName + "._hash" );
 
     std::ofstream fileHash( fileHashPath.string() );
     dev::h256 hash = dev::sha256( fileHashPath.string() );
@@ -1679,9 +1682,9 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE(
-        boost::filesystem::exists( pathToFile.parent_path() / ( fileName + "._hash" ) ) );
+        boost::filesystem::exists( pathToFile.parent_path() / ( fileHashName + "._hash" ) ) );
 
-    std::ifstream resultFile( ( pathToFile.parent_path() / ( fileName + "._hash" ) ).string() );
+    std::ifstream resultFile( ( pathToFile.parent_path() / ( fileHashName + "._hash" ) ).string() );
     dev::h256 calculatedHash;
     resultFile >> calculatedHash;
 
