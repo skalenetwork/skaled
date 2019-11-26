@@ -1,5 +1,6 @@
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/KeyManager.h>
+#include <libdevcrypto/Hash.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
 #include <libskale/SnapshotManager.h>
@@ -156,6 +157,15 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
             {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+
+        boost::filesystem::create_directory(
+            boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
+
+        std::string tmp_str = (boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir._hash").string();
+        std::ofstream directoryHashFile(tmp_str);
+        dev::h256 directoryPathHash =  dev::sha256(tmp_str);
+        directoryHashFile << directoryPathHash;
+        directoryHashFile.close();
 
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),

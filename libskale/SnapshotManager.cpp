@@ -360,7 +360,6 @@ void SnapshotManager::proceedFileSystemDirectory(
 
     while ( it != end ) {
         std::string fileHashPathStr = it->path().string();
-        fileHashPathStr.replace( fileHashPathStr.begin(), fileHashPathStr.end(), '/', '-' );
         if ( fs::is_regular_file( *it ) ) {
             if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
                 std::ifstream hash_file( it->path().string() );
@@ -368,15 +367,13 @@ void SnapshotManager::proceedFileSystemDirectory(
                 hash_file >> hash;
                 secp256k1_sha256_write( ctx, hash.data(), hash.size );
             } else {
-                if ( !boost::filesystem::exists( it->path().parent_path() / fileHashPathStr ) ) {
-                    throw SnapshotManager::CannotRead(
-                        ( it->path().parent_path() / fileHashPathStr ).string() );
+                if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+                    throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
                 }
             }
         } else {
-            if ( !boost::filesystem::exists( it->path().parent_path() / fileHashPathStr ) ) {
-                throw SnapshotManager::CannotRead(
-                    ( it->path().parent_path() / fileHashPathStr ).string() );
+            if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+                throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
             }
             this->proceedFileSystemDirectory( *it, ctx );
         }

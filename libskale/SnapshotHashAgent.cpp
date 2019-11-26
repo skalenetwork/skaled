@@ -121,6 +121,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 }
 
 dev::h256 SnapshotHashAgent::getVotedHash() const {
-    assert( voted_hash_ != dev::h256() );
+    assert( this->voted_hash_ != dev::h256() );
     return this->voted_hash_;
 }
