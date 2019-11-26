@@ -1582,6 +1582,7 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( path ) );
     BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
+    BOOST_REQUIRE( boost::filesystem::exists( path.string() + "._hash" ) );
     remove( path.c_str() );
 }
 
@@ -1632,6 +1633,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToFile.string() + "._hash" ) );
 }
 
 BOOST_AUTO_TEST_CASE( createDirectory ) {
@@ -1645,6 +1647,7 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
+    BOOST_REQUIRE( boost::filesystem::exists( pathToDir.string() + "._hash" ) );
     remove( pathToDir.c_str() );
 }
 
@@ -1660,18 +1663,16 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir.string() + "._hash" ) );
 }
 
 BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "calculateFileHash" );
 
-    std::string fileHashName = pathToFile.string();
-    fileHashName.replace( fileHashName.begin(), fileHashName.end(), '/', '-' );
+    std::string fileHashName = pathToFile.string() + "._hash";
 
-    boost::filesystem::path fileHashPath = pathToFile.parent_path() / ( fileHashName + "._hash" );
-
-    std::ofstream fileHash( fileHashPath.string() );
-    dev::h256 hash = dev::sha256( fileHashPath.string() );
+    std::ofstream fileHash( fileHashName );
+    dev::h256 hash = dev::sha256( fileHashName );
     fileHash << hash;
 
     fileHash.close();
@@ -1681,10 +1682,9 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE(
-        boost::filesystem::exists( pathToFile.parent_path() / ( fileHashName + "._hash" ) ) );
+    BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
-    std::ifstream resultFile( ( pathToFile.parent_path() / ( fileHashName + "._hash" ) ).string() );
+    std::ifstream resultFile( fileHashName );
     dev::h256 calculatedHash;
     resultFile >> calculatedHash;
 
@@ -1704,7 +1704,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     BOOST_REQUIRE( calculatedHash == commonFileHash );
 
-    remove( ( pathToFile.parent_path() / ( fileHashName + "._hash" ) ).c_str() );
+    remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

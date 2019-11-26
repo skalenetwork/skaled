@@ -359,14 +359,25 @@ void SnapshotManager::proceedFileSystemDirectory(
     boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
 
     while ( it != end ) {
+        std::string fileHashPathStr = it->path().string();
+        fileHashPathStr.replace( fileHashPathStr.begin(), fileHashPathStr.end(), '/', '-' );
         if ( fs::is_regular_file( *it ) ) {
             if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
                 std::ifstream hash_file( it->path().string() );
                 dev::h256 hash;
                 hash_file >> hash;
                 secp256k1_sha256_write( ctx, hash.data(), hash.size );
+            } else {
+                if ( !boost::filesystem::exists( it->path().parent_path() / fileHashPathStr ) ) {
+                    throw SnapshotManager::CannotRead(
+                        ( it->path().parent_path() / fileHashPathStr ).string() );
+                }
             }
         } else {
+            if ( !boost::filesystem::exists( it->path().parent_path() / fileHashPathStr ) ) {
+                throw SnapshotManager::CannotRead(
+                    ( it->path().parent_path() / fileHashPathStr ).string() );
+            }
             this->proceedFileSystemDirectory( *it, ctx );
         }
 
