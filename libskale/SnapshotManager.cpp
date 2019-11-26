@@ -354,46 +354,67 @@ void SnapshotManager::computeVolumeHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
-void SnapshotManager::proceedFileSystemDirectory(
-    const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const {
+void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
+    secp256k1_sha256_t* ctx, bool is_checking ) const {
     boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
 
     while ( it != end ) {
-        std::string fileHashPathStr = it->path().string();
-        if ( fs::is_regular_file( *it ) ) {
-            if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
-                std::ifstream hash_file( it->path().string() );
-                dev::h256 hash;
-                hash_file >> hash;
-                secp256k1_sha256_write( ctx, hash.data(), hash.size );
+        if ( !is_checking ) {
+            std::string fileHashPathStr = it->path().string();
+            if ( fs::is_regular_file( *it ) ) {
+                if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
+                    std::ifstream hash_file( it->path().string() );
+                    dev::h256 hash;
+                    hash_file >> hash;
+                    secp256k1_sha256_write( ctx, hash.data(), hash.size );
+                } else {
+                    if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+                        throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+                    }
+                }
             } else {
                 if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
                     throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
                 }
+                this->proceedFileSystemDirectory( *it, ctx, is_checking );
             }
         } else {
-            if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
-                throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+            std::string fileHashPathStr = it->path().string();
+            if ( fs::is_regular_file( *it ) ) {
+                if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
+                    std::ifstream hash_file( it->path().string() );
+                    dev::h256 hash;
+                    hash_file >> hash;
+                    secp256k1_sha256_write( ctx, hash.data(), hash.size );
+                } else {
+                    if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+                        throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+                    }
+                }
+            } else {
+                if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+                    throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+                }
+                this->proceedFileSystemDirectory( *it, ctx, is_checking );
             }
-            this->proceedFileSystemDirectory( *it, ctx );
         }
 
         ++it;
     }
 }
 
-void SnapshotManager::computeFileSystemHash(
-    const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const {
+void SnapshotManager::computeFileSystemHash( const boost::filesystem::path& _fileSystemDir,
+    secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
         throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
                                 _fileSystemDir.string() + " doesn't exist" );
     }
 
-    this->proceedFileSystemDirectory( _fileSystemDir, ctx );
+    this->proceedFileSystemDirectory( _fileSystemDir, ctx, is_checking );
 }
 
 void SnapshotManager::computeAllVolumesHash(
-    unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
+    unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
     assert( this->volumes.size() != 0 );
 
     this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
@@ -408,7 +429,7 @@ void SnapshotManager::computeAllVolumesHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
 
     this->computeFileSystemHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx );
+        this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
     for ( const string& vol : this->volumes ) {
         if ( vol.find( "prices_" ) == 0 )
@@ -417,7 +438,7 @@ void SnapshotManager::computeAllVolumesHash(
     }  // for
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
@@ -431,7 +452,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber ) {
         }
     }
 
-    this->computeAllVolumesHash( _blockNumber, &ctx );
+    this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
 
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.btrfs_subvolume_property_set(

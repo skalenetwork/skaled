@@ -152,7 +152,7 @@ public:
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber );
+    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
 
 private:
     boost::filesystem::path data_dir;
@@ -163,11 +163,12 @@ private:
     static const std::string snapshot_hash_file_name;
     mutable std::mutex hash_file_mutex;
 
-    void computeFileSystemHash(
-        const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const;
-    void proceedFileSystemDirectory(
-        const boost::filesystem::path& _fileSystemDir, secp256k1_sha256_t* ctx ) const;
-    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
+    void computeFileSystemHash( const boost::filesystem::path& _fileSystemDir,
+        secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
+        secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void computeAllVolumesHash(
+        unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeVolumeHash(
         const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
 };

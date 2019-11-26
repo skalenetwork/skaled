@@ -1,6 +1,6 @@
 #include <libdevcore/TransientDirectory.h>
-#include <libethcore/KeyManager.h>
 #include <libdevcrypto/Hash.h>
+#include <libethcore/KeyManager.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
 #include <libskale/SnapshotManager.h>
@@ -161,9 +161,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
 
-        std::string tmp_str = (boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir._hash").string();
-        std::ofstream directoryHashFile(tmp_str);
-        dev::h256 directoryPathHash =  dev::sha256(tmp_str);
+        std::string tmp_str =
+            ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir._hash" )
+                .string();
+        std::ofstream directoryHashFile( tmp_str );
+        dev::h256 directoryPathHash = dev::sha256( tmp_str );
         directoryHashFile << directoryPathHash;
         directoryHashFile.close();
 

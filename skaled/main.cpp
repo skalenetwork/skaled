@@ -1102,7 +1102,7 @@ int main( int argc, char** argv ) try {
 
             downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
-            snapshotManager->computeSnapshotHash( blockNumber );
+            snapshotManager->computeSnapshotHash( blockNumber, true );
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
