@@ -25,6 +25,7 @@
 #include "SnapshotManager.h"
 
 #include <libdevcore/LevelDB.h>
+#include <libdevcrypto/Hash.h>
 #include <skutils/btrfs.h>
 
 #include <boost/interprocess/sync/named_mutex.hpp>
