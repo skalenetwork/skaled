@@ -359,45 +359,89 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
     boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
 
     while ( it != end ) {
-        if ( !is_checking ) {
-            std::string fileHashPathStr = it->path().string();
-            if ( fs::is_regular_file( *it ) ) {
-                if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
-                    std::ifstream hash_file( it->path().string() );
+        std::string fileHashPathStr = it->path().string() + "._hash";
+        if ( boost::filesystem::is_regular_file( *it ) ) {
+            if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
+                if ( !is_checking ) {
+                    if ( !boost::filesystem::exists( fileHashPathStr )) {
+                        throw SnapshotManager::CannotRead( fileHashPathStr );
+                    }
+                    std::ifstream hash_file( fileHashPathStr );
                     dev::h256 hash;
                     hash_file >> hash;
                     secp256k1_sha256_write( ctx, hash.data(), hash.size );
                 } else {
-                    if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
-                        throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
-                    }
+                    secp256k1_sha256_t fileData;
+                    secp256k1_sha256_initialize( &fileData );
+
+                    dev::h256 filePathHash = dev::sha256( it->path().string() );
+                    secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+
+                    std::ifstream file( it->path().string() );
+                    std::string fileContent;
+                    file >> fileContent;
+                    dev::h256 fileContentHash = dev::sha256( fileContent );
+                    secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+                    dev::h256 fileHash;
+                    secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+                    secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
                 }
-            } else {
-                if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
-                    throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
-                }
-                this->proceedFileSystemDirectory( *it, ctx, is_checking );
             }
         } else {
-            std::string fileHashPathStr = it->path().string();
-            if ( fs::is_regular_file( *it ) ) {
-                if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
-                    std::ifstream hash_file( it->path().string() );
-                    dev::h256 hash;
-                    hash_file >> hash;
-                    secp256k1_sha256_write( ctx, hash.data(), hash.size );
-                } else {
-                    if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
-                        throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
-                    }
+            if ( !is_checking ) {
+                if ( !boost::filesystem::exists( fileHashPathStr )) {
+                    throw SnapshotManager::CannotRead( fileHashPathStr );
                 }
+                std::ifstream hash_file( fileHashPathStr );
+                dev::h256 hash;
+                hash_file >> hash;
+                secp256k1_sha256_write( ctx, hash.data(), hash.size );
             } else {
-                if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
-                    throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
-                }
-                this->proceedFileSystemDirectory( *it, ctx, is_checking );
+                dev::h256 directoryHash = dev::sha256( fileHashPathStr );
+                secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
             }
         }
+        // if ( !is_checking ) {
+        //     std::string fileHashPathStr = it->path().string();
+        //     if ( fs::is_regular_file( *it ) ) {
+        //         if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
+        //             std::ifstream hash_file( it->path().string() );
+        //             dev::h256 hash;
+        //             hash_file >> hash;
+        //             secp256k1_sha256_write( ctx, hash.data(), hash.size );
+        //         } else {
+        //             if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+        //                 throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+        //             }
+        //         }
+        //     } else {
+        //         if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+        //             throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+        //         }
+        //         this->proceedFileSystemDirectory( *it, ctx, is_checking );
+        //     }
+        // } else {
+        //     std::string fileHashPathStr = it->path().string();
+        //     if ( fs::is_regular_file( *it ) ) {
+        //         if ( boost::filesystem::extension( it->path() ) == "._hash" ) {
+        //             std::ifstream hash_file( it->path().string() );
+        //             dev::h256 hash;
+        //             hash_file >> hash;
+        //             secp256k1_sha256_write( ctx, hash.data(), hash.size );
+        //         } else {
+        //             if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+        //                 throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+        //             }
+        //         }
+        //     } else {
+        //         if ( !boost::filesystem::exists( it->path().string() + "._hash" ) ) {
+        //             throw SnapshotManager::CannotRead( it->path().string() + "._hash" );
+        //         }
+        //         this->proceedFileSystemDirectory( *it, ctx, is_checking );
+        //     }
+        // }
 
         ++it;
     }
