@@ -362,7 +362,6 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
     while ( it != end ) {
         std::string fileHashPathStr = it->path().string() + "._hash";
         if ( boost::filesystem::is_regular_file( *it ) ) {
-            ;
             if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
                 if ( !is_checking ) {
                     if ( !boost::filesystem::exists( fileHashPathStr ) ) {
@@ -376,10 +375,9 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                         std::ifstream originFile( it->path().string() );
                         std::string fileContent;
                         originFile >> fileContent;
-                        dev::h256 fileContentHash = dev::sha256( fileContent );
+                        dev::h256 fileContentHash = dev::sha256( fileContent ); 
 
-                        secp256k1_sha256_write(
-                            &fileData, fileContentHash.data(), fileContentHash.size );
+                        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
 
                         dev::h256 fileHash;
                         secp256k1_sha256_finalize( &fileData, fileHash.data() );
