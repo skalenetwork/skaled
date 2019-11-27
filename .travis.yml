@@ -82,7 +82,7 @@ jobs:
             - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
 
         - stage: deploy
-          if: branch IN (master, release-candidate, develop)
+          if: branch IN (master, release-candidate, beta, develop)
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
@@ -90,9 +90,7 @@ jobs:
           after_success:
             - cp skaled/skaled ../scripts/skale_build/executable/
             - export VERSION=$(cat ../VERSION)
-            - export VERSION=$( (test $TRAVIS_BRANCH = "master" && echo $VERSION) ||
-                                (test $TRAVIS_BRANCH = "release-candidate" && ../scripts/calculate_rc_version.sh $VERSION) ||
-                                ../scripts/calculate_develop_version.sh $VERSION)
+            - export VERSION=$( ../scripts/calculate_version.sh $TRAVIS_BRANCH $VERSION )
             - echo "Version $VERSION"
             - cd ../scripts/skale_build
             - ./build_image.sh $VERSION
@@ -132,6 +130,7 @@ jobs:
                 branch:
                     - master
                     - release-candidate
+                    - beta
                     - develop
 cache:
     ccache: true
