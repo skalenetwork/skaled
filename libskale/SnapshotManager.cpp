@@ -365,7 +365,18 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
             if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
                 if ( !is_checking ) {
                     if ( !boost::filesystem::exists( fileHashPathStr ) ) {
-                        throw SnapshotManager::CannotRead( fileHashPathStr );
+                        // file has not been downloaded fully
+                        secp256k1_sha256_t fileData;
+                        secp256k1_sha256_initialize( &fileData );
+
+                        dev::h256 filePathHash = dev::sha256( it->path().string() );
+                        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+
+                        dev::h256 fileHash;
+                        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+                        std::ofstream hash( fileHashPathStr );
+                        hash << fileHash;
                     }
                     std::ifstream hash_file( fileHashPathStr );
                     dev::h256 hash;
@@ -401,7 +412,7 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                 hash_file >> hash;
                 secp256k1_sha256_write( ctx, hash.data(), hash.size );
             } else {
-                dev::h256 directoryHash = dev::sha256( fileHashPathStr );
+                dev::h256 directoryHash = dev::sha256( it->path().string() );
                 secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
             }
         }

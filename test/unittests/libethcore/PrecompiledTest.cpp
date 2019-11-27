@@ -1582,7 +1582,6 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( path ) );
     BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
-    BOOST_REQUIRE( boost::filesystem::exists( path.string() + "._hash" ) );
     remove( path.c_str() );
 }
 
@@ -1703,6 +1702,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
 
     BOOST_REQUIRE( calculatedHash == commonFileHash );
+    BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
     remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
 }

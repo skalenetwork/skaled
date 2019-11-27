@@ -284,13 +284,6 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
             file.write( "0", 1 );
         }
 
-        const std::string filePathStr = ( fsFilePath / filePath.filename() ).string();
-
-        dev::h256 filePathHash = dev::sha256( filePathStr );
-
-        std::ofstream hashFile( filePathStr + "._hash" );
-        hashFile << filePathHash;
-
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -563,16 +556,10 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
 
         const std::string fileHashName = filePath.string() + "._hash";
 
-        if ( !fs::exists( fileHashName ) ) {
-            throw std::runtime_error(
-                "calculateFileHash() failed because file with hash does not exist" );
-        }
-
         std::fstream fileHash;
         fileHash.open( fileHashName, ios::binary | ios::out | ios::in );
 
-        dev::h256 filePathHash;
-        fileHash >> filePathHash;
+        dev::h256 filePathHash = dev::sha256( filePath.string() );
 
         dev::h256 fileContentHash = dev::sha256( fileContent );
 
