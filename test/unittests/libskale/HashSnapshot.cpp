@@ -165,7 +165,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir._hash" )
                 .string();
         std::ofstream directoryHashFile( tmp_str );
-        dev::h256 directoryPathHash = dev::sha256( tmp_str );
+        dev::h256 directoryPathHash = dev::sha256(
+            ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" ).string() );
         directoryHashFile << directoryPathHash;
         directoryHashFile.close();
 
@@ -292,6 +293,24 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 4 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
+}
+
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture ) {
+    mgr->doSnapshot( 4 );
+
+    mgr->computeSnapshotHash( 4, true );
+
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+
+    dev::h256 hash4_dbl = mgr->getSnapshotHash( 4 );
+
+    mgr->computeSnapshotHash( 4 );
+
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+
+    dev::h256 hash4 = mgr->getSnapshotHash( 4 );
+
+    BOOST_REQUIRE( hash4_dbl == hash4 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
