@@ -375,9 +375,10 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                         std::ifstream originFile( it->path().string() );
                         std::string fileContent;
                         originFile >> fileContent;
-                        dev::h256 fileContentHash = dev::sha256( fileContent ); 
+                        dev::h256 fileContentHash = dev::sha256( fileContent );
 
-                        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+                        secp256k1_sha256_write(
+                            &fileData, fileContentHash.data(), fileContentHash.size );
 
                         dev::h256 fileHash;
                         secp256k1_sha256_finalize( &fileData, fileHash.data() );
