@@ -569,6 +569,6 @@ Block ClientBase::latestBlock() const {
     return res;
 }
 
-int ClientBase::chainId() const {
+uint64_t ClientBase::chainId() const {
     return bc().chainParams().chainID;
 }
