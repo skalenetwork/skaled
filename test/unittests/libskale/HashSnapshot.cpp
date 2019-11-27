@@ -170,6 +170,30 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         directoryHashFile << directoryPathHash;
         directoryHashFile.close();
 
+        std::ofstream newFile( ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" /
+                                 "test_dir" / "test_file.txt" )
+                                   .string() );
+        newFile << 1111;
+        newFile.close();
+
+        std::ofstream newFileHash( ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" /
+                                     "test_dir" / "test_file.txt._hash" )
+                                       .string() );
+        dev::h256 filePathHash = dev::sha256( ( boost::filesystem::path( BTRFS_DIR_PATH ) /
+                                                "filestorage" / "test_dir" / "test_file.txt._hash" )
+                                                  .string() );
+        dev::h256 fileContentHash = dev::sha256( std::to_string( 1111 ) );
+
+        secp256k1_sha256_t fileData;
+        secp256k1_sha256_initialize( &fileData );
+        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 fileHash;
+        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+        newFileHash << fileHash;
+
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
