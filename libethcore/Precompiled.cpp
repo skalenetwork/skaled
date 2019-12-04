@@ -37,6 +37,8 @@
 #include <boost/algorithm/hex.hpp>
 #include <mutex>
 
+#include <secp256k1_sha256.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -432,6 +434,17 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
         if ( remove( filePath.c_str() ) != 0 ) {
             throw std::runtime_error( "File cannot be deleted" );
         }
+
+        try {
+            boost::filesystem::remove( filePath.string() + "._hash" );
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() ) {
+                strError = "exception without description";
+            }
+            LOG( getLogger( VerbosityError ) ) << "Exception in deleteFile: " << strError << "\n";
+        }
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -459,9 +472,18 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
 
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
         bool isCreated = fs::create_directories( absolutePath );
+
         if ( !isCreated ) {
             throw std::runtime_error( "createDirectory() failed because cannot create directory" );
         }
+
+        const std::string absolutePathStr = absolutePath.string();
+
+        dev::h256 directoryPathHash = dev::sha256( absolutePathStr );
+
+        std::ofstream hashFile( absolutePathStr + "._hash" );
+        hashFile << directoryPathHash;
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
@@ -491,6 +513,10 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         if ( !fs::exists( absolutePath ) ) {
             throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
         }
+
+        const std::string absolutePathStr = absolutePath.string();
+        fs::remove( absolutePathStr + "._hash" );
+
         fs::remove_all( absolutePath );
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -502,6 +528,64 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};
+}
+
+ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+
+        size_t filenameLength;
+        std::string filename;
+        convertBytesToString( _in, 32, filename, filenameLength );
+
+        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+
+        if ( !fs::exists( filePath ) ) {
+            throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
+        }
+
+        std::string fileContent;
+        std::ifstream file( filePath.string() );
+        file >> fileContent;
+
+        const std::string fileHashName = filePath.string() + "._hash";
+
+        std::fstream fileHash;
+        fileHash.open( fileHashName, ios::binary | ios::out | ios::in );
+
+        dev::h256 filePathHash = dev::sha256( filePath.string() );
+
+        dev::h256 fileContentHash = dev::sha256( fileContent );
+
+        secp256k1_sha256_t ctx;
+        secp256k1_sha256_initialize( &ctx );
+        secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 commonFileHash;
+        secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
+
+        fileHash.clear();
+        fileHash << commonFileHash;
+        fileHash.close();
+
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in calculateFileHash: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in calculateFileHash\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );

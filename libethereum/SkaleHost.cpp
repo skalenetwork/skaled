@@ -436,7 +436,7 @@ void SkaleHost::broadcastFunc() {
             Transaction& txn = txns[0];
             h256 sha = txn.sha3();
 
-            // TODO XXX such blocks suck :(
+            // TODO XXX such blocks are bad :(
             size_t received;
             {
                 std::lock_guard< std::mutex > lock( m_receivedMutex );

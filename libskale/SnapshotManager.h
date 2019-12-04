@@ -29,6 +29,8 @@
 #include <secp256k1_sha256.h>
 
 #include <boost/filesystem.hpp>
+
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -143,23 +145,32 @@ public:
     boost::filesystem::path makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock );
     void importDiff( unsigned _fromBlock, unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _fromBlock, unsigned _toBlock );
+    void removeSnapshot( unsigned _blockNumber );
 
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber );
-    bool isSnapshotHashPresent( unsigned _blockNumber );
-    void computeSnapshotHash( unsigned _blockNumber );
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
+    bool isSnapshotHashPresent( unsigned _blockNumber ) const;
+    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
 
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
-    std::string snapshot_hash_file_name = "snapshot_hash.txt";
 
-    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx );
-    void computeVolumeHash( const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx );
+    static const std::string snapshot_hash_file_name;
+    mutable std::mutex hash_file_mutex;
+
+    void computeFileSystemHash( const boost::filesystem::path& _fileSystemDir,
+        secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
+        secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void computeAllVolumesHash(
+        unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void computeVolumeHash(
+        const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
 };
 
 #endif  // SNAPSHOTAGENT_H

@@ -21,10 +21,13 @@
  */
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcrypto/Hash.h>
 #include <libethcore/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+
+#include <secp256k1_sha256.h>
 
 using namespace std;
 using namespace dev;
@@ -1629,6 +1632,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToFile.string() + "._hash" ) );
 }
 
 BOOST_AUTO_TEST_CASE( createDirectory ) {
@@ -1642,6 +1646,7 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
+    BOOST_REQUIRE( boost::filesystem::exists( pathToDir.string() + "._hash" ) );
     remove( pathToDir.c_str() );
 }
 
@@ -1657,6 +1662,49 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
+    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir.string() + "._hash" ) );
+}
+
+BOOST_AUTO_TEST_CASE( calculateFileHash ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "calculateFileHash" );
+
+    std::string fileHashName = pathToFile.string() + "._hash";
+
+    std::ofstream fileHash( fileHashName );
+    dev::h256 hash = dev::sha256( pathToFile.string() );
+    fileHash << hash;
+
+    fileHash.close();
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
+
+    std::ifstream resultFile( fileHashName );
+    dev::h256 calculatedHash;
+    resultFile >> calculatedHash;
+
+    std::ifstream originFile( pathToFile.string() );
+    std::string content;
+    originFile >> content;
+
+    dev::h256 fileContentHash = dev::sha256( content );
+
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+    secp256k1_sha256_write( &ctx, hash.data(), hash.size );
+    secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
+
+    dev::h256 commonFileHash;
+    secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
+
+    BOOST_REQUIRE( calculatedHash == commonFileHash );
+    BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
+
+    remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

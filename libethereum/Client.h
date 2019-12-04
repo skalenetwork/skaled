@@ -270,6 +270,10 @@ public:
         return path;
     }
 
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
+        return this->m_snapshotManager->getSnapshotHash( _blockNumber );
+    }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions

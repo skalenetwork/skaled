@@ -89,7 +89,7 @@ static std::string const c_genesisInfoSkale = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 0}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1}
         ]
     }
   },
