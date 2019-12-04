@@ -1555,7 +1555,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         fstream file;
         file.open( pathToFile.string(), ios::out );
         file.seekp( static_cast< long >( fileSize ) - 10 );
-        file.write("a b", 3);
+        file.write( "a b", 3 );
         file.seekp( static_cast< long >( fileSize ) - 1 );
         file.write( "0", 1 );
     }
@@ -1613,7 +1613,7 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
     std::vector< unsigned char > buffer;
     buffer.reserve( fileSize );
-    file.read(reinterpret_cast<char*>(&buffer[0]), fileSize);
+    file.read( reinterpret_cast< char* >( &buffer[0] ), fileSize );
     BOOST_REQUIRE( res.second == buffer );
 }
 
@@ -1689,10 +1689,10 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     resultFile >> calculatedHash;
 
     std::ifstream originFile( pathToFile.string() );
-    originFile.seekg(0, std::ios::end);
+    originFile.seekg( 0, std::ios::end );
     size_t fileContentSize = originFile.tellg();
-    std::string content(fileContentSize, ' ');
-    originFile.read(&content[0], fileContentSize);
+    std::string content( fileContentSize, ' ' );
+    originFile.read( &content[0], fileContentSize );
 
     BOOST_REQUIRE( content.size() == fileSize );
 
