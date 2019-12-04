@@ -373,8 +373,11 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                         secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
 
                         std::ifstream originFile( it->path().string() );
-                        std::string fileContent;
-                        originFile >> fileContent;
+                        originFile.seekg(0, std::ios::end);
+                        size_t fileContentSize = originFile.tellg();
+                        std::string fileContent(fileContentSize, ' ');
+                        originFile.read(&fileContent[0], fileContentSize);
+                        
                         dev::h256 fileContentHash = dev::sha256( fileContent );
 
                         secp256k1_sha256_write(
@@ -398,9 +401,12 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                     dev::h256 filePathHash = dev::sha256( it->path().string() );
                     secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
 
-                    std::ifstream file( it->path().string() );
-                    std::string fileContent;
-                    file >> fileContent;
+                    std::ifstream originFile( it->path().string() );
+                    originFile.seekg(0, std::ios::end);
+                    size_t fileContentSize = originFile.tellg();
+                    std::string fileContent(fileContentSize, ' ');
+                    originFile.read(&fileContent[0], fileContentSize);
+
                     dev::h256 fileContentHash = dev::sha256( fileContent );
                     secp256k1_sha256_write(
                         &fileData, fileContentHash.data(), fileContentHash.size );
