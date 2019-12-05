@@ -322,6 +322,11 @@ protected:
         ++current_handler_queue_;
         return id;
     }
+    void close_all_handler_quueues() {
+        for ( size_t i = 0; i < max_handler_queues_; ++i ) {
+            skutils::dispatch::remove( handler_queue_id_at_index( i ) );
+        }
+    }
 };  /// class server
 
 class client {
@@ -1521,7 +1526,9 @@ inline server::server( size_t a_max_handler_queues )
 #endif
 }
 
-inline server::~server() {}
+inline server::~server() {
+    close_all_handler_quueues();
+}
 
 inline server& server::Get( const char* pattern, Handler handler ) {
     get_handlers_.push_back( std::make_pair( std::regex( pattern ), handler ) );
@@ -1597,6 +1604,7 @@ inline bool server::is_running() const {
 }
 
 inline void server::stop() {
+    close_all_handler_quueues();
     if ( is_running_ ) {
         is_running_ = false;
         wait_while_in_loop();
