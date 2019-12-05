@@ -686,7 +686,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     if ( pSO->isShutdownMode() ) {
         clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                                          cc::num10( getRelay().serverIndex() ) )
-            << cc::error( "Skipping arrived payload while in shutdown mode" );
+            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
+                   desc() + cc::ws_rx( " >>> " ) +
+                   cc::warn( "Skipping arrived payload while in shutdown mode" ) );
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
@@ -1592,11 +1595,20 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
       m_nPort( nPort ) {
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
+        SkaleWsPeer* pSkalePeer = nullptr;
         SkaleServerOverride* pSO = pso();
         if ( pSO->m_bTraceCalls )
             clog( dev::VerbosityTrace, cc::info( m_strSchemeUC ) )
                 << ( cc::notice( "Will instantiate new peer" ) );
-        SkaleWsPeer* pSkalePeer = new SkaleWsPeer( srv, hdl );
+        if ( pSO->isShutdownMode() ) {
+            clog( dev::VerbosityWarning,
+                cc::info( m_strSchemeUC ) + cc::debug( "/" ) + cc::num10( serverIndex() ) )
+                << ( cc::ws_rx_inv( " >>> " + m_strSchemeUC + "/" +
+                                    std::to_string( serverIndex() ) + "/RX >>> " ) +
+                       cc::warn( "Skipping connection accept while in shutdown mode" ) );
+            return pSkalePeer;
+        }
+        pSkalePeer = new SkaleWsPeer( srv, hdl );
         pSkalePeer->m_pSSCTH = std::make_unique< SkaleServerConnectionsTrackHelper >( *pSO );
         if ( pSO->is_connection_limit_overflow() ) {
             delete pSkalePeer;
@@ -1889,7 +1901,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                                         skutils::http::response& res ) {
             if ( isShutdownMode() ) {
                 logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    "Skipping arrived payload while in shutdown mode" );
+                    cc::notice( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+                        cc::num10( pSrv->serverIndex() ) + " " +
+                        cc::warn( "Skipping arrived payload while in shutdown mode" ) );
                 pSrv->m_pServer->close_all_handler_queues();  // remove queues earlier
                 return true;
             }
