@@ -1612,8 +1612,9 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 
     std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
     std::vector< unsigned char > buffer;
-    buffer.reserve( fileSize );
+    buffer.resize( fileSize );
     file.read( reinterpret_cast< char* >( &buffer[0] ), fileSize );
+    BOOST_REQUIRE( buffer.size() == fileSize );
     BOOST_REQUIRE( res.second == buffer );
 }
 
