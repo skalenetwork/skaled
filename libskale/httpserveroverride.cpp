@@ -1735,9 +1735,10 @@ SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
                           true :
                           false ) {
     if ( m_bHelperIsSSL )
-        m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
+        m_pServer.reset( new skutils::http::SSL_server(
+            cert_path, private_key_path, a_max_http_handler_queues ) );
     else
-        m_pServer.reset( new skutils::http::server );
+        m_pServer.reset( new skutils::http::server( a_max_http_handler_queues ) );
     m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
