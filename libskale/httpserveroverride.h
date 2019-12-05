@@ -333,6 +333,7 @@ private:
 
 public:
     bool m_bTraceCalls;
+    std::atomic_bool m_bShutdownMode = false;
 
 private:
     std::list< std::shared_ptr< SkaleRelayHTTP > > m_serversHTTP4, m_serversHTTP6, m_serversHTTPS4,
@@ -365,6 +366,8 @@ public:
     bool handleRequestWithBinaryAnswer(
         const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
     bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
+
+    bool isShutdownMode() const { return m_bShutdownMode; }
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
