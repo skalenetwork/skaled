@@ -376,6 +376,7 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                         originFile.seekg( 0, std::ios::end );
                         size_t fileContentSize = originFile.tellg();
                         std::string fileContent( fileContentSize, ' ' );
+                        originFile.seekg( 0 );
                         originFile.read( &fileContent[0], fileContentSize );
 
                         dev::h256 fileContentHash = dev::sha256( fileContent );
@@ -405,6 +406,7 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
                     originFile.seekg( 0, std::ios::end );
                     size_t fileContentSize = originFile.tellg();
                     std::string fileContent( fileContentSize, ' ' );
+                    originFile.seekg( 0 );
                     originFile.read( &fileContent[0], fileContentSize );
 
                     dev::h256 fileContentHash = dev::sha256( fileContent );

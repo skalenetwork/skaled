@@ -554,6 +554,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         file.seekg( 0, std::ios::end );
         size_t fileSize = file.tellg();
         std::string fileContent( fileSize, ' ' );
+        file.seekg( 0 );
         file.read( &fileContent[0], fileSize );
 
         const std::string fileHashName = filePath.string() + "._hash";

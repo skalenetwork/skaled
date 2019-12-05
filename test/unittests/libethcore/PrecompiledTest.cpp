@@ -1693,9 +1693,11 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     originFile.seekg( 0, std::ios::end );
     size_t fileContentSize = originFile.tellg();
     std::string content( fileContentSize, ' ' );
+    originFile.seekg( 0 );
     originFile.read( &content[0], fileContentSize );
 
     BOOST_REQUIRE( content.size() == fileSize );
+    BOOST_REQUIRE( originFile.gcount() == int( fileSize ) );
 
     dev::h256 fileContentHash = dev::sha256( content );
 
