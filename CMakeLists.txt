@@ -208,3 +208,11 @@ if ( CONSENSUS )
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus )
 endif()
+
+set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
+
+if ( SANITIZE )
+    SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${SANITIZE}" )
+    SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${SANITIZE}" )
+    SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${SANITIZE}" )
+endif()
