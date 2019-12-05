@@ -249,7 +249,8 @@ public:
     const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
     SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort, const char* cert_path = nullptr,
-        const char* private_key_path = nullptr, int nServerIndex = -1 );
+        const char* private_key_path = nullptr, int nServerIndex = -1,
+        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
     ~SkaleRelayHTTP() override;
 };  /// class SkaleRelayHTTP
 
@@ -290,7 +291,8 @@ public:
 private:
     bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-        const std::string& strPathSslCert, int nServerIndex );
+        const std::string& strPathSslCert, int nServerIndex,
+        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
     bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex );
@@ -298,6 +300,7 @@ private:
     bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL );
 
 public:
+    size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
     virtual bool StartListening() override;
     virtual bool StopListening() override;
 

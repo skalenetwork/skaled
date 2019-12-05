@@ -1700,7 +1700,8 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
-    const char* cert_path, const char* private_key_path, int nServerIndex )
+    const char* cert_path, const char* private_key_path, int nServerIndex,
+    size_t a_max_http_handler_queues )
     : SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
@@ -1850,7 +1851,7 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
 
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex ) {
+    const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -1865,10 +1866,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 cc::debug( "..." ) );
         if ( bIsSSL )
             pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, strPathSslCert.c_str(),
-                strPathSslKey.c_str(), nServerIndex ) );
+                strPathSslKey.c_str(), nServerIndex, a_max_http_handler_queues ) );
         else
-            pSrv.reset( new SkaleRelayHTTP(
-                ipVer, strAddr.c_str(), nPort, nullptr, nullptr, nServerIndex ) );
+            pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
+                nServerIndex, a_max_http_handler_queues ) );
         pSrv->m_pServer->Options(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
                 stats::register_stats_message(
@@ -2116,7 +2117,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTP4, m_nBasePortHTTP4 + nServerIndex,
-                     "", "", nServerIndex ) )
+                     "", "", nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTP4.push_back( pServer );
         }
@@ -2126,7 +2127,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTP6, m_nBasePortHTTP6 + nServerIndex,
-                     "", "", nServerIndex ) )
+                     "", "", nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTP6.push_back( pServer );
         }
@@ -2137,7 +2138,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTPS4, m_nBasePortHTTPS4 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTPS4.push_back( pServer );
         }
@@ -2148,7 +2149,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTPS6, m_nBasePortHTTPS6 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTPS6.push_back( pServer );
         }
