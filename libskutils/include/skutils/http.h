@@ -1606,7 +1606,7 @@ inline bool server::is_running() const {
 }
 
 inline void server::stop() {
-    close_all_handler_queues();
+    // close_all_handler_queues();
     if ( is_running_ ) {
         is_running_ = false;
         wait_while_in_loop();

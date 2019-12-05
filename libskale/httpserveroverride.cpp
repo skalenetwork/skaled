@@ -688,8 +688,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                          cc::num10( getRelay().serverIndex() ) )
             << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + cc::ws_rx( " >>> " ) +
-                   cc::warn( "Skipping arrived payload while in shutdown mode" ) );
+                   desc() + cc::ws_rx( " >>> " ) + cc::warn( "" ) );
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
@@ -1665,6 +1664,7 @@ void SkaleRelayWS::waitWhileInLoop() {
 }
 
 bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
+    SkaleRelayWS* pThis = this;
     stop();
     m_pSO = pSO;
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
@@ -1675,14 +1675,14 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
             << ( cc::error( "Failed to start server on port " ) + cc::c( m_nPort ) );
         return false;
     }
-    std::thread( [&]() {
-        m_isRunning = true;
-        skutils::multithreading::threadNameAppender tn( "/" + m_strSchemeUC + "-listener" );
+    std::thread( [pThis]() {
+        pThis->m_isRunning = true;
+        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
         try {
-            run( [&]() -> bool { return m_isRunning; } );
+            pThis->run( [pThis]() -> bool { return pThis->m_isRunning; } );
         } catch ( ... ) {
         }
-        // m_isRunning = false;
+        // pThis->m_isRunning = false;
     } )
         .detach();
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
@@ -1902,8 +1902,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             if ( isShutdownMode() ) {
                 logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     cc::notice( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
-                        cc::num10( pSrv->serverIndex() ) + " " +
-                        cc::warn( "Skipping arrived payload while in shutdown mode" ) );
+                        cc::num10( pSrv->serverIndex() ) + " " + cc::warn( "" ) );
                 pSrv->m_pServer->close_all_handler_queues();  // remove queues earlier
                 return true;
             }
