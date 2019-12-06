@@ -1092,7 +1092,8 @@ int main( int argc, char** argv ) try {
         } catch ( std::exception& ex ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while collecting snapshot hash from other skaleds " ) ) );
+                cc::error( "Exception while collecting snapshot hash from other skaleds " ) + " " +
+                cc::warn( ex.what() ) ) );
         }
 
         bool successfullDownload = false;
@@ -1102,7 +1103,14 @@ int main( int argc, char** argv ) try {
 
             downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
-            snapshotManager->computeSnapshotHash( blockNumber, true );
+            try {
+                snapshotManager->computeSnapshotHash( blockNumber, true );
+            } catch ( std::exception& ex ) {
+                std::throw_with_nested(
+                    std::runtime_error( cc::fatal( "FATAL:" ) + " " +
+                                        cc::error( "Exception while computing snapshot hash " ) +
+                                        " " + cc::warn( ex.what() ) ) );
+            }
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 

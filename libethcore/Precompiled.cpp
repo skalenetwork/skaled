@@ -550,9 +550,12 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
             throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
         }
 
-        std::string fileContent;
         std::ifstream file( filePath.string() );
-        file >> fileContent;
+        file.seekg( 0, std::ios::end );
+        size_t fileSize = file.tellg();
+        std::string fileContent( fileSize, ' ' );
+        file.seekg( 0 );
+        file.read( &fileContent[0], fileSize );
 
         const std::string fileHashName = filePath.string() + "._hash";
 
