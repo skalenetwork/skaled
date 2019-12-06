@@ -1554,6 +1554,8 @@ struct FilestorageFixture : public TestOutputHelperFixture {
 
         fstream file;
         file.open( pathToFile.string(), ios::out );
+        file.seekp( static_cast< long >( fileSize ) - 10 );
+        file.write( "a b", 3 );
         file.seekp( static_cast< long >( fileSize ) - 1 );
         file.write( "0", 1 );
     }
@@ -1610,9 +1612,9 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 
     std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
     std::vector< unsigned char > buffer;
-    buffer.reserve( fileSize );
-    buffer.insert( buffer.begin(), std::istream_iterator< unsigned char >( file ),
-        std::istream_iterator< unsigned char >() );
+    buffer.resize( fileSize );
+    file.read( reinterpret_cast< char* >( &buffer[0] ), fileSize );
+    BOOST_REQUIRE( buffer.size() == fileSize );
     BOOST_REQUIRE( res.second == buffer );
 }
 
@@ -1688,8 +1690,14 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     resultFile >> calculatedHash;
 
     std::ifstream originFile( pathToFile.string() );
-    std::string content;
-    originFile >> content;
+    originFile.seekg( 0, std::ios::end );
+    size_t fileContentSize = originFile.tellg();
+    std::string content( fileContentSize, ' ' );
+    originFile.seekg( 0 );
+    originFile.read( &content[0], fileContentSize );
+
+    BOOST_REQUIRE( content.size() == fileSize );
+    BOOST_REQUIRE( originFile.gcount() == int( fileSize ) );
 
     dev::h256 fileContentHash = dev::sha256( content );
 
