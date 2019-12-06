@@ -2000,7 +2000,6 @@ int main( int argc, char** argv ) try {
     if ( client ) {
         unsigned int n = client->blockChain().details().number;
         unsigned int mining = 0;
-
         while ( !exitHandler.shouldExit() )
             stopSealingAfterXBlocks( client.get(), n, mining );
     } else
