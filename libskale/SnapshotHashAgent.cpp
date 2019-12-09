@@ -29,7 +29,7 @@
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
-dev::h256 SnapshotHashAgent::voteForHash() {
+std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
@@ -48,6 +48,10 @@ dev::h256 SnapshotHashAgent::voteForHash() {
     if ( it == map_hash.end() ) {
         throw std::logic_error( "note enough votes to choose hash" );
     } else {
+        size_t t = ( 2 * this->n_ + 2 ) / 3;
+        signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
+        std::vector< size_t > idx;
+        std::vector< libff::alt_bn128_G1 > signatures;
         for ( size_t i = 0; i < this->n_; ++i ) {
             if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
                 continue;
@@ -55,9 +59,49 @@ dev::h256 SnapshotHashAgent::voteForHash() {
 
             if ( this->hashes_[i] == ( *it ).first ) {
                 this->nodes_to_download_snapshot_from_.push_back( i );
+                idx.push_back( i );
+                signatures.push_back( this->signatures_[i] );
             }
         }
-        return ( *it ).first;
+        std::vector< libff::alt_bn128_Fr > lagrange_coeffs = bls_instanse.LagrangeCoeffs( idx );
+        libff::alt_bn128_G1 common_signature =
+            bls_instanse.SignatureRecover( signatures, lagrange_coeffs );
+
+        libff::alt_bn128_G2 common_public;
+
+        std::string original_json = this->chain_params_.getOriginalJson();
+        nlohmann::json joConfig = nlohmann::json::parse( original_json );
+        common_public.X.c0 = libff::alt_bn128_Fq(
+            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey0"]
+                .get< std::string >()
+                .c_str() );
+        common_public.X.c1 = libff::alt_bn128_Fq(
+            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey1"]
+                .get< std::string >()
+                .c_str() );
+        common_public.Y.c0 = libff::alt_bn128_Fq(
+            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey2"]
+                .get< std::string >()
+                .c_str() );
+        common_public.Y.c1 = libff::alt_bn128_Fq(
+            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey3"]
+                .get< std::string >()
+                .c_str() );
+        common_public.Z = libff::alt_bn128_Fq2::one();
+
+        try {
+            if ( !bls_instanse.Verification(
+                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
+                     common_signature, common_public ) ) {
+                throw std::logic_error( " Common signature was not verified during voteForHash " );
+            }
+        } catch ( std::exception& ex ) {
+            std::cerr << cc::error(
+                             "Exception while collecting snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << "\n";
+        }
+
+        return std::make_pair( ( *it ).first, common_signature );
     }
 }
 
@@ -101,6 +145,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
                 this->hashes_[i] = dev::h256( str_hash );
+                this->signatures_[i] = signature;
             } catch ( std::exception& ex ) {
                 std::cerr << cc::error(
                                  "Exception while collecting snapshot hash from other skaleds: " )
@@ -127,7 +172,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     return ret;
 }
 
-dev::h256 SnapshotHashAgent::getVotedHash() const {
-    assert( this->voted_hash_ != dev::h256() );
+std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
+    assert( this->voted_hash_.first != dev::h256() );
     return this->voted_hash_;
 }

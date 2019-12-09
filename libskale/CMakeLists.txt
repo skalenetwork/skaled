@@ -29,8 +29,8 @@ add_library(skale ${sources} ${headers})
 
 target_include_directories( skale PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
-    ${BLS_INCLUDE_DIRS}
     ${BLS_WITH_FF_INCLUDE_DIR}
+    ${BLS_INCLUDE_DIRS}
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}
 	)

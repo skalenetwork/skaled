@@ -1084,7 +1084,7 @@ int main( int argc, char** argv ) try {
 
         SnapshotHashAgent snapshotHashAgent( chainParams );
 
-        dev::h256 voted_hash;
+        std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
         std::vector< std::string > list_urls_to_download;
         try {
             list_urls_to_download = snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
@@ -1114,7 +1114,7 @@ int main( int argc, char** argv ) try {
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
-            if ( calculated_hash == voted_hash ) {
+            if ( calculated_hash == voted_hash.first ) {
                 successfullDownload = true;
                 break;
             } else {
