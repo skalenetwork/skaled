@@ -42,6 +42,10 @@ public:
     void startAll() override;
     void bootStrapAll() override;
     void exitGracefully() override;
+    u256 getPriceForBlockId(uint64_t /*_blockId*/) const override {
+        return 1000;
+    }
+
     void stop();
 
 private:
