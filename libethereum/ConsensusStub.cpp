@@ -77,7 +77,7 @@ void ConsensusStub::doWork() {
     // Then return block
 
     static const unsigned wanted_txn_count = 10;
-    static const unsigned max_sleep = 2000;
+    //    static const unsigned max_sleep = 2000;
 
     using transactions_vector = ConsensusExtFace::transactions_vector;
 
@@ -100,8 +100,8 @@ void ConsensusStub::doWork() {
         ++it;
     }
 
-    this_thread::sleep_for( std::chrono::milliseconds(
-        static_cast< unsigned int >( rand() ) % ( max_sleep - 1000 ) + 1000 ) );
+    //    this_thread::sleep_for( std::chrono::milliseconds(
+    //        static_cast< unsigned int >( rand() ) % ( max_sleep - 1000 ) + 1000 ) );
 
     try {
         ++blockCounter;
