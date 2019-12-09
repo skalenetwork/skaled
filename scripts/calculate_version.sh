@@ -24,9 +24,9 @@ then
 fi
 
 LABEL="develop"
-if [ $BRANCH = "release-candidate" ]
+if [ $BRANCH = "stable" ]
 then
-    LABEL="rc"
+    LABEL="stable"
 elif [ $BRANCH = "beta" ]
 then
     LABEL="beta"
