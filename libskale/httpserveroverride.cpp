@@ -678,7 +678,10 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
             << ( desc() + cc::notice( " peer unregistered" ) );
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
-    skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
+    std::string strQueueIdToRemove = m_strPeerQueueID;
+    skutils::dispatch::async( "ws-queue-remover", [strQueueIdToRemove]() -> void {
+        skutils::dispatch::remove( strQueueIdToRemove );  // remove queue earlier
+    } );
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
