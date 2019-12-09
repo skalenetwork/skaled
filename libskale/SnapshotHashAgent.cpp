@@ -24,6 +24,7 @@
 
 #include "SnapshotHashAgent.h"
 
+#include <libconsensus/libBLS/bls/bls.h>
 #include <libethcore/CommonJS.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
@@ -88,9 +89,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 skutils::rest::data_t d = cli.call( joCall );
                 if ( d.empty() ) {
                     throw std::runtime_error(
-                        "Main Net call to skale_getSnapshotSignature failed" );
+                        "Sgx Server call to skale_getSnapshotSignature failed" );
                 }
-                std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
+                nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
+                std::string str_hash = joResponse["hash"];
+                libff::alt_bn128_G1 signature = libff::alt_bn128_G1(
+                    libff::alt_bn128_Fq( joResponse["X"].get< std::string >().c_str() ),
+                    libff::alt_bn128_Fq( joResponse["Y"].get< std::string >().c_str() ),
+                    libff::alt_bn128_Fq::one() );
 
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 

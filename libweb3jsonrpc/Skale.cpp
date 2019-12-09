@@ -295,12 +295,12 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         obj["messageHash"] = snapshot_hash.hex();
 
         dev::eth::ChainParams chainParams = this->m_client.chainParams();
-        obj["n"] = chainParams.sChain.nodes.size();
-        obj["t"] = ( 2 * obj["n"].get< size_t >() ) / 3 + 1;
 
         std::string original_json = chainParams.getOriginalJson();
         nlohmann::json joConfig = nlohmann::json::parse( original_json );
-        obj["keyShareName"] = joConfig["blsKeyName"];
+        obj["keyShareName"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["keyShareName"];
+        obj["n"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["n"];
+        obj["t"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["t"];
 
         auto it = std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
             [chainParams]( const dev::eth::sChainNode& schain_node ) {
@@ -313,7 +313,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joCall["params"] = obj;
 
         skutils::rest::client cli;
-        std::string sgxServerURL = joConfig["sgxServerURL"];
+        std::string sgxServerURL = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["url"];
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )
