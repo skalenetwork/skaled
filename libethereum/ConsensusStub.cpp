@@ -40,9 +40,10 @@ using namespace dev;
 
 using namespace std;
 
-ConsensusStub::ConsensusStub( ConsensusExtFace& _extFace )
+ConsensusStub::ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID )
     : dev::Worker( "consensus_stub", 0 ),  // call doWork in a tight loop
-      m_extFace( _extFace ) {
+      m_extFace( _extFace ),
+      blockCounter( _lastCommittedBlockID ) {
     // TODO Auto-generated constructor stub
 }
 

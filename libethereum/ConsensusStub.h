@@ -36,15 +36,13 @@ class ConsensusExtFace;
 
 class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:
-    ConsensusStub( ConsensusExtFace& _extFace );
+    ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID );
     ~ConsensusStub() override;
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override;
     void startAll() override;
     void bootStrapAll() override;
     void exitGracefully() override;
-    u256 getPriceForBlockId(uint64_t /*_blockId*/) const override {
-        return 1000;
-    }
+    u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }
 
     void stop();
 

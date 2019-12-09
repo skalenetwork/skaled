@@ -66,7 +66,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto ts = nfo.timestamp();
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
-    return make_unique< ConsensusStub >( _extFace );
+    return make_unique< ConsensusStub >( _extFace, m_client.number() );
 #endif
 }
 
