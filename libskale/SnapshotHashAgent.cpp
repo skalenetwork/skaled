@@ -72,7 +72,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             try {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
-                joCall["method"] = "skale_getSnapshotHash";
+                joCall["method"] = "skale_getSnapshotSignature";
                 nlohmann::json obj = {block_number};
                 joCall["params"] = obj;
                 skutils::rest::client cli;
@@ -87,7 +87,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 }
                 skutils::rest::data_t d = cli.call( joCall );
                 if ( d.empty() ) {
-                    throw std::runtime_error( "Main Net call to skale_getSnapshotHash failed" );
+                    throw std::runtime_error(
+                        "Main Net call to skale_getSnapshotSignature failed" );
                 }
                 std::string str_hash = nlohmann::json::parse( d.s_ )["result"];
 

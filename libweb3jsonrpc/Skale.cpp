@@ -61,6 +61,22 @@ namespace rpc {
 
 std::string exceptionToErrorMessage();
 
+std::vector< std::string > SplitString( const std::string& str, const char delim ) {
+    std::vector< std::string > retVal;
+
+    auto start = 0U;
+    auto end = str.find( delim );
+    while ( end != std::string::npos ) {
+        retVal.push_back( str.substr( start, end - start ) );
+        start = end + 1;
+        end = str.find( delim, start );
+    }
+
+    retVal.push_back( str.substr( start, end ) );
+
+    return retVal;
+}
+
 Skale::Skale( Client& _client ) : m_client( _client ) {}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
@@ -268,10 +284,63 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
-std::string Skale::skale_getSnapshotHash( unsigned blockNumber ) {
+Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
-        return snapshot_hash.hex();
+
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "blsSignMessageHash";
+        nlohmann::json obj = nlohmann::json::object();
+        obj["messageHash"] = snapshot_hash.hex();
+
+        dev::eth::ChainParams chainParams = this->m_client.chainParams();
+        obj["n"] = chainParams.sChain.nodes.size();
+        obj["t"] = ( 2 * obj["n"].get< size_t >() ) / 3 + 1;
+
+        std::string original_json = chainParams.getOriginalJson();
+        nlohmann::json joConfig = nlohmann::json::parse( original_json );
+        obj["keyShareName"] = joConfig["blsKeyName"];
+
+        auto it = std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
+            [chainParams]( const dev::eth::sChainNode& schain_node ) {
+                return schain_node.id == chainParams.nodeInfo.id;
+            } );
+        assert( it != chainParams.sChain.nodes.end() );
+        dev::eth::sChainNode schain_node = *it;
+
+        obj["signerIndex"] = schain_node.sChainIndex.convert_to< std::string >();
+        joCall["params"] = obj;
+
+        skutils::rest::client cli;
+        std::string sgxServerURL = joConfig["sgxServerURL"];
+        bool fl = cli.open( sgxServerURL );
+        if ( !fl ) {
+            std::cerr << cc::fatal( "FATAL:" )
+                      << cc::error( " Exception while trying to connect to sgx server: " )
+                      << cc::warn( "connection refused" ) << "\n";
+        }
+
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( d.empty() ) {
+            throw std::runtime_error( "SGX Server call to blsSignMessageHash failed" );
+        }
+
+        nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
+        std::string signature_with_helper = joResponse.dump();
+
+        auto splited_string = SplitString( signature_with_helper, ':' );
+        nlohmann::json joSignature = nlohmann::json::object();
+
+        joSignature["X"] = splited_string[0];
+        joSignature["Y"] = splited_string[1];
+        joSignature["helper"] = splited_string[2];
+        joSignature["hash"] = snapshot_hash.hex();
+
+        std::string strSignature = joSignature.dump();
+        Json::Value response;
+        Json::Reader().parse( strSignature, response );
+        return response;
     } catch ( const std::exception& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
