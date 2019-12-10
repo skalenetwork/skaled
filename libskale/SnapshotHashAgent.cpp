@@ -63,9 +63,17 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
                 signatures.push_back( this->signatures_[i] );
             }
         }
-        std::vector< libff::alt_bn128_Fr > lagrange_coeffs = bls_instanse.LagrangeCoeffs( idx );
-        libff::alt_bn128_G1 common_signature =
-            bls_instanse.SignatureRecover( signatures, lagrange_coeffs );
+
+        std::vector< libff::alt_bn128_Fr > lagrange_coeffs;
+        libff::alt_bn128_G1 common_signature;
+        try {
+            lagrange_coeffs = bls_instanse.LagrangeCoeffs( idx );
+            common_signature = bls_instanse.SignatureRecover( signatures, lagrange_coeffs );
+        } catch ( std::exception& ex ) {
+            std::cerr << cc::error(
+                             "Exception while recovering common signature from other skaleds: " )
+                      << cc::warn( ex.what() ) << "\n";
+        }
 
         libff::alt_bn128_G2 common_public;
 
@@ -97,7 +105,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
             }
         } catch ( std::exception& ex ) {
             std::cerr << cc::error(
-                             "Exception while collecting snapshot hash from other skaleds: " )
+                             "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
         }
 
@@ -173,6 +181,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 }
 
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
-    assert( this->voted_hash_.first != dev::h256() );
+    assert( this->voted_hash_.first != dev::h256() &&
+            this->voted_hash_.second != libff::alt_bn128_G1::zero() );
     return this->voted_hash_;
 }
