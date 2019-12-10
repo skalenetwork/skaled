@@ -141,7 +141,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 skutils::rest::data_t d = cli.call( joCallHash );
                 if ( d.empty() ) {
                     throw std::runtime_error(
-                        "Sgx Server call to skale_getSnapshotSignature failed" );
+                        "Skaled call to skale_getSnapshotSignature failed" );
                 }
                 nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
                 std::string str_hash = joResponse["hash"];
@@ -149,6 +149,40 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     libff::alt_bn128_Fq( joResponse["X"].get< std::string >().c_str() ),
                     libff::alt_bn128_Fq( joResponse["Y"].get< std::string >().c_str() ),
                     libff::alt_bn128_Fq::one() );
+                
+                nlohmann::json joCallPublicKey = nlohmann::json::object();
+                joCallPublicKey["jsonrpc"] = "2.0";
+                joCallPublicKey["method"] = "skale_imaInfo";
+                joCallPublicKey["params"] = nlohmann::json::object();
+                skutils::rest::data_t pk_d = cli.call( joCallPublicKey );
+                if ( pk_d.empty() ) {
+                    throw std::runtime_error(
+                        "Skaled call to skale_imaInfo failed" );
+                }
+                nlohmann::json joPublicKeyResponse = nlohmann::json::parse( pk_d.s_ )["result"];
+
+                libff::alt_bn128_G2 public_key;
+                public_key.X.c0 = libff::alt_bn128_Fq(joPublicKeyResponse["insecureBLSPublicKey0"].get<std::string>().c_str());
+                public_key.X.c1 = libff::alt_bn128_Fq(joPublicKeyResponse["insecureBLSPublicKey1"].get<std::string>().c_str());
+                public_key.Y.c0 = libff::alt_bn128_Fq(joPublicKeyResponse["insecureBLSPublicKey2"].get<std::string>().c_str());
+                public_key.Y.c1 = libff::alt_bn128_Fq(joPublicKeyResponse["insecureBLSPublicKey3"].get<std::string>().c_str());
+                public_key.Z = libff::alt_bn128_Fq2::one();
+
+                size_t t = joPublicKeyResponse["t"].get<size_t>();
+                size_t n = joPublicKeyResponse["n"].get<size_t>();
+
+                signatures::Bls bls_instanse = signatures::Bls(t, n);
+                try {
+                    if ( !bls_instanse.Verification(
+                            std::make_shared< std::array< uint8_t, 32 > >( dev::h256( str_hash ).asArray() ),
+                            signature, public_key ) ) {
+                            throw std::logic_error( " Common signature was not verified during getNodesToDownloadSnapshotFrom " );
+                    }
+                } catch ( std::exception& ex ) {
+                        std::cerr << cc::error(
+                                        "Exception while verifying common signature from other skaleds: " )
+                                << cc::warn( ex.what() ) << "\n";
+                }
 
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
