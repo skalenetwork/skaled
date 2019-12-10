@@ -309,7 +309,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         assert( it != chainParams.sChain.nodes.end() );
         dev::eth::sChainNode schain_node = *it;
 
-        obj["signerIndex"] = schain_node.sChainIndex.convert_to< std::string >();
+        obj["signerIndex"] = schain_node.sChainIndex.convert_to< int >() - 1;
         joCall["params"] = obj;
 
         skutils::rest::client cli;
@@ -336,6 +336,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joSignature["Y"] = splited_string[1];
         joSignature["helper"] = splited_string[2];
         joSignature["hash"] = snapshot_hash.hex();
+        joSignature["signerIndex"] = obj["signerIndex"];
 
         std::string strSignature = joSignature.dump();
         Json::Value response;
