@@ -123,11 +123,11 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
         threads.push_back( std::thread( [this, i, block_number]() {
             try {
-                nlohmann::json joCall = nlohmann::json::object();
-                joCall["jsonrpc"] = "2.0";
-                joCall["method"] = "skale_getSnapshotSignature";
+                nlohmann::json joCallHash = nlohmann::json::object();
+                joCallHash["jsonrpc"] = "2.0";
+                joCallHash["method"] = "skale_getSnapshotSignature";
                 nlohmann::json obj = {block_number};
-                joCall["params"] = obj;
+                joCallHash["params"] = obj;
                 skutils::rest::client cli;
                 bool fl = cli.open(
                     "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
@@ -138,7 +138,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                      " Exception while trying to connect to another skaled: " )
                               << cc::warn( "connection refused" ) << "\n";
                 }
-                skutils::rest::data_t d = cli.call( joCall );
+                skutils::rest::data_t d = cli.call( joCallHash );
                 if ( d.empty() ) {
                     throw std::runtime_error(
                         "Sgx Server call to skale_getSnapshotSignature failed" );
@@ -182,6 +182,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
     assert( this->voted_hash_.first != dev::h256() &&
-            this->voted_hash_.second != libff::alt_bn128_G1::zero() );
+            this->voted_hash_.second != libff::alt_bn128_G1::zero() &&
+            this->voted_hash_.second.is_well_formed() );
     return this->voted_hash_;
 }
