@@ -878,8 +878,9 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
         for ( unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2;
               ++gen, p = _bc.details( p ).parent ) {
             auto us = _bc.details( p ).children;
-            assert( us.size() >= 1 );  // must be at least 1 child of our grandparent - it's our own
-                                       // parent!
+            // assert( us.size() >= 1 );  // must be at least 1 child of our grandparent - it's our
+            // own
+            // parent!
             for ( auto const& u : us )
                 if ( !excluded.count( u ) )  // ignore any uncles/mainline blocks that we know
                                              // about.

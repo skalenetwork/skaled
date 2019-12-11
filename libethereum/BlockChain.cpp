@@ -755,7 +755,14 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
         _performanceLogger.onStageFinished( "collation" );
 
-        blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        // blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        {
+            std::stringstream ss;
+            for ( auto c : _block.block ) {
+                ss.put( c );
+            }
+            this->m_DEBUG_blockCache = ss.str();
+        }
         DEV_READ_GUARDED( x_details )
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
@@ -900,7 +907,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
-        m_blocksDB->commit( std::move( blocksWriteBatch ) );
+        //        m_blocksDB->commit( std::move( blocksWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to blockchain database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -910,7 +917,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
-        m_extrasDB->commit( std::move( extrasWriteBatch ) );
+        //        m_extrasDB->commit( std::move( extrasWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to extras database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -1409,10 +1416,11 @@ bytes BlockChain::block( h256 const& _hash ) const {
             return it->second;
     }
 
-    string const d = m_blocksDB->lookup( toSlice( _hash ) );
+    string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
-        return bytes();
+        d = m_DEBUG_blockCache;
+        // return bytes();
     }
 
     noteUsed( _hash );
@@ -1435,10 +1443,11 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
             return BlockHeader::extractHeader( &it->second ).data().toBytes();
     }
 
-    string const d = m_blocksDB->lookup( toSlice( _hash ) );
+    string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
-        return bytes();
+        d = m_DEBUG_blockCache;
+        // return bytes();
     }
 
     noteUsed( _hash );

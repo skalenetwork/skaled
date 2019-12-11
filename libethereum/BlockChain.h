@@ -565,6 +565,8 @@ private:
     mutable Logger m_loggerError{createLogger( VerbosityError, "chain" )};
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
+
+    std::string m_DEBUG_blockCache;
 };
 
 std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
