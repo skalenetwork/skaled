@@ -29,8 +29,42 @@
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
+void SnapshotHashAgent::verifyAllData() {
+    size_t t = ( 2 * this->n_ + 2 ) / 3;
+    signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
+
+    //const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
+    for ( size_t i = 0; i < this->n_; ++i ) {
+        std::cerr << "verifying " << i << '\n';
+        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+            continue;
+        }
+
+        try {
+            if ( !bls_instanse.Verification( std::make_shared< std::array< uint8_t, 32 > >(
+                                                 dev::h256( this->hashes_[i] ).asArray() ),
+                     this->signatures_[i], this->public_keys_[i] ) ) {
+                std::cerr << "NOT SUCCESS\n";
+                throw std::logic_error( " Common signature from " + std::to_string( i ) +
+                                        "-th node was not verified during "
+                                        "getNodesToDownloadSnapshotFrom " );
+            } else {
+                std::cerr << "SUCCESSFULL VERIFY!\n";
+            }
+        } catch ( std::exception& ex ) {
+            std::throw_with_nested( std::runtime_error(
+                cc::fatal( "FATAL:" ) + " " +
+                cc::error( "Exception while verifying common signature from other skaleds: " ) +
+                " " + cc::warn( ex.what() ) ) );
+        }
+    }
+}
+
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
+
+    //this->verifyAllData();
 
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
@@ -59,7 +93,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
 
             if ( this->hashes_[i] == ( *it ).first ) {
                 this->nodes_to_download_snapshot_from_.push_back( i );
-                idx.push_back( i );
+                idx.push_back( i + 1 );
                 signatures.push_back( this->signatures_[i] );
             }
         }
@@ -121,6 +155,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             continue;
         }
 
+        libff::init_alt_bn128_params();
         threads.push_back( std::thread( [this, i, block_number]() {
             try {
                 nlohmann::json joCallHash = nlohmann::json::object();
@@ -144,6 +179,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 }
                 nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
                 std::string str_hash = joResponse["hash"];
+
                 libff::alt_bn128_G1 signature = libff::alt_bn128_G1(
                     libff::alt_bn128_Fq( joResponse["X"].get< std::string >().c_str() ),
                     libff::alt_bn128_Fq( joResponse["Y"].get< std::string >().c_str() ),
@@ -158,7 +194,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     throw std::runtime_error( "Skaled call to skale_imaInfo failed" );
                 }
                 nlohmann::json joPublicKeyResponse = nlohmann::json::parse( pk_d.s_ )["result"];
-
                 libff::alt_bn128_G2 public_key;
                 public_key.X.c0 = libff::alt_bn128_Fq(
                     joPublicKeyResponse["insecureBLSPublicKey0"].get< std::string >().c_str() );
@@ -170,33 +205,16 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     joPublicKeyResponse["insecureBLSPublicKey3"].get< std::string >().c_str() );
                 public_key.Z = libff::alt_bn128_Fq2::one();
 
-                size_t t = joPublicKeyResponse["t"].get< size_t >();
-                size_t n = joPublicKeyResponse["n"].get< size_t >();
-
-                signatures::Bls bls_instanse = signatures::Bls( t, n );
-                try {
-                    if ( !bls_instanse.Verification( std::make_shared< std::array< uint8_t, 32 > >(
-                                                         dev::h256( str_hash ).asArray() ),
-                             signature, public_key ) ) {
-                        throw std::logic_error(
-                            " Common signature was not verified during "
-                            "getNodesToDownloadSnapshotFrom " );
-                    }
-                } catch ( std::exception& ex ) {
-                    std::cerr
-                        << cc::error(
-                               "Exception while verifying common signature from other skaleds: " )
-                        << cc::warn( ex.what() ) << "\n";
-                }
-
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
                 this->hashes_[i] = dev::h256( str_hash );
                 this->signatures_[i] = signature;
+                this->public_keys_[i] = public_key;
             } catch ( std::exception& ex ) {
-                std::cerr << cc::error(
-                                 "Exception while collecting snapshot hash from other skaleds: " )
-                          << cc::warn( ex.what() ) << "\n";
+                std::cerr
+                    << cc::error(
+                           "Exception while collecting snapshot signatures from other skaleds: " )
+                    << cc::warn( ex.what() ) << "\n";
             }
         } ) );
     }
@@ -205,7 +223,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         thr.join();
     }
 
+    libff::init_alt_bn128_params();
+    std::cerr << "VOTING\n";
     this->voted_hash_ = this->voteForHash();
+    std::cerr << "VOTED\n";
 
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodes_to_download_snapshot_from_ ) {

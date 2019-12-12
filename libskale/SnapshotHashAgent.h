@@ -34,6 +34,7 @@ public:
         : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
+        this->public_keys_.resize( n_ );
     }
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
@@ -46,11 +47,14 @@ private:
 
     std::vector< dev::h256 > hashes_;
     std::vector< libff::alt_bn128_G1 > signatures_;
+    std::vector< libff::alt_bn128_G2 > public_keys_;
     std::vector< size_t > nodes_to_download_snapshot_from_;
     std::mutex hashes_mutex;
 
     std::pair< dev::h256, libff::alt_bn128_G1 > voteForHash();
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
+
+    void verifyAllData();
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

@@ -292,13 +292,13 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "blsSignMessageHash";
         nlohmann::json obj = nlohmann::json::object();
-        obj["messageHash"] = snapshot_hash.hex();
 
         dev::eth::ChainParams chainParams = this->m_client.chainParams();
 
         std::string original_json = chainParams.getOriginalJson();
         nlohmann::json joConfig = nlohmann::json::parse( original_json );
         obj["keyShareName"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["keyShareName"];
+        obj["messageHash"] = snapshot_hash.hex();
         obj["n"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["n"];
         obj["t"] = joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["t"];
 
@@ -309,7 +309,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         assert( it != chainParams.sChain.nodes.end() );
         dev::eth::sChainNode schain_node = *it;
 
-        obj["signerIndex"] = schain_node.sChainIndex.convert_to< int >() - 1;
+        obj["signerIndex"] = schain_node.sChainIndex.convert_to< int >();
         joCall["params"] = obj;
 
         skutils::rest::client cli;
@@ -321,20 +321,30 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                       << cc::warn( "connection refused" ) << "\n";
         }
 
+        std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << "\n";
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() ) {
-            throw std::runtime_error( "SGX Server call to blsSignMessageHash failed" );
+            static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
+            std::cout << cc::fatal( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
+                      << "\n";
+            throw std::runtime_error( g_strErrMsg );
         }
 
         nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
-        std::string signature_with_helper = joResponse.dump();
+        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << "\n";
+        if ( joResponse["status"] != 0 ) {
+            throw std::runtime_error(
+                "SGX Server call to blsSignMessageHash returned non-zero status" );
+        }
+        std::string signature_with_helper = joResponse["signatureShare"].get< std::string >();
 
         auto splited_string = SplitString( signature_with_helper, ':' );
+
         nlohmann::json joSignature = nlohmann::json::object();
 
         joSignature["X"] = splited_string[0];
         joSignature["Y"] = splited_string[1];
-        joSignature["helper"] = splited_string[2];
+        joSignature["helper"] = splited_string[3];
         joSignature["hash"] = snapshot_hash.hex();
         joSignature["signerIndex"] = obj["signerIndex"];
 
@@ -342,7 +352,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         Json::Value response;
         Json::Reader().parse( strSignature, response );
         return response;
-    } catch ( const std::exception& ) {
+    } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
 }
