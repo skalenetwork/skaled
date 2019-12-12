@@ -33,8 +33,6 @@ void SnapshotHashAgent::verifyAllData() {
     size_t t = ( 2 * this->n_ + 2 ) / 3;
     signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
 
-    // const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-
     for ( size_t i = 0; i < this->n_; ++i ) {
         std::cerr << "verifying " << i << '\n';
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
@@ -64,7 +62,7 @@ void SnapshotHashAgent::verifyAllData() {
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
-    // this->verifyAllData();
+    this->verifyAllData();
 
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
