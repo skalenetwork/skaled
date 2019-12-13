@@ -596,89 +596,96 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
     }
 }
 
-ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import(
+    VerifiedBlockRef const& _block, State& /*_state*/, bool /*_mustBeNew*/ ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
+    /*
+        MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
-    MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
+        ImportPerformanceLogger performanceLogger;
 
-    ImportPerformanceLogger performanceLogger;
+        // Check block doesn't already exist first!
+        if ( _mustBeNew )
+            checkBlockIsNew( _block );
 
-    // Check block doesn't already exist first!
-    if ( _mustBeNew )
-        checkBlockIsNew( _block );
+        // Work out its number as the parent's number + 1
+        if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
+        {
+            LOG( m_logger ) << _block.info.hash() << " : Unknown parent " <<
+    _block.info.parentHash();
+            // We don't know the parent (yet) - discard for now. It'll get resent to us if we find
+    out
+            // about its ancestry later on.
+            BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
+        }
 
-    // Work out its number as the parent's number + 1
-    if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
-    {
-        LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
-        // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
-        // about its ancestry later on.
-        BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
-    }
+        auto pd = details( _block.info.parentHash() );
+        if ( !pd ) {
+            auto pdata = pd.rlp();
+            LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata
+    ); auto parentBlock = block( _block.info.parentHash() ); LOG( m_loggerError ) << "isKnown: " <<
+    isKnown( _block.info.parentHash() ); LOG( m_loggerError ) << "last/number: " <<
+    m_lastBlockNumber << " " << m_lastBlockHash
+                                 << " " << _block.info.number();
+            LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
+            LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
+            LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+            exit( -1 );
+        }
 
-    auto pd = details( _block.info.parentHash() );
-    if ( !pd ) {
-        auto pdata = pd.rlp();
-        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata );
-        auto parentBlock = block( _block.info.parentHash() );
-        LOG( m_loggerError ) << "isKnown: " << isKnown( _block.info.parentHash() );
-        LOG( m_loggerError ) << "last/number: " << m_lastBlockNumber << " " << m_lastBlockHash
-                             << " " << _block.info.number();
-        LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
-        LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
-        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-        exit( -1 );
-    }
+        checkBlockTimestamp( _block.info );
 
-    checkBlockTimestamp( _block.info );
+        // Verify parent-critical parts
+        verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
 
-    // Verify parent-critical parts
-    verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
+        LOG( m_loggerDetail ) << "Attempting import of " << _block.info.hash() << " ...";
 
-    LOG( m_loggerDetail ) << "Attempting import of " << _block.info.hash() << " ...";
+        performanceLogger.onStageFinished( "preliminaryChecks" );
 
-    performanceLogger.onStageFinished( "preliminaryChecks" );
+        MICROPROFILE_ENTERI( "BlockChain", "enact", MP_INDIANRED );
 
-    MICROPROFILE_ENTERI( "BlockChain", "enact", MP_INDIANRED );
+        BlockReceipts blockReceipts;
+        u256 totalDifficulty;
+        try {
+            // Check transactions are valid and that they result in a state equivalent to our
+            // state_root. Get total difficulty increase and update state, checking it.
+            Block s( *this, m_lastBlockHash, _state );
+            auto tdIncrease = s.enactOn( _block, *this );
 
-    BlockReceipts blockReceipts;
-    u256 totalDifficulty;
-    try {
-        // Check transactions are valid and that they result in a state equivalent to our
-        // state_root. Get total difficulty increase and update state, checking it.
-        Block s( *this, m_lastBlockHash, _state );
-        auto tdIncrease = s.enactOn( _block, *this );
+            for ( unsigned i = 0; i < s.pending().size(); ++i )
+                blockReceipts.receipts.push_back( s.receipt( i ) );
 
-        for ( unsigned i = 0; i < s.pending().size(); ++i )
-            blockReceipts.receipts.push_back( s.receipt( i ) );
+            s.cleanup();
 
-        s.cleanup();
+            _state = _state.startNew();
 
-        _state = _state.startNew();
+            totalDifficulty = pd.totalDifficulty + tdIncrease;
 
-        totalDifficulty = pd.totalDifficulty + tdIncrease;
+            performanceLogger.onStageFinished( "enactment" );
 
-        performanceLogger.onStageFinished( "enactment" );
+    #if ETH_PARANOIA
+            checkConsistency();
+    #endif  // ETH_PARANOIA
+        } catch ( BadRoot& ex ) {
+            cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root"
+                  << *boost::get_error_info< errinfo_hash256 >( ex );
+            cwarn << _block.info;
+            // Attempt in import later.
+            BOOST_THROW_EXCEPTION( TransientError() );
+        } catch ( Exception& ex ) {
+            addBlockInfo( ex, _block.info, _block.block.toBytes() );
+            throw;
+        }
 
-#if ETH_PARANOIA
-        checkConsistency();
-#endif  // ETH_PARANOIA
-    } catch ( BadRoot& ex ) {
-        cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root"
-              << *boost::get_error_info< errinfo_hash256 >( ex );
-        cwarn << _block.info;
-        // Attempt in import later.
-        BOOST_THROW_EXCEPTION( TransientError() );
-    } catch ( Exception& ex ) {
-        addBlockInfo( ex, _block.info, _block.block.toBytes() );
-        throw;
-    }
-
-    MICROPROFILE_LEAVE();
-
+        MICROPROFILE_LEAVE();
+    */
     // All ok - insert into DB
-    bytes const receipts = blockReceipts.rlp();
-    return insertBlockAndExtras( _block, ref( receipts ), totalDifficulty, performanceLogger );
+    // bytes const receipts = blockReceipts.rlp();
+    m_lastBlockHash = _block.info.hash();
+    m_lastBlockNumber = ( unsigned ) _block.info.number();
+
+    return ImportRoute();  // insertBlockAndExtras( _block, ref( receipts ), totalDifficulty,
+                           // performanceLogger );
 }
 
 ImportRoute BlockChain::import( const Block& _block ) {
@@ -697,8 +704,17 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     ImportPerformanceLogger performanceLogger;
 
-    return insertBlockAndExtras(
-        verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
+    {
+        std::stringstream ss;
+        for ( auto c : verifiedBlock.block )
+            ss.put( c );
+        this->m_DEBUG_blockCache = ss.str();
+    }
+    m_lastBlockHash = verifiedBlock.info.hash();
+    m_lastBlockNumber = ( unsigned ) verifiedBlock.info.number();
+
+    return ImportRoute();  // insertBlockAndExtras(
+    //        verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
 }
 
 ImportRoute BlockChain::insertWithoutParent(
@@ -747,22 +763,23 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
         // ensure parent is cached for later addition.
         // TODO: this is a bit horrible would be better refactored into an enveloping
-        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is safe
-        // in practice since the caches don't get flushed nearly often enough to be done here.
+        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+        // safe in practice since the caches don't get flushed nearly often enough to be done
+        // here.
         details( _block.info.parentHash() );
         DEV_WRITE_GUARDED( x_details )
         m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
 
         _performanceLogger.onStageFinished( "collation" );
 
-        // blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
-        {
-            std::stringstream ss;
-            for ( auto c : _block.block ) {
-                ss.put( c );
-            }
-            this->m_DEBUG_blockCache = ss.str();
-        }
+        blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        //        {
+        //            std::stringstream ss;
+        //            for ( auto c : _block.block ) {
+        //                ss.put( c );
+        //            }
+        //            this->m_DEBUG_blockCache = ss.str();
+        //        }
         DEV_READ_GUARDED( x_details )
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
@@ -795,7 +812,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // This might be the new best block...
     h256 last = currentHash();
     // we import every block even if it's difficulty is not enough
-    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0 */
+    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0
+                               */
          || ( m_sealEngine->chainParams().tieBreakingGas &&
                 _totalDifficulty == details( last ).totalDifficulty &&
                 _block.info.gasUsed() > info( last ).gasUsed() ) ) {
@@ -907,7 +925,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
-        //        m_blocksDB->commit( std::move( blocksWriteBatch ) );
+        m_blocksDB->commit( std::move( blocksWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to blockchain database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -917,7 +935,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
-        //        m_extrasDB->commit( std::move( extrasWriteBatch ) );
+        m_extrasDB->commit( std::move( extrasWriteBatch ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to extras database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -1013,8 +1031,8 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
     //   ...                               /=15        /=21
     // L0...| ' ' ' | ' ' ' | ' ' ' | ' ' 'b|x'x'x'x|x'e' ' |
     // L1...|       '       '       '   b   |   x   '   x   '   e   '       |
-    // L2...|               b               '               x               '                e ' |
-    // model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
+    // L2...|               b               '               x               '                e '
+    // | model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
 
     // algorithm doesn't have the best memoisation coherence, but eh well...
 
@@ -1224,8 +1242,8 @@ void BlockChain::garbageCollect( bool _force ) {
             break;
         }
         case ExtraBlockHash: {
-            // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the second
-            // noteUsed() in BlockChain.h, which is a no-op.
+            // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
+            // second noteUsed() in BlockChain.h, which is a no-op.
             assert( false );
             break;
         }
@@ -1263,9 +1281,9 @@ void BlockChain::checkConsistency() {
             h256 h( ( _byte_ const* ) _key.data(), h256::ConstructFromPointer );
             auto dh = details( h );
             auto p = dh.parent;
-            if ( p != h256() && p != m_genesisHash )  // TODO: for some reason the genesis details
-                                                      // with the children get squished. not sure
-                                                      // why.
+            if ( p != h256() && p != m_genesisHash )  // TODO: for some reason the genesis
+                                                      // details with the children get squished.
+                                                      // not sure why.
             {
                 auto dp = details( p );
                 if ( asserts( contains( dp.children, h ) ) )
@@ -1303,9 +1321,9 @@ static inline unsigned upow( unsigned a, unsigned b ) {
 static inline unsigned ceilDiv( unsigned n, unsigned d ) {
     return ( n + d - 1 ) / d;
 }
-// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
-// static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a,
-// b)); }
+// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a,
+// b); } static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return
+// ceilDiv(n, upow(a, b)); }
 
 // Level 1
 // [xxx.            ]
@@ -1374,11 +1392,12 @@ vector< unsigned > BlockChain::withBlockBloom( LogBloom const& _b, unsigned _ear
 }
 
 h256Hash BlockChain::allKinFrom( h256 const& _parent, unsigned _generations ) const {
-    // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ...
-    // parent + 5).
+    // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1,
+    // ... parent + 5).
     h256 p = _parent;
     h256Hash ret = {p};
-    // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be cautious.
+    // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be
+    // cautious.
     for ( unsigned i = 0; i < _generations && p != m_genesisHash; ++i, p = details( p ).parent ) {
         ret.insert( details( p ).parent );
         auto b = block( p );
@@ -1569,8 +1588,9 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                 Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
                                       CheckTransaction::Everything :
                                       CheckTransaction::None );
-                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs blockGasLimit is
-                                                                  // checked later in enact function
+                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs
+                                                                  // blockGasLimit is checked
+                                                                  // later in enact function
                 res.transactions.push_back( t );
             } catch ( Exception& ex ) {
                 ex << errinfo_phase( 1 );

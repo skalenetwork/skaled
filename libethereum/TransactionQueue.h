@@ -316,8 +316,8 @@ Transactions TransactionQueue::topTransactionsSync( unsigned _limit, Args... arg
         UpgradeGuard wGuard( rGuard );
         MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_DIMGRAY );
         m_cond.wait_for( *wGuard.mutex(),
-            boost::chrono::milliseconds( 100 ) );  // TODO 100 ms was chosen randomly. it's used in
-                                                   // nice thread termination in ConsensusStub
+            boost::chrono::milliseconds( 10 ) );  // TODO 100 ms was chosen randomly. it's used in
+                                                  // nice thread termination in ConsensusStub
     } else
         return res;
     res = topTransactions_WITH_LOCK( _limit, args... );
@@ -335,8 +335,8 @@ Transactions TransactionQueue::topTransactionsSync( unsigned _limit, Args... arg
         UpgradeGuard wGuard( rGuard );
         MICROPROFILE_SCOPEI( "TransactionQueue", "wait_for txns 100", MP_DIMGRAY );
         m_cond.wait_for( *wGuard.mutex(),
-            boost::chrono::milliseconds( 100 ) );  // TODO 100 ms was chosen randomly. it's used in
-                                                   // nice thread termination in ConsensusStub
+            boost::chrono::milliseconds( 10 ) );  // TODO 100 ms was chosen randomly. it's used in
+                                                  // nice thread termination in ConsensusStub
     } else
         return res;
     res = topTransactions_WITH_LOCK( _limit, args... );

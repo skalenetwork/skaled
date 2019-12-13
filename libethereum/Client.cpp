@@ -410,9 +410,10 @@ void Client::syncBlockQueue() {
 }
 
 size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+    const Transactions& _transactions, u256 /*_gasPrice*/, uint64_t /*_timestamp*/ ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+        size_t n_succeeded =
+            _transactions.size();  // syncTransactions( _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
         return n_succeeded;
@@ -707,7 +708,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working );
-    m_new_block_watch.invoke( m_working );
+    // m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 

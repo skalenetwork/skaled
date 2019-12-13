@@ -108,8 +108,8 @@ find_package( Boost CONFIG REQUIRED program_options filesystem system thread con
 
 set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
-hunter_add_package( leveldb )
-find_package( leveldb CONFIG REQUIRED )
+#hunter_add_package( leveldb )
+#find_package( leveldb CONFIG REQUIRED )
 
 #hunter_add_package( jsoncpp )
 find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
@@ -149,6 +149,8 @@ if( TESTS )
     # TODO: remove this once testeth uses binaryen as a CLI tool.
     include( ProjectBinaryen )
 endif()
+
+add_subdirectory( leveldb )
 
 add_subdirectory( evmc )
 
