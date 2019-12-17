@@ -29,6 +29,8 @@
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
+#include <libff/common/profiling.hpp>
+
 void SnapshotHashAgent::verifyAllData() {
     size_t t = ( 2 * this->n_ + 2 ) / 3;
     signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
@@ -38,28 +40,23 @@ void SnapshotHashAgent::verifyAllData() {
             continue;
         }
 
-        mpz_t t;
-        mpz_init(t);
-        mpz_set_str(t, "21888242871839275222246405745257275088696311157297823662689037894645226208581", 10);
+        mpz_t tt;
+        mpz_init( tt );
+        mpz_set_str( tt,
+            "21888242871839275222246405745257275088696311157297823662689037894645226208581", 10 );
 
-        libff::alt_bn128_Fq t_(t);
-        mpz_clear(t);
+        libff::alt_bn128_Fq t_( tt );
+        mpz_clear( tt );
 
         try {
-            if ( !bls_instanse.Verification( std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
+            libff::inhibit_profiling_info = true;
+            if ( !bls_instanse.Verification(
+                     std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
                      this->signatures_[i], this->public_keys_[i] ) ) {
                 throw std::logic_error( " Common signature from " + std::to_string( i ) +
                                         "-th node was not verified during "
                                         "getNodesToDownloadSnapshotFrom " );
             }
-            /*nlohmann::json hash_json;
-            hash_json["message"] = this->hashes_[i];
-
-            std::ofstream outfile_h("./libconsensus/libBLS/hash.json");
-            outfile_h << hash_json.dump(4) << "\n";
-
-            system("./libconsensus/libBLS/hash_g1");
-            system("./libconsensus/libBLS/verify_bls");*/
         } catch ( std::exception& ex ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
@@ -140,6 +137,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
         common_public.Z = libff::alt_bn128_Fq2::one();
 
         try {
+            libff::inhibit_profiling_info = true;
             if ( !bls_instanse.Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                      common_signature, common_public ) ) {
