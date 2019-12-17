@@ -34,22 +34,32 @@ void SnapshotHashAgent::verifyAllData() {
     signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        std::cerr << "verifying " << i << '\n';
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
+        mpz_t t;
+        mpz_init(t);
+        mpz_set_str(t, "21888242871839275222246405745257275088696311157297823662689037894645226208581", 10);
+
+        libff::alt_bn128_Fq t_(t);
+        mpz_clear(t);
+
         try {
-            if ( !bls_instanse.Verification( std::make_shared< std::array< uint8_t, 32 > >(
-                                                 dev::h256( this->hashes_[i] ).asArray() ),
+            if ( !bls_instanse.Verification( std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
                      this->signatures_[i], this->public_keys_[i] ) ) {
-                std::cerr << "NOT SUCCESS\n";
                 throw std::logic_error( " Common signature from " + std::to_string( i ) +
                                         "-th node was not verified during "
                                         "getNodesToDownloadSnapshotFrom " );
-            } else {
-                std::cerr << "SUCCESSFULL VERIFY!\n";
             }
+            /*nlohmann::json hash_json;
+            hash_json["message"] = this->hashes_[i];
+
+            std::ofstream outfile_h("./libconsensus/libBLS/hash.json");
+            outfile_h << hash_json.dump(4) << "\n";
+
+            system("./libconsensus/libBLS/hash_g1");
+            system("./libconsensus/libBLS/verify_bls");*/
         } catch ( std::exception& ex ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
@@ -222,9 +232,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     }
 
     libff::init_alt_bn128_params();
-    std::cerr << "VOTING\n";
     this->voted_hash_ = this->voteForHash();
-    std::cerr << "VOTED\n";
 
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodes_to_download_snapshot_from_ ) {
