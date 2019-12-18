@@ -159,10 +159,10 @@ static const chrono::system_clock::duration c_collectionDuration = chrono::secon
 static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 4;//64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 4;  // 64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 2;//32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 2;  // 32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -596,8 +596,7 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
     }
 }
 
-ImportRoute BlockChain::import(
-    VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
     MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
@@ -619,10 +618,10 @@ ImportRoute BlockChain::import(
     auto pd = details( _block.info.parentHash() );
     if ( !pd ) {
         auto pdata = pd.rlp();
-        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata
-); auto parentBlock = block( _block.info.parentHash() ); LOG( m_loggerError ) << "isKnown: " <<
-isKnown( _block.info.parentHash() ); LOG( m_loggerError ) << "last/number: " <<
-m_lastBlockNumber << " " << m_lastBlockHash
+        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata );
+        auto parentBlock = block( _block.info.parentHash() );
+        LOG( m_loggerError ) << "isKnown: " << isKnown( _block.info.parentHash() );
+        LOG( m_loggerError ) << "last/number: " << m_lastBlockNumber << " " << m_lastBlockHash
                              << " " << _block.info.number();
         LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
         LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
@@ -697,7 +696,8 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     ImportPerformanceLogger performanceLogger;
 
-    return insertBlockAndExtras( verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
+    return insertBlockAndExtras(
+        verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
 }
 
 ImportRoute BlockChain::insertWithoutParent(
@@ -845,7 +845,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             }
 
             for ( auto const& h : alteredBlooms )
-                noteUsed(h, ExtraBlocksBlooms);
+                noteUsed( h, ExtraBlocksBlooms );
 
             // Collate transaction hashes and remember who they were.
             // h256s newTransactionAddresses;
