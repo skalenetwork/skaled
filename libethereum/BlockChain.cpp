@@ -597,9 +597,8 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
 }
 
 ImportRoute BlockChain::import(
-    VerifiedBlockRef const& _block, State& /*_state*/, bool /*_mustBeNew*/ ) {
+    VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
-    /*
         MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
         ImportPerformanceLogger performanceLogger;
@@ -611,10 +610,8 @@ ImportRoute BlockChain::import(
         // Work out its number as the parent's number + 1
         if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
         {
-            LOG( m_logger ) << _block.info.hash() << " : Unknown parent " <<
-    _block.info.parentHash();
-            // We don't know the parent (yet) - discard for now. It'll get resent to us if we find
-    out
+            LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
+            // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
             // about its ancestry later on.
             BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
         }
@@ -678,14 +675,10 @@ ImportRoute BlockChain::import(
         }
 
         MICROPROFILE_LEAVE();
-    */
-    // All ok - insert into DB
-    // bytes const receipts = blockReceipts.rlp();
-    m_lastBlockHash = _block.info.hash();
-    m_lastBlockNumber = ( unsigned ) _block.info.number();
 
-    return ImportRoute();  // insertBlockAndExtras( _block, ref( receipts ), totalDifficulty,
-                           // performanceLogger );
+    // All ok - insert into DB
+    bytes const receipts = blockReceipts.rlp();
+    return insertBlockAndExtras( _block, ref( receipts ), totalDifficulty, performanceLogger );
 }
 
 ImportRoute BlockChain::import( const Block& _block ) {
@@ -704,17 +697,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     ImportPerformanceLogger performanceLogger;
 
-    {
-        std::stringstream ss;
-        for ( auto c : verifiedBlock.block )
-            ss.put( c );
-        this->m_DEBUG_blockCache = ss.str();
-    }
-    m_lastBlockHash = verifiedBlock.info.hash();
-    m_lastBlockNumber = ( unsigned ) verifiedBlock.info.number();
-
-    return ImportRoute();  // insertBlockAndExtras(
-    //        verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
+    return insertBlockAndExtras( verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
 }
 
 ImportRoute BlockChain::insertWithoutParent(
@@ -773,13 +756,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         _performanceLogger.onStageFinished( "collation" );
 
         blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
-        //        {
-        //            std::stringstream ss;
-        //            for ( auto c : _block.block ) {
-        //                ss.put( c );
-        //            }
-        //            this->m_DEBUG_blockCache = ss.str();
-        //        }
+
         DEV_READ_GUARDED( x_details )
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
@@ -862,7 +839,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                       level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize ) {
                     unsigned i = index / c_bloomIndexSize;
                     unsigned o = index % c_bloomIndexSize;
-                    alteredBlooms.push_back( chunkId( level, i ) );
+                    h256 chunk_id = chunkId( level, i );
+                    noteUsed(chunk_id, ExtraBlocksBlooms);
+                    alteredBlooms.push_back( chunk_id );
                     m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
                 }
             }
@@ -1438,8 +1417,7 @@ bytes BlockChain::block( h256 const& _hash ) const {
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
-        d = m_DEBUG_blockCache;
-        // return bytes();
+        return bytes();
     }
 
     noteUsed( _hash );
@@ -1465,8 +1443,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
-        d = m_DEBUG_blockCache;
-        // return bytes();
+        return bytes();
     }
 
     noteUsed( _hash );

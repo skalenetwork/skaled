@@ -83,15 +83,15 @@ void ConsensusStub::doWork() {
 
     transactions_vector txns = m_extFace.pendingTransactions( wanted_txn_count );
     // TODO Can return 0 on time-out. Needed for nice thread termination. Rethink this.
-    //    if ( txns.size() == 0 )  // check for exit
-    //        return;
+    if ( txns.size() == 0 )  // check for exit
+        return;
 
     std::cout << cc::debug( "Taken " ) << txns.size() << cc::debug( " transactions for consensus" )
               << std::endl;
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
-    txns_in_block = txns_in_block ? txns_in_block : 0;
+    txns_in_block = txns_in_block ? txns_in_block : 1;
 
     transactions_vector out_vector;
     auto it = txns.begin();

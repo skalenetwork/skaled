@@ -410,10 +410,9 @@ void Client::syncBlockQueue() {
 }
 
 size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 /*_gasPrice*/, uint64_t /*_timestamp*/ ) {
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        size_t n_succeeded =
-            _transactions.size();  // syncTransactions( _transactions, _gasPrice, _timestamp );
+        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
         return n_succeeded;
@@ -795,7 +794,7 @@ void Client::checkWatchGarbage() {
             if ( ( !m_watches[key].isWS() ) &&
                  m_watches[key].lastPoll != chrono::system_clock::time_point::max() &&
                  chrono::system_clock::now() - m_watches[key].lastPoll >
-                     chrono::seconds( 200 ) )  // HACK Changed from 20 to 200 for debugging!
+                     chrono::seconds( 20 ) )  // NB Was 200 for debugging. Normal value is 20!
             {
                 toUninstall.push_back( key );
                 LOG( m_loggerDetail ) << "GC: Uninstall " << key << " ("
