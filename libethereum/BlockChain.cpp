@@ -599,82 +599,82 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
 ImportRoute BlockChain::import(
     VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
-        MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
+    MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
-        ImportPerformanceLogger performanceLogger;
+    ImportPerformanceLogger performanceLogger;
 
-        // Check block doesn't already exist first!
-        if ( _mustBeNew )
-            checkBlockIsNew( _block );
+    // Check block doesn't already exist first!
+    if ( _mustBeNew )
+        checkBlockIsNew( _block );
 
-        // Work out its number as the parent's number + 1
-        if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
-        {
-            LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
-            // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
-            // about its ancestry later on.
-            BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
-        }
+    // Work out its number as the parent's number + 1
+    if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
+    {
+        LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
+        // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
+        // about its ancestry later on.
+        BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
+    }
 
-        auto pd = details( _block.info.parentHash() );
-        if ( !pd ) {
-            auto pdata = pd.rlp();
-            LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata
-    ); auto parentBlock = block( _block.info.parentHash() ); LOG( m_loggerError ) << "isKnown: " <<
-    isKnown( _block.info.parentHash() ); LOG( m_loggerError ) << "last/number: " <<
-    m_lastBlockNumber << " " << m_lastBlockHash
-                                 << " " << _block.info.number();
-            LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
-            LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
-            LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-            exit( -1 );
-        }
+    auto pd = details( _block.info.parentHash() );
+    if ( !pd ) {
+        auto pdata = pd.rlp();
+        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata
+); auto parentBlock = block( _block.info.parentHash() ); LOG( m_loggerError ) << "isKnown: " <<
+isKnown( _block.info.parentHash() ); LOG( m_loggerError ) << "last/number: " <<
+m_lastBlockNumber << " " << m_lastBlockHash
+                             << " " << _block.info.number();
+        LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
+        LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
+        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        exit( -1 );
+    }
 
-        checkBlockTimestamp( _block.info );
+    checkBlockTimestamp( _block.info );
 
-        // Verify parent-critical parts
-        verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
+    // Verify parent-critical parts
+    verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
 
-        LOG( m_loggerDetail ) << "Attempting import of " << _block.info.hash() << " ...";
+    LOG( m_loggerDetail ) << "Attempting import of " << _block.info.hash() << " ...";
 
-        performanceLogger.onStageFinished( "preliminaryChecks" );
+    performanceLogger.onStageFinished( "preliminaryChecks" );
 
-        MICROPROFILE_ENTERI( "BlockChain", "enact", MP_INDIANRED );
+    MICROPROFILE_ENTERI( "BlockChain", "enact", MP_INDIANRED );
 
-        BlockReceipts blockReceipts;
-        u256 totalDifficulty;
-        try {
-            // Check transactions are valid and that they result in a state equivalent to our
-            // state_root. Get total difficulty increase and update state, checking it.
-            Block s( *this, m_lastBlockHash, _state );
-            auto tdIncrease = s.enactOn( _block, *this );
+    BlockReceipts blockReceipts;
+    u256 totalDifficulty;
+    try {
+        // Check transactions are valid and that they result in a state equivalent to our
+        // state_root. Get total difficulty increase and update state, checking it.
+        Block s( *this, m_lastBlockHash, _state );
+        auto tdIncrease = s.enactOn( _block, *this );
 
-            for ( unsigned i = 0; i < s.pending().size(); ++i )
-                blockReceipts.receipts.push_back( s.receipt( i ) );
+        for ( unsigned i = 0; i < s.pending().size(); ++i )
+            blockReceipts.receipts.push_back( s.receipt( i ) );
 
-            s.cleanup();
+        s.cleanup();
 
-            _state = _state.startNew();
+        _state = _state.startNew();
 
-            totalDifficulty = pd.totalDifficulty + tdIncrease;
+        totalDifficulty = pd.totalDifficulty + tdIncrease;
 
-            performanceLogger.onStageFinished( "enactment" );
+        performanceLogger.onStageFinished( "enactment" );
 
-    #if ETH_PARANOIA
-            checkConsistency();
-    #endif  // ETH_PARANOIA
-        } catch ( BadRoot& ex ) {
-            cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root"
-                  << *boost::get_error_info< errinfo_hash256 >( ex );
-            cwarn << _block.info;
-            // Attempt in import later.
-            BOOST_THROW_EXCEPTION( TransientError() );
-        } catch ( Exception& ex ) {
-            addBlockInfo( ex, _block.info, _block.block.toBytes() );
-            throw;
-        }
+#if ETH_PARANOIA
+        checkConsistency();
+#endif  // ETH_PARANOIA
+    } catch ( BadRoot& ex ) {
+        cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root"
+              << *boost::get_error_info< errinfo_hash256 >( ex );
+        cwarn << _block.info;
+        // Attempt in import later.
+        BOOST_THROW_EXCEPTION( TransientError() );
+    } catch ( Exception& ex ) {
+        addBlockInfo( ex, _block.info, _block.block.toBytes() );
+        throw;
+    }
 
-        MICROPROFILE_LEAVE();
+    MICROPROFILE_LEAVE();
 
     // All ok - insert into DB
     bytes const receipts = blockReceipts.rlp();
