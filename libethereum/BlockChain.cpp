@@ -159,10 +159,10 @@ static const chrono::system_clock::duration c_collectionDuration = chrono::secon
 static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 4;//64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 2;//32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -839,12 +839,13 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                       level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize ) {
                     unsigned i = index / c_bloomIndexSize;
                     unsigned o = index % c_bloomIndexSize;
-                    h256 chunk_id = chunkId( level, i );
-                    noteUsed(chunk_id, ExtraBlocksBlooms);
-                    alteredBlooms.push_back( chunk_id );
+                    alteredBlooms.push_back( chunkId( level, i ) );
                     m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
                 }
             }
+
+            for ( auto const& h : alteredBlooms )
+                noteUsed(h, ExtraBlocksBlooms);
 
             // Collate transaction hashes and remember who they were.
             // h256s newTransactionAddresses;
