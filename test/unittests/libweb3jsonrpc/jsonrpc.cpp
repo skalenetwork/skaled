@@ -182,6 +182,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
+    ~JsonRpcFixture(){
+        system("rm -rf /tmp/*.db.*");
+    }
+
     string sendingRawShouldFail( string const& _t ) {
         try {
             rpcClient->eth_sendRawTransaction( _t );
