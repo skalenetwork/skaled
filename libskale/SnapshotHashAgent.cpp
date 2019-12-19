@@ -32,28 +32,17 @@
 #include <libff/common/profiling.hpp>
 
 void SnapshotHashAgent::verifyAllData() {
-    size_t t = ( 2 * this->n_ + 2 ) / 3;
-    signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
-
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
-        mpz_t tt;
-        mpz_init( tt );
-        mpz_set_str( tt,
-            "21888242871839275222246405745257275088696311157297823662689037894645226208581", 10 );
-
-        libff::alt_bn128_Fq t_( tt );
-        mpz_clear( tt );
-
         try {
             libff::inhibit_profiling_info = true;
-            if ( !bls_instanse.Verification(
+            if ( !this->bls_->Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
                      this->signatures_[i], this->public_keys_[i] ) ) {
-                throw std::logic_error( " Common signature from " + std::to_string( i ) +
+                throw std::logic_error( " Signature from " + std::to_string( i ) +
                                         "-th node was not verified during "
                                         "getNodesToDownloadSnapshotFrom " );
             }
@@ -87,8 +76,6 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
     if ( it == map_hash.end() ) {
         throw std::logic_error( "note enough votes to choose hash" );
     } else {
-        size_t t = ( 2 * this->n_ + 2 ) / 3;
-        signatures::Bls bls_instanse = signatures::Bls( t, this->n_ );
         std::vector< size_t > idx;
         std::vector< libff::alt_bn128_G1 > signatures;
         for ( size_t i = 0; i < this->n_; ++i ) {
@@ -106,8 +93,8 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
         std::vector< libff::alt_bn128_Fr > lagrange_coeffs;
         libff::alt_bn128_G1 common_signature;
         try {
-            lagrange_coeffs = bls_instanse.LagrangeCoeffs( idx );
-            common_signature = bls_instanse.SignatureRecover( signatures, lagrange_coeffs );
+            lagrange_coeffs = this->bls_->LagrangeCoeffs( idx );
+            common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
         } catch ( std::exception& ex ) {
             std::cerr << cc::error(
                              "Exception while recovering common signature from other skaleds: " )
@@ -138,7 +125,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
 
         try {
             libff::inhibit_profiling_info = true;
-            if ( !bls_instanse.Verification(
+            if ( !this->bls_->Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                      common_signature, common_public ) ) {
                 throw std::logic_error( " Common signature was not verified during voteForHash " );
@@ -155,13 +142,13 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned block_number ) {
+    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
     std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
-        libff::init_alt_bn128_params();
         threads.push_back( std::thread( [this, i, block_number]() {
             try {
                 nlohmann::json joCallHash = nlohmann::json::object();
@@ -229,7 +216,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         thr.join();
     }
 
-    libff::init_alt_bn128_params();
     this->voted_hash_ = this->voteForHash();
 
     std::vector< std::string > ret;

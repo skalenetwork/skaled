@@ -28,6 +28,10 @@
 #include <libethereum/ChainParams.h>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 
+namespace signatures {
+class Bls;
+}
+
 class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chain_params )
@@ -44,6 +48,7 @@ public:
 private:
     dev::eth::ChainParams chain_params_;
     unsigned n_;
+    std::shared_ptr< signatures::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
     std::vector< libff::alt_bn128_G1 > signatures_;

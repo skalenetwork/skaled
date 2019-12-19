@@ -201,9 +201,6 @@ unsigned getLatestSnapshotBlockNumber(
     joIn["method"] = "eth_blockNumber";
     joIn["params"] = nlohmann::json::object();
     skutils::rest::data_t d = cli.call( joIn );
-    while ( d.empty() ) {
-        d = cli.call( joIn );
-    }
     if ( d.empty() ) {
         throw std::runtime_error( "cannot get blockNumber to download snapshot" );
     }
