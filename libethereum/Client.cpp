@@ -707,7 +707,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working );
-    m_new_block_watch.invoke( m_working );
+    // m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -794,7 +794,7 @@ void Client::checkWatchGarbage() {
             if ( ( !m_watches[key].isWS() ) &&
                  m_watches[key].lastPoll != chrono::system_clock::time_point::max() &&
                  chrono::system_clock::now() - m_watches[key].lastPoll >
-                     chrono::seconds( 200 ) )  // HACK Changed from 20 to 200 for debugging!
+                     chrono::seconds( 20 ) )  // NB Was 200 for debugging. Normal value is 20!
             {
                 toUninstall.push_back( key );
                 LOG( m_loggerDetail ) << "GC: Uninstall " << key << " ("
