@@ -119,7 +119,7 @@ target_include_directories( web3jsonrpc PRIVATE
 	)
 
 target_link_libraries( web3jsonrpc
-    bls
+#    bls
     ethashseal
     skutils
     ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a

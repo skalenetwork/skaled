@@ -421,6 +421,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
         "Max number of RPC connections(such as web3) summary for all protocols(0 is default and "
         "means unlimited)" );
+    addClientOption( "max-http-queues", po::value< size_t >()->value_name( "<count>" ),
+        "Max number of handler queues for HTTP/S connections per endpoint server" );
+
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
         "default and "
@@ -1683,7 +1686,9 @@ int main( int argc, char** argv ) try {
             }
             //
             //
-            size_t maxConnections = 0, cntServers = 1;
+            size_t maxConnections = 0,
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT,
+                   cntServers = 1;
 
             // First, get "max-connections" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1697,6 +1702,19 @@ int main( int argc, char** argv ) try {
             }
             if ( vm.count( "max-connections" ) )
                 maxConnections = vm["max-connections"].as< size_t >();
+            //
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    max_http_handler_queues =
+                        joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
+                } catch ( ... ) {
+                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+                }
+            }
+            if ( vm.count( "max-http-queues" ) )
+                maxConnections = vm["max-http-queues"].as< size_t >();
 
             // First, get "acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1756,6 +1774,12 @@ int main( int argc, char** argv ) try {
                 << ( ( maxConnections > 0 ) ? cc::size10( maxConnections ) :
                                               cc::error( "disabled" ) );
             clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "Max HTTP queues" )
+                << cc::debug( ".......................... " )
+                << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
+                                                       cc::notice( "default" ) );
+            //
+            clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "........ " ) << cc::size10( cntServers );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
@@ -1770,6 +1794,7 @@ int main( int argc, char** argv ) try {
                     chainParams.nodeInfo.ip, nExplicitPortWS4, chainParams.nodeInfo.ip6,
                     nExplicitPortWS6, chainParams.nodeInfo.ip, nExplicitPortWSS4,
                     chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey, strPathSslCert );
+            skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
@@ -1984,7 +2009,6 @@ int main( int argc, char** argv ) try {
     if ( client ) {
         unsigned int n = client->blockChain().details().number;
         unsigned int mining = 0;
-
         while ( !exitHandler.shouldExit() )
             stopSealingAfterXBlocks( client.get(), n, mining );
     } else

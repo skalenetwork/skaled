@@ -66,7 +66,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto ts = nfo.timestamp();
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
-    return make_unique< ConsensusStub >( _extFace );
+    return make_unique< ConsensusStub >( _extFace, m_client.number() );
 #endif
 }
 
@@ -336,7 +336,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     total_arrived += out_txns.size();
 
-    assert( _blockID == m_client.number() + 1 );
+    // assert( _blockID == m_client.number() + 1 );
 
     m_debugTracer.tracepoint( "import_block" );
 
