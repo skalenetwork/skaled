@@ -268,6 +268,15 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
+std::string Skale::skale_getSnapshotHash( unsigned blockNumber ) {
+    try {
+        dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
+        return snapshot_hash.hex();
+    } catch ( const std::exception& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,

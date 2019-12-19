@@ -80,12 +80,15 @@ typedef int socket_t;
 #include <skutils/dispatch.h>
 #include <skutils/network.h>
 #include <skutils/url.h>
+#include <skutils/utils.h>
 
 /// configuration
 
 #define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 5 * 1000 )
 #define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 30 * 1000 )
 #define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ( 5 )
+
+#define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT ( 16 )
 
 namespace skutils {
 namespace http {
@@ -208,10 +211,11 @@ private:
 class server {
 public:
     mutable int ipVer_ = -1;  // not known before listen
+    mutable int boundToPort_ = -1;
     typedef std::function< void( const request&, response& ) > Handler;
     typedef std::function< void( const request&, const response& ) > Logger;
 
-    server();
+    server( size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
 
     virtual ~server();
 
@@ -300,6 +304,31 @@ public:
         while ( is_in_loop() )
             std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
     }
+
+protected:
+    std::mutex queue_handlers_mutex_;
+    size_t max_handler_queues_, current_handler_queue_;
+    skutils::dispatch::queue_id_t handler_queue_id_at_index( size_t i ) const {
+        skutils::dispatch::queue_id_t id;
+        id = skutils::tools::format(
+            "%s/%d/%d-%p-%zu", is_ssl() ? "https" : "http", ipVer_, boundToPort_, this, i );
+        return id;
+    }
+    skutils::dispatch::queue_id_t next_handler_queue_id() {
+        std::lock_guard< std::mutex > guard( queue_handlers_mutex_ );
+        if ( current_handler_queue_ >= max_handler_queues_ )
+            current_handler_queue_ = 0;
+        skutils::dispatch::queue_id_t id = handler_queue_id_at_index( current_handler_queue_ );
+        ++current_handler_queue_;
+        return id;
+    }
+
+public:
+    void close_all_handler_queues() {
+        for ( size_t i = 0; i < max_handler_queues_; ++i ) {
+            skutils::dispatch::remove( handler_queue_id_at_index( i ) );
+        }
+    }
 };  /// class server
 
 class client {
@@ -377,7 +406,8 @@ private:
 
 class SSL_server : public server {
 public:
-    SSL_server( const char* cert_path, const char* private_key_path );
+    SSL_server( const char* cert_path, const char* private_key_path,
+        size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
     ~SSL_server() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
@@ -1484,17 +1514,23 @@ inline const std::string& buffer_stream::get_buffer() const {
 
 /// HTTP server implementation
 
-inline server::server()
+inline server::server( size_t a_max_handler_queues )
     : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
-      running_connectoin_handlers_( 0 ) {
+      running_connectoin_handlers_( 0 ),
+      max_handler_queues_( a_max_handler_queues ),
+      current_handler_queue_( 0 ) {
+    if ( max_handler_queues_ < 1 )
+        max_handler_queues_ = 1;
 #ifndef _WIN32
     ::signal( SIGPIPE, SIG_IGN );
 #endif
 }
 
-inline server::~server() {}
+inline server::~server() {
+    close_all_handler_queues();
+}
 
 inline server& server::Get( const char* pattern, Handler handler ) {
     get_handlers_.push_back( std::make_pair( std::regex( pattern ), handler ) );
@@ -1570,6 +1606,7 @@ inline bool server::is_running() const {
 }
 
 inline void server::stop() {
+    // close_all_handler_queues();
     if ( is_running_ ) {
         is_running_ = false;
         wait_while_in_loop();
@@ -1692,10 +1729,11 @@ inline socket_t server::create_server_socket(
     detail::auto_detect_ipVer( ipVer, host );
     ipVer_ = ipVer;
     return detail::create_socket( ipVer, host, port,
-        []( socket_t sock, struct addrinfo& ai ) -> bool {
+        [this, port]( socket_t sock, struct addrinfo& ai ) -> bool {
             if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
                 return false;
             }
+            boundToPort_ = port;
             if (::listen( sock, 5 ) ) {  // Listen through 5 channels
                 return false;
             }
@@ -1757,7 +1795,7 @@ inline bool server::listen_internal() {
                 read_and_close_socket( sock );
                 running_connectoin_handlers_decrement();
             };
-            skutils::dispatch::async( fn );
+            skutils::dispatch::async( next_handler_queue_id(), fn );
         }
         for ( ; is_running_; ) {
             std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
@@ -2244,7 +2282,9 @@ inline std::string SSL_socket_stream::get_remote_addr() const {
 
 /// SSL HTTP server implementation
 
-inline SSL_server::SSL_server( const char* cert_path, const char* private_key_path ) {
+inline SSL_server::SSL_server(
+    const char* cert_path, const char* private_key_path, size_t a_max_handler_queues )
+    : server( a_max_handler_queues ) {
     ctx_ = SSL_CTX_new( SSLv23_server_method() );
 
     if ( ctx_ ) {

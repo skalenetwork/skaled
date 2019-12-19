@@ -576,6 +576,19 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     if ( chainParams().nodeInfo.snapshotInterval > 0 &&
          number() % chainParams().nodeInfo.snapshotInterval == 0 ) {
         m_snapshotManager->doSnapshot( number() );
+        std::thread( [this]() {
+            try {
+                this->m_snapshotManager->computeSnapshotHash( this->number() );
+            } catch ( const std::exception& ex ) {
+                cerror << "CRITICAL " << dev::nested_exception_what( ex )
+                       << " in computeSnapshotHash(). Exiting";
+                ExitHandler::exitHandler( 0 );
+            } catch ( ... ) {
+                cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
+                ExitHandler::exitHandler( 0 );
+            }
+        } )
+            .detach();
         // TODO Make this number configurable
         m_snapshotManager->leaveNLastSnapshots( 2 );
     }  // if snapshot
