@@ -159,10 +159,10 @@ static const chrono::system_clock::duration c_collectionDuration = chrono::secon
 static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 4;  // 64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 2;  // 32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -598,7 +598,6 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
 
 ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
-
     MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
     ImportPerformanceLogger performanceLogger;
@@ -747,8 +746,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
         // ensure parent is cached for later addition.
         // TODO: this is a bit horrible would be better refactored into an enveloping
-        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is safe
-        // in practice since the caches don't get flushed nearly often enough to be done here.
+        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+        // safe in practice since the caches don't get flushed nearly often enough to be done
+        // here.
         details( _block.info.parentHash() );
         DEV_WRITE_GUARDED( x_details )
         m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
@@ -756,6 +756,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         _performanceLogger.onStageFinished( "collation" );
 
         blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+
         DEV_READ_GUARDED( x_details )
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
@@ -788,7 +789,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // This might be the new best block...
     h256 last = currentHash();
     // we import every block even if it's difficulty is not enough
-    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0 */
+    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0
+                               */
          || ( m_sealEngine->chainParams().tieBreakingGas &&
                 _totalDifficulty == details( last ).totalDifficulty &&
                 _block.info.gasUsed() > info( last ).gasUsed() ) ) {
@@ -841,6 +843,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
                 }
             }
+
+            for ( auto const& h : alteredBlooms )
+                noteUsed( h, ExtraBlocksBlooms );
 
             // Collate transaction hashes and remember who they were.
             // h256s newTransactionAddresses;
@@ -1006,8 +1011,8 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
     //   ...                               /=15        /=21
     // L0...| ' ' ' | ' ' ' | ' ' ' | ' ' 'b|x'x'x'x|x'e' ' |
     // L1...|       '       '       '   b   |   x   '   x   '   e   '       |
-    // L2...|               b               '               x               '                e ' |
-    // model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
+    // L2...|               b               '               x               '                e '
+    // | model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
 
     // algorithm doesn't have the best memoisation coherence, but eh well...
 
@@ -1217,8 +1222,8 @@ void BlockChain::garbageCollect( bool _force ) {
             break;
         }
         case ExtraBlockHash: {
-            // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the second
-            // noteUsed() in BlockChain.h, which is a no-op.
+            // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
+            // second noteUsed() in BlockChain.h, which is a no-op.
             assert( false );
             break;
         }
@@ -1256,9 +1261,9 @@ void BlockChain::checkConsistency() {
             h256 h( ( _byte_ const* ) _key.data(), h256::ConstructFromPointer );
             auto dh = details( h );
             auto p = dh.parent;
-            if ( p != h256() && p != m_genesisHash )  // TODO: for some reason the genesis details
-                                                      // with the children get squished. not sure
-                                                      // why.
+            if ( p != h256() && p != m_genesisHash )  // TODO: for some reason the genesis
+                                                      // details with the children get squished.
+                                                      // not sure why.
             {
                 auto dp = details( p );
                 if ( asserts( contains( dp.children, h ) ) )
@@ -1296,9 +1301,9 @@ static inline unsigned upow( unsigned a, unsigned b ) {
 static inline unsigned ceilDiv( unsigned n, unsigned d ) {
     return ( n + d - 1 ) / d;
 }
-// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
-// static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a,
-// b)); }
+// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a,
+// b); } static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return
+// ceilDiv(n, upow(a, b)); }
 
 // Level 1
 // [xxx.            ]
@@ -1367,11 +1372,12 @@ vector< unsigned > BlockChain::withBlockBloom( LogBloom const& _b, unsigned _ear
 }
 
 h256Hash BlockChain::allKinFrom( h256 const& _parent, unsigned _generations ) const {
-    // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ...
-    // parent + 5).
+    // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1,
+    // ... parent + 5).
     h256 p = _parent;
     h256Hash ret = {p};
-    // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be cautious.
+    // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be
+    // cautious.
     for ( unsigned i = 0; i < _generations && p != m_genesisHash; ++i, p = details( p ).parent ) {
         ret.insert( details( p ).parent );
         auto b = block( p );
@@ -1409,7 +1415,7 @@ bytes BlockChain::block( h256 const& _hash ) const {
             return it->second;
     }
 
-    string const d = m_blocksDB->lookup( toSlice( _hash ) );
+    string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
         return bytes();
@@ -1435,7 +1441,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
             return BlockHeader::extractHeader( &it->second ).data().toBytes();
     }
 
-    string const d = m_blocksDB->lookup( toSlice( _hash ) );
+    string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
         cwarn << "Couldn't find requested block:" << _hash;
         return bytes();
@@ -1560,8 +1566,9 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                 Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
                                       CheckTransaction::Everything :
                                       CheckTransaction::None );
-                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs blockGasLimit is
-                                                                  // checked later in enact function
+                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs
+                                                                  // blockGasLimit is checked
+                                                                  // later in enact function
                 res.transactions.push_back( t );
             } catch ( Exception& ex ) {
                 ex << errinfo_phase( 1 );
