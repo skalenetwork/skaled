@@ -2442,19 +2442,22 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
     joStats["protocols"]["http"]["listenerCount"] = m_serversHTTP4.size() + m_serversHTTP6.size();
-    joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
-    joStats["protocols"]["http"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTP" );
     joStats["protocols"]["https"]["listenerCount"] =
         m_serversHTTPS4.size() + m_serversHTTPS6.size();
-    joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
-    joStats["protocols"]["https"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTPS" );
-    joStats["protocols"]["ws"]["listenerCount"] = m_serversWS4.size() + m_serversWS6.size();
-    joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
-    joStats["protocols"]["ws"]["rpc"] = stats::generate_subsystem_stats( "RPC/WS" );
     joStats["protocols"]["wss"]["listenerCount"] = m_serversWSS4.size() + m_serversWSS6.size();
-    joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
-    joStats["protocols"]["wss"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
-    joStats["rpc"] = stats::generate_subsystem_stats( "RPC" );
+    {  // block for subsystem stats using optimized locking only once
+        stats::lock_type_stats lock( stats::g_mtx_stats );
+        joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
+        joStats["protocols"]["http"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTP" );
+        joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
+        joStats["protocols"]["https"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTPS" );
+        joStats["protocols"]["ws"]["listenerCount"] = m_serversWS4.size() + m_serversWS6.size();
+        joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
+        joStats["protocols"]["ws"]["rpc"] = stats::generate_subsystem_stats( "RPC/WS" );
+        joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
+        joStats["protocols"]["wss"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
+        joStats["rpc"] = stats::generate_subsystem_stats( "RPC" );
+    }  // block for subsystem stats using optimized locking only once
     //
     skutils::tools::load_monitor& lm = stat_get_load_monitor();
     double lfCpuLoad = lm.last_cpu_load();
