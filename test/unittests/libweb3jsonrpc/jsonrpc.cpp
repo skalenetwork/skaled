@@ -79,6 +79,16 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": {
+			"precompiled": {
+				"name": "createFile",
+				"linear": {
+					"base": 15,
+					"word": 0
+				},
+                "restrictAccess": ["00000000000000000000000000000000000000AA"]
+			}
+		},
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x6001600101600055",
@@ -924,6 +934,34 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx2["raw"].asString() ),
         "Transaction gas price lower than current eth_gasPrice." );
+}
+
+BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    rpcClient->test_setChainParams( ret );
+    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+    std::string fileName = "test_call";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+    string data = (
+            "0x"
+            "00000000000000000000000000000000000000000000000000000000000000AA"
+            "0000000000000000000000000000000000000000000000000000000000000009"
+            "746573745f63616c6c0000000000000000000000000000000000000000000000" // test_call
+            "0000000000000000000000000000000000000000000000000000000000000004"
+            );
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = ownerAddress.hex();
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    bool isFileExists = boost::filesystem::exists( path );
+    remove( path.c_str() );
+    BOOST_REQUIRE( isFileExists );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
