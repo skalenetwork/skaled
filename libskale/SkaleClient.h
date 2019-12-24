@@ -38,6 +38,10 @@ public:
     std::string skale_receiveTransaction( std::string const& _rlp ) noexcept( false );
 
     std::string skale_shutdownInstance() noexcept( false );
+
+    Json::Value skale_getSnapshotSignature( unsigned blockNumber ) noexcept( false );
+
+    Json::Value skale_imaInfo() noexcept( false );
 };
 
 #endif  // CPP_ETHEREUM_SKALECLIENT_H

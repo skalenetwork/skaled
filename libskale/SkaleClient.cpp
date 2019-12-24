@@ -62,3 +62,32 @@ std::string SkaleClient::skale_receiveTransaction( const std::string& _rlp ) {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
+
+Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
+    Json::Value p;
+    Json::Value result;
+    p.append( blockNumber );
+
+    result = this->CallMethod( "skale_getSnapshotSignature", p );
+
+    if ( result.isObject() ) {
+        return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
+}
+
+Json::Value SkaleClient::skale_imaInfo() {
+    Json::Value p;
+    Json::Value result;
+
+    result = this->CallMethod( "skale_imaInfo", p );
+
+    if ( result.isObject() ) {
+        return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
+}

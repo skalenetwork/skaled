@@ -23,12 +23,14 @@
  */
 
 #include "SnapshotHashAgent.h"
+#include "SkaleClient.h"
 
 #include <libconsensus/libBLS/bls/bls.h>
 #include <libethcore/CommonJS.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
 
+#include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
 void SnapshotHashAgent::verifyAllData() {
@@ -151,42 +153,23 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
         threads.push_back( std::thread( [this, i, block_number]() {
             try {
-                nlohmann::json joCallHash = nlohmann::json::object();
-                joCallHash["jsonrpc"] = "2.0";
-                joCallHash["method"] = "skale_getSnapshotSignature";
-                nlohmann::json obj = {block_number};
-                joCallHash["params"] = obj;
-                skutils::rest::client cli;
-                bool fl = cli.open(
+                jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
                     "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
-                if ( !fl ) {
-                    std::cerr << cc::fatal( "FATAL:" )
-                              << cc::error(
-                                     " Exception while trying to connect to another skaled: " )
-                              << cc::warn( "connection refused" ) << "\n";
-                }
-                skutils::rest::data_t d = cli.call( joCallHash );
-                if ( d.empty() ) {
-                    throw std::runtime_error( "Skaled call to skale_getSnapshotSignature failed" );
-                }
-                nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
-                std::string str_hash = joResponse["hash"];
+                SkaleClient skaleClient( *jsonRpcClient );
+
+                nlohmann::json joSignatureResponse =
+                    skaleClient.skale_getSnapshotSignature( block_number );
+
+                std::string str_hash = joSignatureResponse["hash"];
 
                 libff::alt_bn128_G1 signature = libff::alt_bn128_G1(
-                    libff::alt_bn128_Fq( joResponse["X"].get< std::string >().c_str() ),
-                    libff::alt_bn128_Fq( joResponse["Y"].get< std::string >().c_str() ),
+                    libff::alt_bn128_Fq( joSignatureResponse["X"].get< std::string >().c_str() ),
+                    libff::alt_bn128_Fq( joSignatureResponse["Y"].get< std::string >().c_str() ),
                     libff::alt_bn128_Fq::one() );
 
-                nlohmann::json joCallPublicKey = nlohmann::json::object();
-                joCallPublicKey["jsonrpc"] = "2.0";
-                joCallPublicKey["method"] = "skale_imaInfo";
-                joCallPublicKey["params"] = nlohmann::json::object();
-                skutils::rest::data_t pk_d = cli.call( joCallPublicKey );
-                if ( pk_d.empty() ) {
-                    throw std::runtime_error( "Skaled call to skale_imaInfo failed" );
-                }
-                nlohmann::json joPublicKeyResponse = nlohmann::json::parse( pk_d.s_ )["result"];
+                nlohmann::json joPublicKeyResponse = skaleClient.skale_imaInfo();
+
                 libff::alt_bn128_G2 public_key;
                 public_key.X.c0 = libff::alt_bn128_Fq(
                     joPublicKeyResponse["insecureBLSPublicKey0"].get< std::string >().c_str() );
@@ -203,6 +186,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 this->hashes_[i] = dev::h256( str_hash );
                 this->signatures_[i] = signature;
                 this->public_keys_[i] = public_key;
+
+                delete jsonRpcClient;
             } catch ( std::exception& ex ) {
                 std::cerr
                     << cc::error(
