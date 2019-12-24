@@ -867,7 +867,12 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
       decrease_accumulators_counter_( uint64_t( 0 ) ),
       decrease_accumulators_period_( uint64_t( 1000 ) * uint64_t( 1000 ) )  // rare enough
 {
-    startup();
+    try {
+        startup();
+    } catch ( ... ) {
+        shutdown();
+        throw;
+    }
 }
 domain::~domain() {
     shutdown();
