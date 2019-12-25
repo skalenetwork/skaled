@@ -87,9 +87,16 @@ static std::string const c_genesisConfigString = R"(
 					"base": 15,
 					"word": 0
 				},
-                "restrictAccess": ["00000000000000000000000000000000000000AA"]
+                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
 			}
 		},
+        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        }
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x6001600101600055",
@@ -973,7 +980,7 @@ BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
 
     transactionCallObject["from"] = ownerAddress.hex();
     rpcClient->eth_call( transactionCallObject, "latest" );
-    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
 
 BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
@@ -997,6 +1004,29 @@ BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
     dev::eth::mineTransaction( *( client ), 1 );
 
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( transaction_from_allowed_address ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
 }
 
 BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
