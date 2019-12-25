@@ -215,6 +215,30 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     std::string adminSession;
 };
 
+struct RestrictedAddressFixture : public JsonRpcFixture {
+    RestrictedAddressFixture() {
+        ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+        std::string fileName = "test";
+        path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+        data =
+            ( "0x"
+              "00000000000000000000000000000000000000000000000000000000000000AA"
+              "0000000000000000000000000000000000000000000000000000000000000004"
+              "7465737400000000000000000000000000000000000000000000000000000000"  // test
+              "0000000000000000000000000000000000000000000000000000000000000004" );
+
+        Json::Value ret;
+        Json::Reader().parse( c_genesisConfigString, ret );
+        rpcClient->test_setChainParams( ret );
+    }
+
+    ~RestrictedAddressFixture() override { remove( path.c_str() ); }
+
+    Address ownerAddress;
+    std::string data;
+    boost::filesystem::path path;
+};
+
 string fromAscii( string _s ) {
     bytes b = asBytes( _s );
     return toHexPrefixed( b );
@@ -937,19 +961,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
         "Transaction gas price lower than current eth_gasPrice." );
 }
 
+BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
+
 BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    rpcClient->test_setChainParams( ret );
-    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
-    std::string fileName = "test_call";
-    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
-    string data =
-        ( "0x"
-          "00000000000000000000000000000000000000000000000000000000000000AA"
-          "0000000000000000000000000000000000000000000000000000000000000009"
-          "746573745f63616c6c0000000000000000000000000000000000000000000000"  // test_call
-          "0000000000000000000000000000000000000000000000000000000000000004" );
     Json::Value transactionCallObject;
     transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
     transactionCallObject["data"] = data;
@@ -959,29 +973,14 @@ BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
 
     transactionCallObject["from"] = ownerAddress.hex();
     rpcClient->eth_call( transactionCallObject, "latest" );
-    bool isFileExists = boost::filesystem::exists( path );
-    remove( path.c_str() );
-    BOOST_REQUIRE( isFileExists );
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
 }
 
 BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    rpcClient->test_setChainParams( ret );
-
     auto senderAddress = coinbase.address();
     client->setAuthor( senderAddress );
     dev::eth::simulateMining( *( client ), 1000 );
 
-    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
-    std::string fileName = "test";
-    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
-    string data =
-            ( "0x"
-              "00000000000000000000000000000000000000000000000000000000000000AA"
-              "0000000000000000000000000000000000000000000000000000000000000004"
-              "746573745f000000000000000000000000000000000000000000000000000000"  // test
-              "0000000000000000000000000000000000000000000000000000000000000004" );
     Json::Value transactionCallObject;
     transactionCallObject["from"] = toJS( senderAddress );
     transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
@@ -1001,29 +1000,21 @@ BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
 }
 
 BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    rpcClient->test_setChainParams( ret );
-
     auto senderAddress = coinbase.address();
     client->setAuthor( senderAddress );
     dev::eth::simulateMining( *( client ), 1000 );
-
-    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
-    std::string fileName = "delegate_call";
-    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
 
     // pragma solidity ^0.4.25;
     //
     // contract Caller {
     //     function call() public view {
     //         bool status;
-    //         string memory fileName = "delegate_call";
+    //         string memory fileName = "test";
     //         address sender = 0x000000000000000000000000000000AA;
     //         assembly{
     //                 let ptr := mload(0x40)
     //                 mstore(ptr, sender)
-    //                 mstore(add(ptr, 0x20), 13)
+    //                 mstore(add(ptr, 0x20), 4)
     //                 mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
     //                 mstore(add(ptr, 0x60), 1)
     //                 status := delegatecall(not(0), 0x05, ptr, 0x80, ptr, 32)
@@ -1035,10 +1026,10 @@ BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
         "6080604052348015600f57600080fd5b5060f88061001e6000396000f300608060405260043610603f57600035"
         "7c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14"
         "6044575b600080fd5b348015604f57600080fd5b5060566058565b005b60006060600060408051908101604052"
-        "80600d81526020017f64656c65676174655f63616c6c0000000000000000000000000000000000000081525091"
-        "5060aa9050604051818152600d6020820152602083015160408201526001606082015260208160808360056000"
-        "19f49350505050505600a165627a7a7230582064c71dcde2f173b3b3d23f05a94d3805a450be27c5c8cc41f3cb"
-        "4f84bd46b9280029";
+        "80600481526020017f746573740000000000000000000000000000000000000000000000000000000081525091"
+        "5060aa905060405181815260046020820152602083015160408201526001606082015260208160808360056000"
+        "19f49350505050505600a165627a7a72305820172a27e3e21f45218a47c53133bb33150ee9feac9e9d5d13294b"
+        "48b03773099a0029";
 
     Json::Value create;
 
@@ -1070,5 +1061,7 @@ BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
