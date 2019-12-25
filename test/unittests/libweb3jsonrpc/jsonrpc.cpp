@@ -964,7 +964,43 @@ BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
     BOOST_REQUIRE( isFileExists );
 }
 
-BOOST_AUTO_TEST_CASE( delegatecall_from_restricted_address ) {
+BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    rpcClient->test_setChainParams( ret );
+
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+    std::string fileName = "test";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+    string data =
+            ( "0x"
+              "00000000000000000000000000000000000000000000000000000000000000AA"
+              "0000000000000000000000000000000000000000000000000000000000000004"
+              "746573745f000000000000000000000000000000000000000000000000000000"  // test
+              "0000000000000000000000000000000000000000000000000000000000000004" );
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
     Json::Value ret;
     Json::Reader().parse( c_genesisConfigString, ret );
     rpcClient->test_setChainParams( ret );
