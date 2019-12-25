@@ -80,6 +80,7 @@ Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
 
 Json::Value SkaleClient::skale_imaInfo() {
     Json::Value p;
+    p = Json::nullValue;
     Json::Value result;
 
     result = this->CallMethod( "skale_imaInfo", p );

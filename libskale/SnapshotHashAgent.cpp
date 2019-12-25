@@ -158,27 +158,27 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
-                nlohmann::json joSignatureResponse =
+                Json::Value joSignatureResponse =
                     skaleClient.skale_getSnapshotSignature( block_number );
 
-                std::string str_hash = joSignatureResponse["hash"];
+                std::string str_hash = joSignatureResponse["hash"].asString();
 
                 libff::alt_bn128_G1 signature = libff::alt_bn128_G1(
-                    libff::alt_bn128_Fq( joSignatureResponse["X"].get< std::string >().c_str() ),
-                    libff::alt_bn128_Fq( joSignatureResponse["Y"].get< std::string >().c_str() ),
+                    libff::alt_bn128_Fq( joSignatureResponse["X"].asCString() ),
+                    libff::alt_bn128_Fq( joSignatureResponse["Y"].asCString() ),
                     libff::alt_bn128_Fq::one() );
 
-                nlohmann::json joPublicKeyResponse = skaleClient.skale_imaInfo();
+                Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
 
                 libff::alt_bn128_G2 public_key;
-                public_key.X.c0 = libff::alt_bn128_Fq(
-                    joPublicKeyResponse["insecureBLSPublicKey0"].get< std::string >().c_str() );
-                public_key.X.c1 = libff::alt_bn128_Fq(
-                    joPublicKeyResponse["insecureBLSPublicKey1"].get< std::string >().c_str() );
-                public_key.Y.c0 = libff::alt_bn128_Fq(
-                    joPublicKeyResponse["insecureBLSPublicKey2"].get< std::string >().c_str() );
-                public_key.Y.c1 = libff::alt_bn128_Fq(
-                    joPublicKeyResponse["insecureBLSPublicKey3"].get< std::string >().c_str() );
+                public_key.X.c0 =
+                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey0"].asCString() );
+                public_key.X.c1 =
+                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey1"].asCString() );
+                public_key.Y.c0 =
+                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey2"].asCString() );
+                public_key.Y.c1 =
+                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey3"].asCString() );
                 public_key.Z = libff::alt_bn128_Fq2::one();
 
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );

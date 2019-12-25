@@ -95,7 +95,8 @@ ChainParams ChainParams::loadConfig(
 
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
-        std::string ip, ip6;
+        std::string ip, ip6, keyShareName, sgxServerUrl;
+        size_t n, t;
         uint64_t port = 0, port6 = 0;
         try {
             ip = infoObj.at( "bindIP" ).get_str();
@@ -113,11 +114,25 @@ ChainParams ChainParams::loadConfig(
             port6 = infoObj.at( "basePort6" ).get_int();
         } catch ( ... ) {
         }
+        try {
+            keyShareName = infoObj.at( "wallets" )
+                               .get_obj()
+                               .at( "ima" )
+                               .get_obj()
+                               .at( "keyShareName" )
+                               .get_str();
+            n = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "n" ).get_int();
+            t = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "t" ).get_int();
+            sgxServerUrl =
+                infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "url" ).get_str();
+        } catch ( ... ) {
+        }
+
         int snapshotInterval =
             infoObj.count( "snapshotInterval" ) ? infoObj.at( "snapshotInterval" ).get_int() : 0;
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotInterval};
+            static_cast< uint16_t >( port6 ), snapshotInterval, sgxServerUrl, keyShareName};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -125,6 +140,8 @@ ChainParams ChainParams::loadConfig(
 
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
+        s.n = n;
+        s.t = t;
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
