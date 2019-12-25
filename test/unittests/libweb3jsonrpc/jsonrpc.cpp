@@ -31,6 +31,7 @@
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/AdminEth.h>
 // SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
@@ -58,7 +59,7 @@ static std::string const c_genesisConfigString = R"(
     "params": {
          "accountStartNonce": "0x00",
          "maximumExtraDataSize": "0x1000000",
-         "blockReward": "0x",
+         "blockReward": "0x4563918244F40000",
          "allowFutureBlocks": true,
          "homesteadForkBlock": "0x00",
          "EIP150ForkBlock": "0x00",
@@ -228,7 +229,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
     BOOST_CHECK_EQUAL( gasPrice, toJS( 20 * dev::eth::shannon ) );
 }
 
-// SKALE diasabled
+// SKALE disabled
 // BOOST_AUTO_TEST_CASE(jsonrpc_isListening)
 //{
 //    web3->startNetwork();
@@ -961,6 +962,73 @@ BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
     bool isFileExists = boost::filesystem::exists( path );
     remove( path.c_str() );
     BOOST_REQUIRE( isFileExists );
+}
+
+BOOST_AUTO_TEST_CASE( delegatecall_from_restricted_address ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    rpcClient->test_setChainParams( ret );
+
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Address ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+    std::string fileName = "delegate_call";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+
+    // pragma solidity ^0.4.25;
+    //
+    // contract Caller {
+    //     function call() public view {
+    //         bool status;
+    //         string memory fileName = "delegate_call";
+    //         address sender = 0x000000000000000000000000000000AA;
+    //         assembly{
+    //                 let ptr := mload(0x40)
+    //                 mstore(ptr, sender)
+    //                 mstore(add(ptr, 0x20), 13)
+    //                 mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+    //                 mstore(add(ptr, 0x60), 1)
+    //                 status := delegatecall(not(0), 0x05, ptr, 0x80, ptr, 32)
+    //         }
+    //     }
+    // }
+
+    string compiled =
+        "6080604052348015600f57600080fd5b5060f88061001e6000396000f300608060405260043610603f57600035"
+        "7c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14"
+        "6044575b600080fd5b348015604f57600080fd5b5060566058565b005b60006060600060408051908101604052"
+        "80600d81526020017f64656c65676174655f63616c6c0000000000000000000000000000000000000081525091"
+        "5060aa9050604051818152600d6020820152602083015160408201526001606082015260208160808360056000"
+        "19f49350505050505600a165627a7a7230582064c71dcde2f173b3b3d23f05a94d3805a450be27c5c8cc41f3cb"
+        "4f84bd46b9280029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( create );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS(stream.out()) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
