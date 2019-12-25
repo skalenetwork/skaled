@@ -31,8 +31,8 @@
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
-#include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/AdminEth.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 // SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -1017,7 +1017,7 @@ BOOST_AUTO_TEST_CASE( delegatecall_from_restricted_address ) {
 
     RLPStream stream;
     tx.streamRLP( stream );
-    auto txHash = rpcClient->eth_sendRawTransaction( toJS(stream.out()) );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
     dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
@@ -1026,6 +1026,10 @@ BOOST_AUTO_TEST_CASE( delegatecall_from_restricted_address ) {
     Json::Value transactionCallObject;
     transactionCallObject["to"] = contractAddress;
     transactionCallObject["data"] = "0x28b5e32b";
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+    transactionCallObject["from"] = ownerAddress.hex();
 
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
