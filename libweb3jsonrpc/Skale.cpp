@@ -358,7 +358,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload, int snapshotInterval,
+    fn_progress_t onProgress, bool isBinaryDownload, int snapshotIntervalMs,
     std::string* pStrErrorDescription ) {
     if ( pStrErrorDescription )
         pStrErrorDescription->clear();
@@ -393,7 +393,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             // TODO catch?
             block_number = dev::eth::jsToBlockNumber(
                 nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
-            block_number -= block_number % snapshotInterval;
+            block_number -= block_number % snapshotIntervalMs;
         }
         //
         //

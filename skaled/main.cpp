@@ -206,7 +206,7 @@ unsigned getLatestSnapshotBlockNumber(
     }
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
     unsigned block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
-    block_number -= block_number % chain_params.nodeInfo.snapshotInterval;
+    block_number -= block_number % chain_params.nodeInfo.snapshotIntervalMs;
 
     return block_number;
 }
@@ -229,7 +229,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                               << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
-                isBinaryDownload, chainParams.nodeInfo.snapshotInterval, &strErrorDescription );
+                isBinaryDownload, chainParams.nodeInfo.snapshotIntervalMs, &strErrorDescription );
             std::cout << "                                                  \r";  // clear
                                                                                   // progress
                                                                                   // line
@@ -1076,7 +1076,7 @@ int main( int argc, char** argv ) try {
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.nodeInfo.snapshotInterval > 0 || vm.count( "download-snapshot" ) )
+    if ( chainParams.nodeInfo.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
                               "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
@@ -1132,7 +1132,7 @@ int main( int argc, char** argv ) try {
     }
 
     // it was needed for snapshot downloading
-    if ( chainParams.nodeInfo.snapshotInterval <= 0 ) {
+    if ( chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
         snapshotManager = nullptr;
     }
 

@@ -461,6 +461,10 @@ protected:
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
 
+private:
+    inline bool isTimeToDoSnapshot( const BlockHeader& block ) const;
+    int64_t last_snapshot_time = -1;
+
 public:
     FILE* performance_fd;
 

@@ -77,14 +77,14 @@ public:
     uint16_t port;
     std::string ip6;
     uint16_t port6;
-    int snapshotInterval = 0;
+    int snapshotIntervalMs = 0;
     int emptyBlockIntervalMs = -1;
     std::string sgxServerUrl;
     std::string keyShareName;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
-        int _snapshotInterval = 0, std::string _sgxServerUrl = "http://255.255.0.1:1234",
+        int _snapshotIntervalMs = 0, std::string _sgxServerUrl = "http://255.255.0.1:1234",
         std::string _keyShareName = "BLS_KEY:SCHAIN_ID:1234:NODE_ID:654:DKG_ID:12345123456" ) {
         name = _name;
         id = _id;
@@ -92,7 +92,7 @@ public:
         port = _port;
         ip6 = _ip6;
         port6 = _port6;
-        snapshotInterval = _snapshotInterval;
+        snapshotIntervalMs = _snapshotIntervalMs;
         sgxServerUrl = _sgxServerUrl;
         keyShareName = _keyShareName;
     }
