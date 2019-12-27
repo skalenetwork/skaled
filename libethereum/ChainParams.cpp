@@ -96,7 +96,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t n, t;
+        size_t n = 0, t = 0;
         uint64_t port = 0, port6 = 0;
         try {
             ip = infoObj.at( "bindIP" ).get_str();
@@ -114,18 +114,24 @@ ChainParams ChainParams::loadConfig(
             port6 = infoObj.at( "basePort6" ).get_int();
         } catch ( ... ) {
         }
+
+        std::array< std::string, 4 > insecureCommonBLSPublicKeys;
+
         try {
-            keyShareName = infoObj.at( "wallets" )
-                               .get_obj()
-                               .at( "ima" )
-                               .get_obj()
-                               .at( "keyShareName" )
-                               .get_str();
-            n = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "n" ).get_int();
-            t = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "t" ).get_int();
-            sgxServerUrl =
-                infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "url" ).get_str();
+            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+
+            keyShareName = ima.at( "keyShareName" ).get_str();
+            n = ima.at( "n" ).get_int();
+            t = ima.at( "t" ).get_int();
+            sgxServerUrl = ima.at( "url" ).get_str();
+            insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
+            insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
+            insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
+            insecureCommonBLSPublicKeys[3] = ima["insecureCommonBLSPublicKey3"].get_str();
         } catch ( ... ) {
+            // all or nothing
+            if ( !keyShareName.empty() )
+                throw;
         }
 
         int snapshotInterval =
@@ -133,6 +139,7 @@ ChainParams ChainParams::loadConfig(
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), snapshotInterval, sgxServerUrl, keyShareName};
+        cp.nodeInfo.insecureCommonBLSPublicKeys = insecureCommonBLSPublicKeys;
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};

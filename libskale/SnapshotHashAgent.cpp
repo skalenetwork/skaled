@@ -105,24 +105,14 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
 
         libff::alt_bn128_G2 common_public;
 
-        std::string original_json = this->chain_params_.getOriginalJson();
-        nlohmann::json joConfig = nlohmann::json::parse( original_json );
-        common_public.X.c0 = libff::alt_bn128_Fq(
-            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey0"]
-                .get< std::string >()
-                .c_str() );
-        common_public.X.c1 = libff::alt_bn128_Fq(
-            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey1"]
-                .get< std::string >()
-                .c_str() );
-        common_public.Y.c0 = libff::alt_bn128_Fq(
-            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey2"]
-                .get< std::string >()
-                .c_str() );
-        common_public.Y.c1 = libff::alt_bn128_Fq(
-            joConfig["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["insecureCommonBLSPublicKey3"]
-                .get< std::string >()
-                .c_str() );
+        common_public.X.c0 =
+            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
+        common_public.X.c1 =
+            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
+        common_public.Y.c0 =
+            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
+        common_public.Y.c1 =
+            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
         common_public.Z = libff::alt_bn128_Fq2::one();
 
         try {

@@ -285,6 +285,10 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
+    dev::eth::ChainParams chainParams = this->m_client.chainParams();
+    if ( chainParams.nodeInfo.keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() )
+        throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
+
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
 
@@ -292,8 +296,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "blsSignMessageHash";
         nlohmann::json obj = nlohmann::json::object();
-
-        dev::eth::ChainParams chainParams = this->m_client.chainParams();
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
         obj["messageHash"] = snapshot_hash.hex();

@@ -81,11 +81,12 @@ public:
     int emptyBlockIntervalMs = -1;
     std::string sgxServerUrl;
     std::string keyShareName;
+    std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
-        int _snapshotInterval = 0, std::string _sgxServerUrl = "http://255.255.0.1:1234",
-        std::string _keyShareName = "BLS_KEY:SCHAIN_ID:1234:NODE_ID:654:DKG_ID:12345123456" ) {
+        int _snapshotInterval = 0, std::string _sgxServerUrl = "",
+        std::string _keyShareName = "" ) {
         name = _name;
         id = _id;
         ip = _ip;
