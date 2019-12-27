@@ -284,6 +284,10 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
+unsigned Skale::skale_getLatestSnapshotBlockNumber() {
+    return this->m_client.getLatestSnapshotBlockNumer();
+}
+
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );

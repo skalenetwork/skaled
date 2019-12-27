@@ -189,8 +189,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
         parsed.options.end() );
 }
 
-unsigned getLatestSnapshotBlockNumber(
-    const std::string& strURLWeb3, const ChainParams& chain_params ) {
+unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     skutils::rest::client cli;
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
@@ -198,7 +197,7 @@ unsigned getLatestSnapshotBlockNumber(
 
     nlohmann::json joIn = nlohmann::json::object();
     joIn["jsonrpc"] = "2.0";
-    joIn["method"] = "eth_blockNumber";
+    joIn["method"] = "skale_getLatestSnapshotBlockNumber";
     joIn["params"] = nlohmann::json::object();
     skutils::rest::data_t d = cli.call( joIn );
     if ( d.empty() ) {
@@ -206,7 +205,6 @@ unsigned getLatestSnapshotBlockNumber(
     }
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
     unsigned block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
-    block_number -= block_number % chain_params.nodeInfo.snapshotIntervalMs;
 
     return block_number;
 }
@@ -1083,7 +1081,7 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        const unsigned blockNumber = getLatestSnapshotBlockNumber( strURLWeb3, chainParams );
+        const unsigned blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
 
         SnapshotHashAgent snapshotHashAgent( chainParams );
 

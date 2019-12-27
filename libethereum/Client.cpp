@@ -578,6 +578,7 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( latest_block )
         /*number() % chainParams().nodeInfo.snapshotIntervalMs == 0*/ ) {
         m_snapshotManager->doSnapshot( number() );
+        this->last_snapshoted_block = number();
         this->last_snapshot_time = latest_block.timestamp();
         std::thread( [this]() {
             try {

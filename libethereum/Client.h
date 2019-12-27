@@ -274,6 +274,8 @@ public:
         return this->m_snapshotManager->getSnapshotHash( _blockNumber );
     }
 
+    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block; }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -464,6 +466,7 @@ protected:
 private:
     inline bool isTimeToDoSnapshot( const BlockHeader& block ) const;
     int64_t last_snapshot_time = -1;
+    int64_t last_snapshoted_block = -1;
 
 public:
     FILE* performance_fd;
