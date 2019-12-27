@@ -134,12 +134,12 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        int snapshotInterval =
-            infoObj.count( "snapshotInterval" ) ? infoObj.at( "snapshotInterval" ).get_int() : 0;
+        int snapshotIntervalMs = infoObj.count( "snapshotIntervalMs" ) ?
+                                     infoObj.at( "snapshotIntervalMs" ).get_int() :
+                                     0;
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotInterval, sgxServerUrl, keyShareName};
-        cp.nodeInfo.insecureCommonBLSPublicKeys = insecureCommonBLSPublicKeys;
+        static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};

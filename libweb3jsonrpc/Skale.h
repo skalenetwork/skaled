@@ -66,6 +66,7 @@ public:
     Json::Value skale_getSnapshot( const Json::Value& request ) override;
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
+    unsigned skale_getLatestSnapshotBlockNumber() override;
 
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
@@ -103,7 +104,7 @@ typedef std::function< bool( size_t idxChunck, size_t cntChunks ) > fn_progress_
                                                                                     // download
 
 extern bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload = true, int snapshotInterval = 1000,
+    fn_progress_t onProgress, bool isBinaryDownload = true, int snapshotIntervalMs = 1000,
     std::string* pStrErrorDescription = nullptr );
 
 };  // namespace snapshot

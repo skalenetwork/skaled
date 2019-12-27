@@ -171,8 +171,10 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( _dbPath.size() )
         Defaults::setDBPath( _dbPath );
 
-    if ( chainParams().nodeInfo.snapshotInterval > 0 && number() == 0 )
+    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && number() == 0 ) {
         m_snapshotManager->doSnapshot( 0 );
+        this->last_snapshot_time = this->latestBlock().info().timestamp();
+    }
 
     doWork( false );
 }
@@ -556,6 +558,11 @@ void Client::resetState() {
     onTransactionQueueReady();
 }
 
+bool Client::isTimeToDoSnapshot( const BlockHeader& latest_block ) const {
+    return ( latest_block.timestamp() - this->last_snapshot_time ) >
+           chainParams().nodeInfo.snapshotIntervalMs;
+}
+
 void Client::onChainChanged( ImportRoute const& _ir ) {
     //  ctrace << "onChainChanged()";
     h256Hash changeds;
@@ -567,15 +574,12 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     //        m_tq.dropGood( t );
     //    }
 
-    onNewBlocks( _ir.liveBlocks, changeds );
-    if ( !isMajorSyncing() )
-        resyncStateFromChain();
-    noteChanged( changeds );
-
-
-    if ( chainParams().nodeInfo.snapshotInterval > 0 &&
-         number() % chainParams().nodeInfo.snapshotInterval == 0 ) {
+    BlockHeader latest_block = this->latestBlock().info();
+    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( latest_block )
+        /*number() % chainParams().nodeInfo.snapshotIntervalMs == 0*/ ) {
         m_snapshotManager->doSnapshot( number() );
+        this->last_snapshoted_block = number();
+        this->last_snapshot_time = latest_block.timestamp();
         std::thread( [this]() {
             try {
                 this->m_snapshotManager->computeSnapshotHash( this->number() );
@@ -592,6 +596,11 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
         // TODO Make this number configurable
         m_snapshotManager->leaveNLastSnapshots( 2 );
     }  // if snapshot
+
+    onNewBlocks( _ir.liveBlocks, changeds );
+    if ( !isMajorSyncing() )
+        resyncStateFromChain();
+    noteChanged( changeds );
 }
 
 bool Client::remoteActive() const {
