@@ -284,8 +284,8 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
-unsigned Skale::skale_getLatestSnapshotBlockNumber() {
-    return this->m_client.getLatestSnapshotBlockNumer();
+std::string Skale::skale_getLatestSnapshotBlockNumber() {
+    return std::to_string( this->m_client.getLatestSnapshotBlockNumer() );
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {

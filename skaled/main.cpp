@@ -1081,7 +1081,14 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        const unsigned blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+        unsigned blockNumber;
+        try {
+            blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+        } catch ( std::exception& ex ) {
+            std::throw_with_nested(
+                std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
+                                    " " + cc::error( ex.what() ) ) );
+        }
 
         SnapshotHashAgent snapshotHashAgent( chainParams );
 

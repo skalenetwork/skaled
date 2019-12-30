@@ -77,7 +77,7 @@ public:
     uint16_t port;
     std::string ip6;
     uint16_t port6;
-    int snapshotIntervalMs = 0;
+    uint snapshotIntervalMs = 0;
     int emptyBlockIntervalMs = -1;
     std::string sgxServerUrl;
     std::string keyShareName;
