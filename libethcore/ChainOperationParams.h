@@ -55,8 +55,9 @@ public:
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
-    bool executionAllowedFrom( const Address& _from ) const {
-        return m_allowed_addresses.empty() || m_allowed_addresses.count( _from ) != 0;
+    bool executionAllowedFrom( const Address& _from, bool _readOnly ) const {
+        return m_allowed_addresses.empty() ||
+               ( m_allowed_addresses.count( _from ) != 0 && !_readOnly );
     }
 
 private:

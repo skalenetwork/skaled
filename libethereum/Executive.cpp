@@ -293,7 +293,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     m_savepoint = m_s.savepoint();
 
     if ( m_sealEngine.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
-         m_sealEngine.precompiledExecutionAllowedFrom( _p.codeAddress, _p.senderAddress ) ) {
+         m_sealEngine.precompiledExecutionAllowedFrom(
+             _p.codeAddress, _p.senderAddress, m_readOnly ) ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
         bigint g = m_sealEngine.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
         if ( _p.gas < g ) {
