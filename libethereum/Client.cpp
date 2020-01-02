@@ -416,11 +416,16 @@ size_t Client::importTransactionsAsBlock(
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
         int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
-        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
-             block_number != 0 ) {
-            m_snapshotManager->doSnapshot( block_number );
+        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+            try {
+                m_snapshotManager->doSnapshot( block_number );
+            } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                cerror << "WARNING " << dev::nested_exception_what( ex );
+            }
             this->last_snapshoted_block = block_number;
-            this->last_snapshot_time = this->last_snapshot_time + snapshotIntervalMs;
+            this->last_snapshot_time = this->last_snapshot_time == -1 ?
+                                           _timestamp :
+                                           this->last_snapshot_time + snapshotIntervalMs;
             std::thread( [this, block_number]() {
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
@@ -583,7 +588,8 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    return ( _timestamp - this->last_snapshot_time ) >= chainParams().nodeInfo.snapshotIntervalMs;
+    return ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
+           chainParams().nodeInfo.snapshotIntervalMs;
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {

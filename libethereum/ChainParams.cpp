@@ -128,9 +128,6 @@ ChainParams ChainParams::loadConfig(
             insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
             insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
             insecureCommonBLSPublicKeys[3] = ima["insecureCommonBLSPublicKey3"].get_str();
-            std::cerr << "FROM CONFIG: " << insecureCommonBLSPublicKeys[0] << ' '
-                      << insecureCommonBLSPublicKeys[1] << ' ' << insecureCommonBLSPublicKeys[2]
-                      << ' ' << insecureCommonBLSPublicKeys[3] << '\n';
         } catch ( ... ) {
             // all or nothing
             if ( !keyShareName.empty() )
