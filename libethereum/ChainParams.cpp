@@ -128,7 +128,9 @@ ChainParams ChainParams::loadConfig(
             insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
             insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
             insecureCommonBLSPublicKeys[3] = ima["insecureCommonBLSPublicKey3"].get_str();
-            std::cerr << "FROM CONFIG: " << insecureCommonBLSPublicKeys[0] << ' ' << insecureCommonBLSPublicKeys[1] << ' ' << insecureCommonBLSPublicKeys[2] << ' ' << insecureCommonBLSPublicKeys[3] << '\n';
+            std::cerr << "FROM CONFIG: " << insecureCommonBLSPublicKeys[0] << ' '
+                      << insecureCommonBLSPublicKeys[1] << ' ' << insecureCommonBLSPublicKeys[2]
+                      << ' ' << insecureCommonBLSPublicKeys[3] << '\n';
         } catch ( ... ) {
             // all or nothing
             if ( !keyShareName.empty() )
@@ -140,7 +142,8 @@ ChainParams ChainParams::loadConfig(
                                      0;
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName, insecureCommonBLSPublicKeys};
+            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName,
+            insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
