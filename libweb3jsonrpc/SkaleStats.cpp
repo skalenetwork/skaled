@@ -661,9 +661,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     "parameter \"messages\" contains message object without field \"amount\"" );
         }
         //
-        // Check wallet URL and keyShareName for future use
+        // Check wallet URL and keyShareName for future use,
+        // fetch SSL options for SGX
         //
         skutils::url u;
+        skutils::http::SSL_client_options optsSSL;
         try {
             const std::string strWalletURL =
                 joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >();
@@ -672,6 +674,32 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             u = skutils::url( strWalletURL );
             if ( u.scheme().empty() || u.host().empty() )
                 throw std::runtime_error( "bad wallet url" );
+            //
+            //
+            try {
+                optsSSL.ca_file = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+            } catch ( ... ) {
+                optsSSL.ca_file.clear();
+            }
+            std::cout << strLogPrefix << cc::debug( " SGX Wallet CA file " )
+                      << cc::info( optsSSL.ca_file ) << "\n";
+            try {
+                optsSSL.client_cert = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+            } catch ( ... ) {
+                optsSSL.client_cert.clear();
+            }
+            std::cout << strLogPrefix << cc::debug( " SGX Wallet client certificate file " )
+                      << cc::info( optsSSL.client_cert ) << "\n";
+            try {
+                optsSSL.client_key = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+            } catch ( ... ) {
+                optsSSL.client_key.clear();
+            }
+            std::cout << strLogPrefix << cc::debug( " SGX Wallet client key file " )
+                      << cc::info( optsSSL.client_key ) << "\n";
         } catch ( ... ) {
             throw std::runtime_error(
                 "error config.json file, cannot find valid value for "
@@ -1446,6 +1474,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //                  << cc::debug( ", " ) << cc::info( "hint" ) << cc::debug( "=" )
         //                  << cc::info( p2vals.second ) << "\n";
         //
+
         //
         // If we are here, then all IMA messages are valid
         // Perform call to wallet to sign messages
@@ -1469,17 +1498,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
         std::cout << strLogPrefix << cc::debug( " Will send " ) << cc::notice( "sign query" )
                   << cc::debug( " to wallet: " ) << cc::j( joCall ) << "\n";
-        skutils::rest::client cli( u );
+        skutils::rest::client cli;
+        cli.optsSSL = optsSSL;
+        cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
             throw std::runtime_error( "failed to sign message(s) with wallet" );
         nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
         jo["signResult"] = joSignResult;
-        //        jo["signResult"]["hashPoint"] = nlohmann::json::object();
-        //        jo["signResult"]["hashPoint"]["X"] = str_G1_X;
-        //        jo["signResult"]["hashPoint"]["Y"] = str_G1_Y;
-        //        jo["signResult"]["hint"] = p2vals.second;
-        //
         //
         // Done, provide result to caller
         //

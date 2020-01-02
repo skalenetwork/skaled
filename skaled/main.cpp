@@ -2030,9 +2030,9 @@ int main( int argc, char** argv ) try {
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
 
-    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
-    skutils::dispatch::shutdown();
-    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
+    //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
+    //    skutils::dispatch::shutdown();
+    //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     return 0;
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
