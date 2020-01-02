@@ -418,9 +418,19 @@ private:
     std::mutex ctx_mutex_;
 };  /// class SSL_server
 
+class SSL_client_options {
+public:
+    std::string ca_file, ca_path, client_cert, client_key;
+    int client_key_type = SSL_FILETYPE_PEM;
+    long ctx_mode = SSL_MODE_AUTO_RETRY;
+    long ctx_cache_mode = SSL_SESS_CACHE_CLIENT;
+};
+
 class SSL_client : public client {
 public:
-    SSL_client( int ipVer, const char* host, int port = 443, int timeout_milliseconds = 60 * 1000 );
+    SSL_client_options optsSSL;
+    SSL_client( int ipVer, const char* host, int port = 443, int timeout_milliseconds = 60 * 1000,
+        SSL_client_options* pOptsSSL = nullptr );
     ~SSL_client() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
@@ -2328,9 +2338,31 @@ inline bool SSL_server::read_and_close_socket( socket_t sock ) {
 
 /// SSL HTTP client implementation
 ///
-inline SSL_client::SSL_client( int ipVer, const char* host, int port, int timeout_milliseconds )
+inline SSL_client::SSL_client(
+    int ipVer, const char* host, int port, int timeout_milliseconds, SSL_client_options* pOptsSSL )
     : client( ipVer, host, port, timeout_milliseconds ) {
+    if ( pOptsSSL )
+        optsSSL = ( *pOptsSSL );
     ctx_ = SSL_CTX_new( SSLv23_client_method() );
+    if ( optsSSL.ca_file.empty() ) {
+        SSL_CTX_set_verify( ctx_, SSL_VERIFY_NONE, nullptr );
+        SSL_CTX_set_verify_depth( ctx_, 0 );
+    } else
+        SSL_CTX_load_verify_locations( ctx_, optsSSL.ca_file.c_str(),
+            ( !optsSSL.ca_path.empty() ) ? optsSSL.ca_path.c_str() : nullptr );
+    if ( optsSSL.ctx_mode )
+        SSL_CTX_set_mode( ctx_, optsSSL.ctx_mode );
+    if ( optsSSL.ctx_cache_mode )
+        SSL_CTX_set_session_cache_mode( ctx_, optsSSL.ctx_cache_mode );
+    if ( !optsSSL.client_cert.empty() ) {
+        if ( 1 != SSL_CTX_use_certificate_chain_file( ctx_, optsSSL.client_cert.c_str() ) )
+            throw std::runtime_error( "unable to load client certificate chain" );
+    }
+    if ( !optsSSL.client_key.empty() ) {
+        if ( 1 != SSL_CTX_use_PrivateKey_file(
+                      ctx_, optsSSL.client_key.c_str(), optsSSL.client_key_type ) )
+            throw std::runtime_error( "unable to load client key" );
+    }
 }
 
 inline SSL_client::~SSL_client() {
