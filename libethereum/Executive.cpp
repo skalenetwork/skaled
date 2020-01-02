@@ -336,7 +336,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             auto const version = m_s.version( _p.codeAddress );
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall );
+                version, m_depth, false, _p.staticCall, m_readOnly );
         }
     }
 
