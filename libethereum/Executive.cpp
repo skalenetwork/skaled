@@ -160,18 +160,20 @@ string StandardTrace::json( bool _styled ) const {
         []( std::string a, Json::Value b ) { return a + Json::FastWriter().write( b ); } );
 }
 
-Executive::Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level )
+Executive::Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _bc.lastBlockHashes(), 0, _bc.chainID() ),
       m_depth( _level ),
+      m_readOnly( _readOnly ),
       m_sealEngine( *_bc.sealEngine() ),
       m_systemGasPrice( _gasPrice ) {}
 
 Executive::Executive(
-    Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level )
+    Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID ),
       m_depth( _level ),
+      m_readOnly( _readOnly ),
       m_sealEngine( *_s.sealEngine() ),
       m_systemGasPrice( _gasPrice ) {}
 

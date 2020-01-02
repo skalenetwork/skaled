@@ -103,10 +103,11 @@ class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
-        const u256& _gasPrice, unsigned _level = 0 )
+        const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true )
         : m_s( _s ),
           m_envInfo( _envInfo ),
           m_depth( _level ),
+          m_readOnly( _readOnly ),
           m_sealEngine( _sealEngine ),
           m_systemGasPrice( _gasPrice ) {}
 
@@ -114,14 +115,14 @@ public:
      * Creates executive to operate on the state of end of the given block, populating environment
      * info from given Block and the LastHashes portion from the BlockChain.
      */
-    Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level = 0 );
+    Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
 
     /** LastHashes-split constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
      * info accordingly, with last hashes given explicitly.
      */
     Executive(
-        Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level = 0 );
+        Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
 
     /** Previous-state constructor.
      * Creates executive to operate on the state of a particular transaction in the given block,
@@ -129,7 +130,7 @@ public:
      * BlockChain. State is assigned the resultant value, but otherwise unused.
      */
     Executive( skale::State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
-        const u256& _gasPrice, unsigned _level = 0 );
+        const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
 
     Executive( Executive const& ) = delete;
     void operator=( Executive ) = delete;
@@ -221,6 +222,7 @@ private:
     ExecutionResult* m_res = nullptr;  ///< Optional storage for execution results.
 
     unsigned m_depth = 0;  ///< The context's call-depth.
+    bool m_readOnly = true; ///< The context's permanence state.
     TransactionException m_excepted =
         TransactionException::None;  ///< Details if the VM's execution resulted in an exception.
     int64_t m_baseGasRequired;  ///< The base amount of gas requried for executing this transaction.
