@@ -114,6 +114,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
         common_public.Y.c1 =
             libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
         common_public.Z = libff::alt_bn128_Fq2::one();
+        common_public.print_coordinates();
 
         try {
             libff::inhibit_profiling_info = true;

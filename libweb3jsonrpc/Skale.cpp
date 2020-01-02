@@ -329,7 +329,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-            std::cout << cc::fatal( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
+            std::cout << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
                       << "\n";
             throw std::runtime_error( g_strErrMsg );
         }
