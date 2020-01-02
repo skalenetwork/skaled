@@ -115,14 +115,15 @@ public:
      * Creates executive to operate on the state of end of the given block, populating environment
      * info from given Block and the LastHashes portion from the BlockChain.
      */
-    Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
+    Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level = 0,
+        bool _readOnly = true );
 
     /** LastHashes-split constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
      * info accordingly, with last hashes given explicitly.
      */
-    Executive(
-        Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
+    Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice,
+        unsigned _level = 0, bool _readOnly = true );
 
     /** Previous-state constructor.
      * Creates executive to operate on the state of a particular transaction in the given block,
@@ -221,8 +222,8 @@ private:
     owning_bytes_ref m_output;       ///< Execution output.
     ExecutionResult* m_res = nullptr;  ///< Optional storage for execution results.
 
-    unsigned m_depth = 0;  ///< The context's call-depth.
-    bool m_readOnly = true; ///< The context's permanence state.
+    unsigned m_depth = 0;    ///< The context's call-depth.
+    bool m_readOnly = true;  ///< The context's permanence state.
     TransactionException m_excepted =
         TransactionException::None;  ///< Details if the VM's execution resulted in an exception.
     int64_t m_baseGasRequired;  ///< The base amount of gas requried for executing this transaction.
