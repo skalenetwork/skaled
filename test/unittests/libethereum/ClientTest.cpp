@@ -25,6 +25,7 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
+#include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
 
@@ -34,6 +35,73 @@ using namespace dev::eth;
 using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
+
+boost::unit_test::assertion_result option_all_tests( boost::unit_test::test_unit_id ) {
+    return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
+}
+
+struct FixtureCommon {
+    const string BTRFS_FILE_PATH = "btrfs.file";
+    const string BTRFS_DIR_PATH = "btrfs";
+    uid_t sudo_uid;
+    gid_t sudo_gid;
+
+    void check_sudo() {
+#if ( !defined __APPLE__ )
+        char* id_str = getenv( "SUDO_UID" );
+        if ( id_str == NULL ) {
+            cerr << "Please run under sudo" << endl;
+            exit( -1 );
+        }
+
+        sscanf( id_str, "%d", &sudo_uid );
+
+        //    uid_t ru, eu, su;
+        //    getresuid( &ru, &eu, &su );
+        //    cerr << ru << " " << eu << " " << su << endl;
+
+        if ( geteuid() != 0 ) {
+            cerr << "Need to be root" << endl;
+            exit( -1 );
+        }
+
+        id_str = getenv( "SUDO_GID" );
+        sscanf( id_str, "%d", &sudo_gid );
+
+        gid_t rgid, egid, sgid;
+        getresgid( &rgid, &egid, &sgid );
+        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
+#endif
+    }
+
+    void dropRoot() {
+#if ( !defined __APPLE__ )
+        int res = setresgid( sudo_gid, sudo_gid, 0 );
+        cerr << "setresgid " << sudo_gid << " " << res << endl;
+        if ( res < 0 )
+            cerr << strerror( errno ) << endl;
+        res = setresuid( sudo_uid, sudo_uid, 0 );
+        cerr << "setresuid " << sudo_uid << " " << res << endl;
+        if ( res < 0 )
+            cerr << strerror( errno ) << endl;
+#endif
+    }
+
+    void gainRoot() {
+#if ( !defined __APPLE__ )
+        int res = setresuid( 0, 0, 0 );
+        if ( res ) {
+            cerr << strerror( errno ) << endl;
+            assert( false );
+        }
+        setresgid( 0, 0, 0 );
+        if ( res ) {
+            cerr << strerror( errno ) << endl;
+            assert( false );
+        }
+#endif
+    }
+};
 
 class TestClientFixture : public TestOutputHelperFixture {
 public:
@@ -78,6 +146,88 @@ public:
     }
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
+
+private:
+    std::unique_ptr< dev::eth::Client > m_ethereum;
+    TransientDirectory m_tmpDir;
+};
+
+class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
+public:
+    TestClientSnapshotsFixture() try {
+        check_sudo();
+
+        dropRoot();
+
+        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
+        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+
+        gainRoot();
+        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+                    .c_str() );
+        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        dropRoot();
+
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
+        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
+        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
+
+        gainRoot();
+
+        ChainParams chainParams;
+        chainParams.sealEngineName = NoProof::name();
+        chainParams.allowFutureBlocks = true;
+        chainParams.nodeInfo.snapshotIntervalMs = 10;
+
+        fs::path dir = m_tmpDir.path();
+
+        string listenIP = "127.0.0.1";
+        unsigned short listenPort = 30303;
+        auto netPrefs = NetworkPreferences( listenIP, listenPort, false );
+        netPrefs.discovery = false;
+        netPrefs.pin = false;
+
+        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+
+        //        bool testingMode = true;
+        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
+        //        ), dir,
+        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
+        std::shared_ptr< SnapshotManager > mgr;
+        mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ) );
+
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+            shared_ptr< GasPricer >(), mgr, dir, WithExisting::Kill ) );
+
+        //        m_ethereum.reset(
+        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
+        //            GasPricer >(),
+        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+
+        m_ethereum->injectSkaleHost();
+        m_ethereum->startWorking();
+
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "TestClientFixture" )
+            << "CRITICAL " << dev::nested_exception_what( ex );
+        throw;
+    } catch ( ... ) {
+        clog( VerbosityError, "TestClientFixture" ) << "CRITICAL unknown error";
+        throw;
+    }
+
+    dev::eth::Client* ethereum() { return m_ethereum.get(); }
+
+    ~TestClientSnapshotsFixture() {
+        const char* NC = getenv( "NC" );
+        if ( NC )
+            return;
+        gainRoot();
+        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+    }
 
 private:
     std::unique_ptr< dev::eth::Client > m_ethereum;
@@ -245,5 +395,73 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()
+
+static std::string const c_skaleConfigString = R"(
+{
+    "sealEngine": "NoProof",
+    "params": {
+        "accountStartNonce": "0x00",
+        "maximumExtraDataSize": "0x1000000",
+        "blockReward": "0x",
+        "allowFutureBlocks": true,
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "author": "0000000000000010000000000000000000000000",
+        "timestamp": "0x00",
+        "extraData": "0x",
+        "gasLimit": "0x1000000000000",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "TestNode",
+            "nodeID": 1112,
+            "snapshotIntervalMs": 10
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "nodes": [
+              { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1}
+            ]
+        }
+    },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "wei": "1", "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "wei": "1", "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "wei": "1", "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "wei": "1", "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "wei": "1", "precompiled": { "name": "modexp" } },
+        "0000000000000000000000000000000000000006": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_add", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_mul", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "wei": "1", "precompiled": { "name": "alt_bn128_pairing_product" } }
+    }
+}
+)";
+
+BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
+
+BOOST_FIXTURE_TEST_CASE( ClientSnapshotsTest, TestClientSnapshotsFixture ) {
+    ClientTest* testClient = asClientTest( ethereum() );
+    testClient->setChainParams( c_skaleConfigString );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
+
+    std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
+
+    testClient->mineBlocks( 1 );
+
+    testClient->importTransactionsAsBlock(
+        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 11 );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
