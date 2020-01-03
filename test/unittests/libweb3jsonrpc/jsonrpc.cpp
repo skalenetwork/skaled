@@ -53,7 +53,8 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-static std::string const c_genesisConfigString = R"(
+static std::string const c_genesisConfigString =
+    R"(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -89,8 +90,26 @@ static std::string const c_genesisConfigString = R"(
 				},
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
 			}
-		},
-        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+        },)"
+    /*
+            pragma solidity ^0.4.25;
+            contract Caller {
+                function call() public {
+                    bool status;
+                    string memory fileName = "test";
+                    address sender = 0x000000000000000000000000000000AA;
+                    assembly{
+                        let ptr := mload(0x40)
+                        mstore(ptr, sender)
+                        mstore(add(ptr, 0x20), 4)
+                        mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+                        mstore(add(ptr, 0x60), 1)
+                        status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+                    }
+                }
+            }
+    */
+    R"("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
             "balance" : "0x00",
             "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
             "nonce" : "0x00",
@@ -972,7 +991,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
-BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
+BOOST_AUTO_TEST_CASE( direct_call ) {
     Json::Value transactionCallObject;
     transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
     transactionCallObject["data"] = data;
@@ -980,7 +999,11 @@ BOOST_AUTO_TEST_CASE( call_from_restricted_address ) {
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 
-    transactionCallObject["from"] = ownerAddress.hex();
+    transactionCallObject["from"] = "0xdeadbeef01234567896c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
@@ -1031,7 +1054,7 @@ BOOST_AUTO_TEST_CASE( transaction_from_allowed_address ) {
     BOOST_REQUIRE( boost::filesystem::exists( path ) );
 }
 
-BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
+BOOST_AUTO_TEST_CASE( delegate_call ) {
     auto senderAddress = coinbase.address();
     client->setAuthor( senderAddress );
     dev::eth::simulateMining( *( client ), 1000 );
@@ -1088,8 +1111,12 @@ BOOST_AUTO_TEST_CASE( delegate_call_from_restricted_address ) {
 
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
-    transactionCallObject["from"] = ownerAddress.hex();
 
+    transactionCallObject["from"] = ownerAddress.hex();
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
