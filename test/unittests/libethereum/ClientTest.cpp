@@ -446,8 +446,7 @@ static std::string const c_skaleConfigString = R"(
 }
 )";
 
-BOOST_AUTO_TEST_SUITE(
-    ClientSnapshotsTestSuite, *boost::unit_test::precondition( option_all_tests ) )
+BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
 
 BOOST_FIXTURE_TEST_CASE( ClientSnapshotsTest, TestClientSnapshotsFixture ) {
     ClientTest* testClient = asClientTest( ethereum() );
