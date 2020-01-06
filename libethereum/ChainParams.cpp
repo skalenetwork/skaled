@@ -139,7 +139,8 @@ ChainParams ChainParams::loadConfig(
                                      0;
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName};
+            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName,
+            insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};

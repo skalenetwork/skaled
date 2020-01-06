@@ -77,6 +77,7 @@ private:
     data_list_t lstData_;
 
 public:
+    skutils::http::SSL_client_options optsSSL;
     client();
     client( const skutils::url& u );
     client( const std::string& url_str );

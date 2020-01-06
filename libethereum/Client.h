@@ -464,7 +464,7 @@ protected:
     std::shared_ptr< SnapshotManager > m_snapshotManager;
 
 private:
-    inline bool isTimeToDoSnapshot( const BlockHeader& block ) const;
+    inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
 

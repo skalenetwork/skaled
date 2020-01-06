@@ -414,6 +414,35 @@ void Client::syncBlockQueue() {
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
+        unsigned block_number = this->number();
+        int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
+        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+            try {
+                m_snapshotManager->doSnapshot( block_number );
+            } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                cerror << "WARNING " << dev::nested_exception_what( ex );
+            }
+            this->last_snapshoted_block = block_number;
+            this->last_snapshot_time = this->last_snapshot_time == -1 ?
+                                           _timestamp :
+                                           this->last_snapshot_time + snapshotIntervalMs;
+            std::thread( [this, block_number]() {
+                try {
+                    this->m_snapshotManager->computeSnapshotHash( block_number );
+                } catch ( const std::exception& ex ) {
+                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
+                           << " in computeSnapshotHash(). Exiting";
+                    ExitHandler::exitHandler( 0 );
+                } catch ( ... ) {
+                    cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
+                    ExitHandler::exitHandler( 0 );
+                }
+            } )
+                .detach();
+            // TODO Make this number configurable
+            m_snapshotManager->leaveNLastSnapshots( 2 );
+        }  // if snapshot
+
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
@@ -558,8 +587,8 @@ void Client::resetState() {
     onTransactionQueueReady();
 }
 
-bool Client::isTimeToDoSnapshot( const BlockHeader& latest_block ) const {
-    return ( latest_block.timestamp() - this->last_snapshot_time ) >
+bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
+    return ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
            chainParams().nodeInfo.snapshotIntervalMs;
 }
 
@@ -573,29 +602,6 @@ void Client::onChainChanged( ImportRoute const& _ir ) {
     //        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
     //        m_tq.dropGood( t );
     //    }
-
-    BlockHeader latest_block = this->latestBlock().info();
-    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( latest_block )
-        /*number() % chainParams().nodeInfo.snapshotIntervalMs == 0*/ ) {
-        m_snapshotManager->doSnapshot( number() );
-        this->last_snapshoted_block = number();
-        this->last_snapshot_time = latest_block.timestamp();
-        std::thread( [this]() {
-            try {
-                this->m_snapshotManager->computeSnapshotHash( this->number() );
-            } catch ( const std::exception& ex ) {
-                cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                       << " in computeSnapshotHash(). Exiting";
-                ExitHandler::exitHandler( 0 );
-            } catch ( ... ) {
-                cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
-                ExitHandler::exitHandler( 0 );
-            }
-        } )
-            .detach();
-        // TODO Make this number configurable
-        m_snapshotManager->leaveNLastSnapshots( 2 );
-    }  // if snapshot
 
     onNewBlocks( _ir.liveBlocks, changeds );
     if ( !isMajorSyncing() )

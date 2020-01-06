@@ -1081,7 +1081,14 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        const unsigned blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+        unsigned blockNumber;
+        try {
+            blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+        } catch ( std::exception& ex ) {
+            std::throw_with_nested(
+                std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
+                                    " " + cc::error( ex.what() ) ) );
+        }
 
         SnapshotHashAgent snapshotHashAgent( chainParams );
 
@@ -2023,9 +2030,9 @@ int main( int argc, char** argv ) try {
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
 
-    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
-    skutils::dispatch::shutdown();
-    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
+    //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
+    //    skutils::dispatch::shutdown();
+    //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     return 0;
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );

@@ -56,7 +56,7 @@ private:
     std::vector< size_t > nodes_to_download_snapshot_from_;
     std::mutex hashes_mutex;
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > voteForHash();
+    bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
     void verifyAllData();
