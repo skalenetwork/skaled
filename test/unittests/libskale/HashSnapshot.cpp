@@ -1,4 +1,5 @@
 #include <libdevcore/TransientDirectory.h>
+#include <libdevcrypto/Hash.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
@@ -155,7 +156,43 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            true ) );
 
         mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
-            {BlockChain::getChainDirName( chainParams )} ) );
+            {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+
+        boost::filesystem::create_directory(
+            boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
+
+        std::string tmp_str =
+            ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir._hash" )
+                .string();
+        std::ofstream directoryHashFile( tmp_str );
+        dev::h256 directoryPathHash = dev::sha256(
+            ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" ).string() );
+        directoryHashFile << directoryPathHash;
+        directoryHashFile.close();
+
+        std::ofstream newFile( ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" /
+                                 "test_dir" / "test_file.txt" )
+                                   .string() );
+        newFile << 1111;
+        newFile.close();
+
+        std::ofstream newFileHash( ( boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" /
+                                     "test_dir" / "test_file.txt._hash" )
+                                       .string() );
+        dev::h256 filePathHash = dev::sha256( ( boost::filesystem::path( BTRFS_DIR_PATH ) /
+                                                "filestorage" / "test_dir" / "test_file.txt._hash" )
+                                                  .string() );
+        dev::h256 fileContentHash = dev::sha256( std::to_string( 1111 ) );
+
+        secp256k1_sha256_t fileData;
+        secp256k1_sha256_initialize( &fileData );
+        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 fileHash;
+        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+        newFileHash << fileHash;
 
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
@@ -275,7 +312,29 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
 
     BOOST_REQUIRE( hash2 == hash2_dbl );
 
-    BOOST_REQUIRE( !mgr->isSnapshotHashPresent( 4 ) );
+    BOOST_REQUIRE_THROW( !mgr->isSnapshotHashPresent( 4 ), SnapshotManager::SnapshotAbsent );
+
+    BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 4 ), SnapshotManager::SnapshotAbsent );
+
+    // TODO check hash absence separately
+}
+
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture ) {
+    mgr->doSnapshot( 4 );
+
+    mgr->computeSnapshotHash( 4, true );
+
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+
+    dev::h256 hash4_dbl = mgr->getSnapshotHash( 4 );
+
+    mgr->computeSnapshotHash( 4 );
+
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+
+    dev::h256 hash4 = mgr->getSnapshotHash( 4 );
+
+    BOOST_REQUIRE( hash4_dbl == hash4 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

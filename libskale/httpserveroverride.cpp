@@ -678,9 +678,23 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
             << ( desc() + cc::notice( " peer unregistered" ) );
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
+    std::string strQueueIdToRemove = m_strPeerQueueID;
+    skutils::dispatch::async( "ws-queue-remover", [strQueueIdToRemove]() -> void {
+        skutils::dispatch::remove( strQueueIdToRemove );  // remove queue earlier
+    } );
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
+    SkaleServerOverride* pSO = pso();
+    if ( pSO->isShutdownMode() ) {
+        clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                         cc::num10( getRelay().serverIndex() ) )
+            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
+                   desc() + cc::ws_rx( " >>> " ) + cc::warn( "" ) );
+        skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
+        return;
+    }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
         clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -691,7 +705,6 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    cc::error( " got binary message and will try to interpret it as text: " ) +
                    cc::warn( msg ) );
     }
-    SkaleServerOverride* pSO = pso();
     SkaleWsPeer* pThis = this;
     pThis->ref_retain();  // mamual retain-release
     skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, msg, pSO]() -> void {
@@ -1027,7 +1040,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
-            skutils::dispatch::async( [=]() -> void {
+            skutils::dispatch::async( "logs-rethread", [=]() -> void {
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
                     dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
                     nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
@@ -1173,7 +1186,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         std::function< void( const unsigned& iw, const dev::eth::Transaction& t ) >
             fnOnSunscriptionEvent =
                 [pThis]( const unsigned& iw, const dev::eth::Transaction& t ) -> void {
-            skutils::dispatch::async( [=]() -> void {
+            skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw, t]() -> void {
                 const SkaleServerOverride* pSO = pThis->pso();
                 dev::h256 h = t.sha3();
                 //
@@ -1192,8 +1205,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
                                pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
-                // void
-                // {
+                // void {
                 bool bMessageSentOK = false;
                 try {
                     bMessageSentOK =
@@ -1287,7 +1299,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
             fnOnSunscriptionEvent = [pThis, bIncludeTransactions](
                                         const unsigned& iw, const dev::eth::Block& block ) -> void {
-            skutils::dispatch::async( [=]() -> void {
+            skutils::dispatch::async( [pThis, iw, block, bIncludeTransactions]() -> void {
                 const SkaleServerOverride* pSO = pThis->pso();
                 dev::h256 h = block.info().hash();
                 Json::Value jv;
@@ -1318,8 +1330,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
                                pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
-                // void
-                // {
+                // void {
                 bool bMessageSentOK = false;
                 try {
                     bMessageSentOK =
@@ -1594,11 +1605,20 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
       m_nPort( nPort ) {
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
+        SkaleWsPeer* pSkalePeer = nullptr;
         SkaleServerOverride* pSO = pso();
         if ( pSO->m_bTraceCalls )
             clog( dev::VerbosityTrace, cc::info( m_strSchemeUC ) )
                 << ( cc::notice( "Will instantiate new peer" ) );
-        SkaleWsPeer* pSkalePeer = new SkaleWsPeer( srv, hdl );
+        if ( pSO->isShutdownMode() ) {
+            clog( dev::VerbosityWarning,
+                cc::info( m_strSchemeUC ) + cc::debug( "/" ) + cc::num10( serverIndex() ) )
+                << ( cc::ws_rx_inv( " >>> " + m_strSchemeUC + "/" +
+                                    std::to_string( serverIndex() ) + "/RX >>> " ) +
+                       cc::warn( "Skipping connection accept while in shutdown mode" ) );
+            return pSkalePeer;
+        }
+        pSkalePeer = new SkaleWsPeer( srv, hdl );
         pSkalePeer->m_pSSCTH = std::make_unique< SkaleServerConnectionsTrackHelper >( *pSO );
         if ( pSO->is_connection_limit_overflow() ) {
             delete pSkalePeer;
@@ -1655,6 +1675,7 @@ void SkaleRelayWS::waitWhileInLoop() {
 }
 
 bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
+    SkaleRelayWS* pThis = this;
     stop();
     m_pSO = pSO;
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
@@ -1665,14 +1686,21 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
             << ( cc::error( "Failed to start server on port " ) + cc::c( m_nPort ) );
         return false;
     }
-    std::thread( [&]() {
-        m_isRunning = true;
-        skutils::multithreading::threadNameAppender tn( "/" + m_strSchemeUC + "-listener" );
+    std::thread( [pThis]() {
+        pThis->m_isRunning = true;
+        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
         try {
-            run( [&]() -> bool { return m_isRunning; } );
+            pThis->run( [pThis]() -> bool {
+                if ( !pThis->m_isRunning )
+                    return false;
+                const SkaleServerOverride* pSO = pThis->pso();
+                if ( pSO->isShutdownMode() )
+                    return false;
+                return true;
+            } );
         } catch ( ... ) {
         }
-        // m_isRunning = false;
+        // pThis->m_isRunning = false;
     } )
         .detach();
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
@@ -1700,7 +1728,8 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
-    const char* cert_path, const char* private_key_path, int nServerIndex )
+    const char* cert_path, const char* private_key_path, int nServerIndex,
+    size_t a_max_http_handler_queues )
     : SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
@@ -1709,9 +1738,10 @@ SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
                           true :
                           false ) {
     if ( m_bHelperIsSSL )
-        m_pServer.reset( new skutils::http::SSL_server( cert_path, private_key_path ) );
+        m_pServer.reset( new skutils::http::SSL_server(
+            cert_path, private_key_path, a_max_http_handler_queues ) );
     else
-        m_pServer.reset( new skutils::http::server );
+        m_pServer.reset( new skutils::http::server( a_max_http_handler_queues ) );
     m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
@@ -1850,7 +1880,7 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
 
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex ) {
+    const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -1865,10 +1895,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 cc::debug( "..." ) );
         if ( bIsSSL )
             pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, strPathSslCert.c_str(),
-                strPathSslKey.c_str(), nServerIndex ) );
+                strPathSslKey.c_str(), nServerIndex, a_max_http_handler_queues ) );
         else
-            pSrv.reset( new SkaleRelayHTTP(
-                ipVer, strAddr.c_str(), nPort, nullptr, nullptr, nServerIndex ) );
+            pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
+                nServerIndex, a_max_http_handler_queues ) );
         pSrv->m_pServer->Options(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
                 stats::register_stats_message(
@@ -1888,6 +1918,13 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             } );
         pSrv->m_pServer->Post( "/", [=]( const skutils::http::request& req,
                                         skutils::http::response& res ) {
+            if ( isShutdownMode() ) {
+                logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
+                    cc::notice( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+                        cc::num10( pSrv->serverIndex() ) + " " + cc::warn( "" ) );
+                pSrv->m_pServer->close_all_handler_queues();  // remove queues earlier
+                return true;
+            }
             SkaleServerConnectionsTrackHelper sscth( *this );
             if ( m_bTraceCalls )
                 logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
@@ -2110,13 +2147,14 @@ bool SkaleServerOverride::implStopListening(
 }
 
 bool SkaleServerOverride::StartListening() {
+    m_bShutdownMode = false;
     size_t nServerIndex, cntServers;
     if ( 0 <= m_nBasePortHTTP4 && m_nBasePortHTTP4 <= 65535 ) {
         cntServers = m_cntServers;
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTP4, m_nBasePortHTTP4 + nServerIndex,
-                     "", "", nServerIndex ) )
+                     "", "", nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTP4.push_back( pServer );
         }
@@ -2126,7 +2164,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTP6, m_nBasePortHTTP6 + nServerIndex,
-                     "", "", nServerIndex ) )
+                     "", "", nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTP6.push_back( pServer );
         }
@@ -2137,7 +2175,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTPS4, m_nBasePortHTTPS4 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTPS4.push_back( pServer );
         }
@@ -2148,7 +2186,7 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTPS6, m_nBasePortHTTPS6 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
                 return false;
             m_serversHTTPS6.push_back( pServer );
         }
@@ -2203,6 +2241,7 @@ bool SkaleServerOverride::StartListening() {
 }
 
 bool SkaleServerOverride::StopListening() {
+    m_bShutdownMode = true;
     bool bRetVal = true;
     for ( auto pServer : m_serversHTTP4 ) {
         if ( !implStopListening( pServer, 4, false ) )

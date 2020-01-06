@@ -270,6 +270,10 @@ public:
         return path;
     }
 
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
+        return this->m_snapshotManager->getSnapshotHash( _blockNumber );
+    }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -507,7 +511,9 @@ protected:
             lock_type lock( mtx() );
             map_.clear();
         }
-        virtual void invoke( const parameter_type& p ) {
+        virtual void invoke( const parameter_type& /*p*/ ) {
+            return;
+            /*
             map_type map2;
             {  // block
                 lock_type lock( mtx() );
@@ -520,6 +526,7 @@ protected:
                 } catch ( ... ) {
                 }
             }
+            */
         }
     };
     // new block watch
