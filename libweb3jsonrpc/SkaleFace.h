@@ -75,7 +75,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value skale_getSnapshot( const Json::Value& request ) = 0;
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
     virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
-    virtual unsigned skale_getLatestSnapshotBlockNumber() = 0;
+    virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
 
 public:
     SkaleFace() {

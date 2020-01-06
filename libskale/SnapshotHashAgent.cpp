@@ -57,7 +57,7 @@ void SnapshotHashAgent::verifyAllData() {
     }
 }
 
-std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
+bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
     std::map< dev::h256, size_t > map_hash;
 
     this->verifyAllData();
@@ -120,15 +120,19 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::voteForHash() {
             if ( !this->bls_->Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                      common_signature, common_public ) ) {
-                throw std::logic_error( " Common signature was not verified during voteForHash " );
+                return false;
             }
         } catch ( std::exception& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
+            return false;
         }
 
-        return std::make_pair( ( *it ).first, common_signature );
+        to_vote.first = ( *it ).first;
+        to_vote.second = common_signature;
+
+        return true;
     }
 }
 
@@ -191,7 +195,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         thr.join();
     }
 
-    this->voted_hash_ = this->voteForHash();
+    bool result = this->voteForHash( this->voted_hash_ );
+    if ( !result ) {
+        return {};
+    }
 
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodes_to_download_snapshot_from_ ) {

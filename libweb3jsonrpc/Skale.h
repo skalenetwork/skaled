@@ -66,7 +66,7 @@ public:
     Json::Value skale_getSnapshot( const Json::Value& request ) override;
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
-    unsigned skale_getLatestSnapshotBlockNumber() override;
+    std::string skale_getLatestSnapshotBlockNumber() override;
 
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
