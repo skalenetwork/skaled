@@ -364,8 +364,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload, int snapshotIntervalMs,
-    std::string* pStrErrorDescription ) {
+    fn_progress_t onProgress, bool isBinaryDownload, std::string* pStrErrorDescription ) {
     if ( pStrErrorDescription )
         pStrErrorDescription->clear();
     std::ofstream f;
