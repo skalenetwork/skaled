@@ -386,7 +386,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
 
             nlohmann::json joIn = nlohmann::json::object();
             joIn["jsonrpc"] = "2.0";
-            joIn["method"] = "eth_blockNumber";
+            joIn["method"] = "skale_getLatestSnapshotBlockNumber";
             joIn["params"] = nlohmann::json::object();
             skutils::rest::data_t d = cli.call( joIn );
             if ( d.empty() ) {
@@ -399,7 +399,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             // TODO catch?
             block_number = dev::eth::jsToBlockNumber(
                 nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
-            block_number -= block_number % snapshotIntervalMs;
         }
         //
         //
