@@ -628,7 +628,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
 
     Json::Value ret;
     Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS(senderAddress);
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
     rpcClient->test_setChainParams( ret );
 
     client->setAuthor( senderAddress );
@@ -639,14 +639,14 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     // }
 
     string compiled =
-            "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
-            "608060405260043610603f576000357c01000000000000000000000000"
-            "00000000000000000000000000000000900463ffffffff168063b3de64"
-            "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
-            "019080803590602001909291905050506080565b604051808281526020"
-            "0191505060405180910390f35b60006007820290509190505600a16562"
-            "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
-            "8fb480406fc2728a960029";
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
 
     Json::Value create;
 
@@ -654,14 +654,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     create["code"] = compiled;
     create["gas"] = "1000000";
 
-    TransactionSkeleton ts = toTransactionSkeleton( create );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
-
-    RLPStream stream;
-    tx.streamRLP( stream );
-    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    string txHash = rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
@@ -678,14 +671,14 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     // }
 
     string compiled =
-            "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
-            "608060405260043610603f576000357c01000000000000000000000000"
-            "00000000000000000000000000000000900463ffffffff168063b3de64"
-            "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
-            "019080803590602001909291905050506080565b604051808281526020"
-            "0191505060405180910390f35b60006007820290509190505600a16562"
-            "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
-            "8fb480406fc2728a960029";
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
 
     Json::Value create;
 
@@ -693,14 +686,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     create["code"] = compiled;
     create["gas"] = "1000000";
 
-    TransactionSkeleton ts = toTransactionSkeleton( create );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
-
-    RLPStream stream;
-    tx.streamRLP( stream );
-    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    string txHash = rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
