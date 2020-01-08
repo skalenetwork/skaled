@@ -82,7 +82,7 @@ void SkaleStats::reloadConfigIfNeeded() {
         std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
         nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
         joConfig_ = joNewConfig;
-        configModificationTime_ == tt;
+        configModificationTime_ = tt;
         std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
                   << cc::p( configPath_ ) << "\n";
     } catch ( std::exception& ex ) {
