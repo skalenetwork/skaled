@@ -39,6 +39,7 @@
 #include <array>
 #include <csignal>
 #include <exception>
+#include <fstream>
 #include <set>
 
 //#include "../libconsensus/libBLS/bls/bls.h"
@@ -47,16 +48,55 @@
 
 #include <bls/BLSutils.h>
 
+#include <skutils/console_colors.h>
+#include <skutils/utils.h>
+
 namespace dev {
 namespace rpc {
 
-SkaleStats::SkaleStats( const nlohmann::json& joConfig, eth::Interface& _eth )
-    : joConfig_( joConfig ), m_eth( _eth ) {
+SkaleStats::SkaleStats(
+    const std::string& configPath, const nlohmann::json& joConfig, eth::Interface& _eth )
+    : configPath_( configPath ),
+      configModificationTime_( skutils::tools::getFileModificationTime( configPath ) ),
+      joConfig_( joConfig ),
+      m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
 }
 
+void SkaleStats::reloadConfigIfNeeded() {
+    lock_type lock( mtx() );
+    time_t tt = skutils::tools::getFileModificationTime( configPath_ );
+    if ( configModificationTime_ == tt )
+        return;
+    std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
+    try {
+        std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
+                  << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+        std::ifstream ifs( configPath_.c_str() );
+        std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
+        nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
+        joConfig_ = joNewConfig;
+        configModificationTime_ == tt;
+        std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
+                  << cc::p( configPath_ ) << "\n";
+    } catch ( std::exception& ex ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( ex.what() ) << "\n";
+        throw std::runtime_error(
+            std::string( "Failed to reload modified configuration file: " ) + ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( "unknown exception" )
+                  << "\n";
+        throw std::runtime_error(
+            "Failed to reload modified configuration file: unknown exception" );
+    }
+}
+
+
 int SkaleStats::findThisNodeIndex() {
     try {
+        reloadConfigIfNeeded();
         if ( joConfig_.count( "skaleConfig" ) == 0 )
             throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
@@ -128,6 +168,7 @@ Json::Value SkaleStats::skale_stats() {
 
 Json::Value SkaleStats::skale_nodesRpcInfo() {
     try {
+        reloadConfigIfNeeded();
         if ( joConfig_.count( "skaleConfig" ) == 0 )
             throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
@@ -319,6 +360,7 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
 
 Json::Value SkaleStats::skale_imaInfo() {
     try {
+        reloadConfigIfNeeded();
         if ( joConfig_.count( "skaleConfig" ) == 0 )
             throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig_["skaleConfig"];
@@ -405,6 +447,7 @@ Json::Value SkaleStats::skale_imaInfo() {
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
+        reloadConfigIfNeeded();
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
         const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
