@@ -10,15 +10,16 @@ namespace db {
 
 class SplitDB {
 private:
-
-    class PrefixedWriteBatchFace: public WriteBatchFace{
+    class PrefixedWriteBatchFace : public WriteBatchFace {
     public:
-        PrefixedWriteBatchFace(WriteBatchFace& _backend, char _prefix);
+        PrefixedWriteBatchFace( WriteBatchFace& _backend, char _prefix );
         virtual void insert( Slice _key, Slice _value );
         virtual void kill( Slice _key );
+
     private:
         WriteBatchFace& backend;
         char prefix;
+        std::list< std::vector< char > > store;
     };
 
     class PrefixedDB : public DatabaseFace {
