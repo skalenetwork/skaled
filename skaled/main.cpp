@@ -1542,7 +1542,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), joConfig, *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale

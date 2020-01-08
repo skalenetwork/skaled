@@ -66,8 +66,14 @@ SkaleStats::SkaleStats(
 void SkaleStats::reloadConfigIfNeeded() {
     lock_type lock( mtx() );
     time_t tt = skutils::tools::getFileModificationTime( configPath_ );
-    if ( configModificationTime_ == tt )
+    //    std::cout << cc::debug( "Checking for modifications of configuration file " )
+    //              << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+    if ( configModificationTime_ == tt || tt == 0 || configModificationTime_ == 0 ) {  // 0 is error
+                                                                                       // indicator
+        //        std::cout << cc::debug( "configuration file " ) << cc::p( configPath_ )
+        //                  << cc::debug( " is not modified" ) << "\n";
         return;
+    }
     std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
     try {
         std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
