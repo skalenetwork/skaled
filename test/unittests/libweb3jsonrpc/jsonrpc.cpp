@@ -32,6 +32,7 @@
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 // SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -52,13 +53,14 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-static std::string const c_genesisConfigString = R"(
+static std::string const c_genesisConfigString =
+    R"(
 {
     "sealEngine": "NoProof",
     "params": {
          "accountStartNonce": "0x00",
          "maximumExtraDataSize": "0x1000000",
-         "blockReward": "0x",
+         "blockReward": "0x4563918244F40000",
          "allowFutureBlocks": true,
          "homesteadForkBlock": "0x00",
          "EIP150ForkBlock": "0x00",
@@ -79,6 +81,41 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": {
+			"precompiled": {
+				"name": "createFile",
+				"linear": {
+					"base": 15,
+					"word": 0
+				},
+                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
+			}
+        },)"
+    /*
+            pragma solidity ^0.4.25;
+            contract Caller {
+                function call() public {
+                    bool status;
+                    string memory fileName = "test";
+                    address sender = 0x000000000000000000000000000000AA;
+                    assembly{
+                        let ptr := mload(0x40)
+                        mstore(ptr, sender)
+                        mstore(add(ptr, 0x20), 4)
+                        mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+                        mstore(add(ptr, 0x60), 1)
+                        status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+                    }
+                }
+            }
+    */
+    R"("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        }
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x6001600101600055",
@@ -206,6 +243,30 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     std::string adminSession;
 };
 
+struct RestrictedAddressFixture : public JsonRpcFixture {
+    RestrictedAddressFixture() {
+        ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+        std::string fileName = "test";
+        path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+        data =
+            ( "0x"
+              "00000000000000000000000000000000000000000000000000000000000000AA"
+              "0000000000000000000000000000000000000000000000000000000000000004"
+              "7465737400000000000000000000000000000000000000000000000000000000"  // test
+              "0000000000000000000000000000000000000000000000000000000000000004" );
+
+        Json::Value ret;
+        Json::Reader().parse( c_genesisConfigString, ret );
+        rpcClient->test_setChainParams( ret );
+    }
+
+    ~RestrictedAddressFixture() override { remove( path.c_str() ); }
+
+    Address ownerAddress;
+    std::string data;
+    boost::filesystem::path path;
+};
+
 string fromAscii( string _s ) {
     bytes b = asBytes( _s );
     return toHexPrefixed( b );
@@ -220,7 +281,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
     BOOST_CHECK_EQUAL( gasPrice, toJS( 20 * dev::eth::shannon ) );
 }
 
-// SKALE diasabled
+// SKALE disabled
 // BOOST_AUTO_TEST_CASE(jsonrpc_isListening)
 //{
 //    web3->startNetwork();
@@ -927,5 +988,139 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx2["raw"].asString() ),
         "Transaction gas price lower than current eth_gasPrice." );
 }
+
+BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
+
+BOOST_AUTO_TEST_CASE( direct_call ) {
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = "0xdeadbeef01234567896c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( transaction_from_allowed_address ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( delegate_call ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    // pragma solidity ^0.4.25;
+    //
+    // contract Caller {
+    //     function call() public view {
+    //         bool status;
+    //         string memory fileName = "test";
+    //         address sender = 0x000000000000000000000000000000AA;
+    //         assembly{
+    //                 let ptr := mload(0x40)
+    //                 mstore(ptr, sender)
+    //                 mstore(add(ptr, 0x20), 4)
+    //                 mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+    //                 mstore(add(ptr, 0x60), 1)
+    //                 status := delegatecall(not(0), 0x05, ptr, 0x80, ptr, 32)
+    //         }
+    //     }
+    // }
+
+    string compiled =
+        "6080604052348015600f57600080fd5b5060f88061001e6000396000f300608060405260043610603f57600035"
+        "7c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14"
+        "6044575b600080fd5b348015604f57600080fd5b5060566058565b005b60006060600060408051908101604052"
+        "80600481526020017f746573740000000000000000000000000000000000000000000000000000000081525091"
+        "5060aa905060405181815260046020820152602083015160408201526001606082015260208160808360056000"
+        "19f49350505050505600a165627a7a72305820172a27e3e21f45218a47c53133bb33150ee9feac9e9d5d13294b"
+        "48b03773099a0029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( create );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = ownerAddress.hex();
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
