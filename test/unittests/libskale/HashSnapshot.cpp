@@ -41,6 +41,11 @@ public:
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            if ( this->hashAgent_->chain_params_.nodeInfo.id == this->hashAgent_->chain_params_.sChain.nodes[i].id ) {
+                continue;
+            }
+
+            this->hashAgent_->public_keys_[i] = this->insecureBlsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
                 signatures::Bls::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
                     this->hashAgent_->hashes_[i].asArray() ) ),
@@ -50,7 +55,34 @@ public:
 
     bool verifyAllData() const { return this->hashAgent_->verifyAllData(); }
 
-    std::vector< std::string > getNodesToDownloadSnapshotFrom() const;
+    std::vector< std::string > getNodesToDownloadSnapshotFrom() {
+        dev::h256 hash_str;
+        libff::alt_bn128_G1 hash_field;
+
+        auto hash = std::make_pair(hash_str, hash_field);
+        bool res = this->voteForHash( hash );
+
+        if ( !res ) {
+            return {};
+        }
+
+        std::vector< std::string > ret;
+        for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            if ( this->hashAgent_->chain_params_.nodeInfo.id == this->hashAgent_->chain_params_.sChain.nodes[i].id ) {
+                continue;
+            }
+
+            if ( this->hashAgent_->hashes_[i] == hash.first ) {
+                std::string ret_value =
+                    std::string( "http://" ) + std::string( this->hashAgent_->chain_params_.sChain.nodes[i].ip ) +
+                    std::string( ":" ) +
+                    ( this->hashAgent_->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >();
+                ret.push_back(ret_value);
+            }
+        }
+
+        return ret;
+    }
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const {
         return this->hashAgent_->getVotedHash();

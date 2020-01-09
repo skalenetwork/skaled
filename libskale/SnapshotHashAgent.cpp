@@ -62,7 +62,9 @@ bool SnapshotHashAgent::verifyAllData() const {
 bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
     std::map< dev::h256, size_t > map_hash;
 
-    this->verifyAllData();
+    if ( !this->verifyAllData() ) {
+        return false;
+    }
 
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
@@ -79,6 +81,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
 
     if ( it == map_hash.end() ) {
         throw std::logic_error( "note enough votes to choose hash" );
+        return false;
     } else {
         std::vector< size_t > idx;
         std::vector< libff::alt_bn128_G1 > signatures;
