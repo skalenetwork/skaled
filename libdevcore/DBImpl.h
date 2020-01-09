@@ -19,11 +19,10 @@
 
 #pragma once
 
-#include <libdevcore/LevelDB.h>
-#include <libdevcore/db.h>
+#include <libdevcore/SplitDB.h>
 
 namespace dev {
 namespace db {
-using DBImpl = LevelDB;
+using DBImpl = LevelDBThroughSplit;
 }
 }  // namespace dev
