@@ -55,6 +55,7 @@ SplitDB::PrefixedDB::PrefixedDB( char _prefix, DatabaseFace* _backend, std::shar
     : prefix( _prefix ), backend( _backend ), backend_mutex( _mutex ) {}
 
 std::string SplitDB::PrefixedDB::lookup( Slice _key ) const {
+    std::shared_lock< std::shared_mutex > lock( this->backend_mutex );
     assert( _key.size() >= 1 );
 
     std::vector< char > key2 = _key.toVector();
@@ -63,6 +64,7 @@ std::string SplitDB::PrefixedDB::lookup( Slice _key ) const {
 }
 
 bool SplitDB::PrefixedDB::exists( Slice _key ) const {
+    std::shared_lock< std::shared_mutex > lock( this->backend_mutex );
     std::vector< char > key2 = _key.toVector();
     key2.insert( key2.begin(), prefix );
 
@@ -70,6 +72,7 @@ bool SplitDB::PrefixedDB::exists( Slice _key ) const {
 }
 
 void SplitDB::PrefixedDB::insert( Slice _key, Slice _value ) {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
     std::vector< char > key2 = _key.toVector();
     key2.insert( key2.begin(), prefix );
 
@@ -77,6 +80,7 @@ void SplitDB::PrefixedDB::insert( Slice _key, Slice _value ) {
 }
 
 void SplitDB::PrefixedDB::kill( Slice _key ) {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
     std::vector< char > key2 = _key.toVector();
     key2.insert( key2.begin(), prefix );
 
@@ -84,16 +88,19 @@ void SplitDB::PrefixedDB::kill( Slice _key ) {
 }
 
 std::unique_ptr< WriteBatchFace > SplitDB::PrefixedDB::createWriteBatch() const {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
     auto back = backend->createWriteBatch();
     return std::make_unique< PrefixedWriteBatchFace >( std::move( back ), this->prefix );
 }
 void SplitDB::PrefixedDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
     PrefixedWriteBatchFace* pwb = dynamic_cast< PrefixedWriteBatchFace* >( _batch.get() );
     std::unique_ptr< WriteBatchFace > tmp = std::move( pwb->backend );
     backend->commit( std::move( tmp ) );
 }
 
 void SplitDB::PrefixedDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
     backend->forEach( [&]( Slice _key, Slice _val ) -> bool {
         if ( _key[0] != this->prefix )
             return true;
