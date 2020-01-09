@@ -25,12 +25,15 @@
 #ifndef SNAPSHOTHASHAGENT_H
 #define SNAPSHOTHASHAGENT_H
 
+#include <libconsensus/libBLS/bls/bls.h>
 #include <libethereum/ChainParams.h>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 
-namespace signatures {
-class Bls;
+namespace dev {
+namespace test {
+class SnapshotHashAgentTest;
 }
+}  // namespace dev
 
 class SnapshotHashAgent {
 public:
@@ -44,6 +47,8 @@ public:
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
+
+    friend class dev::test::SnapshotHashAgentTest;
 
 private:
     dev::eth::ChainParams chain_params_;
@@ -59,7 +64,7 @@ private:
     bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
-    void verifyAllData();
+    bool verifyAllData() const;
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

@@ -25,7 +25,6 @@
 #include "SnapshotHashAgent.h"
 #include "SkaleClient.h"
 
-#include <libconsensus/libBLS/bls/bls.h>
 #include <libethcore/CommonJS.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
@@ -33,7 +32,7 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
-void SnapshotHashAgent::verifyAllData() {
+bool SnapshotHashAgent::verifyAllData() const {
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
@@ -47,6 +46,7 @@ void SnapshotHashAgent::verifyAllData() {
                 throw std::logic_error( " Signature from " + std::to_string( i ) +
                                         "-th node was not verified during "
                                         "getNodesToDownloadSnapshotFrom " );
+                return false;
             }
         } catch ( std::exception& ex ) {
             std::throw_with_nested( std::runtime_error(
@@ -55,6 +55,8 @@ void SnapshotHashAgent::verifyAllData() {
                 " " + cc::warn( ex.what() ) ) );
         }
     }
+
+    return true;
 }
 
 bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {

@@ -3,6 +3,7 @@
 #include <libethcore/KeyManager.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
+#include <libskale/SnapshotHashAgent.h>
 #include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
@@ -28,6 +29,44 @@ using namespace dev::test;
 boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
 }
+
+namespace dev {
+namespace test {
+class SnapshotHashAgentTest {
+public:
+    SnapshotHashAgentTest( std::shared_ptr< SnapshotHashAgent > hashAgent )
+        : hashAgent_( hashAgent ) {}
+
+    void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
+        this->hashAgent_->hashes_ = snapshot_hashes;
+
+        for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
+                signatures::Bls::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
+                    this->hashAgent_->hashes_[i].asArray() ) ),
+                this->insecureBlsPrivateKeys_[i] );
+        }
+    }
+
+    bool verifyAllData() const { return this->hashAgent_->verifyAllData(); }
+
+    std::vector< std::string > getNodesToDownloadSnapshotFrom() const;
+
+    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const {
+        return this->hashAgent_->getVotedHash();
+    }
+
+    bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
+        return this->hashAgent_->voteForHash( to_vote );
+    }
+
+private:
+    std::shared_ptr< SnapshotHashAgent > hashAgent_;
+
+    std::vector< libff::alt_bn128_Fr > insecureBlsPrivateKeys_;
+};
+}  // namespace test
+}  // namespace dev
 
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
