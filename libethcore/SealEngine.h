@@ -108,8 +108,9 @@ public:
         return m_params.precompiled.at( _a ).execute( _in );
     }
 
-    virtual bool precompiledExecutionAllowedFrom( Address const& _a, Address const& _from ) const {
-        return m_params.precompiled.at( _a ).executionAllowedFrom( _from );
+    virtual bool precompiledExecutionAllowedFrom(
+        Address const& _a, Address const& _from, bool _readOnly ) const {
+        return m_params.precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
     }
 
 protected:
