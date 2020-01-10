@@ -94,7 +94,11 @@ public:
         this->insecure_secret = keys.first;
     }
 
-    bool verifyAllData() const { return this->hashAgent_->verifyAllData(); }
+    bool verifyAllData() const {
+        bool result = false;
+        this->hashAgent_->verifyAllData( result );
+        return result;
+    }
 
     std::vector< size_t > getNodesToDownloadSnapshotFrom() {
         bool res = this->voteForHash();
@@ -124,9 +128,12 @@ public:
 
     bool voteForHash() { return this->hashAgent_->voteForHash( this->hashAgent_->voted_hash_ ); }
 
+    void spoilSignature( size_t idx ) {
+        this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
+    }
+
     libff::alt_bn128_Fr insecure_secret;
 
-private:
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
 
     std::vector< libff::alt_bn128_Fr > insecureBlsPrivateKeys_;
@@ -450,7 +457,25 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     BOOST_REQUIRE_THROW( test_agent.voteForHash(), std::logic_error );
 }
 
-BOOST_AUTO_TEST_CASE( WrongSignature ) {}
+BOOST_AUTO_TEST_CASE( WrongSignature ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.n = 4;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    std::shared_ptr< SnapshotHashAgent > agent;
+    agent.reset( new SnapshotHashAgent( chainParams ) );
+    SnapshotHashAgentTest test_agent( agent );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    test_agent.fillData( snapshot_hashes );
+    test_agent.spoilSignature( 0 );
+    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), std::_Nested_exception< std::runtime_error > );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

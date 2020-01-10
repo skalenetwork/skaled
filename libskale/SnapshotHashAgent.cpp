@@ -32,7 +32,7 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
-bool SnapshotHashAgent::verifyAllData() const {
+void SnapshotHashAgent::verifyAllData( bool& fl ) const {
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
@@ -43,27 +43,30 @@ bool SnapshotHashAgent::verifyAllData() const {
             if ( !this->bls_->Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
                      this->signatures_[i], this->public_keys_[i] ) ) {
+                fl = false;
                 throw std::logic_error( " Signature from " + std::to_string( i ) +
                                         "-th node was not verified during "
                                         "getNodesToDownloadSnapshotFrom " );
-                return false;
             }
         } catch ( std::exception& ex ) {
+            fl = false;
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
                 cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
                 cc::warn( ex.what() ) ) );
-            return false;
         }
     }
 
-    return true;
+    fl = true;
 }
 
 bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
     std::map< dev::h256, size_t > map_hash;
 
-    if ( !this->verifyAllData() ) {
+    bool verified = false;
+    this->verifyAllData( verified );
+
+    if ( !verified ) {
         return false;
     }
 
