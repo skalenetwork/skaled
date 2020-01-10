@@ -387,6 +387,12 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
+    if ( _origin != m_sealEngine.chainParams().sChain.owner ) {
+        m_gas = 0;
+        revert();
+        m_ext = {};
+        return !m_ext;
+    }
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
