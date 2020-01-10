@@ -6,6 +6,7 @@ namespace db {
 namespace {
 uint64_t dir_size( const boost::filesystem::path& _path ) {
     std::vector< boost::filesystem::path > files;
+    boost::filesystem::create_directories( _path );
 
     uint64_t size = 0;
 
@@ -46,6 +47,7 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
         pieces.emplace( el );
     }  // for
 
+    this->current_piece = pieces.front().get();
     this->current_piece_file_no = min_i;
 }
 
@@ -57,6 +59,7 @@ void ManuallyRotatingLevelDB::rotate() {
     if ( old_db_no < 0 )
         old_db_no += pieces.size();
     boost::filesystem::path old_path = base_path / ( std::to_string( old_db_no ) + ".db" );
+    boost::filesystem::remove( old_path );
 
     pieces.pop();
     DatabaseFace* new_db = new LevelDB( old_path );

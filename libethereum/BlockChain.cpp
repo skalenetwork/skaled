@@ -31,7 +31,10 @@
 
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
-#include <libdevcore/DBImpl.h>
+
+//#include <libdevcore/DBImpl.h>
+#include <libdevcore/ManuallyRotatingLevelDB.h>
+
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/RLP.h>
@@ -228,13 +231,13 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     }
     if ( _we == WithExisting::Kill ) {
         cnote << "Killing blockchain & extras database (WithExisting::Kill).";
-        fs::remove_all( chainPath / fs::path( "blocks" ) );
-        fs::remove_all( extrasPath / fs::path( "extras" ) );
+        fs::remove_all( chainPath / fs::path( "blocks_end_extras" ) );
     }
 
     try {
-        auto blocks_and_extras_db =
-            std::make_shared< db::DBImpl >( chainPath / fs::path( "blocks_end_extras" ) );
+        fs::create_directories( chainPath / fs::path( "blocks_end_extras" ) );
+        auto blocks_and_extras_db = std::make_shared< db::ManuallyRotatingLevelDB >(
+            chainPath / fs::path( "blocks_end_extras" ), 5 );
         m_split_db = std::make_unique< db::SplitDB >( blocks_and_extras_db );
         m_blocksDB = m_split_db->newInterface();
         m_extrasDB = m_split_db->newInterface();
@@ -246,12 +249,12 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
              db::DatabaseStatus::IOError )
             throw;
 
-        if ( fs::space( chainPath / fs::path( "blocks" ) ).available < 1024 ) {
+        if ( fs::space( chainPath / fs::path( "blocks_end_extras" ) ).available < 1024 ) {
             cwarn << "Not enough available space found on hard drive. Please free some up and then "
                      "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( chainPath / fs::path( "blocks" ) ) << "or "
+            cwarn << "Database " << ( chainPath / fs::path( "blocks_end_extras" ) ) << "or "
                   << ( extrasPath / fs::path( "extras" ) )
                   << "already open. You appear to have another instance of ethereum running. "
                      "Bailing.";
