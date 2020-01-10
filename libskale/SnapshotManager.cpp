@@ -341,13 +341,13 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
     }
 }
 
-void SnapshotManager::computeVolumeHash(
-    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const try {
-    if ( !boost::filesystem::exists( _volumeDir ) ) {
-        BOOST_THROW_EXCEPTION( InvalidPath( _volumeDir ) );
+void SnapshotManager::computeDatabaseHash(
+    const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const try {
+    if ( !boost::filesystem::exists( _dbDir ) ) {
+        BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
 
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
@@ -460,25 +460,23 @@ void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
     assert( this->volumes.size() != 0 );
 
-    this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
-                                 this->volumes[0] / "12041" / "extras",
+    // TODO XXX Remove volumes structure knowledge from here!!
+
+    this->computeDatabaseHash( this->snapshots_dir / std::to_string( _blockNumber ) /
+                                   this->volumes[0] / "12041" / "extras",
         ctx );
 
-    this->computeVolumeHash(
+    this->computeDatabaseHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
 
-    this->computeVolumeHash(
+    this->computeDatabaseHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
 
     this->computeFileSystemHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
-    for ( const string& vol : this->volumes ) {
-        if ( vol.find( "prices_" ) == 0 )
-            this->computeVolumeHash(
-                this->snapshots_dir / std::to_string( _blockNumber ) / vol, ctx );
-    }  // for
+    // TODO Add last price to hash computation!!
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
