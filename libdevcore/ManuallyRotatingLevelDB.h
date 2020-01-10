@@ -3,18 +3,23 @@
 
 #include "LevelDB.h"
 
+#include <queue>
 #include <set>
 
-namespace dev{
-namespace db{
+namespace dev {
+namespace db {
 
-class ManuallyRotatingLevelDB : public DatabaseFace
-{
+class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
+    const boost::filesystem::path base_path;
     DatabaseFace* current_piece;
-    mutable std::set<WriteBatchFace*> batch_cache;
+    int current_piece_file_no;
+    std::queue< std::unique_ptr< DatabaseFace > > pieces;
+
+    mutable std::set< WriteBatchFace* > batch_cache;
+
 public:
-    ManuallyRotatingLevelDB(const boost::filesystem::path& _path, int _nPieces);
+    ManuallyRotatingLevelDB( const boost::filesystem::path& _path, size_t _nPieces );
     void rotate();
 
     virtual std::string lookup( Slice _key ) const;
@@ -32,4 +37,4 @@ public:
 }  // namespace db
 }  // namespace dev
 
-#endif // ROTATINGLEVELDB_H
+#endif  // ROTATINGLEVELDB_H
