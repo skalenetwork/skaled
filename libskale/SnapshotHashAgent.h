@@ -26,28 +26,40 @@
 #define SNAPSHOTHASHAGENT_H
 
 #include <libethereum/ChainParams.h>
+#include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
+
+namespace signatures {
+class Bls;
+}
 
 class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chain_params )
         : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
         this->hashes_.resize( n_ );
+        this->signatures_.resize( n_ );
+        this->public_keys_.resize( n_ );
     }
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
-    dev::h256 getVotedHash() const;
+    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 
 private:
     dev::eth::ChainParams chain_params_;
     unsigned n_;
+    std::shared_ptr< signatures::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
+    std::vector< libff::alt_bn128_G1 > signatures_;
+    std::vector< libff::alt_bn128_G2 > public_keys_;
     std::vector< size_t > nodes_to_download_snapshot_from_;
     std::mutex hashes_mutex;
 
-    dev::h256 voteForHash();
-    dev::h256 voted_hash_;
+    bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
+    std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
+
+    void verifyAllData();
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

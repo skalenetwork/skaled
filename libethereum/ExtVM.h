@@ -40,12 +40,13 @@ public:
     ExtVM( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
         Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
         bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
-        unsigned _depth, bool _isCreate, bool _staticCall )
+        unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
           m_sealEngine( _sealEngine ),
-          m_evmSchedule( initEvmSchedule( envInfo().number(), _version ) ) {
+          m_evmSchedule( initEvmSchedule( envInfo().number(), _version ) ),
+          m_readOnly( _readOnly ) {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
         // the account must be created first.
@@ -117,6 +118,7 @@ private:
     skale::State& m_s;  ///< A reference to the base state.
     SealEngineFace const& m_sealEngine;
     EVMSchedule const& m_evmSchedule;
+    bool m_readOnly;
 };
 
 }  // namespace eth

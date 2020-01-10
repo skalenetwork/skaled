@@ -57,10 +57,16 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_downloadSnapshotFragment( request );
     }
 
-    inline virtual void skale_getSnapshotHashI(
+    inline virtual void skale_getSnapshotSignatureI(
         const Json::Value& request, Json::Value& response ) {
         unsigned blockNumber = request[0u].asInt();
-        response = this->skale_getSnapshotHash( blockNumber );
+        response = this->skale_getSnapshotSignature( blockNumber );
+    }
+
+    inline virtual void skale_getLatestSnapshotBlockNumberI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getLatestSnapshotBlockNumber();
     }
 
     virtual std::string skale_protocolVersion() = 0;
@@ -68,7 +74,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_shutdownInstance() = 0;
     virtual Json::Value skale_getSnapshot( const Json::Value& request ) = 0;
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
-    virtual std::string skale_getSnapshotHash( unsigned blockNumber ) = 0;
+    virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
+    virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
 
 public:
     SkaleFace() {
@@ -92,9 +99,12 @@ public:
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_downloadSnapshotFragmentI );
         this->bindAndAddMethod(
-            jsonrpc::Procedure( "skale_getSnapshotHash", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_INTEGER, NULL ),
-            &dev::rpc::SkaleFace::skale_getSnapshotHashI );
+            jsonrpc::Procedure( "skale_getSnapshotSignature", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_INTEGER, NULL ),
+            &dev::rpc::SkaleFace::skale_getSnapshotSignatureI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestSnapshotBlockNumber",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
+            &dev::rpc::SkaleFace::skale_getLatestSnapshotBlockNumberI );
     }
 };
 
