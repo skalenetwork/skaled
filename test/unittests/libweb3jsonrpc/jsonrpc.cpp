@@ -667,6 +667,12 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
 
 BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+    rpcClient->test_setChainParams( ret );
+
     client->setAuthor( senderAddress );
     dev::eth::simulateMining( *( client ), 1 );
 

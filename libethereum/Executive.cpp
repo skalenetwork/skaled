@@ -387,7 +387,8 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
-    if ( _origin != m_sealEngine.chainParams().sChain.owner ) {
+    if ( m_sealEngine.chainParams().sChain.owner != Address( 0 ) &&
+         _origin != m_sealEngine.chainParams().sChain.owner ) {
         m_gas = 0;
         m_excepted = TransactionException::InvalidDeployOrigin;
         revert();
