@@ -389,6 +389,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_gas = _gas;
     if ( _origin != m_sealEngine.chainParams().sChain.owner ) {
         m_gas = 0;
+        m_excepted = TransactionException::InvalidDeployOrigin;
         revert();
         m_ext = {};
         return !m_ext;
