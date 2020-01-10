@@ -51,8 +51,9 @@ bool SnapshotHashAgent::verifyAllData() const {
         } catch ( std::exception& ex ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while verifying common signature from other skaleds: " ) +
-                " " + cc::warn( ex.what() ) ) );
+                cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
+                cc::warn( ex.what() ) ) );
+            return false;
         }
     }
 
@@ -78,6 +79,8 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
 
     auto it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
+
+    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
 
     if ( it == map_hash.end() ) {
         throw std::logic_error( "note enough votes to choose hash" );
@@ -143,7 +146,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned block_number ) {
-    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
+    libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
