@@ -90,16 +90,14 @@ public:
             BLSutils::ConvertToString( keys.second.Y.c0 );
         this->hashAgent_->chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3] =
             BLSutils::ConvertToString( keys.second.Y.c1 );
+
+        this->insecure_secret = keys.first;
     }
 
     bool verifyAllData() const { return this->hashAgent_->verifyAllData(); }
 
     std::vector< size_t > getNodesToDownloadSnapshotFrom() {
-        dev::h256 hash_str;
-        libff::alt_bn128_G1 hash_field;
-
-        auto hash = std::make_pair( hash_str, hash_field );
-        bool res = this->voteForHash( hash );
+        bool res = this->voteForHash();
 
         if ( !res ) {
             return {};
@@ -112,7 +110,7 @@ public:
                 continue;
             }
 
-            if ( this->hashAgent_->hashes_[i] == hash.first ) {
+            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->voted_hash_.first ) {
                 ret.push_back( i );
             }
         }
@@ -124,9 +122,9 @@ public:
         return this->hashAgent_->getVotedHash();
     }
 
-    bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
-        return this->hashAgent_->voteForHash( to_vote );
-    }
+    bool voteForHash() { return this->hashAgent_->voteForHash( this->hashAgent_->voted_hash_ ); }
+
+    libff::alt_bn128_Fr insecure_secret;
 
 private:
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
@@ -400,13 +398,59 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
     std::vector< size_t > excpected = {0, 1, 2};
     BOOST_REQUIRE( res == excpected );
+    BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
+    BOOST_REQUIRE( test_agent.getVotedHash().second ==
+                   signatures::Bls::Signing(
+                       signatures::Bls::HashtoG1(
+                           std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
+                       test_agent.insecure_secret ) );
 }
 
-BOOST_AUTO_TEST_CASE( WrongHash ) {}
+BOOST_AUTO_TEST_CASE( WrongHash ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.n = 7;
+    chainParams.sChain.t = 5;
+    chainParams.sChain.nodes.resize( 7 );
+    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 6;
+    std::shared_ptr< SnapshotHashAgent > agent;
+    agent.reset( new SnapshotHashAgent( chainParams ) );
+    SnapshotHashAgentTest test_agent( agent );
+    dev::h256 hash = dev::h256::random();  // `correct` hash
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() );
+    auto res = test_agent.getNodesToDownloadSnapshotFrom();
+    std::vector< size_t > excpected = {0, 1, 2, 3, 5};
+    BOOST_REQUIRE( res == excpected );
+}
+
+BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.n = 4;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    std::shared_ptr< SnapshotHashAgent > agent;
+    agent.reset( new SnapshotHashAgent( chainParams ) );
+    SnapshotHashAgentTest test_agent( agent );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    snapshot_hashes[2] = dev::h256::random();
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE_THROW( test_agent.voteForHash(), std::logic_error );
+}
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {}
-
-BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 
