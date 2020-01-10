@@ -662,7 +662,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
-    BOOST_REQUIRE( code.asString().substr(2) == compiled.substr(58) );
+    BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
