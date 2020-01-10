@@ -132,13 +132,6 @@ static std::string const c_genesisConfigString =
             "nonce" : "0x00",
             "storage" : {
             }
-        },)"
-    R"("0x0dcd2f752394c41875e259e00bb44fd505297caf" : {
-            "balance" : "0x0de0b6b3a7640000",
-            "code" : "0x6001600101600055",
-            "nonce" : "0x00",
-            "storage" : {
-            }
         },
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
@@ -665,7 +658,11 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString().substr(2) == compiled.substr(58) );
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
@@ -697,7 +694,9 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     dev::eth::mineTransaction( *( client ), 1 );
 
     Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE( receipt["contractAddress"].isNull() );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x" );
 }
 
 BOOST_AUTO_TEST_CASE( create_opcode ) {
