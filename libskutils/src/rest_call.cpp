@@ -117,7 +117,8 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort ) );
         } else if ( strScheme == "https" ) {
             close();
-            ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort ) );
+            ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
+                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS, &optsSSL ) );
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             cw_.reset( new skutils::ws::client );
             cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,

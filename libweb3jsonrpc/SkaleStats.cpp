@@ -1545,6 +1545,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
+        std::cout << strLogPrefix << cc::debug( " Contacting " ) << cc::notice( "SGX Wallet" )
+                  << cc::debug( " server at " ) << cc::u( u ) << "\n";
         std::cout << strLogPrefix << cc::debug( " Will send " ) << cc::notice( "sign query" )
                   << cc::debug( " to wallet: " ) << cc::j( joCall ) << "\n";
         skutils::rest::client cli;
