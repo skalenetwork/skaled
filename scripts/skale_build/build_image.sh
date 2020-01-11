@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VERSION=$1
-IMAGE_NAME=skalelabshub/schain:$VERSION
+IMAGE_NAME=skalenetwork/schain:$VERSION
 
 echo "Build image $IMAGE_NAME"
 
