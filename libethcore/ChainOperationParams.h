@@ -45,7 +45,7 @@ public:
           m_startingBlock( _startingBlock ),
           m_allowed_addresses( _allowedAddresses ) {}
     PrecompiledContract( unsigned _base, unsigned _word, PrecompiledExecutor const& _exec,
-        u256 const& _startingBlock = 0 );
+        u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
 
     bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
         u256 const& _blockNumber ) const {
@@ -55,8 +55,9 @@ public:
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
-    bool executionAllowedFrom( const Address& _from ) const {
-        return m_allowed_addresses.empty() || m_allowed_addresses.count( _from ) != 0;
+    bool executionAllowedFrom( const Address& _from, bool _readOnly ) const {
+        return m_allowed_addresses.empty() ||
+               ( m_allowed_addresses.count( _from ) != 0 && !_readOnly );
     }
 
 private:
