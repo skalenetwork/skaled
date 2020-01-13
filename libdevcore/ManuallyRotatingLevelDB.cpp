@@ -73,11 +73,21 @@ void ManuallyRotatingLevelDB::rotate() {
 }
 
 std::string ManuallyRotatingLevelDB::lookup( Slice _key ) const {
-    return current_piece->lookup( _key );
+    for ( const auto& p : pieces ) {
+        const std::string& v = p->lookup( _key );
+        if ( !v.empty() )
+            return v;
+    }
+    return std::string();
 }
 
 bool ManuallyRotatingLevelDB::exists( Slice _key ) const {
-    return current_piece->exists( _key );
+    for ( const auto& p : pieces ) {
+        if ( p->exists( _key ) )
+            return true;
+        ;
+    }
+    return false;
 }
 
 void ManuallyRotatingLevelDB::insert( Slice _key, Slice _value ) {
@@ -85,7 +95,8 @@ void ManuallyRotatingLevelDB::insert( Slice _key, Slice _value ) {
 }
 
 void ManuallyRotatingLevelDB::kill( Slice _key ) {
-    current_piece->kill( _key );
+    for ( const auto& p : pieces )
+        p->kill( _key );
 }
 
 std::unique_ptr< WriteBatchFace > ManuallyRotatingLevelDB::createWriteBatch() const {
