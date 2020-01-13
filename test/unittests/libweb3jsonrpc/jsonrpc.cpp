@@ -172,7 +172,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -241,6 +240,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
+
+    TransientDirectory tempDir;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
