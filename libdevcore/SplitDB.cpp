@@ -110,7 +110,12 @@ void SplitDB::PrefixedDB::forEach( std::function< bool( Slice, Slice ) > f ) con
 }
 
 h256 SplitDB::PrefixedDB::hashBase() const {
-    return h256();
+    // HACK TODO implement that it would work with any DatabaseFace*
+    const LevelDB* ldb = dynamic_cast< const LevelDB* >( backend );
+    if ( ldb )
+        return ldb->hashBaseWithPrefix( prefix );
+    else
+        return h256();
 }
 
 }  // namespace db

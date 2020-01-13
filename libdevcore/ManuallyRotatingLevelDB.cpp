@@ -1,5 +1,7 @@
 #include "ManuallyRotatingLevelDB.h"
 
+#include <secp256k1_sha256.h>
+
 namespace dev {
 namespace db {
 
@@ -101,7 +103,17 @@ void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f )
 }
 
 h256 ManuallyRotatingLevelDB::hashBase() const {
-    return h256();
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    for ( const auto& p : pieces ) {
+        h256 h = p->hashBase();
+        secp256k1_sha256_write( &ctx, h.data(), h.size );
+    }  // for
+
+    h256 hash;
+    secp256k1_sha256_finalize( &ctx, hash.data() );
+    return hash;
 }
 
 }  // namespace db
