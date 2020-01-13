@@ -31,7 +31,7 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
         boost::filesystem::path path = base_path / ( std::to_string( i ) + ".db" );
         DatabaseFace* db = new LevelDB( path );
 
-        pieces.emplace( db );
+        pieces.emplace_back( db );
 
         uint64_t size = dir_size( path );
         if ( i == 0 || size < min_size ) {
@@ -43,8 +43,8 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
     // rotate so min_i will be first
     for ( size_t i = 0; i < min_i; ++i ) {
         DatabaseFace* el = pieces.front().get();
-        pieces.pop();
-        pieces.emplace( el );
+        pieces.pop_front();
+        pieces.emplace_back( el );
     }  // for
 
     this->current_piece = pieces.front().get();
@@ -59,11 +59,12 @@ void ManuallyRotatingLevelDB::rotate() {
     if ( old_db_no < 0 )
         old_db_no += pieces.size();
     boost::filesystem::path old_path = base_path / ( std::to_string( old_db_no ) + ".db" );
-    boost::filesystem::remove( old_path );
 
-    pieces.pop();
+    pieces.pop_back();  // will delete here
+    boost::filesystem::remove_all( old_path );
+
     DatabaseFace* new_db = new LevelDB( old_path );
-    pieces.emplace( new_db );
+    pieces.emplace_front( new_db );
 
     current_piece_file_no = old_db_no;
     current_piece = new_db;
@@ -91,8 +92,8 @@ std::unique_ptr< WriteBatchFace > ManuallyRotatingLevelDB::createWriteBatch() co
     return wbf;
 }
 void ManuallyRotatingLevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
-    current_piece->commit( std::move( _batch ) );
     batch_cache.erase( _batch.get() );
+    current_piece->commit( std::move( _batch ) );
 }
 
 void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {

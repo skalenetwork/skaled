@@ -231,14 +231,14 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     }
     if ( _we == WithExisting::Kill ) {
         cnote << "Killing blockchain & extras database (WithExisting::Kill).";
-        fs::remove_all( chainPath / fs::path( "blocks_end_extras" ) );
+        fs::remove_all( chainPath / fs::path( "blocks_and_extras" ) );
     }
 
     try {
-        fs::create_directories( chainPath / fs::path( "blocks_end_extras" ) );
-        auto blocks_and_extras_db = std::make_shared< db::ManuallyRotatingLevelDB >(
-            chainPath / fs::path( "blocks_end_extras" ), 5 );
-        m_split_db = std::make_unique< db::SplitDB >( blocks_and_extras_db );
+        fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >(
+            chainPath / fs::path( "blocks_and_extras" ), 5 );
+        m_split_db = std::make_unique< db::SplitDB >( m_rotating_db );
         m_blocksDB = m_split_db->newInterface();
         m_extrasDB = m_split_db->newInterface();
         // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
@@ -249,12 +249,12 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
              db::DatabaseStatus::IOError )
             throw;
 
-        if ( fs::space( chainPath / fs::path( "blocks_end_extras" ) ).available < 1024 ) {
+        if ( fs::space( chainPath / fs::path( "blocks_and_extras" ) ).available < 1024 ) {
             cwarn << "Not enough available space found on hard drive. Please free some up and then "
                      "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( chainPath / fs::path( "blocks_end_extras" ) ) << "or "
+            cwarn << "Database " << ( chainPath / fs::path( "blocks_and_extras" ) ) << "or "
                   << ( extrasPath / fs::path( "extras" ) )
                   << "already open. You appear to have another instance of ethereum running. "
                      "Bailing.";
@@ -661,10 +661,18 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
+void BlockChain::rotateDBIfNeeded() {
+    if ( this->number() % 64 == 0 ) {
+        this->m_rotating_db->rotate();
+    }  // if
+}
+
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    rotateDBIfNeeded();
 
     std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
     std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();

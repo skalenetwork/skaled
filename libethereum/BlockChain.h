@@ -64,6 +64,10 @@ class State;
 namespace dev {
 class OverlayDB;
 
+namespace db {
+class ManuallyRotatingLevelDB;
+}
+
 namespace eth {
 static const h256s NullH256s;
 
@@ -448,6 +452,8 @@ private:
     /// Finalise everything and close the database.
     void close();
 
+    void rotateDBIfNeeded();
+
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
     void checkBlockIsNew( VerifiedBlockRef const& _block ) const;
@@ -522,6 +528,7 @@ private:
 
     /// The disk DBs. Thread-safe, so no need for locks.
     std::unique_ptr< db::SplitDB > m_split_db;
+    std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;
     db::DatabaseFace* m_blocksDB;
     db::DatabaseFace* m_extrasDB;
 

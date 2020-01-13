@@ -3,7 +3,7 @@
 
 #include "LevelDB.h"
 
-#include <queue>
+#include <deque>
 #include <set>
 
 namespace dev {
@@ -14,7 +14,7 @@ private:
     const boost::filesystem::path base_path;
     DatabaseFace* current_piece;
     int current_piece_file_no;
-    std::queue< std::unique_ptr< DatabaseFace > > pieces;
+    std::deque< std::unique_ptr< DatabaseFace > > pieces;
 
     mutable std::set< WriteBatchFace* > batch_cache;
 
