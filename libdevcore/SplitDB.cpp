@@ -34,21 +34,11 @@ void SplitDB::PrefixedWriteBatchFace::insert( Slice _key, Slice _value ) {
 
 // TODO Unit test this!
 void SplitDB::PrefixedWriteBatchFace::kill( Slice _key ) {
-    auto res_iter = std::find_if(
-        store.begin(), store.end(), [&_key]( const std::vector< char >& test ) -> bool {
-            if ( test.size() != _key.size() + 1 )
-                return false;
-            for ( size_t i = 0; i != _key.size(); ++i ) {
-                if ( _key[i] != test[i + 1] )
-                    return false;
-            }
-            return true;
-        } );
+    std::vector< char > key2 = _key.toVector();
+    key2.insert( key2.begin(), prefix );
 
-    assert( res_iter != store.end() );
-
-    backend->kill( ref( *res_iter ) );
-    store.erase( res_iter );
+    store.push_back( std::move( key2 ) );
+    backend->kill( ref( store.back() ) );
 }
 
 SplitDB::PrefixedDB::PrefixedDB( char _prefix, DatabaseFace* _backend, std::shared_mutex& _mutex )
