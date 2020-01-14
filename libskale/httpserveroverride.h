@@ -88,7 +88,7 @@ protected:
 
     struct subscription_data_t {
         subscription_id_t m_idSubscription = 0;
-        SkaleWsPeer* m_pPeer = nullptr;
+        skutils::retain_release_ptr< SkaleWsPeer > m_pPeer;
         size_t m_nIntervalMilliseconds = 0;
         skutils::dispatch::job_id_t m_idDispatchJob;
     };  /// struct subscription_data_t

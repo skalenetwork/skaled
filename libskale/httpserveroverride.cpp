@@ -506,15 +506,18 @@ private:
 public:
     static const char g_strMethodNameUnknown[];
 
-    RequestTimeTrackerElement( int /*ipVer*/, const char* strProtocol, int /*nServerIndex*/,
-        const char* strMethod = nullptr )
+    RequestTimeTrackerElement(
+        int /*ipVer*/, const char* strProtocol, int /*nServerIndex*/, const char* strMethod )
         : strProtocol_( strProtocol ),
           strMethod_( ( strMethod != nullptr && strMethod[0] != '\0' ) ? strMethod :
                                                                          g_strMethodNameUnknown ),
           tpStart_( skutils::stats::clock::now() ) {
         if ( strProtocol_.empty() )
             throw std::runtime_error(
-                "RequestTimeTrackerElement cannot be created without protocol name specified" );
+                "RequestTimeTrackerElement cannot be created without \"protocol\" name specified" );
+        if ( strMethod_.empty() )
+            throw std::runtime_error(
+                "RequestTimeTrackerElement cannot be created without \"method\" name specified" );
         do_register();
     }
     virtual ~RequestTimeTrackerElement() { stop(); }
@@ -585,8 +588,13 @@ public:
             map_pq_[strProtocol] = map_rtte_t();
         map_rtte_t& map_rtte = map_pq_[strProtocol];
         map_rtte[id] = rttElement;
-        while ( map_rtte.size() > nMaxItemsInQueue && map_rtte.size() > 0 )
-            map_rtte.erase( map_rtte.begin()->first );
+        while ( map_rtte.size() > nMaxItemsInQueue && map_rtte.size() > 0 ) {
+            auto it = map_rtte.begin();
+            auto key = it->first;
+            auto value = it->second;
+            map_rtte.erase( key );
+            value = nullptr;
+        }
     }
     void do_unregister( RequestTimeTrackerElement_ptr_t& rttElement ) {
         if ( !rttElement )
@@ -756,8 +764,6 @@ bool SkaleStatsSubscriptionManager::subscribe(
     subscriptionData.m_idSubscription = idSubscription;
     subscriptionData.m_pPeer = pPeer;
     subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
-    subscriptionData.m_pPeer->ref_retain();  // manual retain-release(subscription map)
-    subscriptionData.m_pPeer->ref_retain();  // manual retain-release(async job)
     skutils::dispatch::repeat( subscriptionData.m_pPeer->m_strPeerQueueID,
         [=]() -> void {
             if ( subscriptionData.m_pPeer && subscriptionData.m_pPeer->isConnected() ) {
@@ -782,7 +788,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                     [subscriptionData, strNotification, idSubscription, this]() -> void {
                         bool bMessageSentOK = false;
                         try {
-                            bMessageSentOK = subscriptionData.m_pPeer->sendMessage(
+                            bMessageSentOK = subscriptionData.m_pPeer.get_unconst()->sendMessage(
                                 skutils::tools::trim_copy( strNotification ) );
                             if ( !bMessageSentOK )
                                 throw std::runtime_error(
@@ -832,7 +838,6 @@ bool SkaleStatsSubscriptionManager::subscribe(
             }
             if ( !subscriptionData.m_idDispatchJob.empty() )
                 skutils::dispatch::stop( subscriptionData.m_idDispatchJob );
-            subscriptionData.m_pPeer->ref_release();  // manual retain-release(async job)
         },
         skutils::dispatch::duration_from_milliseconds( nIntervalMilliseconds ),
         &subscriptionData.m_idDispatchJob );
@@ -850,8 +855,6 @@ bool SkaleStatsSubscriptionManager::unsubscribe(
             return false;
         subscription_data_t subscriptionData = itFind->second;
         map_subscriptions_.erase( itFind );
-        if ( subscriptionData.m_pPeer )
-            subscriptionData.m_pPeer->ref_release();  // manual retain-release(subscription map)
         if ( !subscriptionData.m_idDispatchJob.empty() )
             skutils::dispatch::stop( subscriptionData.m_idDispatchJob );
         return true;
@@ -943,10 +946,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
-    SkaleWsPeer* pThis = this;
-    pThis->ref_retain();  // manual retain-release
-    //
-    //
+    skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
     std::string strRequest( msg );
     nlohmann::json joRequest;
     std::string strMethod;
@@ -977,19 +977,16 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
         stats::register_stats_exception( pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
         stats::register_stats_exception( "RPC", strMethod.c_str() );
-        ( const_cast< SkaleWsPeer* >( pThis ) )
-            ->sendMessage( skutils::tools::trim_copy( strResponse ) );
+        pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         stats::register_stats_answer(
             pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-        pThis->ref_release();  // manual retain-release
         return;
     }
     //
     //
-    stats::RequestTimeTrackerElement* pRttElement =
-        new stats::RequestTimeTrackerElement( -1, pThis->getRelay().nfoGetSchemeUC().c_str(),
-            pThis->getRelay().serverIndex(), strMethod.c_str() );
-    pRttElement->ref_retain();  // manual retain-release
+    stats::RequestTimeTrackerElement_ptr_t rttElement;
+    rttElement.emplace( -1, pThis->getRelay().nfoGetSchemeUC().c_str(),
+        pThis->getRelay().serverIndex(), strMethod.c_str() );
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
         clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -1001,9 +998,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    cc::warn( msg ) );
     }
     size_t nRequestSize = strRequest.size();
-    // skutils::dispatch::async( pThis->m_strPeerQueueID, [pRttElement, pThis, joID, joRequest,
-    // strMethod, strRequest, nRequestSize, pSO]() -> void { // WS-processing-lambda
 
+    // skutils::dispatch::async( pThis->m_strPeerQueueID, [rttElement, pThis, joID, joRequest,
+    // strMethod, strRequest, nRequestSize, pSO]() -> void {  // WS-processing-lambda
     //
     //
     //
@@ -1023,8 +1020,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         stats::register_stats_message(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest );
         stats::register_stats_message( "RPC", joRequest );
-        if ( !( const_cast< SkaleWsPeer* >( pThis ) )
-                  ->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
+        if ( !pThis.get_unconst()->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
             jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
             if ( handler == nullptr )
                 throw std::runtime_error( "No client connection handler found" );
@@ -1039,7 +1035,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         stats::register_stats_answer( "RPC", joRequest, joResponse );
         bPassed = true;
     } catch ( const std::exception& ex ) {
-        pRttElement->setError();
+        rttElement->setError();
         clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
                                        cc::debug( "/" ) +
                                        cc::num10( pThis->getRelay().serverIndex() ) )
@@ -1059,7 +1055,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             stats::register_stats_exception( "RPC", strMethod.c_str() );
         }
     } catch ( ... ) {
-        pRttElement->setError();
+        rttElement->setError();
         const char* e = "unknown exception in SkaleServerOverride";
         clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
                                        cc::debug( "/" ) +
@@ -1087,16 +1083,14 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/TX <<< " ) +
                    pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
-    ( const_cast< SkaleWsPeer* >( pThis ) )
-        ->sendMessage( skutils::tools::trim_copy( strResponse ) );
+    pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
     if ( !bPassed )
         stats::register_stats_answer(
             pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-    pRttElement->stop();
-    pRttElement->ref_release();  // manual retain-release
-    pThis->ref_release();        // manual retain-release
+    rttElement->stop();
 
-    //} ); // WS-processing-lambda
+    // } );  // WS-processing-lambda
+
     // skutils::ws::peer::onMessage( msg, eOpCode );
 }
 
@@ -2251,9 +2245,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
                 return true;
             }
-            stats::RequestTimeTrackerElement* pRttElement = new stats::RequestTimeTrackerElement(
+            stats::RequestTimeTrackerElement_ptr_t rttElement;
+            rttElement.emplace(
                 ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), strMethod.c_str() );
-            pRttElement->ref_retain();  // manual retain-release
             //
             //
             //
@@ -2293,8 +2287,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         ( char* ) buffer.data(), buffer.size(), "application/octet-stream" );
                     stats::register_stats_answer(
                         bIsSSL ? "HTTPS" : "HTTP", "POST", buffer.size() );
-                    pRttElement->stop();
-                    pRttElement->ref_release();  // manual retain-release
+                    rttElement->stop();
                     return true;
                 }
                 handler->HandleRequest( req.body_.c_str(), strResponse );
@@ -2309,7 +2302,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 //
                 bPassed = true;
             } catch ( const std::exception& ex ) {
-                pRttElement->setError();
+                rttElement->setError();
                 logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
@@ -2323,7 +2316,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
             } catch ( ... ) {
-                pRttElement->setError();
+                rttElement->setError();
                 const char* e = "unknown exception in SkaleServerOverride";
                 logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
@@ -2346,8 +2339,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             res.set_content( strResponse.c_str(), "application/json" );
             if ( !bPassed )
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
-            pRttElement->stop();
-            pRttElement->ref_release();  // manual retain-release
+            rttElement->stop();
             return true;
         } );
         std::thread( [=]() {
