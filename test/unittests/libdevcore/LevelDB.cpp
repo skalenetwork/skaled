@@ -118,7 +118,11 @@ BOOST_AUTO_TEST_CASE( rotation_test ) {
     db::ManuallyRotatingLevelDB rdb( td.path(), nPieces );
 
     for ( int i = 0; i < nPreserved * 3; ++i ) {
+        if ( i % rotateInterval == 0 )
+            rdb.rotate();
+
         rdb.insert( to_string( i ), "val " + to_string( i ) );
+
         if ( i >= nPreserved - 1 ) {
             string old = to_string( i - nPreserved + 1 );
             BOOST_REQUIRE_EQUAL( rdb.lookup( old ), "val " + old );
@@ -127,7 +131,16 @@ BOOST_AUTO_TEST_CASE( rotation_test ) {
             string old = to_string( i - nPreserved - rotateInterval );
             BOOST_REQUIRE_EQUAL( rdb.exists( old ), false );
             BOOST_REQUIRE_EQUAL( rdb.lookup( old ), "" );
-        }  // if
+        }  // else if
+
+        if ( i > rotateInterval && ( i + rotateInterval / 2 ) % rotateInterval == 0 ) {
+            int cnt = 0;
+            rdb.forEach( [&cnt]( db::Slice, db::Slice ) -> bool {
+                ++cnt;
+                return true;
+            } );
+            BOOST_REQUIRE( cnt > rotateInterval );
+        }  // if check all
     }
 }
 
