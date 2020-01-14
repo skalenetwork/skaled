@@ -481,254 +481,6 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
     return jo;
 }
 
-class RequestTimeTrackerElement : public skutils::ref_retain_release {
-public:
-    typedef std::pair< skutils::stats::time_point, void* > id_t;
-
-    typedef std::chrono::steady_clock clock;
-    typedef std::chrono::time_point< clock > time_point;
-
-    typedef std::chrono::duration< double, std::milli > duration;
-
-private:
-    typedef skutils::multithreading::recursive_mutex_type mutex_type;
-    typedef std::lock_guard< mutex_type > lock_type;
-    static mutex_type& mtx() { return skutils::get_ref_mtx(); }
-
-    mutable volatile bool isError_ = false, isStopped_ = false;
-    mutable std::string strProtocol_, strMethod_;
-
-    mutable time_point tpStart_, tpEnd_;
-
-    void do_register();
-    void do_unregister();
-
-public:
-    static const char g_strMethodNameUnknown[];
-
-    RequestTimeTrackerElement(
-        int /*ipVer*/, const char* strProtocol, int /*nServerIndex*/, const char* strMethod )
-        : strProtocol_( strProtocol ),
-          strMethod_( ( strMethod != nullptr && strMethod[0] != '\0' ) ? strMethod :
-                                                                         g_strMethodNameUnknown ),
-          tpStart_( skutils::stats::clock::now() ) {
-        if ( strProtocol_.empty() )
-            throw std::runtime_error(
-                "RequestTimeTrackerElement cannot be created without \"protocol\" name specified" );
-        if ( strMethod_.empty() )
-            throw std::runtime_error(
-                "RequestTimeTrackerElement cannot be created without \"method\" name specified" );
-        do_register();
-    }
-    virtual ~RequestTimeTrackerElement() { stop(); }
-    void stop() const {
-        lock_type lock( mtx() );
-        if ( isStopped_ )
-            return;
-        isStopped_ = true;
-        tpEnd_ = skutils::stats::clock::now();
-    }
-    void setMethod( const char* strMethod ) const {
-        lock_type lock( mtx() );
-        if ( isStopped_ )
-            return;
-        if ( ( strMethod_.empty() || strMethod_ == g_strMethodNameUnknown ) &&
-             strMethod != nullptr && strMethod[0] != '\0' )
-            strMethod_ = strMethod;
-    }
-    void setError() const {
-        lock_type lock( mtx() );
-        isError_ = true;
-    }
-    double getDurationInSeconds() const {
-        lock_type lock( mtx() );
-        time_point tpEnd = isStopped_ ? tpEnd_ : skutils::stats::clock::now();
-        duration d = tpEnd - tpStart_;
-        return double( d.count() ) / 1000.0;
-    }
-    id_t getID() { return id_t( tpStart_, this ); }
-    const std::string& getProtocol() const { return strProtocol_; }
-    const std::string& getMethod() const { return strMethod_; }
-};  /// class RequestTimeTrackerElement
-
-const char RequestTimeTrackerElement::g_strMethodNameUnknown[] = "unknown-method";
-
-typedef skutils::retain_release_ptr< RequestTimeTrackerElement > RequestTimeTrackerElement_ptr_t;
-
-class RequestTimeTrackerQueue {
-    typedef skutils::multithreading::recursive_mutex_type mutex_type;
-    typedef std::lock_guard< mutex_type > lock_type;
-    static mutex_type& mtx() { return skutils::get_ref_mtx(); }
-
-    typedef std::map< RequestTimeTrackerElement::id_t, RequestTimeTrackerElement_ptr_t >
-        map_rtte_t;                                        // rttID -> rttElement
-    typedef std::map< std::string, map_rtte_t > map_pq_t;  // protocol name -> map_rtte_t
-
-    map_pq_t map_pq_;
-
-    size_t nMaxItemsInQueue = 100;
-
-    RequestTimeTrackerQueue() {}
-    ~RequestTimeTrackerQueue() {}
-
-public:
-    static RequestTimeTrackerQueue& getQueue() {
-        static RequestTimeTrackerQueue g_queue;
-        return g_queue;
-    }
-
-    void do_register( RequestTimeTrackerElement_ptr_t& rttElement ) {
-        if ( !rttElement )
-            return;
-        lock_type lock( mtx() );
-        std::string strProtocol = rttElement->getProtocol();
-        std::string strMethod = rttElement->getMethod();
-        RequestTimeTrackerElement::id_t id = rttElement->getID();
-        if ( map_pq_.find( strProtocol ) == map_pq_.end() )
-            map_pq_[strProtocol] = map_rtte_t();
-        map_rtte_t& map_rtte = map_pq_[strProtocol];
-        map_rtte[id] = rttElement;
-        while ( map_rtte.size() > nMaxItemsInQueue && map_rtte.size() > 0 ) {
-            auto it = map_rtte.begin();
-            auto key = it->first;
-            auto value = it->second;
-            map_rtte.erase( key );
-            value = nullptr;
-        }
-    }
-    void do_unregister( RequestTimeTrackerElement_ptr_t& rttElement ) {
-        if ( !rttElement )
-            return;
-        lock_type lock( mtx() );
-        rttElement->stop();
-        std::string strProtocol = rttElement->getProtocol();
-        if ( map_pq_.find( strProtocol ) == map_pq_.end() )
-            return;
-        map_rtte_t& map_rtte = map_pq_[strProtocol];
-        RequestTimeTrackerElement::id_t id = rttElement->getID();
-        map_rtte.erase( id );
-    }
-    std::list< std::string > getProtocols() {
-        std::list< std::string > listProtocols;
-        lock_type lock( mtx() );
-        auto pi = map_pq_.cbegin(), pe = map_pq_.cend();
-        for ( ; pi != pe; ++pi )
-            listProtocols.push_back( pi->first );
-        return listProtocols;
-    }
-    nlohmann::json getProtocolStats( const char* strProtocol ) {
-        nlohmann::json joStatsProtocol = nlohmann::json::object();
-        double callTimeMin( 0.0 ), callTimeMax( 0.0 ), callTimeSum( 0.0 );
-        std::string strMethodMin( RequestTimeTrackerElement::g_strMethodNameUnknown ),
-            strMethodMax( RequestTimeTrackerElement::g_strMethodNameUnknown );
-        size_t cntEntries = 0;
-        lock_type lock( mtx() );
-        if ( map_pq_.find( strProtocol ) != map_pq_.end() ) {
-            map_rtte_t& map_rtte = map_pq_[strProtocol];
-            map_rtte_t::const_iterator iw = map_rtte.cbegin(), ie = map_rtte.cend();
-            for ( ; iw != ie; ++iw, ++cntEntries ) {
-                double d = iw->second->getDurationInSeconds();
-                callTimeSum += d;
-                const std::string& strMethod = iw->second->getMethod();
-                if ( cntEntries == 0 ) {
-                    callTimeMin = callTimeMax = d;
-                    strMethodMin = strMethodMax = strMethod;
-                    continue;
-                }
-                if ( callTimeMin > d ) {
-                    callTimeMin = d;
-                    strMethodMin = strMethod;
-                } else if ( callTimeMax < d ) {
-                    callTimeMax = d;
-                    strMethodMax = strMethod;
-                }
-            }
-        }
-        double denom = ( cntEntries > 0 ) ? cntEntries : 1;
-        double callTimeAvg = callTimeSum / denom;
-        joStatsProtocol["callTimeMin"] = callTimeMin;
-        joStatsProtocol["callTimeMax"] = callTimeMax;
-        joStatsProtocol["callTimeAvg"] = callTimeAvg;
-        joStatsProtocol["callTimeSum"] =
-            callTimeSum;  // for computing callTimeAvg of all protocols only
-        joStatsProtocol["methodMin"] = strMethodMin;
-        joStatsProtocol["methodMax"] = strMethodMax;
-        joStatsProtocol["cntEntries"] = cntEntries;
-        return joStatsProtocol;
-    }
-    nlohmann::json getAllStats() {
-        nlohmann::json joStatsAll = nlohmann::json::object();
-        nlohmann::json joProtocols = nlohmann::json::object();
-        double callTimeMin( 0.0 ), callTimeMax( 0.0 ), callTimeSum( 0.0 );
-        std::string protocolMin( "N/A" ), protocolMax( "N/A" );
-        std::string strMethodMin( RequestTimeTrackerElement::g_strMethodNameUnknown ),
-            strMethodMax( RequestTimeTrackerElement::g_strMethodNameUnknown );
-        size_t cntEntries = 0, i = 0;
-        lock_type lock( mtx() );
-        std::list< std::string > listProtocols = getProtocols();
-        std::list< std::string >::const_iterator pi = listProtocols.cbegin(),
-                                                 pe = listProtocols.cend();
-        for ( ; pi != pe; ++pi ) {
-            const std::string& strProtocol = ( *pi );
-            nlohmann::json joStatsProtocol = getProtocolStats( strProtocol.c_str() );
-            size_t cntProtocolEntries = joStatsProtocol["cntEntries"].get< size_t >();
-            if ( cntProtocolEntries == 0 )
-                continue;
-            double protocolTimeMin( joStatsProtocol["callTimeMin"].get< double >() ),
-                protocolTimeMax( joStatsProtocol["callTimeMax"].get< double >() );
-            std::string protocolMethodMin( joStatsProtocol["methodMin"].get< std::string >() ),
-                protocolMethodMax( joStatsProtocol["methodMax"].get< std::string >() );
-            double protocolTimeSum = ( joStatsProtocol["callTimeSum"].get< double >() );
-            callTimeSum += protocolTimeSum;
-            if ( i == 0 ) {
-                callTimeMin = protocolTimeMin;
-                callTimeMax = protocolTimeMax;
-                strMethodMin = protocolMethodMin;
-                strMethodMax = protocolMethodMax;
-                protocolMin = protocolMax = strProtocol;
-            } else {
-                if ( protocolTimeMin < callTimeMin ) {
-                    callTimeMin = protocolTimeMin;
-                    strMethodMin = protocolMethodMin;
-                    protocolMin = strProtocol;
-                } else if ( protocolTimeMax > callTimeMax ) {
-                    callTimeMax = protocolTimeMax;
-                    strMethodMax = protocolMethodMax;
-                    protocolMax = strProtocol;
-                }
-            }
-            cntEntries += cntProtocolEntries;
-            ++i;
-            joStatsProtocol.erase( "callTimeSum" );
-            joProtocols[strProtocol] = joStatsProtocol;
-        }
-        double denom = ( cntEntries > 0 ) ? cntEntries : 1;
-        double callTimeAvg = callTimeSum / denom;
-        nlohmann::json joSummary = nlohmann::json::object();
-        joSummary["callTimeMin"] = callTimeMin;
-        joSummary["callTimeMax"] = callTimeMax;
-        joSummary["callTimeAvg"] = callTimeAvg;
-        joSummary["methodMin"] = strMethodMin;
-        joSummary["methodMax"] = strMethodMax;
-        joSummary["protocolMin"] = protocolMin;
-        joSummary["protocolMax"] = protocolMax;
-        joSummary["cntEntries"] = cntEntries;
-        joStatsAll["summary"] = joSummary;
-        joStatsAll["protocols"] = joProtocols;
-        return joStatsAll;
-    }
-};  /// class RequestTimeTrackerQueue
-
-void RequestTimeTrackerElement::do_register() {
-    RequestTimeTrackerElement_ptr_t rttElement = this;
-    RequestTimeTrackerQueue::getQueue().do_register( rttElement );
-}
-void RequestTimeTrackerElement::do_unregister() {
-    RequestTimeTrackerElement_ptr_t rttElement = this;
-    RequestTimeTrackerQueue::getQueue().do_unregister( rttElement );
-}
-
-
 };  // namespace stats
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -984,9 +736,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     }
     //
     //
-    stats::RequestTimeTrackerElement_ptr_t rttElement;
-    rttElement.emplace( -1, pThis->getRelay().nfoGetSchemeUC().c_str(),
-        pThis->getRelay().serverIndex(), strMethod.c_str() );
+    skutils::stats::time_tracker::element_ptr_t rttElement;
+    rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(), strMethod.c_str(),
+        pThis->getRelay().serverIndex(), -1 );
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
         clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -2245,9 +1997,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
                 return true;
             }
-            stats::RequestTimeTrackerElement_ptr_t rttElement;
+            skutils::stats::time_tracker::element_ptr_t rttElement;
             rttElement.emplace(
-                ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), strMethod.c_str() );
+                "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(), pSrv->serverIndex(), ipVer );
             //
             //
             //
@@ -2693,7 +2445,10 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
-    joStats["callTiming"] = stats::RequestTimeTrackerQueue::getQueue().getAllStats();
+    nlohmann::json joExecutionPerformance = nlohmann::json::object();
+    joExecutionPerformance["RPC"] =
+        skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();
+    joStats["executionPerformance"] = joExecutionPerformance;
     joStats["protocols"]["http"]["listenerCount"] = m_serversHTTP4.size() + m_serversHTTP6.size();
     joStats["protocols"]["https"]["listenerCount"] =
         m_serversHTTPS4.size() + m_serversHTTPS6.size();
