@@ -110,7 +110,9 @@ void ManuallyRotatingLevelDB::commit( std::unique_ptr< WriteBatchFace > _batch )
 }
 
 void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
-    current_piece->forEach( f );
+    for ( const auto& p : pieces ) {
+        p->forEach( f );
+    }
 }
 
 h256 ManuallyRotatingLevelDB::hashBase() const {
