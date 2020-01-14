@@ -840,6 +840,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         stats::register_stats_answer(
             pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
     rttElement->stop();
+    double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+    if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
+        pSO->logPerformanceWarning( lfExecutionDuration, -1,
+            pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
+            pThis->getOrigin().c_str(), strMethod.c_str(), joID );
 
     // } );  // WS-processing-lambda
 
@@ -1792,15 +1797,20 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams,
-    fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
-    dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
-    const std::string& strAddrHTTP6, int nBasePortHTTP6, const std::string& strAddrHTTPS4,
-    int nBasePortHTTPS4, const std::string& strAddrHTTPS6, int nBasePortHTTPS6,
-    const std::string& strAddrWS4, int nBasePortWS4, const std::string& strAddrWS6,
-    int nBasePortWS6, const std::string& strAddrWSS4, int nBasePortWSS4,
-    const std::string& strAddrWSS6, int nBasePortWSS6, const std::string& strPathSslKey,
-    const std::string& strPathSslCert )
+const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceWarning =
+    1.0;  // in seconds, default 1 second
+
+SkaleServerOverride::SkaleServerOverride(
+    dev::eth::ChainParams& chainParams, fn_binary_snapshot_download_t fn_binary_snapshot_download,
+    size_t cntServers, dev::eth::Interface* pEth, const std::string& strAddrHTTP4,
+    int nBasePortHTTP4, const std::string& strAddrHTTP6, int nBasePortHTTP6,
+    const std::string& strAddrHTTPS4, int nBasePortHTTPS4, const std::string& strAddrHTTPS6,
+    int nBasePortHTTPS6, const std::string& strAddrWS4, int nBasePortWS4,
+    const std::string& strAddrWS6, int nBasePortWS6, const std::string& strAddrWSS4,
+    int nBasePortWSS4, const std::string& strAddrWSS6, int nBasePortWSS6,
+    const std::string& strPathSslKey, const std::string& strPathSslCert,
+    double lfExecutionDurationMaxForPerformanceWarning  // in seconds
+    )
     : AbstractServerConnector(),
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
@@ -1826,7 +1836,8 @@ SkaleServerOverride::SkaleServerOverride( dev::eth::ChainParams& chainParams,
       m_strPathSslKey( strPathSslKey ),
       m_strPathSslCert( strPathSslCert ),
       m_cntConnections( 0 ),
-      m_cntConnectionsMax( 0 ) {}
+      m_cntConnectionsMax( 0 ),
+      lfExecutionDurationMaxForPerformanceWarning_( lfExecutionDurationMaxForPerformanceWarning ) {}
 
 SkaleServerOverride::~SkaleServerOverride() {
     StopListening();
@@ -1861,17 +1872,45 @@ jsonrpc::IClientConnectionHandler* SkaleServerOverride::GetHandler( const std::s
     return nullptr;
 }
 
+void SkaleServerOverride::logPerformanceWarning( double lfExecutionDuration, int ipVer,
+    const char* strProtocol, int nServerIndex, const char* strOrigin, const char* strMethod,
+    nlohmann::json joID ) {
+    std::stringstream ssProtocol;
+    strProtocol = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
+    ssProtocol << cc::info( strProtocol );
+    if ( ipVer > 0 )
+        ssProtocol << cc::debug( "/" ) << cc::notice( "IPv" ) << cc::num10( ipVer );
+    if ( nServerIndex >= 0 )
+        ssProtocol << cc::debug( "/" ) << cc::num10( nServerIndex );
+    ssProtocol << cc::info( std::string( ":" ) );
+    std::string strProtocolDescription = ssProtocol.str();
+    //
+    std::string strCallID = joID.dump();
+    //
+    std::stringstream ssMessage;
+    ssMessage << cc::deep_warn( "Performance warning:" ) << " " << cc::c( lfExecutionDuration )
+              << cc::warn( " seconds execution time for " ) << cc::info( strMethod )
+              << cc::warn( " call with " ) << cc::notice( "id" ) << cc::warn( "=" )
+              << cc::info( strCallID ) << cc::warn( " when called from origin " )
+              << cc::notice( strOrigin );
+    if ( nServerIndex >= 0 )
+        ssMessage << cc::warn( " throug server with " ) << cc::notice( "index" ) << cc::warn( "=" )
+                  << cc::num10( nServerIndex );
+    std::string strMessage = ssMessage.str();
+    clog( dev::VerbosityWarning, strProtocolDescription ) << strMessage;
+}
+
 void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const char* strProtocol,
     int nServerIndex, const std::string& strMessage ) {
     if ( strMessage.empty() )
         return;
     std::stringstream ssProtocol;
     strProtocol = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
-    ssProtocol << cc::info( strProtocol ) << cc::debug( "/" ) << cc::notice( "IPv" )
-               << cc::num10( ipVer );
+    ssProtocol << cc::info( strProtocol );
+    if ( ipVer > 0 )
+        ssProtocol << cc::debug( "/" ) << cc::notice( "IPv" ) << cc::num10( ipVer );
     if ( nServerIndex >= 0 )
         ssProtocol << cc::debug( "/" ) << cc::num10( nServerIndex );
-    ;
     if ( isError )
         ssProtocol << cc::fatal( std::string( " ERROR:" ) );
     else
@@ -1893,15 +1932,17 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
     std::string strErrorSuffix, strOriginSuffix, strDirect;
     if ( isRX ) {
         strDirect = cc::ws_rx( " >>> " );
-        ssProtocol << cc::ws_rx_inv( " >>> " + strProto ) << cc::debug( "/" ) << cc::notice( "IPv" )
-                   << cc::num10( ipVer );
+        ssProtocol << cc::ws_rx_inv( " >>> " + strProto );
+        if ( ipVer > 0 )
+            ssProtocol << cc::debug( "/" ) << cc::notice( "IPv" ) << cc::num10( ipVer );
         if ( nServerIndex >= 0 )
             ssProtocol << cc::ws_rx_inv( "/" + std::to_string( nServerIndex ) );
         ssProtocol << cc::ws_rx_inv( "/RX >>> " );
     } else {
         strDirect = cc::ws_tx( " <<< " );
-        ssProtocol << cc::ws_tx_inv( " <<< " + strProto ) << cc::debug( "/" ) << cc::notice( "IPv" )
-                   << cc::num10( ipVer );
+        ssProtocol << cc::ws_tx_inv( " <<< " + strProto );
+        if ( ipVer > 0 )
+            ssProtocol << cc::debug( "/" ) << cc::notice( "IPv" ) << cc::num10( ipVer );
         if ( nServerIndex >= 0 )
             ssProtocol << cc::ws_tx_inv( "/" + std::to_string( nServerIndex ) );
         ssProtocol << cc::ws_tx_inv( "/TX <<< " );
@@ -1922,6 +1963,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues ) {
     bool bIsSSL = false;
+    SkaleServerOverride* pSO = this;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
     try {
@@ -2092,6 +2134,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             if ( !bPassed )
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
             rttElement->stop();
+            double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+            if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
+                pSO->logPerformanceWarning( lfExecutionDuration, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), strMethod.c_str(), joID );
             return true;
         } );
         std::thread( [=]() {

@@ -272,6 +272,10 @@ private:
     fn_binary_snapshot_download_t fn_binary_snapshot_download_;
 
 public:
+    const double lfExecutionDurationMaxForPerformanceWarning_;                 // in seconds
+    static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
+                                                                               // default 1 second
+
     SkaleServerOverride( dev::eth::ChainParams& chainParams,
         fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
         dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
@@ -280,7 +284,9 @@ public:
         const std::string& strAddrWS4, int nBasePortWS4, const std::string& strAddrWS6,
         int nBasePortWS6, const std::string& strAddrWSS4, int nBasePortWSS4,
         const std::string& strAddrWSS6, int nBasePortWSS6, const std::string& strPathSslKey,
-        const std::string& strPathSslCert );
+        const std::string& strPathSslCert,
+        double lfExecutionDurationMaxForPerformanceWarning  // in seconds
+    );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
@@ -307,6 +313,8 @@ public:
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
 private:
+    void logPerformanceWarning( double lfExecutionDuration, int ipVer, const char* strProtocol,
+        int nServerIndex, const char* strOrigin, const char* strMethod, nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
         const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
