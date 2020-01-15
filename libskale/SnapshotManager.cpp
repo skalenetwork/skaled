@@ -462,16 +462,12 @@ void SnapshotManager::computeAllVolumesHash(
 
     // TODO XXX Remove volumes structure knowledge from here!!
 
-    this->computeDatabaseHash( this->snapshots_dir / std::to_string( _blockNumber ) /
-                                   this->volumes[0] / "12041" / "blocks_and_extras",
-        ctx );
-
     this->computeDatabaseHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
 
     this->computeDatabaseHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks_and_extras", ctx );
 
     this->computeFileSystemHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
