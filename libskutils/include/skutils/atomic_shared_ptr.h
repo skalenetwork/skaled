@@ -47,7 +47,7 @@ protected:
 public:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
-    ref_retain_release() : ref_cnt_( 1 ), ref_is_zombie_( false ) {}
+    ref_retain_release() : ref_cnt_( 0 ), ref_is_zombie_( false ) {}
     ref_retain_release( const ref_retain_release& ) = delete;
     ref_retain_release( ref_retain_release&& ) = delete;
     ref_retain_release& operator=( const ref_retain_release& ) = delete;
@@ -126,11 +126,6 @@ private:
 
 public:
     virtual mutex_type& ref_mtx() const { return TR::mtx(); }
-    //		static retain_release_ptr < T, TR > make( const T * pRawOther = nullptr ) {
-    //			lock_type lock( / *ref_mtx()* / TR::mtx() );
-    //			retain_release_ptr < T, TR > p( pRawOther );
-    //			return p;
-    //		}
     T* get() {
         // lock_type lock( ref_mtx() );
         return stored_;
@@ -152,6 +147,8 @@ public:
         return pRawThis;
     }
     T* get_unconst() const { return const_cast< retain_release_ptr< T, TR >* >( this )->get(); }
+
+protected:
     void ref_retain() {
         lock_type lock( ref_mtx() );
         T* p = get();
@@ -167,6 +164,8 @@ public:
                 stored_ = nullptr;
         }
     }
+
+public:
     void attach( T* pRawOther = nullptr ) {
         lock_type lock( ref_mtx() );
         T* pRawThis = const_cast< T* >( get() );
@@ -283,6 +282,17 @@ public:
     retain_release_ptr< T, TR >& operator=( retain_release_ptr< T, TR >&& refOther ) {
         move( refOther );
         return ( *this );
+    }
+    template < class... Args >
+    retain_release_ptr< T, TR >& emplace( Args&&... args ) {
+        assign( new T( args... ) );
+        return ( *this );
+    }
+    template < class... Args >
+    static retain_release_ptr< T, TR > make( Args&&... args ) {
+        retain_release_ptr< T, TR > p;
+        p.emplace( args... );
+        return p;
     }
 };  /// template class retain_release_ptr
 
