@@ -76,6 +76,23 @@ static std::string const c_genesisConfigString =
         "timestamp" : "0x00",
         "mixHash" : "0x00"
     },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "Node1",
+            "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": 1231,
+            "logLevel": "trace",
+            "logLevelProposal": "trace"
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "nodes": [
+                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 0}
+            ]
+        }
+    },
     "accounts": {
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
@@ -115,7 +132,7 @@ static std::string const c_genesisConfigString =
             "nonce" : "0x00",
             "storage" : {
             }
-        }
+        },
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x6001600101600055",
@@ -605,6 +622,166 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     string result = rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
+    BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x" );
+}
+
+BOOST_AUTO_TEST_CASE( create_opcode ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    /*
+        pragma solidity ^0.4.25;
+
+        contract test {
+            address public a;
+
+            function f() public {
+                address _address;
+                assembly {
+                    let ptr := mload(0x40)
+                    _address := create(0x00,ptr,0x20)
+                }
+                a = _address;
+            }
+        }
+    */
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610161806100206000396000f30060806040526004361061004c57"
+        "6000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630dbe"
+        "671f1461005157806326121ff0146100a8575b600080fd5b34801561005d57600080fd5b506100666100bf565b"
+        "604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffff"
+        "ffffff16815260200191505060405180910390f35b3480156100b457600080fd5b506100bd6100e4565b005b60"
+        "00809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b600060405160208160"
+        "00f0915050806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffff"
+        "ffffffffffffffffffffffffffffffffffff160217905550505600a165627a7a72305820fc6f465560bc93346a"
+        "25f87ff189a58c26f5bf6f2e46570058fd79c1a3c3063a0029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    client->setAuthor( account2.address() );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    Json::Value transactionCallObject;
+
+    transactionCallObject["from"] = toJS( account2.address() );
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x26121ff0";
+
+    rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value checkAddress;
+    checkAddress["to"] = contractAddress;
+    checkAddress["data"] = "0x0dbe671f";
+    string response = rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response == "0x0000000000000000000000000000000000000000000000000000000000000000" );
+
+    client->setAuthor( senderAddress );
+    transactionCallObject["from"] = toJS( senderAddress );
+    rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    response = rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response != "0x0000000000000000000000000000000000000000000000000000000000000000" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {

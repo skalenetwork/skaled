@@ -208,6 +208,11 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         buffer.str() == "StackUnderflow", "Error output TransactionException::StackUnderflow" );
     buffer.str( std::string() );
 
+    buffer << TransactionException::InvalidDeployOrigin;
+    BOOST_CHECK_MESSAGE( buffer.str() == "InvalidDeployOrigin",
+        "Error output TransactionException::InvalidDeployOrigin" );
+    buffer.str( std::string() );
+
     buffer << TransactionException( -1 );
     BOOST_CHECK_MESSAGE(
         buffer.str() == "Unknown", "Error output TransactionException::StackUnderflow" );
@@ -253,6 +258,10 @@ BOOST_AUTO_TEST_CASE( toTransactionExceptionConvert ) {
     StackUnderflow stackEx;
     BOOST_CHECK_MESSAGE( toTransactionException( stackEx ) == TransactionException::StackUnderflow,
         "StackUnderflow !=> TransactionException" );
+    InvalidDeployOrigin originEx;
+    BOOST_CHECK_MESSAGE(
+        toTransactionException( originEx ) == TransactionException::InvalidDeployOrigin,
+        "InvalidDeployOrigin !=> TransactionException" );
     Exception notEx;
     BOOST_CHECK_MESSAGE( toTransactionException( notEx ) == TransactionException::Unknown,
         "Unexpected should be TransactionException::Unknown" );
