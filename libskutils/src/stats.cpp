@@ -345,8 +345,235 @@ double stat_compute_bps_til_now(
     return stat_compute_bps( qtr, clock::now(), p_nSummary );
 }
 
-}  // namespace named_traffic_stats
+};  // namespace named_traffic_stats
 
+namespace time_tracker {
+
+const char element::g_strMethodNameUnknown[] = "unknown-method";
+
+element::element( const char* strSubSystem, const char* strProtocol, const char* strMethod,
+    int /*nServerIndex*/, int /*ipVer*/ )
+    : strSubSystem_( strSubSystem ),
+      strProtocol_( strProtocol ),
+      strMethod_(
+          ( strMethod != nullptr && strMethod[0] != '\0' ) ? strMethod : g_strMethodNameUnknown ),
+      tpStart_( skutils::stats::clock::now() ) {
+    if ( strSubSystem_.empty() )
+        strSubSystem_ = "N/A";
+    if ( strProtocol_.empty() )
+        strProtocol_ = "N/A";
+    if ( strMethod_.empty() )
+        strMethod_ = g_strMethodNameUnknown;
+    do_register();
+}
+element::~element() {
+    stop();
+}
+
+void element::do_register() {
+    element_ptr_t rttElement = this;
+    queue::getQueueForSubsystem( strSubSystem_.c_str() ).do_register( rttElement );
+}
+void element::do_unregister() {
+    element_ptr_t rttElement = this;
+    queue::getQueueForSubsystem( strSubSystem_.c_str() ).do_unregister( rttElement );
+}
+
+void element::stop() const {
+    lock_type lock( mtx() );
+    if ( isStopped_ )
+        return;
+    isStopped_ = true;
+    tpEnd_ = skutils::stats::clock::now();
+}
+
+void element::setMethod( const char* strMethod ) const {
+    lock_type lock( mtx() );
+    if ( isStopped_ )
+        return;
+    if ( ( strMethod_.empty() || strMethod_ == g_strMethodNameUnknown ) && strMethod != nullptr &&
+         strMethod[0] != '\0' )
+        strMethod_ = strMethod;
+}
+
+void element::setError() const {
+    lock_type lock( mtx() );
+    isError_ = true;
+}
+
+double element::getDurationInSeconds() const {
+    lock_type lock( mtx() );
+    time_point tpEnd = isStopped_ ? tpEnd_ : skutils::stats::clock::now();
+    duration d = tpEnd - tpStart_;
+    return double( d.count() ) / 1000.0;
+}
+
+queue::queue() {}
+queue::~queue() {}
+
+queue& queue::getQueueForSubsystem( const char* strSubSystem ) {
+    lock_type lock( mtx() );
+    static map_subsystem_time_trackers_t g_map_subsystem_time_trackers;
+    std::string sn = ( strSubSystem != nullptr && strSubSystem[0] != '\0' ) ?
+                         strSubSystem :
+                         "unknowm-time-tracker-subsystem";
+    map_subsystem_time_trackers_t::iterator itFind = g_map_subsystem_time_trackers.find( sn );
+    skutils::retain_release_ptr< queue > pq;
+    if ( itFind != g_map_subsystem_time_trackers.end() )
+        pq = itFind->second;
+    else {
+        pq = new queue;
+        g_map_subsystem_time_trackers[sn] = pq;
+    }
+    return ( *( pq.get() ) );
+}
+
+void queue::do_register( element_ptr_t& rttElement ) {
+    if ( !rttElement )
+        return;
+    lock_type lock( mtx() );
+    std::string strProtocol = rttElement->getProtocol();
+    // std::string strMethod = rttElement->getMethod();
+    element::id_t id = rttElement->getID();
+    if ( map_pq_.find( strProtocol ) == map_pq_.end() )
+        map_pq_[strProtocol] = map_rtte_t();
+    map_rtte_t& map_rtte = map_pq_[strProtocol];
+    map_rtte[id] = rttElement;
+    while ( map_rtte.size() > nMaxItemsInQueue && map_rtte.size() > 0 ) {
+        auto it = map_rtte.begin();
+        auto key = it->first;
+        auto value = it->second;
+        map_rtte.erase( key );
+        value = nullptr;
+    }
+}
+
+void queue::do_unregister( element_ptr_t& rttElement ) {
+    if ( !rttElement )
+        return;
+    lock_type lock( mtx() );
+    rttElement->stop();
+    std::string strProtocol = rttElement->getProtocol();
+    if ( map_pq_.find( strProtocol ) == map_pq_.end() )
+        return;
+    map_rtte_t& map_rtte = map_pq_[strProtocol];
+    element::id_t id = rttElement->getID();
+    map_rtte.erase( id );
+}
+
+std::list< std::string > queue::getProtocols() {
+    std::list< std::string > listProtocols;
+    lock_type lock( mtx() );
+    auto pi = map_pq_.cbegin(), pe = map_pq_.cend();
+    for ( ; pi != pe; ++pi )
+        listProtocols.push_back( pi->first );
+    return listProtocols;
+}
+
+nlohmann::json queue::getProtocolStats( const char* strProtocol ) {
+    nlohmann::json joStatsProtocol = nlohmann::json::object();
+    double callTimeMin( 0.0 ), callTimeMax( 0.0 ), callTimeSum( 0.0 );
+    std::string strMethodMin( element::g_strMethodNameUnknown ),
+        strMethodMax( element::g_strMethodNameUnknown );
+    size_t cntEntries = 0;
+    lock_type lock( mtx() );
+    if ( map_pq_.find( strProtocol ) != map_pq_.end() ) {
+        map_rtte_t& map_rtte = map_pq_[strProtocol];
+        map_rtte_t::const_iterator iw = map_rtte.cbegin(), ie = map_rtte.cend();
+        for ( ; iw != ie; ++iw, ++cntEntries ) {
+            double d = iw->second->getDurationInSeconds();
+            callTimeSum += d;
+            const std::string& strMethod = iw->second->getMethod();
+            if ( cntEntries == 0 ) {
+                callTimeMin = callTimeMax = d;
+                strMethodMin = strMethodMax = strMethod;
+                continue;
+            }
+            if ( callTimeMin > d ) {
+                callTimeMin = d;
+                strMethodMin = strMethod;
+            } else if ( callTimeMax < d ) {
+                callTimeMax = d;
+                strMethodMax = strMethod;
+            }
+        }
+    }
+    double denom = ( cntEntries > 0 ) ? cntEntries : 1;
+    double callTimeAvg = callTimeSum / denom;
+    joStatsProtocol["callTimeMin"] = callTimeMin;
+    joStatsProtocol["callTimeMax"] = callTimeMax;
+    joStatsProtocol["callTimeAvg"] = callTimeAvg;
+    joStatsProtocol["callTimeSum"] =
+        callTimeSum;  // for computing callTimeAvg of all protocols only
+    joStatsProtocol["methodMin"] = strMethodMin;
+    joStatsProtocol["methodMax"] = strMethodMax;
+    joStatsProtocol["cntEntries"] = cntEntries;
+    return joStatsProtocol;
+}
+
+nlohmann::json queue::getAllStats() {
+    nlohmann::json joStatsAll = nlohmann::json::object();
+    nlohmann::json joProtocols = nlohmann::json::object();
+    double callTimeMin( 0.0 ), callTimeMax( 0.0 ), callTimeSum( 0.0 );
+    std::string protocolMin( "N/A" ), protocolMax( "N/A" );
+    std::string strMethodMin( element::g_strMethodNameUnknown ),
+        strMethodMax( element::g_strMethodNameUnknown );
+    size_t cntEntries = 0, i = 0;
+    lock_type lock( mtx() );
+    std::list< std::string > listProtocols = getProtocols();
+    std::list< std::string >::const_iterator pi = listProtocols.cbegin(), pe = listProtocols.cend();
+    for ( ; pi != pe; ++pi ) {
+        const std::string& strProtocol = ( *pi );
+        nlohmann::json joStatsProtocol = getProtocolStats( strProtocol.c_str() );
+        size_t cntProtocolEntries = joStatsProtocol["cntEntries"].get< size_t >();
+        if ( cntProtocolEntries == 0 )
+            continue;
+        double protocolTimeMin( joStatsProtocol["callTimeMin"].get< double >() ),
+            protocolTimeMax( joStatsProtocol["callTimeMax"].get< double >() );
+        std::string protocolMethodMin( joStatsProtocol["methodMin"].get< std::string >() ),
+            protocolMethodMax( joStatsProtocol["methodMax"].get< std::string >() );
+        double protocolTimeSum = ( joStatsProtocol["callTimeSum"].get< double >() );
+        callTimeSum += protocolTimeSum;
+        if ( i == 0 ) {
+            callTimeMin = protocolTimeMin;
+            callTimeMax = protocolTimeMax;
+            strMethodMin = protocolMethodMin;
+            strMethodMax = protocolMethodMax;
+            protocolMin = protocolMax = strProtocol;
+        } else {
+            if ( protocolTimeMin < callTimeMin ) {
+                callTimeMin = protocolTimeMin;
+                strMethodMin = protocolMethodMin;
+                protocolMin = strProtocol;
+            } else if ( protocolTimeMax > callTimeMax ) {
+                callTimeMax = protocolTimeMax;
+                strMethodMax = protocolMethodMax;
+                protocolMax = strProtocol;
+            }
+        }
+        cntEntries += cntProtocolEntries;
+        ++i;
+        joStatsProtocol.erase( "callTimeSum" );
+        joStatsProtocol.erase( "cntEntries" );
+        joProtocols[strProtocol] = joStatsProtocol;
+    }
+    double denom = ( cntEntries > 0 ) ? cntEntries : 1;
+    double callTimeAvg = callTimeSum / denom;
+    nlohmann::json joSummary = nlohmann::json::object();
+    joSummary["callTimeMin"] = callTimeMin;
+    joSummary["callTimeMax"] = callTimeMax;
+    joSummary["callTimeAvg"] = callTimeAvg;
+    joSummary["methodMin"] = strMethodMin;
+    joSummary["methodMax"] = strMethodMax;
+    joSummary["protocolMin"] = protocolMin;
+    joSummary["protocolMax"] = protocolMax;
+    // joSummary["cntEntries"] = cntEntries;
+    joStatsAll["summary"] = joSummary;
+    joStatsAll["protocols"] = joProtocols;
+    return joStatsAll;
+}
+
+};  // namespace time_tracker
 
 };  // namespace stats
 };  // namespace skutils
