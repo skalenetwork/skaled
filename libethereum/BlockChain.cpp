@@ -323,7 +323,9 @@ string BlockChain::dumpDatabase() const {
     oss << m_lastBlockHash << '\n';
     std::map< string, string > sorted;
     m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
-        sorted[toHex( key )] = sorted[toHex( value )];
+        // give priority ti 1-st occurence
+        if ( sorted.count( toHex( key ) ) == 0 )
+            sorted[toHex( key )] = toHex( value );
         return true;
     } );
 

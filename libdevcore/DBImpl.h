@@ -23,6 +23,6 @@
 
 namespace dev {
 namespace db {
-using DBImpl = LevelDBThroughSplit;
+using DBImpl = LevelDB;
 }
 }  // namespace dev

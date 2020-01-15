@@ -144,4 +144,30 @@ BOOST_AUTO_TEST_CASE( rotation_test ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
+    TransientDirectory td;
+    const int nPieces = 3;
+
+    db::ManuallyRotatingLevelDB rdb( td.path(), nPieces );
+
+    rdb.insert( string( "a" ), string( "va" ) );
+    rdb.insert( string( "b" ), string( "vb" ) );
+
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb" ) );
+
+    rdb.insert( string( "a" ), string( "va_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
+
+    rdb.rotate();  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb" ) );
+
+    rdb.insert( string( "b" ), string( "vb_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb_new" ) );
+    rdb.insert( string( "a" ), string( "va_new_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new_new" ) );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
