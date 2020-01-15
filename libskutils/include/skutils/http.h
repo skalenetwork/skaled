@@ -90,6 +90,8 @@ typedef int socket_t;
 
 #define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT ( 16 )
 
+#define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS ( 60 * 1000 )
+
 namespace skutils {
 namespace http {
 
@@ -334,7 +336,8 @@ public:
 class client {
 public:
     mutable int ipVer_ = -1;  // not known before connect
-    client( int ipVer, const char* host, int port = 80, int timeout_milliseconds = 60 * 1000 );
+    client( int ipVer, const char* host, int port = 80,
+        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS );
 
     virtual ~client();
 
@@ -429,7 +432,8 @@ public:
 class SSL_client : public client {
 public:
     SSL_client_options optsSSL;
-    SSL_client( int ipVer, const char* host, int port = 443, int timeout_milliseconds = 60 * 1000,
+    SSL_client( int ipVer, const char* host, int port = 443,
+        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS,
         SSL_client_options* pOptsSSL = nullptr );
     ~SSL_client() override;
     bool is_valid() const override;
