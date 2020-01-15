@@ -32,6 +32,9 @@
 
 #include <stdint.h>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -88,6 +91,7 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
+#include <skutils/utils.h>
 
 using namespace std;
 using namespace dev;
@@ -529,6 +533,10 @@ int main( int argc, char** argv ) try {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
     }
+
+    pid_t this_process_pid = getpid();
+    std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
+              << cc::size10( size_t( this_process_pid ) ) << std::endl;
 
     skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
     // skutils::dispatch::default_domain( 48 );
@@ -1542,7 +1550,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), joConfig, *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
