@@ -433,7 +433,7 @@ void queue::do_register( element_ptr_t& rttElement ) {
         return;
     lock_type lock( mtx() );
     std::string strProtocol = rttElement->getProtocol();
-    std::string strMethod = rttElement->getMethod();
+    // std::string strMethod = rttElement->getMethod();
     element::id_t id = rttElement->getID();
     if ( map_pq_.find( strProtocol ) == map_pq_.end() )
         map_pq_[strProtocol] = map_rtte_t();
