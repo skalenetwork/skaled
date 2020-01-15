@@ -463,7 +463,7 @@ void SnapshotManager::computeAllVolumesHash(
     // TODO XXX Remove volumes structure knowledge from here!!
 
     this->computeDatabaseHash( this->snapshots_dir / std::to_string( _blockNumber ) /
-                                   this->volumes[0] / "12041" / "extras",
+                                   this->volumes[0] / "12041" / "blocks_and_extras",
         ctx );
 
     this->computeDatabaseHash(
