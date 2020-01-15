@@ -321,10 +321,16 @@ void BlockChain::close() {
 string BlockChain::dumpDatabase() const {
     ostringstream oss;
     oss << m_lastBlockHash << '\n';
-    m_extrasDB->forEach( [&oss]( db::Slice key, db::Slice value ) {
-        oss << toHex( key ) << "/" << toHex( value ) << '\n';
+    std::map< string, string > sorted;
+    m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
+        sorted[toHex( key )] = sorted[toHex( value )];
         return true;
     } );
+
+    for ( const auto& p : sorted ) {
+        oss << p.first << "/" << p.second << '\n';
+    }
+
     return oss.str();
 }
 
