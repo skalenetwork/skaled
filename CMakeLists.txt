@@ -108,8 +108,14 @@ find_package( Boost CONFIG REQUIRED program_options filesystem system thread con
 
 set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
-hunter_add_package( leveldb )
-find_package( leveldb CONFIG REQUIRED )
+option( BUILD_LEVELDB "Build leveldb from leveldb directory" OFF )
+
+if( BUILD_LEVELDB )
+    add_subdirectory( leveldb )
+else()
+    hunter_add_package( leveldb )
+    find_package( leveldb CONFIG REQUIRED )
+endif()
 
 #hunter_add_package( jsoncpp )
 find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
