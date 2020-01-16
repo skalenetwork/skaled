@@ -223,7 +223,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         try {
             bool isBinaryDownload = true;
             std::string strErrorDescription;
-            saveTo = snapshotManager->getDiffPath( 0, block_number );
+            saveTo = snapshotManager->getDiffPath( block_number );
             bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     std::cout << cc::normal( "... download progress ... " )
@@ -231,7 +231,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                               << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
-                isBinaryDownload, chainParams.nodeInfo.snapshotIntervalMs, &strErrorDescription );
+                isBinaryDownload, &strErrorDescription );
             std::cout << "                                                  \r";  // clear
                                                                                   // progress
                                                                                   // line
@@ -248,7 +248,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
         try {
-            snapshotManager->importDiff( 0, block_number );
+            snapshotManager->importDiff( block_number );
         } catch ( ... ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
