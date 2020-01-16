@@ -141,18 +141,13 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 // - no such snapshots
 // - cannot read
 // - cannot create tmp file
-boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock ) {
-    fs::path path = getDiffPath( _fromBlock, _toBlock );
+boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
+    fs::path path = getDiffPath( _toBlock );
 
     try {
         if ( fs::is_regular( path ) )
             return path;
 
-        if ( !fs::exists( snapshots_dir / to_string( _fromBlock ) ) ) {
-            // TODO wrong error message if this fails
-            fs::remove( path );
-            throw SnapshotAbsent( _fromBlock );
-        }
         if ( !fs::exists( snapshots_dir / to_string( _toBlock ) ) ) {
             // TODO wrong error message if this fails
             fs::remove( path );
@@ -172,8 +167,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, uns
 
         created.push_back( part_path );  // file is created even in case of error
 
-        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(),
-                 part_path.c_str(), ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
+        if ( btrfs.send( NULL, part_path.c_str(),
+                 ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
             try {
                 fs::remove( path );
                 for ( const string& vol : created )
@@ -206,8 +201,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, uns
 // exceptions:
 // - no such file/cannot read
 // - cannot input as diff (no base state?)
-void SnapshotManager::importDiff( unsigned _fromBlock, unsigned _toBlock ) {
-    fs::path diffPath = getDiffPath( _fromBlock, _toBlock );
+void SnapshotManager::importDiff( unsigned _toBlock ) {
+    fs::path diffPath = getDiffPath( _toBlock );
     fs::path snapshot_dir = snapshots_dir / to_string( _toBlock );
 
     try {
@@ -233,8 +228,8 @@ void SnapshotManager::importDiff( unsigned _fromBlock, unsigned _toBlock ) {
     }  // if
 }
 
-boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsigned _toBlock ) {
-    return diffs_dir / ( to_string( _fromBlock ) + "_" + to_string( _toBlock ) );
+boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
+    return diffs_dir / ( std::to_string( _toBlock ) );
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
