@@ -256,22 +256,25 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        fs::path price_db_path;
-        for ( auto& f :
-            fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
-            if ( f.path().string().find( "prices_" ) != string::npos ) {
-                price_db_path = f.path();
-                break;
-            }  // if
-        }
-        if ( price_db_path.empty() ) {
-            clog( VerbosityError, "downloadSnapshot" )
-                << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
-            return;
-        }
+        vector< string > prefixes{"prices_", "blocks_"};
+        for ( const string& prefix : prefixes ) {
+            fs::path db_path;
+            for ( auto& f :
+                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
+                if ( f.path().string().find( prefix ) != string::npos ) {
+                    db_path = f.path();
+                    break;
+                }  // if
+            }
+            if ( db_path.empty() ) {
+                clog( VerbosityError, "downloadSnapshot" )
+                    << cc::fatal( "Snapshot downloaded without " + prefix + " db" ) << std::endl;
+                return;
+            }
 
-        fs::rename( price_db_path,
-            price_db_path.parent_path() / ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+            fs::rename( db_path,
+                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+        }
         //// HACK END ////
 
         snapshotManager->restoreSnapshot( block_number );
@@ -1095,7 +1098,8 @@ int main( int argc, char** argv ) try {
     if ( chainParams.nodeInfo.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
-                              "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+                              "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                              "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();

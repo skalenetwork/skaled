@@ -30,12 +30,6 @@
 #include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
-namespace fs = boost::filesystem;
-using boost::shared_lock;
-using boost::shared_mutex;
-using boost::upgrade_lock;
-using boost::upgrade_to_unique_lock;
-
 #include <libdevcore/DBImpl.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
@@ -46,6 +40,8 @@ using boost::upgrade_to_unique_lock;
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
+
+namespace fs = boost::filesystem;
 
 using namespace std;
 using namespace dev;
@@ -66,7 +62,7 @@ using dev::eth::TransactionReceipt;
 
 State::State(
     u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
-    : x_db_ptr( make_shared< shared_mutex >() ),
+    : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
@@ -170,7 +166,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
-    shared_lock< shared_mutex > lock( *x_db_ptr );
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
@@ -251,7 +247,7 @@ eth::Account* State::account( Address const& _address ) {
     // Populate basic info.
     bytes stateBack;
     {
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
 
         if ( !checkVersion() ) {
             cerr << "Current state version is " << m_currentVersion << " but stored version is "
@@ -309,7 +305,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
         if ( !m_db_write_lock ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
-        upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
+        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
@@ -460,7 +456,7 @@ void State::kill( Address _addr ) {
 }
 
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
-    shared_lock< shared_mutex > lock( *x_db_ptr );
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
@@ -503,7 +499,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             return memoryIterator->second;
 
         // Not in the storage cache - go to the DB.
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -526,7 +522,7 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
             return memoryPtr->second;
         }
 
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -556,7 +552,7 @@ bytes const& State::code( Address const& _addr ) const {
     if ( a->code().empty() ) {
         // Load the code from the backend.
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -657,7 +653,7 @@ void State::updateToLatestVersion() {
     m_nonExistingAccountsCache.clear();
 
     {
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         m_currentVersion = *m_storedVersion;
     }
 }
@@ -678,11 +674,11 @@ State State::startWrite() const {
 
 State State::delegateWrite() {
     if ( m_db_write_lock ) {
-        upgrade_lock< shared_mutex > lock;
+        boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
         m_db_write_lock = boost::none;
         State stateCopy = State( *this );
-        stateCopy.m_db_write_lock = upgrade_lock< shared_mutex >();
+        stateCopy.m_db_write_lock = boost::upgrade_lock< boost::shared_mutex >();
         stateCopy.m_db_write_lock->swap( lock );
         return stateCopy;
     } else {
@@ -711,7 +707,7 @@ void State::clearAll() {
         if ( !m_db_write_lock ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
-        upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
+        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
@@ -729,7 +725,7 @@ bool State::connected() const {
 bool State::empty() const {
     if ( m_cache.empty() ) {
         if ( m_db_ptr ) {
-            shared_lock< shared_mutex > lock( *x_db_ptr );
+            boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
             if ( m_db_ptr->empty() ) {
                 return true;
             }

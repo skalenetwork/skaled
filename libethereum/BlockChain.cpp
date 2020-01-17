@@ -31,7 +31,10 @@
 
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
-#include <libdevcore/DBImpl.h>
+
+//#include <libdevcore/DBImpl.h>
+#include <libdevcore/ManuallyRotatingLevelDB.h>
+
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/RLP.h>
@@ -168,11 +171,11 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we,
-    ProgressCallback const& _pc ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-                                        m_dbPath( _dbPath ) {
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we ) try
+    : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+      m_dbPath( _dbPath ) {
     init( _p );
-    open( _dbPath, _we, _pc );
+    open( _dbPath, _we );
 } catch ( ... ) {
     std::throw_with_nested( CreationException() );
 }
@@ -228,25 +231,30 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     }
     if ( _we == WithExisting::Kill ) {
         cnote << "Killing blockchain & extras database (WithExisting::Kill).";
-        fs::remove_all( chainPath / fs::path( "blocks" ) );
-        fs::remove_all( extrasPath / fs::path( "extras" ) );
+        fs::remove_all( chainPath / fs::path( "blocks_and_extras" ) );
     }
 
     try {
-        m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
-        m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
+        fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >(
+            chainPath / fs::path( "blocks_and_extras" ), 5 );
+        m_split_db = std::make_unique< db::SplitDB >( m_rotating_db );
+        m_blocksDB = m_split_db->newInterface();
+        m_extrasDB = m_split_db->newInterface();
+        // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
+        // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
         // Check the exact reason of errror, in case of IOError we can display user-friendly message
         if ( *boost::get_error_info< db::errinfo_dbStatusCode >( ex ) !=
              db::DatabaseStatus::IOError )
             throw;
 
-        if ( fs::space( chainPath / fs::path( "blocks" ) ).available < 1024 ) {
+        if ( fs::space( chainPath / fs::path( "blocks_and_extras" ) ).available < 1024 ) {
             cwarn << "Not enough available space found on hard drive. Please free some up and then "
                      "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( chainPath / fs::path( "blocks" ) ) << "or "
+            cwarn << "Database " << ( chainPath / fs::path( "blocks_and_extras" ) ) << "or "
                   << ( extrasPath / fs::path( "extras" ) )
                   << "already open. You appear to have another instance of ethereum running. "
                      "Bailing.";
@@ -282,22 +290,18 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     return lastMinor;
 }
 
-void BlockChain::open( fs::path const& _path, WithExisting _we, ProgressCallback const& _pc ) {
-    if ( open( _path, _we ) != c_minorProtocolVersion || _we == WithExisting::Verify )
-        rebuild( _path, _pc );
-}
-
-void BlockChain::reopen( ChainParams const& _p, WithExisting _we, ProgressCallback const& _pc ) {
+void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
     close();
     init( _p );
-    open( m_dbPath, _we, _pc );
+    open( m_dbPath, _we );
 }
 
 void BlockChain::close() {
     ctrace << "Closing blockchain DB";
     // Not thread safe...
-    m_extrasDB.reset();
-    m_blocksDB.reset();
+    m_extrasDB = nullptr;
+    m_blocksDB = nullptr;
+    m_split_db.reset();
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
@@ -314,87 +318,21 @@ void BlockChain::close() {
     m_lastBlockHashes->clear();
 }
 
-void BlockChain::rebuild(
-    fs::path const& _path, std::function< void( unsigned, unsigned ) > const& _progress ) {
-    fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
-    fs::path chainPath = path / fs::path( toHex( m_genesisHash.ref().cropped( 0, 4 ) ) );
-    fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
-
-    unsigned originalNumber = m_lastBlockNumber;
-
-    ///////////////////////////////
-    // TODO
-    // - KILL ALL STATE/CHAIN
-    // - REINSERT ALL BLOCKS
-    ///////////////////////////////
-
-    // Keep extras DB around, but under a temp name
-    m_extrasDB.reset();
-    fs::rename( extrasPath / fs::path( "extras" ), extrasPath / fs::path( "extras.old" ) );
-    std::unique_ptr< db::DatabaseFace > oldExtrasDB(
-        new db::DBImpl( extrasPath / fs::path( "extras.old" ) ) );
-    m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
-
-    // Open a fresh state DB
-    Block s = genesisBlock( path.string(), m_genesisHash );
-
-    // Clear all memos ready for replay.
-    m_details.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blockHashes.clear();
-    m_blocksBlooms.clear();
-    m_lastBlockHashes->clear();
-    m_lastBlockHash = genesisHash();
-    m_lastBlockNumber = 0;
-
-    m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
-
-    m_extrasDB->insert( toSlice( m_lastBlockHash, ExtraDetails ),
-        ( db::Slice ) dev::ref( m_details[m_lastBlockHash].rlp() ) );
-
-    h256 lastHash = m_lastBlockHash;
-    Timer t;
-    for ( unsigned d = 1; d <= originalNumber; ++d ) {
-        if ( !( d % 1000 ) ) {
-            cerr << "\n1000 blocks in " << t.elapsed() << "s = " << ( 1000.0 / t.elapsed() )
-                 << "b/s" << endl;
-            t.restart();
-        }
-        try {
-            bytes b = block( queryExtras< BlockHash, uint64_t, ExtraBlockHash >(
-                d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get() )
-                                 .value );
-
-            BlockHeader bi( &b );
-
-            if ( bi.parentHash() != lastHash ) {
-                cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is"
-                      << bi.parentHash() << "; expected" << lastHash << "#" << ( d - 1 );
-                return;
-            }
-            lastHash = bi.hash();
-            import( b, s.mutableState(), 0 );
-        } catch ( ... ) {
-            // Failed to import - stop here.
-            break;
-        }
-
-        if ( _progress )
-            _progress( d, originalNumber );
-    }
-
-    fs::remove_all( path / fs::path( "extras.old" ) );
-}
-
 string BlockChain::dumpDatabase() const {
     ostringstream oss;
     oss << m_lastBlockHash << '\n';
-    m_extrasDB->forEach( [&oss]( db::Slice key, db::Slice value ) {
-        oss << toHex( key ) << "/" << toHex( value ) << '\n';
+    std::map< string, string > sorted;
+    m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
+        // give priority ti 1-st occurence
+        if ( sorted.count( toHex( key ) ) == 0 )
+            sorted[toHex( key )] = toHex( value );
         return true;
     } );
+
+    for ( const auto& p : sorted ) {
+        oss << p.first << "/" << p.second << '\n';
+    }
+
     return oss.str();
 }
 
@@ -731,10 +669,18 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
+void BlockChain::rotateDBIfNeeded() {
+    if ( this->number() % 64 == 0 ) {
+        this->m_rotating_db->rotate();
+    }  // if
+}
+
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    rotateDBIfNeeded();
 
     std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
     std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
