@@ -39,6 +39,23 @@
 
 #include <secp256k1_sha256.h>
 
+#include <skutils/console_colors.h>
+
+#include <exception>
+#include <functional>
+#include <sstream>
+#include <string>
+
+#include <time.h>
+
+namespace dev {
+namespace eth {
+
+std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+
+};  // namespace eth
+};  // namespace dev
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -593,6 +610,240 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
     return {false, response};
+}
+
+ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+
+        bigint const byteMessageType( parseBigEndianRightPadded( _in, 32, UINT256_SIZE ) );
+        size_t const nMessageType = byteMessageType.convert_to< size_t >();
+
+        size_t lengthString;
+        std::string rawString;
+        convertBytesToString( _in, 64, rawString, lengthString );
+
+        typedef std::function< std::string( const std::string& s ) > fnColorizer_t;
+        fnColorizer_t fnHeader = []( const std::string& s ) -> std::string {
+            return cc::info( s );
+        };
+        fnColorizer_t fnText = []( const std::string& s ) -> std::string {
+            return cc::normal( s );
+        };
+
+        std::string strMessageTypeDesc = "";
+        switch ( nMessageType ) {
+        case 0:
+        default:  // normal message
+            strMessageTypeDesc = "normal";
+            break;
+        case 1:  // debug message
+            fnHeader = []( const std::string& s ) -> std::string { return cc::normal( s ); };
+            fnText = []( const std::string& s ) -> std::string { return cc::debug( s ); };
+            strMessageTypeDesc = "debug";
+            break;
+        case 2:  // trace message
+            fnHeader = []( const std::string& s ) -> std::string { return cc::debug( s ); };
+            fnText = []( const std::string& s ) -> std::string { return cc::debug( s ); };
+            strMessageTypeDesc = "trace";
+            break;
+        case 3:  // warning message
+            fnHeader = []( const std::string& s ) -> std::string { return cc::warn( s ); };
+            fnText = []( const std::string& s ) -> std::string { return cc::warn( s ); };
+            strMessageTypeDesc = "warning";
+            break;
+        case 4:  // error message
+            fnHeader = []( const std::string& s ) -> std::string { return cc::error( s ); };
+            fnText = []( const std::string& s ) -> std::string { return cc::error( s ); };
+            strMessageTypeDesc = "error";
+            break;
+        case 5:  // fatal message
+            fnHeader = []( const std::string& s ) -> std::string { return cc::fatal( s ); };
+            fnText = []( const std::string& s ) -> std::string { return cc::error( s ); };
+            strMessageTypeDesc = "FATAL";
+            break;
+        }
+        std::stringstream ss;
+        ss << fnHeader( "SmartContract " + strMessageTypeDesc + " message from " + address + ":" )
+           << fnText( " " + rawString );
+
+        switch ( nMessageType ) {
+        case 0:
+        default:  // normal message
+            LOG( getLogger( VerbosityInfo ) ) << ss.str();
+            break;
+        case 1:  // debug message
+            LOG( getLogger( VerbosityDebug ) ) << ss.str();
+            break;
+        case 2:  // trace message
+            LOG( getLogger( VerbosityTrace ) ) << ss.str();
+            break;
+        case 3:  // warning message
+            LOG( getLogger( VerbosityWarning ) ) << ss.str();
+            break;
+        case 4:  // error message
+            LOG( getLogger( VerbosityError ) ) << ss.str();
+            break;
+        case 5:  // fatal message
+            LOG( getLogger( VerbosityDebug ) ) << ss.str();
+            break;
+        }
+
+        u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/logTextMessage(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/logTextMessage()\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
+    //"genesis.*"
+    //"params.*",
+
+    "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
+    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.emptyBlockIntervalMs",
+    "skaleConfig.nodeInfo.*RpcPort*", "skaleConfig.nodeInfo.acceptors",
+    "skaleConfig.nodeInfo.max-connections", "skaleConfig.nodeInfo.max-http-queues",
+    "skaleConfig.nodeInfo.ws-mode",
+
+    "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
+
+    "skaleConfig.sChain.nodes.*"};
+
+static bool stat_is_accessible_json_path( const std::string& strPath ) {
+    if ( strPath.empty() )
+        return false;
+    std::list< std::string >::const_iterator itWalk = g_listReadableConfigParts.cbegin(),
+                                             itEnd = g_listReadableConfigParts.cend();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        const std::string strWildCard = ( *itWalk );
+        if ( skutils::tools::wildcmp( strWildCard.c_str(), strPath.c_str() ) )
+            return true;
+    }
+    return false;
+}
+
+
+ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
+    try {
+        size_t lengthName;
+        std::string rawName;
+        convertBytesToString( _in, 0, rawName, lengthName );
+        if ( !stat_is_accessible_json_path( rawName ) )
+            throw std::runtime_error(
+                "Security poicy violation, inaccessible configuration JSON path: " + rawName );
+
+        if ( !g_configAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        nlohmann::json joValue =
+            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
+        dev::u256 uValue( strValue.c_str() );
+
+        bytes response = toBigEndian( uValue );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getConfigVariableUint256(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getConfigVariableUint256()\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
+    try {
+        size_t lengthName;
+        std::string rawName;
+        convertBytesToString( _in, 0, rawName, lengthName );
+        if ( !stat_is_accessible_json_path( rawName ) )
+            throw std::runtime_error(
+                "Security poicy violation, inaccessible configuration JSON path: " + rawName );
+
+        if ( !g_configAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        nlohmann::json joValue =
+            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
+        dev::u256 uValue( strValue.c_str() );
+
+        bytes response = toBigEndian( uValue );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getConfigVariableAddress(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getConfigVariableAddress()\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
+    try {
+        size_t lengthName;
+        std::string rawName;
+        convertBytesToString( _in, 0, rawName, lengthName );
+        if ( !stat_is_accessible_json_path( rawName ) )
+            throw std::runtime_error(
+                "Security poicy violation, inaccessible configuration JSON path: " + rawName );
+
+        if ( !g_configAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        nlohmann::json joValue =
+            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
+        dev::u256 uLength( strValue.length() );
+        bytes bytesLength = toBigEndian( uLength );
+        bytes bytesValue;
+        for ( std::string::const_iterator it = strValue.cbegin(); it != strValue.cend(); ++it )
+            bytesValue.push_back( ( *it ) );
+        while ( ( bytesValue.size() % 32 ) != 0 )
+            bytesValue.push_back( 0 );
+
+        bytes response;
+        response.insert( response.end(), bytesLength.begin(), bytesLength.end() );
+        response.insert( response.end(), bytesValue.begin(), bytesValue.end() );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getConfigVariableString(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getConfigVariableString()\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
 }
 
 }  // namespace
