@@ -735,6 +735,35 @@ static bool stat_is_accessible_json_path( const std::string& strPath ) {
     return false;
 }
 
+static size_t stat_calc_string_bytes_count_in_pages_32( size_t len_str ) {
+    size_t rv = 32, blocks = len_str / 32 + ( ( ( len_str % 32 ) != 0 ) ? 1 : 0 );
+    rv += blocks * 32;
+    return rv;
+}
+
+static void stat_check_ouput_string_size_overflow( std::string& s ) {
+    static const size_t g_maxLen = 1024 * 1024 - 1;
+    size_t len = s.length();
+    if ( len > g_maxLen )
+        s.erase( s.begin() + len, s.end() );
+}
+
+static bytes& stat_bytes_add_pad_32( bytes& rv ) {
+    while ( ( rv.size() % 32 ) != 0 )
+        rv.push_back( 0 );
+    return rv;
+}
+
+static bytes stat_string_to_bytes_with_length( std::string& s ) {
+    stat_check_ouput_string_size_overflow( s );
+    dev::u256 uLength( s.length() );
+    bytes rv = toBigEndian( uLength );
+    stat_bytes_add_pad_32( rv );
+    for ( std::string::const_iterator it = s.cbegin(); it != s.cend(); ++it )
+        rv.push_back( ( *it ) );
+    stat_bytes_add_pad_32( rv );
+    return rv;
+}
 
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
@@ -819,17 +848,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
         nlohmann::json joValue =
             skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
         std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
-        dev::u256 uLength( strValue.length() );
-        bytes bytesLength = toBigEndian( uLength );
-        bytes bytesValue;
-        for ( std::string::const_iterator it = strValue.cbegin(); it != strValue.cend(); ++it )
-            bytesValue.push_back( ( *it ) );
-        while ( ( bytesValue.size() % 32 ) != 0 )
-            bytesValue.push_back( 0 );
-
-        bytes response;
-        response.insert( response.end(), bytesLength.begin(), bytesLength.end() );
-        response.insert( response.end(), bytesValue.begin(), bytesValue.end() );
+        bytes response = stat_string_to_bytes_with_length( strValue );
         return {true, response};
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -845,5 +864,72 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     bytes response = toBigEndian( code );
     return {false, response};  // 1st false - means bad error occur
 }
+
+ETH_REGISTER_PRECOMPILED( concatenateStrings )( bytesConstRef _in ) {
+    try {
+        size_t lenA, lenB;
+        std::string strA, strB, strC;
+        convertBytesToString( _in, 0, strA, lenA );
+        convertBytesToString( _in, stat_calc_string_bytes_count_in_pages_32( lenA ), strB, lenB );
+        strC = strA + strB;
+        bytes response = stat_string_to_bytes_with_length( strC );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/concatenateStrings(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/concatenateStrings()\n";
+    }
+    u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+// ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
+//    try {
+//        auto rawValue = _in.cropped( 0, 32 ).toBytes();
+//        std::string strValue = "";
+//        boost::algorithm::hex( rawValue.begin(), rawValue.end(), back_inserter( strValue ) );
+//        bytes response = stat_string_to_bytes_with_length( strValue );
+//        return {true, response};
+//    } catch ( std::exception& ex ) {
+//        std::string strError = ex.what();
+//        if ( strError.empty() )
+//            strError = "exception without description";
+//        LOG( getLogger( VerbosityError ) )
+//            << "Exception in precompiled/convertUint256ToString(): " << strError << "\n";
+//    } catch ( ... ) {
+//        LOG( getLogger( VerbosityError ) )
+//            << "Unknown exception in precompiled/convertUint256ToString()\n";
+//    }
+//    u256 code = 0;
+//    bytes response = toBigEndian( code );
+//    return {false, response};  // 1st false - means bad error occur
+//}
+// ETH_REGISTER_PRECOMPILED( convertAddressToString )( bytesConstRef _in ) {
+//    try {
+//        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+//        std::string strValue = "";
+//        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( strValue ) );
+//        bytes response = stat_string_to_bytes_with_length( strValue );
+//        return {true, response};
+//    } catch ( std::exception& ex ) {
+//        std::string strError = ex.what();
+//        if ( strError.empty() )
+//            strError = "exception without description";
+//        LOG( getLogger( VerbosityError ) )
+//            << "Exception in precompiled/convertAddressToString(): " << strError << "\n";
+//    } catch ( ... ) {
+//        LOG( getLogger( VerbosityError ) )
+//            << "Unknown exception in precompiled/convertAddressToString()\n";
+//    }
+//    u256 code = 0;
+//    bytes response = toBigEndian( code );
+//    return {false, response};  // 1st false - means bad error occur
+//}
 
 }  // namespace
