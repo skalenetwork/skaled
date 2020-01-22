@@ -718,6 +718,8 @@ static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
     "skaleConfig.nodeInfo.max-connections", "skaleConfig.nodeInfo.max-http-queues",
     "skaleConfig.nodeInfo.ws-mode",
 
+    "skaleConfig.contractSettings.*",
+
     "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
 
     "skaleConfig.sChain.nodes.*"};
