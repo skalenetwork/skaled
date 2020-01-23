@@ -38,22 +38,16 @@ void SnapshotHashAgent::verifyAllData( bool& fl ) const {
             continue;
         }
 
-        try {
-            libff::inhibit_profiling_info = true;
-            if ( !this->bls_->Verification(
-                     std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
-                     this->signatures_[i], this->public_keys_[i] ) ) {
-                fl = false;
-                throw std::logic_error( " Signature from " + std::to_string( i ) +
-                                        "-th node was not verified during "
-                                        "getNodesToDownloadSnapshotFrom " );
-            }
-        } catch ( std::exception& ex ) {
+        bool is_verified = false;
+        libff::inhibit_profiling_info = true;
+        is_verified = this->bls_->Verification(
+            std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
+            this->signatures_[i], this->public_keys_[i] );
+        if ( !is_verified ) {
             fl = false;
-            std::throw_with_nested( std::runtime_error(
-                cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
-                cc::warn( ex.what() ) ) );
+            throw IsNotVerified( " Signature from " + std::to_string( i ) +
+                                 "-th node was not verified during "
+                                 "getNodesToDownloadSnapshotFrom " );
         }
     }
 
@@ -64,7 +58,14 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     std::map< dev::h256, size_t > map_hash;
 
     bool verified = false;
-    this->verifyAllData( verified );
+    try {
+        this->verifyAllData( verified );
+    } catch ( std::exception& ex ) {
+        std::throw_with_nested( std::runtime_error(
+            cc::fatal( "FATAL:" ) + " " +
+            cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
+            cc::warn( ex.what() ) ) );
+    }
 
     if ( !verified ) {
         return false;
@@ -86,7 +87,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
 
     if ( it == map_hash.end() ) {
-        throw std::logic_error( "note enough votes to choose hash" );
+        throw NotEnoughVotesException( "note enough votes to choose hash" );
         return false;
     } else {
         std::vector< size_t > idx;
@@ -133,7 +134,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
                      common_signature, common_public ) ) {
                 return false;
             }
-        } catch ( std::exception& ex ) {
+        } catch ( signatures::Bls::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";

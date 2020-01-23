@@ -456,7 +456,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() );
-    BOOST_REQUIRE_THROW( test_agent.voteForHash(), std::logic_error );
+    BOOST_REQUIRE_THROW( test_agent.voteForHash(), NotEnoughVotesException );
 }
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
@@ -476,7 +476,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
-    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), std::_Nested_exception< std::runtime_error > );
+    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), IsNotVerified );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

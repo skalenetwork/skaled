@@ -35,6 +35,30 @@ class SnapshotHashAgentTest;
 }
 }  // namespace dev
 
+class SnapshotHashAgentException : std::exception {
+protected:
+    std::string what_str;
+
+public:
+    SnapshotHashAgentException( const std::string& err_str ) { what_str = err_str; }
+
+    virtual const char* what() const noexcept override { return what_str.c_str(); }
+};
+
+class NotEnoughVotesException : public SnapshotHashAgentException {
+public:
+    NotEnoughVotesException( const std::string& err_str ) : SnapshotHashAgentException( err_str ) {
+        what_str = "NotEnoughVotesException : " + err_str;
+    }
+};
+
+class IsNotVerified : public SnapshotHashAgentException {
+public:
+    IsNotVerified( const std::string& err_str ) : SnapshotHashAgentException( err_str ) {
+        what_str = "IsNotVerified : " + err_str;
+    }
+};
+
 class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chain_params )
