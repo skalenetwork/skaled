@@ -82,10 +82,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
-      m_bc( _params, _dbPath, _forceAction,
-          []( unsigned d, unsigned t ) {
-              std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-          } ),
+      m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),

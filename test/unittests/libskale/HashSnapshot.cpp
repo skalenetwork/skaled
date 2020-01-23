@@ -227,6 +227,7 @@ struct FixtureCommon {
     }
 };
 
+// TODO Do not copy&paste from JsonRpcFixture
 struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
     SnapshotHashingFixture() {
         check_sudo();
@@ -261,7 +262,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -380,6 +380,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
+
+    TransientDirectory tempDir;
 };
 }  // namespace
 

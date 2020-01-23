@@ -22,4 +22,8 @@ target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::sy
 #target_include_directories(devcore SYSTEM PUBLIC ${LEVELDB_INCLUDE_DIRS})
 #target_link_libraries(devcore PRIVATE ${LEVELDB_LIBRARIES})
 
-target_link_libraries(devcore PRIVATE leveldb::leveldb skutils)
+if( BUILD_LEVELDB )
+    target_link_libraries(devcore PRIVATE leveldb skutils)
+else()
+    target_link_libraries(devcore PRIVATE leveldb::leveldb skutils)
+endif()

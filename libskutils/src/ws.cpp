@@ -3730,9 +3730,7 @@ void server::onOpen( hdl_t hdl ) {
         return;
     }
     onPeerRegister( pPeer );
-    size_t x = pPeer->ref_release();  // un-needed ref after instantiate
-    if ( x > 0 )
-        api_.setPeer( hdl, pPeer );
+    api_.setPeer( hdl, pPeer );
 }
 void server::onClose( hdl_t hdl, const std::string& reason, int local_close_code,
     const std::string& local_close_code_as_str ) {

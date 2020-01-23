@@ -33,6 +33,10 @@
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
+#include <time.h>
+
+#include <skutils/multithreading.h>
+
 namespace dev {
 class NetworkFace;
 class KeyPair;
@@ -51,12 +55,22 @@ namespace rpc {
  * @brief JSON-RPC api implementation
  */
 class SkaleStats : public dev::rpc::SkaleStatsFace, public dev::rpc::SkaleStatsConsumerImpl {
-    const nlohmann::json& joConfig_;
+    const std::string configPath_;
+    time_t configModificationTime_;
+    nlohmann::json joConfig_;
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
+    typedef skutils::multithreading::recursive_mutex_type mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+    mutex_type mtx_;
+    mutex_type& mtx() { return mtx_; }
+
+    void reloadConfigIfNeeded();
+
 public:
-    SkaleStats( const nlohmann::json& joConfig, eth::Interface& _eth );
+    SkaleStats(
+        const std::string& configPath, const nlohmann::json& joConfig, eth::Interface& _eth );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skaleStats", "1.0"}};

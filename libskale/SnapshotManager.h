@@ -169,8 +169,8 @@ private:
         secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeAllVolumesHash(
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
-    void computeVolumeHash(
-        const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
+    void computeDatabaseHash(
+        const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
 };
 
 #endif  // SNAPSHOTAGENT_H
