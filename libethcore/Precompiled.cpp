@@ -614,6 +614,18 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
 
 ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     try {
+        if ( !g_configAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        bool bLoggingIsEnabledForContracts =
+            joConfig["skaleConfig"]["contractSettings"]["common"]["enableContractLogMessages"]
+                .get< bool >();
+        if ( !bLoggingIsEnabledForContracts ) {
+            u256 code = 1;
+            bytes response = toBigEndian( code );
+            return {true, response};
+        }
+
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
