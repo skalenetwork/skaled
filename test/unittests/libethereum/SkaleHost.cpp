@@ -77,6 +77,7 @@ public:
     mutable ConsensusTestStub* result;
 };
 
+// TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture() {
         dev::p2p::NetworkPreferences nprefs;
@@ -90,7 +91,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
@@ -143,6 +143,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     shared_ptr< SkaleHost > skaleHost;
     ConsensusTestStub* stub;
+
+    TransientDirectory tempDir;
 };
 
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()

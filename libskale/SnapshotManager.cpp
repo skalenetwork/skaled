@@ -141,18 +141,13 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 // - no such snapshots
 // - cannot read
 // - cannot create tmp file
-boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock ) {
-    fs::path path = getDiffPath( _fromBlock, _toBlock );
+boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
+    fs::path path = getDiffPath( _toBlock );
 
     try {
         if ( fs::is_regular( path ) )
             return path;
 
-        if ( !fs::exists( snapshots_dir / to_string( _fromBlock ) ) ) {
-            // TODO wrong error message if this fails
-            fs::remove( path );
-            throw SnapshotAbsent( _fromBlock );
-        }
         if ( !fs::exists( snapshots_dir / to_string( _toBlock ) ) ) {
             // TODO wrong error message if this fails
             fs::remove( path );
@@ -172,8 +167,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, uns
 
         created.push_back( part_path );  // file is created even in case of error
 
-        if ( btrfs.send( ( snapshots_dir / to_string( _fromBlock ) / vol ).c_str(),
-                 part_path.c_str(), ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
+        if ( btrfs.send( NULL, part_path.c_str(),
+                 ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
             try {
                 fs::remove( path );
                 for ( const string& vol : created )
@@ -206,8 +201,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _fromBlock, uns
 // exceptions:
 // - no such file/cannot read
 // - cannot input as diff (no base state?)
-void SnapshotManager::importDiff( unsigned _fromBlock, unsigned _toBlock ) {
-    fs::path diffPath = getDiffPath( _fromBlock, _toBlock );
+void SnapshotManager::importDiff( unsigned _toBlock ) {
+    fs::path diffPath = getDiffPath( _toBlock );
     fs::path snapshot_dir = snapshots_dir / to_string( _toBlock );
 
     try {
@@ -233,8 +228,8 @@ void SnapshotManager::importDiff( unsigned _fromBlock, unsigned _toBlock ) {
     }  // if
 }
 
-boost::filesystem::path SnapshotManager::getDiffPath( unsigned _fromBlock, unsigned _toBlock ) {
-    return diffs_dir / ( to_string( _fromBlock ) + "_" + to_string( _toBlock ) );
+boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
+    return diffs_dir / ( std::to_string( _toBlock ) );
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
@@ -341,13 +336,13 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
     }
 }
 
-void SnapshotManager::computeVolumeHash(
-    const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const try {
-    if ( !boost::filesystem::exists( _volumeDir ) ) {
-        BOOST_THROW_EXCEPTION( InvalidPath( _volumeDir ) );
+void SnapshotManager::computeDatabaseHash(
+    const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const try {
+    if ( !boost::filesystem::exists( _dbDir ) ) {
+        BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _volumeDir.string() ) );
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
 
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
@@ -460,25 +455,20 @@ void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
     assert( this->volumes.size() != 0 );
 
-    this->computeVolumeHash( this->snapshots_dir / std::to_string( _blockNumber ) /
-                                 this->volumes[0] / "12041" / "extras",
-        ctx );
+    // TODO XXX Remove volumes structure knowledge from here!!
 
-    this->computeVolumeHash(
+    this->computeDatabaseHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
 
-    this->computeVolumeHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "blocks", ctx );
+    this->computeDatabaseHash( this->snapshots_dir / std::to_string( _blockNumber ) /
+                                   this->volumes[0] / "blocks_and_extras",
+        ctx );
 
     this->computeFileSystemHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
-    for ( const string& vol : this->volumes ) {
-        if ( vol.find( "prices_" ) == 0 )
-            this->computeVolumeHash(
-                this->snapshots_dir / std::to_string( _blockNumber ) / vol, ctx );
-    }  // for
+    // TODO Add last price to hash computation!!
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {

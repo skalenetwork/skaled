@@ -32,6 +32,9 @@
 
 #include <stdint.h>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -88,6 +91,7 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
+#include <skutils/utils.h>
 
 using namespace std;
 using namespace dev;
@@ -219,7 +223,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         try {
             bool isBinaryDownload = true;
             std::string strErrorDescription;
-            saveTo = snapshotManager->getDiffPath( 0, block_number );
+            saveTo = snapshotManager->getDiffPath( block_number );
             bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     std::cout << cc::normal( "... download progress ... " )
@@ -227,7 +231,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                               << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
-                isBinaryDownload, chainParams.nodeInfo.snapshotIntervalMs, &strErrorDescription );
+                isBinaryDownload, &strErrorDescription );
             std::cout << "                                                  \r";  // clear
                                                                                   // progress
                                                                                   // line
@@ -244,7 +248,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
         try {
-            snapshotManager->importDiff( 0, block_number );
+            snapshotManager->importDiff( block_number );
         } catch ( ... ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
@@ -252,22 +256,25 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        fs::path price_db_path;
-        for ( auto& f :
-            fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
-            if ( f.path().string().find( "prices_" ) != string::npos ) {
-                price_db_path = f.path();
-                break;
-            }  // if
-        }
-        if ( price_db_path.empty() ) {
-            clog( VerbosityError, "downloadSnapshot" )
-                << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
-            return;
-        }
+        vector< string > prefixes{"prices_", "blocks_"};
+        for ( const string& prefix : prefixes ) {
+            fs::path db_path;
+            for ( auto& f :
+                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
+                if ( f.path().string().find( prefix ) != string::npos ) {
+                    db_path = f.path();
+                    break;
+                }  // if
+            }
+            if ( db_path.empty() ) {
+                clog( VerbosityError, "downloadSnapshot" )
+                    << cc::fatal( "Snapshot downloaded without " + prefix + " db" ) << std::endl;
+                return;
+            }
 
-        fs::rename( price_db_path,
-            price_db_path.parent_path() / ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+            fs::rename( db_path,
+                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+        }
         //// HACK END ////
 
         snapshotManager->restoreSnapshot( block_number );
@@ -408,6 +415,16 @@ int main( int argc, char** argv ) try {
         "Run web3 WSS(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
         "1)" );
 
+    std::string strPerformanceWarningDurationOptionDescription =
+        "Specifies time margin in floating point format, in seconds, for displaying performance "
+        "warning messages in log output if JSON RPC call processing exeeds it, default is " +
+        std::to_string(
+            SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceWarning ) +
+        " seconds";
+    addClientOption( "performance-warning-duration",
+        po::value< double >()->value_name( "<seconds>" ),
+        strPerformanceWarningDurationOptionDescription.c_str() );
+
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
         skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
@@ -529,6 +546,10 @@ int main( int argc, char** argv ) try {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
     }
+
+    pid_t this_process_pid = getpid();
+    std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
+              << cc::size10( size_t( this_process_pid ) ) << std::endl;
 
     skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
     // skutils::dispatch::default_domain( 48 );
@@ -1077,7 +1098,8 @@ int main( int argc, char** argv ) try {
     if ( chainParams.nodeInfo.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
-                              "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+                              "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                              "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
     if ( vm.count( "download-snapshot" ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
@@ -1542,7 +1564,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), joConfig, *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
@@ -1678,6 +1700,16 @@ int main( int argc, char** argv ) try {
                 if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
                     bHaveSSL = true;
             }
+
+            double lfExecutionDurationMaxForPerformanceWarning = SkaleServerOverride::
+                g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds, default 1
+                                                                       // second
+            if ( vm.count( "performance-warning-duration" ) > 0 ) {
+                lfExecutionDurationMaxForPerformanceWarning = vm["ssl-key"].as< double >();
+                if ( lfExecutionDurationMaxForPerformanceWarning < 0.0 )
+                    lfExecutionDurationMaxForPerformanceWarning = 0.0;
+            }
+
             if ( !bHaveSSL )
                 nExplicitPortHTTPS4 = nExplicitPortWSS4 = nExplicitPortHTTPS6 = nExplicitPortWSS6 =
                     -1;
@@ -1791,14 +1823,14 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
-            auto skale_server_connector =
-                new SkaleServerOverride( chainParams, fn_binary_snapshot_download, cntServers,
-                    client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP4,
-                    chainParams.nodeInfo.ip6, nExplicitPortHTTP6, chainParams.nodeInfo.ip,
-                    nExplicitPortHTTPS4, chainParams.nodeInfo.ip6, nExplicitPortHTTPS6,
-                    chainParams.nodeInfo.ip, nExplicitPortWS4, chainParams.nodeInfo.ip6,
-                    nExplicitPortWS6, chainParams.nodeInfo.ip, nExplicitPortWSS4,
-                    chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey, strPathSslCert );
+            auto skale_server_connector = new SkaleServerOverride( chainParams,
+                fn_binary_snapshot_download, cntServers, client.get(), chainParams.nodeInfo.ip,
+                nExplicitPortHTTP4, chainParams.nodeInfo.ip6, nExplicitPortHTTP6,
+                chainParams.nodeInfo.ip, nExplicitPortHTTPS4, chainParams.nodeInfo.ip6,
+                nExplicitPortHTTPS6, chainParams.nodeInfo.ip, nExplicitPortWS4,
+                chainParams.nodeInfo.ip6, nExplicitPortWS6, chainParams.nodeInfo.ip,
+                nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
+                strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             //
             skaleStatsFace->setProvider( skale_server_connector );

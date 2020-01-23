@@ -19,8 +19,7 @@
 
 #pragma once
 
-#include <libdevcore/LevelDB.h>
-#include <libdevcore/db.h>
+#include <libdevcore/SplitDB.h>
 
 namespace dev {
 namespace db {

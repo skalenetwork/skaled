@@ -142,9 +142,9 @@ public:
         const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
-    boost::filesystem::path makeOrGetDiff( unsigned _fromBlock, unsigned _toBlock );
-    void importDiff( unsigned _fromBlock, unsigned _toBlock );
-    boost::filesystem::path getDiffPath( unsigned _fromBlock, unsigned _toBlock );
+    boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
+    void importDiff( unsigned _toBlock );
+    boost::filesystem::path getDiffPath( unsigned _toBlock );
     void removeSnapshot( unsigned _blockNumber );
 
     void leaveNLastSnapshots( unsigned n );
@@ -169,8 +169,8 @@ private:
         secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeAllVolumesHash(
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
-    void computeVolumeHash(
-        const boost::filesystem::path& _volumeDir, secp256k1_sha256_t* ctx ) const;
+    void computeDatabaseHash(
+        const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
 };
 
 #endif  // SNAPSHOTAGENT_H

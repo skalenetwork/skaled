@@ -32,6 +32,7 @@
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 // SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -52,13 +53,14 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-static std::string const c_genesisConfigString = R"(
+static std::string const c_genesisConfigString =
+    R"(
 {
     "sealEngine": "NoProof",
     "params": {
          "accountStartNonce": "0x00",
          "maximumExtraDataSize": "0x1000000",
-         "blockReward": "0x",
+         "blockReward": "0x4563918244F40000",
          "allowFutureBlocks": true,
          "homesteadForkBlock": "0x00",
          "EIP150ForkBlock": "0x00",
@@ -74,11 +76,63 @@ static std::string const c_genesisConfigString = R"(
         "timestamp" : "0x00",
         "mixHash" : "0x00"
     },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "Node1",
+            "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": 1231,
+            "logLevel": "trace",
+            "logLevelProposal": "trace"
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "nodes": [
+                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 0}
+            ]
+        }
+    },
     "accounts": {
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": {
+			"precompiled": {
+				"name": "createFile",
+				"linear": {
+					"base": 15,
+					"word": 0
+				},
+                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
+			}
+        },)"
+    /*
+            pragma solidity ^0.4.25;
+            contract Caller {
+                function call() public {
+                    bool status;
+                    string memory fileName = "test";
+                    address sender = 0x000000000000000000000000000000AA;
+                    assembly{
+                        let ptr := mload(0x40)
+                        mstore(ptr, sender)
+                        mstore(add(ptr, 0x20), 4)
+                        mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+                        mstore(add(ptr, 0x60), 1)
+                        status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+                    }
+                }
+            }
+    */
+    R"("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
         "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x6001600101600055",
@@ -135,7 +189,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -204,6 +257,32 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
+
+    TransientDirectory tempDir;
+};
+
+struct RestrictedAddressFixture : public JsonRpcFixture {
+    RestrictedAddressFixture() {
+        ownerAddress = Address( "00000000000000000000000000000000000000AA" );
+        std::string fileName = "test";
+        path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+        data =
+            ( "0x"
+              "00000000000000000000000000000000000000000000000000000000000000AA"
+              "0000000000000000000000000000000000000000000000000000000000000004"
+              "7465737400000000000000000000000000000000000000000000000000000000"  // test
+              "0000000000000000000000000000000000000000000000000000000000000004" );
+
+        Json::Value ret;
+        Json::Reader().parse( c_genesisConfigString, ret );
+        rpcClient->test_setChainParams( ret );
+    }
+
+    ~RestrictedAddressFixture() override { remove( path.c_str() ); }
+
+    Address ownerAddress;
+    std::string data;
+    boost::filesystem::path path;
 };
 
 string fromAscii( string _s ) {
@@ -220,7 +299,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
     BOOST_CHECK_EQUAL( gasPrice, toJS( 20 * dev::eth::shannon ) );
 }
 
-// SKALE diasabled
+// SKALE disabled
 // BOOST_AUTO_TEST_CASE(jsonrpc_isListening)
 //{
 //    web3->startNetwork();
@@ -543,6 +622,166 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     string result = rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
+    BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x" );
+}
+
+BOOST_AUTO_TEST_CASE( create_opcode ) {
+    auto senderAddress = coinbase.address();
+
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
+    rpcClient->test_setChainParams( ret );
+
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    /*
+        pragma solidity ^0.4.25;
+
+        contract test {
+            address public a;
+
+            function f() public {
+                address _address;
+                assembly {
+                    let ptr := mload(0x40)
+                    _address := create(0x00,ptr,0x20)
+                }
+                a = _address;
+            }
+        }
+    */
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610161806100206000396000f30060806040526004361061004c57"
+        "6000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630dbe"
+        "671f1461005157806326121ff0146100a8575b600080fd5b34801561005d57600080fd5b506100666100bf565b"
+        "604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffff"
+        "ffffff16815260200191505060405180910390f35b3480156100b457600080fd5b506100bd6100e4565b005b60"
+        "00809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b600060405160208160"
+        "00f0915050806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffff"
+        "ffffffffffffffffffffffffffffffffffff160217905550505600a165627a7a72305820fc6f465560bc93346a"
+        "25f87ff189a58c26f5bf6f2e46570058fd79c1a3c3063a0029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    client->setAuthor( account2.address() );
+    dev::eth::simulateMining( *( client ), 1 );
+
+    Json::Value transactionCallObject;
+
+    transactionCallObject["from"] = toJS( account2.address() );
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x26121ff0";
+
+    rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value checkAddress;
+    checkAddress["to"] = contractAddress;
+    checkAddress["data"] = "0x0dbe671f";
+    string response = rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response == "0x0000000000000000000000000000000000000000000000000000000000000000" );
+
+    client->setAuthor( senderAddress );
+    transactionCallObject["from"] = toJS( senderAddress );
+    rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    response = rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response != "0x0000000000000000000000000000000000000000000000000000000000000000" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -927,5 +1166,139 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx2["raw"].asString() ),
         "Transaction gas price lower than current eth_gasPrice." );
 }
+
+BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
+
+BOOST_AUTO_TEST_CASE( direct_call ) {
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = "0xdeadbeef01234567896c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( transaction_from_restricted_address ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+    transactionCallObject["data"] = data;
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( transaction_from_allowed_address ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    BOOST_REQUIRE( boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_CASE( delegate_call ) {
+    auto senderAddress = coinbase.address();
+    client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( client ), 1000 );
+
+    // pragma solidity ^0.4.25;
+    //
+    // contract Caller {
+    //     function call() public view {
+    //         bool status;
+    //         string memory fileName = "test";
+    //         address sender = 0x000000000000000000000000000000AA;
+    //         assembly{
+    //                 let ptr := mload(0x40)
+    //                 mstore(ptr, sender)
+    //                 mstore(add(ptr, 0x20), 4)
+    //                 mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+    //                 mstore(add(ptr, 0x60), 1)
+    //                 status := delegatecall(not(0), 0x05, ptr, 0x80, ptr, 32)
+    //         }
+    //     }
+    // }
+
+    string compiled =
+        "6080604052348015600f57600080fd5b5060f88061001e6000396000f300608060405260043610603f57600035"
+        "7c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14"
+        "6044575b600080fd5b348015604f57600080fd5b5060566058565b005b60006060600060408051908101604052"
+        "80600481526020017f746573740000000000000000000000000000000000000000000000000000000081525091"
+        "5060aa905060405181815260046020820152602083015160408201526001606082015260208160808360056000"
+        "19f49350505050505600a165627a7a72305820172a27e3e21f45218a47c53133bb33150ee9feac9e9d5d13294b"
+        "48b03773099a0029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( create );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( client ), 1 );
+
+    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["from"] = ownerAddress.hex();
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    rpcClient->eth_call( transactionCallObject, "latest" );
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
