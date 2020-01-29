@@ -332,15 +332,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         sgx_cert.assign( ( std::istreambuf_iterator< char >( sgx_cert_file ) ),
             std::istreambuf_iterator< char >() );
 
-        auto pos = std::find( sgx_cert.begin(), sgx_cert.end(), '-' );
-        ++pos;
-        pos = std::find( pos, sgx_cert.end(), '-' );
-
-        std::string cert( pos, sgx_cert.end() );
-
-        std::ofstream sgx_crt_out( sgx_cert_path + "sgx_crt.pem" );
-        sgx_crt_out << cert;
-
         std::ifstream sgx_key_file( sgx_cert_path + sgx_key_filename );
         std::string sgx_key;
 
