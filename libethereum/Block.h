@@ -286,7 +286,7 @@ public:
 
     void startReadState();
 
-    void setStateRoot( dev::h256 const& _s) { m_currentBlock.setStateRoot( _s ); }
+    void setStateRoot( dev::h256 const& _s ) { m_currentBlock.setStateRoot( _s ); }
 
 private:
     SealEngineFace* sealEngine() const;

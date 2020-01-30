@@ -415,7 +415,7 @@ size_t Client::importTransactionsAsBlock(
             secp256k1_sha256_t ctx;
             secp256k1_sha256_initialize( &ctx );
 
-            dev::h256 empty_str = dev::h256("");
+            dev::h256 empty_str = dev::h256( "" );
             secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
 
             dev::h256 empty_state_root_hash;
