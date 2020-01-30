@@ -150,6 +150,9 @@ public:
         m_sha3Uncles = _u;
         noteDirty();
     }
+    void setStateRoot( h256 const& _s) {
+        m_stateRoot = _s;
+    }
     void setGasUsed( u256 const& _v ) {
         m_gasUsed = _v;
         noteDirty();
