@@ -44,9 +44,9 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 
     // rotate so min_i will be first
     for ( size_t i = 0; i < min_i; ++i ) {
-        DatabaseFace* el = pieces.front().get();
+        std::unique_ptr< DatabaseFace > el = std::move( pieces.front() );
         pieces.pop_front();
-        pieces.emplace_back( el );
+        pieces.push_back( std::move( el ) );
     }  // for
 
     this->current_piece = pieces.front().get();
