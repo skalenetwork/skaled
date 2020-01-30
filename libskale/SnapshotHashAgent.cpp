@@ -25,7 +25,6 @@
 #include "SnapshotHashAgent.h"
 #include "SkaleClient.h"
 
-#include <libconsensus/libBLS/bls/bls.h>
 #include <libethcore/CommonJS.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
@@ -33,34 +32,44 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
-void SnapshotHashAgent::verifyAllData() {
+void SnapshotHashAgent::verifyAllData( bool& fl ) const {
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
         }
 
-        try {
-            libff::inhibit_profiling_info = true;
-            if ( !this->bls_->Verification(
-                     std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
-                     this->signatures_[i], this->public_keys_[i] ) ) {
-                throw std::logic_error( " Signature from " + std::to_string( i ) +
-                                        "-th node was not verified during "
-                                        "getNodesToDownloadSnapshotFrom " );
-            }
-        } catch ( std::exception& ex ) {
-            std::throw_with_nested( std::runtime_error(
-                cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while verifying common signature from other skaleds: " ) +
-                " " + cc::warn( ex.what() ) ) );
+        bool is_verified = false;
+        libff::inhibit_profiling_info = true;
+        is_verified = this->bls_->Verification(
+            std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
+            this->signatures_[i], this->public_keys_[i] );
+        if ( !is_verified ) {
+            fl = false;
+            throw IsNotVerified( " Signature from " + std::to_string( i ) +
+                                 "-th node was not verified during "
+                                 "getNodesToDownloadSnapshotFrom " );
         }
     }
+
+    fl = true;
 }
 
 bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
     std::map< dev::h256, size_t > map_hash;
 
-    this->verifyAllData();
+    bool verified = false;
+    try {
+        this->verifyAllData( verified );
+    } catch ( std::exception& ex ) {
+        std::throw_with_nested( std::runtime_error(
+            cc::fatal( "FATAL:" ) + " " +
+            cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
+            cc::warn( ex.what() ) ) );
+    }
+
+    if ( !verified ) {
+        return false;
+    }
 
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
@@ -75,8 +84,11 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     auto it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
 
+    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
+
     if ( it == map_hash.end() ) {
-        throw std::logic_error( "note enough votes to choose hash" );
+        throw NotEnoughVotesException( "note enough votes to choose hash" );
+        return false;
     } else {
         std::vector< size_t > idx;
         std::vector< libff::alt_bn128_G1 > signatures;
@@ -122,7 +134,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
                      common_signature, common_public ) ) {
                 return false;
             }
-        } catch ( std::exception& ex ) {
+        } catch ( signatures::Bls::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << "\n";
@@ -138,7 +150,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned block_number ) {
-    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
+    libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
