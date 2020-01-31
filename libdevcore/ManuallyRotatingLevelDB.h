@@ -5,6 +5,7 @@
 
 #include <deque>
 #include <set>
+#include <shared_mutex>
 
 namespace dev {
 namespace db {
@@ -17,6 +18,8 @@ private:
     std::deque< std::unique_ptr< DatabaseFace > > pieces;
 
     mutable std::set< WriteBatchFace* > batch_cache;
+
+    mutable std::shared_mutex m_mutex;
 
 public:
     ManuallyRotatingLevelDB( const boost::filesystem::path& _path, size_t _nPieces );
