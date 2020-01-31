@@ -25,6 +25,8 @@ uint64_t dir_size( const boost::filesystem::path& _path ) {
 ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
     const boost::filesystem::path& _path, size_t _nPieces )
     : base_path( _path ) {
+    std::unique_lock< std::shared_mutex > lock( m_mutex );
+
     size_t min_i;
     uint64_t min_size;
 
@@ -54,6 +56,8 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 }
 
 void ManuallyRotatingLevelDB::rotate() {
+    std::unique_lock< std::shared_mutex > lock( m_mutex );
+
     assert( this->batch_cache.empty() );
     // we delete one below and make it current
 
@@ -73,6 +77,8 @@ void ManuallyRotatingLevelDB::rotate() {
 }
 
 std::string ManuallyRotatingLevelDB::lookup( Slice _key ) const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+
     for ( const auto& p : pieces ) {
         const std::string& v = p->lookup( _key );
         if ( !v.empty() )
@@ -82,40 +88,47 @@ std::string ManuallyRotatingLevelDB::lookup( Slice _key ) const {
 }
 
 bool ManuallyRotatingLevelDB::exists( Slice _key ) const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+
     for ( const auto& p : pieces ) {
         if ( p->exists( _key ) )
             return true;
-        ;
     }
     return false;
 }
 
 void ManuallyRotatingLevelDB::insert( Slice _key, Slice _value ) {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     current_piece->insert( _key, _value );
 }
 
 void ManuallyRotatingLevelDB::kill( Slice _key ) {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     for ( const auto& p : pieces )
         p->kill( _key );
 }
 
 std::unique_ptr< WriteBatchFace > ManuallyRotatingLevelDB::createWriteBatch() const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     std::unique_ptr< WriteBatchFace > wbf = current_piece->createWriteBatch();
     batch_cache.insert( wbf.get() );
     return wbf;
 }
 void ManuallyRotatingLevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     batch_cache.erase( _batch.get() );
     current_piece->commit( std::move( _batch ) );
 }
 
 void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     for ( const auto& p : pieces ) {
         p->forEach( f );
     }
 }
 
 h256 ManuallyRotatingLevelDB::hashBase() const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
