@@ -903,6 +903,78 @@ ETH_REGISTER_PRECOMPILED( concatenateStrings )( bytesConstRef _in ) {
     return {false, response};  // 1st false - means bad error occur
 }
 
+static dev::u256 stat_s2a( const std::string& saIn ) {
+    std::string sa;
+    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
+        sa = "0x" + saIn;
+    else
+        sa = saIn;
+    dev::u256 u( sa.c_str() );
+    return u;
+}
+
+ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
+    try {
+        dev::u256 uValue;
+        uValue = 0;
+
+        auto rawAddressParameter = _in.cropped( 12, 20 ).toBytes();
+        std::string addressParameter;
+        boost::algorithm::hex( rawAddressParameter.begin(), rawAddressParameter.end(),
+            back_inserter( addressParameter ) );
+        dev::u256 uParameter = stat_s2a( addressParameter );
+
+        size_t lengthName;
+        std::string rawName;
+        convertBytesToString( _in, 32, rawName, lengthName );
+        if ( !stat_is_accessible_json_path( rawName ) )
+            throw std::runtime_error(
+                "Security poicy violation, inaccessible configuration JSON path: " + rawName );
+
+        if ( !g_configAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        nlohmann::json joValue =
+            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+        if ( joValue.is_object() ) {
+            auto itWalk = joValue.cbegin(), itEnd = joValue.cend();
+            for ( ; itWalk != itEnd; ++itWalk ) {
+                std::string strKey = itWalk.key();
+                dev::u256 uKey = stat_s2a( strKey );
+                if ( uKey == uParameter ) {
+                    nlohmann::json joFlag = itWalk.value();
+                    if ( joFlag.is_number_integer() ) {
+                        if ( joFlag.get< int >() != 0 )
+                            uValue = 1;
+                    } else if ( joFlag.is_number_float() ) {
+                        if ( joFlag.get< double >() != 0.0 )
+                            uValue = 1;
+                    } else if ( joFlag.is_boolean() ) {
+                        if ( joFlag.get< bool >() )
+                            uValue = 1;
+                    }
+                    break;
+                }
+            }
+        }
+
+        bytes response = toBigEndian( uValue );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getConfigVariableString(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getConfigVariableString()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
 // ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
 //    try {
 //        auto rawValue = _in.cropped( 0, 32 ).toBytes();
