@@ -382,7 +382,8 @@ BlockDetails ClientBase::blockDetails( h256 _hash ) const {
 }
 
 Transaction ClientBase::transaction( h256 _transactionHash ) const {
-    return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap );
+    // allow invalid!
+    return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -394,13 +395,16 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     if ( _i < b[1].itemCount() )
-        return Transaction( b[1][_i].data(), CheckTransaction::Cheap );
+        // allow invalid
+        return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true );
     else
         return Transaction();
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, unsigned _i ) const {
-    Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap );
+    // allow invalid
+    Transaction t =
+        Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -411,7 +415,9 @@ TransactionReceipt ClientBase::transactionReceipt( h256 const& _transactionHash 
 LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
     std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
-    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap );
+    // allow invalid
+    Transaction t =
+        Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap, true );
     TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )
@@ -422,8 +428,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     // transaction with "to" filed set to null.
     //
     dev::Address contractAddress;
-    dev::Address to = t.to();
-    if ( to == dev::Address( 0 ) ) {
+    if ( !t.isInvalid() && t.to() == dev::Address( 0 ) ) {
         // if this transaction is contract deployment
         contractAddress = toAddress( t.from(), t.nonce() );
     }
