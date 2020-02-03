@@ -47,6 +47,8 @@ struct ChainParams : public ChainOperationParams {
 
     SealEngineFace* createSealEngine();
 
+    int rotateAfterBlock_ = 64;
+
     /// Genesis params.
     h256 parentHash = h256();
     Address author = Address();
