@@ -803,6 +803,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
                 TransactionAddress ta;
                 ta.blockHash = tbi.hash();
+                ta.index = 0;
 
                 RLP txns_rlp = blockRLP[1];
 
@@ -812,6 +813,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     extrasWriteBatch->insert(
                         toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
                         ( db::Slice ) dev::ref( ta.rlp() ) );
+                    ++ta.index;
                 }
             }
 
