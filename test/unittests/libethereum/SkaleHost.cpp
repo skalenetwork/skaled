@@ -260,6 +260,28 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
+
+    // check also receipts and locations
+    size_t i = 0;
+    for ( const Transaction& tx : txns ) {
+        Transaction tx2 = client->transaction( tx.sha3() );
+        LocalisedTransaction lt = client->localisedTransaction( tx.sha3() );
+        LocalisedTransactionReceipt lr = client->localisedTransactionReceipt( tx.sha3() );
+
+        BOOST_REQUIRE_EQUAL( tx2, tx );
+
+        BOOST_REQUIRE_EQUAL( lt, tx );
+        BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
+        BOOST_REQUIRE_EQUAL( lt.blockHash(), client->hashFromNumber( 1 ) );
+        BOOST_REQUIRE_EQUAL( lt.transactionIndex(), i );
+
+        BOOST_REQUIRE_EQUAL( lr.hash(), tx.sha3() );
+        BOOST_REQUIRE_EQUAL( lr.blockNumber(), lt.blockNumber() );
+        BOOST_REQUIRE_EQUAL( lr.blockHash(), lt.blockHash() );
+        BOOST_REQUIRE_EQUAL( lr.transactionIndex(), i );
+
+        ++i;
+    }  // for
 }
 
 class VrsHackedTransaction : public Transaction {
