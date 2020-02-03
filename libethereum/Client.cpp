@@ -411,23 +411,6 @@ void Client::syncBlockQueue() {
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        if ( this->last_snapshoted_block == -1 ) {
-            secp256k1_sha256_t ctx;
-            secp256k1_sha256_initialize( &ctx );
-
-            dev::h256 empty_str = dev::h256( "" );
-            secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
-
-            dev::h256 empty_state_root_hash;
-            secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
-
-            this->m_working.setStateRoot( empty_state_root_hash );
-        } else {
-            unsigned latest_snapshot = this->last_snapshoted_block;
-            dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
-            this->m_working.setStateRoot( state_root_hash );
-        }
-
         unsigned block_number = this->number();
 
         int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
@@ -437,13 +420,13 @@ size_t Client::importTransactionsAsBlock(
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            this->last_snapshoted_block = block_number;
-            this->last_snapshot_time = this->last_snapshot_time == -1 ?
-                                           _timestamp :
-                                           this->last_snapshot_time + snapshotIntervalMs;
-            std::thread( [this, block_number]() {
+            std::thread( [this, block_number, _timestamp, snapshotIntervalMs]() {
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
+                    this->last_snapshoted_block = block_number;
+                    this->last_snapshot_time = this->last_snapshot_time == -1 ?
+                                                   _timestamp :
+                                                   this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
@@ -699,7 +682,24 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
                               << cc::num10( m_working.info().number() );
-        m_working.commitToSeal( bc(), m_extraData );
+        dev::h256 stateRootToSet;
+        if ( this->last_snapshoted_block == -1 ) {
+            secp256k1_sha256_t ctx;
+            secp256k1_sha256_initialize( &ctx );
+
+            dev::h256 empty_str = dev::h256( "" );
+            secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+            dev::h256 empty_state_root_hash;
+            secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+            stateRootToSet = empty_state_root_hash;
+        } else {
+            unsigned latest_snapshot = this->last_snapshoted_block;
+            dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+            stateRootToSet = state_root_hash;
+        }
+        m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )

@@ -852,7 +852,8 @@ void Block::updateBlockhashContract() {
     }
 }
 
-void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
+void Block::commitToSeal(
+    BlockChain const& _bc, bytes const& _extraData, dev::h256 const& _stateRootHash ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -938,8 +939,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
 
     m_currentBlock.setLogBloom( logBloom() );
     m_currentBlock.setGasUsed( gasUsed() );
-    m_currentBlock.setRoots(
-        hash256( transactionsMap ), hash256( receiptsMap ), sha3( m_currentUncles ), EmptyTrie );
+    m_currentBlock.setRoots( hash256( transactionsMap ), hash256( receiptsMap ),
+        sha3( m_currentUncles ), _stateRootHash );
 
     m_currentBlock.setParentHash( m_previousBlock.hash() );
     m_currentBlock.setExtraData( _extraData );
