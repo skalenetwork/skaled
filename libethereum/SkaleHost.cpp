@@ -223,7 +223,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
         for ( auto sha : to_delete ) {
             m_debugTracer.tracepoint( "drop_bad" );
             m_tq.drop( sha );
-            m_received.insert( sha );
+            if(m_received.count(sha) != 0)
+                m_received.erase( sha );
             LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
         }
     }
