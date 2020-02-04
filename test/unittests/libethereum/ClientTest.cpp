@@ -454,11 +454,10 @@ BOOST_FIXTURE_TEST_CASE( ClientSnapshotsTest, TestClientSnapshotsFixture ) {
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
-    std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
     testClient->mineBlocks( 1 );
 
     testClient->importTransactionsAsBlock(
-        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 10 );
+        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
 
