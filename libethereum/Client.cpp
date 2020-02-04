@@ -170,7 +170,7 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
 
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && number() == 0 ) {
         m_snapshotManager->doSnapshot( 0 );
-        this->last_snapshot_time = this->latestBlock().info().timestamp();
+        this->first_block_timestamp = this->latestBlock().info().timestamp();
     }
 
     doWork( false );
@@ -424,9 +424,10 @@ size_t Client::importTransactionsAsBlock(
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
-                    this->last_snapshot_time = this->last_snapshot_time == -1 ?
-                                                   _timestamp :
-                                                   this->last_snapshot_time + snapshotIntervalMs;
+                    this->last_snapshot_time =
+                        this->last_snapshot_time == -1 ?
+                            ( _timestamp / uint64_t( 86400 ) ) * uint64_t( 86400 ) :
+                            this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
@@ -586,8 +587,9 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    return ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
-           chainParams().nodeInfo.snapshotIntervalMs;
+    return _timestamp / uint64_t( 86400 ) != this->first_block_timestamp / int64_t( 86400 ) &&
+           ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
+               chainParams().nodeInfo.snapshotIntervalMs;
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
