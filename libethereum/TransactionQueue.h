@@ -32,6 +32,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/LruCache.h>
 #include <libethcore/Common.h>
 #include <atomic>
 #include <condition_variable>
@@ -271,7 +272,7 @@ private:
 
     std::unordered_map< h256, std::function< void( ImportResult ) > > m_callbacks;  ///< Called
                                                                                     ///< once.
-    h256Hash m_dropped;  ///< Transactions that have previously been dropped
+    LruCache< h256, bool > m_dropped;  ///< Transactions that have previously been dropped
 
     PriorityQueue m_current;
     std::unordered_map< h256, PriorityQueue::iterator > m_currentByHash;  ///< Transaction hash to
