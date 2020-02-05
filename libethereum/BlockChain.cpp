@@ -670,9 +670,12 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 }
 
 void BlockChain::rotateDBIfNeeded() {
-    if ( this->number() % 64 == 0 ) {
+    auto r = m_params.rotateAfterBlock_;
+    if ( r <= 0 )
+        return;
+    auto n = this->number();
+    if ( ( n % r ) == 0 )
         this->m_rotating_db->rotate();
-    }  // if
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
