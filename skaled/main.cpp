@@ -1121,13 +1121,14 @@ int main( int argc, char** argv ) try {
             std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
             std::vector< std::string > list_urls_to_download;
             try {
-                list_urls_to_download = snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                list_urls_to_download =
+                    snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
                 voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
                 std::throw_with_nested( std::runtime_error(
                     cc::fatal( "FATAL:" ) + " " +
-                    cc::error( "Exception while collecting snapshot hash from other skaleds " ) + " " +
-                    cc::warn( ex.what() ) ) );
+                    cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
+                    " " + cc::warn( ex.what() ) ) );
             }
 
             bool successfullDownload = false;
@@ -1135,15 +1136,16 @@ int main( int argc, char** argv ) try {
                 std::string urlToDownloadSnapshot;
                 urlToDownloadSnapshot = list_urls_to_download[i];
 
-                downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+                downloadSnapshot(
+                    blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                 try {
                     snapshotManager->computeSnapshotHash( blockNumber, true );
                 } catch ( std::exception& ex ) {
-                    std::throw_with_nested(
-                        std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                            cc::error( "Exception while computing snapshot hash " ) +
-                                            " " + cc::warn( ex.what() ) ) );
+                    std::throw_with_nested( std::runtime_error(
+                        cc::fatal( "FATAL:" ) + " " +
+                        cc::error( "Exception while computing snapshot hash " ) + " " +
+                        cc::warn( ex.what() ) ) );
                 }
 
                 dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
@@ -1157,7 +1159,8 @@ int main( int argc, char** argv ) try {
             }
 
             if ( !successfullDownload ) {
-                throw std::runtime_error( "FATAL: already tried to download hash from all sources" );
+                throw std::runtime_error(
+                    "FATAL: already tried to download hash from all sources" );
             }
         }
     }
