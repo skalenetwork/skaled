@@ -588,6 +588,33 @@ extern void print_backtrace();
 
 };  // namespace signal
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class json_config_file_accessor {
+    const std::string configPath_;
+    time_t configModificationTime_;
+    nlohmann::json joConfig_;
+
+    typedef std::recursive_mutex mutex_type;
+    typedef std::lock_guard< mutex_type > lock_type;
+    mutex_type mtx_;
+    mutex_type& mtx() { return mtx_; }
+
+public:
+    json_config_file_accessor( const std::string& configPath );
+    virtual ~json_config_file_accessor();
+    void reloadConfigIfNeeded();
+    nlohmann::json getConfigJSON();
+    nlohmann::json getConfigJSON() const {
+        return ( const_cast< json_config_file_accessor* >( this ) )->getConfigJSON();
+    };
+    static nlohmann::json stat_extract_at_path(
+        const nlohmann::json& joConfig, const string_list_t& listPath );
+    static nlohmann::json stat_extract_at_path(
+        const nlohmann::json& joConfig, const std::string& strPath, const char strDelimiter = '.' );
+};  /// class json_config_file_accessor
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
