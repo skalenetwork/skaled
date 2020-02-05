@@ -35,10 +35,14 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const size_t c_maxVerificationQueueSize = 8192;
+namespace {
+constexpr size_t c_maxVerificationQueueSize = 8192;
+constexpr size_t c_maxDroppedTransactionCount = 1024;
+}  // namespace
 
 TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit )
-    : m_current( PriorityCompare{*this} ),
+    : m_dropped{c_maxDroppedTransactionCount},
+      m_current( PriorityCompare{*this} ),
       m_limit( _limit ),
       m_futureLimit( _futureLimit ),
       m_aborting( false ) {
@@ -97,7 +101,7 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
     if ( m_known.count( _h ) )
         return ImportResult::AlreadyKnown;
 
-    if ( m_dropped.count( _h ) && _ik == IfDropped::Ignore )
+    if ( m_dropped.touch( _h ) && _ik == IfDropped::Ignore )
         return ImportResult::AlreadyInChain;
 
     return ImportResult::Success;
@@ -367,7 +371,7 @@ void TransactionQueue::drop( h256 const& _txHash ) {
         return;
 
     UpgradeGuard ul( l );
-    m_dropped.insert( _txHash );
+    m_dropped.insert( _txHash, true );
     remove_WITH_LOCK( _txHash );
 }
 
