@@ -579,6 +579,8 @@ int main( int argc, char** argv ) try {
                 throw "Config file probably not found";
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
+            dev::eth::g_configAccesssor.reset(
+                new skutils::json_config_file_accessor( configPath.string() ) );
         } catch ( ... ) {
             cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
             return -1;
@@ -1564,7 +1566,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *client );
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
