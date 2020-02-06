@@ -1,6 +1,10 @@
 #pragma once
+
 #include "DebugFace.h"
+
 #include <libethereum/Executive.h>
+
+#include <boost/program_options.hpp>
 
 class SkaleHost;
 
@@ -16,9 +20,7 @@ class SessionManager;
 
 class Debug : public DebugFace {
 public:
-    static volatile bool g_bEnabledDebugBehaviorAPIs;
-
-    explicit Debug( eth::Client const& _eth );
+    explicit Debug( eth::Client const& _eth, const std::string& argv = std::string() );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"debug", "1.0"}};
@@ -46,8 +48,14 @@ public:
 
     std::string debug_callSkaleHost( const std::string& _arg ) override;
 
+    virtual std::string debug_getVersion() override;
+    virtual std::string debug_getArguments() override;
+    virtual std::string debug_getConfig() override;
+    virtual std::string debug_getSchainName() override;
+
 private:
     eth::Client const& m_eth;
+    std::string argv_options;
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
     skale::State stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
