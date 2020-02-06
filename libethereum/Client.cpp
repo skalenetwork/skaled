@@ -168,9 +168,13 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( _dbPath.size() )
         Defaults::setDBPath( _dbPath );
 
-    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && number() == 0 ) {
-        m_snapshotManager->doSnapshot( 0 );
-        this->first_block_timestamp = this->latestBlock().info().timestamp();
+    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+        if ( this->number() == 0 ) {
+            m_snapshotManager->doSnapshot( 0 );
+            this->last_snapshot_time = this->latestBlock().info().timestamp();
+        } else {
+            this->fillLastSnapshotTime();
+        }
     }
 
     doWork( false );
@@ -587,9 +591,9 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    return _timestamp / uint64_t( 86400 ) != this->first_block_timestamp / int64_t( 86400 ) &&
-           ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
-               chainParams().nodeInfo.snapshotIntervalMs;
+    int snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
+    return _timestamp / uint64_t( snapshotIntervalMs ) !=
+           this->last_snapshot_time / int64_t( snapshotIntervalMs );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
@@ -995,6 +999,32 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+void Client::fillLastSnapshotTime() {
+    int i = this->number();
+    int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
+    for ( ;; ) {
+        uint64_t last_timestamp = this->blockInfo( this->hashFromNumber( i ) ).timestamp();
+        uint64_t proposed_last_snapshot_time =
+            ( last_timestamp / snapshotIntervalMs ) * snapshotIntervalMs;
+        while ( this->blockInfo( this->hashFromNumber( i - 1 ) ).timestamp() + snapshotIntervalMs >=
+                    proposed_last_snapshot_time &&
+                i > 0 ) {
+            --i;
+        }
+        if ( i == 0 ) {
+            this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
+            break;
+        }
+        if ( !this->m_snapshotManager->isSnapshotHashPresent( i ) ) {
+            continue;
+        } else {
+            this->last_snapshot_time = proposed_last_snapshot_time;
+            this->last_snapshoted_block = i;
+            break;
+        }
+    }
 }
 
 // new block watch
