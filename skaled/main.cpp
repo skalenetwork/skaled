@@ -293,6 +293,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 }  // namespace
 
 int main( int argc, char** argv ) try {
+    setenv( "SEGFAULT_SIGNALS", "all", 0 );  // no replace
+
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
@@ -333,6 +335,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS4 = -1;
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
+    bool bEnabledDebugBehaviorAPIs = false;
 
     string strJsonAdminSessionKey;
     ChainParams chainParams;
@@ -844,17 +847,17 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            rpc::Debug::g_bEnabledDebugBehaviorAPIs =
+            bEnabledDebugBehaviorAPIs =
                 joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
     }
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+        bEnabledDebugBehaviorAPIs = true;
     clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
                                   << cc::info( "enable-debug-behavior-apis" )
                                   << cc::debug( " mode is " )
-                                  << cc::flag_ed( rpc::Debug::g_bEnabledDebugBehaviorAPIs );
+                                  << cc::flag_ed( bEnabledDebugBehaviorAPIs );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1573,13 +1576,22 @@ int main( int argc, char** argv ) try {
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *client );
 
+        std::string argv_string;
+        {
+            ostringstream ss;
+            for ( int i = 1; i < argc; ++i )
+                ss << argv[i] << " ";
+            argv_string = ss.str();
+        }
+
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
             new rpc::Net(), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            new rpc::Debug( *client ), nullptr ) );
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
+            nullptr ) );
 
         if ( is_ipc ) {
             try {
