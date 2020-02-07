@@ -73,9 +73,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
-    virtual transactions_vector pendingTransactions( size_t _limit ) override;
+    virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override;
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -85,16 +85,17 @@ private:
 
 ConsensusExtImpl::ConsensusExtImpl( SkaleHost& _host ) : m_host( _host ) {}
 
-ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions( size_t _limit ) {
-    auto ret = m_host.pendingTransactions( _limit );
+ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
+    size_t _limit, u256& _stateRoot ) {
+    auto ret = m_host.pendingTransactions( _limit, _stateRoot );
     return ret;
 }
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice );
+    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -163,7 +164,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     return sha;
 }
 
-ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _limit ) {
+ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
+    size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
@@ -176,6 +178,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     MICROPROFILE_SCOPEI( "SkaleHost", "pendingTransactions", MP_LAWNGREEN );
 
+
+    _stateRoot = dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() );
 
     ConsensusExtFace::transactions_vector out_vector;
 
@@ -278,7 +282,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice ) try {
+    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
     LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
@@ -287,6 +291,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // blockchain
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
+    assert( dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() ) == _stateRoot );
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
