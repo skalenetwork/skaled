@@ -292,7 +292,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
-    assert( dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() ) == _stateRoot );
+    if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+        assert( dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() ) == _stateRoot );
+    }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
