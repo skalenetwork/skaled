@@ -82,7 +82,7 @@ jobs:
             - bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
 
         - stage: deploy
-          if: branch IN (master, stable, beta, develop)
+          if: branch IN (master, stable, beta, develop, SKALE-2108-receipts-hotfix)
           env:
             - CMAKE_BUILD_TYPE=Debug
             - CODE_COVERAGE=OFF
@@ -122,7 +122,9 @@ jobs:
                 - skaled/skaled
               on:
                 repo: skalenetwork/skaled
-                branch: stable
+                branch:
+                    - stable
+                    - SKALE-2108-receipts-hotfix
             - provider: script
               script: bash ../scripts/skale_build/deploy_image.sh $VERSION $DOCKER_USERNAME $DOCKER_PASSWORD
               on:
@@ -132,6 +134,7 @@ jobs:
                     - stable
                     - beta
                     - develop
+                    - SKALE-2108-receipts-hotfix
 cache:
     ccache: true
     directories:
