@@ -254,7 +254,8 @@ public:
     /// The only thing left to do after this is to actually mine().
     ///
     /// This may be called multiple times and without issue.
-    void commitToSeal( BlockChain const& _bc, bytes const& _extraData = {} );
+    void commitToSeal( BlockChain const& _bc, bytes const& _extraData = {},
+        dev::h256 const& _stateRootHash = dev::h256( "" ) );
 
     /// Pass in a properly sealed header matching this block.
     /// @returns true iff we were previously committed to sealing, the header is valid and it

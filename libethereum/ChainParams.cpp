@@ -115,6 +115,14 @@ ChainParams ChainParams::loadConfig(
         } catch ( ... ) {
         }
 
+        try {
+            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+        } catch ( ... ) {
+        }
+        if ( cp.rotateAfterBlock_ < 0 )
+            cp.rotateAfterBlock_ = 0;
+
+
         std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
         try {
