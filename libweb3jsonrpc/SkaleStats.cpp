@@ -447,9 +447,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         //
-        bool bSkipMessageProxyLogsSearch = false;
+        bool bDebugSkipMessageProxyLogsSearch = false;
         if ( joSkaleConfig_nodeInfo.count( "imaDebugSkipMessageProxyLogsSearch" ) > 0 )
-            bSkipMessageProxyLogsSearch =
+            bDebugSkipMessageProxyLogsSearch =
                 joSkaleConfig_nodeInfo["imaDebugSkipMessageProxyLogsSearch"].get< bool >();
         if ( joSkaleConfig_nodeInfo.count( "imaMessageProxySChain" ) == 0 )
             throw std::runtime_error(
@@ -1008,7 +1008,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
             jarrTopic_dstChainHash.push_back( strTopic_dstChainHash );
             jarrTopic_msgCounter.push_back( strTopic_msgCounter );
-            if ( !bSkipMessageProxyLogsSearch ) {
+            if ( !bDebugSkipMessageProxyLogsSearch ) {
                 //
                 //
                 //
@@ -1398,7 +1398,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     throw std::runtime_error( "No transaction was found for IMA message " +
                                               std::to_string( nStartMessageIdx + idxMessage ) );
                 }
-            }  // if( ! bSkipMessageProxyLogsSearch )
+            }  // if( ! bDebugSkipMessageProxyLogsSearch )
             //
             //
             // One more message is valid, concatenate it for furthes in-wallet signing
