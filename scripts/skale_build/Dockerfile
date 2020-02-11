@@ -36,6 +36,6 @@ ENTRYPOINT /skaled/skaled \
  --ssl-cert $SSL_CERT_PATH \
  -v 4  \
  --web3-trace \
- --aa no
+ --aa no $DOWNLOAD_SNAPSHOT_OPTION
 #CMD ["bash"]
 

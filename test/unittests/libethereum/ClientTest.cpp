@@ -454,14 +454,23 @@ BOOST_FIXTURE_TEST_CASE( ClientSnapshotsTest, TestClientSnapshotsFixture ) {
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
-    std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
-
     testClient->mineBlocks( 1 );
 
     testClient->importTransactionsAsBlock(
-        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 11 );
+        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    dev::h256 empty_str = dev::h256( "" );
+    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+    dev::h256 empty_state_root_hash;
+    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+    BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
