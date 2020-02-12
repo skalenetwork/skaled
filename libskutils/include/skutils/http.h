@@ -77,6 +77,7 @@ typedef int socket_t;
 
 #include <libdevcore/microprofile.h>
 
+#include <skutils/atomic_shared_ptr.h>
 #include <skutils/dispatch.h>
 #include <skutils/network.h>
 #include <skutils/url.h>
@@ -96,6 +97,9 @@ typedef int socket_t;
 
 #define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS ( 60 * 1000 )
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace skutils {
 namespace http {
 
@@ -110,7 +114,8 @@ struct ci {
 
 };  // namespace detail
 
-// enum class e_http_version { v1_0 = 0, v1_1 };
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef std::multimap< std::string, std::string, detail::ci > map_headers;
 
@@ -121,6 +126,9 @@ typedef std::multimap< std::string, std::string > map_params;
 typedef std::smatch match;
 typedef std::function< bool( uint64_t current, uint64_t total ) > fn_progress;
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct multipart_file {
     std::string filename_;
     std::string content_type_;
@@ -128,6 +136,9 @@ struct multipart_file {
     size_t length_ = 0;
 };  /// struct multipart_file
 typedef std::multimap< std::string, multipart_file > multipart_files;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct request {
     std::string origin_;
@@ -143,6 +154,9 @@ struct request {
 
     fn_progress progress_;
 
+    request();
+    ~request();
+
     bool has_header( const char* key ) const;
     std::string get_header_value( const char* key, size_t id = 0 ) const;
     size_t get_header_value_count( const char* key ) const;
@@ -156,12 +170,18 @@ struct request {
     multipart_file get_file_value( const char* key ) const;
 };  /// struct request
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct response {
     std::string version_;
-    int status_;
+    int status_ = -1;
     map_headers headers_;
     std::string body_;
     std::function< std::string( uint64_t offset ) > streamcb_;
+
+    response();
+    ~response();
 
     bool has_header( const char* key ) const;
     std::string get_header_value( const char* key, size_t id = 0 ) const;
@@ -172,8 +192,10 @@ struct response {
     void set_content( const char* s, size_t n, const char* content_type );
     void set_content( const std::string& s, const char* content_type );
 
-    response() : status_( -1 ) {}
 };  /// struct response
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class stream {
 public:
@@ -201,6 +223,9 @@ private:
     socket_t sock_;
 };  /// class socket_stream
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class buffer_stream : public stream {
 public:
     buffer_stream();
@@ -214,6 +239,85 @@ public:
 private:
     std::string buffer_;
 };  /// class buffer_stream
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class server;
+
+class async_query_handler : public skutils::ref_retain_release {
+public:
+    server& srv_;
+    async_query_handler( server& srv );
+    virtual ~async_query_handler();
+    virtual void run() = 0;
+    virtual void step() = 0;
+    virtual void will_remove() = 0;
+    bool remove_this_task();
+};
+
+typedef void* task_id_t;
+typedef skutils::retain_release_ptr< async_query_handler > task_ptr_t;
+typedef std::map< task_id_t, task_ptr_t > map_tasks_t;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class async_read_and_close_socket : public async_query_handler {
+public:
+    socket_t socket_;
+    std::atomic_bool active_, have_socket_;
+    skutils::dispatch::queue_id_t qid_;
+    size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_;
+
+    typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
+        callback_success_t;
+    typedef std::function< void() > callback_fail_t;
+
+    callback_success_t callback_success_;
+    callback_fail_t callback_fail_;
+
+    async_read_and_close_socket( server& srv, socket_t socket_,
+        size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__,
+        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT,
+        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ );
+    virtual ~async_read_and_close_socket();
+    virtual void run();
+    virtual void step();
+    virtual void will_remove();
+    void close_socket();
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class async_read_and_close_socket_SSL : public async_query_handler {
+public:
+    socket_t socket_;
+    std::atomic_bool active_, have_socket_;
+    skutils::dispatch::queue_id_t qid_;
+    size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_;
+
+    typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
+        callback_success_t;
+    typedef std::function< void() > callback_fail_t;
+
+    callback_success_t callback_success_;
+    callback_fail_t callback_fail_;
+
+    async_read_and_close_socket_SSL( server& srv, socket_t socket_,
+        size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__,
+        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT,
+        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ );
+    virtual ~async_read_and_close_socket_SSL();
+    virtual void run();
+    virtual void step();
+    virtual void will_remove();
+    void close_socket();
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class server {
 public:
@@ -273,7 +377,8 @@ private:
     bool parse_request_line( const char* s, request& req );
     void write_response( stream& strm, bool last_connection, const request& req, response& res );
 
-    virtual bool read_and_close_socket( socket_t sock );
+    virtual bool read_and_close_socket_sync( socket_t sock );
+    virtual void read_and_close_socket_async( socket_t sock );
 
     std::atomic_bool is_in_loop_ = false;
     std::atomic_bool is_running_ = false;
@@ -288,22 +393,14 @@ private:
     Handler error_handler_;
     Logger logger_;
 
-    std::mutex running_connectoin_handlers_mutex_;
-    std::atomic_int running_connectoin_handlers_;
-    int running_connectoin_handlers_get() {
-        int n = 0;
-        std::lock_guard< std::mutex > guard( running_connectoin_handlers_mutex_ );
-        n = running_connectoin_handlers_;
-        return n;
-    }
-    void running_connection_handlers_increment() {
-        std::lock_guard< std::mutex > guard( running_connectoin_handlers_mutex_ );
-        ++running_connectoin_handlers_;
-    }
-    void running_connectoin_handlers_decrement() {
-        std::lock_guard< std::mutex > guard( running_connectoin_handlers_mutex_ );
-        --running_connectoin_handlers_;
-    }
+protected:
+    std::recursive_mutex running_connection_handlers_mutex_;
+    map_tasks_t map_tasks_;
+    bool have_running_tasks();
+    std::atomic_bool suspend_adding_tasks_ = false;
+    bool add_task( task_ptr_t pTask );
+    bool remove_task( task_ptr_t pTask );
+    void remove_all_tasks();
 
 public:
     bool is_in_loop() const { return is_in_loop_; }
@@ -336,7 +433,13 @@ public:
             skutils::dispatch::remove( handler_queue_id_at_index( i ) );
         }
     }
+
+    friend class async_query_handler;
+    friend class async_read_and_close_socket;
 };  /// class server
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class client {
 public:
@@ -398,6 +501,9 @@ private:
     virtual bool read_and_close_socket( socket_t sock, request& req, response& res );
 };  /// class client
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class SSL_socket_stream : public stream {
 public:
     SSL_socket_stream( socket_t sock, SSL* ssl );
@@ -421,7 +527,8 @@ public:
     bool is_ssl() const override { return true; }
 
 private:
-    bool read_and_close_socket( socket_t sock ) override;
+    bool read_and_close_socket_sync( socket_t sock ) override;
+    void read_and_close_socket_async( socket_t sock ) override;
     SSL_CTX* ctx_;
     std::mutex ctx_mutex_;
 };  /// class SSL_server
@@ -433,6 +540,9 @@ public:
     long ctx_mode = SSL_MODE_AUTO_RETRY;
     long ctx_cache_mode = SSL_SESS_CACHE_CLIENT;
 };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SSL_client : public client {
 public:
@@ -450,7 +560,8 @@ private:
     std::mutex ctx_mutex_;
 };  /// class SSL_client
 
-/// Implementation
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace detail {
 
@@ -472,9 +583,18 @@ private:
     std::string glowable_buffer_;
 };
 
-}  // namespace detail
+class SSLInit {
+public:
+    SSLInit();
+    ~SSLInit();
+};  /// class SSLInit
 
-/// Stream implementation
+// static SSLInit sslinit_;
+
+};  // namespace detail
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template < typename... Args >
 inline void stream::write_format( const char* fmt, const Args&... args ) {
@@ -505,20 +625,10 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
     }
 }
 
-namespace detail {
-
-class SSLInit {
-public:
-    SSLInit();
-    ~SSLInit();
-};  /// class SSLInit
-
-// static SSLInit sslinit_;
-
-};  // namespace detail
-
-
 };  // namespace http
 };  // namespace skutils
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif  /// SKUTILS_HTTP_H

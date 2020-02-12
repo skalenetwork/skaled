@@ -165,36 +165,6 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
     return ret;
 }
 
-template < typename TS, typename TF >
-void async_read_and_close_socket( skutils::dispatch::queue_id_t qid, socket_t sock,
-    TS callback_success, TF callback_fail,
-    size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__, size_t retry_index = 0,
-    size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT,
-    size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ ) {
-    if ( retry_index >= retry_count ) {
-        callback_fail();
-        close_socket( sock );
-        return;
-    }
-    ++retry_index;
-    if ( detail::poll_read( sock, poll_ms ) ) {
-        socket_stream strm( sock );
-        auto last_connection = ( retry_index == retry_count ) ? true : false;
-        auto connection_close = false;
-        // bool ret =
-        callback_success( strm, last_connection, connection_close );
-        if ( connection_close )
-            close_socket( sock );
-        return;
-    }
-    skutils::dispatch::async( qid,
-        [=]() {
-            sync_read_and_close_socket( qid, sock, callback_success, callback_fail, poll_ms,
-                retry_index, retry_count, retry_after_ms );
-        },
-        retry_after_ms );
-}
-
 template < typename Fn >
 socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0 ) {
 #ifdef _WIN32
@@ -949,6 +919,9 @@ std::pair< std::string, std::string > make_range_header( uint64_t value, Args...
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+request::request() {}
+request::~request() {}
+
 bool request::has_header( const char* key ) const {
     return detail::has_header( headers_, key );
 }
@@ -998,6 +971,9 @@ multipart_file request::get_file_value( const char* key ) const {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+response::response() {}
+response::~response() {}
 
 bool response::has_header( const char* key ) const {
     return headers_.find( key ) != headers_.end();
@@ -1180,11 +1156,136 @@ SSLInit::~SSLInit() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+async_query_handler::async_query_handler( server& srv ) : srv_( srv ) {}
+async_query_handler::~async_query_handler() {}
+
+bool async_query_handler::remove_this_task() {
+    return srv_.remove_task( task_ptr_t( this ) );
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// template < typename TS, typename TF >
+// void async_read_and_close_socket( skutils::dispatch::queue_id_t qid, socket_t sock,
+//    TS callback_success, TF callback_fail,
+//    size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__, size_t retry_index =
+//    0, size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT, size_t retry_after_ms =
+//    __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ ) { if ( retry_index >= retry_count ) {
+//        callback_fail();
+//        close_socket( sock );
+//        return;
+//    }
+//    ++retry_index;
+//    if ( detail::poll_read( sock, poll_ms ) ) {
+//        socket_stream strm( sock );
+//        auto last_connection = ( retry_index == retry_count ) ? true : false;
+//        auto connection_close = false;
+//        // bool ret =
+//        callback_success( strm, last_connection, connection_close );
+//        if ( connection_close )
+//            close_socket( sock );
+//        return;
+//    }
+//    skutils::dispatch::async( qid,
+//        [=]() {
+//            async_read_and_close_socket( qid, sock, callback_success, callback_fail, poll_ms,
+//                retry_index, retry_count, retry_after_ms );
+//        },
+//        retry_after_ms );
+//}
+
+
+async_read_and_close_socket::async_read_and_close_socket(
+    server& srv, socket_t socket, size_t poll_ms, size_t retry_count, size_t retry_after_ms )
+    : async_query_handler( srv ),
+      socket_( socket ),
+      active_( true ),
+      have_socket_( true ),
+      qid_( srv.next_handler_queue_id() ),
+      poll_ms_( poll_ms ),
+      retry_index_( 0 ),
+      retry_count_( retry_count ),
+      retry_after_ms_( retry_after_ms ) {}
+
+async_read_and_close_socket::~async_read_and_close_socket() {
+    will_remove();
+}
+
+void async_read_and_close_socket::run() {
+    if ( !active_ )
+        return;
+    skutils::dispatch::job_t job = [=]() -> void {
+        ( const_cast< async_read_and_close_socket* >( this ) )->step();
+    };
+    skutils::dispatch::async(
+        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+}
+
+void async_read_and_close_socket::step() {
+    if ( retry_index_ >= retry_count_ ) {
+        try {
+            if ( callback_fail_ )
+                callback_fail_();
+        } catch ( ... ) {
+        }
+        close_socket();
+        remove_this_task();
+        return;
+    }
+    ++retry_index_;
+    if ( detail::poll_read( socket_, poll_ms_ ) ) {
+        socket_stream strm( socket_ );
+        bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+        bool connection_close = false;
+        if ( callback_success_ ) {
+            bool is_fail = false;
+            try {
+                callback_success_( strm, last_connection, connection_close );
+            } catch ( ... ) {
+                is_fail = true;
+                connection_close = true;
+            }
+            if ( is_fail ) {
+                try {
+                    if ( callback_fail_ )
+                        callback_fail_();
+                } catch ( ... ) {
+                }
+            }
+        }
+        if ( connection_close )
+            close_socket();
+        remove_this_task();
+        return;
+    }
+    skutils::dispatch::job_t job = [=]() -> void {
+        ( const_cast< async_read_and_close_socket* >( this ) )->step();
+    };
+    skutils::dispatch::async(
+        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+}
+
+void async_read_and_close_socket::will_remove() {
+    if ( !active_ )
+        return;
+    active_ = false;
+    close_socket();
+}
+void async_read_and_close_socket::close_socket() {
+    if ( !have_socket_ )
+        return;
+    have_socket_ = false;
+    detail::close_socket( socket_ );
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 server::server( size_t a_max_handler_queues )
     : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
-      running_connectoin_handlers_( 0 ),
       max_handler_queues_( a_max_handler_queues ),
       current_handler_queue_( 0 ) {
     if ( max_handler_queues_ < 1 )
@@ -1436,6 +1537,7 @@ int server::bind_internal( int ipVer, const char* host, int port, int socket_fla
 }
 
 bool server::listen_internal() {
+    suspend_adding_tasks_ = false;
     is_in_loop_ = true;
     auto ret = true;
     try {
@@ -1456,19 +1558,13 @@ bool server::listen_internal() {
             if ( sock == INVALID_SOCKET ) {
                 continue;
             }
-            skutils::dispatch::job_t fn = [=]() {
-                running_connection_handlers_increment();
-                try {
-                    read_and_close_socket( sock );
-                } catch ( ... ) {
-                }
-                running_connectoin_handlers_decrement();
-            };
-            skutils::dispatch::async( next_handler_queue_id(), fn );
+            read_and_close_socket_async( sock );
         }
+        suspend_adding_tasks_ = true;
+        remove_all_tasks();
         for ( ; is_running_; ) {
             std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
-            if ( !running_connectoin_handlers_get() ) {
+            if ( !have_running_tasks() ) {
                 break;
             }
         }
@@ -1478,6 +1574,46 @@ bool server::listen_internal() {
     is_running_ = false;
     is_in_loop_ = false;
     return ret;
+}
+
+bool server::have_running_tasks() {
+    size_t n = 0;
+    {  // block
+        std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+        n = map_tasks_.size();
+    }  // block
+    return ( n != 0 ) ? true : false;
+}
+
+bool server::add_task( task_ptr_t pTask ) {
+    if ( !pTask )
+        return false;
+    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    task_id_t tid = task_id_t( pTask.get() );
+    map_tasks_[tid] = pTask;
+    return true;
+}
+bool server::remove_task( task_ptr_t pTask ) {
+    if ( !pTask )
+        return false;
+    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    task_id_t tid = task_id_t( pTask.get() );
+    map_tasks_t::iterator itFind = map_tasks_.find( tid ), itEnd = map_tasks_.end();
+    if ( itFind == itEnd )
+        return false;
+    pTask->will_remove();
+    map_tasks_.erase( itFind );
+    return true;
+}
+
+void server::remove_all_tasks() {
+    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    map_tasks_t::iterator itWalk = map_tasks_.begin(), itEnd = map_tasks_.end();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        task_ptr_t pTask = itWalk->second;
+        pTask->will_remove();
+    }
+    map_tasks_.clear();
 }
 
 bool server::routing( request& req, response& res ) {
@@ -1579,13 +1715,30 @@ bool server::is_valid() const {
     return true;
 }
 
-bool server::read_and_close_socket( socket_t sock ) {
+bool server::read_and_close_socket_sync( socket_t sock ) {
     return detail::read_and_close_socket( sock, get_keep_alive_max_count(),
         [this, sock]( stream& strm, bool last_connection, bool& connection_close ) {
             std::string origin =
                 skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
             return process_request( origin, strm, last_connection, connection_close );
         } );
+}
+
+void server::read_and_close_socket_async( socket_t sock ) {
+    auto pRT = new async_read_and_close_socket( *this, sock );
+    task_ptr_t pTask = pRT;
+    add_task( pTask );
+    pRT->callback_success_ = [this, sock]( stream& strm, bool last_connection,
+                                 bool& connection_close ) -> void {
+        std::string origin =
+            skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
+        if ( !process_request( origin, strm, last_connection, connection_close ) )
+            throw std::runtime_error( "failed to process request" );
+    };
+    pRT->callback_fail_ = [this, sock]() {
+        std::cout << "failed to process http reqiest from socket" << sock << "\n";
+    };
+    pTask->run();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1623,7 +1776,7 @@ bool SSL_server::is_valid() const {
     return ctx_;
 }
 
-bool SSL_server::read_and_close_socket( socket_t sock ) {
+bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
     return detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
@@ -1634,6 +1787,23 @@ bool SSL_server::read_and_close_socket( socket_t sock ) {
             return process_request( origin, strm, last_connection, connection_close );
         } );
 }
+
+void SSL_server::read_and_close_socket_async( socket_t sock ) {
+    std::string origin =
+        skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
+    auto pRT = new async_read_and_close_socket_SSL( *this, sock );
+    task_ptr_t pTask = pRT;
+    add_task( pTask );
+    pRT->callback_success_ = [this, origin](
+                                 stream& strm, bool last_connection, bool& connection_close ) {
+        return process_request( origin, strm, last_connection, connection_close );
+    };
+    pRT->callback_fail_ = [this, sock]() {
+        std::cout << "failed to process http reqiest from socket(SSL)" << sock << "\n";
+    };
+    pTask->run();
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
