@@ -40,10 +40,12 @@ using namespace dev;
 
 using namespace std;
 
-ConsensusStub::ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID )
+ConsensusStub::ConsensusStub(
+    ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot )
     : dev::Worker( "consensus_stub", 0 ),  // call doWork in a tight loop
       m_extFace( _extFace ),
-      blockCounter( _lastCommittedBlockID ) {
+      blockCounter( _lastCommittedBlockID ),
+      stateRoot( _stateRoot ) {
     // TODO Auto-generated constructor stub
 }
 
@@ -81,7 +83,7 @@ void ConsensusStub::doWork() {
 
     using transactions_vector = ConsensusExtFace::transactions_vector;
 
-    transactions_vector txns = m_extFace.pendingTransactions( wanted_txn_count );
+    transactions_vector txns = m_extFace.pendingTransactions( wanted_txn_count, stateRoot );
     // TODO Can return 0 on time-out. Needed for nice thread termination. Rethink this.
     if ( txns.size() == 0 )  // check for exit
         return;
@@ -105,8 +107,8 @@ void ConsensusStub::doWork() {
 
     try {
         ++blockCounter;
-        m_extFace.createBlock(
-            out_vector, time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ) );
+        m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
+            getPriceForBlockId( blockCounter ), stateRoot );
         std::cout << cc::debug( "createBlock" ) << std::endl;
     } catch ( const dev::Exception& x ) {
         std::cout << x.what() << std::endl;
