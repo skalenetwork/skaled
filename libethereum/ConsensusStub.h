@@ -36,7 +36,7 @@ class ConsensusExtFace;
 
 class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:
-    ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID );
+    ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot );
     ~ConsensusStub() override;
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override;
     void startAll() override;
@@ -59,6 +59,7 @@ private:
 private:
     ConsensusExtFace& m_extFace;
     int64_t blockCounter = 0;
+    u256 stateRoot = 0;
 };
 
 #endif /* LIBETHEREUM_CONSENSUSSTUB_H_ */
