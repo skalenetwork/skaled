@@ -290,6 +290,38 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         fs::remove( saveTo );
 }
 
+bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
+    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
+    BlockChain bc( _chainParams, _dbPath, _forceAction );
+    unsigned currentNumber = bc.number();
+
+    std::string httpUrl = std::string( "http://" ) +
+                          std::string( _chainParams.sChain.nodes[0].ip ) + std::string( ":" ) +
+                          ( _chainParams.sChain.nodes[0].port + 3 ).convert_to< std::string >();
+    skutils::rest::client cli;
+    if ( !cli.open( httpUrl ) ) {
+        throw std::runtime_error( "REST failed to connect to server" );
+    }
+
+    nlohmann::json joIn = nlohmann::json::object();
+    joIn["jsonrpc"] = "2.0";
+    joIn["method"] = "skale_getLatestBlockNumber";
+    joIn["params"] = nlohmann::json::object();
+    skutils::rest::data_t d = cli.call( joIn );
+    if ( d.empty() ) {
+        throw std::runtime_error(
+            "cannot get blockNumber to decide whether download snapshot or not" );
+    }
+    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
+
+    if ( currentNumber + 10000 < blockNumber ) {
+        return true;
+    }
+
+    return false;
+}
+
 }  // namespace
 
 int main( int argc, char** argv ) try {
@@ -1106,7 +1138,8 @@ int main( int argc, char** argv ) try {
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
                               "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
-    if ( vm.count( "download-snapshot" ) ) {
+    if ( vm.count( "download-snapshot" ) ||
+         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting ) ) {
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
