@@ -295,9 +295,15 @@ bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
     BlockChain bc( _chainParams, _dbPath, _forceAction );
     unsigned currentNumber = bc.number();
 
+    uint64_t idx =
+        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
+    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
+        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
+    }
+
     std::string httpUrl = std::string( "http://" ) +
-                          std::string( _chainParams.sChain.nodes[0].ip ) + std::string( ":" ) +
-                          ( _chainParams.sChain.nodes[0].port + 3 ).convert_to< std::string >();
+                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
+                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
     skutils::rest::client cli;
     if ( !cli.open( httpUrl ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
