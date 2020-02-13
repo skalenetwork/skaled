@@ -79,6 +79,7 @@ typedef int socket_t;
 
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/dispatch.h>
+#include <skutils/multithreading.h>
 #include <skutils/network.h>
 #include <skutils/url.h>
 #include <skutils/utils.h>
@@ -87,15 +88,16 @@ typedef int socket_t;
 
 #define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 5 * 1000 )
 #define __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 30 * 1000 )
-#define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ( 5 )
+#define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ( 5 )
 
-#define __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ( 300 )
-#define __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ ( 500 )
-#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT ( 60 )
+#define __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__ ( 10 )
+#define __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__ ( 0 )
+#define __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ ( 50 )
+#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT__ ( 20 * 30 )
 
-#define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT ( 16 )
+#define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ ( 16 )
 
-#define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS ( 60 * 1000 )
+#define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ ( 60 * 1000 )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +256,7 @@ public:
     virtual void step() = 0;
     virtual void will_remove() = 0;
     bool remove_this_task();
-};
+};  /// class async_query_handler
 
 typedef void* task_id_t;
 typedef skutils::retain_release_ptr< async_query_handler > task_ptr_t;
@@ -263,12 +265,12 @@ typedef std::map< task_id_t, task_ptr_t > map_tasks_t;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class async_read_and_close_socket : public async_query_handler {
+class async_read_and_close_socket_base : public async_query_handler {
 public:
     socket_t socket_;
     std::atomic_bool active_, have_socket_;
     skutils::dispatch::queue_id_t qid_;
-    size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_;
+    size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_, retry_first_ms_;
 
     typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
         callback_success_t;
@@ -277,44 +279,64 @@ public:
     callback_success_t callback_success_;
     callback_fail_t callback_fail_;
 
-    async_read_and_close_socket( server& srv, socket_t socket_,
-        size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__,
-        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT,
-        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ );
+    async_read_and_close_socket_base( server& srv, socket_t socket,
+        size_t poll_ms = __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__,
+        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
+        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
+        size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
+    virtual ~async_read_and_close_socket_base();
+    virtual void run();
+    virtual void schedule_first_step();
+    virtual void schedule_next_step();
+    virtual void close_socket();
+    void call_fail_handler( bool is_close_socket = true, bool is_remove_this_task = true );
+};  /// class async_read_and_close_socket_base
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class async_read_and_close_socket : public async_read_and_close_socket_base {
+public:
+    async_read_and_close_socket( server& srv, socket_t socket,
+        size_t poll_ms = __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__,
+        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
+        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
+        size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
     virtual ~async_read_and_close_socket();
     virtual void run();
     virtual void step();
     virtual void will_remove();
-    void close_socket();
-};
+    virtual void close_socket();
+};  /// class async_read_and_close_socket
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class async_read_and_close_socket_SSL : public async_query_handler {
+class async_read_and_close_socket_SSL : public async_read_and_close_socket_base {
 public:
-    socket_t socket_;
-    std::atomic_bool active_, have_socket_;
-    skutils::dispatch::queue_id_t qid_;
-    size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_;
+    typedef std::function< int( SSL* ) > SSL_connect_or_accept_t;
+    SSL_connect_or_accept_t SSL_connect_or_accept_;  // if not set then SSL_accept() is called
+                                                     // instead
 
-    typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
-        callback_success_t;
-    typedef std::function< void() > callback_fail_t;
+    typedef std::function< void() > setup_ssl_t;
+    setup_ssl_t setup_ssl_;
 
-    callback_success_t callback_success_;
-    callback_fail_t callback_fail_;
+    SSL_CTX* ctx_;
+    SSL* ssl_;
+    BIO* bio_;
 
-    async_read_and_close_socket_SSL( server& srv, socket_t socket_,
-        size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__,
-        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT,
-        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ );
+    async_read_and_close_socket_SSL( server& srv, SSL_CTX* ctx, socket_t socket,
+        size_t poll_ms = __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__,
+        size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
+        size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
+        size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
     virtual ~async_read_and_close_socket_SSL();
     virtual void run();
     virtual void step();
     virtual void will_remove();
-    void close_socket();
-};
+    virtual void close_socket();
+};  /// class async_read_and_close_socket_SSL
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +348,7 @@ public:
     typedef std::function< void( const request&, response& ) > Handler;
     typedef std::function< void( const request&, const response& ) > Logger;
 
-    server( size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
+    server( size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ );
 
     virtual ~server();
 
@@ -394,7 +416,9 @@ private:
     Logger logger_;
 
 protected:
-    std::recursive_mutex running_connection_handlers_mutex_;
+    typedef skutils::multithreading::recursive_mutex_type tasks_mutex_type;
+    typedef std::lock_guard< tasks_mutex_type > tasks_lock_type;
+    tasks_mutex_type& tasks_mtx();
     map_tasks_t map_tasks_;
     bool have_running_tasks();
     std::atomic_bool suspend_adding_tasks_ = false;
@@ -435,7 +459,9 @@ public:
     }
 
     friend class async_query_handler;
+    friend class async_read_and_close_socket_base;
     friend class async_read_and_close_socket;
+    friend class async_read_and_close_socket_SSL;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -445,7 +471,7 @@ class client {
 public:
     mutable int ipVer_ = -1;  // not known before connect
     client( int ipVer, const char* host, int port = 80,
-        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS );
+        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ );
 
     virtual ~client();
 
@@ -521,7 +547,7 @@ private:
 class SSL_server : public server {
 public:
     SSL_server( const char* cert_path, const char* private_key_path,
-        size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
+        size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ );
     ~SSL_server() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
@@ -548,7 +574,7 @@ class SSL_client : public client {
 public:
     SSL_client_options optsSSL;
     SSL_client( int ipVer, const char* host, int port = 443,
-        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS,
+        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__,
         SSL_client_options* pOptsSSL = nullptr );
     ~SSL_client() override;
     bool is_valid() const override;

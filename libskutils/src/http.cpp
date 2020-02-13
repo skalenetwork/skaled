@@ -1163,41 +1163,11 @@ bool async_query_handler::remove_this_task() {
     return srv_.remove_task( task_ptr_t( this ) );
 }
 
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// template < typename TS, typename TF >
-// void async_read_and_close_socket( skutils::dispatch::queue_id_t qid, socket_t sock,
-//    TS callback_success, TF callback_fail,
-//    size_t poll_ms = __SKUTILS_ASYNC_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__, size_t retry_index =
-//    0, size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT, size_t retry_after_ms =
-//    __SKUTILS_ASYNC_HTTP_RETRY_MILLISECONDS__ ) { if ( retry_index >= retry_count ) {
-//        callback_fail();
-//        close_socket( sock );
-//        return;
-//    }
-//    ++retry_index;
-//    if ( detail::poll_read( sock, poll_ms ) ) {
-//        socket_stream strm( sock );
-//        auto last_connection = ( retry_index == retry_count ) ? true : false;
-//        auto connection_close = false;
-//        // bool ret =
-//        callback_success( strm, last_connection, connection_close );
-//        if ( connection_close )
-//            close_socket( sock );
-//        return;
-//    }
-//    skutils::dispatch::async( qid,
-//        [=]() {
-//            async_read_and_close_socket( qid, sock, callback_success, callback_fail, poll_ms,
-//                retry_index, retry_count, retry_after_ms );
-//        },
-//        retry_after_ms );
-//}
-
-
-async_read_and_close_socket::async_read_and_close_socket(
-    server& srv, socket_t socket, size_t poll_ms, size_t retry_count, size_t retry_after_ms )
+async_read_and_close_socket_base::async_read_and_close_socket_base( server& srv, socket_t socket,
+    size_t poll_ms, size_t retry_count, size_t retry_after_ms, size_t retry_first_ms )
     : async_query_handler( srv ),
       socket_( socket ),
       active_( true ),
@@ -1206,31 +1176,73 @@ async_read_and_close_socket::async_read_and_close_socket(
       poll_ms_( poll_ms ),
       retry_index_( 0 ),
       retry_count_( retry_count ),
-      retry_after_ms_( retry_after_ms ) {}
+      retry_after_ms_( retry_after_ms ),
+      retry_first_ms_( retry_first_ms ) {}
+async_read_and_close_socket_base::~async_read_and_close_socket_base() {}
+
+void async_read_and_close_socket_base::close_socket() {
+    if ( have_socket_ ) {
+        have_socket_ = false;
+        detail::close_socket( socket_ );
+    }
+}
+
+void async_read_and_close_socket_base::run() {
+    if ( !active_ )
+        return;
+    schedule_first_step();
+}
+
+void async_read_and_close_socket_base::schedule_first_step() {
+    skutils::dispatch::job_t job = [=]() -> void {
+        ( const_cast< async_read_and_close_socket_base* >( this ) )->step();
+    };
+    skutils::dispatch::async(
+        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_first_ms_ ) );
+}
+
+void async_read_and_close_socket_base::schedule_next_step() {
+    skutils::dispatch::job_t job = [=]() -> void {
+        ( const_cast< async_read_and_close_socket_base* >( this ) )->step();
+    };
+    skutils::dispatch::async(
+        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+}
+
+void async_read_and_close_socket_base::call_fail_handler(
+    bool is_close_socket, bool is_remove_this_task ) {
+    try {
+        if ( callback_fail_ )
+            callback_fail_();
+    } catch ( ... ) {
+    }
+    if ( is_close_socket )
+        close_socket();
+    if ( is_remove_this_task )
+        remove_this_task();
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+async_read_and_close_socket::async_read_and_close_socket( server& srv, socket_t socket,
+    size_t poll_ms, size_t retry_count, size_t retry_after_ms, size_t retry_first_ms )
+    : async_read_and_close_socket_base(
+          srv, socket, poll_ms, retry_count, retry_after_ms, retry_first_ms ) {}
 
 async_read_and_close_socket::~async_read_and_close_socket() {
     will_remove();
 }
 
 void async_read_and_close_socket::run() {
-    if ( !active_ )
-        return;
-    skutils::dispatch::job_t job = [=]() -> void {
-        ( const_cast< async_read_and_close_socket* >( this ) )->step();
-    };
-    skutils::dispatch::async(
-        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+    async_read_and_close_socket_base::run();
 }
 
 void async_read_and_close_socket::step() {
     if ( retry_index_ >= retry_count_ ) {
-        try {
-            if ( callback_fail_ )
-                callback_fail_();
-        } catch ( ... ) {
-        }
-        close_socket();
-        remove_this_task();
+        call_fail_handler();
         return;
     }
     ++retry_index_;
@@ -1246,24 +1258,15 @@ void async_read_and_close_socket::step() {
                 is_fail = true;
                 connection_close = true;
             }
-            if ( is_fail ) {
-                try {
-                    if ( callback_fail_ )
-                        callback_fail_();
-                } catch ( ... ) {
-                }
-            }
+            if ( is_fail )
+                call_fail_handler( false, false );
         }
         if ( connection_close )
             close_socket();
         remove_this_task();
         return;
     }
-    skutils::dispatch::job_t job = [=]() -> void {
-        ( const_cast< async_read_and_close_socket* >( this ) )->step();
-    };
-    skutils::dispatch::async(
-        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+    schedule_next_step();
 }
 
 void async_read_and_close_socket::will_remove() {
@@ -1272,18 +1275,97 @@ void async_read_and_close_socket::will_remove() {
     active_ = false;
     close_socket();
 }
+
 void async_read_and_close_socket::close_socket() {
-    if ( !have_socket_ )
+    async_read_and_close_socket_base::close_socket();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+async_read_and_close_socket_SSL::async_read_and_close_socket_SSL( server& srv, SSL_CTX* ctx,
+    socket_t socket, size_t poll_ms, size_t retry_count, size_t retry_after_ms,
+    size_t retry_first_ms )
+    : async_read_and_close_socket_base(
+          srv, socket, poll_ms, retry_count, retry_after_ms, retry_first_ms ),
+      ctx_( ctx ),
+      ssl_( nullptr ),
+      bio_( nullptr ) {}
+
+async_read_and_close_socket_SSL::~async_read_and_close_socket_SSL() {
+    will_remove();
+}
+
+void async_read_and_close_socket_SSL::run() {
+    async_read_and_close_socket_base::run();
+}
+
+void async_read_and_close_socket_SSL::step() {
+    if ( retry_index_ >= retry_count_ ) {
+        call_fail_handler();
         return;
-    have_socket_ = false;
-    detail::close_socket( socket_ );
+    }
+    if ( retry_index_ == 0 ) {
+        ssl_ = SSL_new( ctx_ );
+        if ( !ssl_ ) {
+            call_fail_handler();
+            return;
+        }
+        bio_ = BIO_new_socket( socket_, BIO_NOCLOSE );
+        SSL_set_bio( ssl_, bio_, bio_ );
+        if ( setup_ssl_ )
+            setup_ssl_();
+        if ( SSL_connect_or_accept_ )
+            SSL_connect_or_accept_( ssl_ );
+        else
+            SSL_accept( ssl_ );
+    }
+    ++retry_index_;
+    if ( detail::poll_read( socket_, poll_ms_ ) ) {
+        SSL_socket_stream strm( socket_, ssl_ );
+        bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+        bool connection_close = false;
+        if ( callback_success_ ) {
+            bool is_fail = false;
+            try {
+                callback_success_( strm, last_connection, connection_close );
+            } catch ( ... ) {
+                is_fail = true;
+                connection_close = true;
+            }
+            if ( is_fail )
+                call_fail_handler( false, false );
+        }
+        if ( connection_close )
+            close_socket();
+        remove_this_task();
+        return;
+    }
+    schedule_next_step();
+}
+
+void async_read_and_close_socket_SSL::will_remove() {
+    if ( !active_ )
+        return;
+    active_ = false;
+    close_socket();
+}
+
+void async_read_and_close_socket_SSL::close_socket() {
+    if ( have_socket_ ) {
+        if ( ssl_ ) {
+            SSL_free( ssl_ );
+            ssl_ = nullptr;
+        }
+    }
+    async_read_and_close_socket_base::close_socket();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 server::server( size_t a_max_handler_queues )
-    : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT ),
+    : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
       max_handler_queues_( a_max_handler_queues ),
@@ -1576,10 +1658,14 @@ bool server::listen_internal() {
     return ret;
 }
 
+server::tasks_mutex_type& server::tasks_mtx() {
+    return skutils::get_ref_mtx();
+}
+
 bool server::have_running_tasks() {
     size_t n = 0;
     {  // block
-        std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+        tasks_lock_type lock( tasks_mtx() );
         n = map_tasks_.size();
     }  // block
     return ( n != 0 ) ? true : false;
@@ -1588,7 +1674,7 @@ bool server::have_running_tasks() {
 bool server::add_task( task_ptr_t pTask ) {
     if ( !pTask )
         return false;
-    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    tasks_lock_type lock( tasks_mtx() );
     task_id_t tid = task_id_t( pTask.get() );
     map_tasks_[tid] = pTask;
     return true;
@@ -1596,7 +1682,7 @@ bool server::add_task( task_ptr_t pTask ) {
 bool server::remove_task( task_ptr_t pTask ) {
     if ( !pTask )
         return false;
-    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    tasks_lock_type lock( tasks_mtx() );
     task_id_t tid = task_id_t( pTask.get() );
     map_tasks_t::iterator itFind = map_tasks_.find( tid ), itEnd = map_tasks_.end();
     if ( itFind == itEnd )
@@ -1607,7 +1693,7 @@ bool server::remove_task( task_ptr_t pTask ) {
 }
 
 void server::remove_all_tasks() {
-    std::lock_guard< std::recursive_mutex > guard( running_connection_handlers_mutex_ );
+    tasks_lock_type lock( tasks_mtx() );
     map_tasks_t::iterator itWalk = map_tasks_.begin(), itEnd = map_tasks_.end();
     for ( ; itWalk != itEnd; ++itWalk ) {
         task_ptr_t pTask = itWalk->second;
@@ -1791,7 +1877,7 @@ bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
 void SSL_server::read_and_close_socket_async( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
-    auto pRT = new async_read_and_close_socket_SSL( *this, sock );
+    auto pRT = new async_read_and_close_socket_SSL( *this, ctx_, sock );
     task_ptr_t pTask = pRT;
     add_task( pTask );
     pRT->callback_success_ = [this, origin](

@@ -1743,7 +1743,7 @@ int main( int argc, char** argv ) try {
             //
             //
             size_t maxConnections = 0,
-                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT,
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServers = 1;
 
             // First, get "max-connections" true/false from config.json
@@ -1766,7 +1766,7 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )
