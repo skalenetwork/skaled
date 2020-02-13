@@ -204,11 +204,20 @@ bool stop( const job_id_t& jobID ) {  // stops periodical work
 
 loop::one_per_thread_t loop::g_one_per_thread;
 
-loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {}
+loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {
+    if ( p_uvAsyncInit_ == nullptr ) {
+        p_uvAsyncInit_ = ( void* ) malloc( sizeof( uv_async_t ) );
+        memset( p_uvAsyncInit_, 0, sizeof( uv_async_t ) );
+    }
+}
 loop::~loop() {
     job_remove_all();
     cancel();
     wait();
+    if ( p_uvAsyncInit_ != nullptr ) {
+        free( p_uvAsyncInit_ );
+        p_uvAsyncInit_ = nullptr;
+    }
 }
 loop::mutex_type& loop::loop_mtx() const {
     return loop_mtx_;
@@ -241,6 +250,7 @@ bool loop::wait( duration_t timeout,  // = duration_t(0) // zero means no timeou
     return sleep_while_true( [this]() -> bool { return is_running(); }, timeout, step );
 }
 void loop::run() {
+    pending_timer_remove_all();
     uv_loop_t uvLoop;
     uv_idle_t uvIdler;
     uv_timer_t uvTimerStateCheck;
@@ -275,6 +285,16 @@ void loop::run() {
                 200,  // timeout milliseconds
                 200   // repeat milliseconds
             );
+            //
+            if ( p_uvAsyncInit_ != nullptr ) {
+                uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInit_;
+                p_uvAsyncInit->data = ( void* ) this;
+                uv_async_init( &uvLoop, p_uvAsyncInit, []( uv_async_t* h ) -> void {
+                    loop* pLoop = ( loop* ) ( h->data );
+                    if ( pLoop )
+                        pLoop->pending_timer_init();
+                } );
+            }
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
@@ -295,6 +315,36 @@ void loop::run() {
         throw;
     }
     p_uvLoop_ = nullptr;
+    pending_timer_remove_all();
+}
+
+void loop::pending_timer_add( void* pUvTimer, void ( *pFnCb )( void* uv_timer_handle ),
+    uint64_t timeout, uint64_t interval ) {
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+    if ( p_uvAsyncInit_ == nullptr )
+        return;
+    pending_timer_t rpt;
+    rpt.pUvTimer_ = pUvTimer;
+    rpt.pFnCb_ = pFnCb;
+    rpt.timeout_ = timeout;
+    rpt.interval_ = interval;
+    pending_timer_list_.push_back( rpt );
+    uv_async_send( ( uv_async_t* ) p_uvAsyncInit_ );
+}
+void loop::pending_timer_remove_all() {
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+    pending_timer_list_.clear();
+}
+void loop::pending_timer_init() {
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+    pending_timer_list_t::iterator itWalk = pending_timer_list_.begin(),
+                                   itEnd = pending_timer_list_.end();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        pending_timer_t& rpt = ( *itWalk );
+        uv_timer_start( ( uv_timer_t* ) rpt.pUvTimer_, ( uv_timer_cb ) rpt.pFnCb_, rpt.timeout_,
+            rpt.interval_ );
+    }
+    pending_timer_list_.clear();
 }
 
 void loop::on_idle() {
@@ -363,8 +413,15 @@ void loop::job_data_t::init() {
         ( ns_timeout / ( 1000 * 1000 ) ) + ( ( ( ns_timeout % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
     uint64_t ms_interval =
         ( ns_interval / ( 1000 * 1000 ) ) + ( ( ( ns_interval % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
-    uv_timer_start( p_uvTimer,
-        []( uv_timer_t* pTimer ) {
+    //    uv_timer_start( p_uvTimer,
+    //        []( uv_timer_t* pTimer ) {
+    //            loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
+    //            pJobData->on_timer();
+    //        },
+    //        ms_timeout, ms_interval );
+    pLoop_->pending_timer_add( ( void* ) p_uvTimer,
+        []( void* h ) -> void {
+            uv_timer_t* pTimer = ( uv_timer_t* ) h;
             loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
             pJobData->on_timer();
         },

@@ -12,6 +12,7 @@
 #include <exception>
 #include <functional>
 #include <future>
+#include <list>
 #include <map>
 #include <mutex>
 #include <set>
@@ -366,6 +367,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class loop : public ref_retain_release {
+    void* p_uvAsyncInit_ = nullptr;
     typedef one_per_thread< loop_ptr_t > one_per_thread_t;
     static one_per_thread_t g_one_per_thread;
     //
@@ -497,6 +499,24 @@ public:
     virtual void on_job_exception( const job_id_t& id, std::exception* pe );
     //
     void invoke_in_loop( fn_invoke_t fn );
+    //
+private:
+    typedef std::recursive_mutex pending_timer_mutex_type;
+    typedef std::lock_guard< pending_timer_mutex_type > pending_timer_lock_type;
+    pending_timer_mutex_type pending_timer_mtx_;
+    struct pending_timer_t {
+        void* pUvTimer_ = nullptr;
+        void ( *pFnCb_ )( void* uv_timer_handle ) = nullptr;
+        uint64_t timeout_ = 0, interval_ = 0;
+    };
+    typedef std::list< pending_timer_t > pending_timer_list_t;
+    pending_timer_list_t pending_timer_list_;
+
+public:
+    void pending_timer_add( void* pUvTimer, void ( *pFnCb )( void* uv_timer_handle ),
+        uint64_t timeout_, uint64_t interval );
+    void pending_timer_remove_all();
+    void pending_timer_init();
     //
     friend class domain;
     friend struct job_data_t;
