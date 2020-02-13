@@ -408,7 +408,6 @@ Json::Value SkaleStats::skale_imaInfo() {
     }
 }
 
-
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
@@ -448,6 +447,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         //
+        bool bDebugSkipMessageProxyLogsSearch = false;
+        if ( joSkaleConfig_nodeInfo.count( "imaDebugSkipMessageProxyLogsSearch" ) > 0 )
+            bDebugSkipMessageProxyLogsSearch =
+                joSkaleConfig_nodeInfo["imaDebugSkipMessageProxyLogsSearch"].get< bool >();
         if ( joSkaleConfig_nodeInfo.count( "imaMessageProxySChain" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find "
@@ -676,7 +679,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         skutils::http::SSL_client_options optsSSL;
         try {
             const std::string strWalletURL =
-                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >();
+                ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+                    joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+                    "";
             if ( strWalletURL.empty() )
                 throw std::runtime_error( "empty wallet url" );
             u = skutils::url( strWalletURL );
@@ -685,24 +690,27 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             //
             try {
-                optsSSL.ca_file = skutils::tools::trim_copy(
-                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+                if ( joSkaleConfig_nodeInfo_wallets_ima.count( "caFile" ) > 0 )
+                    optsSSL.ca_file = skutils::tools::trim_copy(
+                        joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
             } catch ( ... ) {
                 optsSSL.ca_file.clear();
             }
             std::cout << strLogPrefix << cc::debug( " SGX Wallet CA file " )
                       << cc::info( optsSSL.ca_file ) << "\n";
             try {
-                optsSSL.client_cert = skutils::tools::trim_copy(
-                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+                if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
+                    optsSSL.client_cert = skutils::tools::trim_copy(
+                        joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
             } catch ( ... ) {
                 optsSSL.client_cert.clear();
             }
             std::cout << strLogPrefix << cc::debug( " SGX Wallet client certificate file " )
                       << cc::info( optsSSL.client_cert ) << "\n";
             try {
-                optsSSL.client_key = skutils::tools::trim_copy(
-                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+                if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
+                    optsSSL.client_key = skutils::tools::trim_copy(
+                        joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
             } catch ( ... ) {
                 optsSSL.client_key.clear();
             }
@@ -714,7 +722,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"url\" parameter" );
         }
         const std::string keyShareName =
-            joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >();
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
+                "";
         if ( keyShareName.empty() )
             throw std::runtime_error(
                 "error config.json file, cannot find valid value for "
@@ -998,388 +1008,397 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
             jarrTopic_dstChainHash.push_back( strTopic_dstChainHash );
             jarrTopic_msgCounter.push_back( strTopic_msgCounter );
-            //
-            //
-            //
-            // Forming eth_getLogs query similar to web3's getPastEvents, see details here:
-            // https://solidity.readthedocs.io/en/v0.4.24/abi-spec.html
-            // Here is example
-            // {
-            //    "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
-            //    "fromBlock": "0x0",
-            //    "toBlock": "latest",
-            //    "topics":
-            //    ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
-            //    ["0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26"],
-            //    ["0x0000000000000000000000000000000000000000000000000000000000000010"], null
-            //    ]
-            // }
-            //
-            nlohmann::json jarrTopics = nlohmann::json::array();
-            jarrTopics.push_back( strTopic_event_OutgoingMessage );
-            jarrTopics.push_back( jarrTopic_dstChainHash );
-            jarrTopics.push_back( jarrTopic_msgCounter );
-            jarrTopics.push_back( nullptr );
-            nlohmann::json joLogsQuery = nlohmann::json::object();
-            joLogsQuery["address"] = strAddressImaMessageProxy;
-            joLogsQuery["fromBlock"] = "0x0";
-            joLogsQuery["toBlock"] = "latest";
-            joLogsQuery["topics"] = jarrTopics;
-            std::cout << strLogPrefix << cc::debug( " Will execute logs search query: " )
-                      << cc::j( joLogsQuery ) << "\n";
-            //
-            //
-            //
-            nlohmann::json jarrFoundLogRecords;
-            if ( strDirection == "M2S" ) {
-                nlohmann::json joCall = nlohmann::json::object();
-                joCall["jsonrpc"] = "2.0";
-                joCall["method"] = "eth_getLogs";
-                joCall["params"] = joLogsQuery;
-                skutils::rest::client cli( urlMainNet );
-                skutils::rest::data_t d = cli.call( joCall );
-                if ( d.empty() )
-                    throw std::runtime_error( "Main Net call to eth_getLogs failed" );
-                jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
-            } else {
-                Json::Value jvLogsQuery;
-                Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
-                Json::Value jvLogs = dev::toJson(
-                    this->client()->logs( toLogFilter( jvLogsQuery, *this->client() ) ) );
-                jarrFoundLogRecords = nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
-            }  // else from if( strDirection == "M2S" )
-            std::cout << strLogPrefix << cc::debug( " Got logs search query result: " )
-                      << cc::j( jarrFoundLogRecords ) << "\n";
-            /* exammple of jarrFoundLogRecords value:
-                [{
-                    "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
-
-                    "blockHash":
-               "0x4bcb4bba159b42d1d3dd896a563ca426140fe9d5d1b4e0ed8f3472a681b0f5ea",
-
-                    "blockNumber": 82640,
-
-                    "data":
-               "0x00000000000000000000000000000000000000000000000000000000000000c000000000000000000000000088a5edcf315599ade5b6b4cc0991a23bf9e88f650000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000074d61696e6e65740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000",
-
-                    "logIndex": 0,
-
-                    "polarity": true,
-
-                    "topics":
-               ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
-               "0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26",
-               "0x0000000000000000000000000000000000000000000000000000000000000000",
-               "0x000000000000000000000000c2fe505c79c82bb8cef48709816480ff6e1e0379"],
-
-                    "transactionHash":
-               "0x8013af1333055df9f291a58d2da58c912b5326972b1c981b73b854625e904c91",
-
-                    "transactionIndex": 0,
-
-                    "type": "mined"
-                }]            */
-            bool bIsVerified = false;
-            if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 )
-                bIsVerified = true;
-            if ( !bIsVerified )
-                throw std::runtime_error( "IMA message " +
-                                          std::to_string( nStartMessageIdx + idxMessage ) +
-                                          " verification failed - not found in logs" );
-            //
-            //
-            // Find transaction, simlar to call tp eth_getTransactionByHash
-            //
-            bool bTransactionWasFound = false;
-            size_t idxFoundLogRecord = 0, cntFoundLogRecords = jarrFoundLogRecords.size();
-            for ( idxFoundLogRecord = 0; idxFoundLogRecord < cntFoundLogRecords;
-                  ++idxFoundLogRecord ) {
-                const nlohmann::json& joFoundLogRecord = jarrFoundLogRecords[idxFoundLogRecord];
-                if ( joFoundLogRecord.count( "transactionHash" ) == 0 )
-                    continue;  // bad log record??? this should never happen
-                const nlohmann::json& joTransactionHash = joFoundLogRecord["transactionHash"];
-                if ( !joTransactionHash.is_string() )
-                    continue;  // bad log record??? this should never happen
-                const std::string strTransactionHash = joTransactionHash.get< std::string >();
-                if ( strTransactionHash.empty() )
-                    continue;  // bad log record??? this should never happen
-                std::cout << strLogPrefix << cc::debug( " Analyzing transaction " )
-                          << cc::notice( strTransactionHash ) << cc::debug( "..." ) << "\n";
-                nlohmann::json joTransaction;
-                try {
-                    if ( strDirection == "M2S" ) {
-                        nlohmann::json jarrParams = nlohmann::json::array();
-                        jarrParams.push_back( strTransactionHash );
-                        nlohmann::json joCall = nlohmann::json::object();
-                        joCall["jsonrpc"] = "2.0";
-                        joCall["method"] = "eth_getTransactionByHash";
-                        joCall["params"] = jarrParams;
-                        skutils::rest::client cli( urlMainNet );
-                        skutils::rest::data_t d = cli.call( joCall );
-                        if ( d.empty() )
-                            throw std::runtime_error(
-                                "Main Net call to eth_getTransactionByHash failed" );
-                        joTransaction = nlohmann::json::parse( d.s_ )["result"];
-                    } else {
-                        Json::Value jvTransaction;
-                        h256 h = dev::jsToFixed< 32 >( strTransactionHash );
-                        if ( !this->client()->isKnownTransaction( h ) )
-                            jvTransaction = Json::Value( Json::nullValue );
-                        else
-                            jvTransaction = toJson( this->client()->localisedTransaction( h ) );
-                        joTransaction =
-                            nlohmann::json::parse( Json::FastWriter().write( jvTransaction ) );
-                    }  // else from if ( strDirection == "M2S" )
-                } catch ( const std::exception& ex ) {
-                    std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
-                              << cc::error( " Transaction verification failed: " )
-                              << cc::warn( ex.what() ) << "\n";
-                    continue;
-                } catch ( ... ) {
-                    std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
-                              << cc::error( " Transaction verification failed: " )
-                              << cc::warn( "unknown exception" ) << "\n";
-                    continue;
-                }
-                std::cout << strLogPrefix << cc::debug( " Reviewing transaction:" )
-                          << cc::j( joTransaction ) << cc::debug( "..." ) << "\n";
-                // extract "to" address from transaction, then compare it with "sender" from IMA
-                // message
-                const std::string strTransactionTo = skutils::tools::trim_copy(
-                    ( joTransaction.count( "to" ) > 0 && joTransaction["to"].is_string() ) ?
-                        joTransaction["to"].get< std::string >() :
-                        "" );
-                if ( strTransactionTo.empty() )
-                    continue;
-                const std::string strTransactionTorLC =
-                    skutils::tools::to_lower( strTransactionTo );
-                if ( strMessageSenderLC != strTransactionTorLC ) {
-                    std::cout << strLogPrefix << cc::debug( " Skipping transaction " )
-                              << cc::notice( strTransactionHash ) << cc::debug( " because " )
-                              << cc::warn( "to" ) << cc::debug( "=" )
-                              << cc::notice( strTransactionTo )
-                              << cc::debug( " is different than " )
-                              << cc::warn( "IMA message sender" ) << cc::debug( "=" )
-                              << cc::notice( strMessageSender ) << "\n";
-                    continue;
-                }
+            if ( !bDebugSkipMessageProxyLogsSearch ) {
                 //
                 //
-                // Find more transaction details, simlar to call tp eth_getTransactionReceipt
                 //
-                /* Receipt should look like:
-                    {
+                // Forming eth_getLogs query similar to web3's getPastEvents, see details here:
+                // https://solidity.readthedocs.io/en/v0.4.24/abi-spec.html
+                // Here is example
+                // {
+                //    "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
+                //    "fromBlock": "0x0",
+                //    "toBlock": "latest",
+                //    "topics":
+                //    ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
+                //    ["0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26"],
+                //    ["0x0000000000000000000000000000000000000000000000000000000000000010"], null
+                //    ]
+                // }
+                //
+                nlohmann::json jarrTopics = nlohmann::json::array();
+                jarrTopics.push_back( strTopic_event_OutgoingMessage );
+                jarrTopics.push_back( jarrTopic_dstChainHash );
+                jarrTopics.push_back( jarrTopic_msgCounter );
+                jarrTopics.push_back( nullptr );
+                nlohmann::json joLogsQuery = nlohmann::json::object();
+                joLogsQuery["address"] = strAddressImaMessageProxy;
+                joLogsQuery["fromBlock"] = "0x0";
+                joLogsQuery["toBlock"] = "latest";
+                joLogsQuery["topics"] = jarrTopics;
+                std::cout << strLogPrefix << cc::debug( " Will execute logs search query: " )
+                          << cc::j( joLogsQuery ) << "\n";
+                //
+                //
+                //
+                nlohmann::json jarrFoundLogRecords;
+                if ( strDirection == "M2S" ) {
+                    nlohmann::json joCall = nlohmann::json::object();
+                    joCall["jsonrpc"] = "2.0";
+                    joCall["method"] = "eth_getLogs";
+                    joCall["params"] = joLogsQuery;
+                    skutils::rest::client cli( urlMainNet );
+                    skutils::rest::data_t d = cli.call( joCall );
+                    if ( d.empty() )
+                        throw std::runtime_error( "Main Net call to eth_getLogs failed" );
+                    jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
+                } else {
+                    Json::Value jvLogsQuery;
+                    Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
+                    Json::Value jvLogs = dev::toJson(
+                        this->client()->logs( toLogFilter( jvLogsQuery, *this->client() ) ) );
+                    jarrFoundLogRecords =
+                        nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
+                }  // else from if( strDirection == "M2S" )
+                std::cout << strLogPrefix << cc::debug( " Got logs search query result: " )
+                          << cc::j( jarrFoundLogRecords ) << "\n";
+                /* exammple of jarrFoundLogRecords value:
+                    [{
+                        "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
+
                         "blockHash":
-                   "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
-                        "blockNumber": 115508,
-                        "contractAddress": "0x1bbde22a5d43d59883c1befd474eff2ec51519d2",
-                        "cumulativeGasUsed": "0xf055",
-                        "gasUsed": "0xf055",
-                        "logs": [{
-                            "address": "0xfd02fc34219dc1dc923127062543c9522373d895",
-                            "blockHash":
-                   "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
-                            "blockNumber": 115508,
-                            "data":
-                   "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000",
-                   "logIndex": 0, "polarity": false, "topics":
-                   ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-                   "0x00000000000000000000000066c5a87f4a49dd75e970055a265e8dd5c3f8f852",
-                   "0x0000000000000000000000000000000000000000000000000000000000000000"],
-                            "transactionHash":
-                   "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
-                            "transactionIndex": 0,
-                            "type": "mined"
-                        }, {
-                            "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
-                            "blockHash":
-                   "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
-                            "blockNumber": 115508,
-                            "data":
+                   "0x4bcb4bba159b42d1d3dd896a563ca426140fe9d5d1b4e0ed8f3472a681b0f5ea",
+
+                        "blockNumber": 82640,
+
+                        "data":
                    "0x00000000000000000000000000000000000000000000000000000000000000c000000000000000000000000088a5edcf315599ade5b6b4cc0991a23bf9e88f650000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000074d61696e6e65740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000",
-                            "logIndex": 1,
-                            "polarity": false,
-                            "topics":
+
+                        "logIndex": 0,
+
+                        "polarity": true,
+
+                        "topics":
                    ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
                    "0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26",
-                   "0x0000000000000000000000000000000000000000000000000000000000000021",
+                   "0x0000000000000000000000000000000000000000000000000000000000000000",
                    "0x000000000000000000000000c2fe505c79c82bb8cef48709816480ff6e1e0379"],
-                            "transactionHash":
-                   "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
-                            "transactionIndex": 0,
-                            "type": "mined"
-                        }],
-                        "logsBloom":
-                   "0x00000000000000000000000000200000000000000000000000000800000000020000000000000000000000000400000000000000000000000000000000100000000000000000000000000008000000000000000000000000000000000000020000000400020000400000000000000800000000000000000000000010040000000000000000000000000000000000000000000000000040000000000000000000000040000080000000000000000000000000001800000000200000000000000000000002000000000800000000000000000000000000000000020000200020000000000000000004000000000000000000000000000000003000000000000000",
-                        "status": "1",
-                        "transactionHash":
-                   "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
-                        "transactionIndex": 0
-                    }
 
-                    The last log record in receipt abaove contains "topics" and "data" field we
-                   should verify by comparing fields of IMA message
-                */
+                        "transactionHash":
+                   "0x8013af1333055df9f291a58d2da58c912b5326972b1c981b73b854625e904c91",
+
+                        "transactionIndex": 0,
+
+                        "type": "mined"
+                    }]            */
+                bool bIsVerified = false;
+                if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 )
+                    bIsVerified = true;
+                if ( !bIsVerified )
+                    throw std::runtime_error( "IMA message " +
+                                              std::to_string( nStartMessageIdx + idxMessage ) +
+                                              " verification failed - not found in logs" );
                 //
-                nlohmann::json joTransactionReceipt;
-                try {
-                    if ( strDirection == "M2S" ) {
-                        nlohmann::json jarrParams = nlohmann::json::array();
-                        jarrParams.push_back( strTransactionHash );
-                        nlohmann::json joCall = nlohmann::json::object();
-                        joCall["jsonrpc"] = "2.0";
-                        joCall["method"] = "eth_getTransactionReceipt";
-                        joCall["params"] = jarrParams;
-                        skutils::rest::client cli( urlMainNet );
-                        skutils::rest::data_t d = cli.call( joCall );
-                        if ( d.empty() )
-                            throw std::runtime_error(
-                                "Main Net call to eth_getTransactionReceipt failed" );
-                        joTransactionReceipt = nlohmann::json::parse( d.s_ )["result"];
-                    } else {
-                        Json::Value jvTransactionReceipt;
-                        const h256 h = dev::jsToFixed< 32 >( strTransactionHash );
-                        if ( !this->client()->isKnownTransaction( h ) )
-                            jvTransactionReceipt = Json::Value( Json::nullValue );
-                        else
-                            jvTransactionReceipt = dev::eth::toJson(
-                                this->client()->localisedTransactionReceipt( h ) );
-                        joTransactionReceipt = nlohmann::json::parse(
-                            Json::FastWriter().write( jvTransactionReceipt ) );
-                    }  // else from if ( strDirection == "M2S" )
-                } catch ( const std::exception& ex ) {
-                    std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
-                              << cc::error( " Receipt verification failed: " )
-                              << cc::warn( ex.what() ) << "\n";
-                    continue;
-                } catch ( ... ) {
-                    std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
-                              << cc::error( " Receipt verification failed: " )
-                              << cc::warn( "unknown exception" ) << "\n";
-                    continue;
-                }
-                std::cout << strLogPrefix << cc::debug( " Reviewing transaction receipt:" )
-                          << cc::j( joTransactionReceipt ) << cc::debug( "..." ) << "\n";
-                if ( joTransactionReceipt.count( "logs" ) == 0 )
-                    continue;  // ???
-                const nlohmann::json& jarrLogsReceipt = joTransactionReceipt["logs"];
-                if ( !jarrLogsReceipt.is_array() )
-                    continue;  // ???
-                bool bReceiptVerified = false;
-                size_t idxReceiptLogRecord = 0, cntReceiptLogRecords = jarrLogsReceipt.size();
-                for ( idxReceiptLogRecord = 0; idxReceiptLogRecord < cntReceiptLogRecords;
-                      ++idxReceiptLogRecord ) {
-                    const nlohmann::json& joReceiptLogRecord = jarrLogsReceipt[idxReceiptLogRecord];
-                    if ( joReceiptLogRecord.count( "address" ) == 0 ||
-                         ( !joReceiptLogRecord["address"].is_string() ) )
+                //
+                // Find transaction, simlar to call tp eth_getTransactionByHash
+                //
+                bool bTransactionWasFound = false;
+                size_t idxFoundLogRecord = 0, cntFoundLogRecords = jarrFoundLogRecords.size();
+                for ( idxFoundLogRecord = 0; idxFoundLogRecord < cntFoundLogRecords;
+                      ++idxFoundLogRecord ) {
+                    const nlohmann::json& joFoundLogRecord = jarrFoundLogRecords[idxFoundLogRecord];
+                    if ( joFoundLogRecord.count( "transactionHash" ) == 0 )
+                        continue;  // bad log record??? this should never happen
+                    const nlohmann::json& joTransactionHash = joFoundLogRecord["transactionHash"];
+                    if ( !joTransactionHash.is_string() )
+                        continue;  // bad log record??? this should never happen
+                    const std::string strTransactionHash = joTransactionHash.get< std::string >();
+                    if ( strTransactionHash.empty() )
+                        continue;  // bad log record??? this should never happen
+                    std::cout << strLogPrefix << cc::debug( " Analyzing transaction " )
+                              << cc::notice( strTransactionHash ) << cc::debug( "..." ) << "\n";
+                    nlohmann::json joTransaction;
+                    try {
+                        if ( strDirection == "M2S" ) {
+                            nlohmann::json jarrParams = nlohmann::json::array();
+                            jarrParams.push_back( strTransactionHash );
+                            nlohmann::json joCall = nlohmann::json::object();
+                            joCall["jsonrpc"] = "2.0";
+                            joCall["method"] = "eth_getTransactionByHash";
+                            joCall["params"] = jarrParams;
+                            skutils::rest::client cli( urlMainNet );
+                            skutils::rest::data_t d = cli.call( joCall );
+                            if ( d.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionByHash failed" );
+                            joTransaction = nlohmann::json::parse( d.s_ )["result"];
+                        } else {
+                            Json::Value jvTransaction;
+                            h256 h = dev::jsToFixed< 32 >( strTransactionHash );
+                            if ( !this->client()->isKnownTransaction( h ) )
+                                jvTransaction = Json::Value( Json::nullValue );
+                            else
+                                jvTransaction = toJson( this->client()->localisedTransaction( h ) );
+                            joTransaction =
+                                nlohmann::json::parse( Json::FastWriter().write( jvTransaction ) );
+                        }  // else from if ( strDirection == "M2S" )
+                    } catch ( const std::exception& ex ) {
+                        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                                  << cc::error( " Transaction verification failed: " )
+                                  << cc::warn( ex.what() ) << "\n";
                         continue;
-                    const std::string strReceiptLogRecord =
-                        joReceiptLogRecord["address"].get< std::string >();
-                    if ( strReceiptLogRecord.empty() )
+                    } catch ( ... ) {
+                        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                                  << cc::error( " Transaction verification failed: " )
+                                  << cc::warn( "unknown exception" ) << "\n";
                         continue;
-                    const std::string strReceiptLogRecordLC =
-                        skutils::tools::to_lower( strReceiptLogRecord );
-                    if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC )
-                        continue;
-                    //
-                    // find needed entries in "topics"
-                    if ( joReceiptLogRecord.count( "topics" ) == 0 ||
-                         ( !joReceiptLogRecord["topics"].is_array() ) )
-                        continue;
-                    bool bTopicSignatureFound = false, bTopicMsgCounterFound = false,
-                         bTopicDstChainHashFound = false;
-                    const nlohmann::json& jarrReceiptTopics = joReceiptLogRecord["topics"];
-                    size_t idxReceiptTopic = 0, cntReceiptTopics = jarrReceiptTopics.size();
-                    for ( idxReceiptTopic = 0; idxReceiptTopic < cntReceiptTopics;
-                          ++idxReceiptTopic ) {
-                        const nlohmann::json& joReceiptTopic = jarrReceiptTopics[idxReceiptTopic];
-                        if ( !joReceiptTopic.is_string() )
-                            continue;
-                        const dev::u256 uTopic( joReceiptTopic.get< std::string >() );
-                        if ( uTopic == uTopic_event_OutgoingMessage )
-                            bTopicSignatureFound = true;
-                        if ( uTopic == uTopic_msgCounter )
-                            bTopicMsgCounterFound = true;
-                        if ( uTopic == uTopic_dstChainHash )
-                            bTopicDstChainHashFound = true;
                     }
-                    if ( !( bTopicSignatureFound && bTopicMsgCounterFound &&
-                             bTopicDstChainHashFound ) )
+                    std::cout << strLogPrefix << cc::debug( " Reviewing transaction:" )
+                              << cc::j( joTransaction ) << cc::debug( "..." ) << "\n";
+                    // extract "to" address from transaction, then compare it with "sender" from IMA
+                    // message
+                    const std::string strTransactionTo = skutils::tools::trim_copy(
+                        ( joTransaction.count( "to" ) > 0 && joTransaction["to"].is_string() ) ?
+                            joTransaction["to"].get< std::string >() :
+                            "" );
+                    if ( strTransactionTo.empty() )
                         continue;
+                    const std::string strTransactionTorLC =
+                        skutils::tools::to_lower( strTransactionTo );
+                    if ( strMessageSenderLC != strTransactionTorLC ) {
+                        std::cout << strLogPrefix << cc::debug( " Skipping transaction " )
+                                  << cc::notice( strTransactionHash ) << cc::debug( " because " )
+                                  << cc::warn( "to" ) << cc::debug( "=" )
+                                  << cc::notice( strTransactionTo )
+                                  << cc::debug( " is different than " )
+                                  << cc::warn( "IMA message sender" ) << cc::debug( "=" )
+                                  << cc::notice( strMessageSender ) << "\n";
+                        continue;
+                    }
                     //
-                    // analyze "data"
-                    if ( joReceiptLogRecord.count( "data" ) == 0 ||
-                         ( !joReceiptLogRecord["data"].is_string() ) )
-                        continue;
-                    const std::string strData = joReceiptLogRecord["data"].get< std::string >();
-                    if ( strData.empty() )
-                        continue;
-                    const std::string strDataLC_linear = skutils::tools::trim_copy(
-                        skutils::tools::replace_all_copy( skutils::tools::to_lower( strData ),
-                            std::string( "0x" ), std::string( "" ) ) );
-                    const size_t nDataLength = strDataLC_linear.size();
-                    if ( strDataLC_linear.find( strMessageData_linear_LC ) == std::string::npos )
-                        continue;  // no IMA messahe data
-                    // std::set< std::string > setChunksLC;
-                    std::set< dev::u256 > setChunksU256;
-                    static const size_t nChunkSize = 64;
-                    const size_t cntChunks = nDataLength / nChunkSize +
-                                             ( ( ( nDataLength % nChunkSize ) != 0 ) ? 1 : 0 );
-                    for ( size_t idxChunk = 0; idxChunk < cntChunks; ++idxChunk ) {
-                        const size_t nChunkStart = idxChunk * nChunkSize;
-                        size_t nChunkEnd = nChunkStart + nChunkSize;
-                        if ( nChunkEnd > nDataLength )
-                            nChunkEnd = nDataLength;
-                        const size_t nChunkSize = nChunkEnd - nChunkStart;
-                        const std::string strChunk =
-                            strDataLC_linear.substr( nChunkStart, nChunkSize );
-                        std::cout << strLogPrefix << cc::debug( "    chunk " )
-                                  << cc::info( strChunk ) << "\n";
-                        try {
-                            const dev::u256 uChunk( "0x" + strChunk );
-                            // setChunksLC.insert( strChunk );
-                            setChunksU256.insert( uChunk );
-                        } catch ( ... ) {
-                            std::cout << strLogPrefix << cc::debug( "            skipped chunk " )
-                                      << "\n";
-                            continue;
+                    //
+                    // Find more transaction details, simlar to call tp eth_getTransactionReceipt
+                    //
+                    /* Receipt should look like:
+                        {
+                            "blockHash":
+                       "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
+                            "blockNumber": 115508,
+                            "contractAddress": "0x1bbde22a5d43d59883c1befd474eff2ec51519d2",
+                            "cumulativeGasUsed": "0xf055",
+                            "gasUsed": "0xf055",
+                            "logs": [{
+                                "address": "0xfd02fc34219dc1dc923127062543c9522373d895",
+                                "blockHash":
+                       "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
+                                "blockNumber": 115508,
+                                "data":
+                       "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000",
+                       "logIndex": 0, "polarity": false, "topics":
+                       ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                       "0x00000000000000000000000066c5a87f4a49dd75e970055a265e8dd5c3f8f852",
+                       "0x0000000000000000000000000000000000000000000000000000000000000000"],
+                                "transactionHash":
+                       "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
+                                "transactionIndex": 0,
+                                "type": "mined"
+                            }, {
+                                "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
+                                "blockHash":
+                       "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
+                                "blockNumber": 115508,
+                                "data":
+                       "0x00000000000000000000000000000000000000000000000000000000000000c000000000000000000000000088a5edcf315599ade5b6b4cc0991a23bf9e88f650000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000074d61696e6e65740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000000",
+                                "logIndex": 1,
+                                "polarity": false,
+                                "topics":
+                       ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
+                       "0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26",
+                       "0x0000000000000000000000000000000000000000000000000000000000000021",
+                       "0x000000000000000000000000c2fe505c79c82bb8cef48709816480ff6e1e0379"],
+                                "transactionHash":
+                       "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
+                                "transactionIndex": 0,
+                                "type": "mined"
+                            }],
+                            "logsBloom":
+                       "0x00000000000000000000000000200000000000000000000000000800000000020000000000000000000000000400000000000000000000000000000000100000000000000000000000000008000000000000000000000000000000000000020000000400020000400000000000000800000000000000000000000010040000000000000000000000000000000000000000000000000040000000000000000000000040000080000000000000000000000000001800000000200000000000000000000002000000000800000000000000000000000000000000020000200020000000000000000004000000000000000000000000000000003000000000000000",
+                            "status": "1",
+                            "transactionHash":
+                       "0xab241b07a2b7a8a59aafb5e25fdc5750a8c195ee42b3503e65ff737c514dde71",
+                            "transactionIndex": 0
                         }
-                    }
-                    if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() )
-                        continue;
-                    if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
-                        continue;
-                    if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() )
-                        continue;
-                    if ( setChunksU256.find( uDestinationChainID_32_max ) == setChunksU256.end() )
-                        continue;
+
+                        The last log record in receipt abaove contains "topics" and "data" field we
+                       should verify by comparing fields of IMA message
+                    */
                     //
-                    bReceiptVerified = true;
+                    nlohmann::json joTransactionReceipt;
+                    try {
+                        if ( strDirection == "M2S" ) {
+                            nlohmann::json jarrParams = nlohmann::json::array();
+                            jarrParams.push_back( strTransactionHash );
+                            nlohmann::json joCall = nlohmann::json::object();
+                            joCall["jsonrpc"] = "2.0";
+                            joCall["method"] = "eth_getTransactionReceipt";
+                            joCall["params"] = jarrParams;
+                            skutils::rest::client cli( urlMainNet );
+                            skutils::rest::data_t d = cli.call( joCall );
+                            if ( d.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionReceipt failed" );
+                            joTransactionReceipt = nlohmann::json::parse( d.s_ )["result"];
+                        } else {
+                            Json::Value jvTransactionReceipt;
+                            const h256 h = dev::jsToFixed< 32 >( strTransactionHash );
+                            if ( !this->client()->isKnownTransaction( h ) )
+                                jvTransactionReceipt = Json::Value( Json::nullValue );
+                            else
+                                jvTransactionReceipt = dev::eth::toJson(
+                                    this->client()->localisedTransactionReceipt( h ) );
+                            joTransactionReceipt = nlohmann::json::parse(
+                                Json::FastWriter().write( jvTransactionReceipt ) );
+                        }  // else from if ( strDirection == "M2S" )
+                    } catch ( const std::exception& ex ) {
+                        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                                  << cc::error( " Receipt verification failed: " )
+                                  << cc::warn( ex.what() ) << "\n";
+                        continue;
+                    } catch ( ... ) {
+                        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                                  << cc::error( " Receipt verification failed: " )
+                                  << cc::warn( "unknown exception" ) << "\n";
+                        continue;
+                    }
+                    std::cout << strLogPrefix << cc::debug( " Reviewing transaction receipt:" )
+                              << cc::j( joTransactionReceipt ) << cc::debug( "..." ) << "\n";
+                    if ( joTransactionReceipt.count( "logs" ) == 0 )
+                        continue;  // ???
+                    const nlohmann::json& jarrLogsReceipt = joTransactionReceipt["logs"];
+                    if ( !jarrLogsReceipt.is_array() )
+                        continue;  // ???
+                    bool bReceiptVerified = false;
+                    size_t idxReceiptLogRecord = 0, cntReceiptLogRecords = jarrLogsReceipt.size();
+                    for ( idxReceiptLogRecord = 0; idxReceiptLogRecord < cntReceiptLogRecords;
+                          ++idxReceiptLogRecord ) {
+                        const nlohmann::json& joReceiptLogRecord =
+                            jarrLogsReceipt[idxReceiptLogRecord];
+                        if ( joReceiptLogRecord.count( "address" ) == 0 ||
+                             ( !joReceiptLogRecord["address"].is_string() ) )
+                            continue;
+                        const std::string strReceiptLogRecord =
+                            joReceiptLogRecord["address"].get< std::string >();
+                        if ( strReceiptLogRecord.empty() )
+                            continue;
+                        const std::string strReceiptLogRecordLC =
+                            skutils::tools::to_lower( strReceiptLogRecord );
+                        if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC )
+                            continue;
+                        //
+                        // find needed entries in "topics"
+                        if ( joReceiptLogRecord.count( "topics" ) == 0 ||
+                             ( !joReceiptLogRecord["topics"].is_array() ) )
+                            continue;
+                        bool bTopicSignatureFound = false, bTopicMsgCounterFound = false,
+                             bTopicDstChainHashFound = false;
+                        const nlohmann::json& jarrReceiptTopics = joReceiptLogRecord["topics"];
+                        size_t idxReceiptTopic = 0, cntReceiptTopics = jarrReceiptTopics.size();
+                        for ( idxReceiptTopic = 0; idxReceiptTopic < cntReceiptTopics;
+                              ++idxReceiptTopic ) {
+                            const nlohmann::json& joReceiptTopic =
+                                jarrReceiptTopics[idxReceiptTopic];
+                            if ( !joReceiptTopic.is_string() )
+                                continue;
+                            const dev::u256 uTopic( joReceiptTopic.get< std::string >() );
+                            if ( uTopic == uTopic_event_OutgoingMessage )
+                                bTopicSignatureFound = true;
+                            if ( uTopic == uTopic_msgCounter )
+                                bTopicMsgCounterFound = true;
+                            if ( uTopic == uTopic_dstChainHash )
+                                bTopicDstChainHashFound = true;
+                        }
+                        if ( !( bTopicSignatureFound && bTopicMsgCounterFound &&
+                                 bTopicDstChainHashFound ) )
+                            continue;
+                        //
+                        // analyze "data"
+                        if ( joReceiptLogRecord.count( "data" ) == 0 ||
+                             ( !joReceiptLogRecord["data"].is_string() ) )
+                            continue;
+                        const std::string strData = joReceiptLogRecord["data"].get< std::string >();
+                        if ( strData.empty() )
+                            continue;
+                        const std::string strDataLC_linear = skutils::tools::trim_copy(
+                            skutils::tools::replace_all_copy( skutils::tools::to_lower( strData ),
+                                std::string( "0x" ), std::string( "" ) ) );
+                        const size_t nDataLength = strDataLC_linear.size();
+                        if ( strDataLC_linear.find( strMessageData_linear_LC ) ==
+                             std::string::npos )
+                            continue;  // no IMA messahe data
+                        // std::set< std::string > setChunksLC;
+                        std::set< dev::u256 > setChunksU256;
+                        static const size_t nChunkSize = 64;
+                        const size_t cntChunks = nDataLength / nChunkSize +
+                                                 ( ( ( nDataLength % nChunkSize ) != 0 ) ? 1 : 0 );
+                        for ( size_t idxChunk = 0; idxChunk < cntChunks; ++idxChunk ) {
+                            const size_t nChunkStart = idxChunk * nChunkSize;
+                            size_t nChunkEnd = nChunkStart + nChunkSize;
+                            if ( nChunkEnd > nDataLength )
+                                nChunkEnd = nDataLength;
+                            const size_t nChunkSize = nChunkEnd - nChunkStart;
+                            const std::string strChunk =
+                                strDataLC_linear.substr( nChunkStart, nChunkSize );
+                            std::cout << strLogPrefix << cc::debug( "    chunk " )
+                                      << cc::info( strChunk ) << "\n";
+                            try {
+                                const dev::u256 uChunk( "0x" + strChunk );
+                                // setChunksLC.insert( strChunk );
+                                setChunksU256.insert( uChunk );
+                            } catch ( ... ) {
+                                std::cout << strLogPrefix
+                                          << cc::debug( "            skipped chunk " ) << "\n";
+                                continue;
+                            }
+                        }
+                        if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() )
+                            continue;
+                        if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
+                            continue;
+                        if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() )
+                            continue;
+                        if ( setChunksU256.find( uDestinationChainID_32_max ) ==
+                             setChunksU256.end() )
+                            continue;
+                        //
+                        bReceiptVerified = true;
+                        break;
+                    }
+                    if ( !bReceiptVerified ) {
+                        std::cout << strLogPrefix << cc::debug( " Skipping transaction " )
+                                  << cc::notice( strTransactionHash )
+                                  << cc::debug( " because no appropriate receipt was found" )
+                                  << "\n";
+                        continue;
+                    }
+                    //
+                    //
+                    //
+                    std::cout << strLogPrefix
+                              << cc::success( " Found transaction for IMA message " )
+                              << cc::size10( nStartMessageIdx + idxMessage ) << cc::success( ": " )
+                              << cc::j( joTransaction ) << "\n";
+                    bTransactionWasFound = true;
                     break;
                 }
-                if ( !bReceiptVerified ) {
-                    std::cout << strLogPrefix << cc::debug( " Skipping transaction " )
-                              << cc::notice( strTransactionHash )
-                              << cc::debug( " because no appropriate receipt was found" ) << "\n";
-                    continue;
+                if ( !bTransactionWasFound ) {
+                    std::cout << strLogPrefix << " "
+                              << cc::error( "No transaction was found for IMA message " )
+                              << cc::size10( nStartMessageIdx + idxMessage ) << cc::error( "." )
+                              << "\n";
+                    throw std::runtime_error( "No transaction was found for IMA message " +
+                                              std::to_string( nStartMessageIdx + idxMessage ) );
                 }
-                //
-                //
-                //
-                std::cout << strLogPrefix << cc::success( " Found transaction for IMA message " )
-                          << cc::size10( nStartMessageIdx + idxMessage ) << cc::success( ": " )
-                          << cc::j( joTransaction ) << "\n";
-                bTransactionWasFound = true;
-                break;
-            }
-            if ( !bTransactionWasFound ) {
-                std::cout << strLogPrefix << " "
-                          << cc::error( "No transaction was found for IMA message " )
-                          << cc::size10( nStartMessageIdx + idxMessage ) << cc::error( "." )
-                          << "\n";
-                throw std::runtime_error( "No transaction was found for IMA message " +
-                                          std::to_string( nStartMessageIdx + idxMessage ) );
-            }
+            }  // if( ! bDebugSkipMessageProxyLogsSearch )
             //
             //
             // One more message is valid, concatenate it for furthes in-wallet signing
