@@ -45,11 +45,13 @@ public:
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
-        return m_extFace.pendingTransactions( _limit );
+        u256 stateRoot = 0;
+        return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0 ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice );
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0 ) {
+        m_extFace.createBlock(
+            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 
