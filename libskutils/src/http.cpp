@@ -61,13 +61,15 @@ bool stream_line_reader::getline() {
     glowable_buffer_.clear();
     for ( size_t i = 0;; i++ ) {
         char byte;
-        auto n = strm_.read( &byte, 1 );
-        if ( n < 0 )
-            return false;
-        if ( n == 0 ) {
-            if ( i == 0 )
+        int n = strm_.read( &byte, 1 );
+        if ( n < 1 ) {
+            if ( n < 0 )
                 return false;
-            break;
+            if ( n == 0 ) {
+                if ( i == 0 )
+                    return false;
+                break;
+            }
         }
         append( byte );
         if ( byte == '\n' )
@@ -1021,6 +1023,8 @@ socket_stream::socket_stream( socket_t sock ) : sock_( sock ) {}
 socket_stream::~socket_stream() {}
 
 int socket_stream::read( char* ptr, size_t size ) {
+    if ( ptr == nullptr || size == 0 )
+        return 0;
     return recv( sock_, ptr, static_cast< int >( size ), 0 );
 }
 
@@ -1029,6 +1033,11 @@ int socket_stream::write( const char* ptr, size_t size ) {
 }
 
 int socket_stream::write( const char* ptr ) {
+    if ( ptr == nullptr )
+        return 0;
+    size_t size = size_t( strlen( ptr ) );
+    if ( size == 0 )
+        return 0;
     return write( ptr, strlen( ptr ) );
 }
 
@@ -1043,6 +1052,8 @@ buffer_stream::buffer_stream() {}
 buffer_stream::~buffer_stream() {}
 
 int buffer_stream::read( char* ptr, size_t size ) {
+    if ( ptr == nullptr || size == 0 )
+        return 0;
 #if defined( _MSC_VER ) && _MSC_VER < 1900
     return static_cast< int >( buffer_._Copy_s( ptr, size, size ) );
 #else
@@ -1051,12 +1062,18 @@ int buffer_stream::read( char* ptr, size_t size ) {
 }
 
 int buffer_stream::write( const char* ptr, size_t size ) {
+    if ( ptr == nullptr || size == 0 )
+        return 0;
     buffer_.append( ptr, size );
     return static_cast< int >( size );
 }
 
 int buffer_stream::write( const char* ptr ) {
-    size_t size = strlen( ptr );
+    if ( ptr == nullptr )
+        return 0;
+    size_t size = size_t( strlen( ptr ) );
+    if ( size == 0 )
+        return 0;
     buffer_.append( ptr, size );
     return static_cast< int >( size );
 }
@@ -1077,15 +1094,24 @@ SSL_socket_stream::SSL_socket_stream( socket_t sock, SSL* ssl ) : sock_( sock ),
 SSL_socket_stream::~SSL_socket_stream() {}
 
 int SSL_socket_stream::read( char* ptr, size_t size ) {
+    if ( ptr == nullptr || size == 0 )
+        return 0;
     return SSL_read( ssl_, ptr, size );
 }
 
 int SSL_socket_stream::write( const char* ptr, size_t size ) {
+    if ( ptr == nullptr || size == 0 )
+        return 0;
     return SSL_write( ssl_, ptr, size );
 }
 
 int SSL_socket_stream::write( const char* ptr ) {
-    return write( ptr, strlen( ptr ) );
+    if ( ptr == nullptr )
+        return 0;
+    size_t size = size_t( strlen( ptr ) );
+    if ( size == 0 )
+        return 0;
+    return write( ptr, size );
 }
 
 std::string SSL_socket_stream::get_remote_addr() const {
