@@ -426,9 +426,12 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
     m_consensus->exitGracefully();
-    m_consensusThread.join();
 
-    m_broadcastThread.join();
+    if ( m_consensusThread.joinable() )
+        m_consensusThread.join();
+
+    if ( m_broadcastThread.joinable() )
+        m_broadcastThread.join();
 
     working = false;
 }
