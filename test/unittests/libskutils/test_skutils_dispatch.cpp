@@ -248,8 +248,8 @@ BOOST_AUTO_TEST_CASE( domain_functionality_alive ) {
 BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
     skutils::test::test_print_header_name( "SkUtils/dispatch/job_priorities_alive" );
     skutils::test::with_test_environment( [&]() {
-        size_t g_arrThreadCounts[] = {1, 2, 4, 8, 16, 32, 64};  // tests with different count of
-                                                                // threads
+        size_t g_arrThreadCounts[] = {1, 2, 4 /*, 8, 16, 32, 64*/};  // tests with different count
+                                                                     // of threads
         for ( const size_t& nThreadCount : g_arrThreadCounts ) {
             skutils::test::test_log_e( cc::trace(
                 "# "
