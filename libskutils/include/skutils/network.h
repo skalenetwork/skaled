@@ -65,6 +65,7 @@ typedef union {
 extern int get_address_info46( int ipVersion, const char* ads, sockaddr46** result );
 extern std::string resolve_address_for_client_connection(
     int ipVersion, const char* ads, sockaddr46& sa46 );
+extern bool is_tcp_port_listening( int ipVersion, const sockaddr46& sa46, int nPort );
 
 extern bool fd_configure_pipe( int fd );
 

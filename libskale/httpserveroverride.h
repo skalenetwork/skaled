@@ -312,13 +312,14 @@ public:
 
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
-private:
     void logPerformanceWarning( double lfExecutionDuration, int ipVer, const char* strProtocol,
         int nServerIndex, const char* strOrigin, const char* strMethod, nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
         const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
         int nServerIndex, const char* strOrigin, const std::string& strPayload );
+
+private:
     const std::string m_strAddrHTTP4;
     const int m_nBasePortHTTP4;
     const std::string m_strAddrHTTP6;
