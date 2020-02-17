@@ -63,7 +63,12 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     add_compile_options(-Wno-unknown-pragmas)
 
     # Configuration-specific compiler settings.
-    set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+    if ( APPLE )
+        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl")
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+    endif()
+
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
