@@ -157,7 +157,7 @@ private:
 
 class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
 public:
-    TestClientSnapshotsFixture() try {
+    TestClientSnapshotsFixture( const std::string& _config = "" ) try {
         check_sudo();
 
         dropRoot();
@@ -177,7 +177,9 @@ public:
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
-
+        if ( _config != "" ) {
+            chainParams = chainParams.loadConfig( _config );
+        }
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
         chainParams.nodeInfo.snapshotIntervalMs = 10;
@@ -339,23 +341,11 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
 )E";
 
 
-BOOST_FIXTURE_TEST_SUITE( ClientTestSuite, TestClientFixture )
-
-// BOOST_AUTO_TEST_CASE( ClientTest_setChainParamsAuthor ) {
-//    ClientTest* testClient = asClientTest( ethereum() );
-//    BOOST_CHECK_EQUAL(
-//        testClient->author(), Address( "0000000000000000000000000000000000000000" ) );
-//    testClient->setChainParams( c_configString );
-//    BOOST_CHECK_EQUAL(
-//        testClient->author(), Address( "0000000000000010000000000000000000000000" ) );
-//}
-
-BOOST_AUTO_TEST_SUITE(
-    EstimateGas, *boost::unit_test::fixture< TestClientFixture >( c_genesisInfoSkaleTest ) )
+BOOST_AUTO_TEST_SUITE( EstimateGas )
 
 BOOST_AUTO_TEST_CASE( constantConsumption ) {
-    ClientTest* testClient = asClientTest( ethereum() );
-    // testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -391,8 +381,8 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
 }
 
 BOOST_AUTO_TEST_CASE( linearConsumption ) {
-    ClientTest* testClient = asClientTest( ethereum() );
-    // testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -427,8 +417,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 }
 
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
-    ClientTest* testClient = asClientTest( ethereum() );
-    // testClient->setChainParams( genesisInfo( dev::eth::Network::SkaleTest ) );
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -463,8 +453,6 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 }
-
-BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -518,19 +506,18 @@ static std::string const c_skaleConfigString = R"(
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
 
-BOOST_FIXTURE_TEST_CASE( ClientSnapshotsTest, TestClientSnapshotsFixture ) {
-    chainParams = chainParams.loadConfig( c_skaleConfigString );
-    ClientTest* testClient = asClientTest( ethereum() );
-    // testClient->setChainParams( c_skaleConfigString );
+BOOST_AUTO_TEST_CASE( ClientSnapshotsTest ) {
+    TestClientSnapshotsFixture fixture( c_skaleConfigString );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
     testClient->mineBlocks( 1 );
 
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );

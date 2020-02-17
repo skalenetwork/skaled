@@ -41,12 +41,9 @@ void TestOutputHelper::initTest( size_t _maxTests ) {
     m_currentTestName = "n/a";
     m_currentTestFileName = string();
     m_timer = Timer();
-    try {
-        m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;
-        if ( !Options::get().createRandomTest )
-            std::cout << "Test Case \"" + m_currentTestCaseName + "\": \n";
-    } catch ( boost::unit_test::framework::internal_error& ) {
-    }  // hack for ClientTestSuite
+    m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;
+    if ( !Options::get().createRandomTest )
+        std::cout << "Test Case \"" + m_currentTestCaseName + "\": \n";
 
     m_maxTests = _maxTests;
     m_currTest = 0;
