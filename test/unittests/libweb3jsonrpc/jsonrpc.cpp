@@ -89,7 +89,7 @@ static std::string const c_genesisConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "nodes": [
-                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 0}
+                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1}
             ]
         }
     },
@@ -176,9 +176,21 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture() {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
+        if ( _config != "" ) {
+            Json::Value ret;
+            Json::Reader().parse( _config, ret );
+            if ( _owner ) {
+                ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( coinbase.address() );
+            } else {
+                ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+            }
+            Json::FastWriter fastWriter;
+            std::string output = fastWriter.write( ret );
+            chainParams = chainParams.loadConfig( output );
+        }
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
         chainParams.difficulty = chainParams.minimumDifficulty;
@@ -262,7 +274,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
-    RestrictedAddressFixture() {
+    RestrictedAddressFixture() : JsonRpcFixture( c_genesisConfigString ) {
         ownerAddress = Address( "00000000000000000000000000000000000000AA" );
         std::string fileName = "test";
         path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
@@ -272,10 +284,6 @@ struct RestrictedAddressFixture : public JsonRpcFixture {
               "0000000000000000000000000000000000000000000000000000000000000004"
               "7465737400000000000000000000000000000000000000000000000000000000"  // test
               "0000000000000000000000000000000000000000000000000000000000000004" );
-
-        Json::Value ret;
-        Json::Reader().parse( c_genesisConfigString, ret );
-        rpcClient->test_setChainParams( ret );
     }
 
     ~RestrictedAddressFixture() override { remove( path.c_str() ); }
@@ -291,11 +299,12 @@ string fromAscii( string _s ) {
 }
 }  // namespace
 
-BOOST_FIXTURE_TEST_SUITE( JsonRpcSuite, JsonRpcFixture )
+BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
 
 BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
-    string gasPrice = rpcClient->eth_gasPrice();
+    JsonRpcFixture fixture;
+    string gasPrice = fixture.rpcClient->eth_gasPrice();
     BOOST_CHECK_EQUAL( gasPrice, toJS( 20 * dev::eth::shannon ) );
 }
 
@@ -312,10 +321,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
 //}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_accounts ) {
+    JsonRpcFixture fixture;
     std::vector< dev::KeyPair > keys = {KeyPair::create(), KeyPair::create()};
-    accountHolder->setAccounts( keys );
-    Json::Value k = rpcClient->eth_accounts();
-    accountHolder->setAccounts( {} );
+    fixture.accountHolder->setAccounts( keys );
+    Json::Value k = fixture.rpcClient->eth_accounts();
+    fixture.accountHolder->setAccounts( {} );
     BOOST_CHECK_EQUAL( k.isArray(), true );
     BOOST_CHECK_EQUAL( k.size(), keys.size() );
     for ( auto& i : k ) {
@@ -327,12 +337,13 @@ BOOST_AUTO_TEST_CASE( jsonrpc_accounts ) {
 }
 
 BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
-    auto number = jsToU256( rpcClient->eth_blockNumber() );
-    BOOST_CHECK_EQUAL( number, client->number() );
-    dev::eth::mine( *( client ), 1 );
-    auto numberAfter = jsToU256( rpcClient->eth_blockNumber() );
+    JsonRpcFixture fixture;
+    auto number = jsToU256( fixture.rpcClient->eth_blockNumber() );
+    BOOST_CHECK_EQUAL( number, fixture.client->number() );
+    dev::eth::mine( *( fixture.client ), 1 );
+    auto numberAfter = jsToU256( fixture.rpcClient->eth_blockNumber() );
     BOOST_CHECK_GE( numberAfter, number + 1 );
-    BOOST_CHECK_EQUAL( numberAfter, client->number() );
+    BOOST_CHECK_EQUAL( numberAfter, fixture.client->number() );
 }
 
 // SKALE disabled
@@ -352,40 +363,45 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 //}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
-    rpcClient->admin_eth_setMining( true, adminSession );
-    BOOST_CHECK_EQUAL( client->wouldSeal(), true );
+    JsonRpcFixture fixture;
+    fixture.rpcClient->admin_eth_setMining( true, fixture.adminSession );
+    BOOST_CHECK_EQUAL( fixture.client->wouldSeal(), true );
 
-    rpcClient->admin_eth_setMining( false, adminSession );
-    BOOST_CHECK_EQUAL( client->wouldSeal(), false );
+    fixture.rpcClient->admin_eth_setMining( false, fixture.adminSession );
+    BOOST_CHECK_EQUAL( fixture.client->wouldSeal(), false );
 }
 
 BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
+    JsonRpcFixture fixture;
     dev::KeyPair key = KeyPair::create();
     auto address = key.address();
-    string stateAt = rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
-    BOOST_CHECK_EQUAL( client->stateAt( address, 0 ), jsToU256( stateAt ) );
+    string stateAt = fixture.rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
+    BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
 BOOST_AUTO_TEST_CASE( eth_coinbase ) {
-    string coinbase = rpcClient->eth_coinbase();
-    BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), client->author() );
+    JsonRpcFixture fixture;
+    string coinbase = fixture.rpcClient->eth_coinbase();
+    BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), fixture.client->author() );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
-    auto address = coinbase.address();
-    u256 countAt = jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
+    JsonRpcFixture fixture;
+    auto address = fixture.coinbase.address();
+    u256 countAt =
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
 
-    BOOST_CHECK_EQUAL( countAt, client->countAt( address ) );
+    BOOST_CHECK_EQUAL( countAt, fixture.client->countAt( address ) );
     BOOST_CHECK_EQUAL( countAt, 0 );
-    u256 balance = client->balanceAt( address );
-    string balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
+    u256 balance = fixture.client->balanceAt( address );
+    string balanceString = fixture.rpcClient->eth_getBalance( toJS( address ), "latest" );
     BOOST_CHECK_EQUAL( toJS( balance ), balanceString );
     BOOST_CHECK_EQUAL( jsToDecimal( balanceString ), "0" );
 
-    dev::eth::simulateMining( *( client ), 1 );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
     //    BOOST_CHECK_EQUAL(client->blockByNumber(LatestBlock).author(), address);
-    balance = client->balanceAt( address );
-    balanceString = rpcClient->eth_getBalance( toJS( address ), "latest" );
+    balance = fixture.client->balanceAt( address );
+    balanceString = fixture.rpcClient->eth_getBalance( toJS( address ), "latest" );
 
     BOOST_REQUIRE_GT( balance, 0 );
     BOOST_CHECK_EQUAL( toJS( balance ), balanceString );
@@ -405,17 +421,18 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
     t["gas"] = toJS( gas );
     t["gasPrice"] = toJS( gasPrice );
 
-    std::string txHash = rpcClient->eth_sendTransaction( t );
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
     BOOST_REQUIRE( !txHash.empty() );
 
-    accountHolder->setAccounts( {} );
-    dev::eth::mineTransaction( *( client ), 1 );
+    fixture.accountHolder->setAccounts( {} );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    countAt = jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
-    u256 balance2 = client->balanceAt( receiver.address() );
-    string balanceString2 = rpcClient->eth_getBalance( toJS( receiver.address() ), "latest" );
+    countAt = jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
+    u256 balance2 = fixture.client->balanceAt( receiver.address() );
+    string balanceString2 =
+        fixture.rpcClient->eth_getBalance( toJS( receiver.address() ), "latest" );
 
-    BOOST_CHECK_EQUAL( countAt, client->countAt( address ) );
+    BOOST_CHECK_EQUAL( countAt, fixture.client->countAt( address ) );
     BOOST_CHECK_EQUAL( countAt, 1 );
     BOOST_CHECK_EQUAL( toJS( balance2 ), balanceString2 );
     BOOST_CHECK_EQUAL( jsToU256( balanceString2 ), txAmount );
@@ -423,7 +440,8 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
     Json::Value t;
@@ -435,79 +453,83 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction ) {
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << client->balanceAt( senderAddress ) << endl;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    cerr << "Balance after: " << client->balanceAt( senderAddress ) << endl;
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+    cerr << "Balance before: " << fixture.client->balanceAt( senderAddress ) << endl;
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    cerr << "Balance after: " << fixture.client->balanceAt( senderAddress ) << endl;
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
     BOOST_REQUIRE( !txHash.empty() );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorZeroBalance ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
-    BOOST_CHECK_EQUAL( 0, client->balanceAt( senderAddress ) );
+    BOOST_CHECK_EQUAL( 0, fixture.client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( signedTx["raw"] );
 
-    BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx["raw"].asString() ),
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
         "Account balance is too low (balance < value + gas * gas price)." );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
     BOOST_REQUIRE( !txHash.empty() );
 
-    mineTransaction( *client, 1 );
+    mineTransaction( *fixture.client, 1 );
 
     auto invalidNonce =
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) ) - 1;
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) ) -
+        1;
     t["nonce"] = jsToDecimal( toJS( invalidNonce ) );
 
-    signedTx = rpcClient->eth_signTransaction( t );
+    signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
     BOOST_CHECK_EQUAL(
-        sendingRawShouldFail( signedTx["raw"].asString() ), "Invalid transaction nonce." );
+        fixture.sendingRawShouldFail( signedTx["raw"].asString() ), "Invalid transaction nonce." );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -517,49 +539,51 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
     const int minGasForValueTransferTx = 21000;
     t["gas"] = jsToDecimal( toJS( minGasForValueTransferTx - 1 ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx["raw"].asString() ),
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
         "Transaction gas amount is less than the intrinsic gas amount for this transaction type." );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
     BOOST_REQUIRE( !txHash.empty() );
 
     auto txNonce =
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
     t["nonce"] = jsToDecimal( toJS( txNonce ) );
 
-    signedTx = rpcClient->eth_signTransaction( t );
+    signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx["raw"].asString() ),
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
         "Same transaction already exists in the pending transaction queue." );
 }
 
 BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
-    auto address = coinbase.address();
+    JsonRpcFixture fixture;
+    auto address = fixture.coinbase.address();
     auto countAtBeforeSign =
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
     auto receiver = KeyPair::create();
 
     Json::Value t;
@@ -567,21 +591,22 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
     t["value"] = jsToDecimal( toJS( 1 ) );
     t["to"] = toJS( receiver.address() );
 
-    Json::Value res = rpcClient->eth_signTransaction( t );
+    Json::Value res = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( res["raw"] );
     BOOST_REQUIRE( res["tx"] );
 
-    accountHolder->setAccounts( {} );
-    dev::eth::mine( *( client ), 1 );
+    fixture.accountHolder->setAccounts( {} );
+    dev::eth::mine( *( fixture.client ), 1 );
 
     auto countAtAfterSign =
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( address ), "latest" ) );
 
     BOOST_CHECK_EQUAL( countAtBeforeSign, countAtAfterSign );
 }
 
 BOOST_AUTO_TEST_CASE( simple_contract ) {
-    dev::eth::simulateMining( *( client ), 1 );
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
 
     // contract test {
@@ -602,14 +627,15 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
 
-    BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
-    BOOST_CHECK_EQUAL(
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_getTransactionCount(
+                           toJS( fixture.coinbase.address() ), "latest" ) ),
+        0 );
 
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     string contractAddress = receipt["contractAddress"].asString();
     BOOST_REQUIRE( contractAddress != "null" );
@@ -619,21 +645,17 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     call["data"] = "0xb3de648b0000000000000000000000000000000000000000000000000000000000000001";
     call["gas"] = "1000000";
     call["gasPrice"] = "0";
-    string result = rpcClient->eth_call( call, "latest" );
+    string result = fixture.rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture( c_genesisConfigString );
+    Address senderAddress = fixture.coinbase.address();
 
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
-    rpcClient->test_setChainParams( ret );
-
-    client->setAuthor( senderAddress );
-    dev::eth::simulateMining( *( client ), 1 );
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
@@ -655,27 +677,24 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     create["code"] = compiled;
     create["gas"] = "1000000";
 
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
-    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    Json::Value code =
+        fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture( c_genesisConfigString, false );
+    auto senderAddress = fixture.coinbase.address();
 
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
-    rpcClient->test_setChainParams( ret );
-
-    client->setAuthor( senderAddress );
-    dev::eth::simulateMining( *( client ), 1 );
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
@@ -697,25 +716,22 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     create["code"] = compiled;
     create["gas"] = "1000000";
 
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
-    Json::Value code = rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    Json::Value code =
+        fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
 }
 
 BOOST_AUTO_TEST_CASE( create_opcode ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture( c_genesisConfigString );
+    auto senderAddress = fixture.coinbase.address();
 
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( senderAddress );
-    rpcClient->test_setChainParams( ret );
-
-    client->setAuthor( senderAddress );
-    dev::eth::simulateMining( *( client ), 1 );
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     /*
         pragma solidity ^0.4.25;
@@ -751,47 +767,48 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     create["code"] = compiled;
     create["gas"] = "1000000";
 
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
 
-    client->setAuthor( account2.address() );
-    dev::eth::simulateMining( *( client ), 1 );
+    fixture.client->setAuthor( fixture.account2.address() );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     Json::Value transactionCallObject;
 
-    transactionCallObject["from"] = toJS( account2.address() );
+    transactionCallObject["from"] = toJS( fixture.account2.address() );
     transactionCallObject["to"] = contractAddress;
     transactionCallObject["data"] = "0x26121ff0";
 
-    rpcClient->eth_sendTransaction( transactionCallObject );
-    dev::eth::mineTransaction( *( client ), 1 );
+    fixture.rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value checkAddress;
     checkAddress["to"] = contractAddress;
     checkAddress["data"] = "0x0dbe671f";
-    string response = rpcClient->eth_call( checkAddress, "latest" );
+    string response = fixture.rpcClient->eth_call( checkAddress, "latest" );
     BOOST_CHECK( response == "0x0000000000000000000000000000000000000000000000000000000000000000" );
 
-    client->setAuthor( senderAddress );
+    fixture.client->setAuthor( senderAddress );
     transactionCallObject["from"] = toJS( senderAddress );
-    rpcClient->eth_sendTransaction( transactionCallObject );
-    dev::eth::mineTransaction( *( client ), 1 );
+    fixture.rpcClient->eth_sendTransaction( transactionCallObject );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    response = rpcClient->eth_call( checkAddress, "latest" );
+    response = fixture.rpcClient->eth_call( checkAddress, "latest" );
     BOOST_CHECK( response != "0x0000000000000000000000000000000000000000000000000000000000000000" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
-    auto senderAddress = coinbase.address();
-    dev::eth::simulateMining( *( client ), 1 );
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     // We change author because coinbase.address() is author address by default
     // and will take all transaction fee after execution so we can't check money spent
     // for senderAddress correctly.
-    client->setAuthor( Address( 5 ) );
+    fixture.client->setAuthor( Address( 5 ) );
 
     // contract test {
     //  function f(uint a) returns(uint d) { return a * 7; }
@@ -815,30 +832,33 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     create["gas"] = gas;
     create["gasPrice"] = gasPrice;
 
-    BOOST_CHECK_EQUAL( jsToU256( rpcClient->eth_blockNumber() ), 0 );
-    BOOST_CHECK_EQUAL(
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_getTransactionCount(
+                           toJS( fixture.coinbase.address() ), "latest" ) ),
+        0 );
 
-    u256 balanceBefore =
-        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+    u256 balanceBefore = jsToU256(
+        fixture.rpcClient->eth_getBalance( toJS( fixture.coinbase.address() ), "latest" ) );
 
-    BOOST_REQUIRE_EQUAL(
-        jsToU256( rpcClient->eth_getTransactionCount( toJS( coinbase.address() ), "latest" ) ), 0 );
+    BOOST_REQUIRE_EQUAL( jsToU256( fixture.rpcClient->eth_getTransactionCount(
+                             toJS( fixture.coinbase.address() ), "latest" ) ),
+        0 );
 
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    u256 balanceAfter =
-        jsToU256( rpcClient->eth_getBalance( toJS( coinbase.address() ), "latest" ) );
+    u256 balanceAfter = jsToU256(
+        fixture.rpcClient->eth_getBalance( toJS( fixture.coinbase.address() ), "latest" ) );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
 }
 
 BOOST_AUTO_TEST_CASE( contract_storage ) {
-    dev::eth::simulateMining( *( client ), 1 );
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
 
     // pragma solidity ^0.4.22;
@@ -867,10 +887,10 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     Json::Value create;
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     string contractAddress = receipt["contractAddress"].asString();
     BOOST_REQUIRE( contractAddress != "null" );
@@ -878,24 +898,25 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     Json::Value transact;
     transact["to"] = contractAddress;
     transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
-    string txHash2 = rpcClient->eth_sendTransaction( transact );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash2 = fixture.rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
+    string storage = fixture.rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
     BOOST_CHECK_EQUAL(
         storage, "0x0000000000000000000000000000000000000000000000000000000000000003" );
 
-    Json::Value receipt2 = rpcClient->eth_getTransactionReceipt( txHash2 );
+    Json::Value receipt2 = fixture.rpcClient->eth_getTransactionReceipt( txHash2 );
     string contractAddress2 = receipt2["contractAddress"].asString();
     BOOST_REQUIRE( receipt2["contractAddress"].isNull() );
 }
 
 BOOST_AUTO_TEST_CASE( web3_sha3 ) {
+    JsonRpcFixture fixture;
     string testString = "multiply(uint256)";
     h256 expected = dev::sha3( testString );
 
     auto hexValue = fromAscii( testString );
-    string result = rpcClient->web3_sha3( hexValue );
+    string result = fixture.rpcClient->web3_sha3( hexValue );
     BOOST_CHECK_EQUAL( toJS( expected ), result );
     BOOST_CHECK_EQUAL(
         "0xc6888fa159d67f77c2f3d7a402e199802766bd7e8d4d1ecd2274fc920265d56a", result );
@@ -971,19 +992,9 @@ BOOST_AUTO_TEST_CASE( web3_sha3 ) {
 //    BOOST_CHECK_EQUAL(result["storage"][keyHash]["value"].asString(), "0x07");
 //}
 
-BOOST_AUTO_TEST_CASE( test_setChainParams ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["genesis"]["extraData"] = toHexPrefixed( h256::random().asBytes() );
-    rpcClient->test_setChainParams( ret );
-}
-
-
 BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    rpcClient->test_setChainParams( ret );
-    string blockHash = rpcClient->test_importRawBlock(
+    JsonRpcFixture fixture( c_genesisConfigString );
+    string blockHash = fixture.rpcClient->test_importRawBlock(
         "0xf90279f9020ea0"
         //        "c92211c9cd49036c37568feedb8e518a24a77e9f6ca959931a19dcf186a8e1e6"
         // TODO this is our genesis hash - just generated fom code; need to check it by hands
@@ -1012,7 +1023,8 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
 }
 
 BOOST_AUTO_TEST_CASE( call_from_parameter ) {
-    dev::eth::simulateMining( *( client ), 1 );
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
 
     //    pragma solidity ^0.5.1;
@@ -1039,31 +1051,32 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     Json::Value create;
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
 
     Json::Value transactionCallObject;
     transactionCallObject["to"] = contractAddress;
     transactionCallObject["data"] = "0xda91254c";
 
-    accountHolder->setAccounts( vector< dev::KeyPair >() );
+    fixture.accountHolder->setAccounts( vector< dev::KeyPair >() );
 
-    string responseString = rpcClient->eth_call( transactionCallObject, "latest" );
+    string responseString = fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x0000000000000000000000000000000000000000000000000000000000000000" );
 
     transactionCallObject["from"] = "0x112233445566778899aabbccddeeff0011223344";
 
-    responseString = rpcClient->eth_call( transactionCallObject, "latest" );
+    responseString = fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
 }
 
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
-    dev::eth::simulateMining( *( client ), 1 );
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
     // pragma solidity ^0.4.22;
 
@@ -1091,14 +1104,14 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     Json::Value create;
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
-    string txHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
 
-    Address address2 = account2.address();
-    string balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    Address address2 = fixture.account2.address();
+    string balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 
     u256 powGasPrice = 0;
@@ -1117,28 +1130,29 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     transact["to"] = contractAddress;
     transact["gasPrice"] = toJS( powGasPrice );
     transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
-    rpcClient->eth_sendTransaction( transact );
-    dev::eth::mineTransaction( *( client ), 1 );
+    fixture.rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    string storage = rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
+    string storage = fixture.rpcClient->eth_getStorageAt( contractAddress, "0", "latest" );
     BOOST_CHECK_EQUAL(
         storage, "0x0000000000000000000000000000000000000000000000000000000000000003" );
 
-    balanceString = rpcClient->eth_getBalance( toJS( address2 ), "latest" );
+    balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
-    auto senderAddress = coinbase.address();
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    BOOST_CHECK_EQUAL( blockReward, client->balanceAt( senderAddress ) );
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
-    u256 initial_gasPrice = client->gasBidPrice();
+    u256 initial_gasPrice = fixture.client->gasBidPrice();
 
     Json::Value t;
     t["from"] = toJS( senderAddress );
@@ -1146,24 +1160,24 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice ) );
 
-    auto signedTx = rpcClient->eth_signTransaction( t );
+    auto signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    auto txHash = rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
     BOOST_REQUIRE( !txHash.empty() );
 
-    mineTransaction( *client, 1 );
+    mineTransaction( *fixture.client, 1 );
     BOOST_REQUIRE_EQUAL(
-        rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ), "0x1" );
+        fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ), "0x1" );
 
 
     /////////////////////////
 
     t["nonce"] = "1";
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
-    auto signedTx2 = rpcClient->eth_signTransaction( t );
+    auto signedTx2 = fixture.rpcClient->eth_signTransaction( t );
 
-    BOOST_CHECK_EQUAL( sendingRawShouldFail( signedTx2["raw"].asString() ),
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ),
         "Transaction gas price lower than current eth_gasPrice." );
 }
 
