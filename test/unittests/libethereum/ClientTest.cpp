@@ -177,6 +177,7 @@ public:
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
+        ChainParams chainParams;
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
         }
@@ -220,7 +221,6 @@ public:
         clog( VerbosityError, "TestClientFixture" ) << "CRITICAL unknown error";
         throw;
     }
-    ChainParams chainParams;
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
