@@ -187,12 +187,6 @@ public:
 
         fs::path dir = m_tmpDir.path();
 
-        string listenIP = "127.0.0.1";
-        unsigned short listenPort = 30303;
-        auto netPrefs = NetworkPreferences( listenIP, listenPort, false );
-        netPrefs.discovery = false;
-        netPrefs.pin = false;
-
         auto nodesState = contents( dir / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
@@ -481,6 +475,8 @@ static std::string const c_skaleConfigString = R"(
         "nodeInfo": {
             "nodeName": "TestNode",
             "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": 1231,
             "snapshotIntervalMs": 10
         },
         "sChain": {
@@ -503,6 +499,7 @@ static std::string const c_skaleConfigString = R"(
     }
 }
 )";
+
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
 
