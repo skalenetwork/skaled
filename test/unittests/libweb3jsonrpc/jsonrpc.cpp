@@ -99,14 +99,14 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
         "0000000000000000000000000000000000000005": {
-			"precompiled": {
-				"name": "createFile",
-				"linear": {
-					"base": 15,
-					"word": 0
-				},
+            "precompiled": {
+                "name": "createFile",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
-			}
+            }
         },)"
     /*
             pragma solidity ^0.4.25;
@@ -190,17 +190,18 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             Json::FastWriter fastWriter;
             std::string output = fastWriter.write( ret );
             chainParams = chainParams.loadConfig( output );
+        } else {
+            chainParams.sealEngineName = NoProof::name();
+            chainParams.allowFutureBlocks = true;
+            chainParams.difficulty = chainParams.minimumDifficulty;
+            chainParams.gasLimit = chainParams.maxGasLimit;
+            chainParams.byzantiumForkBlock = 0;
+            chainParams.externalGasDifficulty = 1;
+            // add random extra data to randomize genesis hash and get random DB path,
+            // so that tests can be run in parallel
+            // TODO: better make it use ethemeral in-memory databases
+            chainParams.extraData = h256::random().asBytes();
         }
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.byzantiumForkBlock = 0;
-        chainParams.externalGasDifficulty = 1;
-        // add random extra data to randomize genesis hash and get random DB path,
-        // so that tests can be run in parallel
-        // TODO: better make it use ethemeral in-memory databases
-        chainParams.extraData = h256::random().asBytes();
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},

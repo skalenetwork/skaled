@@ -273,56 +273,6 @@ void Client::doneWorking() {
     }
 }
 
-void Client::reopenChain( WithExisting _we ) {
-    reopenChain( bc().chainParams(), _we );
-}
-
-void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
-    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
-    bool wasSealing = wouldSeal();
-    if ( wasSealing )
-        stopSealing();
-    stopWorking();
-
-    m_tq.clear();
-    m_bq.clear();
-    sealEngine()->cancelGeneration();
-
-    {
-        WriteGuard l( x_postSeal );
-        WriteGuard l2( x_preSeal );
-        WriteGuard l3( x_working );
-
-        m_preSeal = Block( chainParams().accountStartNonce );
-        m_postSeal = Block( chainParams().accountStartNonce );
-        m_working = Block( chainParams().accountStartNonce );
-
-        bc().reopen( _p, _we );
-        if ( !m_state.connected() ) {
-            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
-        }
-        if ( _we == WithExisting::Kill ) {
-            State writer = m_state.startWrite();
-            writer.clearAll();
-            writer.populateFrom( bc().chainParams().genesisState );
-        }
-
-        m_preSeal = bc().genesisBlock( m_state );
-        m_preSeal.setAuthor( _p.author );
-        m_postSeal = m_preSeal;
-        m_working = Block( chainParams().accountStartNonce );
-    }
-
-    // SKALE    m_consensusHost->reset();
-
-    startedWorking();
-    doWork();
-
-    startWorking();
-    if ( wasSealing )
-        startSealing();
-}
-
 void Client::executeInMainThread( function< void() > const& _function ) {
     DEV_WRITE_GUARDED( x_functionQueue )
     m_functionQueue.push( _function );
