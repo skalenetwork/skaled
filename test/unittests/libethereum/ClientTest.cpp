@@ -157,7 +157,7 @@ private:
 
 class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
 public:
-    TestClientSnapshotsFixture( const std::string& _config = "" ) try {
+    TestClientSnapshotsFixture( const std::string& _config ) try {
         check_sudo();
 
         dropRoot();
@@ -178,12 +178,7 @@ public:
 
         gainRoot();
         ChainParams chainParams;
-        if ( _config != "" ) {
-            chainParams = chainParams.loadConfig( _config );
-        }
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.nodeInfo.snapshotIntervalMs = 10;
+        chainParams = chainParams.loadConfig( _config );
 
         fs::path dir = m_tmpDir.path();
 
@@ -208,11 +203,11 @@ public:
         m_ethereum->startWorking();
 
     } catch ( const std::exception& ex ) {
-        clog( VerbosityError, "TestClientFixture" )
+        clog( VerbosityError, "TestClientSnapshotsFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
         throw;
     } catch ( ... ) {
-        clog( VerbosityError, "TestClientFixture" ) << "CRITICAL unknown error";
+        clog( VerbosityError, "TestClientSnapshotsFixture" ) << "CRITICAL unknown error";
         throw;
     }
 
