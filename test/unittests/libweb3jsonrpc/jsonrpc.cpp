@@ -74,7 +74,8 @@ static std::string const c_genesisConfigString =
         "nonce" : "0x00",
         "extraData" : "0x00",
         "timestamp" : "0x00",
-        "mixHash" : "0x00"
+        "mixHash" : "0x00",
+        "stateRoot": "0x01"
     },
     "skaleConfig": {
         "nodeInfo": {
