@@ -999,7 +999,8 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
     string blockHash = fixture.rpcClient->test_importRawBlock(
         "0xf90279f9020ea0"
         //        "c92211c9cd49036c37568feedb8e518a24a77e9f6ca959931a19dcf186a8e1e6"
-        // TODO this is our genesis (with stateRoot=1!) hash - just generated from code; need to check it by hands
+        // TODO this is our genesis (with stateRoot=1!) hash - just generated from code; need to
+        // check it by hands
         "b449751a1ccedfcdae41640170e1712e8100d45061e6945f8fc7f556034d61ea"
         "a01dcc4de8"
         "dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347942adc25665018aa1fe0e6bc666dac8fc2"
