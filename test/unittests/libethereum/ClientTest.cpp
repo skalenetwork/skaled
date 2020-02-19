@@ -139,7 +139,7 @@ public:
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
 
-        m_ethereum->setAuthor(coinbase.address());
+        m_ethereum->setAuthor( coinbase.address() );
 
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
@@ -205,7 +205,7 @@ public:
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
 
-        m_ethereum->setAuthor(coinbase.address());
+        m_ethereum->setAuthor( coinbase.address() );
 
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientSnapshotsFixture" )
@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest ) {
 
     BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
-    BOOST_REQUIRE(testClient->mineBlocks( 1 ));
+    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
