@@ -74,7 +74,7 @@ public:
 
     /// Construct from another hash, filling with zeroes or cropping as necessary.
     template < unsigned M >
-    explicit FixedHash( FixedHash< M > const& _h, ConstructFromHashType _t = FixedHash::AlignRight ) {
+    explicit FixedHash( FixedHash< M > const& _h, ConstructFromHashType _t = AlignLeft ) {
         m_data.fill( 0 );
         unsigned c = std::min( M, N );
         for ( unsigned i = 0; i < c; ++i )
