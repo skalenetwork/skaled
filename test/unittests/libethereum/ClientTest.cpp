@@ -139,6 +139,8 @@ public:
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
 
+        m_ethereum->setAuthor(coinbase.address());
+
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -153,6 +155,7 @@ public:
 private:
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
+    dev::KeyPair coinbase{KeyPair::create()};
 };
 
 class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
@@ -202,6 +205,8 @@ public:
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
 
+        m_ethereum->setAuthor(coinbase.address());
+
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientSnapshotsFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -226,6 +231,7 @@ public:
 private:
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
+    dev::KeyPair coinbase{KeyPair::create()};
 };
 
 // genesis config string from solidity
@@ -504,7 +510,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest ) {
 
     BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
-    testClient->mineBlocks( 1 );
+    BOOST_REQUIRE(testClient->mineBlocks( 1 ));
 
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
