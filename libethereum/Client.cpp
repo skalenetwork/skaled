@@ -614,7 +614,8 @@ void Client::rejigSealing() {
                     stateRootToSet = empty_state_root_hash;
                 } else {
                     unsigned latest_snapshot = this->last_snapshoted_block;
-                    dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                    dev::h256 state_root_hash =
+                        this->m_snapshotManager->getSnapshotHash( latest_snapshot );
                     stateRootToSet = state_root_hash;
                 }
 
