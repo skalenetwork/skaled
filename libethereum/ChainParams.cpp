@@ -286,6 +286,8 @@ ChainParams ChainParams::loadGenesis( string const& _json ) const {
 
     if ( genesis.count( c_stateRoot ) )
         cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ) );
+    else
+        cp.stateRoot = h256();
 
     // magic code for handling ethash stuff:
     if ( genesis.count( c_mixHash ) && genesis.count( c_nonce ) ) {
