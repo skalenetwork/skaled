@@ -598,7 +598,27 @@ void Client::rejigSealing() {
                 // TODO is that needed? we have "Generating seal on" below
                 LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " "
                                       << cc::warn( "#" ) << cc::num10( m_working.info().number() );
-                m_working.commitToSeal( bc(), m_extraData );
+
+                // TODO Deduplicate code!
+                dev::h256 stateRootToSet;
+                if ( this->last_snapshoted_block == -1 ) {
+                    secp256k1_sha256_t ctx;
+                    secp256k1_sha256_initialize( &ctx );
+
+                    dev::h256 empty_str = dev::h256( "" );
+                    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+                    dev::h256 empty_state_root_hash;
+                    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+                    stateRootToSet = empty_state_root_hash;
+                } else {
+                    unsigned latest_snapshot = this->last_snapshoted_block;
+                    dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                    stateRootToSet = state_root_hash;
+                }
+
+                m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
             }
             DEV_READ_GUARDED( x_working ) {
                 DEV_WRITE_GUARDED( x_postSeal )

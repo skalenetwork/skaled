@@ -23,6 +23,8 @@
 
 #include "ChainParams.h"
 
+#include <secp256k1_sha256.h>
+
 #include <stdint.h>
 
 #include <json_spirit/JsonSpiritHeaders.h>
@@ -58,6 +60,18 @@ ChainParams::ChainParams() {
         PrecompiledContract( 600, 120, PrecompiledRegistrar::executor( "ripemd160" ) ) ) );
     precompiled.insert( make_pair( Address( 4 ),
         PrecompiledContract( 15, 3, PrecompiledRegistrar::executor( "identity" ) ) ) );
+
+    // fill empty stateRoot
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    dev::h256 empty_str = dev::h256( "" );
+    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+    dev::h256 empty_state_root_hash;
+    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+    stateRoot = empty_state_root_hash;
 }
 
 ChainParams::ChainParams( string const& _json ) {
