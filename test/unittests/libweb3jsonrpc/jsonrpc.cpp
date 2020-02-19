@@ -999,8 +999,8 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
     string blockHash = fixture.rpcClient->test_importRawBlock(
         "0xf90279f9020ea0"
         //        "c92211c9cd49036c37568feedb8e518a24a77e9f6ca959931a19dcf186a8e1e6"
-        // TODO this is our genesis hash - just generated fom code; need to check it by hands
-        "42a18e5c443b3bc3690cd20f59702089b4330719a325996191359cb8b9b45c01"
+        // TODO this is our genesis (with stateRoot=1!) hash - just generated from code; need to check it by hands
+        "b449751a1ccedfcdae41640170e1712e8100d45061e6945f8fc7f556034d61ea"
         "a01dcc4de8"
         "dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347942adc25665018aa1fe0e6bc666dac8fc2"
         "697ff9baa0328f16ca7b0259d7617b3ddf711c107efe6d5785cbeb11a8ed1614b484a6bc3aa093ca2a18d52e7c"
@@ -1021,7 +1021,7 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
     // TODO again, this was computed just in code - no trust to it
     std::cerr << blockHash << std::endl;
     BOOST_CHECK_EQUAL(
-        blockHash, "0xfb07375a12f9d0ee76b62761096cb3021f853bb7d426bdd52bf89e4b8dbfbbc9" );
+        blockHash, "0x7683f686a7ecf6949d29cab2075b8aa45f061e27338e61ea3c37a7a0bd80f17b" );
 }
 
 BOOST_AUTO_TEST_CASE( call_from_parameter ) {
