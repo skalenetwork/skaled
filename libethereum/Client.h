@@ -209,11 +209,6 @@ public:
     DownloadMan const* downloadMan() const;
     /// Clears pending transactions. Just for debug use.
     void clearPending();
-    /// Kills the blockchain. Just for debug use.
-    void killChain() { reopenChain( WithExisting::Kill ); }
-    /// Reloads the blockchain. Just for debug use.
-    void reopenChain( ChainParams const& _p, WithExisting _we = WithExisting::Trust );
-    void reopenChain( WithExisting _we );
     /// Retries all blocks with unknown parents.
     void retryUnknown() { m_bq.retryAllUnknown(); }
     /// Get a report of activity.
@@ -465,8 +460,10 @@ protected:
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
+    void fillLastSnapshotTime();
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
+    int64_t first_block_timestamp = -1;
 
 public:
     FILE* performance_fd;

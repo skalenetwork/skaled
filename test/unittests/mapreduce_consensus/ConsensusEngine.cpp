@@ -114,15 +114,17 @@ public:
         } );
     }
 
-    virtual transactions_vector pendingTransactions( size_t /*_limit*/ ) override {
+    virtual transactions_vector pendingTransactions(
+        size_t /*_limit*/, u256& _stateRoot ) override {
         auto future = this->transaction_promise.get_future();
         future.wait();
         transactions_vector buffer = future.get();
+        _stateRoot = 1;
         return buffer;
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override {
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -242,7 +244,8 @@ public:
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    virtual transactions_vector pendingTransactions( size_t _limit ) override {
+    virtual transactions_vector pendingTransactions(
+        size_t _limit, u256& /*_stateRoot*/ ) override {
         if ( _limit < buffer.size() )
             assert( false );
 
@@ -257,7 +260,8 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */ ) override {
+        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
+        u256 /*_stateRoot*/ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;

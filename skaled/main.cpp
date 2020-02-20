@@ -293,6 +293,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 }  // namespace
 
 int main( int argc, char** argv ) try {
+    setenv( "SEGFAULT_SIGNALS", "all", 0 );  // no replace
+
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
@@ -333,6 +335,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS4 = -1;
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
+    bool bEnabledDebugBehaviorAPIs = false;
 
     string strJsonAdminSessionKey;
     ChainParams chainParams;
@@ -583,6 +586,8 @@ int main( int argc, char** argv ) try {
                 throw "Config file probably not found";
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
+            dev::eth::g_configAccesssor.reset(
+                new skutils::json_config_file_accessor( configPath.string() ) );
         } catch ( ... ) {
             cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
             return -1;
@@ -846,17 +851,17 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            rpc::Debug::g_bEnabledDebugBehaviorAPIs =
+            bEnabledDebugBehaviorAPIs =
                 joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
     }
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+        bEnabledDebugBehaviorAPIs = true;
     clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
                                   << cc::info( "enable-debug-behavior-apis" )
                                   << cc::debug( " mode is " )
-                                  << cc::flag_ed( rpc::Debug::g_bEnabledDebugBehaviorAPIs );
+                                  << cc::flag_ed( bEnabledDebugBehaviorAPIs );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1116,49 +1121,54 @@ int main( int argc, char** argv ) try {
                                     " " + cc::error( ex.what() ) ) );
         }
 
-        SnapshotHashAgent snapshotHashAgent( chainParams );
+        if ( blockNumber > 0 ) {
+            SnapshotHashAgent snapshotHashAgent( chainParams );
 
-        libff::init_alt_bn128_params();
-        std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
-        std::vector< std::string > list_urls_to_download;
-        try {
-            list_urls_to_download = snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
-            voted_hash = snapshotHashAgent.getVotedHash();
-        } catch ( std::exception& ex ) {
-            std::throw_with_nested( std::runtime_error(
-                cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while collecting snapshot hash from other skaleds " ) + " " +
-                cc::warn( ex.what() ) ) );
-        }
-
-        bool successfullDownload = false;
-        for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
-            std::string urlToDownloadSnapshot;
-            urlToDownloadSnapshot = list_urls_to_download[i];
-
-            downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
-
+            libff::init_alt_bn128_params();
+            std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
+            std::vector< std::string > list_urls_to_download;
             try {
-                snapshotManager->computeSnapshotHash( blockNumber, true );
+                list_urls_to_download =
+                    snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
-                std::throw_with_nested(
-                    std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                        cc::error( "Exception while computing snapshot hash " ) +
-                                        " " + cc::warn( ex.what() ) ) );
+                std::throw_with_nested( std::runtime_error(
+                    cc::fatal( "FATAL:" ) + " " +
+                    cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
+                    " " + cc::warn( ex.what() ) ) );
             }
 
-            dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+            bool successfullDownload = false;
+            for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
+                std::string urlToDownloadSnapshot;
+                urlToDownloadSnapshot = list_urls_to_download[i];
 
-            if ( calculated_hash == voted_hash.first ) {
-                successfullDownload = true;
-                break;
-            } else {
-                snapshotManager->removeSnapshot( blockNumber );
+                downloadSnapshot(
+                    blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+
+                try {
+                    snapshotManager->computeSnapshotHash( blockNumber, true );
+                } catch ( std::exception& ex ) {
+                    std::throw_with_nested( std::runtime_error(
+                        cc::fatal( "FATAL:" ) + " " +
+                        cc::error( "Exception while computing snapshot hash " ) + " " +
+                        cc::warn( ex.what() ) ) );
+                }
+
+                dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                if ( calculated_hash == voted_hash.first ) {
+                    successfullDownload = true;
+                    break;
+                } else {
+                    snapshotManager->removeSnapshot( blockNumber );
+                }
             }
-        }
 
-        if ( !successfullDownload ) {
-            throw std::runtime_error( "FATAL: already tried to download hash from all sources" );
+            if ( !successfullDownload ) {
+                throw std::runtime_error(
+                    "FATAL: already tried to download hash from all sources" );
+            }
         }
     }
 
@@ -1578,7 +1588,15 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *client );
+
+        std::string argv_string;
+        {
+            ostringstream ss;
+            for ( int i = 1; i < argc; ++i )
+                ss << argv[i] << " ";
+            argv_string = ss.str();
+        }
 
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
@@ -1586,7 +1604,8 @@ int main( int argc, char** argv ) try {
             new rpc::Net(), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            new rpc::Debug( *client ), nullptr ) );
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
+            nullptr ) );
 
         if ( is_ipc ) {
             try {

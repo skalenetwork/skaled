@@ -26,10 +26,21 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <unordered_map>
+
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
+
+#include <skutils/multithreading.h>
+#include <skutils/utils.h>
 
 namespace dev {
 namespace eth {
+
+extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+
 struct ChainOperationParams;
 
 using PrecompiledExecutor = std::function< std::pair< bool, bytes >( bytesConstRef _in ) >;

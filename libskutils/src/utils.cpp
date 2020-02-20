@@ -1575,4 +1575,87 @@ void print_backtrace() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+json_config_file_accessor::json_config_file_accessor( const std::string& configPath )
+    : configPath_( configPath ),
+      configModificationTime_( 0 ),
+      joConfig_( nlohmann::json::object() ) {}
+json_config_file_accessor::~json_config_file_accessor() {}
+
+void json_config_file_accessor::reloadConfigIfNeeded() {
+    lock_type lock( mtx() );
+    time_t tt = skutils::tools::getFileModificationTime( configPath_ );
+    if ( tt == 0 )  // 0 is error
+        throw std::runtime_error( "Failed to access modified configuration file" );
+    if ( configModificationTime_ == tt )
+        return;
+    std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
+    try {
+        std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
+                  << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+        std::ifstream ifs( configPath_.c_str() );
+        std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
+        nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
+        joConfig_ = joNewConfig;
+        configModificationTime_ = tt;
+        std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
+                  << cc::p( configPath_ ) << "\n";
+    } catch ( std::exception& ex ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( ex.what() ) << "\n";
+        throw std::runtime_error(
+            std::string( "Failed to reload modified configuration file: " ) + ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( "unknown exception" )
+                  << "\n";
+        throw std::runtime_error(
+            "Failed to reload modified configuration file: unknown exception" );
+    }
+}
+
+nlohmann::json json_config_file_accessor::getConfigJSON() {
+    reloadConfigIfNeeded();
+    return joConfig_;
+}
+
+
+nlohmann::json json_config_file_accessor::stat_extract_at_path(
+    const nlohmann::json& joConfig, const string_list_t& listPath ) {
+    string_list_t::const_iterator itWalk = listPath.cbegin(), itEnd = listPath.cend();
+    nlohmann::json joWalk = joConfig;
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        const std::string& s = ( *itWalk );
+        if ( joWalk.is_array() ) {
+            if ( s == "count" || s == "size" || s == "length" ) {
+                joWalk = joWalk.size();
+                continue;
+            }
+            std::string strIndex = s;
+            skutils::tools::replace_all( strIndex, " ", "" );
+            skutils::tools::replace_all( strIndex, "[", "" );
+            skutils::tools::replace_all( strIndex, "]", "" );
+            skutils::tools::replace_all( strIndex, "\t", "" );
+            char* ep = nullptr;
+            size_t nIndex = size_t(::strtoul( strIndex.c_str(), &ep, 10 ) );
+            if ( nIndex > joWalk.size() )
+                throw std::runtime_error( "JSON array index is out of range" );
+            joWalk = joWalk[nIndex];
+            continue;
+        }
+        if ( joWalk.count( s ) == 0 )
+            throw std::runtime_error( "JSON variable not found at specified path" );
+        joWalk = joWalk[s];
+    }
+    return joWalk;
+}
+nlohmann::json json_config_file_accessor::stat_extract_at_path( const nlohmann::json& joConfig,
+    const std::string& strPath, const char strDelimiter /*= '.'*/ ) {
+    string_list_t listPath = skutils::tools::split( strPath, strDelimiter );
+    return stat_extract_at_path( joConfig, listPath );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 };  // namespace skutils

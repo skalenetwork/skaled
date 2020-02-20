@@ -45,11 +45,13 @@ public:
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
-        return m_extFace.pendingTransactions( _limit );
+        u256 stateRoot = 0;
+        return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0 ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice );
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0 ) {
+        m_extFace.createBlock(
+            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 
@@ -262,6 +264,28 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
+
+    // check also receipts and locations
+    size_t i = 0;
+    for ( const Transaction& tx : txns ) {
+        Transaction tx2 = client->transaction( tx.sha3() );
+        LocalisedTransaction lt = client->localisedTransaction( tx.sha3() );
+        LocalisedTransactionReceipt lr = client->localisedTransactionReceipt( tx.sha3() );
+
+        BOOST_REQUIRE_EQUAL( tx2, tx );
+
+        BOOST_REQUIRE_EQUAL( lt, tx );
+        BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
+        BOOST_REQUIRE_EQUAL( lt.blockHash(), client->hashFromNumber( 1 ) );
+        BOOST_REQUIRE_EQUAL( lt.transactionIndex(), i );
+
+        BOOST_REQUIRE_EQUAL( lr.hash(), tx.sha3() );
+        BOOST_REQUIRE_EQUAL( lr.blockNumber(), lt.blockNumber() );
+        BOOST_REQUIRE_EQUAL( lr.blockHash(), lt.blockHash() );
+        BOOST_REQUIRE_EQUAL( lr.transactionIndex(), i );
+
+        ++i;
+    }  // for
 }
 
 class VrsHackedTransaction : public Transaction {

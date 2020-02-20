@@ -23,6 +23,8 @@
 
 #include "ChainParams.h"
 
+#include <secp256k1_sha256.h>
+
 #include <stdint.h>
 
 #include <json_spirit/JsonSpiritHeaders.h>
@@ -58,6 +60,18 @@ ChainParams::ChainParams() {
         PrecompiledContract( 600, 120, PrecompiledRegistrar::executor( "ripemd160" ) ) ) );
     precompiled.insert( make_pair( Address( 4 ),
         PrecompiledContract( 15, 3, PrecompiledRegistrar::executor( "identity" ) ) ) );
+
+    // fill empty stateRoot
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    dev::h256 empty_str = dev::h256( "" );
+    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+    dev::h256 empty_state_root_hash;
+    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+    stateRoot = empty_state_root_hash;
 }
 
 ChainParams::ChainParams( string const& _json ) {
@@ -114,6 +128,14 @@ ChainParams ChainParams::loadConfig(
             port6 = infoObj.at( "basePort6" ).get_int();
         } catch ( ... ) {
         }
+
+        try {
+            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+        } catch ( ... ) {
+        }
+        if ( cp.rotateAfterBlock_ < 0 )
+            cp.rotateAfterBlock_ = 0;
+
 
         std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
@@ -263,7 +285,7 @@ ChainParams ChainParams::loadGenesis( string const& _json ) const {
     cp.extraData = bytes( fromHex( genesis[c_extraData].get_str() ) );
 
     if ( genesis.count( c_stateRoot ) )
-        cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ) );
+        cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ), h256::AlignRight );
 
     // magic code for handling ethash stuff:
     if ( genesis.count( c_mixHash ) && genesis.count( c_nonce ) ) {

@@ -168,9 +168,13 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( _dbPath.size() )
         Defaults::setDBPath( _dbPath );
 
-    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 && number() == 0 ) {
-        m_snapshotManager->doSnapshot( 0 );
-        this->last_snapshot_time = this->latestBlock().info().timestamp();
+    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+        if ( this->number() == 0 ) {
+            m_snapshotManager->doSnapshot( 0 );
+            this->last_snapshot_time = this->latestBlock().info().timestamp();
+        } else {
+            this->fillLastSnapshotTime();
+        }
     }
 
     doWork( false );
@@ -269,56 +273,6 @@ void Client::doneWorking() {
     }
 }
 
-void Client::reopenChain( WithExisting _we ) {
-    reopenChain( bc().chainParams(), _we );
-}
-
-void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
-    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
-    bool wasSealing = wouldSeal();
-    if ( wasSealing )
-        stopSealing();
-    stopWorking();
-
-    m_tq.clear();
-    m_bq.clear();
-    sealEngine()->cancelGeneration();
-
-    {
-        WriteGuard l( x_postSeal );
-        WriteGuard l2( x_preSeal );
-        WriteGuard l3( x_working );
-
-        m_preSeal = Block( chainParams().accountStartNonce );
-        m_postSeal = Block( chainParams().accountStartNonce );
-        m_working = Block( chainParams().accountStartNonce );
-
-        bc().reopen( _p, _we );
-        if ( !m_state.connected() ) {
-            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
-        }
-        if ( _we == WithExisting::Kill ) {
-            State writer = m_state.startWrite();
-            writer.clearAll();
-            writer.populateFrom( bc().chainParams().genesisState );
-        }
-
-        m_preSeal = bc().genesisBlock( m_state );
-        m_preSeal.setAuthor( _p.author );
-        m_postSeal = m_preSeal;
-        m_working = Block( chainParams().accountStartNonce );
-    }
-
-    // SKALE    m_consensusHost->reset();
-
-    startedWorking();
-    doWork();
-
-    startWorking();
-    if ( wasSealing )
-        startSealing();
-}
-
 void Client::executeInMainThread( function< void() > const& _function ) {
     DEV_WRITE_GUARDED( x_functionQueue )
     m_functionQueue.push( _function );
@@ -412,6 +366,7 @@ size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
+
         int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
             try {
@@ -419,13 +374,14 @@ size_t Client::importTransactionsAsBlock(
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            this->last_snapshoted_block = block_number;
-            this->last_snapshot_time = this->last_snapshot_time == -1 ?
-                                           _timestamp :
-                                           this->last_snapshot_time + snapshotIntervalMs;
-            std::thread( [this, block_number]() {
+            std::thread( [this, block_number, _timestamp, snapshotIntervalMs]() {
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
+                    this->last_snapshoted_block = block_number;
+                    this->last_snapshot_time =
+                        this->last_snapshot_time == -1 ?
+                            ( _timestamp / uint64_t( 86400 ) ) * uint64_t( 86400 ) :
+                            this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
@@ -585,8 +541,9 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    return ( _timestamp - ( this->last_snapshot_time == -1 ? 0 : this->last_snapshot_time ) ) >=
-           chainParams().nodeInfo.snapshotIntervalMs;
+    int snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
+    return _timestamp / uint64_t( snapshotIntervalMs ) !=
+           this->last_snapshot_time / int64_t( snapshotIntervalMs );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
@@ -641,7 +598,28 @@ void Client::rejigSealing() {
                 // TODO is that needed? we have "Generating seal on" below
                 LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " "
                                       << cc::warn( "#" ) << cc::num10( m_working.info().number() );
-                m_working.commitToSeal( bc(), m_extraData );
+
+                // TODO Deduplicate code!
+                dev::h256 stateRootToSet;
+                if ( this->last_snapshoted_block == -1 ) {
+                    secp256k1_sha256_t ctx;
+                    secp256k1_sha256_initialize( &ctx );
+
+                    dev::h256 empty_str = dev::h256( "" );
+                    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+                    dev::h256 empty_state_root_hash;
+                    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+                    stateRootToSet = empty_state_root_hash;
+                } else {
+                    unsigned latest_snapshot = this->last_snapshoted_block;
+                    dev::h256 state_root_hash =
+                        this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                    stateRootToSet = state_root_hash;
+                }
+
+                m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
             }
             DEV_READ_GUARDED( x_working ) {
                 DEV_WRITE_GUARDED( x_postSeal )
@@ -681,7 +659,24 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
                               << cc::num10( m_working.info().number() );
-        m_working.commitToSeal( bc(), m_extraData );
+        dev::h256 stateRootToSet;
+        if ( this->last_snapshoted_block == -1 ) {
+            secp256k1_sha256_t ctx;
+            secp256k1_sha256_initialize( &ctx );
+
+            dev::h256 empty_str = dev::h256( "" );
+            secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+            dev::h256 empty_state_root_hash;
+            secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+            stateRootToSet = empty_state_root_hash;
+        } else {
+            unsigned latest_snapshot = this->last_snapshoted_block;
+            dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+            stateRootToSet = state_root_hash;
+        }
+        m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )
@@ -975,6 +970,32 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+void Client::fillLastSnapshotTime() {
+    int i = this->number();
+    int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
+    for ( ;; ) {
+        uint64_t last_timestamp = this->blockInfo( this->hashFromNumber( i ) ).timestamp();
+        uint64_t proposed_last_snapshot_time =
+            ( last_timestamp / snapshotIntervalMs ) * snapshotIntervalMs;
+        while ( this->blockInfo( this->hashFromNumber( i - 1 ) ).timestamp() + snapshotIntervalMs >=
+                    proposed_last_snapshot_time &&
+                i > 0 ) {
+            --i;
+        }
+        if ( i == 0 ) {
+            this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
+            break;
+        }
+        if ( !this->m_snapshotManager->isSnapshotHashPresent( i ) ) {
+            continue;
+        } else {
+            this->last_snapshot_time = proposed_last_snapshot_time;
+            this->last_snapshoted_block = i;
+            break;
+        }
+    }
 }
 
 // new block watch
