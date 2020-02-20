@@ -370,6 +370,8 @@ bool loop::on_check_cancel_mode() {
     return false;
 }
 void loop::on_check_jobs() {
+    if ( cancelMode_ )
+        return;
     if ( on_check_jobs_ )
         on_check_jobs_();
 }
@@ -1271,15 +1273,20 @@ loop_ptr_t domain::get_loop() {
         return pLoop_;
     loop* pLoop = new loop;
     pLoop_ = pLoop;
-    pLoop->on_check_jobs_ = [this]() -> void {
+    domain_ptr_t pThisDomain = this;
+    pLoop->on_check_jobs_ = [pThisDomain]() -> void {
+        // if ( pLoop->cancelMode_ )
+        //    return;
+        if ( pThisDomain->shutdown_flag_ )
+            return;
         bool bJobsEmpty = true;
         {  // block
-            lock_type lock_with_jobs( mtx_with_jobs() );
-            bJobsEmpty = with_jobs_.empty();
+            lock_type lock_with_jobs( pThisDomain->mtx_with_jobs() );
+            bJobsEmpty = pThisDomain->with_jobs_.empty();
         }  // block
         if ( !bJobsEmpty ) {
-            fetch_lock_.notify_all();
-            // fetch_lock_.notify_one();
+            pThisDomain.get_unconst()->fetch_lock_.notify_all();
+            // pThisDomain.get_unconst()->fetch_lock_.notify_one();
         }
     };
     // init loop
