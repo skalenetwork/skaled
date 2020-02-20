@@ -380,7 +380,7 @@ size_t Client::importTransactionsAsBlock(
                     this->last_snapshoted_block = block_number;
                     this->last_snapshot_time =
                         this->last_snapshot_time == -1 ?
-                            ( _timestamp / uint64_t( 86400 ) ) * uint64_t( 86400 ) :
+                            ( _timestamp / uint64_t( snapshotIntervalMs) ) * uint64_t( snapshotIntervalMs ) :
                             this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
