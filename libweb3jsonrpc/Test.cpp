@@ -72,19 +72,6 @@ string Test::test_getLogHash( string const& _txHash ) {
     }
 }
 
-bool Test::test_setChainParams( Json::Value const& param1 ) {
-    try {
-        Json::FastWriter fastWriter;
-        std::string output = fastWriter.write( param1 );
-        asClientTest( m_eth ).setChainParams( output );
-        // SKALE asClientTest(m_eth).completeSync();  // set sync state to idle for mining
-        return true;
-    } catch ( std::exception const& ex ) {
-        cwarn << ex.what();
-        throw JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, ex.what() );
-    }
-}
-
 bool Test::test_mineBlocks( int _number ) {
     if ( !asClientTest( m_eth ).mineBlocks( _number ) )  // Synchronous
         throw JsonRpcException( "Mining failed." );
