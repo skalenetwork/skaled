@@ -44,7 +44,6 @@ public:
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     ~ClientTest();
 
-    void setChainParams( std::string const& _genesis );
     bool mineBlocks( unsigned _count ) noexcept;
     void modifyTimestamp( int64_t _timestamp );
     void rewindToBlock( unsigned _number );

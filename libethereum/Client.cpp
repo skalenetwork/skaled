@@ -273,56 +273,6 @@ void Client::doneWorking() {
     }
 }
 
-void Client::reopenChain( WithExisting _we ) {
-    reopenChain( bc().chainParams(), _we );
-}
-
-void Client::reopenChain( ChainParams const& _p, WithExisting _we ) {
-    m_signalled.notify_all();  // to wake up the thread from Client::doWork()
-    bool wasSealing = wouldSeal();
-    if ( wasSealing )
-        stopSealing();
-    stopWorking();
-
-    m_tq.clear();
-    m_bq.clear();
-    sealEngine()->cancelGeneration();
-
-    {
-        WriteGuard l( x_postSeal );
-        WriteGuard l2( x_preSeal );
-        WriteGuard l3( x_working );
-
-        m_preSeal = Block( chainParams().accountStartNonce );
-        m_postSeal = Block( chainParams().accountStartNonce );
-        m_working = Block( chainParams().accountStartNonce );
-
-        bc().reopen( _p, _we );
-        if ( !m_state.connected() ) {
-            m_state = State( Invalid256, Defaults::dbPath(), bc().genesisHash() );
-        }
-        if ( _we == WithExisting::Kill ) {
-            State writer = m_state.startWrite();
-            writer.clearAll();
-            writer.populateFrom( bc().chainParams().genesisState );
-        }
-
-        m_preSeal = bc().genesisBlock( m_state );
-        m_preSeal.setAuthor( _p.author );
-        m_postSeal = m_preSeal;
-        m_working = Block( chainParams().accountStartNonce );
-    }
-
-    // SKALE    m_consensusHost->reset();
-
-    startedWorking();
-    doWork();
-
-    startWorking();
-    if ( wasSealing )
-        startSealing();
-}
-
 void Client::executeInMainThread( function< void() > const& _function ) {
     DEV_WRITE_GUARDED( x_functionQueue )
     m_functionQueue.push( _function );
@@ -648,7 +598,28 @@ void Client::rejigSealing() {
                 // TODO is that needed? we have "Generating seal on" below
                 LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " "
                                       << cc::warn( "#" ) << cc::num10( m_working.info().number() );
-                m_working.commitToSeal( bc(), m_extraData );
+
+                // TODO Deduplicate code!
+                dev::h256 stateRootToSet;
+                if ( this->last_snapshoted_block == -1 ) {
+                    secp256k1_sha256_t ctx;
+                    secp256k1_sha256_initialize( &ctx );
+
+                    dev::h256 empty_str = dev::h256( "" );
+                    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+                    dev::h256 empty_state_root_hash;
+                    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+                    stateRootToSet = empty_state_root_hash;
+                } else {
+                    unsigned latest_snapshot = this->last_snapshoted_block;
+                    dev::h256 state_root_hash =
+                        this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                    stateRootToSet = state_root_hash;
+                }
+
+                m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
             }
             DEV_READ_GUARDED( x_working ) {
                 DEV_WRITE_GUARDED( x_postSeal )
