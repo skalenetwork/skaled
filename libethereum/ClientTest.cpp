@@ -53,20 +53,6 @@ ClientTest::~ClientTest() {
     terminate();
 }
 
-void ClientTest::setChainParams( string const& _genesis ) {
-    ChainParams params;
-    try {
-        params = params.loadConfig( _genesis );
-        if ( params.sealEngineName != NoProof::name() && params.sealEngineName != Ethash::name() )
-            BOOST_THROW_EXCEPTION(
-                ChainParamsInvalid() << errinfo_comment( "Seal engine is not supported!" ) );
-
-        reopenChain( params, WithExisting::Kill );
-    } catch ( std::exception const& ex ) {
-        BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment( ex.what() ) );
-    }
-}
-
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     Block block( chainParams().accountStartNonce );
     DEV_READ_GUARDED( x_preSeal )
