@@ -1168,15 +1168,15 @@ int main( int argc, char** argv ) try {
     }
 
     time_t startTimestamp = 0;
-    if(vm.count("start-timestamp")){
-        startTimestamp = vm["start-timestamp"].as<time_t>();
+    if ( vm.count( "start-timestamp" ) ) {
+        startTimestamp = vm["start-timestamp"].as< time_t >();
     }
 
-    if(time(NULL) < startTimestamp){
-        std::cout << "\nWill start at localtime " << ctime(&startTimestamp) << std::endl;
+    if ( time( NULL ) < startTimestamp ) {
+        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
         do
-            sleep(1);
-        while(time(NULL) < startTimestamp);
+            sleep( 1 );
+        while ( time( NULL ) < startTimestamp );
     }
 
     if ( loggingOptions.verbosity > 0 )
