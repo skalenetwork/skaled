@@ -66,6 +66,22 @@ public:
             jsonrpc::Procedure( "debug_callSkaleHost", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_callSkaleHostI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getVersion", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getVersionI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getArguments",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getArgumentsI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getConfig", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getConfigI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getSchainName",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getSchainNameI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -114,6 +130,22 @@ public:
         response = this->debug_callSkaleHost( request[0u].asString() );
     }
 
+    virtual void debug_getVersionI( const Json::Value&, Json::Value& response ) {
+        response = this->debug_getVersion();
+    }
+
+    virtual void debug_getArgumentsI( const Json::Value&, Json::Value& response ) {
+        response = this->debug_getArguments();
+    }
+
+    virtual void debug_getConfigI( const Json::Value&, Json::Value& response ) {
+        response = this->debug_getConfig();
+    }
+
+    virtual void debug_getSchainNameI( const Json::Value&, Json::Value& response ) {
+        response = this->debug_getSchainName();
+    }
+
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
     virtual Json::Value debug_traceTransaction(
@@ -131,6 +163,11 @@ public:
     virtual void debug_forceBlock() = 0;
     virtual void debug_forceBroadcast( const std::string& _transactionHash ) = 0;
     virtual std::string debug_callSkaleHost( const std::string& _arg ) = 0;
+
+    virtual std::string debug_getVersion() = 0;
+    virtual std::string debug_getArguments() = 0;
+    virtual std::string debug_getConfig() = 0;
+    virtual std::string debug_getSchainName() = 0;
 };
 
 }  // namespace rpc

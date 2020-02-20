@@ -285,7 +285,8 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
 }
 
 std::string Skale::skale_getLatestSnapshotBlockNumber() {
-    return std::to_string( this->m_client.getLatestSnapshotBlockNumer() );
+    int64_t response = this->m_client.getLatestSnapshotBlockNumer();
+    return response > 0 ? std::to_string( response ) : "earliest";
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
@@ -316,8 +317,38 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         obj["signerIndex"] = schain_node.sChainIndex.convert_to< int >();
         joCall["params"] = obj;
 
-        skutils::rest::client cli;
         std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+
+        const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
+        const std::string sgx_cert_filename = "sgx.crt";
+        const std::string sgx_key_filename = "sgx.pem";
+
+        std::ifstream sgx_cert_file( sgx_cert_path + sgx_cert_filename );
+        std::string sgx_cert;
+
+        sgx_cert_file.seekg( 0, std::ios::end );
+        sgx_cert.reserve( sgx_cert_file.tellg() );
+        sgx_cert_file.seekg( 0, std::ios::beg );
+
+        sgx_cert.assign( ( std::istreambuf_iterator< char >( sgx_cert_file ) ),
+            std::istreambuf_iterator< char >() );
+
+        std::ifstream sgx_key_file( sgx_cert_path + sgx_key_filename );
+        std::string sgx_key;
+
+        sgx_key_file.seekg( 0, std::ios::end );
+        sgx_key.reserve( sgx_key_file.tellg() );
+        sgx_key_file.seekg( 0, std::ios::beg );
+
+        sgx_key.assign( ( std::istreambuf_iterator< char >( sgx_key_file ) ),
+            std::istreambuf_iterator< char >() );
+
+        skutils::http::SSL_client_options ssl_options;
+        ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
+        ssl_options.client_key = sgx_cert_path + sgx_key_filename;
+
+        skutils::rest::client cli;
+        cli.optsSSL = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )

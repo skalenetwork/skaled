@@ -670,9 +670,12 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 }
 
 void BlockChain::rotateDBIfNeeded() {
-    if ( this->number() % 64 == 0 ) {
+    auto r = m_params.rotateAfterBlock_;
+    if ( r <= 0 )
+        return;
+    auto n = this->number();
+    if ( ( n % r ) == 0 )
         this->m_rotating_db->rotate();
-    }  // if
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -803,6 +806,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
                 TransactionAddress ta;
                 ta.blockHash = tbi.hash();
+                ta.index = 0;
 
                 RLP txns_rlp = blockRLP[1];
 
@@ -812,6 +816,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                     extrasWriteBatch->insert(
                         toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
                         ( db::Slice ) dev::ref( ta.rlp() ) );
+                    ++ta.index;
                 }
             }
 
