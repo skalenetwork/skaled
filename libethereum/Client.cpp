@@ -976,21 +976,41 @@ void Client::fillLastSnapshotTime() {
     int i = this->number();
     int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
     for ( ;; ) {
+        std::cerr << "I: " << i << '\n';
         uint64_t last_timestamp = this->blockInfo( this->hashFromNumber( i ) ).timestamp();
         uint64_t proposed_last_snapshot_time =
             ( last_timestamp / snapshotIntervalMs ) * snapshotIntervalMs;
+        std::cerr << "PROPOSED TIMESTAMP: " << proposed_last_snapshot_time << '\n';
         while ( this->blockInfo( this->hashFromNumber( i - 1 ) ).timestamp() + snapshotIntervalMs >=
                     proposed_last_snapshot_time &&
                 i > 0 ) {
+            std::cerr << "SMTH\n";
             --i;
         }
+        std::cerr << "I: " << i << '\n';
         if ( i == 0 ) {
+            std::cerr << "HERE1\n";
             this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
             break;
         }
-        if ( !this->m_snapshotManager->isSnapshotHashPresent( i ) ) {
-            continue;
-        } else {
+        try {
+            bool snapshotExists = this->m_snapshotManager->isSnapshotHashPresent( i );
+            if ( snapshotExists ) {
+                std::cerr << "HERE2\n";
+                continue;
+            } else {
+                std::cerr << "HERE4\n";
+                this->last_snapshot_time = proposed_last_snapshot_time;
+                this->last_snapshoted_block = i;
+                break;
+            }
+        } catch ( SnapshotManager::SnapshotAbsent& ) {
+            std::cerr << "HERE3\n";
+            this->last_snapshot_time = proposed_last_snapshot_time;
+            this->last_snapshoted_block = i;
+            break;
+        } catch ( SnapshotManager::CannotRead& ) {
+            std::cerr << "HERE5\n";
             this->last_snapshot_time = proposed_last_snapshot_time;
             this->last_snapshoted_block = i;
             break;
