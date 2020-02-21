@@ -1198,6 +1198,7 @@ void test_protocol_serial_calls(
                             ++cnt_actions_performed;
                         },
                         vecClientNames[i], strProto, nPort, true );
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
                 }
             },
             strProto, nPort );

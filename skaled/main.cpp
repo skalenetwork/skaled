@@ -1676,6 +1676,27 @@ int main( int argc, char** argv ) try {
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
              nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
              nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
+            std::list< std::pair< std::string, std::string > > listIfaceInfos4 =
+                skutils::network::get_machine_ip_addresses( true, false );  // IPv4
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::attention( "IPv4 interfaces and addresses:" );
+            for ( const auto& iface_ref : listIfaceInfos4 ) {
+                // iface_ref: first-interface name, second-address
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
+                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::attention( "IPv6 interfaces and addresses:" );
+            std::list< std::pair< std::string, std::string > > listIfaceInfos6 =
+                skutils::network::get_machine_ip_addresses( true, false );  // IPv6
+            for ( const auto& iface_ref : listIfaceInfos6 ) {
+                // iface_ref: first-interface name, second-address
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
+                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
+            }
+            //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //
