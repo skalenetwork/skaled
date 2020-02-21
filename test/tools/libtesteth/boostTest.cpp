@@ -41,6 +41,27 @@
 
 using namespace boost::unit_test;
 
+// printer-visitor for --list-tests
+struct TestTreeVisitor : test_tree_visitor {
+    std::vector< std::string > stack;
+
+    void visit( test_case const& test ) {
+        // ignore stack[0] = "Master Test Suite"
+        for ( size_t i = 1; i < stack.size(); ++i ) {
+            std::cout << stack[i] << "/";
+        }
+
+        std::cout << test.p_name << std::endl;
+    }
+
+    bool test_suite_start( test_suite const& suite ) {
+        stack.push_back( suite.p_name );
+        return true;
+    }
+
+    void test_suite_finish( test_suite const& /*suite*/ ) { stack.pop_back(); }
+};
+
 static std::ostringstream strCout;
 std::streambuf* oldCoutStreamBuf;
 std::streambuf* oldCerrStreamBuf;
@@ -160,6 +181,12 @@ int main( int argc, const char* argv[] ) {
         test_suite* ts1 = BOOST_TEST_SUITE( "customTestSuite" );
         ts1->add( BOOST_TEST_CASE( &customTestSuite ) );
         framework::master_test_suite().add( ts1 );
+    }
+
+    if ( opt.listTests ) {
+        TestTreeVisitor visitor;
+        traverse_test_tree( framework::master_test_suite(), visitor, true );
+        return 0;
     }
 
     std::cout << "Running tests using path: " << test::getTestPath() << std::endl;

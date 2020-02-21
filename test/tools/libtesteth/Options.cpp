@@ -69,6 +69,7 @@ void printHelp() {
     cout << setw( 30 ) << "--exectimelog" << setw( 25 )
          << "Output execution time for each test suite\n";
     cout << setw( 30 ) << "--statediff" << setw( 25 ) << "Trace state difference for state tests\n";
+    cout << setw( 30 ) << "--list-tests" << setw( 25 ) << "List all test suites/cases and exit\n";
 
     cout << "\nAdditional Tests\n";
     cout << setw( 30 ) << "--all" << setw( 25 ) << "Enable all tests\n";
@@ -246,6 +247,8 @@ Options::Options( int argc, const char** argv ) {
                              "tests/src/randomCodeOptions.json\n";
                 exit( 0 );
             }
+        } else if ( arg == "--list-tests" ) {
+            listTests = true;
         } else if ( arg == "-t" ) {
             throwIfAfterSeparator();
             throwIfNoArgumentFollows();
