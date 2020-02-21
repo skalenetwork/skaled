@@ -41,7 +41,6 @@ public:
     }
     virtual std::string test_getLogHash( std::string const& _param1 ) override;
     virtual std::string test_importRawBlock( std::string const& _blockRLP ) override;
-    virtual bool test_setChainParams( const Json::Value& _param1 ) override;
     virtual bool test_mineBlocks( int _number ) override;
     virtual bool test_modifyTimestamp( int _timestamp ) override;
 

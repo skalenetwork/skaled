@@ -115,10 +115,11 @@ public:
     }
 
     virtual transactions_vector pendingTransactions(
-        size_t /*_limit*/, u256& /*_stateRoot*/ ) override {
+        size_t /*_limit*/, u256& _stateRoot ) override {
         auto future = this->transaction_promise.get_future();
         future.wait();
         transactions_vector buffer = future.get();
+        _stateRoot = 1;
         return buffer;
     }
 
