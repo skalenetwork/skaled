@@ -488,6 +488,8 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
+    addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
+        "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -547,6 +549,8 @@ int main( int argc, char** argv ) try {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
     }
+
+    cout << std::endl << "skaled " << Version << std::endl << std::endl;
 
     pid_t this_process_pid = getpid();
     std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
@@ -1171,6 +1175,18 @@ int main( int argc, char** argv ) try {
         snapshotManager = nullptr;
     }
 
+    time_t startTimestamp = 0;
+    if ( vm.count( "start-timestamp" ) ) {
+        startTimestamp = vm["start-timestamp"].as< time_t >();
+    }
+
+    if ( time( NULL ) < startTimestamp ) {
+        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
+        do
+            sleep( 1 );
+        while ( time( NULL ) < startTimestamp );
+    }
+
     if ( loggingOptions.verbosity > 0 )
         cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
@@ -1448,8 +1464,6 @@ int main( int argc, char** argv ) try {
     for ( auto const& s : toImport ) {
         keyManager.import( s, "Imported key (UNSAFE)" );
     }
-
-    cout << "skaled " << Version << "\n";
 
     if ( mode == OperationMode::ImportSnapshot ) {
         try {
