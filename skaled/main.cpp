@@ -2097,6 +2097,8 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
+    dev::setThreadName( "main" );
+
     if ( client ) {
         unsigned int n = client->blockChain().details().number;
         unsigned int mining = 0;
