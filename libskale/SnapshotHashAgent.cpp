@@ -115,17 +115,21 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
                       << cc::warn( ex.what() ) << "\n";
         }
 
-//        libff::alt_bn128_G2 common_public;
+        //        libff::alt_bn128_G2 common_public;
 
-//        common_public.X.c0 =
-//            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
-//        common_public.X.c1 =
-//            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
-//        common_public.Y.c0 =
-//            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
-//        common_public.Y.c1 =
-//            libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
-//        common_public.Z = libff::alt_bn128_Fq2::one();
+        //        common_public.X.c0 =
+        //            libff::alt_bn128_Fq(
+        //            chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
+        //        common_public.X.c1 =
+        //            libff::alt_bn128_Fq(
+        //            chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
+        //        common_public.Y.c0 =
+        //            libff::alt_bn128_Fq(
+        //            chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
+        //        common_public.Y.c1 =
+        //            libff::alt_bn128_Fq(
+        //            chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
+        //        common_public.Z = libff::alt_bn128_Fq2::one();
 
         try {
             libff::inhibit_profiling_info = true;

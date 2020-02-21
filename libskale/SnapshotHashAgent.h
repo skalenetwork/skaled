@@ -27,8 +27,8 @@
 
 #include <libconsensus/libBLS/bls/bls.h>
 #include <libethereum/ChainParams.h>
-#include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 #include <boost/algorithm/string.hpp>
+#include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 
 namespace dev {
 namespace test {
@@ -62,24 +62,25 @@ public:
 
 class SnapshotHashAgent {
 public:
-    SnapshotHashAgent( const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" )
+    SnapshotHashAgent(
+        const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" )
         : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
         this->public_keys_.resize( n_ );
         if ( common_public_key == "" ) {
-            common_public_key_.X.c0 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
-            common_public_key_.X.c1 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
-            common_public_key_.Y.c0 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
-            common_public_key_.Y.c1 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
+            common_public_key_.X.c0 = libff::alt_bn128_Fq(
+                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
+            common_public_key_.X.c1 = libff::alt_bn128_Fq(
+                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
+            common_public_key_.Y.c0 = libff::alt_bn128_Fq(
+                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
+            common_public_key_.Y.c1 = libff::alt_bn128_Fq(
+                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
             common_public_key_.Z = libff::alt_bn128_Fq2::one();
         } else {
-            std::vector<std::string> coords;
-            boost::split(coords, common_public_key, [](char c){return c == ':';});
+            std::vector< std::string > coords;
+            boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
             common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
             common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
             common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );

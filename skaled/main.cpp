@@ -490,8 +490,9 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
-    addClientOption( "public-key", po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
-            "Collects old common public key from chain to verify snapshot before starts from it" );
+    addClientOption( "public-key",
+        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
+        "Collects old common public key from chain to verify snapshot before starts from it" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -1111,7 +1112,8 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "download-snapshot" ) ) {
         std::string commonPublicKey;
         if ( !vm.count( "public-key" ) ) {
-            throw std::runtime_error( cc::error( "Missing --public-key option - cannot download snapshot" ) );
+            throw std::runtime_error(
+                cc::error( "Missing --public-key option - cannot download snapshot" ) );
         } else {
             commonPublicKey = vm["public-key"].as< std::string >();
         }
