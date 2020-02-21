@@ -15,6 +15,10 @@ std::string getThreadName() {
     return std::string( name );
 }
 void setThreadName( const char* name ) {
+    // should be not more then 15!!
+    if ( strlen( name ) > 15 )
+        name += strlen( name ) - 15;
+
 #if defined( __APPLE__ )
     pthread_setname_np( name );
 #else
