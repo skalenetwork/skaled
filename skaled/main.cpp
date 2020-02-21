@@ -1116,8 +1116,11 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "download-snapshot" ) ) {
         std::string commonPublicKey;
         if ( !vm.count( "public-key" ) ) {
-            throw std::runtime_error(
-                cc::error( "Missing --public-key option - cannot download snapshot" ) );
+            // for tests only!
+            commonPublicKey = "";
+            //            throw std::runtime_error(
+            //                cc::error( "Missing --public-key option - cannot download snapshot" )
+            //                );
         } else {
             commonPublicKey = vm["public-key"].as< std::string >();
         }
@@ -1133,7 +1136,7 @@ int main( int argc, char** argv ) try {
         }
 
         if ( blockNumber > 0 ) {
-            SnapshotHashAgent snapshotHashAgent( chainParams );
+            SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
             libff::init_alt_bn128_params();
             std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
