@@ -331,8 +331,6 @@ bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
 }  // namespace
 
 int main( int argc, char** argv ) try {
-    setenv( "SEGFAULT_SIGNALS", "all", 0 );  // no replace
-
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
@@ -1279,7 +1277,6 @@ int main( int argc, char** argv ) try {
 
     ExitHandler exitHandler;
 
-    signal( SIGABRT, &ExitHandler::exitHandler );
     signal( SIGTERM, &ExitHandler::exitHandler );
     signal( SIGINT, &ExitHandler::exitHandler );
 
