@@ -1,5 +1,6 @@
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
+#include <mutex>
 
 namespace skutils {
 namespace test {
@@ -426,7 +427,7 @@ void test_server_ws_base::run() {
             strPrivateKeyFile_ = ssl_info.strFilePathKey_;
         }
         BOOST_REQUIRE( open( strScheme_.c_str(), nListenPort_ ) );
-        test_log_s( cc::debug( "Server opened" ) );
+        test_log_s( cc::sunny( "Server opened" ) );
         bServerOpenComplete = true;
         if ( service_mode_supported() ) {
             test_log_s(
@@ -1182,39 +1183,73 @@ void test_protocol_single_call( const char* strProto, int nPort ) {
 void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients serial server calls
-    std::atomic_size_t cnt_actions_performed = 0;
+    std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
+                       wait_time_step_ms = 300;
+    skutils::test::test_log_e( cc::debug( "Protocol serial calls test with " ) +
+                               cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
             [&]( skutils::test::test_server & /*refServer*/ ) -> void {
-                for ( size_t i = 0; i < vecClientNames.size(); ++i ) {
+                skutils::test::test_log_e( cc::sunny( "Server startup" ) );
+                for ( size_t i = 0; i < cnt_clients; ++i ) {
                     skutils::test::with_test_client(
-                        [&]( skutils::test::test_client& refClient ) -> void {
+                        [&, i]( skutils::test::test_client& refClient ) -> void {
+                            std::this_thread::sleep_for(
+                                std::chrono::milliseconds( size_t( wait_time_step_ms ) * i ) );
+                            skutils::test::test_log_e( cc::bright( "Client " ) + cc::size10( i ) +
+                                                       cc::bright( " begin" ) );
                             std::string strCall( "{ \"method\": \"hello\", \"params\": {} }" );
                             nlohmann::json joCall = skutils::test::ensure_call_id_present_copy(
                                 nlohmann::json::parse( strCall ) );
                             nlohmann::json joResult = refClient.call( joCall );
                             BOOST_REQUIRE( joCall.dump() == joResult.dump() );
-                            //
                             ++cnt_actions_performed;
+                            skutils::test::test_log_e( cc::bright( "Client " ) + cc::size10( i ) +
+                                                       cc::bright( " finish" ) );
                         },
                         vecClientNames[i], strProto, nPort, true );
-                    std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
                 }
+                skutils::test::test_log_e( cc::sunny( "Server finish" ) );
             },
             strProto, nPort );
     } );
-    BOOST_REQUIRE( cnt_actions_performed == vecClientNames.size() );
+    size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
+    for ( size_t idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                                     size_t( cnt_actions_performed ) < size_t( cnt_clients );
+          ++idxWaitAttempt ) {
+        skutils::test::test_log_e(
+            cc::debug( "Waiting for test to complete, step " ) +
+            cc::size10( size_t( idxWaitAttempt ) ) + cc::debug( " of " ) +
+            cc::size10( size_t( cntWaitAttempts ) ) + cc::debug( ", performed " ) +
+            cc::size10( size_t( cnt_actions_performed ) ) + cc::debug( " action(s) of " ) +
+            cc::size10( size_t( cnt_clients ) ) + cc::debug( " expeted ..." ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
+    }
+    BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
 
 void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients parallel server calls
-    std::atomic_size_t cnt_actions_performed = 0;
+    std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
+                       wait_time_step_ms = 300, parallel_client_indexer = 0;
+    std::mutex mtxClientIndexer;
+    skutils::test::test_log_e( cc::debug( "Protocol parallel calls test with " ) +
+                               cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
             [&]( skutils::test::test_server & /*refServer*/ ) -> void {
+                skutils::test::test_log_e( cc::sunny( "Server startup" ) );
                 skutils::test::with_test_clients(
                     [&]( skutils::test::test_client& refClient ) -> void {
+                        size_t i = 0;
+                        {  // block
+                            std::lock_guard< std::mutex > lock( mtxClientIndexer );
+                            i = parallel_client_indexer;
+                            ++parallel_client_indexer;
+                        }  // block
+                        skutils::test::test_log_e(
+                            cc::bright( "Client " ) + cc::size10( i ) + cc::bright( " begin" ) );
                         std::string strCall( "{ \"method\": \"hello\", \"params\": {} }" );
                         nlohmann::json joCall = skutils::test::ensure_call_id_present_copy(
                             nlohmann::json::parse( strCall ) );
@@ -1238,12 +1273,27 @@ void test_protocol_parallel_calls(
                         BOOST_REQUIRE( joCall.dump() == joResult.dump() );
                         //
                         ++cnt_actions_performed;
+                        skutils::test::test_log_e(
+                            cc::bright( "Client " ) + cc::size10( i ) + cc::bright( " finish" ) );
                     },
                     vecClientNames, strProto, nPort, true );
             },
             strProto, nPort );
+        skutils::test::test_log_e( cc::sunny( "Server finish" ) );
     } );
-    BOOST_REQUIRE( cnt_actions_performed == vecClientNames.size() );
+    size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
+    for ( size_t idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                                     size_t( cnt_actions_performed ) < size_t( cnt_clients );
+          ++idxWaitAttempt ) {
+        skutils::test::test_log_e(
+            cc::debug( "Waiting for test to complete, step " ) +
+            cc::size10( size_t( idxWaitAttempt ) ) + cc::debug( " of " ) +
+            cc::size10( size_t( cntWaitAttempts ) ) + cc::debug( ", performed " ) +
+            cc::size10( size_t( cnt_actions_performed ) ) + cc::debug( " action(s) of " ) +
+            cc::size10( size_t( cnt_clients ) ) + cc::debug( " expeted ..." ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
+    }
+    BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
 
 };  // namespace test

@@ -254,7 +254,8 @@ public:
     virtual ~async_query_handler();
     virtual void run() = 0;
     virtual void step() = 0;
-    virtual void will_remove() = 0;
+    virtual void was_added();
+    virtual void will_remove();
     bool remove_this_task();
 };  /// class async_query_handler
 
@@ -306,6 +307,7 @@ public:
     virtual ~async_read_and_close_socket();
     virtual void run();
     virtual void step();
+    virtual void was_added();
     virtual void will_remove();
     virtual void close_socket();
 };  /// class async_read_and_close_socket
@@ -334,6 +336,7 @@ public:
     virtual ~async_read_and_close_socket_SSL();
     virtual void run();
     virtual void step();
+    virtual void was_added();
     virtual void will_remove();
     virtual void close_socket();
 };  /// class async_read_and_close_socket_SSL

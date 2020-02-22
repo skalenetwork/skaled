@@ -1,5 +1,7 @@
 #include <skutils/http.h>
 
+//#define __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ 1
+
 namespace skutils {
 namespace http {
 
@@ -1182,8 +1184,27 @@ SSLInit::~SSLInit() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-async_query_handler::async_query_handler( server& srv ) : srv_( srv ) {}
-async_query_handler::~async_query_handler() {}
+async_query_handler::async_query_handler( server& srv ) : srv_( srv ) {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task ctor %p\n", this );
+#endif
+}
+async_query_handler::~async_query_handler() {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task dtor %p\n", this );
+#endif
+}
+
+void async_query_handler::was_added() {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task add %p\n", this );
+#endif
+}
+void async_query_handler::will_remove() {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task remove %p\n", this );
+#endif
+}
 
 bool async_query_handler::remove_this_task() {
     return srv_.remove_task( task_ptr_t( this ) );
@@ -1220,16 +1241,36 @@ void async_read_and_close_socket_base::run() {
 }
 
 void async_read_and_close_socket_base::schedule_first_step() {
-    skutils::dispatch::job_t job = [=]() -> void {
-        ( const_cast< async_read_and_close_socket_base* >( this ) )->step();
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task shedule 1st step %p\n", this );
+#endif
+    skutils::retain_release_ptr< async_read_and_close_socket_base > pThis = this;
+    skutils::dispatch::job_t job = [pThis]() -> void {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+        std::cout << skutils::tools::format( "http task will do 1st step %p\n", pThis.get_unconst() );
+#endif
+        pThis.get_unconst()->step();
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+        std::cout << skutils::tools::format( "http task done 1st step %p\n", pThis.get_unconst() );
+#endif
     };
     skutils::dispatch::async(
         qid_, job, skutils::dispatch::duration_from_milliseconds( retry_first_ms_ ) );
 }
 
 void async_read_and_close_socket_base::schedule_next_step() {
-    skutils::dispatch::job_t job = [=]() -> void {
-        ( const_cast< async_read_and_close_socket_base* >( this ) )->step();
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+    std::cout << skutils::tools::format( "http task shedule next step %p\n", this );
+#endif
+    skutils::retain_release_ptr< async_read_and_close_socket_base > pThis = this;
+    skutils::dispatch::job_t job = [pThis]() -> void {
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+        std::cout << skutils::tools::format( "http task will do next step %p\n", pThis.get_unconst() );
+#endif
+        pThis.get_unconst()->step();
+#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+        std::cout << skutils::tools::format( "http task done next step %p\n", pThis.get_unconst() );
+#endif
     };
     skutils::dispatch::async(
         qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
@@ -1295,11 +1336,16 @@ void async_read_and_close_socket::step() {
     schedule_next_step();
 }
 
+void async_read_and_close_socket::was_added() {
+    async_read_and_close_socket_base::was_added();
+}
+
 void async_read_and_close_socket::will_remove() {
     if ( !active_ )
         return;
     active_ = false;
     close_socket();
+    async_read_and_close_socket_base::will_remove();
 }
 
 void async_read_and_close_socket::close_socket() {
@@ -1370,11 +1416,16 @@ void async_read_and_close_socket_SSL::step() {
     schedule_next_step();
 }
 
+void async_read_and_close_socket_SSL::was_added() {
+    async_read_and_close_socket_base::was_added();
+}
+
 void async_read_and_close_socket_SSL::will_remove() {
     if ( !active_ )
         return;
     active_ = false;
     close_socket();
+    async_read_and_close_socket_base::will_remove();
 }
 
 void async_read_and_close_socket_SSL::close_socket() {
@@ -1703,6 +1754,7 @@ bool server::add_task( task_ptr_t pTask ) {
     tasks_lock_type lock( tasks_mtx() );
     task_id_t tid = task_id_t( pTask.get() );
     map_tasks_[tid] = pTask;
+    pTask->was_added();
     return true;
 }
 bool server::remove_task( task_ptr_t pTask ) {
