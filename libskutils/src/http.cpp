@@ -1185,24 +1185,28 @@ SSLInit::~SSLInit() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 async_query_handler::async_query_handler( server& srv ) : srv_( srv ) {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task ctor %p\n", this );
+    std::cout.flush();
 #endif
 }
 async_query_handler::~async_query_handler() {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task dtor %p\n", this );
+    std::cout.flush();
 #endif
 }
 
 void async_query_handler::was_added() {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task add %p\n", this );
+    std::cout.flush();
 #endif
 }
 void async_query_handler::will_remove() {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task remove %p\n", this );
+    std::cout.flush();
 #endif
 }
 
@@ -1241,17 +1245,21 @@ void async_read_and_close_socket_base::run() {
 }
 
 void async_read_and_close_socket_base::schedule_first_step() {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task shedule 1st step %p\n", this );
+    std::cout.flush();
 #endif
     skutils::retain_release_ptr< async_read_and_close_socket_base > pThis = this;
     skutils::dispatch::job_t job = [pThis]() -> void {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
-        std::cout << skutils::tools::format( "http task will do 1st step %p\n", pThis.get_unconst() );
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
+        std::cout << skutils::tools::format(
+            "http task will do 1st step %p\n", pThis.get_unconst() );
+        std::cout.flush();
 #endif
         pThis.get_unconst()->step();
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
         std::cout << skutils::tools::format( "http task done 1st step %p\n", pThis.get_unconst() );
+        std::cout.flush();
 #endif
     };
     skutils::dispatch::async(
@@ -1259,17 +1267,21 @@ void async_read_and_close_socket_base::schedule_first_step() {
 }
 
 void async_read_and_close_socket_base::schedule_next_step() {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task shedule next step %p\n", this );
+    std::cout.flush();
 #endif
     skutils::retain_release_ptr< async_read_and_close_socket_base > pThis = this;
     skutils::dispatch::job_t job = [pThis]() -> void {
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
-        std::cout << skutils::tools::format( "http task will do next step %p\n", pThis.get_unconst() );
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
+        std::cout << skutils::tools::format(
+            "http task will do next step %p\n", pThis.get_unconst() );
+        std::cout.flush();
 #endif
         pThis.get_unconst()->step();
-#if (defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__)
+#if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
         std::cout << skutils::tools::format( "http task done next step %p\n", pThis.get_unconst() );
+        std::cout.flush();
 #endif
     };
     skutils::dispatch::async(

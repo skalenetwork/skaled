@@ -8,6 +8,8 @@
 #include <iostream>
 #include <stdexcept>
 
+//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ 1
+
 #define LOCAL_DEBUG_TRACE( x )
 // static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty() ) return;
 // std::cout.flush(); std::cerr.flush(); std::cout << x << "\n"; std::cout.flush(); }
@@ -377,19 +379,35 @@ void loop::on_check_jobs() {
 }
 
 loop::job_data_t::job_data_t( loop_ptr_t pLoop ) : pLoop_( pLoop ), needsCancel_( false ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job ctor %p\n", this );
+    std::cout.flush();
+#endif
     p_uvTimer_ = calloc( 1, sizeof( uv_timer_t ) );
     if ( !p_uvTimer_ )
         throw std::runtime_error( "loop job timer allocation error" );
 }
 loop::job_data_t::~job_data_t() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job dtor start %p\n", this );
+    std::cout.flush();
+#endif
     if ( p_uvTimer_ ) {
         cancel();
         free( p_uvTimer_ );
         p_uvTimer_ = nullptr;
     }
     pLoop_ = nullptr;
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job dtor finish %p\n", this );
+    std::cout.flush();
+#endif
 }
 void loop::job_data_t::cancel() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job cancel %p\n", this );
+    std::cout.flush();
+#endif
     if ( needsCancel_ ) {
         needsCancel_ = false;
         uv_timer_t* p_uvTimer = ( uv_timer_t* ) p_uvTimer_;
@@ -401,6 +419,10 @@ void loop::job_data_t::cancel() {
     }
 }
 void loop::job_data_t::init() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job init %p\n", this );
+    std::cout.flush();
+#endif
     if ( !pLoop_ )
         return;
     uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) pLoop_->p_uvLoop_;
@@ -415,24 +437,33 @@ void loop::job_data_t::init() {
         ( ns_timeout / ( 1000 * 1000 ) ) + ( ( ( ns_timeout % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
     uint64_t ms_interval =
         ( ns_interval / ( 1000 * 1000 ) ) + ( ( ( ns_interval % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
-    //    uv_timer_start( p_uvTimer,
-    //        []( uv_timer_t* pTimer ) {
-    //            loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
-    //            pJobData->on_timer();
-    //        },
-    //        ms_timeout, ms_interval );
+    //
     pLoop_->pending_timer_add( ( void* ) p_uvTimer,
         []( void* h ) -> void {
             uv_timer_t* pTimer = ( uv_timer_t* ) h;
             loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job timer fn call %p\n", pJobData );
+            std::cout.flush();
+#endif
             pJobData->on_timer();
         },
         ms_timeout, ms_interval );
+    //
 }
 void loop::job_data_t::on_timer() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job on_timer %p\n", this );
+    std::cout.flush();
+#endif
     on_invoke();
 }
 void loop::job_data_t::on_invoke() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job on_invoke begin %p\n", this );
+    std::cout.flush();
+#endif
     job_id_t id( id_ );
     loop_ptr_t pLoop( pLoop_ );
     try {
@@ -442,8 +473,19 @@ void loop::job_data_t::on_invoke() {
         // one_per_thread_t::make_current curr( g_one_per_thread, ptr );
         if ( !pLoop->on_job_will_execute( id ) )
             return;
-        if ( fn_ )
+        if ( fn_ ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job on_invoke will call fn %p\n", this );
+            std::cout.flush();
+#endif
             fn_();
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job on_invoke did called fn %p\n", this );
+            std::cout.flush();
+#endif
+        }
         pLoop->on_job_did_executed( id );
     } catch ( std::exception& e ) {
         pLoop->on_job_exception( id, &e );
