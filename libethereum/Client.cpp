@@ -988,9 +988,20 @@ void Client::fillLastSnapshotTime() {
             this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
             break;
         }
-        if ( !this->m_snapshotManager->isSnapshotHashPresent( i ) ) {
-            continue;
-        } else {
+        try {
+            bool snapshotExists = this->m_snapshotManager->isSnapshotHashPresent( i );
+            if ( snapshotExists ) {
+                continue;
+            } else {
+                this->last_snapshot_time = proposed_last_snapshot_time;
+                this->last_snapshoted_block = i;
+                break;
+            }
+        } catch ( SnapshotManager::SnapshotAbsent& ) {
+            this->last_snapshot_time = proposed_last_snapshot_time;
+            this->last_snapshoted_block = i;
+            break;
+        } catch ( SnapshotManager::CannotRead& ) {
             this->last_snapshot_time = proposed_last_snapshot_time;
             this->last_snapshoted_block = i;
             break;
