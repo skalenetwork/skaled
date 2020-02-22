@@ -976,7 +976,6 @@ void Client::fillLastSnapshotTime() {
     int i = this->number();
     int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
     for ( ;; ) {
-        std::cerr << "I: " << i << '\n';
         uint64_t last_timestamp = this->blockInfo( this->hashFromNumber( i ) ).timestamp();
         uint64_t proposed_last_snapshot_time =
             ( last_timestamp / snapshotIntervalMs ) * snapshotIntervalMs;
