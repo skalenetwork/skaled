@@ -1453,8 +1453,9 @@ void async_read_and_close_socket_SSL::close_socket() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-server::server( size_t a_max_handler_queues )
-    : keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ),
+server::server( size_t a_max_handler_queues, bool is_async_mode )
+    : is_async_mode_( is_async_mode ),
+      keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
       max_handler_queues_( a_max_handler_queues ),
@@ -1729,7 +1730,10 @@ bool server::listen_internal() {
             if ( sock == INVALID_SOCKET ) {
                 continue;
             }
-            read_and_close_socket_async( sock );
+            if ( is_async_mode_ )
+                read_and_close_socket_async( sock );
+            else
+                read_and_close_socket_sync( sock );
         }
         suspend_adding_tasks_ = true;
         remove_all_tasks();
@@ -1920,9 +1924,9 @@ void server::read_and_close_socket_async( socket_t sock ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SSL_server::SSL_server(
-    const char* cert_path, const char* private_key_path, size_t a_max_handler_queues )
-    : server( a_max_handler_queues ) {
+SSL_server::SSL_server( const char* cert_path, const char* private_key_path,
+    size_t a_max_handler_queues, bool is_async_mode )
+    : server( a_max_handler_queues, is_async_mode ) {
     ctx_ = SSL_CTX_new( SSLv23_server_method() );
 
     if ( ctx_ ) {

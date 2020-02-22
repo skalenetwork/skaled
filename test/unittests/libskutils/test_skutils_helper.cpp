@@ -495,14 +495,17 @@ bool test_server_wss::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_http_base::test_server_http_base( const char* strScheme, int nListenPort )
+test_server_http_base::test_server_http_base(
+    const char* strScheme, int nListenPort, bool is_async_mode )
     : test_server( strScheme, nListenPort ) {
     if ( strScheme_ == "https" ) {
         auto& ssl_info = helper_ssl_info();
-        pServer_.reset( new skutils::http::SSL_server(
-            ssl_info.strFilePathCert_.c_str(), ssl_info.strFilePathKey_.c_str() ) );
+        pServer_.reset( new skutils::http::SSL_server( ssl_info.strFilePathCert_.c_str(),
+            ssl_info.strFilePathKey_.c_str(), __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+            is_async_mode ) );
     } else
-        pServer_.reset( new skutils::http::server );
+        pServer_.reset( new skutils::http::server(
+            __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__, is_async_mode ) );
     pServer_->Options(
         "/", [&]( const skutils::http::request& /*req*/, skutils::http::response& res ) {
             test_log_s( cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
@@ -549,8 +552,8 @@ void test_server_http_base::run() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_http::test_server_http( int nListenPort )
-    : test_server_http_base( "http", nListenPort ) {}
+test_server_http::test_server_http( int nListenPort, bool is_async_mode )
+    : test_server_http_base( "http", nListenPort, is_async_mode ) {}
 test_server_http::~test_server_http() {}
 
 bool test_server_http::isSSL() const {
@@ -560,8 +563,8 @@ bool test_server_http::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_https::test_server_https( int nListenPort )
-    : test_server_http_base( "https", nListenPort ) {}
+test_server_https::test_server_https( int nListenPort, bool is_async_mode )
+    : test_server_http_base( "https", nListenPort, is_async_mode ) {}
 test_server_https::~test_server_https() {}
 
 bool test_server_https::isSSL() const {
@@ -937,8 +940,8 @@ void with_thread_pool( fn_with_thread_pool_t fn,
     fn( pool );
 }
 
-void with_test_server(
-    fn_with_test_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort ) {
+void with_test_server( fn_with_test_server_t fn, const std::string& strServerUrlScheme,
+    const int nSocketListenPort, bool is_async_mode ) {
     skutils::ws::security_args sa;
     std::string sus = skutils::tools::to_lower( strServerUrlScheme );
     std::shared_ptr< test_server > pServer;
@@ -949,10 +952,10 @@ void with_test_server(
         pServer.reset( new test_server_ws( nSocketListenPort ) );
         BOOST_REQUIRE( !pServer->isSSL() );
     } else if ( sus == "https" ) {
-        pServer.reset( new test_server_https( nSocketListenPort ) );
+        pServer.reset( new test_server_https( nSocketListenPort, is_async_mode ) );
         BOOST_REQUIRE( pServer->isSSL() );
     } else if ( sus == "http" ) {
-        pServer.reset( new test_server_http( nSocketListenPort ) );
+        pServer.reset( new test_server_http( nSocketListenPort, is_async_mode ) );
         BOOST_REQUIRE( !pServer->isSSL() );
     } else {
         test_log_se( cc::error( "Unknown server type: " ) + cc::warn( strServerUrlScheme ) );
@@ -1148,6 +1151,7 @@ std::vector< std::string > g_vecTestClientNamesB = {"Gollum"};
 
 void test_protocol_server_startup( const char* strProto, int nPort ) {
     // simply start/stop server
+    bool is_async_mode = true;
     std::atomic_bool was_started = false;
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
@@ -1155,13 +1159,14 @@ void test_protocol_server_startup( const char* strProto, int nPort ) {
                 was_started = true;
                 skutils::test::test_log_e( cc::success( "WE ARE HERE, SERVER ALIVE" ) );
             },
-            strProto, nPort );
+            strProto, nPort, is_async_mode );
     } );
     BOOST_REQUIRE( was_started );
 }
 
 void test_protocol_single_call( const char* strProto, int nPort ) {
     // simple single client call
+    bool is_async_mode = true;
     std::atomic_bool end_of_actions_was_reached = false;
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_client_server(
@@ -1175,15 +1180,15 @@ void test_protocol_single_call( const char* strProto, int nPort ) {
                 //
                 end_of_actions_was_reached = true;
             },
-            "Chadwick", strProto, nPort );
+            "Chadwick", strProto, nPort, is_async_mode );
     } );
     BOOST_REQUIRE( end_of_actions_was_reached );
 }
 
-#if ( defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__ )
 void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients serial server calls
+    bool is_async_mode = true;
     std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
                        wait_time_step_ms = 500;
     skutils::test::test_log_e( cc::debug( "Protocol serial calls test with " ) +
@@ -1214,7 +1219,7 @@ void test_protocol_serial_calls(
                 }
                 skutils::test::test_log_e( cc::sunny( "Server finish" ) );
             },
-            strProto, nPort );
+            strProto, nPort, is_async_mode );
     } );
     size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
     for ( size_t idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
@@ -1230,11 +1235,11 @@ void test_protocol_serial_calls(
     }
     BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
-#endif  // (defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__)
 
 void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients parallel server calls
+    bool is_async_mode = true;
     std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
                        wait_time_step_ms = 500, parallel_client_indexer = 0;
     std::mutex mtxClientIndexer;
@@ -1282,7 +1287,7 @@ void test_protocol_parallel_calls(
                     },
                     vecClientNames, strProto, nPort, true );
             },
-            strProto, nPort );
+            strProto, nPort, is_async_mode );
         skutils::test::test_log_e( cc::sunny( "Server finish" ) );
     } );
     size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
