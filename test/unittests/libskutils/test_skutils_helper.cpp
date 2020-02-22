@@ -1184,7 +1184,7 @@ void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients serial server calls
     std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
-                       wait_time_step_ms = 300;
+                       wait_time_step_ms = 500;
     skutils::test::test_log_e( cc::debug( "Protocol serial calls test with " ) +
                                cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );
     skutils::test::with_test_environment( [&]() -> void {
@@ -1192,10 +1192,12 @@ void test_protocol_serial_calls(
             [&]( skutils::test::test_server & /*refServer*/ ) -> void {
                 skutils::test::test_log_e( cc::sunny( "Server startup" ) );
                 for ( size_t i = 0; i < cnt_clients; ++i ) {
+                    std::this_thread::sleep_for(
+                        std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
                     skutils::test::with_test_client(
                         [&, i]( skutils::test::test_client& refClient ) -> void {
-                            std::this_thread::sleep_for(
-                                std::chrono::milliseconds( size_t( wait_time_step_ms ) * i ) );
+                            // std::this_thread::sleep_for(
+                            //    std::chrono::milliseconds( size_t( wait_time_step_ms ) * i ) );
                             skutils::test::test_log_e( cc::bright( "Client " ) + cc::size10( i ) +
                                                        cc::bright( " begin" ) );
                             std::string strCall( "{ \"method\": \"hello\", \"params\": {} }" );
@@ -1232,7 +1234,7 @@ void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients parallel server calls
     std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
-                       wait_time_step_ms = 300, parallel_client_indexer = 0;
+                       wait_time_step_ms = 500, parallel_client_indexer = 0;
     std::mutex mtxClientIndexer;
     skutils::test::test_log_e( cc::debug( "Protocol parallel calls test with " ) +
                                cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );

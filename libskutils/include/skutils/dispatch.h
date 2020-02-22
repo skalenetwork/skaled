@@ -508,13 +508,14 @@ private:
         void* pUvTimer_ = nullptr;
         void ( *pFnCb_ )( void* uv_timer_handle ) = nullptr;
         uint64_t timeout_ = 0, interval_ = 0;
+        void* pTimerData_ = nullptr;
     };
     typedef std::list< pending_timer_t > pending_timer_list_t;
     pending_timer_list_t pending_timer_list_;
 
 public:
-    void pending_timer_add( void* pUvTimer, void ( *pFnCb )( void* uv_timer_handle ),
-        uint64_t timeout_, uint64_t interval );
+    void pending_timer_add( void* p_uvTimer, void* pTimerData,
+        void ( *pFnCb )( void* uv_timer_handle ), uint64_t timeout_, uint64_t interval );
     void pending_timer_remove_all();
     void pending_timer_init();
     //
