@@ -293,8 +293,6 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 }  // namespace
 
 int main( int argc, char** argv ) try {
-    setenv( "SEGFAULT_SIGNALS", "all", 0 );  // no replace
-
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
@@ -1254,7 +1252,6 @@ int main( int argc, char** argv ) try {
 
     ExitHandler exitHandler;
 
-    signal( SIGABRT, &ExitHandler::exitHandler );
     signal( SIGTERM, &ExitHandler::exitHandler );
     signal( SIGINT, &ExitHandler::exitHandler );
 
@@ -2089,6 +2086,8 @@ int main( int argc, char** argv ) try {
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
+
+    dev::setThreadName( "main" );
 
     if ( client ) {
         unsigned int n = client->blockChain().details().number;
