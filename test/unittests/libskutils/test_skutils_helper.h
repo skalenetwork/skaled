@@ -378,9 +378,16 @@ extern std::vector< std::string > g_vecTestClientNamesA;
 extern std::vector< std::string > g_vecTestClientNamesB;
 
 extern void test_protocol_server_startup( const char* strProto, int nPort );
+
 extern void test_protocol_single_call( const char* strProto, int nPort );
+
+//#define __SKUTILS_HAVE_TEST_SERIAL_CALLS__ 1
+
+#if ( defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__ )
 extern void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames );
+#endif  // (defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__)
+
 extern void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames );
 

@@ -1180,6 +1180,7 @@ void test_protocol_single_call( const char* strProto, int nPort ) {
     BOOST_REQUIRE( end_of_actions_was_reached );
 }
 
+#if ( defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__ )
 void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients serial server calls
@@ -1229,6 +1230,7 @@ void test_protocol_serial_calls(
     }
     BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
+#endif  // (defined __SKUTILS_HAVE_TEST_SERIAL_CALLS__)
 
 void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
