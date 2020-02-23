@@ -1289,10 +1289,10 @@ void async_read_and_close_socket_base::schedule_next_step() {
 }
 
 void async_read_and_close_socket_base::call_fail_handler(
-    bool is_close_socket, bool is_remove_this_task ) {
+    const char* strErrorDescription, bool is_close_socket, bool is_remove_this_task ) {
     try {
         if ( callback_fail_ )
-            callback_fail_();
+            callback_fail_( strErrorDescription );
     } catch ( ... ) {
     }
     if ( is_close_socket )
@@ -1320,32 +1320,40 @@ void async_read_and_close_socket::run() {
 }
 
 void async_read_and_close_socket::step() {
-    if ( retry_index_ >= retry_count_ ) {
-        call_fail_handler();
-        return;
-    }
-    ++retry_index_;
-    if ( detail::poll_read( socket_, poll_ms_ ) ) {
-        socket_stream strm( socket_ );
-        bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
-        bool connection_close = false;
-        if ( callback_success_ ) {
-            bool is_fail = false;
-            try {
-                callback_success_( strm, last_connection, connection_close );
-            } catch ( ... ) {
-                is_fail = true;
-                connection_close = true;
+    std::string strErrorDescription;
+    try {
+        if ( retry_index_ >= retry_count_ )
+            throw std::runtime_error( "max attempt count done" );
+        ++retry_index_;
+        if ( detail::poll_read( socket_, poll_ms_ ) ) {
+            socket_stream strm( socket_ );
+            bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+            bool connection_close = false;
+            if ( callback_success_ ) {
+                bool is_fail = false;
+                try {
+                    callback_success_( strm, last_connection, connection_close );
+                } catch ( ... ) {
+                    is_fail = true;
+                    connection_close = true;
+                }
+                if ( is_fail )
+                    call_fail_handler( "transfer fail", false, false );
             }
-            if ( is_fail )
-                call_fail_handler( false, false );
+            if ( connection_close )
+                close_socket();
+            remove_this_task();
+            return;
         }
-        if ( connection_close )
-            close_socket();
-        remove_this_task();
+        schedule_next_step();
         return;
+    } catch ( std::exception& ex ) {
+        strErrorDescription = ex.what();
+    } catch ( ... ) {
     }
-    schedule_next_step();
+    if ( strErrorDescription.empty() )
+        strErrorDescription = "unknown exception";
+    call_fail_handler( strErrorDescription.c_str() );
 }
 
 void async_read_and_close_socket::was_added() {
@@ -1385,47 +1393,53 @@ void async_read_and_close_socket_SSL::run() {
 }
 
 void async_read_and_close_socket_SSL::step() {
-    if ( retry_index_ >= retry_count_ ) {
-        call_fail_handler();
-        return;
-    }
-    if ( retry_index_ == 0 ) {
-        ssl_ = SSL_new( ctx_ );
-        if ( !ssl_ ) {
-            call_fail_handler();
+    std::string strErrorDescription;
+    try {
+        if ( retry_index_ >= retry_count_ )
+            throw std::runtime_error( "max attempt count done" );
+        if ( retry_index_ == 0 ) {
+            ssl_ = SSL_new( ctx_ );
+            if ( !ssl_ )
+                throw std::runtime_error( "SSL initialization failed" );
+            bio_ = BIO_new_socket( socket_, BIO_NOCLOSE );
+            SSL_set_bio( ssl_, bio_, bio_ );
+            if ( setup_ssl_ )
+                setup_ssl_();
+            if ( SSL_connect_or_accept_ )
+                SSL_connect_or_accept_( ssl_ );
+            else
+                SSL_accept( ssl_ );
+        }
+        ++retry_index_;
+        if ( detail::poll_read( socket_, poll_ms_ ) ) {
+            SSL_socket_stream strm( socket_, ssl_ );
+            bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+            bool connection_close = false;
+            if ( callback_success_ ) {
+                bool is_fail = false;
+                try {
+                    callback_success_( strm, last_connection, connection_close );
+                } catch ( ... ) {
+                    is_fail = true;
+                    connection_close = true;
+                }
+                if ( is_fail )
+                    call_fail_handler( "transfer fail", false, false );
+            }
+            if ( connection_close )
+                close_socket();
+            remove_this_task();
             return;
         }
-        bio_ = BIO_new_socket( socket_, BIO_NOCLOSE );
-        SSL_set_bio( ssl_, bio_, bio_ );
-        if ( setup_ssl_ )
-            setup_ssl_();
-        if ( SSL_connect_or_accept_ )
-            SSL_connect_or_accept_( ssl_ );
-        else
-            SSL_accept( ssl_ );
-    }
-    ++retry_index_;
-    if ( detail::poll_read( socket_, poll_ms_ ) ) {
-        SSL_socket_stream strm( socket_, ssl_ );
-        bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
-        bool connection_close = false;
-        if ( callback_success_ ) {
-            bool is_fail = false;
-            try {
-                callback_success_( strm, last_connection, connection_close );
-            } catch ( ... ) {
-                is_fail = true;
-                connection_close = true;
-            }
-            if ( is_fail )
-                call_fail_handler( false, false );
-        }
-        if ( connection_close )
-            close_socket();
-        remove_this_task();
+        schedule_next_step();
         return;
+    } catch ( std::exception& ex ) {
+        strErrorDescription = ex.what();
+    } catch ( ... ) {
     }
-    schedule_next_step();
+    if ( strErrorDescription.empty() )
+        strErrorDescription = "unknown exception";
+    call_fail_handler( strErrorDescription.c_str() );
 }
 
 void async_read_and_close_socket_SSL::was_added() {
@@ -1915,8 +1929,12 @@ void server::read_and_close_socket_async( socket_t sock ) {
         if ( !process_request( origin, strm, last_connection, connection_close ) )
             throw std::runtime_error( "failed to process request" );
     };
-    pRT->callback_fail_ = [this, sock]() {
-        std::cout << "failed to process http reqiest from socket" << sock << "\n";
+    pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
+        std::cout << "failed to process http reqiest from socket " << sock
+                  << ", error description: "
+                  << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
+                                                                           "unkknown error" )
+                  << "\n";
     };
     pTask->run();
 }
@@ -1978,8 +1996,12 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
                                  stream& strm, bool last_connection, bool& connection_close ) {
         return process_request( origin, strm, last_connection, connection_close );
     };
-    pRT->callback_fail_ = [this, sock]() {
-        std::cout << "failed to process http reqiest from socket(SSL)" << sock << "\n";
+    pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
+        std::cout << "failed to process http reqiest from socket(SSL) " << sock
+                  << ", error description: "
+                  << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
+                                                                           "unkknown error" )
+                  << "\n";
     };
     pTask->run();
 }

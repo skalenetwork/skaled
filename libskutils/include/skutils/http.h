@@ -275,7 +275,7 @@ public:
 
     typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
         callback_success_t;
-    typedef std::function< void() > callback_fail_t;
+    typedef std::function< void( const char* strErrorDescription ) > callback_fail_t;
 
     callback_success_t callback_success_;
     callback_fail_t callback_fail_;
@@ -290,7 +290,8 @@ public:
     virtual void schedule_first_step();
     virtual void schedule_next_step();
     virtual void close_socket();
-    void call_fail_handler( bool is_close_socket = true, bool is_remove_this_task = true );
+    void call_fail_handler( const char* strErrorDescription = nullptr, bool is_close_socket = true,
+        bool is_remove_this_task = true );
 };  /// class async_read_and_close_socket_base
 
 
