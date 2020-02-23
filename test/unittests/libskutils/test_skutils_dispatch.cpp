@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
                                        cc::info( id ) );
             return true;
         };
-        pLoop->on_job_did_added_ = [&]( const skutils::dispatch::job_id_t& id ) -> void {
+        pLoop->on_job_was_added_ = [&]( const skutils::dispatch::job_id_t& id ) -> void {
             skutils::test::test_log_e( thread_prefix_str() + cc::debug( "did " ) +
                                        cc::success( "added" ) + cc::debug( " job " ) +
                                        cc::info( id ) );

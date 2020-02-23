@@ -23,6 +23,12 @@ extern "C" {
 struct uv_loop_s;
 };  /// extern "C"
 
+//
+// uncomment line below to enable exeperimental early timer initialization for async tasks with
+// non-zero start timeout:
+// #define __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ 1
+//
+
 namespace skutils {
 namespace dispatch {
 
@@ -367,7 +373,9 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class loop : public ref_retain_release {
-    void* p_uvAsyncInit_ = nullptr;
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    void* p_uvAsyncInitForTimers_ = nullptr;
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     typedef one_per_thread< loop_ptr_t > one_per_thread_t;
     static one_per_thread_t g_one_per_thread;
     //
@@ -484,9 +492,9 @@ public:
     }
     //
     job_state_event_pre_handler_t on_job_will_add_;
-    job_state_event_post_handler_t on_job_did_added_;
+    job_state_event_post_handler_t on_job_was_added_;
     virtual bool on_job_will_add( const job_id_t& id );
-    virtual void on_job_did_added( const job_id_t& id );
+    virtual void on_job_was_added( const job_id_t& id );
     job_state_event_pre_handler_t on_job_will_remove_;
     job_state_event_post_handler_t on_job_did_removed_;
     virtual bool on_job_will_remove( const job_id_t& id );

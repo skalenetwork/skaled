@@ -1263,7 +1263,7 @@ void async_read_and_close_socket_base::schedule_first_step() {
 #endif
     };
     skutils::dispatch::async(
-        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_first_ms_ ) );
+        qid_, job /*, skutils::dispatch::duration_from_milliseconds( retry_first_ms_ )*/ );
 }
 
 void async_read_and_close_socket_base::schedule_next_step() {
@@ -1285,7 +1285,7 @@ void async_read_and_close_socket_base::schedule_next_step() {
 #endif
     };
     skutils::dispatch::async(
-        qid_, job, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ ) );
+        qid_, job /*, skutils::dispatch::duration_from_milliseconds( retry_after_ms_ )*/ );
 }
 
 void async_read_and_close_socket_base::call_fail_handler(
@@ -1319,7 +1319,7 @@ void async_read_and_close_socket::run() {
     async_read_and_close_socket_base::run();
 }
 
-void async_read_and_close_socket::step() {
+bool async_read_and_close_socket::step() {
     std::string strErrorDescription;
     try {
         if ( retry_index_ >= retry_count_ )
@@ -1343,10 +1343,10 @@ void async_read_and_close_socket::step() {
             if ( connection_close )
                 close_socket();
             remove_this_task();
-            return;
+            return false;
         }
         schedule_next_step();
-        return;
+        return true;
     } catch ( std::exception& ex ) {
         strErrorDescription = ex.what();
     } catch ( ... ) {
@@ -1354,6 +1354,7 @@ void async_read_and_close_socket::step() {
     if ( strErrorDescription.empty() )
         strErrorDescription = "unknown exception";
     call_fail_handler( strErrorDescription.c_str() );
+    return false;
 }
 
 void async_read_and_close_socket::was_added() {
@@ -1392,7 +1393,7 @@ void async_read_and_close_socket_SSL::run() {
     async_read_and_close_socket_base::run();
 }
 
-void async_read_and_close_socket_SSL::step() {
+bool async_read_and_close_socket_SSL::step() {
     std::string strErrorDescription;
     try {
         if ( retry_index_ >= retry_count_ )
@@ -1429,10 +1430,10 @@ void async_read_and_close_socket_SSL::step() {
             if ( connection_close )
                 close_socket();
             remove_this_task();
-            return;
+            return false;
         }
         schedule_next_step();
-        return;
+        return true;
     } catch ( std::exception& ex ) {
         strErrorDescription = ex.what();
     } catch ( ... ) {
@@ -1440,6 +1441,7 @@ void async_read_and_close_socket_SSL::step() {
     if ( strErrorDescription.empty() )
         strErrorDescription = "unknown exception";
     call_fail_handler( strErrorDescription.c_str() );
+    return false;
 }
 
 void async_read_and_close_socket_SSL::was_added() {
@@ -1730,20 +1732,17 @@ bool server::listen_internal() {
         is_running_ = true;
         for ( ; is_running_; ) {
             bool isOK = detail::poll_read( svr_sock_, __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ );
-            if ( !isOK ) {  // Timeout
+            if ( !isOK ) {  // timeout
                 if ( svr_sock_ == INVALID_SOCKET ) {
-                    // The server socket was closed by 'stop' method.
+                    // server socket was closed by "stop" method
                     break;
                 }
                 continue;
             }
-
             MICROPROFILE_SCOPEI( "skutils", "http::server::listen_internal", MP_PALEGREEN );
-
-            socket_t sock = accept( svr_sock_, NULL, NULL );
-            if ( sock == INVALID_SOCKET ) {
+            socket_t sock = accept( svr_sock_, nullptr, nullptr );
+            if ( sock == INVALID_SOCKET )
                 continue;
-            }
             if ( is_async_http_transfer_mode_ )
                 read_and_close_socket_async( sock );
             else
@@ -1921,7 +1920,6 @@ bool server::read_and_close_socket_sync( socket_t sock ) {
 void server::read_and_close_socket_async( socket_t sock ) {
     auto pRT = new async_read_and_close_socket( *this, sock );
     task_ptr_t pTask = pRT;
-    add_task( pTask );
     pRT->callback_success_ = [this, sock]( stream& strm, bool last_connection,
                                  bool& connection_close ) -> void {
         std::string origin =
@@ -1936,6 +1934,7 @@ void server::read_and_close_socket_async( socket_t sock ) {
                                                                            "unkknown error" )
                   << "\n";
     };
+    add_task( pTask );
     pTask->run();
 }
 
@@ -1991,7 +1990,6 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
     auto pRT = new async_read_and_close_socket_SSL( *this, ctx_, sock );
     task_ptr_t pTask = pRT;
-    add_task( pTask );
     pRT->callback_success_ = [this, origin](
                                  stream& strm, bool last_connection, bool& connection_close ) {
         return process_request( origin, strm, last_connection, connection_close );
@@ -2003,6 +2001,7 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
                                                                            "unkknown error" )
                   << "\n";
     };
+    add_task( pTask );
     pTask->run();
 }
 

@@ -951,13 +951,13 @@ void with_test_server(
     } else if ( sus == "ws" ) {
         pServer.reset( new test_server_ws( nSocketListenPort ) );
         BOOST_REQUIRE( !pServer->isSSL() );
-    } else if ( sus == "https" ) {
+    } else if ( sus == "https" || sus == "https_async" ) {
         pServer.reset( new test_server_https( nSocketListenPort, true ) );
         BOOST_REQUIRE( pServer->isSSL() );
     } else if ( sus == "https_sync" ) {
         pServer.reset( new test_server_https( nSocketListenPort, false ) );
         BOOST_REQUIRE( pServer->isSSL() );
-    } else if ( sus == "http" ) {
+    } else if ( sus == "http" || sus == "http_async" ) {
         pServer.reset( new test_server_http( nSocketListenPort, true ) );
         BOOST_REQUIRE( !pServer->isSSL() );
     } else if ( sus == "http_sync" ) {
@@ -1029,11 +1029,11 @@ void with_test_client( fn_with_test_client_t fn, const std::string& strTestClien
         pClient.reset(
             new test_client_ws( strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( !pClient->isSSL() );
-    } else if ( sus == "https" ) {
+    } else if ( sus == "https" || sus == "https_async" || sus == "https_sync" ) {
         pClient.reset( new test_client_https(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( pClient->isSSL() );
-    } else if ( sus == "http" ) {
+    } else if ( sus == "http" || sus == "http_async" || sus == "http_sync" ) {
         pClient.reset( new test_client_http(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( !pClient->isSSL() );

@@ -253,7 +253,7 @@ public:
     async_query_handler( server& srv );
     virtual ~async_query_handler();
     virtual void run() = 0;
-    virtual void step() = 0;
+    virtual bool step() = 0;  // returns true only if next step scheduled
     virtual void was_added();
     virtual void will_remove();
     bool remove_this_task();
@@ -285,8 +285,8 @@ public:
         size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
         size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
         size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
-    virtual ~async_read_and_close_socket_base();
-    virtual void run();
+    ~async_read_and_close_socket_base();
+    void run() override;
     virtual void schedule_first_step();
     virtual void schedule_next_step();
     virtual void close_socket();
@@ -305,12 +305,12 @@ public:
         size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
         size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
         size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
-    virtual ~async_read_and_close_socket();
-    virtual void run();
-    virtual void step();
-    virtual void was_added();
-    virtual void will_remove();
-    virtual void close_socket();
+    ~async_read_and_close_socket() override;
+    void run() override;
+    bool step() override;  // returns true only if next step scheduled
+    void was_added() override;
+    void will_remove() override;
+    void close_socket() override;
 };  /// class async_read_and_close_socket
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -334,12 +334,12 @@ public:
         size_t retry_count = __SKUTILS_ASYNC_HTTP_RETRY_COUNT__,
         size_t retry_after_ms = __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__,
         size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
-    virtual ~async_read_and_close_socket_SSL();
-    virtual void run();
-    virtual void step();
-    virtual void was_added();
-    virtual void will_remove();
-    virtual void close_socket();
+    ~async_read_and_close_socket_SSL() override;
+    void run() override;
+    bool step() override;
+    void was_added() override;
+    void will_remove() override;
+    void close_socket() override;
 };  /// class async_read_and_close_socket_SSL
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

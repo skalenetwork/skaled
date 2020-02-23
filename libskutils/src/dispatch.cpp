@@ -213,10 +213,10 @@ loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {
     std::cout << skutils::tools::format( "dispatch loop ctor %p\n", this );
     std::cout.flush();
 #endif
-    if ( p_uvAsyncInit_ == nullptr ) {
-        p_uvAsyncInit_ = ( void* ) malloc( sizeof( uv_async_t ) );
-        memset( p_uvAsyncInit_, 0, sizeof( uv_async_t ) );
-    }
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ == nullptr )
+        p_uvAsyncInitForTimers_ = ( void* ) calloc( 1, sizeof( uv_async_t ) );
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
 }
 loop::~loop() {
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
@@ -226,10 +226,12 @@ loop::~loop() {
     job_remove_all();
     cancel();
     wait();
-    if ( p_uvAsyncInit_ != nullptr ) {
-        free( p_uvAsyncInit_ );
-        p_uvAsyncInit_ = nullptr;
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ != nullptr ) {
+        free( p_uvAsyncInitForTimers_ );
+        p_uvAsyncInitForTimers_ = nullptr;
     }
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     std::cout << skutils::tools::format( "dispatch loop dtor finish %p\n", this );
     std::cout.flush();
@@ -310,8 +312,9 @@ void loop::run() {
                 200   // repeat milliseconds
             );
             //
-            if ( p_uvAsyncInit_ != nullptr ) {
-                uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInit_;
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+            if ( p_uvAsyncInitForTimers_ != nullptr ) {
+                uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInitForTimers_;
                 p_uvAsyncInit->data = ( void* ) this;
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
                 std::cout << skutils::tools::format(
@@ -328,7 +331,8 @@ void loop::run() {
                     if ( pLoop )
                         pLoop->pending_timer_init();
                 } );
-            }
+            }  // if ( p_uvAsyncInitForTimers_ != nullptr )
+#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
@@ -363,8 +367,10 @@ void loop::pending_timer_add( void* p_uvTimer, void* pTimerData,
     std::cout.flush();
 #endif
     pending_timer_lock_type lock( pending_timer_mtx_ );
-    if ( p_uvAsyncInit_ == nullptr )
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ == nullptr )
         return;
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     pending_timer_t rpt;
     rpt.pUvTimer_ = p_uvTimer;
     rpt.pFnCb_ = pFnCb;
@@ -377,7 +383,9 @@ void loop::pending_timer_add( void* p_uvTimer, void* pTimerData,
         "dispatch loop before async send pending timer %p\n", this );
     std::cout.flush();
 #endif
-    uv_async_send( ( uv_async_t* ) p_uvAsyncInit_ );
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    uv_async_send( ( uv_async_t* ) p_uvAsyncInitForTimers_ );
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     std::cout << skutils::tools::format(
         "dispatch loop after async send pending timer %p\n", this );
@@ -430,6 +438,7 @@ void loop::on_idle() {
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
+    pending_timer_init();
     on_check_jobs();
 }
 void loop::on_state_check() {
@@ -614,7 +623,7 @@ void loop::impl_job_add(
     pJobData->interval_ = interval;
     jobs_[id] = pJobData.get();
     pJobData->init();
-    on_job_did_added( id );
+    on_job_was_added( id );
 }
 bool loop::impl_job_remove( const job_id_t& id, bool isForce ) {
     job_id_t cached_id( id );
@@ -705,9 +714,9 @@ bool loop::on_job_will_add( const job_id_t& id ) {
     }
     return true;
 }
-void loop::on_job_did_added( const job_id_t& id ) {
-    if ( on_job_did_added_ )
-        on_job_did_added_( id );
+void loop::on_job_was_added( const job_id_t& id ) {
+    if ( on_job_was_added_ )
+        on_job_was_added_( id );
 }
 bool loop::on_job_will_remove( const job_id_t& id ) {
     if ( on_job_will_remove_ ) {
@@ -1466,7 +1475,7 @@ loop_ptr_t domain::get_loop() {
     //			pLoop->on_job_will_add_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool {
     //					return true;
     //				};
-    //			pLoop->on_job_did_added_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void {
+    //			pLoop->on_job_was_added_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void {
     //				};
     //			pLoop->on_job_will_remove_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool
     //{ 					return true;
