@@ -1087,6 +1087,7 @@ void basic_api::locked_execute( fn_lock_callback_t fn ) {
 //			}
 
 void basic_api::clear_fields() {
+    interface_name_.clear();
     bns_assign_from_default_instance();
     max_message_size_ = 0;  // unlimited
     max_body_size_ = 0;     // unlimited
@@ -1635,7 +1636,8 @@ void client_api::clear_fields() {
     //
     accumulator_.clear();
 }
-bool client_api::init( const std::string& strURL, security_args* pSA ) {
+bool client_api::init(
+    const std::string& strURL, security_args* pSA, const char* strInterfaceName ) {
     lock_type lock( mtx_api() );
     skutils::url an_url( strURL );
     const auto& scheme = an_url.scheme();
@@ -1643,19 +1645,20 @@ bool client_api::init( const std::string& strURL, security_args* pSA ) {
     std::string strHost = an_url.host();
     std::string strPath = an_url.path();
     int nPort = ::atoi( an_url.port().c_str() );
-    return init( isSSL, strHost, nPort, strPath, pSA );
+    return init( isSSL, strHost, nPort, strPath, pSA, strInterfaceName );
 }
 
 extern "C" void lws_ssl_elaborate_error();
 extern "C" void lws_ssl_bind_passphrase( SSL_CTX* ssl_ctx, struct lws_context_creation_info* info );
 
 bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
-    const std::string& strPath, security_args* pSA ) {
+    const std::string& strPath, security_args* pSA, const char* strInterfaceName ) {
     lock_type lock( mtx_api() );
     if ( initialized_ )
         return false;
     // clear_fields();
     deinit();
+    interface_name_ = ( strInterfaceName && strInterfaceName[0] ) ? strInterfaceName : "";
     bool bDoInitSSL = false;
     if ( isSSL && pSA != nullptr ) {
         if ( ssl_perform_global_init_ )
@@ -1807,6 +1810,8 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
        ===========================\n", ctx_info_.provided_client_ssl_ctx );
     */
 
+    ctx_info_.iface =
+        ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
 
     ctx_ = ::lws_create_context( &ctx_info_ );
     if ( ctx_ == nullptr ) {
@@ -2161,7 +2166,6 @@ void server_api::clear_fields() {
     dynamic_vhost_ = nullptr;
     //
     vhost_ = nullptr;
-    interface_name_.clear();
     external_poll_ms_ = external_poll_oldms_ = 0;
     cert_path_.clear();
     key_path_.clear();
@@ -3598,7 +3602,7 @@ bool server::open( const std::string& scheme, int nPort, const char* strInterfac
     bool isSSL = ( scheme == "ws" ) ? false : true;
     basic_network_settings &bns_api = api_, bns_this = ( *this );
     bns_api = bns_this;
-    if ( !api_.init( isSSL, nPort, nullptr, strInterfaceName ) ) {
+    if ( !api_.init( isSSL, nPort, this, strInterfaceName ) ) {
         traffic_stats::event_add( g_strEventNameWebSocketServerStartFail );
         return false;
     }
@@ -3846,13 +3850,13 @@ std::string client::uri() const {
     return api_.strURL_;
 }
 
-bool client::open( const std::string& uri ) {
+bool client::open( const std::string& uri, const char* strInterfaceName ) {
     close();
     try {
         strLastURI_ = uri;
         basic_network_settings &bns_api = api_, bns_this = ( *this );
         bns_api = bns_this;
-        if ( !api_.init( uri, this ) ) {
+        if ( !api_.init( uri, this, strInterfaceName ) ) {
             traffic_stats::event_add( g_strEventNameWebSocketClientConnectFail );
             return false;
         }

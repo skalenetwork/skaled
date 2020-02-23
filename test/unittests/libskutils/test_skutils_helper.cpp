@@ -625,8 +625,9 @@ test_client_ws_base::test_client_ws_base( const char* strClientName, int nTarget
     test_log_c( strClientName_, cc::debug( "Will initalize test client " ) +
                                     cc::info( strClientName_ ) + cc::debug( "..." ) );
     enableRestartTimer( false );
-    std::string strServerUrl =
-        skutils::tools::format( "%s://localhost:%d", strScheme_.c_str(), nTargetPort_ );
+    static const char g_strLocalHostName[] = "localhost";  // "127.0.0.1" // "::1" // "localhost"
+    std::string strServerUrl = skutils::tools::format(
+        "%s://%s:%d", strScheme_.c_str(), g_strLocalHostName, nTargetPort_ );
     test_log_c( strClientName_,
         cc::debug( "test wlient will connect to: " ) + cc::u( strServerUrl ) + cc::debug( "..." ) );
     size_t cnt = nConnectAttempts;

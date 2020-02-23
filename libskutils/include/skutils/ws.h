@@ -421,6 +421,7 @@ typedef std::list< message_payload_data > payload_queue_t;
 
 class basic_api : public basic_network_settings {
 public:
+    std::string interface_name_;
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
     typedef std::function< void() > fn_lock_callback_t;
@@ -486,9 +487,10 @@ public:
     client_api& operator=( client_api&& ) = delete;
     virtual ~client_api();
     void clear_fields();
-    bool init( const std::string& strURL, security_args* pSA );
+    bool init(
+        const std::string& strURL, security_args* pSA, const char* strInterfaceName = nullptr );
     bool init( bool isSSL, const std::string& strHost, int nPort, const std::string& strPath,
-        security_args* pSA );
+        security_args* pSA, const char* strInterfaceName = nullptr );
     void deinit();
     void close( int nCloseStatus, const std::string& msg );
 
@@ -567,7 +569,6 @@ public:
     // struct lws_plat_file_ops fops_plat_;
     //
     struct lws_vhost* vhost_;
-    std::string interface_name_;
     std::string cert_path_, key_path_, ca_path_;
     bool use_ssl_;
     //
@@ -924,7 +925,7 @@ public:
     bool is_ssl() const;
     std::string type() const;
     std::string uri() const;
-    virtual bool open( const std::string& uri );
+    virtual bool open( const std::string& uri, const char* strInterfaceName = nullptr );
     virtual bool openLocalHost( int nPort );
     void close() override;
     void resetConnection();
