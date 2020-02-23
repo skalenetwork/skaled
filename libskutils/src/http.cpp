@@ -1453,8 +1453,8 @@ void async_read_and_close_socket_SSL::close_socket() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-server::server( size_t a_max_handler_queues, bool is_async_mode )
-    : is_async_mode_( is_async_mode ),
+server::server( size_t a_max_handler_queues, bool is_async_http_transfer_mode )
+    : is_async_http_transfer_mode_( is_async_http_transfer_mode ),
       keep_alive_max_count_( __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ),
       is_running_( false ),
       svr_sock_( INVALID_SOCKET ),
@@ -1730,7 +1730,7 @@ bool server::listen_internal() {
             if ( sock == INVALID_SOCKET ) {
                 continue;
             }
-            if ( is_async_mode_ )
+            if ( is_async_http_transfer_mode_ )
                 read_and_close_socket_async( sock );
             else
                 read_and_close_socket_sync( sock );
@@ -1925,8 +1925,8 @@ void server::read_and_close_socket_async( socket_t sock ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 SSL_server::SSL_server( const char* cert_path, const char* private_key_path,
-    size_t a_max_handler_queues, bool is_async_mode )
-    : server( a_max_handler_queues, is_async_mode ) {
+    size_t a_max_handler_queues, bool is_async_http_transfer_mode )
+    : server( a_max_handler_queues, is_async_http_transfer_mode ) {
     ctx_ = SSL_CTX_new( SSLv23_server_method() );
 
     if ( ctx_ ) {

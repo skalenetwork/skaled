@@ -195,7 +195,8 @@ class test_server_http_base : public test_server {
     std::shared_ptr< skutils::http::server > pServer_;  // pointer to skutils::http::server or
                                                         // skutils::SSL_server
 public:
-    test_server_http_base( const char* strScheme, int nListenPort, bool is_async_mode = true );
+    test_server_http_base(
+        const char* strScheme, int nListenPort, bool is_async_http_transfer_mode = true );
     virtual ~test_server_http_base();
     void stop() override;
     void run() override;
@@ -206,7 +207,7 @@ public:
 
 class test_server_http : public test_server_http_base {
 public:
-    test_server_http( int nListenPort, bool is_async_mode = true );
+    test_server_http( int nListenPort, bool is_async_http_transfer_mode = true );
     virtual ~test_server_http();
     bool isSSL() const override;
 };
@@ -216,7 +217,7 @@ public:
 
 class test_server_https : public test_server_http_base {
 public:
-    test_server_https( int nListenPort, bool is_async_mode = true );
+    test_server_https( int nListenPort, bool is_async_http_transfer_mode = true );
     ~test_server_https() override;
     bool isSSL() const override;
 };
@@ -348,8 +349,8 @@ extern void with_thread_pool( fn_with_thread_pool_t fn,
     size_t nCallQueueLimit = 1024 * 100 );
 
 typedef std::function< void( test_server& refServer ) > fn_with_test_server_t;
-extern void with_test_server( fn_with_test_server_t fn, const std::string& strServerUrlScheme,
-    const int nSocketListenPort, bool is_async_mode = true );
+extern void with_test_server(
+    fn_with_test_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort );
 
 typedef std::function< void( test_client& refClient ) > fn_with_test_client_t;
 extern void with_test_client( fn_with_test_client_t fn, const std::string& strTestClientName,

@@ -346,14 +346,14 @@ public:
 
 class server {
 public:
-    mutable bool is_async_mode_;
+    mutable bool is_async_http_transfer_mode_;
     mutable int ipVer_ = -1;  // not known before listen
     mutable int boundToPort_ = -1;
     typedef std::function< void( const request&, response& ) > Handler;
     typedef std::function< void( const request&, const response& ) > Logger;
 
     server( size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-        bool is_async_mode = true );
+        bool is_async_http_transfer_mode = true );
 
     virtual ~server();
 
@@ -553,7 +553,7 @@ class SSL_server : public server {
 public:
     SSL_server( const char* cert_path, const char* private_key_path,
         size_t a_max_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-        bool is_async_mode = true );
+        bool is_async_http_transfer_mode = true );
     ~SSL_server() override;
     bool is_valid() const override;
     bool is_ssl() const override { return true; }
