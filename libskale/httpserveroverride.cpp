@@ -1649,6 +1649,26 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
       m_strSchemeUC( skutils::tools::to_upper( strScheme ) ),
       m_nPort( nPort ) {
+    //
+    if ( !strBindAddr_.empty() ) {
+        if ( ipVer_ == 6 ) {
+            if ( strBindAddr_ == "*" || strBindAddr_ == "::" || strBindAddr_ == "0:0:0:0:0:0:0:0" )
+                strBindAddr_.clear();
+        } else if ( ipVer_ == 4 ) {
+            if ( strBindAddr_ == "*" || strBindAddr_ == "0.0.0.0" )
+                strBindAddr_.clear();
+        } else
+            strBindAddr_.clear();
+    }
+    if ( !strBindAddr_.empty() ) {
+        std::list< std::pair< std::string, std::string > > listIfaceInfos =
+            skutils::network::get_machine_ip_addresses(
+                ( ipVer_ == 6 ) ? false : true, ( ipVer_ == 6 ) ? true : false );
+        strInterfaceName_ =
+            skutils::network::find_iface_or_ip_address( listIfaceInfos, strBindAddr_.c_str() )
+                .first;  // first-interface name, second-address
+    }
+    //
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
         SkaleWsPeer* pSkalePeer = nullptr;
@@ -1727,7 +1747,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will start server on port " ) + cc::c( m_nPort ) );
-    if ( !open( m_strScheme_, m_nPort ) ) {
+    if ( !open( m_strScheme_, m_nPort,
+             ( !strInterfaceName_.empty() ) ? strInterfaceName_.c_str() : nullptr ) ) {
         clog( dev::VerbosityError, cc::fatal( m_strSchemeUC + " ERROR:" ) )
             << ( cc::error( "Failed to start server on port " ) + cc::c( m_nPort ) );
         return false;

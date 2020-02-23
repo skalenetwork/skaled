@@ -567,8 +567,7 @@ public:
     // struct lws_plat_file_ops fops_plat_;
     //
     struct lws_vhost* vhost_;
-    //				std::string interface_name_;
-    //				const char * iface_;
+    std::string interface_name_;
     std::string cert_path_, key_path_, ca_path_;
     bool use_ssl_;
     //
@@ -629,7 +628,7 @@ public:
     server_api& operator=( server_api&& ) = delete;
     virtual ~server_api();
     void clear_fields();
-    bool init( bool isSSL, int nPort, security_args* pSA );
+    bool init( bool isSSL, int nPort, security_args* pSA, const char* strInterfaceName = nullptr );
     void deinit();
     void close( connection_identifier_t cid, int nCloseStatus, const std::string& msg );
 
@@ -865,7 +864,7 @@ public:
     std::string type() const;
     int port() const;
     int defaultPort() const;
-    bool open( const std::string& scheme, int nPort );
+    bool open( const std::string& scheme, int nPort, const char* strInterfaceName = nullptr );
     void close() override;
     void close( hdl_t hdl, int nCloseStatus, const std::string& msg );
     void cancel_hdl( hdl_t hdl );

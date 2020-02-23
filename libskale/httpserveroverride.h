@@ -200,7 +200,7 @@ protected:
     std::atomic_bool m_isRunning = false;
     std::atomic_bool m_isInLoop = false;
     int ipVer_;
-    std::string strBindAddr_;
+    std::string strBindAddr_, strInterfaceName_;
     std::string m_strScheme_;
     std::string m_strSchemeUC;
     int m_nPort = -1;

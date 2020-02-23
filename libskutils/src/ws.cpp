@@ -2161,9 +2161,8 @@ void server_api::clear_fields() {
     dynamic_vhost_ = nullptr;
     //
     vhost_ = nullptr;
-    //				interface_name_.clear();
+    interface_name_.clear();
     external_poll_ms_ = external_poll_oldms_ = 0;
-    //				iface_ = nullptr;
     cert_path_.clear();
     key_path_.clear();
     ca_path_.clear();
@@ -2184,11 +2183,12 @@ void server_api::clear_fields() {
 #endif  // (defined LWS_WITH_LIBUV)
 }
 
-bool server_api::init( bool isSSL, int nPort, security_args* pSA ) {
+bool server_api::init( bool isSSL, int nPort, security_args* pSA, const char* strInterfaceName ) {
     if ( initialized_ )
         return false;
     clear_fields();
     lock_type lock( mtx_api() );
+    interface_name_ = ( strInterfaceName && strInterfaceName[0] ) ? strInterfaceName : "";
 #if ( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
     if ( server_disable_ipv6_ )
         ctx_info_.options |= LWS_SERVER_OPTION_DISABLE_IPV6;
@@ -2300,7 +2300,8 @@ bool server_api::init( bool isSSL, int nPort, security_args* pSA ) {
         break;
     }  // switch( srvmode_ )
 
-    //				ctx_info_.iface = iface_;
+    ctx_info_.iface =
+        ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
     if ( interval_ping_ > 0 )
         ctx_info_.ws_ping_pong_interval = interval_ping_;
     ctx_info_.max_http_header_pool = 256;
@@ -3592,12 +3593,12 @@ int server::port() const {
 int server::defaultPort() const {
     return api_.use_ssl_ ? 443 : 9666;
 }
-bool server::open( const std::string& scheme, int nPort ) {
+bool server::open( const std::string& scheme, int nPort, const char* strInterfaceName ) {
     last_scheme_cached_ = scheme;
     bool isSSL = ( scheme == "ws" ) ? false : true;
     basic_network_settings &bns_api = api_, bns_this = ( *this );
     bns_api = bns_this;
-    if ( !api_.init( isSSL, nPort, this ) ) {
+    if ( !api_.init( isSSL, nPort, nullptr, strInterfaceName ) ) {
         traffic_stats::event_add( g_strEventNameWebSocketServerStartFail );
         return false;
     }

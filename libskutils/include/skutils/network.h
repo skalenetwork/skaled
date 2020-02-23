@@ -77,6 +77,9 @@ extern std::string ssl_elaborate_error();
 extern std::string x509_2_str( X509_NAME* x509_obj );
 #endif  // (defined SKUTILS_WITH_SSL)
 
+extern std::pair< std::string, std::string > find_iface_or_ip_address(
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfo,
+    const char* strFindWhat );  // first-interface name, second-address
 extern std::list< std::pair< std::string, std::string > > get_machine_ip_addresses(
     bool is4, bool is6 );  // first-interface name, second-address
 extern std::pair< std::string, std::string > get_machine_ip_address_v4();  // first-interface name,

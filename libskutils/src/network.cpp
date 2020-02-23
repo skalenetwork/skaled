@@ -566,6 +566,22 @@ std::string x509_2_str( X509_NAME* x509_obj ) {
 }
 #endif  // (defined SKUTILS_WITH_SSL)
 
+std::pair< std::string, std::string > find_iface_or_ip_address(
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfo,
+    const char* strFindWhat ) {  // first-interface name, second-address
+    std::pair< std::string, std::string > rv;
+    if ( strFindWhat && strFindWhat[0] ) {
+        for ( const std::pair< std::string, std::string >& walk : listIfaceInfo ) {
+            if ( strcasecmp( walk.first.c_str(), strFindWhat ) == 0 ||
+                 strcasecmp( walk.second.c_str(), strFindWhat ) == 0 ) {
+                rv = walk;
+                break;
+            }
+        }
+    }
+    return rv;
+}
+
 std::list< std::pair< std::string, std::string > > get_machine_ip_addresses(
     bool is4, bool is6 ) {  // first-interface name, second-address
     std::list< std::pair< std::string, std::string > > lst;
