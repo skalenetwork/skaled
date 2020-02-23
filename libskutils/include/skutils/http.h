@@ -207,7 +207,6 @@ public:
     virtual ~stream();
     virtual int read( char* ptr, size_t size ) = 0;
     virtual int write( const char* ptr, size_t size1 ) = 0;
-    virtual int write( const char* ptr ) = 0;
     virtual std::string get_remote_addr() const = 0;
 
     template < typename... Args >
@@ -220,7 +219,6 @@ public:
     virtual ~socket_stream();
     virtual int read( char* ptr, size_t size );
     virtual int write( const char* ptr, size_t size );
-    virtual int write( const char* ptr );
     virtual std::string get_remote_addr() const;
 
 private:
@@ -236,7 +234,6 @@ public:
     virtual ~buffer_stream();
     virtual int read( char* ptr, size_t size );
     virtual int write( const char* ptr, size_t size );
-    virtual int write( const char* ptr );
     virtual std::string get_remote_addr() const;
     const std::string& get_buffer() const;
 
@@ -546,7 +543,6 @@ public:
     ~SSL_socket_stream() override;
     int read( char* ptr, size_t size ) override;
     int write( const char* ptr, size_t size ) override;
-    int write( const char* ptr ) override;
     std::string get_remote_addr() const override;
 
 private:

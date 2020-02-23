@@ -5,6 +5,11 @@
 namespace skutils {
 namespace http {
 
+static const char g_strCrLf[] = "\r\n";
+static const size_t g_nSizeOfCrLf = 2;
+static const char g_strDash[] = "--";
+static const size_t g_nSizeOfDash = 2;
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,8 +67,8 @@ bool stream_line_reader::getline() {
     fixed_buffer_used_size_ = 0;
     glowable_buffer_.clear();
     for ( size_t i = 0;; i++ ) {
-        char byte;
-        int n = strm_.read( &byte, 1 );
+        char byte = 0;
+        int n = strm_.read( &byte, sizeof( byte ) );
         if ( n < 1 ) {
             if ( n < 0 )
                 return false;
@@ -428,7 +433,7 @@ bool read_headers( stream& strm, map_headers& headers ) {
     for ( ;; ) {
         if ( !reader.getline() )
             return false;
-        if ( !strcmp( reader.ptr(), "\r\n" ) )
+        if ( !strcmp( reader.ptr(), g_strCrLf ) )
             break;
         std::cmatch m;
         if ( std::regex_match( reader.ptr(), m, re ) ) {
@@ -482,7 +487,7 @@ bool read_content_chunked( stream& strm, std::string& out ) {
             return false;
         if ( !reader.getline() )
             return false;
-        if ( strcmp( reader.ptr(), "\r\n" ) )
+        if ( strcmp( reader.ptr(), g_strCrLf ) )
             break;
         out += chunk;
         if ( !reader.getline() )
@@ -491,7 +496,7 @@ bool read_content_chunked( stream& strm, std::string& out ) {
     }
     if ( chunk_len == 0 ) {
         // reader terminator after chunks
-        if ( !reader.getline() || strcmp( reader.ptr(), "\r\n" ) )
+        if ( !reader.getline() || strcmp( reader.ptr(), g_strCrLf ) )
             return false;
     }
     return true;
@@ -523,7 +528,7 @@ void write_headers( stream& strm, const T& info ) {
     for ( const auto& x : info.headers_ ) {
         strm.write_format( "%s: %s\r\n", x.first.c_str(), x.second.c_str() );
     }
-    strm.write( "\r\n" );
+    strm.write( g_strCrLf, g_nSizeOfCrLf );
 }
 
 std::string encode_url( const std::string& s ) {
@@ -714,16 +719,13 @@ bool parse_multipart_boundary( const std::string& content_type, std::string& bou
 
 bool parse_multipart_formdata(
     const std::string& boundary, const std::string& body, multipart_files& files ) {
-    static std::string dash = "--";
-    static std::string crlf = "\r\n";
-
     static std::regex re_content_type( "Content-Type: (.*?)", std::regex_constants::icase );
 
     static std::regex re_content_disposition(
         "Content-Disposition: form-data; name=\"(.*?)\"(?:; filename=\"(.*?)\")?",
         std::regex_constants::icase );
 
-    auto dash_boundary = dash + boundary;
+    auto dash_boundary = std::string( g_strDash ) + boundary;
 
     auto pos = body.find( dash_boundary );
     if ( pos != 0 ) {
@@ -732,15 +734,15 @@ bool parse_multipart_formdata(
 
     pos += dash_boundary.size();
 
-    auto next_pos = body.find( crlf, pos );
+    auto next_pos = body.find( g_strCrLf, pos );
     if ( next_pos == std::string::npos ) {
         return false;
     }
 
-    pos = next_pos + crlf.size();
+    pos = next_pos + g_nSizeOfCrLf;
 
     while ( pos < body.size() ) {
-        next_pos = body.find( crlf, pos );
+        next_pos = body.find( g_strCrLf, pos );
         if ( next_pos == std::string::npos ) {
             return false;
         }
@@ -759,9 +761,9 @@ bool parse_multipart_formdata(
                 file.filename_ = m[2];
             }
 
-            pos = next_pos + crlf.size();
+            pos = next_pos + g_nSizeOfCrLf;
 
-            next_pos = body.find( crlf, pos );
+            next_pos = body.find( g_strCrLf, pos );
             if ( next_pos == std::string::npos ) {
                 return false;
             }
@@ -769,9 +771,9 @@ bool parse_multipart_formdata(
             header = body.substr( pos, ( next_pos - pos ) );
         }
 
-        pos = next_pos + crlf.size();
+        pos = next_pos + g_nSizeOfCrLf;
 
-        next_pos = body.find( crlf + dash_boundary, pos );
+        next_pos = body.find( std::string( g_strCrLf ) + dash_boundary, pos );
 
         if ( next_pos == std::string::npos ) {
             return false;
@@ -780,16 +782,16 @@ bool parse_multipart_formdata(
         file.offset_ = pos;
         file.length_ = next_pos - pos;
 
-        pos = next_pos + crlf.size() + dash_boundary.size();
+        pos = next_pos + g_nSizeOfCrLf + dash_boundary.size();
 
-        next_pos = body.find( crlf, pos );
+        next_pos = body.find( g_strCrLf, pos );
         if ( next_pos == std::string::npos ) {
             return false;
         }
 
         files.emplace( name, file );
 
-        pos = next_pos + crlf.size();
+        pos = next_pos + g_nSizeOfCrLf;
     }
 
     return true;
@@ -1034,15 +1036,6 @@ int socket_stream::write( const char* ptr, size_t size ) {
     return send( sock_, ptr, static_cast< int >( size ), 0 );
 }
 
-int socket_stream::write( const char* ptr ) {
-    if ( ptr == nullptr )
-        return 0;
-    size_t size = size_t( strlen( ptr ) );
-    if ( size == 0 )
-        return 0;
-    return write( ptr, strlen( ptr ) );
-}
-
 std::string socket_stream::get_remote_addr() const {
     return detail::get_remote_addr( sock_ );
 }
@@ -1065,16 +1058,6 @@ int buffer_stream::read( char* ptr, size_t size ) {
 
 int buffer_stream::write( const char* ptr, size_t size ) {
     if ( ptr == nullptr || size == 0 )
-        return 0;
-    buffer_.append( ptr, size );
-    return static_cast< int >( size );
-}
-
-int buffer_stream::write( const char* ptr ) {
-    if ( ptr == nullptr )
-        return 0;
-    size_t size = size_t( strlen( ptr ) );
-    if ( size == 0 )
         return 0;
     buffer_.append( ptr, size );
     return static_cast< int >( size );
@@ -1105,15 +1088,6 @@ int SSL_socket_stream::write( const char* ptr, size_t size ) {
     if ( ptr == nullptr || size == 0 )
         return 0;
     return SSL_write( ssl_, ptr, size );
-}
-
-int SSL_socket_stream::write( const char* ptr ) {
-    if ( ptr == nullptr )
-        return 0;
-    size_t size = size_t( strlen( ptr ) );
-    if ( size == 0 )
-        return 0;
-    return write( ptr, size );
 }
 
 std::string SSL_socket_stream::get_remote_addr() const {
@@ -1668,7 +1642,7 @@ void server::write_response(
                 data_available = !chunk.empty();
                 // Emit chunked response header and footer for each chunk
                 if ( chunked_response )
-                    chunk = detail::from_i_to_hex( chunk.size() ) + "\r\n" + chunk + "\r\n";
+                    chunk = detail::from_i_to_hex( chunk.size() ) + g_strCrLf + chunk + g_strCrLf;
                 if ( strm.write( chunk.c_str(), chunk.size() ) < 0 )
                     break;  // Stop on error
             }
