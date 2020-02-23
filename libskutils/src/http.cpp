@@ -1244,6 +1244,18 @@ void async_read_and_close_socket_base::run() {
     schedule_first_step();
 }
 
+bool async_read_and_close_socket_base::schedule_check_clock() {
+    if ( retry_index_ >= retry_count_ )
+        return false;
+    clock_t tpNow = clock();
+    clock_t tpMin = ( clock_t )( ( retry_index_ == 0 ) ? retry_first_ms_ : retry_after_ms_ );
+    clock_t tpDist = tpNow - tpStep_;
+    if ( tpDist < tpMin )
+        return false;  // too early
+    tpStep_ = tpNow;
+    return true;
+}
+
 void async_read_and_close_socket_base::schedule_first_step() {
 #if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
     std::cout << skutils::tools::format( "http task shedule 1st step %p\n", this );
@@ -1262,6 +1274,7 @@ void async_read_and_close_socket_base::schedule_first_step() {
         std::cout.flush();
 #endif
     };
+    tpStep_ = clock();
     skutils::dispatch::async(
         qid_, job /*, skutils::dispatch::duration_from_milliseconds( retry_first_ms_ )*/ );
 }
@@ -1324,6 +1337,10 @@ bool async_read_and_close_socket::step() {
     try {
         if ( retry_index_ >= retry_count_ )
             throw std::runtime_error( "max attempt count done" );
+        if ( !schedule_check_clock() ) {
+            schedule_next_step();
+            return true;
+        }
         ++retry_index_;
         if ( detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
@@ -1398,6 +1415,10 @@ bool async_read_and_close_socket_SSL::step() {
     try {
         if ( retry_index_ >= retry_count_ )
             throw std::runtime_error( "max attempt count done" );
+        if ( !schedule_check_clock() ) {
+            schedule_next_step();
+            return true;
+        }
         if ( retry_index_ == 0 ) {
             ssl_ = SSL_new( ctx_ );
             if ( !ssl_ )

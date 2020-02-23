@@ -58,7 +58,9 @@ typedef int socket_t;
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <atomic>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <map>
@@ -272,6 +274,7 @@ public:
     std::atomic_bool active_, have_socket_;
     skutils::dispatch::queue_id_t qid_;
     size_t poll_ms_, retry_index_, retry_count_, retry_after_ms_, retry_first_ms_;
+    clock_t tpStep_ = ( ( clock_t ) 0 );
 
     typedef std::function< void( stream& strm, bool last_connection, bool& connection_close ) >
         callback_success_t;
@@ -287,6 +290,7 @@ public:
         size_t retry_first_ms = __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ );
     ~async_read_and_close_socket_base();
     void run() override;
+    virtual bool schedule_check_clock();
     virtual void schedule_first_step();
     virtual void schedule_next_step();
     virtual void close_socket();
