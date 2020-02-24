@@ -1151,15 +1151,18 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting ) ) {
-        std::string commonPublicKey;
-        if ( !vm.count( "public-key" ) ) {
-            // for tests only!
-            commonPublicKey = "";
-            //            throw std::runtime_error(
-            //                cc::error( "Missing --public-key option - cannot download snapshot" )
-            //                );
-        } else {
-            commonPublicKey = vm["public-key"].as< std::string >();
+        std::string commonPublicKey = "";
+        if ( vm.count( "download-snapshot" ) ) {
+            if ( !vm.count( "public-key" ) ) {
+                // for tests only! remove it later
+                commonPublicKey = "";
+                //            throw std::runtime_error(
+                //                cc::error( "Missing --public-key option - cannot download
+                //                snapshot" )
+                //                );
+            } else {
+                commonPublicKey = vm["public-key"].as< std::string >();
+            }
         }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;

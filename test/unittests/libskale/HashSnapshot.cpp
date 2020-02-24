@@ -59,8 +59,7 @@ public:
             }
         }
 
-        signatures::Bls obj =
-            signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.n );
+        signatures::Bls obj = signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.n );
         std::vector< size_t > idx( _chainParams.sChain.t );
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;
@@ -68,10 +67,14 @@ public:
         auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->insecureBlsPrivateKeys_ );
         keys.second.to_affine_coordinates();
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[0] = BLSutils::ConvertToString( keys.second.X.c0 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[1] = BLSutils::ConvertToString( keys.second.X.c1 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[2] = BLSutils::ConvertToString( keys.second.Y.c0 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[3] = BLSutils::ConvertToString( keys.second.Y.c1 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[0] =
+            BLSutils::ConvertToString( keys.second.X.c0 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[1] =
+            BLSutils::ConvertToString( keys.second.X.c1 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[2] =
+            BLSutils::ConvertToString( keys.second.Y.c0 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[3] =
+            BLSutils::ConvertToString( keys.second.Y.c1 );
 
         this->insecure_secret = keys.first;
 
