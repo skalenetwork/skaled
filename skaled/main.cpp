@@ -292,6 +292,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
     const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
+    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+        return false;
+    }
     BlockChain bc( _chainParams, _dbPath, _forceAction );
     unsigned currentNumber = bc.number();
 
