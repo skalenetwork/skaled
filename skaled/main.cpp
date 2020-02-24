@@ -330,6 +330,19 @@ bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
 
 }  // namespace
 
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_4() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos4 =
+        skutils::network::get_machine_ip_addresses( true, false );  // IPv4
+    return listIfaceInfos4;
+}
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_6() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos6 =
+        skutils::network::get_machine_ip_addresses( false, true );  // IPv6
+    return listIfaceInfos6;
+}
+
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -372,6 +385,11 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
     bool bEnabledDebugBehaviorAPIs = false;
+
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
+        get_machine_ip_addresses_4();  // IPv4
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos6 =
+        get_machine_ip_addresses_6();  // IPv6
 
     string strJsonAdminSessionKey;
     ChainParams chainParams;
@@ -1728,6 +1746,24 @@ int main( int argc, char** argv ) try {
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
              nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
              nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::attention( "IPv4 interfaces and addresses:" );
+            for ( const auto& iface_ref : listIfaceInfos4 ) {
+                // iface_ref: first-interface name, second-address
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
+                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::attention( "IPv6 interfaces and addresses:" );
+            for ( const auto& iface_ref : listIfaceInfos6 ) {
+                // iface_ref: first-interface name, second-address
+                clog( VerbosityInfo, "main" )
+                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
+                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
+            }
+            //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //
@@ -1809,7 +1845,7 @@ int main( int argc, char** argv ) try {
             //
             //
             size_t maxConnections = 0,
-                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT,
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServers = 1;
 
             // First, get "max-connections" true/false from config.json
@@ -1832,7 +1868,7 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )

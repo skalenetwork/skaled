@@ -12,6 +12,7 @@
 #include <exception>
 #include <functional>
 #include <future>
+#include <list>
 #include <map>
 #include <mutex>
 #include <set>
@@ -21,6 +22,12 @@
 extern "C" {
 struct uv_loop_s;
 };  /// extern "C"
+
+//
+// uncomment line below to enable exeperimental early timer initialization for async tasks with
+// non-zero start timeout:
+// #define __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ 1
+//
 
 namespace skutils {
 namespace dispatch {
@@ -366,6 +373,9 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class loop : public ref_retain_release {
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    void* p_uvAsyncInitForTimers_ = nullptr;
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     typedef one_per_thread< loop_ptr_t > one_per_thread_t;
     static one_per_thread_t g_one_per_thread;
     //
@@ -482,9 +492,9 @@ public:
     }
     //
     job_state_event_pre_handler_t on_job_will_add_;
-    job_state_event_post_handler_t on_job_did_added_;
+    job_state_event_post_handler_t on_job_was_added_;
     virtual bool on_job_will_add( const job_id_t& id );
-    virtual void on_job_did_added( const job_id_t& id );
+    virtual void on_job_was_added( const job_id_t& id );
     job_state_event_pre_handler_t on_job_will_remove_;
     job_state_event_post_handler_t on_job_did_removed_;
     virtual bool on_job_will_remove( const job_id_t& id );
@@ -497,6 +507,25 @@ public:
     virtual void on_job_exception( const job_id_t& id, std::exception* pe );
     //
     void invoke_in_loop( fn_invoke_t fn );
+    //
+private:
+    typedef std::recursive_mutex pending_timer_mutex_type;
+    typedef std::lock_guard< pending_timer_mutex_type > pending_timer_lock_type;
+    pending_timer_mutex_type pending_timer_mtx_;
+    struct pending_timer_t {
+        void* pUvTimer_ = nullptr;
+        void ( *pFnCb_ )( void* uv_timer_handle ) = nullptr;
+        uint64_t timeout_ = 0, interval_ = 0;
+        void* pTimerData_ = nullptr;
+    };
+    typedef std::list< pending_timer_t > pending_timer_list_t;
+    pending_timer_list_t pending_timer_list_;
+
+public:
+    void pending_timer_add( void* p_uvTimer, void* pTimerData,
+        void ( *pFnCb )( void* uv_timer_handle ), uint64_t timeout_, uint64_t interval );
+    void pending_timer_remove_all();
+    void pending_timer_init();
     //
     friend class domain;
     friend struct job_data_t;
