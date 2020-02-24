@@ -35,9 +35,8 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( std::shared_ptr< SnapshotHashAgent > hashAgent )
-        : hashAgent_( hashAgent ) {
-        std::vector< libff::alt_bn128_Fr > coeffs( this->hashAgent_->chain_params_.sChain.t );
+    SnapshotHashAgentTest( ChainParams& _chainParams ) {
+        std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
             elem = libff::alt_bn128_Fr::random_element();
@@ -48,17 +47,35 @@ public:
         }
 
 
-        insecureBlsPrivateKeys_.resize( this->hashAgent_->chain_params_.sChain.n );
-        for ( size_t i = 0; i < this->hashAgent_->chain_params_.sChain.n; ++i ) {
+        insecureBlsPrivateKeys_.resize( _chainParams.sChain.n );
+        for ( size_t i = 0; i < _chainParams.sChain.n; ++i ) {
             insecureBlsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
 
-            for ( size_t j = 0; j < this->hashAgent_->chain_params_.sChain.t; ++j ) {
+            for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 insecureBlsPrivateKeys_[i] =
                     insecureBlsPrivateKeys_[i] +
                     coeffs[j] *
                         libff::power( libff::alt_bn128_Fr( std::to_string( i + 1 ).c_str() ), j );
             }
         }
+
+        signatures::Bls obj =
+            signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.n );
+        std::vector< size_t > idx( _chainParams.sChain.t );
+        for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
+            idx[i] = i + 1;
+        }
+        auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
+        auto keys = obj.KeysRecover( lagrange_coeffs, this->insecureBlsPrivateKeys_ );
+        keys.second.to_affine_coordinates();
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[0] = BLSutils::ConvertToString( keys.second.X.c0 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[1] = BLSutils::ConvertToString( keys.second.X.c1 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[2] = BLSutils::ConvertToString( keys.second.Y.c0 );
+        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[3] = BLSutils::ConvertToString( keys.second.Y.c1 );
+
+        this->insecure_secret = keys.first;
+
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -72,26 +89,6 @@ public:
                     this->hashAgent_->hashes_[i].asArray() ) ),
                 this->insecureBlsPrivateKeys_[i] );
         }
-
-        signatures::Bls obj =
-            signatures::Bls( this->hashAgent_->chain_params_.sChain.t, this->hashAgent_->n_ );
-        std::vector< size_t > idx( this->hashAgent_->chain_params_.sChain.t );
-        for ( size_t i = 0; i < this->hashAgent_->chain_params_.sChain.t; ++i ) {
-            idx[i] = i + 1;
-        }
-        auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
-        auto keys = obj.KeysRecover( lagrange_coeffs, this->insecureBlsPrivateKeys_ );
-        keys.second.to_affine_coordinates();
-        this->hashAgent_->chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0] =
-            BLSutils::ConvertToString( keys.second.X.c0 );
-        this->hashAgent_->chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1] =
-            BLSutils::ConvertToString( keys.second.X.c1 );
-        this->hashAgent_->chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2] =
-            BLSutils::ConvertToString( keys.second.Y.c0 );
-        this->hashAgent_->chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3] =
-            BLSutils::ConvertToString( keys.second.Y.c1 );
-
-        this->insecure_secret = keys.first;
     }
 
     bool verifyAllData() const {
@@ -397,9 +394,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    std::shared_ptr< SnapshotHashAgent > agent;
-    agent.reset( new SnapshotHashAgent( chainParams ) );
-    SnapshotHashAgentTest test_agent( agent );
+    SnapshotHashAgentTest test_agent( chainParams );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
     test_agent.fillData( snapshot_hashes );
@@ -425,9 +420,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 6;
-    std::shared_ptr< SnapshotHashAgent > agent;
-    agent.reset( new SnapshotHashAgent( chainParams ) );
-    SnapshotHashAgentTest test_agent( agent );
+    SnapshotHashAgentTest test_agent( chainParams );
     dev::h256 hash = dev::h256::random();  // `correct` hash
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
@@ -448,9 +441,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    std::shared_ptr< SnapshotHashAgent > agent;
-    agent.reset( new SnapshotHashAgent( chainParams ) );
-    SnapshotHashAgentTest test_agent( agent );
+    SnapshotHashAgentTest test_agent( chainParams );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
     snapshot_hashes[2] = dev::h256::random();
@@ -469,9 +460,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    std::shared_ptr< SnapshotHashAgent > agent;
-    agent.reset( new SnapshotHashAgent( chainParams ) );
-    SnapshotHashAgentTest test_agent( agent );
+    SnapshotHashAgentTest test_agent( chainParams );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
     test_agent.fillData( snapshot_hashes );
