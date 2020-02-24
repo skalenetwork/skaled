@@ -284,11 +284,11 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
-std::string Skale::skale_getLatestSnapshotBlockNumber() {
+std::string Skale::skale_getLatestBlockNumber() {
     return std::to_string( this->m_client.number() );
 }
 
-std::string Skale::skale_getLatestBlockNumber() {
+std::string Skale::skale_getLatestSnapshotBlockNumber() {
     int64_t response = this->m_client.getLatestSnapshotBlockNumer();
     return response > 0 ? std::to_string( response ) : "earliest";
 }
