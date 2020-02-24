@@ -527,7 +527,7 @@ void loop::job_data_t::init() {
 #endif
     if ( !pLoop_ )
         return;
-    uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) pLoop_->p_uvLoop_;
+    // uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) pLoop_->p_uvLoop_;
     needsCancel_ = true;
     // nanoseconds
     uint64_t ns_timeout = timeout_.count(), ns_interval = interval_.count();

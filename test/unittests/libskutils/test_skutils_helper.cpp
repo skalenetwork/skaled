@@ -1226,8 +1226,8 @@ void test_protocol_serial_calls(
             strProto, nPort );
     } );
     size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
-    for ( size_t idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
-                                     size_t( cnt_actions_performed ) < size_t( cnt_clients );
+    for ( idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                              size_t( cnt_actions_performed ) < size_t( cnt_clients );
           ++idxWaitAttempt ) {
         skutils::test::test_log_e(
             cc::debug( "Waiting for test to complete, step " ) +
@@ -1294,8 +1294,8 @@ void test_protocol_parallel_calls(
         skutils::test::test_log_e( cc::sunny( "Server finish" ) );
     } );
     size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
-    for ( size_t idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
-                                     size_t( cnt_actions_performed ) < size_t( cnt_clients );
+    for ( idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                              size_t( cnt_actions_performed ) < size_t( cnt_clients );
           ++idxWaitAttempt ) {
         skutils::test::test_log_e(
             cc::debug( "Waiting for test to complete, step " ) +
