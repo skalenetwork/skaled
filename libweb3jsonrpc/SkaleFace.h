@@ -69,6 +69,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getLatestSnapshotBlockNumber();
     }
 
+    inline virtual void skale_getLatestBlockNumberI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getLatestBlockNumber();
+    }
+
     virtual std::string skale_protocolVersion() = 0;
     virtual std::string skale_receiveTransaction( std::string const& _rlp ) = 0;
     virtual std::string skale_shutdownInstance() = 0;
@@ -76,6 +82,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
     virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
+    virtual std::string skale_getLatestBlockNumber() = 0;
 
 public:
     SkaleFace() {
@@ -105,6 +112,9 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestSnapshotBlockNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getLatestSnapshotBlockNumberI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestBlockNumber",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
+            &dev::rpc::SkaleFace::skale_getLatestBlockNumberI );
     }
 };
 
