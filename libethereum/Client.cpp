@@ -378,10 +378,10 @@ size_t Client::importTransactionsAsBlock(
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
-                    this->last_snapshot_time =
-                        this->last_snapshot_time == -1 ?
-                            ( _timestamp / uint64_t( 86400 ) ) * uint64_t( 86400 ) :
-                            this->last_snapshot_time + snapshotIntervalMs;
+                    this->last_snapshot_time = this->last_snapshot_time == -1 ?
+                                                   ( _timestamp / uint64_t( snapshotIntervalMs ) ) *
+                                                       uint64_t( snapshotIntervalMs ) :
+                                                   this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
@@ -988,9 +988,20 @@ void Client::fillLastSnapshotTime() {
             this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
             break;
         }
-        if ( !this->m_snapshotManager->isSnapshotHashPresent( i ) ) {
-            continue;
-        } else {
+        try {
+            bool snapshotExists = this->m_snapshotManager->isSnapshotHashPresent( i );
+            if ( snapshotExists ) {
+                continue;
+            } else {
+                this->last_snapshot_time = proposed_last_snapshot_time;
+                this->last_snapshoted_block = i;
+                break;
+            }
+        } catch ( SnapshotManager::SnapshotAbsent& ) {
+            this->last_snapshot_time = proposed_last_snapshot_time;
+            this->last_snapshoted_block = i;
+            break;
+        } catch ( SnapshotManager::CannotRead& ) {
             this->last_snapshot_time = proposed_last_snapshot_time;
             this->last_snapshoted_block = i;
             break;

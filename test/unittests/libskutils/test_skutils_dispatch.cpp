@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
                                        cc::info( id ) );
             return true;
         };
-        pLoop->on_job_did_added_ = [&]( const skutils::dispatch::job_id_t& id ) -> void {
+        pLoop->on_job_was_added_ = [&]( const skutils::dispatch::job_id_t& id ) -> void {
             skutils::test::test_log_e( thread_prefix_str() + cc::debug( "did " ) +
                                        cc::success( "added" ) + cc::debug( " job " ) +
                                        cc::info( id ) );
@@ -248,8 +248,8 @@ BOOST_AUTO_TEST_CASE( domain_functionality_alive ) {
 BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
     skutils::test::test_print_header_name( "SkUtils/dispatch/job_priorities_alive" );
     skutils::test::with_test_environment( [&]() {
-        size_t g_arrThreadCounts[] = {1, 2, 4, 8, 16, 32, 64};  // tests with different count of
-                                                                // threads
+        size_t g_arrThreadCounts[] = {1, 2, 4 /*, 8, 16, 32, 64*/};  // tests with different count
+                                                                     // of threads
         for ( const size_t& nThreadCount : g_arrThreadCounts ) {
             skutils::test::test_log_e( cc::trace(
                 "# "
