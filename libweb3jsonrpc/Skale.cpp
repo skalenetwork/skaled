@@ -38,6 +38,8 @@
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
 
+#include <boost/algorithm/string.hpp>
+
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
@@ -60,22 +62,6 @@ namespace dev {
 namespace rpc {
 
 std::string exceptionToErrorMessage();
-
-std::vector< std::string > SplitString( const std::string& str, const char delim ) {
-    std::vector< std::string > retVal;
-
-    auto start = 0U;
-    auto end = str.find( delim );
-    while ( end != std::string::npos ) {
-        retVal.push_back( str.substr( start, end - start ) );
-        start = end + 1;
-        end = str.find( delim, start );
-    }
-
-    retVal.push_back( str.substr( start, end ) );
-
-    return retVal;
-}
 
 Skale::Skale( Client& _client ) : m_client( _client ) {}
 
@@ -377,7 +363,9 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         }
         std::string signature_with_helper = joResponse["signatureShare"].get< std::string >();
 
-        auto splited_string = SplitString( signature_with_helper, ':' );
+        std::vector< std::string > splited_string;
+        splited_string = boost::split(
+            splited_string, signature_with_helper, []( char c ) { return c == ':'; } );
 
         nlohmann::json joSignature = nlohmann::json::object();
 
