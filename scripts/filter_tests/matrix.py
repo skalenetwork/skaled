@@ -51,3 +51,15 @@ for cpp in cpp2tests.keys():
     print()
 
 print(n_tests)
+
+# print specific test's adjusted coverage - for debugging
+with open("RlpTests/EmptyArrayList.txt") as fp:
+    reader = csv.reader(fp, delimiter=' ')
+    for line in reader:
+        cpp = line[0]
+        percent = float(line[1])
+        lines = int(line[2])
+
+        print(str(percent), str(cpp2minimal[cpp]))
+        if percent != cpp2minimal[cpp]:
+            print(line)

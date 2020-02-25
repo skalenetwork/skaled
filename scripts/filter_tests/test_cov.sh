@@ -8,11 +8,11 @@ SCRIPTS=`dirname ${BASH_SOURCE[0]}`
 if [ -z "$TESTETH" ]
 then
 	echo "Please set TESTETH"
-	exit(1)
+	exit
 fi
 
 
-export ETHEREUM_TEST_PATH=$SCRIPTS/../test/jsontests
+export ETHEREUM_TEST_PATH=$SCRIPTS/../../test/jsontests
 
 find . -name '*.gcda' -delete
 $TESTETH -t $TEST

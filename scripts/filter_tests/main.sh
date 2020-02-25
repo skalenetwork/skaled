@@ -6,8 +6,8 @@ export TESTETH=../test/testeth
 
 SCRIPTS=`dirname ${BASH_SOURCE[0]}`
 
-#$TESTETH --list-tests | $SCRIPTS/all_tests_cov.sh				# generates suite/subsuite/test.txt hierarchy
-find . -type f | python3 $SCRIPTS/matrix.py >cpp2tests.txt		# makes inverted table cpp->(list of tests)
+$TESTETH --list-tests | $SCRIPTS/all_tests_cov.sh				# generates suite/subsuite/test.txt hierarchy
+find . -type f | sed 's/\.\///g' | python3 $SCRIPTS/matrix.py >cpp2tests.txt		# makes inverted table cpp->(list of tests)
 
 # make list of "recently" changed files
 ORIGIN=`pwd`
@@ -21,4 +21,4 @@ cd $ORIGIN
 grep -f recent_files.txt cpp2tests.txt >cpp2tests.txt.filtered
 
 # find unique tests
-sed 's/ /\n/g' cpp2tests.txt.filtered | grep -v '.h\|.cpp' | sort | uniq
+sed 's/ /\n/g' cpp2tests.txt.filtered | grep -v '\.h\|\.c' | sort | uniq
