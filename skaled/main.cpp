@@ -547,6 +547,9 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
+    addClientOption( "public-key",
+        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
+        "Collects old common public key from chain to verify snapshot before starts from it" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
@@ -1169,6 +1172,19 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting ) ) {
+        std::string commonPublicKey = "";
+        if ( vm.count( "download-snapshot" ) ) {
+            if ( !vm.count( "public-key" ) ) {
+                // for tests only! remove it later
+                commonPublicKey = "";
+                //            throw std::runtime_error(
+                //                cc::error( "Missing --public-key option - cannot download
+                //                snapshot" )
+                //                );
+            } else {
+                commonPublicKey = vm["public-key"].as< std::string >();
+            }
+        }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
@@ -1180,7 +1196,7 @@ int main( int argc, char** argv ) try {
         }
 
         if ( blockNumber > 0 ) {
-            SnapshotHashAgent snapshotHashAgent( chainParams );
+            SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
             libff::init_alt_bn128_params();
             std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
