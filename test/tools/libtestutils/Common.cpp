@@ -82,3 +82,7 @@ fs::path dev::test::getRandomPath() {
     stream << randomNumber();
     return getDataDir( "EthereumTests" ) / fs::path( stream.str() );
 }
+
+boost::unit_test::assertion_result dev::test::option_all_tests( boost::unit_test::test_unit_id ) {
+    return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
+}
