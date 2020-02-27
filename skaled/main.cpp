@@ -292,17 +292,15 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 // bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
 //    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
-//    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
-//        return false;
-//    }
 //    BlockChain bc( _chainParams, _dbPath, _forceAction );
 //    unsigned currentNumber = bc.number();
 
 //    uint64_t idx =
-//        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
+//        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
+//        _chainParams.sChain.nodes.size();
 //    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
 //        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
-//        _chainParams.sChain.n;
+//        _chainParams.sChain.nodes.size();
 //    }
 
 //    std::string httpUrl = std::string( "http://" ) +

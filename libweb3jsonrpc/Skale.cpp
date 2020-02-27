@@ -308,7 +308,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
         obj["messageHash"] = snapshot_hash.hex();
-        obj["n"] = chainParams.sChain.n;
+        obj["n"] = chainParams.sChain.nodes.size();
         obj["t"] = chainParams.sChain.t;
 
         auto it = std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),

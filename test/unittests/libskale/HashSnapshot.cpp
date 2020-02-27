@@ -48,8 +48,8 @@ public:
         }
 
 
-        insecureBlsPrivateKeys_.resize( this->hashAgent_->chain_params_.sChain.n );
-        for ( size_t i = 0; i < this->hashAgent_->chain_params_.sChain.n; ++i ) {
+        insecureBlsPrivateKeys_.resize( this->hashAgent_->chain_params_.sChain.nodes.size() );
+        for ( size_t i = 0; i < this->hashAgent_->chain_params_.sChain.nodes.size(); ++i ) {
             insecureBlsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
 
             for ( size_t j = 0; j < this->hashAgent_->chain_params_.sChain.t; ++j ) {
@@ -390,10 +390,9 @@ BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 BOOST_AUTO_TEST_CASE( PositiveTest ) {
     libff::init_alt_bn128_params();
     ChainParams chainParams;
-    chainParams.sChain.n = 4;
     chainParams.sChain.t = 3;
     chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
@@ -401,7 +400,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     agent.reset( new SnapshotHashAgent( chainParams ) );
     SnapshotHashAgentTest test_agent( agent );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
@@ -418,10 +417,9 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
 BOOST_AUTO_TEST_CASE( WrongHash ) {
     libff::init_alt_bn128_params();
     ChainParams chainParams;
-    chainParams.sChain.n = 7;
     chainParams.sChain.t = 5;
     chainParams.sChain.nodes.resize( 7 );
-    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 6;
@@ -429,7 +427,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
     agent.reset( new SnapshotHashAgent( chainParams ) );
     SnapshotHashAgentTest test_agent( agent );
     dev::h256 hash = dev::h256::random();  // `correct` hash
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() );
@@ -441,10 +439,9 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
 BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     libff::init_alt_bn128_params();
     ChainParams chainParams;
-    chainParams.sChain.n = 4;
     chainParams.sChain.t = 3;
     chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
@@ -452,7 +449,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     agent.reset( new SnapshotHashAgent( chainParams ) );
     SnapshotHashAgentTest test_agent( agent );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() );
@@ -462,10 +459,9 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
     libff::init_alt_bn128_params();
     ChainParams chainParams;
-    chainParams.sChain.n = 4;
     chainParams.sChain.t = 3;
     chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.n; ++i ) {
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
@@ -473,7 +469,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
     agent.reset( new SnapshotHashAgent( chainParams ) );
     SnapshotHashAgentTest test_agent( agent );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.n, hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
     BOOST_REQUIRE_THROW( test_agent.verifyAllData(), IsNotVerified );
