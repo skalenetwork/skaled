@@ -65,6 +65,7 @@ typedef union {
 extern int get_address_info46( int ipVersion, const char* ads, sockaddr46** result );
 extern std::string resolve_address_for_client_connection(
     int ipVersion, const char* ads, sockaddr46& sa46 );
+extern bool is_tcp_port_listening( int ipVersion, const sockaddr46& sa46, int nPort );
 
 extern bool fd_configure_pipe( int fd );
 
@@ -76,6 +77,9 @@ extern std::string ssl_elaborate_error();
 extern std::string x509_2_str( X509_NAME* x509_obj );
 #endif  // (defined SKUTILS_WITH_SSL)
 
+extern std::pair< std::string, std::string > find_iface_or_ip_address(
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfo,
+    const char* strFindWhat );  // first-interface name, second-address
 extern std::list< std::pair< std::string, std::string > > get_machine_ip_addresses(
     bool is4, bool is6 );  // first-interface name, second-address
 extern std::pair< std::string, std::string > get_machine_ip_address_v4();  // first-interface name,

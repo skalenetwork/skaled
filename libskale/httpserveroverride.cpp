@@ -59,6 +59,7 @@
 #include <libweb3jsonrpc/Skale.h>
 
 #include <skutils/multithreading.h>
+#include <skutils/network.h>
 #include <skutils/url.h>
 
 #include <iostream>
@@ -1648,6 +1649,26 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
       m_strSchemeUC( skutils::tools::to_upper( strScheme ) ),
       m_nPort( nPort ) {
+    //
+    if ( !strBindAddr_.empty() ) {
+        if ( ipVer_ == 6 ) {
+            if ( strBindAddr_ == "*" || strBindAddr_ == "::" || strBindAddr_ == "0:0:0:0:0:0:0:0" )
+                strBindAddr_.clear();
+        } else if ( ipVer_ == 4 ) {
+            if ( strBindAddr_ == "*" || strBindAddr_ == "0.0.0.0" )
+                strBindAddr_.clear();
+        } else
+            strBindAddr_.clear();
+    }
+    if ( !strBindAddr_.empty() ) {
+        std::list< std::pair< std::string, std::string > > listIfaceInfos =
+            skutils::network::get_machine_ip_addresses(
+                ( ipVer_ == 6 ) ? false : true, ( ipVer_ == 6 ) ? true : false );
+        strInterfaceName_ =
+            skutils::network::find_iface_or_ip_address( listIfaceInfos, strBindAddr_.c_str() )
+                .first;  // first-interface name, second-address
+    }
+    //
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
         SkaleWsPeer* pSkalePeer = nullptr;
@@ -1726,7 +1747,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
     clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will start server on port " ) + cc::c( m_nPort ) );
-    if ( !open( m_strScheme_, m_nPort ) ) {
+    if ( !open( m_strScheme_, m_nPort,
+             ( !strInterfaceName_.empty() ) ? strInterfaceName_.c_str() : nullptr ) ) {
         clog( dev::VerbosityError, cc::fatal( m_strSchemeUC + " ERROR:" ) )
             << ( cc::error( "Failed to start server on port " ) + cc::c( m_nPort ) );
         return false;
@@ -1959,6 +1981,35 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
+static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
+    int nPort, const char* strProtocolName, int nServerIndex, SkaleServerOverride* pSO ) {
+    pSO->logTraceServerEvent( false, ipVer, strProtocolName, nServerIndex,
+        cc::debug( "Will check port " ) + cc::num10( nPort ) +
+            cc::debug( "/IPv" + std::to_string( ipVer ) ) + cc::debug( " availability for " ) +
+            cc::info( strProtocolName ) + cc::debug( " server..." ) );
+    skutils::network::sockaddr46 sa46;
+    std::string strError =
+        skutils::network::resolve_address_for_client_connection( ipVer, strAddr, sa46 );
+    if ( !strError.empty() )
+        throw std::runtime_error(
+            std::string( "Failed to check " ) + std::string( strProtocolName ) +
+            std::string( " server listen IP address availability for address \"" ) + strAddr +
+            std::string( "\" on IPv" ) + std::to_string( ipVer ) +
+            std::string( ", please check network interface with this IP address exist, error "
+                         "details: " ) +
+            strError );
+    if ( is_tcp_port_listening( ipVer, sa46, nPort ) )
+        throw std::runtime_error( std::string( "Cannot start " ) + std::string( strProtocolName ) +
+                                  std::string( " server on address \"" ) + strAddr +
+                                  std::string( "\", port " ) + std::to_string( nPort ) +
+                                  std::string( ", IPv" ) + std::to_string( ipVer ) +
+                                  std::string( " - port is already listening" ) );
+    pSO->logTraceServerEvent( false, ipVer, strProtocolName, nServerIndex,
+        cc::notice( "Port " ) + cc::num10( nPort ) +
+            cc::notice( "/IPv" + std::to_string( ipVer ) ) + cc::notice( " is free for " ) +
+            cc::info( strProtocolName ) + cc::notice( " server to start" ) );
+}
+
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues ) {
@@ -2140,6 +2191,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     pSrv->serverIndex(), req.origin_.c_str(), strMethod.c_str(), joID );
             return true;
         } );
+        // check if somebody is already listening
+        stat_check_port_availability_for_server_to_start_listen(
+            ipVer, strAddr.c_str(), nPort, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), this );
+        // make server listen in its dedicated thread
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
                 "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
@@ -2158,12 +2213,14 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
         return true;
     } catch ( const std::exception& ex ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::error( " server: " ) + cc::warn( ex.what() ) );
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) +
+                cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) + cc::error( " server: " ) +
+                cc::warn( ex.what() ) );
     } catch ( ... ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) +
+                cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) + cc::error( " server: " ) +
+                cc::warn( "unknown exception" ) );
     }
     try {
         implStopListening( pSrv, ipVer, bIsSSL );
@@ -2193,6 +2250,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
             pSrv->strCertificateFile_ = strPathSslCert;
             pSrv->strPrivateKeyFile_ = strPathSslKey;
         }
+        // check if somebody is already listening
+        stat_check_port_availability_for_server_to_start_listen(
+            ipVer, strAddr.c_str(), nPort, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(), this );
+        // make server listen in its dedicated thread
         if ( !pSrv->start( this ) )
             throw std::runtime_error( "Failed to start server" );
         logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
@@ -2203,11 +2264,11 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
         return true;
     } catch ( const std::exception& ex ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(),
-            cc::error( "FAILED to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
     }
     try {

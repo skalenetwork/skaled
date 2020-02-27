@@ -53,6 +53,8 @@ public:
     boost::optional< boost::filesystem::path > randomCodeOptionsPath;  ///< Options for random code
                                                                        ///< generation in fuzz tests
 
+    bool listTests = false;  ///< List all test suites/cases and exit
+
     /// Test selection
     /// @{
     bool singleTest = false;
