@@ -1150,8 +1150,10 @@ int main( int argc, char** argv ) try {
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
                               "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
+    bool isStartedFromSnapshot = false;
     if ( vm.count( "download-snapshot" ) /*||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
+        isStartedFromSnapshot = true;
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
@@ -1301,11 +1303,11 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );

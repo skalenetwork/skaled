@@ -83,7 +83,7 @@ public:
         std::shared_ptr< SnapshotManager > _snapshotManager,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024}, bool isStartedFromSnapshot = false );
     /// Destructor.
     virtual ~Client();
 
@@ -463,7 +463,7 @@ private:
     void fillLastSnapshotTime();
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
-    int64_t first_block_timestamp = -1;
+    bool is_started_from_snapshot = true;
 
 public:
     FILE* performance_fd;
