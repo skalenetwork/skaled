@@ -17,6 +17,13 @@ set( CMAKE_PREFIX_PATH "${DEPS_INSTALL_ROOT}" )
 list( APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake )
 
 link_directories( ${CMAKE_BINARY_DIR}/deps/lib )          # HACK for not-found -lff in testeth
+
+if( NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
+    set( CMAKE_CXX_FLAGS           "${CMAKE_CXX_FLAGS}           -rdynamic" )
+    set( CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -rdynamic" )
+    set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic" )
+endif()
+
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################

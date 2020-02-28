@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <execinfo.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <memory.h>
@@ -15,6 +14,10 @@
 #include <termios.h>
 #include <unistd.h>
 #include <iostream>
+
+#include <cxxabi.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 
 extern "C" {
 #ifdef WIN32
@@ -1501,12 +1504,15 @@ bool init_common_signal_handling( fn_signal_handler_t fnSignalHander ) {
     // this signal is sent to the process. A reader is a process that reads data at the end of a
     // pipe.
     sigaction( SIGPIPE, &sa, NULL );
-    //
-    // Not handled:
     // SIGSEGV - When an application has a segmentation violation, this signal is sent to the
-    // process. SIGTSTP - This signal is like pressing ctrl-z. This makes a request to the terminal
+    // process.
+    sigaction( SIGSEGV, &sa, NULL );
+    // SIGTSTP - This signal is like pressing ctrl-z. This makes a request to the terminal
     // containing the process to ask the process to stop temporarily. The process can ignore the
-    // request. SIGCONT - To make processes continue executing after being paused by the SIGTSTP or
+    // request.
+    sigaction( SIGTSTP, &sa, NULL );
+    // Not handled:
+    // SIGCONT - To make processes continue executing after being paused by the SIGTSTP or
     // SIGSTOP signal, send the SIGCONT signal to the paused process. This is the CONTinue SIGnal.
     // This signal is beneficial to Unix job control (executing background tasks). SIGALRM - SIGALRM
     // is sent when the real time or clock time timer expires. SIGTRAP - This signal is used for
@@ -1553,23 +1559,45 @@ bool init_common_signal_handling( fn_signal_handler_t fnSignalHander ) {
     return true;
 }
 
-void print_backtrace() {
-    std::cout.flush();
-    std::cerr.flush();
-    void* arrBacktrace[30];
-    int cntBacktrace = ::backtrace(
-        arrBacktrace, sizeof( arrBacktrace ) / sizeof( arrBacktrace[0] ) );  // get void*'s for all
-                                                                             // entries on the stack
-    // print out all the frames to stderr
-    ::fprintf( stderr, "\n\nbacktrace of %d symbol(s):\n", int( cntBacktrace ) );
-    ::fflush( stderr );
-    ::backtrace_symbols_fd( arrBacktrace, cntBacktrace, STDERR_FILENO );
-    ::fflush( stderr );
-    ::fprintf( stderr, "\n" );
-    ::fflush( stderr );
-    std::cout.flush();
-    std::cerr.flush();
+std::string generate_stack_trace( int nSkip, bool isExtended ) {
+    if ( nSkip < 0 )
+        nSkip = 0;
+    void* callstack[256];  // 128
+    const int nMaxFrames = sizeof( callstack ) / sizeof( callstack[0] );
+    char buf[1024];
+    int nFrames = backtrace( callstack, nMaxFrames );
+    char** symbols = backtrace_symbols( callstack, nFrames );
+    std::ostringstream ss;
+    for ( int i = nSkip; i < nFrames; ++i ) {
+        if ( !isExtended ) {
+            ss << symbols[i];
+            ss << "\n";
+            continue;
+        }
+        Dl_info info;
+        if ( dladdr( callstack[i], &info ) && info.dli_sname ) {
+            char* demangled = nullptr;
+            int status = -1;
+            if ( info.dli_sname[0] == '_' )
+                demangled = abi::__cxa_demangle( info.dli_sname, nullptr, 0, &status );
+            snprintf( buf, sizeof( buf ), "%-3d %*p %s + %zd\n", i, int( 2 + sizeof( void* ) * 2 ),
+                callstack[i],
+                status == 0 ? demangled : info.dli_sname == 0 ? symbols[i] : info.dli_sname,
+                ( char* ) callstack[i] - ( char* ) info.dli_saddr );
+            free( demangled );
+        } else {
+            snprintf( buf, sizeof( buf ), "%-3d %*p %s\n", i, int( 2 + sizeof( void* ) * 2 ),
+                callstack[i], symbols[i] );
+        }
+        ss << buf;
+    }
+    free( symbols );
+    if ( nFrames == nMaxFrames )
+        ss << "[truncated]\n";
+    return ss.str();
 }
+
+
 };  // namespace signal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
