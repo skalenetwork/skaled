@@ -43,8 +43,7 @@ BOOST_AUTO_TEST_CASE( AesDecrypt, *boost::unit_test::precondition( dev::test::ru
     BOOST_CHECK( Address( "07746f871de684297923f933279555dda418f8a2" ) == kp.address() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    AesDecryptWrongSeed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    AesDecryptWrongSeed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "AesDecryptWrongSeed";
     bytes seed = fromHex(
         "badaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1"
@@ -54,8 +53,7 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( Address( "07746f871de684297923f933279555dda418f8a2" ) != kp.address() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    AesDecryptWrongPassword, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    AesDecryptWrongPassword, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "AesDecryptWrongPassword";
     bytes seed = fromHex(
         "2dbaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1"
@@ -65,8 +63,7 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( Address( "07746f871de684297923f933279555dda418f8a2" ) != kp.address() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    AesDecryptFailInvalidSeed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    AesDecryptFailInvalidSeed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "AesDecryptFailInvalidSeed";
     bytes seed = fromHex(
         "xdbaead416c20cfd00c2fc9f1788ff9f965a2000799c96a624767cb0e1e90d2d7191efdd92349226742fdc73d1"
@@ -75,15 +72,13 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( bytes() == aesDecrypt( &seed, "test" ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    AesDecryptFailInvalidSeedSize, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    AesDecryptFailInvalidSeedSize, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "AesDecryptFailInvalidSeedSize";
     bytes seed = fromHex( "000102030405060708090a0b0c0d0e0f" );
     BOOST_CHECK( bytes() == aesDecrypt( &seed, "test" ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    AesDecryptFailInvalidSeed2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    AesDecryptFailInvalidSeed2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "AesDecryptFailInvalidSeed2";
     bytes seed = fromHex( "000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f" );
     BOOST_CHECK( bytes() == aesDecrypt( &seed, "test" ) );

@@ -36,15 +36,16 @@ namespace fs = boost::filesystem;
 
 BOOST_FIXTURE_TEST_SUITE( KeyManagerTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE(
-    KeyInfoDefaultConstructor, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyInfoDefaultConstructor,
+        
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyInfo kiDefault;
     BOOST_CHECK_EQUAL( kiDefault.accountName, "" );
     BOOST_CHECK( kiDefault.passHash == h256() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyInfoConstructor, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyInfoConstructor, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 passHash( "0x2a" );
     string accountName = "myAccount";
     KeyInfo ki( passHash, accountName );
@@ -52,8 +53,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( ki.passHash == h256( "0x2a" ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyManagerConstructor, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyManagerConstructor, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyManager km;
     BOOST_CHECK_EQUAL( km.keysFile(), km.defaultPath() );
     BOOST_CHECK_EQUAL( km.defaultPath(), getDataDir( "ethereum" ) / fs::path( "keys.info" ) );
@@ -62,8 +63,8 @@ BOOST_AUTO_TEST_CASE(
         km.kill( a );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyManagerKeysFile, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyManagerKeysFile, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyManager km;
     string password = "hardPassword";
     BOOST_CHECK( !km.load( password ) );
@@ -85,8 +86,8 @@ BOOST_AUTO_TEST_CASE(
         km.kill( a );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyManagerHints, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyManagerHints, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyManager km;
     string password = "hardPassword";
 
@@ -104,8 +105,8 @@ BOOST_AUTO_TEST_CASE(
         km.kill( a );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyManagerAccounts, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyManagerAccounts, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     string password = "hardPassword";
 
     TransientDirectory tmpDir;
@@ -119,8 +120,8 @@ BOOST_AUTO_TEST_CASE(
         km.kill( a );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyManagerKill, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyManagerKill, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     string password = "hardPassword";
     TransientDirectory tmpDir;
     KeyPair kp = KeyPair::create();

@@ -31,8 +31,7 @@ using namespace boost::multiprecision;
 BOOST_FIXTURE_TEST_SUITE( boostTests, TestOutputHelperFixture )
 
 // test that reproduces issue https://github.com/ethereum/cpp-ethereum/issues/1977
-BOOST_AUTO_TEST_CASE(
-    u256_overflow_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    u256_overflow_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     dev::u256 a = 14;
     dev::bigint b = dev::bigint(
         "115792089237316195423570985008687907853269984665640564039457584007913129639948" );
@@ -40,8 +39,7 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( a < b );
 }
 
-BOOST_AUTO_TEST_CASE(
-    u256_shift_left, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    u256_shift_left, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     u256 a = 1;
     uint64_t amount = 1;
     auto b = a << amount;
@@ -62,15 +60,13 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK_EQUAL( static_cast< u256 >( bigint( u256( 3 ) ) << 255 ), u256( 1 ) << 255 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    u256_shift_left_bug, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    u256_shift_left_bug, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Bug reported: https://github.com/boostorg/multiprecision/issues/31
     using uint256 = number< cpp_int_backend< 256, 256, unsigned_magnitude, unchecked, void > >;
     BOOST_CHECK_EQUAL( uint256( 3 ) << 255, uint256( 1 ) << 255 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    u256_logical_shift_right, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    u256_logical_shift_right, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     u256 a = 1;
     uint64_t amount = 1;
     auto b = a >> amount;
@@ -113,8 +109,7 @@ BOOST_AUTO_TEST_CASE(
 constexpr auto int64_min = std::numeric_limits< int64_t >::min();
 static_assert( int64_min >> 1 == int64_min / 2, "I cannot shift!" );
 
-BOOST_AUTO_TEST_CASE(
-    u256_arithmetic_shift_right, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    u256_arithmetic_shift_right, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     s256 a = 1;
     uint64_t amount = 1;
     auto b = a >> amount;

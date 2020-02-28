@@ -38,8 +38,7 @@ BOOST_FIXTURE_TEST_SUITE( BlockSuite, TestOutputHelperFixture )
 
 BOOST_FIXTURE_TEST_SUITE( GasPricer, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE(
-    bNormalTransactionInput, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    bNormalTransactionInput, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
     State const& genesisState = genesisBlock.state();
@@ -80,8 +79,7 @@ BOOST_AUTO_TEST_CASE( bBlockNotSyncedToBlockchain ) {
     BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 2 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    bExceedBlockGasLimit, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    bExceedBlockGasLimit, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
     State const& genesisState = genesisBlock.state();
@@ -141,8 +139,7 @@ BOOST_AUTO_TEST_CASE( bTemporaryNoGasLeft ) {
     BOOST_REQUIRE( testBlockT.transactionQueue().topTransactions( 4 ).size() == 3 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    bInvalidNonceNoncesAhead, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    bInvalidNonceNoncesAhead, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Add some amount of gas because block limit decreases
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 + 21000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
@@ -176,8 +173,7 @@ BOOST_AUTO_TEST_CASE(
         u256( 3 ) );  // nonce starts with 1
 }
 
-BOOST_AUTO_TEST_CASE(
-    bInvalidNonceNonceTooLow, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    bInvalidNonceNonceTooLow, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
     TestBlock const& genesisBlock = testBlockchain.testGenesis();
     State const& genesisState = genesisBlock.state();

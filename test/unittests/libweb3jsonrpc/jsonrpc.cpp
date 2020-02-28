@@ -322,8 +322,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
 //    BOOST_CHECK_EQUAL(listeningOff, web3->isNetworkStarted());
 //}
 
-BOOST_AUTO_TEST_CASE(
-    jsonrpc_accounts, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    jsonrpc_accounts, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     std::vector< dev::KeyPair > keys = {KeyPair::create(), KeyPair::create()};
     fixture.accountHolder->setAccounts( keys );
@@ -382,8 +382,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    eth_coinbase, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    eth_coinbase, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     string coinbase = fixture.rpcClient->eth_coinbase();
     BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), fixture.client->author() );
@@ -444,6 +444,7 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
+    
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
@@ -490,6 +491,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorZeroBalance ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
+    
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
@@ -916,7 +918,8 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     BOOST_REQUIRE( receipt2["contractAddress"].isNull() );
 }
 
-BOOST_AUTO_TEST_CASE( web3_sha3, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( web3_sha3, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     string testString = "multiply(uint256)";
     h256 expected = dev::sha3( testString );

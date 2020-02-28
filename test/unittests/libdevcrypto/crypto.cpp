@@ -75,15 +75,16 @@ static CryptoPP::DL_GroupParameters_EC< CryptoPP::ECP >& params() {
     return s_params;
 }
 
-BOOST_AUTO_TEST_CASE( sha3general, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( sha3general, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_REQUIRE_EQUAL(
         sha3( "" ), h256( "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" ) );
     BOOST_REQUIRE_EQUAL( sha3( "hello" ),
         h256( "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8" ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    emptySHA3Types, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    emptySHA3Types, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 emptySHA3( fromHex( "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" ) );
     BOOST_REQUIRE_EQUAL( emptySHA3, EmptySHA3 );
 
@@ -92,13 +93,14 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE_EQUAL( emptyListSHA3, EmptyListSHA3 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    pubkeyOfZero, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    pubkeyOfZero, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto pub = toPublic( {} );
     BOOST_REQUIRE_EQUAL( pub, Public{} );
 }
 
-BOOST_AUTO_TEST_CASE( KeyPairMix, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( KeyPairMix, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyPair k = KeyPair::create();
     BOOST_REQUIRE( !!k.secret() );
     BOOST_REQUIRE( !!k.pub() );
@@ -129,16 +131,16 @@ BOOST_AUTO_TEST_CASE( keypairs ) {
     BOOST_CHECK_EQUAL( t.sender(), p.address() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    KeyPairVerifySecret, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    KeyPairVerifySecret, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto keyPair = KeyPair::create();
     auto* ctx = secp256k1_context_create( SECP256K1_CONTEXT_NONE );
     BOOST_CHECK( secp256k1_ec_seckey_verify( ctx, keyPair.secret().data() ) );
     secp256k1_context_destroy( ctx );
 }
 
-BOOST_AUTO_TEST_CASE(
-    SignAndRecover, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    SignAndRecover, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // This basic test that compares **fixed** results. Useful to test new
     // implementations or changes to implementations.
     auto sec = Secret{sha3( "sec" )};
@@ -156,8 +158,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK_EQUAL( pub.hex(), expectedPub );
 }
 
-BOOST_AUTO_TEST_CASE(
-    SignAndRecoverLoop, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    SignAndRecoverLoop, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto num = 13;
     auto msg = h256::random();
     while ( --num ) {
@@ -177,8 +179,8 @@ BOOST_AUTO_TEST_CASE( cryptopp_patch ) {
     BOOST_REQUIRE_EQUAL( io_text.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    verify_secert, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    verify_secert, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Secret empty;
     KeyPair kNot( empty );
     BOOST_REQUIRE( !kNot.address() );
@@ -186,8 +188,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( k.address() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    common_encrypt_decrypt, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    common_encrypt_decrypt, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     string message( "Now is the time for all good persons to come to the aid of humanity." );
     bytes m = asBytes( message );
     bytesConstRef bcr( &m );
@@ -204,8 +206,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( plain == asBytes( message ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    sha3_norestart, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    sha3_norestart, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     CryptoPP::Keccak_256 ctx;
     bytes input( asBytes( "test" ) );
     ctx.Update( input.data(), 4 );
@@ -235,7 +237,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( finalDigest2 != finalDigest3 );
 }
 
-BOOST_AUTO_TEST_CASE( ecies_kdf, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( ecies_kdf, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyPair local = KeyPair::create();
     KeyPair remote = KeyPair::create();
     // nonce
@@ -263,8 +266,8 @@ BOOST_AUTO_TEST_CASE( ecies_kdf, *boost::unit_test::precondition( dev::test::run
     BOOST_REQUIRE( key1 == key2 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecdh_agree_invalid_pubkey, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecdh_agree_invalid_pubkey, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyPair ok = KeyPair::create();
     Public pubkey;
     ~pubkey;  // Create a pubkey of all 1s.
@@ -272,8 +275,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( !ecdh::agree( ok.secret(), pubkey, z ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecdh_agree_invalid_seckey, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecdh_agree_invalid_seckey, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyPair ok = KeyPair::create();
     Secret seckey;  // "Null" seckey is invalid.
     BOOST_CHECK( !ecdh::agree( seckey, ok.pub(), seckey ) );
@@ -317,8 +320,8 @@ BOOST_AUTO_TEST_CASE( ecies_sharedMacData ) {
     BOOST_CHECK_EQUAL( toHex( decrypted ), toHex( original ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecies_eckeypair, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecies_eckeypair, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     KeyPair k = KeyPair::create();
 
     string message( "Now is the time for all good persons to come to the aid of humanity." );
@@ -332,8 +335,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( b == asBytes( original ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecdhCryptopp, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecdhCryptopp, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     CryptoPP::ECDH< CryptoPP::ECP >::Domain dhLocal( curveOID() );
     CryptoPP::SecByteBlock privLocal( dhLocal.PrivateKeyLength() );
     CryptoPP::SecByteBlock pubLocal( dhLocal.PublicKeyLength() );
@@ -380,7 +383,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( shared );
 }
 
-BOOST_AUTO_TEST_CASE( ecdhe, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( ecdhe, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto local = KeyPair::create();
     auto remote = KeyPair::create();
     BOOST_CHECK_NE( local.pub(), remote.pub() );
@@ -398,7 +402,8 @@ BOOST_AUTO_TEST_CASE( ecdhe, *boost::unit_test::precondition( dev::test::run_not
     BOOST_CHECK_EQUAL( sremote, slocal );
 }
 
-BOOST_AUTO_TEST_CASE( ecdhAgree, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( ecdhAgree, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto sec = Secret{sha3( "ecdhAgree" )};
     auto pub = toPublic( sec );
     Secret sharedSec;
@@ -408,8 +413,8 @@ BOOST_AUTO_TEST_CASE( ecdhAgree, *boost::unit_test::precondition( dev::test::run
     BOOST_CHECK_EQUAL( sharedSec.makeInsecure().hex(), expectedSharedSec );
 }
 
-BOOST_AUTO_TEST_CASE(
-    handshakeNew, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    handshakeNew, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     //	authInitiator -> E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) ||
     // H(ecdhe-random-pubk) || pubk || nonce || 0x0) 	authRecipient -> E(remote-pubk,
     // ecdhe-random-pubk || nonce || 0x0)
@@ -600,8 +605,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE_EQUAL( bEgressMac, aIngressMac );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecies_aes128_ctr_unaligned, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecies_aes128_ctr_unaligned, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SecureFixedHash< 16 > encryptK( sha3( "..." ), h128::AlignLeft );
     h256 egressMac( sha3( "+++" ) );
     // TESTING: send encrypt magic sequence
@@ -623,8 +628,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( magic == plaintext );
 }
 
-BOOST_AUTO_TEST_CASE(
-    ecies_aes128_ctr, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    ecies_aes128_ctr, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SecureFixedHash< 16 > k( sha3( "0xAAAA" ), h128::AlignLeft );
     string m = "AAAAAAAAAAAAAAAA";
     bytesConstRef msg( ( _byte_* ) m.data(), m.size() );
@@ -637,8 +642,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE_EQUAL( asString( plaintext ), m );
 }
 
-BOOST_AUTO_TEST_CASE(
-    cryptopp_aes128_ctr, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    cryptopp_aes128_ctr, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     const int aesKeyLen = 16;
     BOOST_REQUIRE( sizeof( char ) == sizeof( _byte_ ) );
 
@@ -702,8 +707,8 @@ BOOST_AUTO_TEST_CASE(
     }
 }
 
-BOOST_AUTO_TEST_CASE(
-    cryptopp_aes128_cbc, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    cryptopp_aes128_cbc, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     const int aesKeyLen = 16;
     BOOST_REQUIRE( sizeof( char ) == sizeof( _byte_ ) );
 
@@ -745,7 +750,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE( string192 == plainOriginal );
 }
 
-BOOST_AUTO_TEST_CASE( recoverVgt3, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( recoverVgt3, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // base secret
     Secret secret( sha3( "privacy" ) );
 

@@ -36,7 +36,8 @@ namespace dev {
 namespace test {
 BOOST_FIXTURE_TEST_SUITE( StateUnitTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( Basic, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( Basic, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Block s( Block::Null );
 }
 
@@ -80,8 +81,8 @@ public:
 BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
 
-BOOST_AUTO_TEST_CASE(
-    addressesReturnsAllAddresses, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(    addressesReturnsAllAddresses, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
         state.startRead().addresses( h256{}, addressCount * 2 );
     State::AddressMap addresses = addressesAndNextKey.first;
@@ -130,6 +131,7 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
+    
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     State s = state.startRead();
 

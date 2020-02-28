@@ -498,20 +498,21 @@ public:
 BOOST_FIXTURE_TEST_SUITE( VMTests, VmTestFixture )
 
 BOOST_AUTO_TEST_CASE( vmArithmeticTest ) {}
-BOOST_AUTO_TEST_CASE(
-    vmBitwiseLogicOperation, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE(
-    vmBlockInfoTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE(
-    vmEnvironmentalInfo, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(    vmBitwiseLogicOperation,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(    vmBlockInfoTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(    vmEnvironmentalInfo,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmIOandFlowOperations ) {}
 BOOST_AUTO_TEST_CASE( vmLogTest ) {}
-BOOST_AUTO_TEST_CASE(
-    vmPerformance, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(    vmPerformance,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmPushDupSwapTest ) {}
-BOOST_AUTO_TEST_CASE(
-    vmRandomTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmSha3Test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(    vmRandomTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( vmSha3Test,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmSystemOperations ) {}
 BOOST_AUTO_TEST_CASE( vmTests ) {}
 
