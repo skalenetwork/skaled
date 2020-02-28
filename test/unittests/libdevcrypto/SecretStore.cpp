@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( basic_tests,
     }
 }
 
-BOOST_AUTO_TEST_CASE(    import_key_from_file, 
+BOOST_AUTO_TEST_CASE( import_key_from_file, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Imports a key from an external file. Tests that the imported key is there
     // and that the external file is not deleted.
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(    import_key_from_file,
     }
 }
 
-BOOST_AUTO_TEST_CASE(    import_secret, 
+BOOST_AUTO_TEST_CASE( import_secret, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     for ( string const& password : {"foobar", ""} ) {
         TransientDirectory storeDir;
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( import_secret_bytesConstRef ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(    wrong_password, 
+BOOST_AUTO_TEST_CASE( wrong_password, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory storeDir;
     SecretStore store( storeDir.path() );
@@ -228,7 +228,7 @@ BOOST_AUTO_TEST_CASE( recode,
     }
 }
 
-BOOST_AUTO_TEST_CASE(    keyImport_PBKDF2SHA256, 
+BOOST_AUTO_TEST_CASE( keyImport_PBKDF2SHA256, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Imports a key from an external file. Tests that the imported key is there
     // and that the external file is not deleted.
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(    keyImport_PBKDF2SHA256,
     fs::remove( importFile );
 }
 
-BOOST_AUTO_TEST_CASE(    keyImport_Scrypt, 
+BOOST_AUTO_TEST_CASE( keyImport_Scrypt, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Imports a key from an external file. Tests that the imported key is there
     // and that the external file is not deleted.

@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_SUITE( Crypto )
 
 BOOST_FIXTURE_TEST_SUITE( Basic, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE(    hexPrefix_test, 
+BOOST_AUTO_TEST_CASE( hexPrefix_test, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path testPath = test::getTestPath();
     testPath /= fs::path( "BasicTests" );

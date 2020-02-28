@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( toHex,
         "0x705a1849c02140e7197fbde82987a9eb623f97e32fc479a3cd8e4b3b52dcc4b2" );
 }
 
-BOOST_AUTO_TEST_CASE(    toCompactHex, 
+BOOST_AUTO_TEST_CASE( toCompactHex, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     dev::u256 i( "0x123456789abcdef" );
     BOOST_CHECK_EQUAL( dev::toCompactHex( i ), "0123456789abcdef" );

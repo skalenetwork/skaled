@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( constructor,
     BOOST_CHECK( !RM( Range( 2, 10 ) ).full() );
 }
 
-BOOST_AUTO_TEST_CASE(    simple_unions, 
+BOOST_AUTO_TEST_CASE( simple_unions, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( empty_union,
     BOOST_CHECK_EQUAL( m.size(), 3 );
 }
 
-BOOST_AUTO_TEST_CASE(    overlapping_unions, 
+BOOST_AUTO_TEST_CASE( overlapping_unions, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;

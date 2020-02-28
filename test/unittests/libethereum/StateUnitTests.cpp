@@ -81,7 +81,7 @@ public:
 BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
 
-BOOST_AUTO_TEST_CASE(    addressesReturnsAllAddresses, 
+BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
         state.startRead().addresses( h256{}, addressCount * 2 );

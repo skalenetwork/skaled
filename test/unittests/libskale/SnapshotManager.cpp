@@ -205,13 +205,13 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 2 ) );
 }
 
-BOOST_FIXTURE_TEST_CASE(    NoBtrfsTest, NoBtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_REQUIRE_THROW( SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ),
         SnapshotManager::CannotPerformBtrfsOperation );
 }
 
-BOOST_FIXTURE_TEST_CASE(    BadPathTest, BtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_REQUIRE_EXCEPTION(
         SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ) / "_invalid", {"vol1", "vol2"} ),
@@ -259,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
         } );
 }
 
-BOOST_FIXTURE_TEST_CASE(    SnapshotTest, BtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
@@ -288,7 +288,7 @@ BOOST_FIXTURE_TEST_CASE(    SnapshotTest, BtrfsFixture,
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
-BOOST_FIXTURE_TEST_CASE(    RestoreTest, BtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
@@ -304,7 +304,7 @@ BOOST_FIXTURE_TEST_CASE(    RestoreTest, BtrfsFixture,
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
-BOOST_FIXTURE_TEST_CASE(    DiffTest, BtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
     mgr.doSnapshot( 2 );
@@ -337,7 +337,7 @@ BOOST_FIXTURE_TEST_CASE(    DiffTest, BtrfsFixture,
 
 // TODO Tests to check no files left in /tmp?!
 
-BOOST_FIXTURE_TEST_CASE(    ImportTest, BtrfsFixture, 
+BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 

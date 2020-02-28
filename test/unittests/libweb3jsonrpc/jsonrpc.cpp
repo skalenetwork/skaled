@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
 //    BOOST_CHECK_EQUAL(listeningOff, web3->isNetworkStarted());
 //}
 
-BOOST_AUTO_TEST_CASE(    jsonrpc_accounts, 
+BOOST_AUTO_TEST_CASE( jsonrpc_accounts, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     std::vector< dev::KeyPair > keys = {KeyPair::create(), KeyPair::create()};
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
-BOOST_AUTO_TEST_CASE(    eth_coinbase, 
+BOOST_AUTO_TEST_CASE( eth_coinbase, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     string coinbase = fixture.rpcClient->eth_coinbase();

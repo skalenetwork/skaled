@@ -34,7 +34,7 @@ namespace test {
 
 BOOST_FIXTURE_TEST_SUITE( FixedHashTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE(    FixedHashComparisons, 
+BOOST_AUTO_TEST_CASE( FixedHashComparisons, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedHash< 4 > h1( sha3( "abcd" ) );
     FixedHash< 4 > h2( sha3( "abcd" ) );
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(    FixedHashComparisons,
     BOOST_CHECK( h6 >= h4 );
 }
 
-BOOST_AUTO_TEST_CASE(    FixedHashXOR, 
+BOOST_AUTO_TEST_CASE( FixedHashXOR, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedHash< 2 > h1( "0xAAAA" );
     FixedHash< 2 > h2( "0xBBBB" );
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( FixedHashOR,
     BOOST_CHECK( h1 == res );
 }
 
-BOOST_AUTO_TEST_CASE(    FixedHashAND, 
+BOOST_AUTO_TEST_CASE( FixedHashAND, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedHash< 4 > h1( "0xD3ADB33F" );
     FixedHash< 4 > h2( "0xBAADF00D" );
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(    FixedHashAND,
     BOOST_CHECK( h1 = h3 );
 }
 
-BOOST_AUTO_TEST_CASE(    FixedHashInvert, 
+BOOST_AUTO_TEST_CASE( FixedHashInvert, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedHash< 4 > h1( "0xD3ADB33F" );
     FixedHash< 4 > h2( "0x2C524CC0" );
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(    FixedHashInvert,
     BOOST_CHECK( ~h1 == h2 );
 }
 
-BOOST_AUTO_TEST_CASE(    FixedHashContains, 
+BOOST_AUTO_TEST_CASE( FixedHashContains, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedHash< 4 > h1( "0xD3ADB331" );
     FixedHash< 4 > h2( "0x0000B331" );
@@ -126,7 +126,7 @@ void incrementSingleIteration( unsigned seed ) {
     BOOST_CHECK_EQUAL( next, reverse2 );
 }
 
-BOOST_AUTO_TEST_CASE(    FixedHashIncrement, 
+BOOST_AUTO_TEST_CASE( FixedHashIncrement, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     incrementSingleIteration( 0 );
     incrementSingleIteration( 1 );

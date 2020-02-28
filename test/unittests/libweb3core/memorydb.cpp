@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( kill,
     BOOST_CHECK( myDB.kill( h256( 42 ) ) );
 }
 
-BOOST_AUTO_TEST_CASE(    purgeMainMem, 
+BOOST_AUTO_TEST_CASE( purgeMainMem, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     BOOST_CHECK( myDB.get().empty() );
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(    purgeMainMem,
     BOOST_CHECK_EQUAL( myDB.get().size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE(    purgeMainMem_Refs, 
+BOOST_AUTO_TEST_CASE( purgeMainMem_Refs, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     {

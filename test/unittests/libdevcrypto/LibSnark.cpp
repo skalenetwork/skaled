@@ -564,7 +564,7 @@ BOOST_AUTO_TEST_CASE( benchECMULIdentity, *boost::unit_test::precondition( run_n
     BOOST_CHECK_EQUAL( toHex( v ), toHex( w ) );
 }
 
-BOOST_AUTO_TEST_CASE(    ECMULuseCaseFromRopsten, *boost::unit_test::precondition( run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( ECMULuseCaseFromRopsten, *boost::unit_test::precondition( run_not_express ) ) {
     bytes const input = fromHex(
         "277a420332215ead37ba61fee84f0d216a345e762af8efd15453697170b3cdc5"
         "1b312cd37d4ad474fc299c9689fc0f347a2ec2b5b474a41b343142ee5fdd097a"
