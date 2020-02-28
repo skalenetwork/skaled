@@ -86,3 +86,8 @@ fs::path dev::test::getRandomPath() {
 boost::unit_test::assertion_result dev::test::option_all_tests( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
 }
+
+boost::unit_test::assertion_result dev::test::run_not_express( boost::unit_test::test_unit_id ) {
+    return boost::unit_test::assertion_result(
+        ( !!dev::test::Options::get().all ) || ( !dev::test::Options::get().express ) );
+}

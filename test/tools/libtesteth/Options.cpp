@@ -73,6 +73,7 @@ void printHelp() {
 
     cout << "\nAdditional Tests\n";
     cout << setw( 30 ) << "--all" << setw( 25 ) << "Enable all tests\n";
+    cout << setw( 30 ) << "--express" << setw( 25 ) << "Only 'express' tests\n";
 
     cout << "\nTest Generation\n";
     cout << setw( 30 ) << "--filltests" << setw( 25 ) << "Run test fillers\n";
