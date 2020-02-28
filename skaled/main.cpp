@@ -377,9 +377,9 @@ int main( int argc, char** argv ) try {
     //    ( *p ) = 12345;
     //    printf( "%p\n", p );
 
-    //    int x = 1, y = 0;
-    //    int z = x / y;
-    //    printf( "%d", z );
+    int x = 1, y = 0;
+    int z = x / y;
+    printf( "%d", z );
 
 
     // Init secp256k1 context by calling one of the functions.
