@@ -66,7 +66,7 @@ jobs:
 
             # run tests
             - cd test
-            - ./testeth || travis_terminate 1;
+            - ./testeth -- --express || travis_terminate 1;
             - sudo ./testeth -t BtrfsTestSuite -- --all || travis_terminate 1;
             - sudo ./testeth -t HashSnapshotTestSuite -- --all || travis_terminate 1;
             - sudo ./testeth -t ClientSnapshotsSuite -- --all || travis_terminate 1;
