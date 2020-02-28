@@ -148,8 +148,8 @@ struct NoBtrfsFixture : public FixtureCommon {
     }
 };
 
-BOOST_AUTO_TEST_SUITE(
-    BtrfsTestSuite, *boost::unit_test::precondition( dev::test::option_all_tests ) )
+BOOST_AUTO_TEST_SUITE( BtrfsTestSuite,
+    *boost::unit_test::precondition( dev::test::option_all_tests ) )
 
 BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     
