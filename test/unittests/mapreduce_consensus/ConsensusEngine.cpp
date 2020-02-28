@@ -399,15 +399,20 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( ConsensusTests, *boost::unit_test::disabled() )
 
-BOOST_AUTO_TEST_CASE( OneTransaction ) {}
+BOOST_AUTO_TEST_CASE(
+    OneTransaction, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( TwoTransactions ) {}
+BOOST_AUTO_TEST_CASE(
+    TwoTransactions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( DifferentTransactions ) {}
+BOOST_AUTO_TEST_CASE(
+    DifferentTransactions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction1 ) {}
+BOOST_AUTO_TEST_CASE(
+    MissingTransaction1, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction2 ) {}
+BOOST_AUTO_TEST_CASE(
+    MissingTransaction2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 

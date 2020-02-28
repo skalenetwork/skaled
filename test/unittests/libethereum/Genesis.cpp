@@ -43,7 +43,8 @@ namespace js = json_spirit;
 
 BOOST_FIXTURE_TEST_SUITE( BasicTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( emptySHA3Types ) {
+BOOST_AUTO_TEST_CASE(
+    emptySHA3Types, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 emptyListSHA3(
         fromHex( "1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347" ) );
     BOOST_REQUIRE_EQUAL( emptyListSHA3, EmptyListSHA3 );

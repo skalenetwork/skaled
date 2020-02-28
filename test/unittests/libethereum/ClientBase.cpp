@@ -35,7 +35,7 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( ClientBase, ParallelClientBaseFixture )
 
-BOOST_AUTO_TEST_CASE( blocks ) {
+BOOST_AUTO_TEST_CASE( blocks, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     enumerateClients( []( Json::Value const& _json, dev::eth::ClientBase& _client ) -> void {
         auto compareState = [&_client]( Json::Value const& _o, string const& _name,
                                 BlockNumber /*_blockNumber*/ ) -> void {

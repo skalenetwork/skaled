@@ -375,7 +375,8 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     bcRef.garbageCollect( true );
 }
 
-BOOST_AUTO_TEST_CASE( invalidJsonThrows ) {
+BOOST_AUTO_TEST_CASE(
+    invalidJsonThrows, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 emptyStateRoot;
     /* Below, a comma is missing between fields. */
     BOOST_CHECK_THROW(

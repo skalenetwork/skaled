@@ -221,7 +221,8 @@ BOOST_AUTO_TEST_CASE( EmptyArrayList ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE( invalidRLPtest ) {
+BOOST_AUTO_TEST_CASE(
+    invalidRLPtest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     runRlpTest( "invalidRLPTest", "/RLPTests" );
 }
 

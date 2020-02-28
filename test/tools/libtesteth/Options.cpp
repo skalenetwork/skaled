@@ -212,6 +212,8 @@ Options::Options( int argc, const char** argv ) {
             exectimelog = true;
         else if ( arg == "--all" )
             all = true;
+        else if ( arg == "--express" )
+            this->express = true;
         else if ( arg == "--singletest" ) {
             throwIfNoArgumentFollows();
             singleTest = true;

@@ -475,7 +475,8 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -521,7 +522,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
     // TODO check hash absence separately
 }
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture ) {
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     mgr->doSnapshot( 4 );
 
     mgr->computeSnapshotHash( 4, true );

@@ -30,7 +30,8 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( BlockChainTestSuite, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( fillingExpectationOnMultipleNetworks ) {
+BOOST_AUTO_TEST_CASE( fillingExpectationOnMultipleNetworks,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::string const s = R"(
         {
             "fillingExpectationOnMultipleNetworks" : {
@@ -90,7 +91,8 @@ BOOST_AUTO_TEST_CASE( fillingExpectationOnMultipleNetworks ) {
     BOOST_CHECK_MESSAGE( output.get_obj().size() == 2, "A wrong number of tests were generated." );
 }
 
-BOOST_AUTO_TEST_CASE( fillingExpectationOnSingleNetwork ) {
+BOOST_AUTO_TEST_CASE( fillingExpectationOnSingleNetwork,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::string const s = R"(
         {
             "fillingExpectationOnSingleNetwork" : {

@@ -21,13 +21,12 @@
 
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/LibSnark.h>
+#include <test/tools/libtestutils/Common.h>
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
-
-BOOST_AUTO_TEST_SUITE( LibSnark )
 
 namespace dev {
 namespace test {
@@ -65,7 +64,9 @@ bytes addG1( bytes const& _x, bytes const& _y ) {
 
 }  // namespace
 
-BOOST_AUTO_TEST_CASE( ecadd ) {
+BOOST_AUTO_TEST_SUITE( LibSnark )
+
+BOOST_AUTO_TEST_CASE( ecadd, *boost::unit_test::precondition( run_not_express ) ) {
     // "0 + 0 == 0"
     bytes input( 0x20 * 4, 0 );
     bytes expectation( 0x20 * 2, 0 );
@@ -79,7 +80,7 @@ BOOST_AUTO_TEST_CASE( ecadd ) {
     BOOST_CHECK( result.second == expectation );
 }
 
-BOOST_AUTO_TEST_CASE( fieldPointInvalid ) {
+BOOST_AUTO_TEST_CASE( fieldPointInvalid, *boost::unit_test::precondition( run_not_express ) ) {
     u256 const pMod{
         "21888242871839275222246405745257275088696311157297823662689037894645226208583"};
 
@@ -100,7 +101,7 @@ BOOST_AUTO_TEST_CASE( fieldPointInvalid ) {
     BOOST_CHECK( !alt_bn128_G1_mul( ref( input ) ).first );
 }
 
-BOOST_AUTO_TEST_CASE( invalid ) {
+BOOST_AUTO_TEST_CASE( invalid, *boost::unit_test::precondition( run_not_express ) ) {
     bytes x =
         toBigEndian( u256(
             "6851077925310461602867742977619883934042581405263014789956638244065803308498" ) ) +
@@ -118,7 +119,7 @@ BOOST_AUTO_TEST_CASE( invalid ) {
     BOOST_CHECK( ecadd_helper( x, bytes() ).second == x );
 }
 
-BOOST_AUTO_TEST_CASE( ecmul_add ) {
+BOOST_AUTO_TEST_CASE( ecmul_add, *boost::unit_test::precondition( run_not_express ) ) {
     bytes x =
         toBigEndian( u256(
             "6851077925310461602867742977619883934042581405263014789956638244065803308498" ) ) +
@@ -134,7 +135,7 @@ BOOST_AUTO_TEST_CASE( ecmul_add ) {
         ecadd_helper( ecmul_helper( x, groupOrder - 1 ).second, x ).second == bytes( 0x40, 0 ) );
 }
 
-BOOST_AUTO_TEST_CASE( pairing ) {
+BOOST_AUTO_TEST_CASE( pairing, *boost::unit_test::precondition( run_not_express ) ) {
     // This verifies a full zkSNARK proof. Let's see if this hocus-pocus actually works...
     struct VK {
         bytes A;
@@ -357,7 +358,7 @@ BOOST_AUTO_TEST_CASE( pairing ) {
     BOOST_REQUIRE( ret.second == toBigEndian( u256( 0 ) ) );
 }
 
-BOOST_AUTO_TEST_CASE( pairingNullInput ) {
+BOOST_AUTO_TEST_CASE( pairingNullInput, *boost::unit_test::precondition( run_not_express ) ) {
     // TODO: Maybe the empty input should also be considered invalid?
     auto r = pairingprod_helper( {} );
     BOOST_CHECK( r.first );
@@ -370,7 +371,7 @@ BOOST_AUTO_TEST_CASE( pairingNullInput ) {
     BOOST_CHECK( !r.first );
 }
 
-BOOST_AUTO_TEST_CASE( generateRandomPoints ) {
+BOOST_AUTO_TEST_CASE( generateRandomPoints, *boost::unit_test::precondition( run_not_express ) ) {
     bytes trivialPt = toBigEndian( u256( 1 ) ) + toBigEndian( u256( 2 ) );
 
     bool success = false;
@@ -462,7 +463,7 @@ BOOST_AUTO_TEST_CASE( generateRandomPoints ) {
         "d3fa90ed0197bfef6e2a1a62b5095b9d2b4a27" );
 }
 
-BOOST_AUTO_TEST_CASE( benchECADD ) {
+BOOST_AUTO_TEST_CASE( benchECADD, *boost::unit_test::precondition( run_not_express ) ) {
     bytes v = fromHex(
         "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9063c909c4720840cb5134cb9f5"
         "9fa749755796819658d32efc0d288198f37266" );
@@ -487,7 +488,7 @@ BOOST_AUTO_TEST_CASE( benchECADD ) {
         "d8a6483424ec9496fcfecf2fbb2c0c32955572" );
 }
 
-BOOST_AUTO_TEST_CASE( benchECMULRand ) {
+BOOST_AUTO_TEST_CASE( benchECMULRand, *boost::unit_test::precondition( run_not_express ) ) {
     bytes v = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
@@ -507,7 +508,7 @@ BOOST_AUTO_TEST_CASE( benchECMULRand ) {
         "15d546efb53da04dc89fc6f125ff9958b0c7d2" );
 }
 
-BOOST_AUTO_TEST_CASE( benchECMULWorstCase1 ) {
+BOOST_AUTO_TEST_CASE( benchECMULWorstCase1, *boost::unit_test::precondition( run_not_express ) ) {
     bytes v = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
@@ -526,7 +527,7 @@ BOOST_AUTO_TEST_CASE( benchECMULWorstCase1 ) {
         "e10066e0e1f83ecf376d97059cc311f82bdbd1" );
 }
 
-BOOST_AUTO_TEST_CASE( benchECMULWorstCase2 ) {
+BOOST_AUTO_TEST_CASE( benchECMULWorstCase2, *boost::unit_test::precondition( run_not_express ) ) {
     bytes v = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
@@ -545,7 +546,7 @@ BOOST_AUTO_TEST_CASE( benchECMULWorstCase2 ) {
         "a0f4a24dcc26825d1a124c0b912a9a217e0b0e" );
 }
 
-BOOST_AUTO_TEST_CASE( benchECMULIdentity ) {
+BOOST_AUTO_TEST_CASE( benchECMULIdentity, *boost::unit_test::precondition( run_not_express ) ) {
     bytes const w = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
@@ -563,7 +564,8 @@ BOOST_AUTO_TEST_CASE( benchECMULIdentity ) {
     BOOST_CHECK_EQUAL( toHex( v ), toHex( w ) );
 }
 
-BOOST_AUTO_TEST_CASE( ECMULuseCaseFromRopsten ) {
+BOOST_AUTO_TEST_CASE(
+    ECMULuseCaseFromRopsten, *boost::unit_test::precondition( run_not_express ) ) {
     bytes const input = fromHex(
         "277a420332215ead37ba61fee84f0d216a345e762af8efd15453697170b3cdc5"
         "1b312cd37d4ad474fc299c9689fc0f347a2ec2b5b474a41b343142ee5fdd097a"
