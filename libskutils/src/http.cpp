@@ -1684,7 +1684,7 @@ socket_t server::create_server_socket(
                 return false;
             }
             boundToPort_ = port;
-            if (::listen( sock, 5 ) ) {  // Listen through 5 channels
+            if (::listen( sock, 5 ) ) {  // listen through 5 channels
                 return false;
             }
             return true;
