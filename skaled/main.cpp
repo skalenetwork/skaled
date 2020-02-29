@@ -297,10 +297,10 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 //    uint64_t idx =
 //        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
-//        _chainParams.sChain.nodes.size();
+//        _chainParams.sChain.nodes.size() + 1;
 //    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
 //        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
-//        _chainParams.sChain.nodes.size();
+//        _chainParams.sChain.nodes.size() + 1;
 //    }
 
 //    std::string httpUrl = std::string( "http://" ) +

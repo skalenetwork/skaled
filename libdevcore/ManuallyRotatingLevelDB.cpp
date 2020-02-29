@@ -42,7 +42,7 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 
     // if newly created DB
     if ( current_i == _nPieces )
-        current_piece = 0;
+        current_i = 0;
 
     // rotate so min_i will be first
     for ( size_t i = 0; i < current_i; ++i ) {

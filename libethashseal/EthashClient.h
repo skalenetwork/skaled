@@ -42,7 +42,8 @@ public:
         std::shared_ptr< SnapshotManager > _snapshotManager,
         boost::filesystem::path const& _dbPath = {},
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024}, bool isStartedFromSnapshot = false );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
+        bool isStartedFromSnapshot = false );
     ~EthashClient();
 
     Ethash* ethash() const;

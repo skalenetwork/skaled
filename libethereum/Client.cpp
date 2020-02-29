@@ -172,10 +172,11 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
             m_snapshotManager->doSnapshot( 0 );
-//            this->last_snapshot_time = this->latestBlock().info().timestamp();
-//            std::cerr << "THIS LAST SNAPSHOT TIME: " << this->last_snapshot_time << '\n';
+            //            this->last_snapshot_time = this->latestBlock().info().timestamp();
+            //            std::cerr << "THIS LAST SNAPSHOT TIME: " << this->last_snapshot_time <<
+            //            '\n';
         } else {
-            //this->fillLastSnapshotTime();
+            // this->fillLastSnapshotTime();
         }
     }
 
@@ -370,55 +371,57 @@ size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
-        std::cerr << "CURRENT BLOCK: " << block_number << '\n';
-        assert(block_number == debug_block_id);
 
         int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
-        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) && block_number != 0) {
+        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
+             block_number != 0 ) {
             try {
+                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
                 std::cerr << "DOING SNAPSHOT: " << block_number << '\n';
-                std::cerr << "LAST TIMESTAMP: " << this->last_snapshot_time << '\n';
-                std::cerr << "CURRENT TIMESTAMP: " << _timestamp << '\n';
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            std::thread( [this, block_number/*, _timestamp*/, snapshotIntervalMs]() {
+            std::thread( [this, block_number, _timestamp, snapshotIntervalMs]() {
                 try {
-                    this->m_snapshotManager->computeSnapshotHash( block_number );
-//                    if ( block_number != 0 ) {
-//                        if ( this->last_snapshot_time == -1 ) {
-//                            this->last_snapshot_time = ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs ) + snapshotIntervalMs;
-//                        } else {
-//                            this->last_snapshot_time += snapshotIntervalMs;
-//                        }
-//                    }
                     if ( this->last_snapshot_time == -1 ) {
-                        this->last_snapshot_time = ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
+                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
                         if ( this->is_started_from_snapshot ) {
-                            this->last_snapshot_time += snapshotIntervalMs;
+                            this->last_snapshot_time =
+                                ( this->blockInfo( this->hashFromNumber( block_number ) )
+                                        .timestamp() /
+                                    uint64_t( snapshotIntervalMs ) ) *
+                                    uint64_t( snapshotIntervalMs ) +
+                                snapshotIntervalMs;
                         }
                     } else {
+                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
                         this->last_snapshot_time += snapshotIntervalMs;
                     }
+                    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                    this->m_snapshotManager->computeSnapshotHash( block_number );
+                    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                    std::cerr << "WAS COMPUTING SNAPSHOT HASH FOR: "
+                              << std::chrono::duration_cast< std::chrono::microseconds >(
+                                     end - begin )
+                                     .count()
+                              << '\n';
+                    //                    if ( this->last_snapshot_time == -1 ) {
+                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                    //                        this->last_snapshot_time = ( this->blockInfo(
+                    //                        this->hashFromNumber( block_number ) ).timestamp() /
+                    //                        uint64_t( snapshotIntervalMs ) ) * uint64_t(
+                    //                        snapshotIntervalMs );
+                    //                        //this->last_snapshot_time = ( _timestamp / uint64_t(
+                    //                        snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs
+                    //                        ); if ( this->is_started_from_snapshot ) {
+                    //                            this->last_snapshot_time += snapshotIntervalMs;
+                    //                        }
+                    //                    } else {
+                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                    //                        this->last_snapshot_time += snapshotIntervalMs;
+                    //                    }
                     this->last_snapshoted_block = block_number;
-
-//                    if ( this->last_snapshot_time == -1 ) {
-//                        this->last_snapshot_time = ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
-//                        if ( block_number != 0 ) {
-//                            this->last_snapshot_time += snapshotIntervalMs;
-//                        }
-//                    } else {
-//                        this->last_snapshot_time += snapshotIntervalMs;
-//                    }
-
-
-
-//                    this->last_snapshot_time =
-//                        this->last_snapshot_time == -1 ?
-//                            ( _timestamp / uint64_t( snapshotIntervalMs ) ) *
-//                                    uint64_t( snapshotIntervalMs ) :
-//                            this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
