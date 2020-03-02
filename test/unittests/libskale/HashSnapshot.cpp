@@ -59,7 +59,8 @@ public:
             }
         }
 
-        signatures::Bls obj = signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.n );
+        signatures::Bls obj =
+            signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
         std::vector< size_t > idx( _chainParams.sChain.t );
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;

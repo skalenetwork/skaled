@@ -1194,7 +1194,7 @@ int main( int argc, char** argv ) try {
     bool isStartedFromSnapshot = false;
     if ( vm.count( "download-snapshot" ) /*||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
-        iStartedFromSnapshot = true;
+        isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( vm.count( "download-snapshot" ) ) {
             if ( !vm.count( "public-key" ) ) {
