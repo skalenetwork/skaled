@@ -1598,8 +1598,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
 
 BOOST_FIXTURE_TEST_SUITE( FilestoragePrecompiledTests, FilestorageFixture )
 
-BOOST_AUTO_TEST_CASE( createFile, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( createFile ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
 
     std::string fileName = "test_file_createFile";
@@ -1646,8 +1645,7 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     BOOST_REQUIRE( res.second == buffer );
 }
 
-BOOST_AUTO_TEST_CASE( getFileSize, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( getFileSize ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
@@ -1666,8 +1664,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile.string() + "._hash" ) );
 }
 
-BOOST_AUTO_TEST_CASE( createDirectory, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( createDirectory ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createDirectory" );
 
     std::string dirName = "test_dir";
