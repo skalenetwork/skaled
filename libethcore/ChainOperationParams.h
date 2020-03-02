@@ -119,8 +119,7 @@ public:
     u256 id;
     Address owner;
     std::vector< sChainNode > nodes;
-    size_t n;
-    size_t t;
+    size_t t = 1;
 
     SChain() {
         name = "TestChain";

@@ -6,20 +6,10 @@ namespace dev {
 namespace db {
 
 namespace {
-uint64_t dir_size( const boost::filesystem::path& _path ) {
-    std::vector< boost::filesystem::path > files;
-    boost::filesystem::create_directories( _path );
 
-    uint64_t size = 0;
+const std::string current_piece_mark_key =
+    "ead48ec575aaa7127384dee432fc1c02d9f6a22950234e5ecf59f35ed9f6e78d";
 
-    for ( boost::filesystem::directory_iterator it = boost::filesystem::directory_iterator( _path );
-          it != boost::filesystem::directory_iterator(); ++it ) {
-        if ( is_regular_file( *it ) ) {
-            size = size + boost::filesystem::file_size( *it );
-        }
-    }
-    return size;
-}
 }  // namespace
 
 ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
@@ -27,8 +17,7 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
     : base_path( _path ) {
     std::unique_lock< std::shared_mutex > lock( m_mutex );
 
-    size_t min_i;
-    uint64_t min_size;
+    size_t current_i = _nPieces;
 
     // open and find min size
     for ( size_t i = 0; i < _nPieces; ++i ) {
@@ -37,22 +26,33 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 
         pieces.emplace_back( db );
 
-        uint64_t size = dir_size( path );
-        if ( i == 0 || size < min_size ) {
-            min_size = size;
-            min_i = i;
-        }
+        if ( db->exists( current_piece_mark_key ) ) {
+            if ( current_i != _nPieces ) {
+                DatabaseError ex;
+                ex << errinfo_dbStatusCode( DatabaseStatus::Corruption )
+                   << errinfo_dbStatusString( "Rotating DB has more then one 'current' piece" )
+                   << errinfo_path( path.string() );
+                BOOST_THROW_EXCEPTION( ex );
+            }  // if error
+
+            current_i = i;
+        }  // if
+
     }  // for
 
+    // if newly created DB
+    if ( current_i == _nPieces )
+        current_i = 0;
+
     // rotate so min_i will be first
-    for ( size_t i = 0; i < min_i; ++i ) {
+    for ( size_t i = 0; i < current_i; ++i ) {
         std::unique_ptr< DatabaseFace > el = std::move( pieces.front() );
         pieces.pop_front();
         pieces.push_back( std::move( el ) );
     }  // for
 
     this->current_piece = pieces.front().get();
-    this->current_piece_file_no = min_i;
+    this->current_piece_file_no = current_i;
 }
 
 void ManuallyRotatingLevelDB::rotate() {
@@ -60,6 +60,8 @@ void ManuallyRotatingLevelDB::rotate() {
 
     assert( this->batch_cache.empty() );
     // we delete one below and make it current
+
+    current_piece->kill( current_piece_mark_key );
 
     int old_db_no = current_piece_file_no - 1;
     if ( old_db_no < 0 )
@@ -74,6 +76,8 @@ void ManuallyRotatingLevelDB::rotate() {
 
     current_piece_file_no = old_db_no;
     current_piece = new_db;
+
+    current_piece->insert( current_piece_mark_key, std::string( "" ) );
 }
 
 std::string ManuallyRotatingLevelDB::lookup( Slice _key ) const {
