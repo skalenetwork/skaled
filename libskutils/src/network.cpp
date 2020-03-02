@@ -350,6 +350,28 @@ oom4:
     // failed1:
     return cce;
 }
+bool is_tcp_port_listening( int ipVersion, const sockaddr46& sa46, int nPort ) {
+    sockaddr46 sa46nc = sa46;
+    int fd = socket( ( ipVersion == 6 ) ? AF_INET6 : AF_INET, SOCK_STREAM, 0 );
+    if ( fd < 0 )
+        return false;  // ???
+    if ( nPort > 0 ) {
+        if ( ipVersion == 6 )
+            sa46nc.sa6.sin6_port = htons( nPort );
+        else
+            sa46nc.sa4.sin_port = htons( nPort );
+    }
+
+    bool isListening =
+        ( connect( fd,
+              ( ipVersion == 6 ) ? ( ( struct sockaddr* ) &sa46nc.sa6 ) :
+                                   ( ( struct sockaddr* ) &sa46nc.sa4 ),
+              ( ipVersion == 6 ) ? sizeof( sa46nc.sa6 ) : sizeof( sa46nc.sa4 ) ) < 0 ) ?
+            false :
+            true;
+    close( fd );
+    return isListening;
+}
 
 bool fd_configure_pipe( int fd ) {
     if ( fd == -1 )
@@ -543,6 +565,22 @@ std::string x509_2_str( X509_NAME* x509_obj ) {
     return X509_NAME_oneline( x509_obj, buf, sizeof( buf ) );
 }
 #endif  // (defined SKUTILS_WITH_SSL)
+
+std::pair< std::string, std::string > find_iface_or_ip_address(
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfo,
+    const char* strFindWhat ) {  // first-interface name, second-address
+    std::pair< std::string, std::string > rv;
+    if ( strFindWhat && strFindWhat[0] ) {
+        for ( const std::pair< std::string, std::string >& walk : listIfaceInfo ) {
+            if ( strcasecmp( walk.first.c_str(), strFindWhat ) == 0 ||
+                 strcasecmp( walk.second.c_str(), strFindWhat ) == 0 ) {
+                rv = walk;
+                break;
+            }
+        }
+    }
+    return rv;
+}
 
 std::list< std::pair< std::string, std::string > > get_machine_ip_addresses(
     bool is4, bool is6 ) {  // first-interface name, second-address

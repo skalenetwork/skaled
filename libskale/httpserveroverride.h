@@ -200,7 +200,7 @@ protected:
     std::atomic_bool m_isRunning = false;
     std::atomic_bool m_isInLoop = false;
     int ipVer_;
-    std::string strBindAddr_;
+    std::string strBindAddr_, strInterfaceName_;
     std::string m_strScheme_;
     std::string m_strSchemeUC;
     int m_nPort = -1;
@@ -250,7 +250,7 @@ public:
     std::shared_ptr< skutils::http::server > m_pServer;
     SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort, const char* cert_path = nullptr,
         const char* private_key_path = nullptr, int nServerIndex = -1,
-        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
+        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ );
     ~SkaleRelayHTTP() override;
 };  /// class SkaleRelayHTTP
 
@@ -298,7 +298,7 @@ private:
     bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex,
-        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT );
+        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ );
     bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex );
@@ -306,19 +306,20 @@ private:
     bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL );
 
 public:
-    size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+    size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
     virtual bool StartListening() override;
     virtual bool StopListening() override;
 
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
-private:
     void logPerformanceWarning( double lfExecutionDuration, int ipVer, const char* strProtocol,
         int nServerIndex, const char* strOrigin, const char* strMethod, nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
         const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
         int nServerIndex, const char* strOrigin, const std::string& strPayload );
+
+private:
     const std::string m_strAddrHTTP4;
     const int m_nBasePortHTTP4;
     const std::string m_strAddrHTTP6;

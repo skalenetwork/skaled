@@ -292,6 +292,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 // bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
 //    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
+//    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+//      return false;
+//    }	
 //    BlockChain bc( _chainParams, _dbPath, _forceAction );
 //    unsigned currentNumber = bc.number();
 
@@ -332,6 +335,19 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 }  // namespace
 
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_4() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos4 =
+        skutils::network::get_machine_ip_addresses( true, false );  // IPv4
+    return listIfaceInfos4;
+}
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_6() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos6 =
+        skutils::network::get_machine_ip_addresses( false, true );  // IPv6
+    return listIfaceInfos6;
+}
+
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -339,6 +355,25 @@ int main( int argc, char** argv ) try {
     BlockHeader::useTimestampHack = false;
 
     setCLocale();
+
+    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
+        if ( nSignalNo == SIGPIPE )
+            return;
+        bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        skutils::signal::g_bStop = true;
+        std::string strMessagePrefix = stopWasRaisedBefore ?
+                                           cc::error( "\nStop flag was already raised on. " ) +
+                                               cc::fatal( "WILL FORCE TERMINATE." ) +
+                                               cc::error( " Caught (second) signal. " ) :
+                                           cc::error( "\nCaught (first) signal. " );
+        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
+                  << "\n";
+        std::cerr.flush();
+        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        if ( stopWasRaisedBefore )
+            _exit( 13 );
+    } );
+
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -374,6 +409,11 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
     bool bEnabledDebugBehaviorAPIs = false;
+
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
+        get_machine_ip_addresses_4();  // IPv4
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos6 =
+        get_machine_ip_addresses_6();  // IPv6
 
     string strJsonAdminSessionKey;
     ChainParams chainParams;
@@ -528,6 +568,9 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
+    addClientOption( "public-key",
+        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
+        "Collects old common public key from chain to verify snapshot before starts from it" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
@@ -1151,7 +1194,20 @@ int main( int argc, char** argv ) try {
     bool isStartedFromSnapshot = false;
     if ( vm.count( "download-snapshot" ) /*||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
-        isStartedFromSnapshot = true;
+	iStartedFromSnapshot = true;
+        std::string commonPublicKey = "";
+        if ( vm.count( "download-snapshot" ) ) {
+            if ( !vm.count( "public-key" ) ) {
+                // for tests only! remove it later
+                commonPublicKey = "";
+                //            throw std::runtime_error(
+                //                cc::error( "Missing --public-key option - cannot download
+                //                snapshot" )
+                //                );
+            } else {
+                commonPublicKey = vm["public-key"].as< std::string >();
+            }
+        }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
@@ -1163,7 +1219,7 @@ int main( int argc, char** argv ) try {
         }
 
         if ( blockNumber > 0 ) {
-            SnapshotHashAgent snapshotHashAgent( chainParams );
+            SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
             libff::init_alt_bn128_params();
             std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1797,7 +1853,7 @@ int main( int argc, char** argv ) try {
             //
             //
             size_t maxConnections = 0,
-                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT,
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServers = 1;
 
             // First, get "max-connections" true/false from config.json
@@ -1820,7 +1876,7 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )
