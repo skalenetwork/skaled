@@ -170,7 +170,6 @@ ChainParams ChainParams::loadConfig(
 
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
-        s.n = n;
         s.t = t;
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );

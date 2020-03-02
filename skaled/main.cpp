@@ -290,46 +290,48 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         fs::remove( saveTo );
 }
 
-bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
-    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
-    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
-        return false;
-    }
-    BlockChain bc( _chainParams, _dbPath, _forceAction );
-    unsigned currentNumber = bc.number();
+// bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
+//    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
+//    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+//      return false;
+//    }
+//    BlockChain bc( _chainParams, _dbPath, _forceAction );
+//    unsigned currentNumber = bc.number();
 
-    uint64_t idx =
-        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
-    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
-        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
-    }
+//    uint64_t idx =
+//        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
+//        _chainParams.sChain.nodes.size() + 1;
+//    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
+//        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
+//        _chainParams.sChain.nodes.size() + 1;
+//    }
 
-    std::string httpUrl = std::string( "http://" ) +
-                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
-                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
-    skutils::rest::client cli;
-    if ( !cli.open( httpUrl ) ) {
-        throw std::runtime_error( "REST failed to connect to server" );
-    }
+//    std::string httpUrl = std::string( "http://" ) +
+//                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
+//                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+//    skutils::rest::client cli;
+//    if ( !cli.open( httpUrl ) ) {
+//        throw std::runtime_error( "REST failed to connect to server" );
+//    }
 
-    nlohmann::json joIn = nlohmann::json::object();
-    joIn["jsonrpc"] = "2.0";
-    joIn["method"] = "skale_getLatestBlockNumber";
-    joIn["params"] = nlohmann::json::object();
-    skutils::rest::data_t d = cli.call( joIn );
-    if ( d.empty() ) {
-        throw std::runtime_error(
-            "cannot get blockNumber to decide whether download snapshot or not" );
-    }
-    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
+//    nlohmann::json joIn = nlohmann::json::object();
+//    joIn["jsonrpc"] = "2.0";
+//    joIn["method"] = "skale_getLatestBlockNumber";
+//    joIn["params"] = nlohmann::json::object();
+//    skutils::rest::data_t d = cli.call( joIn );
+//    if ( d.empty() ) {
+//        throw std::runtime_error(
+//            "cannot get blockNumber to decide whether download snapshot or not" );
+//    }
+//    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+//    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
 
-    if ( currentNumber + 10000 < blockNumber ) {
-        return true;
-    }
+//    if ( currentNumber + 10000 < blockNumber ) {
+//        return true;
+//    }
 
-    return false;
-}
+//    return false;
+//}
 
 }  // namespace
 
@@ -589,6 +591,7 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
+
     po::options_description vmOptions = vmProgramOptions( c_lineWidth );
 
 
@@ -1188,8 +1191,10 @@ int main( int argc, char** argv ) try {
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
                               "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
-    if ( vm.count( "download-snapshot" ) ||
-         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting ) ) {
+    bool isStartedFromSnapshot = false;
+    if ( vm.count( "download-snapshot" ) /*||
+         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
+        isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( vm.count( "download-snapshot" ) ) {
             if ( !vm.count( "public-key" ) ) {
@@ -1352,11 +1357,11 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1767,24 +1772,6 @@ int main( int argc, char** argv ) try {
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
              nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
              nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
-            //
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::attention( "IPv4 interfaces and addresses:" );
-            for ( const auto& iface_ref : listIfaceInfos4 ) {
-                // iface_ref: first-interface name, second-address
-                clog( VerbosityInfo, "main" )
-                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
-                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
-            }
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::attention( "IPv6 interfaces and addresses:" );
-            for ( const auto& iface_ref : listIfaceInfos6 ) {
-                // iface_ref: first-interface name, second-address
-                clog( VerbosityInfo, "main" )
-                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
-                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
-            }
-            //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //

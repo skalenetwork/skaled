@@ -64,6 +64,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
+    std::cout << "CURRENT CLIENT BLOCK: " << m_client.number() << std::endl;
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
     return make_unique< ConsensusStub >( _extFace, m_client.number() );
@@ -281,6 +282,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     return out_vector;
 }
 
+int debug_block_id = 0;
+
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
     LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
@@ -293,8 +296,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+        debug_block_id = _blockID;
         // this is need for testing. should add better handling
-        assert( dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() ) == _stateRoot );
+        _stateRoot = dev::u256( 0 );
+        //        assert(
+        //            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber(
+        //            _blockID ) )
+        //                                  .stateRoot() ) == _stateRoot );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
@@ -351,7 +359,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     total_arrived += out_txns.size();
 
-    // assert( _blockID == m_client.number() + 1 );
+    assert( _blockID == m_client.number() + 1 );
 
     m_debugTracer.tracepoint( "import_block" );
 

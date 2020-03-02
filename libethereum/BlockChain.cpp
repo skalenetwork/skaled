@@ -283,7 +283,8 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash()
+    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
+           << m_lastBlockNumber << ' '
            << ( lastMinor == c_minorProtocolVersion ? cc::success( "(rebuild not needed)" ) :
                                                       cc::warn( "*** REBUILD NEEDED ***" ) );
 
