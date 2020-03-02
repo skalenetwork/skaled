@@ -325,7 +325,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
     }
 #endif
     // m_state = m_state.startNew();
-    resetCurrent();
+    resetCurrent( m_currentBlock.timestamp() );
     assert( m_state.checkVersion() );
     return ret;
 }

@@ -80,7 +80,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool isStartedFromSnapshot )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -88,7 +88,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
       m_working( chainParams().accountStartNonce ),
-      m_snapshotManager( _snapshotManager ) {
+      m_snapshotManager( _snapshotManager ),
+      is_started_from_snapshot( isStartedFromSnapshot ) {
     init( _dbPath, _forceAction, _networkID );
 }
 
@@ -171,9 +172,11 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
             m_snapshotManager->doSnapshot( 0 );
-            this->last_snapshot_time = this->latestBlock().info().timestamp();
+            //            this->last_snapshot_time = this->latestBlock().info().timestamp();
+            //            std::cerr << "THIS LAST SNAPSHOT TIME: " << this->last_snapshot_time <<
+            //            '\n';
         } else {
-            this->fillLastSnapshotTime();
+            // this->fillLastSnapshotTime();
         }
     }
 
@@ -362,26 +365,63 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
+extern int debug_block_id;
+
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
 
         int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
-        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
+             block_number != 0 ) {
             try {
+                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                std::cerr << "DOING SNAPSHOT: " << block_number << '\n';
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
             std::thread( [this, block_number, _timestamp, snapshotIntervalMs]() {
                 try {
+                    if ( this->last_snapshot_time == -1 ) {
+                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                        if ( this->is_started_from_snapshot ) {
+                            this->last_snapshot_time =
+                                ( this->blockInfo( this->hashFromNumber( block_number ) )
+                                        .timestamp() /
+                                    uint64_t( snapshotIntervalMs ) ) *
+                                    uint64_t( snapshotIntervalMs ) +
+                                snapshotIntervalMs;
+                        }
+                    } else {
+                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                        this->last_snapshot_time += snapshotIntervalMs;
+                    }
+                    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                     this->m_snapshotManager->computeSnapshotHash( block_number );
+                    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                    std::cerr << "WAS COMPUTING SNAPSHOT HASH FOR: "
+                              << std::chrono::duration_cast< std::chrono::microseconds >(
+                                     end - begin )
+                                     .count()
+                              << '\n';
+                    //                    if ( this->last_snapshot_time == -1 ) {
+                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                    //                        this->last_snapshot_time = ( this->blockInfo(
+                    //                        this->hashFromNumber( block_number ) ).timestamp() /
+                    //                        uint64_t( snapshotIntervalMs ) ) * uint64_t(
+                    //                        snapshotIntervalMs );
+                    //                        //this->last_snapshot_time = ( _timestamp / uint64_t(
+                    //                        snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs
+                    //                        ); if ( this->is_started_from_snapshot ) {
+                    //                            this->last_snapshot_time += snapshotIntervalMs;
+                    //                        }
+                    //                    } else {
+                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+                    //                        this->last_snapshot_time += snapshotIntervalMs;
+                    //                    }
                     this->last_snapshoted_block = block_number;
-                    this->last_snapshot_time = this->last_snapshot_time == -1 ?
-                                                   ( _timestamp / uint64_t( snapshotIntervalMs ) ) *
-                                                       uint64_t( snapshotIntervalMs ) :
-                                                   this->last_snapshot_time + snapshotIntervalMs;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash(). Exiting";
@@ -973,39 +1013,35 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::fillLastSnapshotTime() {
-    int i = this->number();
     int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
-    for ( ;; ) {
-        uint64_t last_timestamp = this->blockInfo( this->hashFromNumber( i ) ).timestamp();
-        uint64_t proposed_last_snapshot_time =
-            ( last_timestamp / snapshotIntervalMs ) * snapshotIntervalMs;
-        while ( this->blockInfo( this->hashFromNumber( i - 1 ) ).timestamp() + snapshotIntervalMs >=
-                    proposed_last_snapshot_time &&
-                i > 0 ) {
-            --i;
-        }
-        if ( i == 0 ) {
-            this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
-            break;
-        }
-        try {
-            bool snapshotExists = this->m_snapshotManager->isSnapshotHashPresent( i );
-            if ( snapshotExists ) {
+    uint64_t proposed_last_snapshot_time =
+        ( this->blockInfo( this->hashFromNumber( this->number() ) ).timestamp() /
+            snapshotIntervalMs ) *
+            snapshotIntervalMs +
+        this->blockInfo( this->hashFromNumber( 0 ) ).timestamp() % snapshotIntervalMs;
+    int i = this->number();
+    for ( ; i > 0; --i ) {
+        if ( this->blockInfo( this->hashFromNumber( i ) ).timestamp() + snapshotIntervalMs >=
+             proposed_last_snapshot_time ) {
+            continue;
+        } else {
+            try {
+                bool snapshotExists = this->m_snapshotManager->isSnapshotHashPresent( i );
+                if ( snapshotExists ) {
+                    this->last_snapshot_time = proposed_last_snapshot_time;
+                    this->last_snapshoted_block = i;
+                    break;
+                } else {
+                }
+            } catch ( SnapshotManager::SnapshotAbsent& ) {
                 continue;
-            } else {
-                this->last_snapshot_time = proposed_last_snapshot_time;
-                this->last_snapshoted_block = i;
-                break;
+            } catch ( SnapshotManager::CannotRead& ) {
+                continue;
             }
-        } catch ( SnapshotManager::SnapshotAbsent& ) {
-            this->last_snapshot_time = proposed_last_snapshot_time;
-            this->last_snapshoted_block = i;
-            break;
-        } catch ( SnapshotManager::CannotRead& ) {
-            this->last_snapshot_time = proposed_last_snapshot_time;
-            this->last_snapshoted_block = i;
-            break;
         }
+    }
+    if ( i == 0 ) {
+        this->last_snapshot_time = this->blockInfo( this->hashFromNumber( 0 ) ).timestamp();
     }
 }
 
