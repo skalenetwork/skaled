@@ -294,7 +294,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 //    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
 //    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
 //      return false;
-//    }	
+//    }
 //    BlockChain bc( _chainParams, _dbPath, _forceAction );
 //    unsigned currentNumber = bc.number();
 
@@ -1194,7 +1194,7 @@ int main( int argc, char** argv ) try {
     bool isStartedFromSnapshot = false;
     if ( vm.count( "download-snapshot" ) /*||
          isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
-	iStartedFromSnapshot = true;
+        iStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( vm.count( "download-snapshot" ) ) {
             if ( !vm.count( "public-key" ) ) {
