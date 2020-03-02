@@ -354,6 +354,25 @@ int main( int argc, char** argv ) try {
 
     setCLocale();
 
+    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
+        if ( nSignalNo == SIGPIPE )
+            return;
+        bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        skutils::signal::g_bStop = true;
+        std::string strMessagePrefix = stopWasRaisedBefore ?
+                                           cc::error( "\nStop flag was already raised on. " ) +
+                                               cc::fatal( "WILL FORCE TERMINATE." ) +
+                                               cc::error( " Caught (second) signal. " ) :
+                                           cc::error( "\nCaught (first) signal. " );
+        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
+                  << "\n";
+        std::cerr.flush();
+        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        if ( stopWasRaisedBefore )
+            _exit( 13 );
+    } );
+
+
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -570,7 +589,6 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
-
     po::options_description vmOptions = vmProgramOptions( c_lineWidth );
 
 
