@@ -270,11 +270,11 @@ Json::Value Skale::skale_downloadSnapshotFragment( const Json::Value& request ) 
     }
 }
 
-std::string Skale::skale_getLatestSnapshotBlockNumber() {
+std::string Skale::skale_getLatestBlockNumber() {
     return std::to_string( this->m_client.number() );
 }
 
-std::string Skale::skale_getLatestBlockNumber() {
+std::string Skale::skale_getLatestSnapshotBlockNumber() {
     int64_t response = this->m_client.getLatestSnapshotBlockNumer();
     return response > 0 ? std::to_string( response ) : "earliest";
 }
@@ -294,7 +294,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
         obj["messageHash"] = snapshot_hash.hex();
-        obj["n"] = chainParams.sChain.n;
+        obj["n"] = chainParams.sChain.nodes.size();
         obj["t"] = chainParams.sChain.t;
 
         auto it = std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
