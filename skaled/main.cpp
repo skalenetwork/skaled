@@ -519,6 +519,9 @@ int main( int argc, char** argv ) try {
         "means unlimited)" );
     addClientOption( "max-http-queues", po::value< size_t >()->value_name( "<count>" ),
         "Max number of handler queues for HTTP/S connections per endpoint server" );
+    addClientOption(
+        "async-http-transfer-mode", "Use asynchronous HTTP(S) query handling, default mode" );
+    addClientOption( "sync-http-transfer-mode", "Use synchronous HTTP(S) query handling" );
 
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
@@ -1855,6 +1858,7 @@ int main( int argc, char** argv ) try {
             size_t maxConnections = 0,
                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServers = 1;
+            bool is_async_http_transfer_mode = true;
 
             // First, get "max-connections" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1876,11 +1880,27 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
+                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )
-                maxConnections = vm["max-http-queues"].as< size_t >();
+                max_http_handler_queues = vm["max-http-queues"].as< size_t >();
+
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    is_async_http_transfer_mode =
+                        joConfig["skaleConfig"]["nodeInfo"]["async-http-transfer-mode"]
+                            .get< bool >();
+                } catch ( ... ) {
+                    is_async_http_transfer_mode = true;
+                }
+            }
+            if ( vm.count( "async-http-transfer-mode" ) )
+                is_async_http_transfer_mode = true;
+            if ( vm.count( "sync-http-transfer-mode" ) )
+                is_async_http_transfer_mode = false;
 
             // First, get "acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1944,6 +1964,9 @@ int main( int argc, char** argv ) try {
                 << cc::debug( ".......................... " )
                 << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
                                                        cc::notice( "default" ) );
+            clog( VerbosityInfo, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
+                                          << cc::debug( "........................ " )
+                                          << cc::yn( is_async_http_transfer_mode );
             //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
@@ -1961,6 +1984,7 @@ int main( int argc, char** argv ) try {
                 nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
                 strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
+            skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
