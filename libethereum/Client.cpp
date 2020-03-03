@@ -386,10 +386,9 @@ size_t Client::importTransactionsAsBlock(
             std::cerr << "TIMESTAMP: " << _timestamp << '\n';
             if ( this->last_snapshot_time == -1 ) {
                 this->last_snapshot_time =
-                    ( this->blockInfo( this->hashFromNumber( block_number ) )
-                            .timestamp() /
+                    ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() /
                         uint64_t( snapshotIntervalMs ) ) *
-                        uint64_t( snapshotIntervalMs );
+                    uint64_t( snapshotIntervalMs );
             } else {
                 this->last_snapshot_time += snapshotIntervalMs;
             }
