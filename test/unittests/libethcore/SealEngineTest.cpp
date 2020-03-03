@@ -52,7 +52,8 @@ public:
 BOOST_FIXTURE_TEST_SUITE( SealEngineTests, TestOutputHelperFixture )
 BOOST_FIXTURE_TEST_SUITE( UnsignedTransactionTests, UnsignedTransactionFixture )
 
-BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidBeforeExperimental ) {
+BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidBeforeExperimental,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Unsigned transaction (having empty optional for signature)  should be valid otherwise
     // eth_call would fail All transactions coming from the network or RPC methods like
     // sendRawTransaction have their optional<Signature> initialized,

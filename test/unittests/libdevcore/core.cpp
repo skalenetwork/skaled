@@ -36,7 +36,8 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( CoreLibTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( toHex ) {
+BOOST_AUTO_TEST_CASE( toHex, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     dev::bytes b = dev::fromHex( "f0e1d2c3b4a59687" );
     BOOST_CHECK_EQUAL( dev::toHex( b ), "f0e1d2c3b4a59687" );
     BOOST_CHECK_EQUAL( dev::toHexPrefixed( b ), "0xf0e1d2c3b4a59687" );
@@ -48,13 +49,15 @@ BOOST_AUTO_TEST_CASE( toHex ) {
         "0x705a1849c02140e7197fbde82987a9eb623f97e32fc479a3cd8e4b3b52dcc4b2" );
 }
 
-BOOST_AUTO_TEST_CASE( toCompactHex ) {
+BOOST_AUTO_TEST_CASE( toCompactHex, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     dev::u256 i( "0x123456789abcdef" );
     BOOST_CHECK_EQUAL( dev::toCompactHex( i ), "0123456789abcdef" );
     BOOST_CHECK_EQUAL( dev::toCompactHexPrefixed( i ), "0x0123456789abcdef" );
 }
 
-BOOST_AUTO_TEST_CASE( byteRef ) {
+BOOST_AUTO_TEST_CASE( byteRef, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "bytesRef copyTo and toString...";
     dev::bytes originalSequence =
         dev::fromHex( "0102030405060708091011121314151617181920212223242526272829303132" );
@@ -68,7 +71,8 @@ BOOST_AUTO_TEST_CASE( byteRef ) {
         out.toBytes() == originalSequence, "Error when h256::ref().copyTo(dev::bytesRef out)" );
 }
 
-BOOST_AUTO_TEST_CASE( isHex ) {
+BOOST_AUTO_TEST_CASE( isHex, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_CHECK( dev::isHex( "0x" ) );
     BOOST_CHECK( dev::isHex( "0xA" ) );
     BOOST_CHECK( dev::isHex( "0xAB" ) );

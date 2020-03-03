@@ -241,10 +241,10 @@ BOOST_FIXTURE_TEST_SUITE( TransactionTests, TransactionTestFixture )
 BOOST_AUTO_TEST_CASE( ttAddress ) {}
 BOOST_AUTO_TEST_CASE( ttData ) {}
 BOOST_AUTO_TEST_CASE( ttGasLimit ) {}
-BOOST_AUTO_TEST_CASE( ttGasPrice ) {}
-BOOST_AUTO_TEST_CASE( ttNonce ) {}
-BOOST_AUTO_TEST_CASE( ttRSValue ) {}
-BOOST_AUTO_TEST_CASE( ttValue ) {}
+BOOST_AUTO_TEST_CASE( ttGasPrice, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( ttNonce, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( ttRSValue, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( ttValue, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( ttVValue ) {}
 BOOST_AUTO_TEST_CASE( ttSignature ) {}
 BOOST_AUTO_TEST_CASE( ttWrongRLP ) {}

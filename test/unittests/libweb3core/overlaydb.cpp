@@ -34,7 +34,7 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( basicUsage ) {
+BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
     std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
     BOOST_REQUIRE( db );
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE( basicUsage ) {
     BOOST_CHECK_EQUAL( odb.lookup( h256( 41 ) ), value );
 }
 
-BOOST_AUTO_TEST_CASE( auxMem ) {
+BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
     std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
     BOOST_REQUIRE( db );
