@@ -382,22 +382,19 @@ size_t Client::importTransactionsAsBlock(
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            std::thread( [this, block_number, _timestamp, snapshotIntervalMs]() {
+            std::cerr << "LAST SNAPSHOT: " << this->last_snapshot_time << '\n';
+            std::cerr << "TIMESTAMP: " << _timestamp << '\n';
+            if ( this->last_snapshot_time == -1 ) {
+                this->last_snapshot_time =
+                    ( this->blockInfo( this->hashFromNumber( block_number ) )
+                            .timestamp() /
+                        uint64_t( snapshotIntervalMs ) ) *
+                        uint64_t( snapshotIntervalMs );
+            } else {
+                this->last_snapshot_time += snapshotIntervalMs;
+            }
+            std::thread( [this, block_number]() {
                 try {
-                    if ( this->last_snapshot_time == -1 ) {
-                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
-                        if ( this->is_started_from_snapshot ) {
-                            this->last_snapshot_time =
-                                ( this->blockInfo( this->hashFromNumber( block_number ) )
-                                        .timestamp() /
-                                    uint64_t( snapshotIntervalMs ) ) *
-                                    uint64_t( snapshotIntervalMs ) +
-                                snapshotIntervalMs;
-                        }
-                    } else {
-                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
-                        this->last_snapshot_time += snapshotIntervalMs;
-                    }
                     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -406,21 +403,6 @@ size_t Client::importTransactionsAsBlock(
                                      end - begin )
                                      .count()
                               << '\n';
-                    //                    if ( this->last_snapshot_time == -1 ) {
-                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
-                    //                        this->last_snapshot_time = ( this->blockInfo(
-                    //                        this->hashFromNumber( block_number ) ).timestamp() /
-                    //                        uint64_t( snapshotIntervalMs ) ) * uint64_t(
-                    //                        snapshotIntervalMs );
-                    //                        //this->last_snapshot_time = ( _timestamp / uint64_t(
-                    //                        snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs
-                    //                        ); if ( this->is_started_from_snapshot ) {
-                    //                            this->last_snapshot_time += snapshotIntervalMs;
-                    //                        }
-                    //                    } else {
-                    //                        std::cerr << "TIMESTAMP: " << _timestamp << '\n';
-                    //                        this->last_snapshot_time += snapshotIntervalMs;
-                    //                    }
                     this->last_snapshoted_block = block_number;
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
