@@ -1309,14 +1309,14 @@ void async_read_and_close_socket::run() {
 bool async_read_and_close_socket::step() {
     std::string strErrorDescription;
     try {
-        if ( retry_index_ >= retry_count_ )
-            throw std::runtime_error( "max attempt count done" );
         if ( !schedule_check_clock() ) {
             schedule_next_step();
             return true;
         }
+        if ( retry_index_ >= retry_count_ )
+            throw std::runtime_error( "max attempt count done" );
         ++retry_index_;
-        if ( detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( detail::poll_read( socket_, poll_ms_ ) || retry_index_ >= retry_count_ ) {
             socket_stream strm( socket_ );
             bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
             bool connection_close = false;
@@ -1407,7 +1407,7 @@ bool async_read_and_close_socket_SSL::step() {
                 SSL_accept( ssl_ );
         }
         ++retry_index_;
-        if ( detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( detail::poll_read( socket_, poll_ms_ ) || retry_index_ >= retry_count_ ) {
             SSL_socket_stream strm( socket_, ssl_ );
             bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
             bool connection_close = false;
