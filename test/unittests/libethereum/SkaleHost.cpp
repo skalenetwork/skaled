@@ -42,6 +42,7 @@ public:
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override {}
+    consensus_engine_status getStatus() const override {return CONSENSUS_ACTIVE;}
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
