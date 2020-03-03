@@ -63,7 +63,8 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE( ExtVmSuite, ExtVMConstantinopleFixTestFixture )
 
-BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero ) {
+BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
 
@@ -76,7 +77,8 @@ BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero ) {
     BOOST_CHECK_EQUAL( extVM.blockHash( 100 ), h256() );
 }
 
-BOOST_AUTO_TEST_CASE( BlockhashBeforeConstantinopleReliesOnLastHashes ) {
+BOOST_AUTO_TEST_CASE( BlockhashBeforeConstantinopleReliesOnLastHashes,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
 

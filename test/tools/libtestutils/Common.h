@@ -27,7 +27,10 @@
 #include <libdevcore/Log.h>
 #include <string>
 
+#include <test/tools/libtesteth/Options.h>
+
 #include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
 
 namespace dev {
 namespace test {
@@ -37,6 +40,9 @@ int randomNumber();
 Json::Value loadJsonFromFile( boost::filesystem::path const& _path );
 boost::filesystem::path toTestFilePath( std::string const& _filename );
 boost::filesystem::path getRandomPath();
+
+boost::unit_test::assertion_result option_all_tests( boost::unit_test::test_unit_id );
+boost::unit_test::assertion_result run_not_express( boost::unit_test::test_unit_id );
 
 }  // namespace test
 
