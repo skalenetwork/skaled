@@ -297,10 +297,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         debug_block_id = _blockID;
         // this is need for testing. should add better handling
-        //_stateRoot = dev::u256( 0 );
-        assert(
-            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
-                                  .stateRoot() ) == _stateRoot );
+        _stateRoot = dev::u256( 0 );
+//        assert(
+//            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
+//                                  .stateRoot() ) == _stateRoot );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
