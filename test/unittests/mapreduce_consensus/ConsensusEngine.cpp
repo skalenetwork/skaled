@@ -370,8 +370,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     // block 2
 
     v = transactions_vector( 9000 );
+    size_t i = 0;
     for ( auto& tx : v ) {
-        tx.push_back( 'b' );
+        for(size_t j=0; j<sizeof(i); ++j)
+            tx.push_back( ((unsigned char*)&i)[j] );
+        ++i;
     }  // for
 
     std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
