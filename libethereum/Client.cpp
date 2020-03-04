@@ -377,13 +377,10 @@ size_t Client::importTransactionsAsBlock(
              block_number != 0 ) {
             try {
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
-                std::cerr << "DOING SNAPSHOT: " << block_number << '\n';
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            std::cerr << "LAST SNAPSHOT: " << this->last_snapshot_time << '\n';
-            std::cerr << "TIMESTAMP: " << _timestamp << '\n';
             if ( this->last_snapshot_time == -1 ) {
                 this->last_snapshot_time =
                     ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() /
@@ -392,27 +389,57 @@ size_t Client::importTransactionsAsBlock(
             } else {
                 this->last_snapshot_time += snapshotIntervalMs;
             }
-            std::thread( [this, block_number]() {
-                try {
-                    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-                    this->m_snapshotManager->computeSnapshotHash( block_number );
-                    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                    std::cerr << "WAS COMPUTING SNAPSHOT HASH FOR: "
-                              << std::chrono::duration_cast< std::chrono::microseconds >(
-                                     end - begin )
-                                     .count()
-                              << '\n';
-                    this->last_snapshoted_block = block_number;
-                } catch ( const std::exception& ex ) {
-                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                           << " in computeSnapshotHash(). Exiting";
-                    ExitHandler::exitHandler( 0 );
-                } catch ( ... ) {
-                    cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
-                    ExitHandler::exitHandler( 0 );
+
+            if ( this->m_snapshotManager->isSnapshotHashPresent( block_number ) ) {
+                if ( this->is_started_from_snapshot ) {
+                    if ( this->last_snapshoted_block == -1 ) {
+                        this->last_snapshot_hashes.first =
+                            this->m_snapshotManager->getSnapshotHash( block_number );
+                    } else {
+                        if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
+                            this->last_snapshot_hashes.second =
+                                this->m_snapshotManager->getSnapshotHash( block_number );
+                        }
+                    }
+                } else {
+                    std::swap(
+                        this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
+                    this->last_snapshot_hashes.second =
+                        this->m_snapshotManager->getSnapshotHash( block_number );
                 }
-            } )
-                .detach();
+                this->last_snapshoted_block = block_number;
+            } else {
+                std::thread( [this, block_number]() {
+                    try {
+                        this->m_snapshotManager->computeSnapshotHash( block_number );
+                        if ( this->is_started_from_snapshot ) {
+                            if ( this->last_snapshoted_block == -1 ) {
+                                this->last_snapshot_hashes.first =
+                                    this->m_snapshotManager->getSnapshotHash( block_number );
+                            } else {
+                                if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
+                                    this->last_snapshot_hashes.second =
+                                        this->m_snapshotManager->getSnapshotHash( block_number );
+                                }
+                            }
+                        } else {
+                            std::swap( this->last_snapshot_hashes.first,
+                                this->last_snapshot_hashes.second );
+                            this->last_snapshot_hashes.second =
+                                this->m_snapshotManager->getSnapshotHash( block_number );
+                        }
+                        this->last_snapshoted_block = block_number;
+                    } catch ( const std::exception& ex ) {
+                        cerror << "CRITICAL " << dev::nested_exception_what( ex )
+                               << " in computeSnapshotHash(). Exiting";
+                        ExitHandler::exitHandler( 0 );
+                    } catch ( ... ) {
+                        cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
+                        ExitHandler::exitHandler( 0 );
+                    }
+                } )
+                    .detach();
+            }
             // TODO Make this number configurable
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
@@ -680,24 +707,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
                               << cc::num10( m_working.info().number() );
-        dev::h256 stateRootToSet;
-        if ( this->last_snapshoted_block == -1 ) {
-            secp256k1_sha256_t ctx;
-            secp256k1_sha256_initialize( &ctx );
-
-            dev::h256 empty_str = dev::h256( "" );
-            secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
-
-            dev::h256 empty_state_root_hash;
-            secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
-
-            stateRootToSet = empty_state_root_hash;
-        } else {
-            unsigned latest_snapshot = this->last_snapshoted_block;
-            dev::h256 state_root_hash = this->m_snapshotManager->getSnapshotHash( latest_snapshot );
-            stateRootToSet = state_root_hash;
-        }
-        m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
+        m_working.commitToSeal( bc(), m_extraData, this->last_snapshot_hashes.first );
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )
