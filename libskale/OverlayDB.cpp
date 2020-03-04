@@ -351,7 +351,6 @@ h256 OverlayDB::lookup( const dev::h160& _address, const dev::h256& _storageAddr
         string value = m_db->lookup( toSlice( getStorageKey( _address, _storageAddress ) ) );
         return h256( value, h256::ConstructFromStringType::FromBinary );
     } else {
-        clog( dev::VerbosityWarning, "overlaydb" ) << "Can't load data from db";
         return h256( 0 );
     }
 }
