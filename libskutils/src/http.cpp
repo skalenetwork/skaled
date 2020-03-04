@@ -1219,7 +1219,7 @@ void async_read_and_close_socket_base::run() {
 }
 
 bool async_read_and_close_socket_base::schedule_check_clock() {
-    if ( retry_index_ >= retry_count_ )
+    if ( retry_index_ > retry_count_ )
         return false;
     clock_t tpNow = clock();
     clock_t tpMin = ( clock_t )( ( retry_index_ == 0 ) ? retry_first_ms_ : retry_after_ms_ );
@@ -1313,12 +1313,12 @@ bool async_read_and_close_socket::step() {
             schedule_next_step();
             return true;
         }
-        if ( retry_index_ >= retry_count_ )
+        if ( retry_index_ > retry_count_ )
             throw std::runtime_error( "max attempt count done" );
         ++retry_index_;
-        if ( detail::poll_read( socket_, poll_ms_ ) || retry_index_ >= retry_count_ ) {
+        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
-            bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+            bool last_connection = true;
             bool connection_close = false;
             if ( callback_success_ ) {
                 bool is_fail = false;
@@ -1387,12 +1387,12 @@ void async_read_and_close_socket_SSL::run() {
 bool async_read_and_close_socket_SSL::step() {
     std::string strErrorDescription;
     try {
-        if ( retry_index_ >= retry_count_ )
-            throw std::runtime_error( "max attempt count done" );
         if ( !schedule_check_clock() ) {
             schedule_next_step();
             return true;
         }
+        if ( retry_index_ > retry_count_ )
+            throw std::runtime_error( "max attempt count done" );
         if ( retry_index_ == 0 ) {
             ssl_ = SSL_new( ctx_ );
             if ( !ssl_ )
@@ -1407,9 +1407,9 @@ bool async_read_and_close_socket_SSL::step() {
                 SSL_accept( ssl_ );
         }
         ++retry_index_;
-        if ( detail::poll_read( socket_, poll_ms_ ) || retry_index_ >= retry_count_ ) {
+        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
             SSL_socket_stream strm( socket_, ssl_ );
-            bool last_connection = ( retry_index_ >= retry_count_ ) ? true : false;
+            bool last_connection = true;
             bool connection_close = false;
             if ( callback_success_ ) {
                 bool is_fail = false;
@@ -1590,6 +1590,9 @@ bool server::parse_request_line( const char* s, request& req ) {
 void server::write_response(
     stream& strm, bool last_connection, const request& req, response& res ) {
     assert( res.status_ != -1 );
+    if ( res.status_ != 200 )
+        std::cout << "Failed to handle HTTP request, returning status " << res.status_
+                  << ", request body is: " << req.body_ << "\n";
     if ( 400 <= res.status_ && error_handler_ ) {
         error_handler_( req, res );
     }
