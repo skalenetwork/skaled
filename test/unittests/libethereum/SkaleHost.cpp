@@ -32,6 +32,7 @@ class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
     std::vector< u256 > block_gas_prices;
+    bool need_exit = false;
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
@@ -41,7 +42,10 @@ public:
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
-    void exitGracefully() override {}
+    void exitGracefully() override { need_exit = true; }
+    consensus_engine_status getStatus() const override {
+        return need_exit? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
+    }
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
