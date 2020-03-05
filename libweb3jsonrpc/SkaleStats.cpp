@@ -408,6 +408,43 @@ Json::Value SkaleStats::skale_imaInfo() {
     }
 }
 
+static std::string stat_prefix_align( const std::string& strSrc, size_t n, char ch ) {
+    std::string strDst = strSrc;
+    while ( strDst.length() < n )
+        strDst.insert( 0, 1, ch );
+    return strDst;
+}
+
+static std::string stat_encode_eth_call_data_chunck_address(
+    const std::string& strSrc, size_t alignWithZerosTo = 64 ) {
+    std::string strDst = strSrc;
+    strDst = skutils::tools::replace_all_copy( strDst, "0x", "" );
+    strDst = skutils::tools::replace_all_copy( strDst, "0X", "" );
+    strDst = stat_prefix_align( strDst, alignWithZerosTo, '0' );
+    return strDst;
+}
+
+static std::string stat_encode_eth_call_data_chunck_size_t(
+    const dev::u256& uSrc, size_t alignWithZerosTo = 64 ) {
+    std::string strDst = dev::toJS( uSrc );
+    strDst = skutils::tools::replace_all_copy( strDst, "0x", "" );
+    strDst = skutils::tools::replace_all_copy( strDst, "0X", "" );
+    strDst = stat_prefix_align( strDst, alignWithZerosTo, '0' );
+    return strDst;
+}
+
+static std::string stat_encode_eth_call_data_chunck_size_t(
+    const std::string& strSrc, size_t alignWithZerosTo = 64 ) {
+    dev::u256 uSrc( strSrc );
+    return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
+}
+
+static std::string stat_encode_eth_call_data_chunck_size_t(
+    const size_t nSrc, size_t alignWithZerosTo = 64 ) {
+    dev::u256 uSrc( nSrc );
+    return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
@@ -446,10 +483,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
-        bool bDebugSkipMessageProxyLogsSearch = false;
-        if ( joSkaleConfig_nodeInfo.count( "imaDebugSkipMessageProxyLogsSearch" ) > 0 )
-            bDebugSkipMessageProxyLogsSearch =
-                joSkaleConfig_nodeInfo["imaDebugSkipMessageProxyLogsSearch"].get< bool >();
+        bool bIsVerifyImaMessagesViaLogsSearch = false;  // default is false
+        if ( joSkaleConfig_nodeInfo.count( "verifyImaMessagesViaLogsSearch" ) > 0 )
+            bIsVerifyImaMessagesViaLogsSearch =
+                joSkaleConfig_nodeInfo["verifyImaMessagesViaLogsSearch"].get< bool >();
+        bool bIsImaMessagesViaContractCall = true;  // default is true
+        if ( joSkaleConfig_nodeInfo.count( "verifyImaMessagesViaContractCall" ) > 0 )
+            bIsImaMessagesViaContractCall =
+                joSkaleConfig_nodeInfo["verifyImaMessagesViaContractCall"].get< bool >();
         //
         if ( joSkaleConfig_nodeInfo.count( "imaMessageProxySChain" ) == 0 )
             throw std::runtime_error(
@@ -497,6 +538,49 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                   << cc::info( strAddressImaMessageProxyMainNet ) << "\n";
         const std::string strAddressImaMessageProxyMainNetLC =
             skutils::tools::to_lower( strAddressImaMessageProxyMainNet );
+        //
+        //
+        if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressSChain" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        const nlohmann::json& joAddressimaCallerAddressSChain =
+            joSkaleConfig_nodeInfo["imaCallerAddressSChain"];
+        if ( !joAddressimaCallerAddressSChain.is_string() )
+            throw std::runtime_error(
+                "error config.json file, bad type of value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        std::string strImaCallerAddressSChain =
+            joAddressimaCallerAddressSChain.get< std::string >();
+        if ( strImaCallerAddressSChain.empty() )
+            throw std::runtime_error(
+                "error config.json file, bad empty value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
+                  << cc::debug( " address is " ) << cc::info( strImaCallerAddressSChain ) << "\n";
+        const std::string strImaCallerAddressSChainLC =
+            skutils::tools::to_lower( strImaCallerAddressSChain );
+        //
+        if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressMainNet" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        const nlohmann::json& joAddressimaCallerAddressMainNet =
+            joSkaleConfig_nodeInfo["imaCallerAddressMainNet"];
+        if ( !joAddressimaCallerAddressMainNet.is_string() )
+            throw std::runtime_error(
+                "error config.json file, bad type of value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        std::string strImaCallerAddressMainNet =
+            joAddressimaCallerAddressMainNet.get< std::string >();
+        if ( strImaCallerAddressMainNet.empty() )
+            throw std::runtime_error(
+                "error config.json file, bad empty value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
+                  << cc::debug( " address is " ) << cc::info( strImaCallerAddressMainNet ) << "\n";
+        const std::string strImaCallerAddressMainNetLC =
+            skutils::tools::to_lower( strImaCallerAddressMainNet );
         //
         //
         std::string strAddressImaMessageProxy = ( strDirection == "M2S" ) ?
@@ -1008,7 +1092,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
             jarrTopic_dstChainHash.push_back( strTopic_dstChainHash );
             jarrTopic_msgCounter.push_back( strTopic_msgCounter );
-            if ( !bDebugSkipMessageProxyLogsSearch ) {
+            if ( bIsVerifyImaMessagesViaLogsSearch ) {
+                std::cout << strLogPrefix << " "
+                          << cc::debug(
+                                 "Will use contract event based verification of IMA message(s)" )
+                          << "\n";
                 //
                 //
                 //
@@ -1395,18 +1483,141 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     bTransactionWasFound = true;
                     break;
                 }
-                if ( ( !bTransactionWasFound ) && strDirection == "S2M" ) {
-                    // try call MessageProxyForSchain
-                }  // if ( (!bTransactionWasFound) && strDirection == "S2M" )
                 if ( !bTransactionWasFound ) {
                     std::cout << strLogPrefix << " "
-                              << cc::error( "No transaction was found for IMA message " )
+                              << cc::error( "No transaction was found in logs for IMA message " )
                               << cc::size10( nStartMessageIdx + idxMessage ) << cc::error( "." )
                               << "\n";
-                    throw std::runtime_error( "No transaction was found for IMA message " +
+                    throw std::runtime_error( "No transaction was found in logs for IMA message " +
                                               std::to_string( nStartMessageIdx + idxMessage ) );
-                }
-            }  // if( ! bDebugSkipMessageProxyLogsSearch )
+                }  // if ( !bTransactionWasFound )
+            }      // if( bIsVerifyImaMessagesViaLogsSearch )
+            else {
+                std::cout << strLogPrefix << " "
+                          << cc::warn(
+                                 "Skipped contract event based verification of IMA message(s)" )
+                          << "\n";
+                bool bTransactionWasVerifed = false;
+
+                /*
+function verifyOutgoingMessageData(
+uint256 idxMessage,
+address sender,
+address destinationContract,
+address to,
+uint256 amount
+) public view returns ( bool isValidMessage ) { ... ... ...
+--------------------------------------------------------------------------------
+0xa3c47860                                                       // signature
+0000000000000000000000000000000000000000000000000000000000000004 // idxMessage
+000000000000000000000000977c8115e8c2ab8bc9b6ed76d058c75055f915f9 // sender
+000000000000000000000000e410b2469709e878bff2de4b155bf9df5a16f0ea // destinationContract
+0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f // to
+0000000000000000000000000000000000000000000000000de0b6b3a7640000 // amount 1000000000000000000
+0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+                */
+                std::string strCallData =
+                    "0xa3c47860";  // signature as first 8 symbos of keccak256 from
+                                   // "verifyOutgoingMessageData(uint256,address,address,address,uint256)"
+                // encode value of ( nStartMessageIdx + idxMessage ) as "idxMessage" call argument
+                strCallData +=
+                    stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
+                // encode value of joMessageToSign.sender as "sender" call argument
+                strCallData += stat_encode_eth_call_data_chunck_address(
+                    joMessageToSign["sender"].get< std::string >() );
+                // encode value of joMessageToSign.destinationContract as "destinationContract"
+                // call argument
+                strCallData += stat_encode_eth_call_data_chunck_address(
+                    joMessageToSign["destinationContract"].get< std::string >() );
+                // encode value of joMessageToSign.to as "to" call argument
+                strCallData += stat_encode_eth_call_data_chunck_address(
+                    joMessageToSign["to"].get< std::string >() );
+                // encode value of joMessageToSign.amount as "amount" call argument
+                strCallData += stat_encode_eth_call_data_chunck_size_t(
+                    joMessageToSign["to"].get< std::string >() );
+                //
+                nlohmann::json joCallItem = nlohmann::json::object();
+                joCallItem["data"] = strCallData;                       // call data
+                joCallItem["from"] = strImaCallerAddressMainNetLC;      // caller address
+                joCallItem["to"] = strAddressImaMessageProxyMainNetLC;  // message proxy address
+                nlohmann::json jarrParams = nlohmann::json::array();
+                jarrParams.push_back( joCallItem );
+                jarrParams.push_back( std::string( "latest" ) );
+                nlohmann::json joCall = nlohmann::json::object();
+                joCall["jsonrpc"] = "2.0";
+                joCall["method"] = "eth_call";
+                joCall["params"] = jarrParams;
+                //
+                std::cout << strLogPrefix << cc::debug( " Will send " )
+                          << cc::notice( "message verification query" ) << cc::debug( " to " )
+                          << cc::notice( "message proxy" )
+                          << cc::debug( " smart contract for " ) + cc::info( strDirection ) +
+                                 cc::debug( " message: " )
+                          << cc::j( joCall ) << "\n";
+                if ( strDirection == "M2S" ) {
+                    skutils::rest::client cli( urlMainNet );
+                    skutils::rest::data_t d = cli.call( joCall );
+                    if ( d.empty() )
+                        throw std::runtime_error(
+                            strDirection +
+                            " eth_call to MessageProxy failed, empty data returned" );
+                    nlohmann::json joResult = nlohmann::json::parse( d.s_ )["result"];
+                    if ( joResult.is_string() ) {
+                        std::string strResult = joResult.get< std::string >();
+                        dev::u256 uResult( strResult ), uZero( "0" );
+                        if ( uResult != uZero )
+                            bTransactionWasVerifed = true;
+                    }
+                } else {
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    // to-do
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                    //
+                }  // else from if( strDirection == "M2S" )
+                if ( !bTransactionWasVerifed ) {
+                    std::cout << strLogPrefix << " "
+                              << cc::error(
+                                     "Transaction verification was not passed for IMA message " )
+                              << cc::size10( nStartMessageIdx + idxMessage ) << cc::error( "." )
+                              << "\n";
+                    throw std::runtime_error(
+                        "Transaction verification was not passed for IMA message " +
+                        std::to_string( nStartMessageIdx + idxMessage ) );
+                }  // if ( !bTransactionWasVerifed )
+            }      // else from if( bIsVerifyImaMessagesViaLogsSearch )
+            //
+            //
+            //
+            if ( bIsImaMessagesViaContractCall ) {
+                std::cout << strLogPrefix << " "
+                          << cc::debug(
+                                 "Will use contract call based verification of IMA message(s)" )
+                          << "\n";
+
+
+            }  // if( bIsImaMessagesViaContractCall )
+            else {
+                std::cout << strLogPrefix << " "
+                          << cc::warn(
+                                 "Skipped contract call based verification of IMA message(s)" )
+                          << "\n";
+            }  // else from if( bIsImaMessagesViaContractCall )
             //
             //
             // One more message is valid, concatenate it for further in-wallet signing
