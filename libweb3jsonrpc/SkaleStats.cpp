@@ -635,6 +635,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         // Extract needed request arguments, ensure they are all present and valid
         //
+        bool bOnlyVerify = false;
+        if ( joRequest.count( "onlyVerify" ) > 0 )
+            bOnlyVerify = joRequest["onlyVerify"].get< bool >();
         if ( joRequest.count( "startMessageIdx" ) == 0 )
             throw std::runtime_error(
                 "missing \"messages\"/\"startMessageIdx\" in call parameters" );
@@ -1491,8 +1494,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     throw std::runtime_error( "No transaction was found in logs for IMA message " +
                                               std::to_string( nStartMessageIdx + idxMessage ) );
                 }  // if ( !bTransactionWasFound )
-            }      // if( bIsVerifyImaMessagesViaLogsSearch )
-            else {
+                std::cout << strLogPrefix << cc::success( " Success, IMA message " )
+                          << cc::size10( nStartMessageIdx + idxMessage )
+                          << cc::success( " was found in logs." ) << "\n";
+            }  // if( bIsVerifyImaMessagesViaLogsSearch )
+            //
+            //
+            //
+            if ( bIsImaMessagesViaContractCall ) {
+                std::cout << strLogPrefix << " "
+                          << cc::debug(
+                                 "Will use contract call based verification of IMA message(s)" )
+                          << "\n";
                 std::cout << strLogPrefix << " "
                           << cc::warn(
                                  "Skipped contract event based verification of IMA message(s)" )
@@ -1535,12 +1548,16 @@ uint256 amount
                     joMessageToSign["to"].get< std::string >() );
                 // encode value of joMessageToSign.amount as "amount" call argument
                 strCallData += stat_encode_eth_call_data_chunck_size_t(
-                    joMessageToSign["to"].get< std::string >() );
+                    joMessageToSign["amount"].get< std::string >() );
                 //
                 nlohmann::json joCallItem = nlohmann::json::object();
-                joCallItem["data"] = strCallData;                       // call data
-                joCallItem["from"] = strImaCallerAddressMainNetLC;      // caller address
-                joCallItem["to"] = strAddressImaMessageProxyMainNetLC;  // message proxy address
+                joCallItem["data"] = strCallData;  // call data
+                joCallItem["from"] = ( strDirection == "M2S" ) ?
+                                         strImaCallerAddressMainNetLC :
+                                         strImaCallerAddressSChainLC;  // caller address
+                joCallItem["to"] = ( strDirection == "M2S" ) ?
+                                       strAddressImaMessageProxyMainNetLC :
+                                       strAddressImaMessageProxySChainLC;  // message proxy address
                 nlohmann::json jarrParams = nlohmann::json::array();
                 jarrParams.push_back( joCallItem );
                 jarrParams.push_back( std::string( "latest" ) );
@@ -1567,6 +1584,9 @@ uint256 amount
                         joResult = nlohmann::json::parse( d.s_ )["result"];
                         if ( joResult.is_string() ) {
                             std::string strResult = joResult.get< std::string >();
+                            std::cout << strLogPrefix << " "
+                                      << cc::debug( "Transaction verification got (raw) result: " )
+                                      << cc::info( strResult ) << "\n";
                             if ( !strResult.empty() ) {
                                 dev::u256 uResult( strResult ), uZero( "0" );
                                 if ( uResult != uZero )
@@ -1611,6 +1631,9 @@ uint256 amount
                                       << cc::bright( blockNumber ) << "\n";
                         } else {
                             std::string strResult = toJS( er.output );
+                            std::cout << strLogPrefix << " "
+                                      << cc::debug( "Transaction verification got (raw) result: " )
+                                      << cc::info( strResult ) << "\n";
                             if ( !strResult.empty() ) {
                                 dev::u256 uResult( strResult ), uZero( "0" );
                                 if ( uResult != uZero )
@@ -1639,17 +1662,9 @@ uint256 amount
                         "Transaction verification was not passed for IMA message " +
                         std::to_string( nStartMessageIdx + idxMessage ) );
                 }  // if ( !bTransactionWasVerifed )
-            }      // else from if( bIsVerifyImaMessagesViaLogsSearch )
-            //
-            //
-            //
-            if ( bIsImaMessagesViaContractCall ) {
-                std::cout << strLogPrefix << " "
-                          << cc::debug(
-                                 "Will use contract call based verification of IMA message(s)" )
-                          << "\n";
-
-
+                std::cout << strLogPrefix << cc::success( " Success, IMA message " )
+                          << cc::size10( nStartMessageIdx + idxMessage )
+                          << cc::success( " was verified via call to MessageProxy." ) << "\n";
             }  // if( bIsImaMessagesViaContractCall )
             else {
                 std::cout << strLogPrefix << " "
@@ -1657,151 +1672,113 @@ uint256 amount
                                  "Skipped contract call based verification of IMA message(s)" )
                           << "\n";
             }  // else from if( bIsImaMessagesViaContractCall )
-            //
-            //
-            // One more message is valid, concatenate it for further in-wallet signing
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            std::cout << strLogPrefix << cc::success( " Success, IMA message " )
-                      << cc::size10( nStartMessageIdx + idxMessage )
-                      << cc::success( " was found in logs." ) << "\n";
-            //
-            // compose message to sign
-            //
-            static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
-                size_t n = cnt / 2;
-                for ( size_t i = 0; i < n; ++i ) {
-                    uint8_t b1 = arr[i];
-                    uint8_t b2 = arr[cnt - i - 1];
-                    arr[i] = b2;
-                    arr[cnt - i - 1] = b1;
-                }
-            };
-            static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
-                while ( v.size() < cnt )
-                    v.push_back( 0 );
-            };
-            uint8_t arr[32];
-            bytes v;
-            const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
-            //
-            v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
-            fnAlignRight( v, 32 );
-            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
-            //
-            v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationContract, true );
-            fnAlignRight( v, 32 );
-            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
-            //
-            v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
-            fnAlignRight( v, 32 );
-            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
-            //
-            dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
-            fnInvert( arr, cntArr );
-            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
-            //
-            v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
-            fnInvert( v.data(), v.size() );
-            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
-        }
-        //
-        //
-        const dev::h256 h = dev::sha3( vecAllTogetherMessages );
-        const std::string sh = h.hex();
-        std::cout << strLogPrefix << cc::debug( " Got hash to sign " ) << cc::info( sh ) << "\n";
-        //        //
-        //        // G1 helper
-        //        //
-        //        // std::pair<libff::alt_bn128_G1, std::string> HashtoG1withHint(std::shared_ptr<
-        //        std::array<
-        //        // uint8_t, 32>>);
-        //        std::array< uint8_t, 32 > tmpArr;
-        //        std::shared_ptr< std::array< uint8_t, 32 > > pHashData =
-        //            std::make_shared< std::array< uint8_t, 32 > >( tmpArr );
-        //        dev::u256 uh( "0x" + sh );
-        //        std::cout << strLogPrefix << cc::debug( " Got U of hash to sign " )
-        //                  << cc::info( dev::toJS( uh ) ) << "\n";
-        //        dev::BMPBN::encode( uh, pHashData->data(), 32 );
-        //        std::cout << strLogPrefix << cc::debug( " Got U of hash to sign " )
-        //                  << cc::binary_singleline( ( void* ) pHashData->data(), 32, "," ) <<
-        //                  "\n";
-        //        //
-        //        auto t = joSkaleConfig_nodeInfo_wallets_ima["t"].get< int >();
-        //        std::cout << strLogPrefix << cc::debug( " Got  " ) << cc::info( "t" ) <<
-        //        cc::debug( "=" )
-        //                  << cc::num10( t ) << "\n";
-        //        auto n = joSkaleConfig_nodeInfo_wallets_ima["n"].get< int >();
-        //        std::cout << strLogPrefix << cc::debug( " Got  " ) << cc::info( "n" ) <<
-        //        cc::debug( "=" )
-        //                  << cc::num10( n ) << "\n";
-        //        signatures::Bls aBls( t, n );
-        //        std::cout << strLogPrefix << cc::debug( " BLS instance constructed" ) << "\n";
-        //        ////////////////////////////std::pair< libff::alt_bn128_G1, std::string > p2vals =
-        //        /// aBls.HashtoG1withHint( pHashData );
-        //        std::pair< libff::alt_bn128_G1, std::string > p2vals;
-        //        std::cout << strLogPrefix << cc::debug( " G1 computation passed" ) << "\n";
-        //        std::string str_G1_X = BLSutils::ConvertToString< libff::alt_bn128_Fq >(
-        //        p2vals.first.X ); std::string str_G1_Y = BLSutils::ConvertToString<
-        //        libff::alt_bn128_Fq >( p2vals.first.Y ); std::cout << strLogPrefix << cc::debug( "
-        //        Got G1 point with " ) << cc::info( "X" )
-        //                  << cc::debug( "=" ) << cc::info( str_G1_X ) << cc::debug( ", " )
-        //                  << cc::info( "Y" ) << cc::debug( "=" ) << cc::info( str_G1_Y )
-        //                  << cc::debug( ", " ) << cc::info( "hint" ) << cc::debug( "=" )
-        //                  << cc::info( p2vals.second ) << "\n";
-        //
 
-        //
-        // If we are here, then all IMA messages are valid
-        // Perform call to wallet to sign messages
-        //
-        std::cout << strLogPrefix << cc::debug( " Calling wallet to sign " ) << cc::notice( sh )
-                  << cc::debug( " composed from " )
-                  << cc::binary_singleline( ( void* ) vecAllTogetherMessages.data(),
-                         vecAllTogetherMessages.size(), "" )
-                  << cc::debug( "...`" ) << "\n";
-        //
-        nlohmann::json jo = nlohmann::json::object();
-        //
-        nlohmann::json joCall = nlohmann::json::object();
-        joCall["jsonrpc"] = "2.0";
-        joCall["method"] = "blsSignMessageHash";
-        joCall["params"] = nlohmann::json::object();
-        joCall["params"]["keyShareName"] = keyShareName;
-        joCall["params"]["messageHash"] = sh;
-        joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
-        joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
-        joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
-        std::cout << strLogPrefix << cc::debug( " Contacting " ) << cc::notice( "SGX Wallet" )
-                  << cc::debug( " server at " ) << cc::u( u ) << "\n";
-        std::cout << strLogPrefix << cc::debug( " Will send " ) << cc::notice( "sign query" )
-                  << cc::debug( " to wallet: " ) << cc::j( joCall ) << "\n";
-        skutils::rest::client cli;
-        cli.optsSSL = optsSSL;
-        cli.open( u );
-        skutils::rest::data_t d = cli.call( joCall );
-        if ( d.empty() )
-            throw std::runtime_error( "failed to sign message(s) with wallet" );
-        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
-        jo["signResult"] = joSignResult;
-        //
-        // Done, provide result to caller
-        //
-        std::string s = jo.dump();
-        std::cout << strLogPrefix << cc::success( " Success, got " ) << cc::notice( "sign result" )
-                  << cc::success( " from wallet: " ) << cc::j( joSignResult ) << "\n";
-        Json::Value ret;
-        Json::Reader().parse( s, ret );
-        return ret;
+            //
+            //
+            //
+            if ( !bOnlyVerify ) {
+                // One more message is valid, concatenate it for further in-wallet signing
+                // Compose message to sign
+                static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
+                    size_t n = cnt / 2;
+                    for ( size_t i = 0; i < n; ++i ) {
+                        uint8_t b1 = arr[i];
+                        uint8_t b2 = arr[cnt - i - 1];
+                        arr[i] = b2;
+                        arr[cnt - i - 1] = b1;
+                    }
+                };
+                static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
+                    while ( v.size() < cnt )
+                        v.push_back( 0 );
+                };
+                uint8_t arr[32];
+                bytes v;
+                const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
+                //
+                v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
+                fnAlignRight( v, 32 );
+                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+                //
+                v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationContract, true );
+                fnAlignRight( v, 32 );
+                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+                //
+                v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
+                fnAlignRight( v, 32 );
+                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+                //
+                dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
+                fnInvert( arr, cntArr );
+                vecAllTogetherMessages.insert(
+                    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
+                //
+                v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
+                fnInvert( v.data(), v.size() );
+                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+            }  // if( !bOnlyVerify )
+        }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+
+        if ( !bOnlyVerify ) {
+            //
+            //
+            const dev::h256 h = dev::sha3( vecAllTogetherMessages );
+            const std::string sh = h.hex();
+            std::cout << strLogPrefix << cc::debug( " Got hash to sign " ) << cc::info( sh )
+                      << "\n";
+            //
+            // If we are here, then all IMA messages are valid
+            // Perform call to wallet to sign messages
+            //
+            std::cout << strLogPrefix << cc::debug( " Calling wallet to sign " ) << cc::notice( sh )
+                      << cc::debug( " composed from " )
+                      << cc::binary_singleline( ( void* ) vecAllTogetherMessages.data(),
+                             vecAllTogetherMessages.size(), "" )
+                      << cc::debug( "...`" ) << "\n";
+            //
+            nlohmann::json jo = nlohmann::json::object();
+            //
+            nlohmann::json joCall = nlohmann::json::object();
+            joCall["jsonrpc"] = "2.0";
+            joCall["method"] = "blsSignMessageHash";
+            joCall["params"] = nlohmann::json::object();
+            joCall["params"]["keyShareName"] = keyShareName;
+            joCall["params"]["messageHash"] = sh;
+            joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
+            joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
+            joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
+            std::cout << strLogPrefix << cc::debug( " Contacting " ) << cc::notice( "SGX Wallet" )
+                      << cc::debug( " server at " ) << cc::u( u ) << "\n";
+            std::cout << strLogPrefix << cc::debug( " Will send " ) << cc::notice( "sign query" )
+                      << cc::debug( " to wallet: " ) << cc::j( joCall ) << "\n";
+            skutils::rest::client cli;
+            cli.optsSSL = optsSSL;
+            cli.open( u );
+            skutils::rest::data_t d = cli.call( joCall );
+            if ( d.empty() )
+                throw std::runtime_error( "failed to sign message(s) with wallet" );
+            nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+            jo["signResult"] = joSignResult;
+            //
+            // Done, provide result to caller
+            //
+            std::string s = jo.dump();
+            std::cout << strLogPrefix << cc::success( " Success, got " )
+                      << cc::notice( "sign result" ) << cc::success( " from wallet: " )
+                      << cc::j( joSignResult ) << "\n";
+            Json::Value ret;
+            Json::Reader().parse( s, ret );
+            return ret;
+        }  // if ( !bOnlyVerify )
+        else {
+            nlohmann::json jo = nlohmann::json::object();
+            jo["success"] = true;
+            std::string s = jo.dump();
+            std::cout << strLogPrefix << cc::success( " Success, verification passed" ) << "\n";
+            Json::Value ret;
+            Json::Reader().parse( s, ret );
+            return ret;
+        }  // else from if ( !bOnlyVerify )
     } catch ( Exception const& ex ) {
         std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
                   << cc::error( " Exception while processing " )
@@ -1821,7 +1798,7 @@ uint256 amount
                   << cc::warn( "unknown exception" ) << "\n";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
-}
+}  // namespace rpc
 
 };  // namespace rpc
 };  // namespace dev
