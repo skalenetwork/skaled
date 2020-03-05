@@ -1562,33 +1562,72 @@ uint256 amount
                         throw std::runtime_error(
                             strDirection +
                             " eth_call to MessageProxy failed, empty data returned" );
-                    nlohmann::json joResult = nlohmann::json::parse( d.s_ )["result"];
-                    if ( joResult.is_string() ) {
-                        std::string strResult = joResult.get< std::string >();
-                        dev::u256 uResult( strResult ), uZero( "0" );
-                        if ( uResult != uZero )
-                            bTransactionWasVerifed = true;
+                    nlohmann::json joResult;
+                    try {
+                        joResult = nlohmann::json::parse( d.s_ )["result"];
+                        if ( joResult.is_string() ) {
+                            std::string strResult = joResult.get< std::string >();
+                            if ( !strResult.empty() ) {
+                                dev::u256 uResult( strResult ), uZero( "0" );
+                                if ( uResult != uZero )
+                                    bTransactionWasVerifed = true;
+                            }
+                        }
+                        if ( !bTransactionWasVerifed )
+                            std::cout << cc::info( strDirection ) << cc::error( " eth_call to " )
+                                      << cc::info( "MessageProxy" )
+                                      << cc::error( " failed with returned data answer: " )
+                                      << cc::j( joResult ) << "\n";
+                    } catch ( ... ) {
+                        std::cout << cc::info( strDirection ) << cc::error( " eth_call to " )
+                                  << cc::info( "MessageProxy" )
+                                  << cc::error( " failed with non-parse-able data answer: " )
+                                  << cc::warn( d.s_ ) << "\n";
                     }
-                } else {
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    // to-do
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
-                    //
+                }  // if ( strDirection == "M2S" )
+                else {
+                    try {
+                        std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
+                        Json::Value _json;
+                        Json::Reader().parse( strCallToConvert, _json );
+                        // TODO: We ignore block number in order to be compatible with Metamask
+                        // (SKALE-430). Remove this temporary fix.
+                        std::string blockNumber = "latest";
+                        dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _json );
+                        // setTransactionDefaults( t ); // l_sergiy: we don't need this here for now
+                        dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
+                            t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+                        std::string strRevertReason;
+                        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+                            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+                            if ( strRevertReason.empty() )
+                                strRevertReason =
+                                    "EVM revert instruction without description message";
+                            std::cout << cc::info( strDirection ) << cc::error( " eth_call to " )
+                                      << cc::info( "MessageProxy" )
+                                      << cc::error( " failed with revert reason: " )
+                                      << cc::warn( strRevertReason ) << cc::error( ", " )
+                                      << cc::info( "blockNumber" ) << cc::error( "=" )
+                                      << cc::bright( blockNumber ) << "\n";
+                        } else {
+                            std::string strResult = toJS( er.output );
+                            if ( !strResult.empty() ) {
+                                dev::u256 uResult( strResult ), uZero( "0" );
+                                if ( uResult != uZero )
+                                    bTransactionWasVerifed = true;
+                            }
+                        }
+                    } catch ( std::exception const& ex ) {
+                        std::cout << cc::info( strDirection ) << cc::error( " eth_call to " )
+                                  << cc::info( "MessageProxy" )
+                                  << cc::error( " failed with exception: " )
+                                  << cc::warn( ex.what() ) << "\n";
+                    } catch ( ... ) {
+                        std::cout << cc::info( strDirection ) << cc::error( " eth_call to " )
+                                  << cc::info( "MessageProxy" )
+                                  << cc::error( " failed with exception: " )
+                                  << cc::warn( "unknown exception" ) << "\n";
+                    }
                 }  // else from if( strDirection == "M2S" )
                 if ( !bTransactionWasVerifed ) {
                     std::cout << strLogPrefix << " "
