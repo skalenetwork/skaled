@@ -1318,11 +1318,11 @@ bool async_read_and_close_socket::step() {
         ++retry_index_;
         if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
-            bool last_connection = true;
             bool connection_close = false;
             if ( callback_success_ ) {
                 bool is_fail = false;
                 try {
+                    bool last_connection = true;
                     callback_success_( strm, last_connection, connection_close );
                 } catch ( ... ) {
                     is_fail = true;
@@ -1409,11 +1409,11 @@ bool async_read_and_close_socket_SSL::step() {
         ++retry_index_;
         if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
             SSL_socket_stream strm( socket_, ssl_ );
-            bool last_connection = true;
             bool connection_close = false;
             if ( callback_success_ ) {
                 bool is_fail = false;
                 try {
+                    bool last_connection = true;
                     callback_success_( strm, last_connection, connection_close );
                 } catch ( ... ) {
                     is_fail = true;
