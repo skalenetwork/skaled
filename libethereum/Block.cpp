@@ -152,7 +152,6 @@ void Block::resetCurrent( int64_t _timestamp ) {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     // TODO: check.
-    LOG( m_logger ) << cc::debug( "Trying to reset state" );
 
     m_committedToSeal = false;
 
