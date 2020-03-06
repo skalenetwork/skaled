@@ -1796,7 +1796,7 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 
 SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
     const char* cert_path, const char* private_key_path, int nServerIndex,
-    size_t a_max_http_handler_queues )
+    size_t a_max_http_handler_queues, bool is_async_http_transfer_mode )
     : SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
@@ -1806,9 +1806,10 @@ SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
                           false ) {
     if ( m_bHelperIsSSL )
         m_pServer.reset( new skutils::http::SSL_server(
-            cert_path, private_key_path, a_max_http_handler_queues ) );
+            cert_path, private_key_path, a_max_http_handler_queues, is_async_http_transfer_mode ) );
     else
-        m_pServer.reset( new skutils::http::server( a_max_http_handler_queues ) );
+        m_pServer.reset(
+            new skutils::http::server( a_max_http_handler_queues, is_async_http_transfer_mode ) );
     m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
@@ -2012,7 +2013,8 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
 
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues ) {
+    const std::string& strPathSslCert, int nServerIndex, size_t a_max_http_handler_queues,
+    bool is_async_http_transfer_mode ) {
     bool bIsSSL = false;
     SkaleServerOverride* pSO = this;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
@@ -2028,10 +2030,11 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 cc::debug( "..." ) );
         if ( bIsSSL )
             pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, strPathSslCert.c_str(),
-                strPathSslKey.c_str(), nServerIndex, a_max_http_handler_queues ) );
+                strPathSslKey.c_str(), nServerIndex, a_max_http_handler_queues,
+                is_async_http_transfer_mode ) );
         else
             pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
-                nServerIndex, a_max_http_handler_queues ) );
+                nServerIndex, a_max_http_handler_queues, is_async_http_transfer_mode ) );
         pSrv->m_pServer->Options(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
                 stats::register_stats_message(
@@ -2342,7 +2345,8 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTP4, m_nBasePortHTTP4 + nServerIndex,
-                     "", "", nServerIndex, max_http_handler_queues_ ) )
+                     "", "", nServerIndex, max_http_handler_queues_,
+                     is_async_http_transfer_mode_ ) )
                 return false;
             m_serversHTTP4.push_back( pServer );
         }
@@ -2352,7 +2356,8 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTP6, m_nBasePortHTTP6 + nServerIndex,
-                     "", "", nServerIndex, max_http_handler_queues_ ) )
+                     "", "", nServerIndex, max_http_handler_queues_,
+                     is_async_http_transfer_mode_ ) )
                 return false;
             m_serversHTTP6.push_back( pServer );
         }
@@ -2363,7 +2368,8 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 4, m_strAddrHTTPS4, m_nBasePortHTTPS4 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_,
+                     is_async_http_transfer_mode_ ) )
                 return false;
             m_serversHTTPS4.push_back( pServer );
         }
@@ -2374,7 +2380,8 @@ bool SkaleServerOverride::StartListening() {
         for ( nServerIndex = 0; nServerIndex < cntServers; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
             if ( !implStartListening( pServer, 6, m_strAddrHTTPS6, m_nBasePortHTTPS6 + nServerIndex,
-                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_ ) )
+                     m_strPathSslKey, m_strPathSslCert, nServerIndex, max_http_handler_queues_,
+                     is_async_http_transfer_mode_ ) )
                 return false;
             m_serversHTTPS6.push_back( pServer );
         }
