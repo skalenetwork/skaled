@@ -234,30 +234,6 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         begin = bc().number();
     }
 
-    // Handle reverted blocks
-    // There are not so many, so let's iterate over them
-    h256s blocks;
-    h256 ancestor;
-    unsigned ancestorIndex;
-    tie( blocks, ancestor, ancestorIndex ) = bc().treeRoute( _f.earliest(), _f.latest(), false );
-
-    for ( size_t i = 0; i < ancestorIndex; i++ )
-        prependLogsFromBlock( _f, blocks[i], BlockPolarity::Dead, ret );
-
-    // cause end is our earliest block, let's compare it with our ancestor
-    // if ancestor is smaller let's move our end to it
-    // example:
-    //
-    // 3b -> 2b -> 1b
-    //                -> g
-    // 3a -> 2a -> 1a
-    //
-    // if earliest is at 2a and latest is a 3b, coverting them to numbers
-    // will give us pair (2, 3)
-    // and we want to get all logs from 1 (ancestor + 1) to 3
-    // so we have to move 2a to g + 1
-    end = min( end, ( unsigned ) numberFromHash( ancestor ) + 1 );
-
     // Handle blocks from main chain
     set< unsigned > matchingBlocks;
     if ( !_f.isRangeFilter() )
