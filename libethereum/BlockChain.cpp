@@ -307,15 +307,9 @@ void BlockChain::close() {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
     }
-    m_details.clear();
-    m_blocks.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blockHashes.clear();
-    m_blocksBlooms.clear();
-    m_cacheUsage.clear();
-    m_inUse.clear();
+
+    clearCaches();
+
     m_lastBlockHashes->clear();
 }
 
@@ -1205,6 +1199,19 @@ void BlockChain::garbageCollect( bool _force ) {
     m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
 }
 
+void BlockChain::clearCaches() {
+    m_details.clear();
+    m_blocks.clear();
+    m_logBlooms.clear();
+    m_receipts.clear();
+    m_transactionAddresses.clear();
+    m_blocksBlooms.clear();
+
+    m_blockHashes.clear();
+
+    m_inUse.clear();
+    m_cacheUsage.clear();
+}
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
