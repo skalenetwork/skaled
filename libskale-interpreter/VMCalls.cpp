@@ -57,6 +57,10 @@ void VM::throwDisallowedStateChange() {
     BOOST_THROW_EXCEPTION( DisallowedStateChange() );
 }
 
+void VM::throwStorageOverflow() {
+    BOOST_THROW_EXCEPTION( StorageOverflow() );
+}
+
 // throwBadStack is called from fetchInstruction() -> adjustStack()
 // its the only exception that can happen before ON_OP() log is done for an opcode case in VM.cpp
 // so the call to m_onFail is needed here

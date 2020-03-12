@@ -208,6 +208,10 @@ void VM::fetchInstruction() {
     m_copyMemSize = 0;
 }
 
+void VM::updateStorageUsage() {
+    throwStorageOverflow();
+}
+
 evmc_tx_context const& VM::getTxContext() {
     if ( !m_tx_context )
         m_tx_context.emplace( m_context->host->get_tx_context( m_context ) );
@@ -1246,6 +1250,8 @@ void VM::interpretCases() {
                 m_runGas = m_rev == EVMC_CONSTANTINOPLE ? VMSchedule::sstoreUnchangedGas :
                                                           VMSchedule::sstoreResetGas;
                 break;
+            case EVMC_STORAGE_OVERFLOWED:
+                throwStorageOverflow();
             }
 
             updateIOGas();

@@ -20,6 +20,7 @@
 #pragma once
 
 #include <functional>
+#include <queue>
 
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -78,6 +79,7 @@ private:
     Json::Value m_trace;
     DebugOptions m_options;
 };
+
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
