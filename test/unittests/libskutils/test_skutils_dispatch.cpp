@@ -727,13 +727,23 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         );
         //
         //
-        static const size_t nSleepSeconds = 5;
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
-                                   cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-        sleep( nSleepSeconds );
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                   cc::size10( nSleepSeconds ) +
-                                   cc::warn( " second(s), end of domain life time..." ) );
+        static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
+        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
+          skutils::test::test_log_e( thread_prefix_str()
+              + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
+              + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
+              + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+          sleep( nSleepSeconds );
+          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                     cc::size10( nSleepSeconds ) +
+                                     cc::warn( " second(s), end of domain life time..." ) );
+          if( size_t( nCallCounterOnce ) == 1
+              && size_t( nCallCounterPeriodic ) >= size_t( nCallCounterPeriodicExpected )
+              && size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
+              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
+              )
+              break;
+        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         skutils::test::test_log_e(
             thread_prefix_str() + cc::warn( "shutting down default domain..." ) );
         skutils::dispatch::shutdown();
