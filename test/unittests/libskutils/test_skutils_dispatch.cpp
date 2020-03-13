@@ -993,28 +993,34 @@ BOOST_AUTO_TEST_CASE( cross_jobs ) {
                 BOOST_REQUIRE( !bool( vecInside[i] ) );
             } );
         }
-        static const size_t nSleepSecondsNormalAttempt = 5;
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
-                                   cc::size10( nSleepSecondsNormalAttempt ) +
-                                   cc::warn( " second(s)..." ) );
-        sleep( nSleepSecondsNormalAttempt );
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                   cc::size10( nSleepSecondsNormalAttempt ) +
-                                   cc::warn( " second(s), end of domain life time..." ) );
         //
-        // pre-liminary attempt to find out everything is OKay
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::info( "performing preliminary state test..." ) );
-        bool isEverythingOKay = true;
-        for ( i = 0; i < nQueueCount; ++i ) {
+        //
+        bool isEverythingOKay = true; // assume good thing
+        static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
+        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
+          skutils::test::test_log_e( thread_prefix_str()
+                                    + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
+                                    + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
+                                    + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+          sleep( nSleepSeconds );
+          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                    cc::size10( nSleepSeconds ) +
+                                    cc::warn( " second(s), end of domain life time..." ) );
+          //
+          //
+          // pre-liminary attempt to find out everything is OKay
+          skutils::test::test_log_e(
+              thread_prefix_str() + cc::info( "performing preliminary state test..." ) );
+          isEverythingOKay = true; // assume good thing
+          for ( i = 0; i < nQueueCount; ++i ) {
             bool bInside = bool( vecInside[i] );
             skutils::test::test_log_e(
                 thread_prefix_str() + cc::debug( "queue " ) + cc::size10( i ) +
                 cc::debug( " is " ) +
                 ( ( !bInside ) ? cc::success( "OKay" ) : cc::fatal( "STILL WORKING - FAIL" ) ) );
             if ( bInside ) {
-                isEverythingOKay = false;
-                break;
+              isEverythingOKay = false;
+              break;
             }
             skutils::dispatch::queue_id_t id_queue_current =
                 skutils::tools::format( "queue_%zu", i );
@@ -1027,11 +1033,14 @@ BOOST_AUTO_TEST_CASE( cross_jobs ) {
                 cc::debug( " has " ) + cc::size10( nQueueJobCount ) +
                 cc::debug( " job(s) unfinished " ) +
                 ( ( nQueueJobCount == 0 ) ? cc::success( "OKay" ) :
-                                            cc::fatal( "FAIL, MUST BE ZERO" ) ) );
-        }
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::info( "done preliminary state test - " ) +
-            ( isEverythingOKay ? cc::success( "PASSED" ) : cc::fatal( "FAILED" ) ) );
+                                       cc::fatal( "FAIL, MUST BE ZERO" ) ) );
+          }
+          skutils::test::test_log_e(
+              thread_prefix_str() + cc::info( "done preliminary state test - " ) +
+              ( isEverythingOKay ? cc::success( "PASSED" ) : cc::fatal( "FAILED" ) ) );
+          if( isEverythingOKay )
+            break;
+        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         //
         //
         if ( !isEverythingOKay ) {
