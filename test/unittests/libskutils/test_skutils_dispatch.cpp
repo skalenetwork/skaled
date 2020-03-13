@@ -744,9 +744,12 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
               )
               break;
         } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+        //
+        //
         skutils::test::test_log_e(
             thread_prefix_str() + cc::warn( "shutting down default domain..." ) );
         skutils::dispatch::shutdown();
+        //
         //
         skutils::test::test_log_e(
             cc::notice( "once job" ) + cc::debug( "     expected exactly one call" ) +
@@ -855,13 +858,25 @@ BOOST_AUTO_TEST_CASE( auto_queues ) {
                                    cc::bright( async_job_id2 ) );
         //
         //
-        static const size_t nSleepSeconds = 5;
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
-                                   cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-        sleep( nSleepSeconds );
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                   cc::size10( nSleepSeconds ) +
-                                   cc::warn( " second(s), end of domain life time..." ) );
+        static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
+        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
+          skutils::test::test_log_e( thread_prefix_str()
+                                    + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
+                                    + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
+                                    + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+          sleep( nSleepSeconds );
+          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                    cc::size10( nSleepSeconds ) +
+                                    cc::warn( " second(s), end of domain life time..." ) );
+          if( size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
+              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
+              && size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
+              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
+              && size_t( nCallCounterSync ) >= size_t( nCallCounterAsync )
+              )
+              break;
+        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+        //
         //
         skutils::test::test_log_e( thread_prefix_str() +
                                    cc::warn( "stopping async periodical job " ) +
@@ -903,9 +918,9 @@ BOOST_AUTO_TEST_CASE( auto_queues ) {
             ( ( size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) ) ?
                     cc::success( "success" ) :
                     cc::fatal( "fail" ) ) );
-        BOOST_REQUIRE( size_t( nCallCounterAsync ) == size_t( nCallCounterAsyncExpected ) );
-        BOOST_REQUIRE( size_t( nCallCounterSync ) == size_t( nCallCounterSyncExpected ) );
-        BOOST_REQUIRE( size_t( nCallCounterSync ) == size_t( nCallCounterAsync ) );
+        BOOST_REQUIRE( size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected ) );
+        BOOST_REQUIRE( size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) );
+        BOOST_REQUIRE( size_t( nCallCounterSync ) >= size_t( nCallCounterAsync ) );
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::info( "end of auto_queues test" ) );
     } );
