@@ -669,8 +669,19 @@ void BlockChain::rotateDBIfNeeded() {
     if ( r <= 0 )
         return;
     auto n = this->number();
-    if ( ( n % r ) == 0 )
+    if ( ( n % r ) == 0 ){
+
+        // remember genesis
+        BlockDetails details = this->details(m_genesisHash);
+
+        clearCaches();
         this->m_rotating_db->rotate();
+
+        // re-insert genesis
+        auto r = details.rlp();
+        m_details[m_genesisHash] = details;
+        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+    }
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -1200,17 +1211,42 @@ void BlockChain::garbageCollect( bool _force ) {
 }
 
 void BlockChain::clearCaches() {
-    m_details.clear();
-    m_blocks.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blocksBlooms.clear();
+    {
+        Guard l( x_cacheUsage );
+        m_inUse.clear();
 
-    m_blockHashes.clear();
-
-    m_inUse.clear();
-    m_cacheUsage.clear();
+        int n = m_cacheUsage.size();
+        m_cacheUsage.clear();
+        m_cacheUsage.resize(n);
+    }
+    {
+        WriteGuard l( x_details );
+        m_details.clear();
+    }
+    {
+        WriteGuard l( x_blocks );
+        m_blocks.clear();
+    }
+    {
+        WriteGuard l( x_logBlooms );
+        m_logBlooms.clear();
+    }
+    {
+        WriteGuard l( x_receipts );
+        m_receipts.clear();
+    }
+    {
+        WriteGuard l( x_transactionAddresses );
+        m_transactionAddresses.clear();
+    }
+    {
+        WriteGuard l( x_blocksBlooms );
+        m_blocksBlooms.clear();
+    }
+    {
+        WriteGuard l( x_blockHashes );
+        m_blockHashes.clear();
+    }
 }
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
