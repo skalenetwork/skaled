@@ -440,19 +440,19 @@ Json::Value Eth::eth_getUncleByBlockNumberAndIndex(
 
 string Eth::eth_newFilter( Json::Value const& _json ) {
     try {
-        return toJS( client()->installWatch( toLogFilter( _json, *client() ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
-
-string Eth::eth_newFilterEx( Json::Value const& _json ) {
-    try {
         return toJS( client()->installWatch( toLogFilter( _json ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
+
+//string Eth::eth_newFilterEx( Json::Value const& _json ) {
+//    try {
+//        return toJS( client()->installWatch( toLogFilter( _json ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 string Eth::eth_newBlockFilter() {
     h256 filter = dev::eth::ChainChangedFilter;
@@ -504,30 +504,30 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     }
 }
 
-Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
-    try {
-        return toJsonByBlock(
-            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+//Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
+//    try {
+//        return toJsonByBlock(
+//            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
-        return toJson( client()->logs( toLogFilter( _json, *client() ) ) );
+        return toJson( client()->logs( toLogFilter( _json ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
-Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
-    try {
-        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+//Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
+//    try {
+//        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 Json::Value Eth::eth_getWork() {
     try {

@@ -370,7 +370,7 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
         ret.nonce = jsToU256( _json["nonce"].asString() );
     return ret;
 }
-
+/*
 dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
     dev::eth::LogFilter filter;
     if ( !_json.isObject() || _json.empty() )
@@ -400,10 +400,10 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
         }
     return filter;
 }
+*/
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
-dev::eth::LogFilter toLogFilter( Json::Value const& _json,
-    Interface const& _client )  // commented to avoid warning. Uncomment once in use @ PoC-7.
+dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning. Uncomment once in use @ PoC-7.
 {
     dev::eth::LogFilter filter;
     if ( !_json.isObject() || _json.empty() )
@@ -411,11 +411,9 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json,
 
     // check only !empty. it should throw exceptions if input params are incorrect
     if ( !_json["fromBlock"].empty() )
-        filter.withEarliest(
-            _client.hashFromNumber( jsToBlockNumber( _json["fromBlock"].asString() ) ) );
+        filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].asString() ) );
     if ( !_json["toBlock"].empty() )
-        filter.withLatest(
-            _client.hashFromNumber( jsToBlockNumber( _json["toBlock"].asString() ) ) );
+        filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].asString() ) );
     if ( !_json["address"].empty() ) {
         if ( _json["address"].isArray() )
             for ( auto i : _json["address"] )

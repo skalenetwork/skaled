@@ -49,17 +49,17 @@ class Block;
 
 class LogFilter {
 public:
-    LogFilter( h256 _earliest = EarliestBlockHash, h256 _latest = PendingBlockHash )
+    LogFilter( BlockNumber _earliest = 0, unsigned _latest = PendingBlock )
         : m_earliest( _earliest ), m_latest( _latest ) {}
 
     void streamRLP( RLPStream& _s ) const;
     h256 sha3() const;
 
     /// hash of earliest block which should be filtered
-    h256 earliest() const { return m_earliest; }
+    BlockNumber earliest() const { return m_earliest; }
 
     /// hash of latest block which should be filtered
-    h256 latest() const { return m_latest; }
+    BlockNumber latest() const { return m_latest; }
 
     /// Range filter is a filter which doesn't care about addresses or topics
     /// Matches are all entries from earliest to latest
@@ -82,11 +82,11 @@ public:
             m_topics[_index].insert( _t );
         return *this;
     }
-    LogFilter withEarliest( h256 _e ) {
+    LogFilter withEarliest( BlockNumber _e ) {
         m_earliest = _e;
         return *this;
     }
-    LogFilter withLatest( h256 _e ) {
+    LogFilter withLatest( BlockNumber _e ) {
         m_latest = _e;
         return *this;
     }
@@ -96,8 +96,8 @@ public:
 private:
     AddressHash m_addresses;
     std::array< h256Hash, 4 > m_topics;
-    h256 m_earliest = EarliestBlockHash;
-    h256 m_latest = PendingBlockHash;
+    BlockNumber m_earliest = 0;
+    BlockNumber m_latest = PendingBlock;
 };
 
 }  // namespace eth

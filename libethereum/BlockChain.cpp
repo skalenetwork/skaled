@@ -1319,7 +1319,8 @@ vector< unsigned > BlockChain::withBlockBloom(
     unsigned u = upow( c_bloomIndexSize, c_bloomIndexLevels );
 
     // run through each of the top-level blockbloom blocks
-    for ( unsigned index = _earliest / u; index <= ceilDiv( _latest, u ); ++index )  // 0
+    // TODO here should be another blockBlooms() filtering!?
+    for ( unsigned index = _earliest / u; index <= _latest / u; ++index )  // 0
         ret += withBlockBloom( _b, _earliest, _latest, c_bloomIndexLevels - 1, index );
 
     return ret;
