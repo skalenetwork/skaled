@@ -446,7 +446,7 @@ string Eth::eth_newFilter( Json::Value const& _json ) {
     }
 }
 
-//string Eth::eth_newFilterEx( Json::Value const& _json ) {
+// string Eth::eth_newFilterEx( Json::Value const& _json ) {
 //    try {
 //        return toJS( client()->installWatch( toLogFilter( _json ) ) );
 //    } catch ( ... ) {
@@ -504,7 +504,7 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     }
 }
 
-//Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
+// Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
 //    try {
 //        return toJsonByBlock(
 //            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
@@ -521,7 +521,7 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     }
 }
 
-//Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
+// Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
 //    try {
 //        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
 //    } catch ( ... ) {

@@ -65,7 +65,7 @@ Json::Value toJson( std::unordered_map< h256, LocalisedLogEntries > const& _entr
 Json::Value toJsonByBlock( LocalisedLogEntries const& _entries );
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
-//LogFilter toLogFilter( Json::Value const& _json,
+// LogFilter toLogFilter( Json::Value const& _json,
 //    Interface const& _client );  // commented to avoid warning. Uncomment once in use @ PoC-7.
 
 class AddressResolver {

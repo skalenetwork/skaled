@@ -669,10 +669,9 @@ void BlockChain::rotateDBIfNeeded() {
     if ( r <= 0 )
         return;
     auto n = this->number();
-    if ( ( n % r ) == 0 ){
-
+    if ( ( n % r ) == 0 ) {
         // remember genesis
-        BlockDetails details = this->details(m_genesisHash);
+        BlockDetails details = this->details( m_genesisHash );
 
         clearCaches();
         this->m_rotating_db->rotate();
@@ -1217,7 +1216,7 @@ void BlockChain::clearCaches() {
 
         int n = m_cacheUsage.size();
         m_cacheUsage.clear();
-        m_cacheUsage.resize(n);
+        m_cacheUsage.resize( n );
     }
     {
         WriteGuard l( x_details );

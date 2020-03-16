@@ -403,7 +403,8 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
 */
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
-dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning. Uncomment once in use @ PoC-7.
+dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.
+                                                             // Uncomment once in use @ PoC-7.
 {
     dev::eth::LogFilter filter;
     if ( !_json.isObject() || _json.empty() )

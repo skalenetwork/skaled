@@ -1147,8 +1147,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 } else {
                     Json::Value jvLogsQuery;
                     Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
-                    Json::Value jvLogs = dev::toJson(
-                        this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
+                    Json::Value jvLogs =
+                        dev::toJson( this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
                     jarrFoundLogRecords =
                         nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
                 }  // else from if( strDirection == "M2S" )
