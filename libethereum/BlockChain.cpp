@@ -156,16 +156,16 @@ void addBlockInfo( Exception& io_ex, BlockHeader const& _header, bytes&& _blockD
 
 
 /// Duration between flushes.
-static const chrono::system_clock::duration c_collectionDuration = chrono::seconds( 1 );  // 60 );
+static const chrono::system_clock::duration c_collectionDuration = chrono::seconds( 60 );
 
 /// Length of death row (total time in cache is multiple of this and collection duration).
-static const unsigned c_collectionQueueSize = 2;  // 20;
+static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 2;  // 1024 * 1024 * 4;  // 64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1;  // 1024 * 1024 * 2;  // 32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
