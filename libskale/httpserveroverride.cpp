@@ -60,6 +60,7 @@
 
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
+#include <skutils/task_performance.h>
 #include <skutils/url.h>
 
 #include <iostream>
@@ -96,7 +97,10 @@ namespace server {
 namespace helper {
 
 bool isSkipMethodTrafficTrace( const std::string& strMethod ) {
-    if ( strMethod == "skale_stats" )
+    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
+         strMethod == "skale_performanceTrackingStart" ||
+         strMethod == "skale_performanceTrackingStop" ||
+         strMethod == "skale_performanceTrackingFetch" )
         return true;
     return false;
 }
@@ -699,6 +703,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
+    //
+    std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
+        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc().c_str() );
+    std::string strPerformanceActionName =
+        skutils::tools::format( "task %zu", nTaskNumberInPeer_++ );
+    skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
+    //
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
     std::string strRequest( msg );
     nlohmann::json joRequest;
@@ -2093,6 +2104,14 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
                 return true;
             }
+            //
+            std::string strPerformanceQueueName = skutils::tools::format(
+                "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
+            std::string strPerformanceActionName =
+                skutils::tools::format( "task %zu, %s", nTaskNumberCall_++, strMethod.c_str() );
+            skutils::task::performance::action a(
+                strPerformanceQueueName, strPerformanceActionName );
+            //
             skutils::stats::time_tracker::element_ptr_t rttElement;
             rttElement.emplace(
                 "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(), pSrv->serverIndex(), ipVer );

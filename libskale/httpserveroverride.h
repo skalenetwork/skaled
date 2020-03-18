@@ -119,6 +119,7 @@ struct SkaleServerConnectionsTrackHelper {
 
 class SkaleWsPeer : public skutils::ws::peer {
 public:
+    std::atomic_size_t nTaskNumberInPeer_ = 0;
     const std::string m_strPeerQueueID;
     std::unique_ptr< SkaleServerConnectionsTrackHelper > m_pSSCTH;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
@@ -261,6 +262,7 @@ public:
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public SkaleStatsSubscriptionManager,
                             public dev::rpc::SkaleStatsProviderImpl {
+    std::atomic_size_t nTaskNumberCall_ = 9;
     size_t m_cntServers;
     mutable dev::eth::Interface* pEth_;
     dev::eth::ChainParams& chainParams_;

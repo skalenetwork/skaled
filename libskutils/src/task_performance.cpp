@@ -51,6 +51,12 @@ index_type index_holder::alloc_index() {
     return n;
 }
 
+
+index_type index_holder::get_index() const {
+    index_type n = nextItemIndex_;
+    return n;
+}
+
 void index_holder::reset() {
     nextItemIndex_ = 0;
 }
@@ -204,6 +210,15 @@ void tracker::reset() {
     index_holder::reset();
 }
 
+size_t tracker::get_max_item_count() const {
+    size_t n = maxItemCount_;
+    return n;
+}
+
+void tracker::set_max_item_count( size_t n ) {
+    maxItemCount_ = n;
+}
+
 bool tracker::is_enabled() const {
     bool b = enabled_;
     return b;
@@ -234,8 +249,10 @@ queue_ptr tracker::get_queue( const string& strName ) {
 json tracker::compose_json( index_type minIndexT ) const {
     json jsn = json::object();
     json jsnQueues = json::object();
+    size_t idxFetchPointNextTime = 0;
     {  // block
         lockable::lock_type lock( mtx() );
+        idxFetchPointNextTime = get_index();
         map_type::iterator itWalk = map_.begin(), itEnd = map_.end();
         for ( ; itWalk != itEnd; ++itWalk ) {
             string strName = itWalk->first;
@@ -244,7 +261,16 @@ json tracker::compose_json( index_type minIndexT ) const {
         }
     }  // block
     jsn["queues"] = jsnQueues;
+    jsn["nextTimeFetchIndex"] = idxFetchPointNextTime;
     return jsn;
+}
+
+void tracker::cancel() {
+    if ( !is_enabled() )
+        return;
+    lockable::lock_type lock( mtx() );
+    set_enabled( false );
+    reset();
 }
 
 void tracker::start() {
@@ -285,11 +311,20 @@ action::~action() {
 
 void action::init( const string& strQueueName, const string& strActionName, const json& jsnAction,
     tracker_ptr pTracker ) {
+    isSkipped_ = false;
     if ( !pTracker ) {
         pTracker = get_default_tracker();
         if ( !pTracker )
             throw std::runtime_error(
                 "Attempt to instatiate performance action without tracker provided" );
+    }
+    if ( !pTracker->is_enabled() ) {
+        isSkipped_ = true;
+        return;
+    }
+    if ( pTracker->get_index() >= pTracker->get_max_item_count() ) {
+        isSkipped_ = true;
+        return;
     }
     queue_ptr pQueue = pTracker->get_queue( strQueueName );
     pItem_ = pQueue->new_item( strActionName, jsnAction );
@@ -297,6 +332,8 @@ void action::init( const string& strQueueName, const string& strActionName, cons
 
 
 item_ptr action::get_item() const {
+    if ( isSkipped_ )
+        throw std::runtime_error( "Attempt to access performance task acion in skipped state" );
     return pItem_;
 }
 
@@ -309,9 +346,14 @@ tracker_ptr action::get_tracker() const {
 }
 
 void action::finish() {
+    if ( isSkipped_ )
+        return;
     get_item()->finish();
 }
 
+bool action::is_skipped() const {
+    return isSkipped_;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

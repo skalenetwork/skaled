@@ -1,5 +1,5 @@
-#if ( !defined __SKUTILS_STATS_H )
-#define __SKUTILS_STATS_H 1
+#if ( !defined __SKUTILS_TASK_PERFORMANCE_H )
+#define __SKUTILS_TASK_PERFORMANCE_H 1
 
 #include <atomic>
 #include <map>
@@ -96,6 +96,7 @@ public:
     index_holder& operator=( const index_holder& ) = delete;
     index_holder& operator=( index_holder&& ) = delete;
     index_type alloc_index();
+    index_type get_index() const;
     void reset();
 };
 
@@ -167,6 +168,8 @@ class tracker : public skutils::ref_retain_release, public lockable, public inde
     typedef std::map< string, queue_ptr > map_type;
     mutable map_type map_;
 
+    atomic_index_type maxItemCount_ = 100 * 1000;
+
 public:
     tracker();
     tracker( const tracker& ) = delete;
@@ -179,10 +182,13 @@ private:
     void reset();
 
 public:
+    size_t get_max_item_count() const;
+    void set_max_item_count( size_t n );
     bool is_enabled() const;
     void set_enabled( bool b = true );
     queue_ptr get_queue( const string& strName );
     json compose_json( index_type minIndexT = 0 ) const;
+    void cancel();
     void start();
     json stop( index_type minIndexT = 0 );
 };
@@ -193,6 +199,7 @@ extern tracker_ptr get_default_tracker();
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class action {
+    bool isSkipped_ = false;
     item_ptr pItem_;
 
 public:
@@ -215,6 +222,7 @@ public:
     queue_ptr get_queue() const;
     tracker_ptr get_tracker() const;
     void finish();
+    bool is_skipped() const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,4 +232,4 @@ public:
 };  // namespace task
 };  // namespace skutils
 
-#endif  /// (!defined __SKUTILS_STATS_H)
+#endif  /// (!defined __SKUTILS_TASK_PERFORMANCE_H)

@@ -540,6 +540,7 @@ class queue : public ref_retain_release {
     //
     domain_ptr_t pDomain_;
     const queue_id_t id_;
+    std::atomic_size_t nTaskNumberInQueue_ = 0;
     atomic_priority_t priority_, accumulator_;
     std::atomic_bool is_removed_, is_running_, auto_remove_after_first_job_;
     //
