@@ -197,6 +197,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
+            chainParams.constantinopleForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
@@ -656,6 +657,55 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     string result = fixture.rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+}
+
+BOOST_AUTO_TEST_CASE(logs_range) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    string bytecode =
+        "6080604052348015600f57600080fd5b50607d80601d6000396000f3fe60806040527f64696d616c6974000000000000000000000000000000000000000000000000004360001b6001430160001b6040518082815260200191505060405180910390a200fea264697066735822122011b1aa9b28bd72ec161cb5940c556f98779f86b02a6a258f7072186aefe0378d64736f6c63430006010033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    // need blockNumber==256 afterwards
+    for(int i=0; i<255; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
+
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
+
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 256);
+
+    // ask for logs
+    Json::Value t;
+    t["fromBlock"] = 0;         // really 2
+    t["toBlock"] = 250;
+    t["address"] = contractAddress;
+    Json::Value logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 249);
+
+    // check logs
+    for(size_t i=0; i<logs.size(); ++i){
+        u256 block = dev::jsToU256( logs[(int)i]["topics"][0].asString() );
+        BOOST_REQUIRE_EQUAL(block, i+2);
+    }// for
+
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
