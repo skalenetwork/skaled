@@ -569,8 +569,14 @@ bool Executive::finalize() {
 void Executive::revert() {
     if ( m_ext )
         m_ext->sub.clear();
+        
+    resetStorageChanges();
 
     // Set result address to the null one.
     m_newAddress = {};
     m_s.rollback( m_savepoint );
+}
+        
+void Executive::resetStorageChanges() {
+    this->m_s.resetStorageChanges();
 }

@@ -513,6 +513,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
     m_cache[_contract].setStorage( _key, _value );
+    m_storageUsageTx[_contract].push(1); // proceed storage change type
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -809,6 +810,45 @@ bool State::executeTransaction(
 
 bool State::checkVersion() const {
     return *m_storedVersion == m_currentVersion;
+}
+
+bool State::checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const {
+    auto _queueChangesCopy = _queueChanges;
+    dev::u256 _spaceLeft = std::numeric_limits<dev::u256>::max() - this->m_storageUsed[_address];
+    size_t _countChanges = _queueChangesCopy.size();
+    for ( size_t i = 0; i < _countChanges; ++i ) {
+        int _curValue = _queueChangesCopy.front();
+        if ( ( _curValue == 1 && _spaceLeft == dev::u256(0) ) ) {
+            return false;
+        }
+        _queueChangesCopy.pop();
+    }
+    return true;
+}
+
+bool State::checkStorageChanges() const {
+    for ( const auto& elem : this->m_storageUsageTx ) {
+        dev::Address _address = elem.first;
+        auto _queueChanges = elem.second;
+        if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void State::updateStorageUsage() {
+    for ( const auto& elem : this->m_storageUsageTx ) {
+        dev::Address _address = elem.first;
+        auto _queueChanges = elem.second;
+        size_t _countChanges = _queueChanges.size();
+        for ( size_t i = 0; i < _countChanges; ++i ) {
+            int _curValue = _queueChanges.front();
+            this->m_storageUsed[_address] += _curValue;
+            _queueChanges.pop();
+        }
+    }
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {

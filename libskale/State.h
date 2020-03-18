@@ -398,6 +398,13 @@ private:
     /// exception occurred.
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
+    
+    void resetStorageChanges() { m_storageUsed.clear(); }
+    
+    bool checkStorageChanges() const;
+    bool checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const;
+    void updateStorageUsage();
+    
 
 public:
     bool checkVersion() const;
@@ -429,6 +436,8 @@ private:
     ChangeLog m_changeLog;
 
     dev::u256 m_initial_funds = 0;
+    std::map<dev::Address, dev::u256> m_storageUsed;
+    std::map<dev::Address, std::queue<int>> m_storageUsageTx;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );
