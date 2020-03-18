@@ -139,7 +139,6 @@ private:
     void throwBadStack( int _removed, int _added );
     void throwRevertInstruction( owning_bytes_ref&& _output );
     void throwDisallowedStateChange();
-    void throwStorageOverflow();
     void throwBufferOverrun( bigint const& _enfOfAccess );
 
     std::vector< uint64_t > m_beginSubs;
@@ -154,7 +153,6 @@ private:
     void updateMem( uint64_t _newMem );
     void logGasMem();
     void fetchInstruction();
-    void updateStorageUsage();
 
     uint64_t decodeJumpDest( const _byte_* const _code, uint64_t& _pc );
     uint64_t decodeJumpvDest( const _byte_* const _code, uint64_t& _pc, _byte_ _voff );

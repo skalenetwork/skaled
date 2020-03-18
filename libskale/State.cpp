@@ -814,7 +814,7 @@ bool State::checkVersion() const {
 
 bool State::checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const {
     auto _queueChangesCopy = _queueChanges;
-    dev::u256 _spaceLeft = std::numeric_limits<dev::u256>::max() - this->m_storageUsed.at(_address);
+    dev::u256 _spaceLeft = std::numeric_limits<dev::u256>::max() - this->m_storageUsed.at( _address );
     size_t _countChanges = _queueChangesCopy.size();
     for ( size_t i = 0; i < _countChanges; ++i ) {
         int _curValue = _queueChangesCopy.front();
