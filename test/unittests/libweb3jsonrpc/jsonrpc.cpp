@@ -197,7 +197,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
-            chainParams.constantinopleForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
