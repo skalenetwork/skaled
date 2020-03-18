@@ -1806,7 +1806,7 @@ Json::Value SkaleStats::skale_performanceTrackingStatus( const Json::Value& /*re
     try {
         skutils::task::performance::tracker_ptr pTracker =
             skutils::task::performance::get_default_tracker();
-        bool bTrackerIsRunning = pTracker->is_enabled();
+        bool bTrackerIsRunning = pTracker->is_running();
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
@@ -1850,7 +1850,7 @@ Json::Value SkaleStats::skale_performanceTrackingStart( const Json::Value& reque
         if ( bIsRestart )
             pTracker->cancel();
         pTracker->start();
-        bool bTrackerIsRunning = pTracker->is_enabled();
+        bool bTrackerIsRunning = pTracker->is_running();
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
@@ -1883,7 +1883,7 @@ Json::Value SkaleStats::skale_performanceTrackingStop( const Json::Value& /*requ
     try {
         skutils::task::performance::tracker_ptr pTracker =
             skutils::task::performance::get_default_tracker();
-        bool bTrackerIsRunning = pTracker->is_enabled();
+        bool bTrackerIsRunning = pTracker->is_running();
         //
         nlohmann::json joPerformance =
             bTrackerIsRunning ? pTracker->stop() : nlohmann::json::object();
@@ -1927,7 +1927,7 @@ Json::Value SkaleStats::skale_performanceTrackingFetch( const Json::Value& reque
         //
         skutils::task::performance::tracker_ptr pTracker =
             skutils::task::performance::get_default_tracker();
-        bool bTrackerIsRunning = pTracker->is_enabled();
+        bool bTrackerIsRunning = pTracker->is_running();
         nlohmann::json joPerformance =
             bTrackerIsRunning ? pTracker->compose_json( minIndexT ) : nlohmann::json::object();
         nlohmann::json jo = nlohmann::json::object();

@@ -103,11 +103,32 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class item : public skutils::ref_retain_release, public describable {
+class time_holder {
+    time_point tpStart_, tpEnd_;
+    atomic_bool isRunning_;
+
+public:
+    time_holder( bool isRunning );
+    time_holder( const time_holder& ) = delete;
+    time_holder( time_holder&& ) = delete;
+    virtual ~time_holder();
+    time_holder& operator=( const time_holder& ) = delete;
+    time_holder& operator=( index_holder&& ) = delete;
+    bool is_funished() const;
+    virtual bool is_running() const;
+    virtual void set_running( bool b = true );
+    time_point tp_start() const;
+    time_point tp_end() const;
+    string tp_start_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
+    string tp_end_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class item : public skutils::ref_retain_release, public describable, public time_holder {
     mutable queue_ptr pQueue_;
     index_type indexQ_, indexT_;
-    time_point tpStart_, tpEnd_;
-    atomic_bool isFinished_;
 
 public:
     item( const string& strName, const json& jsn, queue_ptr pQueue, index_type indexQ,
@@ -122,12 +143,9 @@ public:
     index_type get_index_in_queue() const;
     index_type get_index_in_tracker() const;
     json compose_json() const;
+    bool is_running() const override;
+    void set_running( bool b = true ) override;
     void finish();
-    bool is_funished() const;
-    time_point tp_start() const;
-    time_point tp_end() const;
-    string tp_start_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
-    string tp_end_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,12 +180,14 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class tracker : public skutils::ref_retain_release, public lockable, public index_holder {
-    atomic_bool enabled_;
-
+class tracker : public skutils::ref_retain_release,
+                public lockable,
+                public index_holder,
+                public time_holder {
     typedef std::map< string, queue_ptr > map_type;
     mutable map_type map_;
 
+    atomic_bool isEnabled_ = true;
     atomic_index_type maxItemCount_ = 100 * 1000;
 
 public:
@@ -182,10 +202,12 @@ private:
     void reset();
 
 public:
+    bool is_enabled() const;
+    void set_enabled( bool b );
     size_t get_max_item_count() const;
     void set_max_item_count( size_t n );
-    bool is_enabled() const;
-    void set_enabled( bool b = true );
+    bool is_running() const override;
+    void set_running( bool b = true ) override;
     queue_ptr get_queue( const string& strName );
     json compose_json( index_type minIndexT = 0 ) const;
     void cancel();

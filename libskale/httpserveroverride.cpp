@@ -705,7 +705,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     }
     //
     std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
-        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc().c_str() );
+        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
     std::string strPerformanceActionName =
         skutils::tools::format( "task %zu", nTaskNumberInPeer_++ );
     skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );

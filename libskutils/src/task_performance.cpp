@@ -64,14 +64,63 @@ void index_holder::reset() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+time_holder::time_holder( bool isRunning ) : tpStart_( clock::now() ), isRunning_( isRunning ) {
+    tpEnd_ = tpStart_;
+}
+
+time_holder::~time_holder() {}
+
+bool time_holder::is_funished() const {
+    bool b = isRunning_ ? false : true;
+    return b;
+}
+
+bool time_holder::is_running() const {
+    bool b = isRunning_ ? true : false;
+    return b;
+}
+void time_holder::set_running( bool b ) {
+    if ( is_running() ) {
+        if ( b )
+            return;
+        isRunning_ = false;
+        tpStart_ = tpEnd_ = clock::now();
+    } else {
+        if ( !b )
+            return;
+        isRunning_ = false;
+        tpEnd_ = clock::now();
+    }
+}
+
+time_point time_holder::tp_start() const {
+    return tpStart_;
+}
+
+time_point time_holder::tp_end() const {
+    return is_funished() ? tpEnd_ : clock::now();
+}
+
+string time_holder::tp_start_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
+    string s = cc::time2string( tp_start(), isUTC, isDaysInsteadOfYMD, false );
+    return s;
+}
+
+string time_holder::tp_end_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
+    string s = cc::time2string( tp_end(), isUTC, isDaysInsteadOfYMD, false );
+    return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 item::item(
     const string& strName, const json& jsn, queue_ptr pQueue, index_type indexQ, index_type indexT )
     : describable( strName, jsn ),
+      time_holder( false ),
       pQueue_( pQueue ),
       indexQ_( indexQ ),
-      indexT_( indexT ),
-      tpStart_( clock::now() ),
-      isFinished_( false ) {
+      indexT_( indexT ) {
     if ( !pQueue_ )
         throw std::runtime_error( "Attempt to instatiate performance item without queue provided" );
 }
@@ -105,34 +154,17 @@ json item::compose_json() const {
     return jsn;
 }
 
-void item::finish() {
-    if ( isFinished_ )
-        return;
-    isFinished_ = true;
-    tpEnd_ = clock::now();
-}
-
-bool item::is_funished() const {
-    bool b = isFinished_;
+bool item::is_running() const {
+    bool b = time_holder::is_running();
     return b;
 }
 
-time_point item::tp_start() const {
-    return tpStart_;
+void item::set_running( bool b ) {
+    time_holder::set_running( b );
 }
 
-time_point item::tp_end() const {
-    return isFinished_ ? tpEnd_ : clock::now();
-}
-
-string item::tp_start_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
-    string s = cc::time2string( tp_start(), isUTC, isDaysInsteadOfYMD, false );
-    return s;
-}
-
-string item::tp_end_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
-    string s = cc::time2string( tp_end(), isUTC, isDaysInsteadOfYMD, false );
-    return s;
+void item::finish() {
+    set_running( false );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,6 +200,7 @@ item_ptr queue::new_item( const string& strName, const json& jsn ) {
         index_type indexT = get_tracker()->alloc_index();
         pItem = item_ptr::make( strName, jsn, pThisQueue, indexQ, indexT );
         map_[indexQ] = pItem;
+        pItem->set_running( true );
     }  // block
     return pItem;
 }
@@ -197,10 +230,10 @@ tracker_ptr get_default_tracker() {
     return g_pDefaultTracker;
 }
 
-tracker::tracker() : enabled_( false ) {}
+tracker::tracker() : time_holder( false ) {}
 
 tracker::~tracker() {
-    set_enabled( false );
+    set_running( false );
     reset();
 }
 
@@ -208,6 +241,16 @@ void tracker::reset() {
     lockable::lock_type lock( mtx() );
     map_.clear();
     index_holder::reset();
+}
+
+bool tracker::is_enabled() const {
+    bool b = isEnabled_ ? true : false;
+    return b;
+}
+void tracker::set_enabled( bool b ) {
+    isEnabled_ = b;
+    if ( !b )
+        cancel();
 }
 
 size_t tracker::get_max_item_count() const {
@@ -219,14 +262,15 @@ void tracker::set_max_item_count( size_t n ) {
     maxItemCount_ = n;
 }
 
-bool tracker::is_enabled() const {
-    bool b = enabled_;
+bool tracker::is_running() const {
+    bool b = time_holder::is_running();
     return b;
 }
 
-void tracker::set_enabled( bool b ) {
-    enabled_ = b;
-    if ( !enabled_ )
+void tracker::set_running( bool b ) {
+    lockable::lock_type lock( mtx() );
+    time_holder::set_running( b );
+    if ( !b )
         reset();
 }
 
@@ -262,19 +306,18 @@ json tracker::compose_json( index_type minIndexT ) const {
     }  // block
     jsn["queues"] = jsnQueues;
     jsn["nextTimeFetchIndex"] = idxFetchPointNextTime;
+    jsn["tsStart"] = tp_start_s();  // entire session start, not time point of minIndexT
+    jsn["tsEnd"] = tp_end_s();
     return jsn;
 }
 
 void tracker::cancel() {
-    if ( !is_enabled() )
-        return;
     lockable::lock_type lock( mtx() );
-    set_enabled( false );
-    reset();
+    set_running( false );
 }
 
 void tracker::start() {
-    set_enabled( true );
+    set_running( true );
 }
 
 json tracker::stop( index_type minIndexT ) {
@@ -282,8 +325,7 @@ json tracker::stop( index_type minIndexT ) {
     {  // block
         lockable::lock_type lock( mtx() );
         jsn = compose_json( minIndexT );
-        set_enabled( false );
-        reset();
+        set_running( false );
     }  // block
     return jsn;
 }
@@ -319,6 +361,10 @@ void action::init( const string& strQueueName, const string& strActionName, cons
                 "Attempt to instatiate performance action without tracker provided" );
     }
     if ( !pTracker->is_enabled() ) {
+        isSkipped_ = true;
+        return;
+    }
+    if ( !pTracker->is_running() ) {
         isSkipped_ = true;
         return;
     }
