@@ -463,13 +463,13 @@ void SkaleHost::stopWorking() {
     auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
                              m_consensusWorkingMutex, std::adopt_lock ) :
                          std::unique_ptr< std::lock_guard< std::timed_mutex > >();
-    (void) lock; // for Codacy
+    ( void ) lock;  // for Codacy
 
     m_exitNeeded = true;
     pauseConsensus( false );
     m_consensus->exitGracefully();
 
-    while ( m_consensus->getStatus() != CONSENSUS_EXITED ){
+    while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{0, 100000000};
         nanosleep( &ms100, nullptr );
     }
