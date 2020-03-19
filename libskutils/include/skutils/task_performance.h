@@ -19,7 +19,6 @@ namespace task {
 namespace performance {
 
 typedef std::chrono::system_clock clock;
-// typedef std::chrono::high_resolution_clock clock;
 typedef std::chrono::time_point< clock > time_point;
 
 typedef size_t index_type;
@@ -51,10 +50,6 @@ public:
     typedef recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
 
-private:
-    mutable mutex_type mtx_;
-
-public:
     lockable();
     lockable( const lockable& ) = delete;
     lockable( lockable&& ) = delete;

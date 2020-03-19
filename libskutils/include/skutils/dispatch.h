@@ -41,10 +41,11 @@ typedef std::function< void() > fn_invoke_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // if uint64_t max value 18446744073709551615 nanoseconds, then...
-// 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e. approximately 500 years,
-// i.e. acceptable but not too high
-// typedef std::chrono::nanoseconds duration_t; // classic std::chrono::nanoseconds is based on
-// int64_t - not uint64_t
+// ... 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e. approximately 500
+// years,
+// ... i.e. acceptable but not too high
+// ... typedef std::chrono::nanoseconds duration_t; // classic std::chrono::nanoseconds is based on
+// ... int64_t - not uint64_t
 typedef uint64_t duration_base_t;
 typedef std::ratio< 1, 1000000000 > nano_t;
 typedef std::chrono::duration< duration_base_t, nano_t > duration_t;

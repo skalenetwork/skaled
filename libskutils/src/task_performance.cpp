@@ -16,7 +16,7 @@ lockable::lockable() {}
 lockable::~lockable() {}
 
 lockable::mutex_type& lockable::mtx() const {
-    return mtx_;
+    return skutils::get_ref_mtx();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,7 @@ void time_holder::set_running( bool b ) {
     } else {
         if ( !b )
             return;
-        isRunning_ = false;
+        isRunning_ = true;
         tpEnd_ = clock::now();
     }
 }

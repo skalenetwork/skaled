@@ -1854,7 +1854,7 @@ Json::Value SkaleStats::skale_performanceTrackingStart( const Json::Value& reque
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
-        jo["TrackerIsRunning"] = bTrackerIsRunning;
+        jo["trackerIsRunning"] = bTrackerIsRunning;
         //
         std::string s = jo.dump();
         Json::Value ret;
