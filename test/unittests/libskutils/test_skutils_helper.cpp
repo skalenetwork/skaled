@@ -1,6 +1,15 @@
 #include "test_skutils_helper.h"
+#include <test/tools/libtestutils/Common.h>
 #include <boost/test/unit_test.hpp>
 #include <mutex>
+
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 namespace skutils {
 namespace test {
@@ -301,6 +310,7 @@ test_server::~test_server() {}
 void test_server::run_parallel() {
     if ( thread_is_running_ )
         throw std::runtime_error( "server is already runnig " );
+    check_can_listen();
     std::thread( [&]() -> void {
         thread_is_running_ = true;
         test_log_s( cc::info( strScheme_ ) + cc::debug( " network server thread started" ) );
@@ -321,6 +331,38 @@ void test_server::wait_parallel() {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
 }
 
+void test_server::stat_check_port_availability_to_start_listen(
+    int ipVer, const char* strAddr, int nPort, const char* strScheme ) {
+    test_log_s( cc::debug( "Will check port " ) + cc::num10( nPort ) +
+                cc::debug( "/IPv" + std::to_string( ipVer ) ) + cc::debug( " availability for " ) +
+                cc::info( strScheme ) + cc::debug( " server..." ) );
+    skutils::network::sockaddr46 sa46;
+    std::string strError =
+        skutils::network::resolve_address_for_client_connection( ipVer, strAddr, sa46 );
+    if ( !strError.empty() )
+        throw std::runtime_error(
+            std::string( "Failed to check " ) + std::string( strScheme ) +
+            std::string( " server listen IP address availability for address \"" ) + strAddr +
+            std::string( "\" on IPv" ) + std::to_string( ipVer ) +
+            std::string( ", please check network interface with this IP address exist, error "
+                         "details: " ) +
+            strError );
+    if ( is_tcp_port_listening( ipVer, sa46, nPort ) )
+        throw std::runtime_error( std::string( "Cannot start " ) + std::string( strScheme ) +
+                                  std::string( " server on address \"" ) + strAddr +
+                                  std::string( "\", port " ) + std::to_string( nPort ) +
+                                  std::string( ", IPv" ) + std::to_string( ipVer ) +
+                                  std::string( " - port is already listening" ) );
+    test_log_s( cc::notice( "Port " ) + cc::num10( nPort ) +
+                cc::notice( "/IPv" + std::to_string( ipVer ) ) + cc::notice( " is free for " ) +
+                cc::info( strScheme ) + cc::notice( " server to start" ) );
+}
+
+void test_server::check_can_listen() {
+    stat_check_port_availability_to_start_listen(
+        4, "127.0.0.1", nListenPort_, strScheme_.c_str() );
+    stat_check_port_availability_to_start_listen( 6, "::1", nListenPort_, strScheme_.c_str() );
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -941,6 +983,130 @@ void with_thread_pool( fn_with_thread_pool_t fn,
     fn( pool );
 }
 
+namespace tcp_helpers {
+
+int close_socket( socket_t sock ) {
+#ifdef _WIN32
+    return closesocket( sock );
+#else
+    return close( sock );
+#endif
+}
+
+template < typename Fn >
+socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0 ) {
+#ifdef _WIN32
+#define SO_SYNCHRONOUS_NONALERT 0x20
+#define SO_OPENTYPE 0x7008
+    int opt = SO_SYNCHRONOUS_NONALERT;
+    setsockopt( INVALID_SOCKET, SOL_SOCKET, SO_OPENTYPE, ( char* ) &opt, sizeof( opt ) );
+#endif
+    struct addrinfo hints;
+    struct addrinfo* result;
+    memset( &hints, 0, sizeof( struct addrinfo ) );
+    hints.ai_family = ( ipVer == 4 ) ? AF_INET : AF_INET6;  // AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = socket_flags;
+    hints.ai_protocol = 0;  // ( ipVer == 4 ) ? IPPROTO_IPV4 : IPPROTO_IPV6;  // 0
+    auto service = std::to_string( port );
+    if ( getaddrinfo( host, service.c_str(), &hints, &result ) )
+        return INVALID_SOCKET;
+    for ( auto rp = result; rp; rp = rp->ai_next ) {
+        auto sock = socket( rp->ai_family, rp->ai_socktype, rp->ai_protocol );
+        if ( sock == INVALID_SOCKET ) {
+            continue;
+        }
+        int yes = 1;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
+        if ( fn( sock, *rp ) ) {
+            freeaddrinfo( result );
+            return sock;
+        }
+        close_socket( sock );
+    }
+    freeaddrinfo( result );
+    return INVALID_SOCKET;
+}
+
+};  // namespace tcp_helpers
+
+void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
+    fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4,
+    bool isIPv6 ) {
+    socket_t fd4 = INVALID_SOCKET, fd6 = INVALID_SOCKET;
+    try {
+        if ( isIPv4 ) {  // "0.0.0.0"
+            fd4 = tcp_helpers::create_socket( 4, "127.0.0.1", nSocketListenPort,
+                [&]( socket_t sock, struct addrinfo& ai ) -> bool {
+                    int ret = 0;
+                    if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to bind IPv4 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    if (::listen( sock, 5 ) )  // listen through 5 channels
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to start IPv4 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    return true;
+                } );
+            if ( fd4 == INVALID_SOCKET )
+                throw std::runtime_error( skutils::tools::format(
+                    "Failed to create IPv4 busy test listener on port %d", nSocketListenPort ) );
+        }
+        if ( isIPv6 ) {  // "0:0:0:0:0:0:0:0"
+            fd6 = tcp_helpers::create_socket(
+                6, "::1", nSocketListenPort, [&]( socket_t sock, struct addrinfo& ai ) -> bool {
+                    int ret = 0;
+                    if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to bind IPv6 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    if (::listen( sock, 5 ) )  // listen through 5 channels
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to start IPv6 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    return true;
+                } );
+            if ( fd6 == INVALID_SOCKET )
+                throw std::runtime_error( skutils::tools::format(
+                    "Failed to create IPv6 busy test listener on port %d", nSocketListenPort ) );
+        }
+        test_log_e(
+            cc::debug( "Will execute " ) + cc::note( "busy port" ) + cc::debug( " callback..." ) );
+        if ( fnWorker )
+            fnWorker();
+        test_log_e( cc::success( "Success, did executed " ) + cc::note( "busy port" ) +
+                    cc::success( " callback" ) );
+    } catch ( std::exception& ex ) {
+        std::string strErrorDescription = ex.what();
+        bool isIgnoreError = false;
+        if ( fnErrorHandler )
+            isIgnoreError =
+                fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
+        if ( !isIgnoreError ) {
+            test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
+                         cc::note( "busy port" ) + cc::error( " callback: " ) +
+                         cc::warn( strErrorDescription ) );
+            BOOST_REQUIRE( false );
+        }
+    } catch ( ... ) {
+        std::string strErrorDescription = "unknown exception";
+        bool isIgnoreError = false;
+        if ( fnErrorHandler )
+            isIgnoreError =
+                fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
+        if ( !isIgnoreError ) {
+            test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
+                         cc::note( "busy port" ) + cc::error( " callback" ) );
+            BOOST_REQUIRE( false );
+        }
+    }
+    if ( fd4 != INVALID_SOCKET )
+        tcp_helpers::close_socket( fd4 );
+    if ( fd6 != INVALID_SOCKET )
+        tcp_helpers::close_socket( fd6 );
+}
+
 void with_test_server(
     fn_with_test_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort ) {
     skutils::ws::security_args sa;
@@ -971,18 +1137,18 @@ void with_test_server(
     pServer->run_parallel();
     try {
         test_log_e( cc::debug( "Will execute " ) + cc::note( "Test server" ) +
-                    cc::debug( " environment callback..." ) );
+                    cc::debug( " callback..." ) );
         fn( *pServer.get() );
         test_log_e( cc::success( "Success, did executed " ) + cc::note( "Test server" ) +
-                    cc::success( " environment callback" ) );
+                    cc::success( " callback" ) );
     } catch ( std::exception& ex ) {
         test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
-                     cc::note( "Test server" ) + cc::error( " environment callback: " ) +
+                     cc::note( "Test server" ) + cc::error( " callback: " ) +
                      cc::warn( ex.what() ) );
         BOOST_REQUIRE( false );
     } catch ( ... ) {
         test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
-                     cc::note( "Test server" ) + cc::error( " environment callback" ) );
+                     cc::note( "Test server" ) + cc::error( " callback" ) );
         BOOST_REQUIRE( false );
     }
     pServer->stop();
@@ -1308,6 +1474,36 @@ void test_protocol_parallel_calls(
     BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
 
+void test_protocol_busy_port( const char* strProto, int nPort ) {
+    skutils::test::test_log_e( cc::debug( "Protocol busy port test" ) );
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_busy_tcp_port(
+            [&]() -> void {  // fn_with_busy_tcp_port_worker_t
+                skutils::test::test_log_e( cc::sunny( "Busy port allocated" ) );
+                skutils::test::with_test_server(
+                    [&]( skutils::test::test_server & /*refServer*/ ) -> void {
+                        skutils::test::test_log_e( cc::sunny( "Server startup" ) );
+                        skutils::test::test_log_sf(
+                            cc::sunny( "WE SHOULD NOT REACH THIS EXECUTION POINT" ) );
+                        BOOST_REQUIRE( false );
+                    },
+                    strProto, nPort );
+                skutils::test::test_log_e( cc::sunny( "Server finish" ) );
+            },
+            [&](
+                const std::string& strErrorDescription ) -> bool {  // fn_with_busy_tcp_port_error_t
+                skutils::test::test_log_e( cc::success( "Busy port detected with message: " ) +
+                                           cc::bright( strErrorDescription ) );
+                skutils::test::test_log_ss( cc::success( "SUCCESS - busy port handled" ) );
+                BOOST_REQUIRE( true );
+                return true;  // returns true if errror should be ignored
+            },
+            nPort );
+        skutils::test::test_log_e( cc::sunny( "Busy port de-allocated" ) );
+    } );
+}
+
+
 };  // namespace test
 };  // namespace skutils
 
@@ -1317,7 +1513,7 @@ void test_protocol_parallel_calls(
 BOOST_AUTO_TEST_SUITE( SkUtils )
 BOOST_AUTO_TEST_SUITE( helper )
 
-BOOST_AUTO_TEST_CASE( simple ) {}
+BOOST_AUTO_TEST_CASE( simple, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()

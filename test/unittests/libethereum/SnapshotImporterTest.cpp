@@ -187,7 +187,8 @@ bytes createSingleBlockChunk( unsigned _number, h256 const& _hash, u256 const& _
 
 BOOST_FIXTURE_TEST_SUITE( SnapshotImporterSuite, SnapshotImporterTestFixture )
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importChecksManifestVersion ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importChecksManifestVersion,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     RLPStream s( 6 );
     s << 3;
     s.appendList( 0 );
@@ -199,7 +200,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importChecksManifestVersion ) {
         snapshotImporter.import( snapshotStorage, h256{} ), UnsupportedSnapshotManifestVersion );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importNonsplittedAccount ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importNonsplittedAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 stateChunk = sha3( "123" );
     snapshotStorage.manifest = createManifest( 2, {stateChunk}, {}, h256{}, 0, h256{} );
 
@@ -220,7 +222,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importNonsplittedAccount ) {
     BOOST_CHECK( importedAccount.storage.empty() );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importSplittedAccount ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importSplittedAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 stateChunk1 = sha3( "123" );
     h256 stateChunk2 = sha3( "789" );
     snapshotStorage.manifest =
@@ -253,7 +256,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importSplittedAccount ) {
     BOOST_CHECK( importedAccount.storage == expectedStorage );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountWithCode ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountWithCode,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 stateChunk = sha3( "123" );
     snapshotStorage.manifest = createManifest( 2, {stateChunk}, {}, h256{}, 0, h256{} );
 
@@ -277,7 +281,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountWithCode ) {
         importedCode.begin(), importedCode.end(), code.begin(), code.end() );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountsWithEqualCode ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountsWithEqualCode,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 stateChunk = sha3( "123" );
     snapshotStorage.manifest = createManifest( 2, {stateChunk}, {}, h256{}, 0, h256{} );
 
@@ -306,7 +311,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importAccountsWithEqualCode ) {
         importedCode.begin(), importedCode.end(), code.begin(), code.end() );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_commitStateOnceEveryChunk ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_commitStateOnceEveryChunk,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 stateChunk1 = sha3( "123" );
     h256 stateChunk2 = sha3( "789" );
     snapshotStorage.manifest =
@@ -329,7 +335,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_commitStateOnceEveryChunk ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importEmptyBlock ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importEmptyBlock,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 blockChunk = sha3( "123" );
     snapshotStorage.manifest = createManifest( 2, {}, {blockChunk}, h256{}, 0, h256{} );
 
@@ -376,7 +383,8 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importEmptyBlock ) {
     BOOST_CHECK_EQUAL( blockChainImporter.chainStartBlockNumber, parentNumber + 1 );
 }
 
-BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importBlockWithTransactions ) {
+BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importBlockWithTransactions,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 blockChunk = sha3( "123" );
     snapshotStorage.manifest = createManifest( 2, {}, {blockChunk}, h256{}, 0, h256{} );
 

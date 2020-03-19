@@ -34,7 +34,7 @@ namespace test {
 
 BOOST_FIXTURE_TEST_SUITE( AccountHolderTest, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( ProxyAccountUseCase ) {
+BOOST_AUTO_TEST_CASE( ProxyAccountUseCase, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     FixedAccountHolder h = FixedAccountHolder( function< Interface*() >(), vector< KeyPair >() );
 
     BOOST_CHECK( h.allAccounts().empty() );

@@ -89,6 +89,7 @@ private:
 
 class SkaleHost {
     friend class ConsensusExtImpl;
+    static const int EXIT_FORCEFULLTY_SECONDS;
 
     struct my_hash {
         size_t operator()( const dev::eth::Transaction& tx ) const { return hash( tx.sha3() ); }
@@ -158,6 +159,8 @@ private:
     // TODO implement more nicely and more fine-grained!
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
                                                  // pendingTransactions() and createBock()
+
+    std::timed_mutex m_consensusWorkingMutex;  // unlocks when it's OK to exit
 
     std::atomic_int m_bcast_counter = 0;
 

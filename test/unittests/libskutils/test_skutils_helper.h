@@ -121,6 +121,9 @@ public:
     virtual void run() = 0;
     void run_parallel();
     void wait_parallel();
+    static void stat_check_port_availability_to_start_listen(
+        int ipVer, const char* strAddr, int nPort, const char* strScheme );
+    void check_can_listen();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -348,6 +351,13 @@ extern void with_thread_pool( fn_with_thread_pool_t fn,
                             // skutils::tools::cpu_count()
     size_t nCallQueueLimit = 1024 * 100 );
 
+typedef std::function< void() > fn_with_busy_tcp_port_worker_t;
+typedef std::function< bool( const std::string& strErrorDescription ) >
+    fn_with_busy_tcp_port_error_t;  // returns true if errror should be ignored
+extern void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
+    fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4 = true,
+    bool isIPv6 = true );
+
 typedef std::function< void( test_server& refServer ) > fn_with_test_server_t;
 extern void with_test_server(
     fn_with_test_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort );
@@ -387,6 +397,8 @@ extern void test_protocol_serial_calls(
 
 extern void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames );
+
+extern void test_protocol_busy_port( const char* strProto, int nPort );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1021,8 +1021,10 @@ BOOST_AUTO_TEST_CASE( bcInvalidHeaderTest ) {}
 BOOST_AUTO_TEST_CASE( bcUncleHeaderValidity ) {}
 BOOST_AUTO_TEST_CASE( bcUncleTest ) {}
 BOOST_AUTO_TEST_CASE( bcValidBlockTest ) {}
-BOOST_AUTO_TEST_CASE( bcWalletTest ) {}
-BOOST_AUTO_TEST_CASE( bcForgedTest ) {}
+BOOST_AUTO_TEST_CASE( bcWalletTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( bcForgedTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcRandomBlockhashTest ) {}
 BOOST_AUTO_TEST_CASE( bcExploitTest ) {}
 
@@ -1040,66 +1042,114 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( BCGeneralStateTests, bcGeneralTestsFixture )
 
 // Frontier Tests
-BOOST_AUTO_TEST_CASE( stCallCodes ) {}
-BOOST_AUTO_TEST_CASE( stCallCreateCallCodeTest ) {}
-BOOST_AUTO_TEST_CASE( stExample ) {}
-BOOST_AUTO_TEST_CASE( stInitCodeTest ) {}
-BOOST_AUTO_TEST_CASE( stLogTests ) {}
-BOOST_AUTO_TEST_CASE( stMemoryTest ) {}
-BOOST_AUTO_TEST_CASE( stPreCompiledContracts ) {}
-BOOST_AUTO_TEST_CASE( stPreCompiledContracts2 ) {}
-BOOST_AUTO_TEST_CASE( stRandom ) {}
-BOOST_AUTO_TEST_CASE( stRandom2 ) {}
-BOOST_AUTO_TEST_CASE( stRecursiveCreate ) {}
-BOOST_AUTO_TEST_CASE( stRefundTest ) {}
-BOOST_AUTO_TEST_CASE( stSolidityTest ) {}
-BOOST_AUTO_TEST_CASE( stSpecialTest ) {}
-BOOST_AUTO_TEST_CASE( stSystemOperationsTest ) {}
-BOOST_AUTO_TEST_CASE( stTransactionTest ) {}
-BOOST_AUTO_TEST_CASE( stTransitionTest ) {}
-BOOST_AUTO_TEST_CASE( stWalletTest ) {}
+BOOST_AUTO_TEST_CASE( stCallCodes,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+}
+BOOST_AUTO_TEST_CASE( stCallCreateCallCodeTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stExample,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) *
+                   boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stInitCodeTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stLogTests,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stMemoryTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stPreCompiledContracts,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stPreCompiledContracts2,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRandom,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRandom2,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRecursiveCreate,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRefundTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stSolidityTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stSpecialTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stSystemOperationsTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stTransactionTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stTransitionTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stWalletTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Homestead Tests
-BOOST_AUTO_TEST_CASE( stCallDelegateCodesCallCodeHomestead ) {}
-BOOST_AUTO_TEST_CASE( stCallDelegateCodesHomestead ) {}
-BOOST_AUTO_TEST_CASE( stHomesteadSpecific ) {}
-BOOST_AUTO_TEST_CASE( stDelegatecallTestHomestead ) {}
+BOOST_AUTO_TEST_CASE( stCallDelegateCodesCallCodeHomestead,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stCallDelegateCodesHomestead,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stHomesteadSpecific,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stDelegatecallTestHomestead,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // EIP150 Tests
-BOOST_AUTO_TEST_CASE( stChangedEIP150 ) {}
-BOOST_AUTO_TEST_CASE( stEIP150singleCodeGasPrices ) {}
-BOOST_AUTO_TEST_CASE( stMemExpandingEIP150Calls ) {}
-BOOST_AUTO_TEST_CASE( stEIP150Specific ) {}
+BOOST_AUTO_TEST_CASE( stChangedEIP150,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stEIP150singleCodeGasPrices,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stMemExpandingEIP150Calls,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stEIP150Specific,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // EIP158 Tests
-BOOST_AUTO_TEST_CASE( stEIP158Specific ) {}
-BOOST_AUTO_TEST_CASE( stNonZeroCallsTest ) {}
-BOOST_AUTO_TEST_CASE( stZeroCallsTest ) {}
-BOOST_AUTO_TEST_CASE( stZeroCallsRevert ) {}
-BOOST_AUTO_TEST_CASE( stCodeSizeLimit ) {}
-BOOST_AUTO_TEST_CASE( stCreateTest ) {}
-BOOST_AUTO_TEST_CASE( stRevertTest ) {}
+BOOST_AUTO_TEST_CASE( stEIP158Specific,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stNonZeroCallsTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stZeroCallsTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stZeroCallsRevert,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stCodeSizeLimit,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stCreateTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRevertTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Metropolis Tests
-BOOST_AUTO_TEST_CASE( stStackTests ) {}
-BOOST_AUTO_TEST_CASE( stStaticCall ) {}
-BOOST_AUTO_TEST_CASE( stReturnDataTest ) {}
-BOOST_AUTO_TEST_CASE( stZeroKnowledge ) {}
-BOOST_AUTO_TEST_CASE( stZeroKnowledge2 ) {}
-BOOST_AUTO_TEST_CASE( stBugs ) {}
+BOOST_AUTO_TEST_CASE( stStackTests,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stStaticCall,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stReturnDataTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stZeroKnowledge,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stZeroKnowledge2,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stBugs,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Constantinople Tests
-BOOST_AUTO_TEST_CASE( stShift ) {}
+BOOST_AUTO_TEST_CASE( stShift,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 
 // Stress Tests
-BOOST_AUTO_TEST_CASE( stAttackTest ) {}
-BOOST_AUTO_TEST_CASE( stMemoryStressTest ) {}
-BOOST_AUTO_TEST_CASE( stQuadraticComplexityTest ) {}
+BOOST_AUTO_TEST_CASE( stAttackTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stMemoryStressTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stQuadraticComplexityTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Bad opcodes test
-BOOST_AUTO_TEST_CASE( stBadOpcode ) {}
+BOOST_AUTO_TEST_CASE( stBadOpcode,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+}
 
 // New Tests
-BOOST_AUTO_TEST_CASE( stArgsZeroOneBalance ) {}
+BOOST_AUTO_TEST_CASE( stArgsZeroOneBalance,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_SUITE_END()

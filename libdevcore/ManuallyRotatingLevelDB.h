@@ -14,7 +14,7 @@ class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
     const boost::filesystem::path base_path;
     DatabaseFace* current_piece;
-    int current_piece_file_no;
+    size_t current_piece_file_no;
     std::deque< std::unique_ptr< DatabaseFace > > pieces;
 
     mutable std::set< WriteBatchFace* > batch_cache;

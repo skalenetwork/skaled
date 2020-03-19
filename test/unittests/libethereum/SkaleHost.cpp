@@ -32,6 +32,7 @@ class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
     std::vector< u256 > block_gas_prices;
+    bool need_exit = false;
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
@@ -41,7 +42,10 @@ public:
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
-    void exitGracefully() override {}
+    void exitGracefully() override { need_exit = true; }
+    consensus_engine_status getStatus() const override {
+        return need_exit? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
+    }
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
@@ -476,7 +480,8 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too big
-BOOST_AUTO_TEST_CASE( transactionNonceBig ) {
+BOOST_AUTO_TEST_CASE( transactionNonceBig, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -566,7 +571,8 @@ BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // not enough cash
-BOOST_AUTO_TEST_CASE( transactionBalanceBad ) {
+BOOST_AUTO_TEST_CASE( transactionBalanceBad, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -708,7 +714,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 1 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionDropQueue ) {
+BOOST_AUTO_TEST_CASE( transactionDropQueue, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -763,7 +770,8 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue ) {
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 

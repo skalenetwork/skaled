@@ -55,6 +55,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 20;
+
 #ifndef CONSENSUS
 #define CONSENSUS 1
 #endif
@@ -64,6 +66,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
+    std::cout << "CURRENT CLIENT BLOCK: " << m_client.number() << std::endl;
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
     return make_unique< ConsensusStub >( _extFace, m_client.number() );
@@ -164,12 +167,30 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     return sha;
 }
 
+// keeps mutex unlocked when exists
+template < class M >
+class unlock_guard {
+private:
+    M& mutex_ref;
+    bool m_will_exit = false;
+
+public:
+    explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
+    ~unlock_guard() {
+        if ( !m_will_exit )
+            mutex_ref.lock();
+    }
+    void will_exit() { m_will_exit = true; }
+};
+
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
+    unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -233,6 +254,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         }
     }
 
+    if ( this->m_exitNeeded )
+        unlocker.will_exit();
+
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
 
@@ -278,8 +302,13 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     m_debugTracer.tracepoint( "send_to_consensus" );
 
+    if ( this->m_exitNeeded )
+        unlocker.will_exit();
+
     return out_vector;
 }
+
+int debug_block_id = 0;
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
@@ -293,8 +322,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+        debug_block_id = _blockID;
         // this is need for testing. should add better handling
-        assert( dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() ) == _stateRoot );
+        _stateRoot = dev::u256( 0 );
+        //        assert(
+        //            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber(
+        //            _blockID ) )
+        //                                  .stateRoot() ) == _stateRoot );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
@@ -351,7 +385,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     total_arrived += out_txns.size();
 
-    // assert( _blockID == m_client.number() + 1 );
+    assert( _blockID == m_client.number() + 1 );
 
     m_debugTracer.tracepoint( "import_block" );
 
@@ -393,6 +427,7 @@ void SkaleHost::startWorking() {
 
     try {
         m_consensus->startAll();
+        m_consensusWorkingMutex.lock();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
@@ -423,9 +458,21 @@ void SkaleHost::stopWorking() {
     if ( !working )
         return;
 
+    bool locked =
+        m_consensusWorkingMutex.try_lock_for( std::chrono::seconds( EXIT_FORCEFULLTY_SECONDS ) );
+    auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
+                             m_consensusWorkingMutex, std::adopt_lock ) :
+                         std::unique_ptr< std::lock_guard< std::timed_mutex > >();
+    ( void ) lock;  // for Codacy
+
     m_exitNeeded = true;
     pauseConsensus( false );
     m_consensus->exitGracefully();
+
+    while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+        timespec ms100{0, 100000000};
+        nanosleep( &ms100, nullptr );
+    }
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();

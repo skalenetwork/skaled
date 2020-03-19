@@ -152,7 +152,6 @@ void Block::resetCurrent( int64_t _timestamp ) {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     // TODO: check.
-    LOG( m_logger ) << cc::debug( "Trying to reset state" );
 
     m_committedToSeal = false;
 
@@ -325,7 +324,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
     }
 #endif
     // m_state = m_state.startNew();
-    resetCurrent();
+    resetCurrent( m_currentBlock.timestamp() );
     assert( m_state.checkVersion() );
     return ret;
 }

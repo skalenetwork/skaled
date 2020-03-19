@@ -71,7 +71,8 @@ BOOST_AUTO_TEST_CASE( trivialGasPricer ) {
     BOOST_CHECK_EQUAL( gp->bid(), DefaultGasPrice );
 }
 
-BOOST_AUTO_TEST_CASE( basicGasPricerNoUpdate ) {
+BOOST_AUTO_TEST_CASE( basicGasPricerNoUpdate, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BasicGasPricer gp( u256( double( ether / 1000 ) / 30.679 ), u256( 15.0 * 1000 ) );
     BOOST_CHECK_EQUAL( gp.ask( Block( Block::Null ) ), 103754996057 );
     BOOST_CHECK_EQUAL( gp.bid(), 103754996057 );

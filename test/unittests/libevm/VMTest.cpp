@@ -661,7 +661,8 @@ public:
 BOOST_FIXTURE_TEST_SUITE( LegacyVMSuite, TestOutputHelperFixture )
 BOOST_FIXTURE_TEST_SUITE( LegacyVMCreate2Suite, LegacyVMCreate2TestFixture )
 
-BOOST_AUTO_TEST_CASE( LegacyVMCreate2worksInConstantinople ) {
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2worksInConstantinople,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2worksInConstantinople();
 }
 
@@ -669,7 +670,8 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2isInvalidBeforeConstantinople ) {
     testCreate2isInvalidBeforeConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMCreate2succeedsIfAddressHasEther ) {
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2succeedsIfAddressHasEther,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2succeedsIfAddressHasEther();
 }
 
@@ -681,7 +683,8 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2isForbiddenInStaticCall ) {
     testCreate2isForbiddenInStaticCall();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage ) {
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2collisionWithNonEmptyStorage();
 }
 
@@ -697,7 +700,8 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMExtcodehashSuite, LegacyVMExtcodehashTestFixture )
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashWorksInConstantinople ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashWorksInConstantinople,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtcodehashWorksInConstantinople();
 }
 
@@ -709,23 +713,28 @@ BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashIsInvalidConstantinople ) {
     testExtCodeHashisInvalidBeforeConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonContractAccount ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonContractAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfNonContractAccount();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonExistentAccount ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfNonExistentAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfPrecomileZeroBalance();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileZeroBalance ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileZeroBalance,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfNonExistentAccount();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileNonZeroBalance ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtCodeHashOfPrecomileNonZeroBalance,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfPrecomileNonZeroBalance();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashIgnoresHigh12Bytes ) {
+BOOST_AUTO_TEST_CASE( LegacyVMExtcodehashIgnoresHigh12Bytes,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtcodehashIgnoresHigh12Bytes();
 }
 
@@ -733,86 +742,88 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMSstoreSuite, LegacyVMSstoreTestFixture )
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case1 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case1, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case1();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case2 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case2();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case3 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case3, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case3();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case4 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case4, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case4();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case5 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case5, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case5();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case6 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case6, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case6();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case7 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case7, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case7();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case8 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case8, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case8();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case9 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case9, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case9();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case10 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case10, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case10();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case11 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case11, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case11();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case12 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case12, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case12();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case13 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case13, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case13();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case14();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case15 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case15, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case15();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case16 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case16, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case16();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case17 ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case17, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case17();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( LegacyVMChainIDSuite, LegacyVMChainIDTestFixture )
 
-BOOST_AUTO_TEST_CASE( LegacyVMChainIDworksInIstanbul ) {
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDworksInIstanbul,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testChainIDWorksInIstanbul();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMChainIDHasCorrectCost ) {
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDHasCorrectCost, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testChainIDHasCorrectCost();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMChainIDisInvalidBeforeIstanbul ) {
+BOOST_AUTO_TEST_CASE( LegacyVMChainIDisInvalidBeforeIstanbul,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testChainIDisInvalidBeforeIstanbul();
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -823,7 +834,8 @@ BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceworksInIstanbul ) {
     testSelfBalanceWorksInIstanbul();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceHasCorrectCost ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceHasCorrectCost,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testSelfBalanceHasCorrectCost();
 }
 
@@ -831,7 +843,8 @@ BOOST_AUTO_TEST_CASE( LegacyVMBalanceHasCorrectCost ) {
     testBalanceHasCorrectCost();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceisInvalidBeforeIstanbul ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceisInvalidBeforeIstanbul,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testSelfBalanceisInvalidBeforeIstanbul();
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -841,7 +854,8 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSuite, TestOutputHelperFixture )
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterCreate2Suite, SkaleInterpreterCreate2TestFixture )
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2worksInConstantinople ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2worksInConstantinople,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2worksInConstantinople();
 }
 
@@ -849,7 +863,8 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isInvalidBeforeConstantinople ) {
     testCreate2isInvalidBeforeConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2succeedsIfAddressHasEther ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2succeedsIfAddressHasEther,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2succeedsIfAddressHasEther();
 }
 
@@ -861,7 +876,8 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isForbiddenInStaticCall ) {
     testCreate2isForbiddenInStaticCall();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testCreate2collisionWithNonEmptyStorage();
 }
 
@@ -873,7 +889,8 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterExtcodehashSuite, SkaleInterpreterExtcodehashTestFixture )
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashWorksInConstantinople ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashWorksInConstantinople,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtcodehashWorksInConstantinople();
 }
 
@@ -881,23 +898,28 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashIsInvalidConstantinople ) {
     testExtCodeHashisInvalidBeforeConstantinople();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonContractAccount ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonContractAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfNonContractAccount();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonExistentAccount ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonExistentAccount,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfPrecomileZeroBalance();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileZeroBalance ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileZeroBalance,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfNonExistentAccount();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileNonZeroBalance ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileNonZeroBalance,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtCodeHashOfPrecomileNonZeroBalance();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testExtcodehashIgnoresHigh12Bytes();
 }
 
@@ -905,31 +927,38 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSstoreSuite, SkaleInterpreterSstoreTestFixture )
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case1 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case1,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case1();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case2 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case2,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case2();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case3 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case3,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case3();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case4 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case4,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case4();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case5 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case5,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case5();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case6 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case6,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case6();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case7 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case7,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case7();
 }
 
@@ -941,35 +970,43 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case9 ) {
     testEip1283Case9();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case10 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case10,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case10();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case11 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case11,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case11();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case12 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case12,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case12();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case13 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case13,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case13();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case14 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case14,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case14();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case15 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case15,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case15();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case16 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case16,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case16();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case17 ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case17,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case17();
 }
 
@@ -981,7 +1018,8 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDworksInIstanbul ) {
     testChainIDWorksInIstanbul();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDisInvalidBeforeIstanbul ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDisInvalidBeforeIstanbul,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testChainIDisInvalidBeforeIstanbul();
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -992,7 +1030,8 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceworksInIstanbul ) {
     testSelfBalanceWorksInIstanbul();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceisInvalidBeforeIstanbul ) {
+BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceisInvalidBeforeIstanbul,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testSelfBalanceisInvalidBeforeIstanbul();
 }
 BOOST_AUTO_TEST_SUITE_END()

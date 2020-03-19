@@ -290,46 +290,48 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         fs::remove( saveTo );
 }
 
-bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
-    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
-    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
-        return false;
-    }
-    BlockChain bc( _chainParams, _dbPath, _forceAction );
-    unsigned currentNumber = bc.number();
+// bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
+//    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
+//    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+//      return false;
+//    }
+//    BlockChain bc( _chainParams, _dbPath, _forceAction );
+//    unsigned currentNumber = bc.number();
 
-    uint64_t idx =
-        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
-    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
-        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() % _chainParams.sChain.n;
-    }
+//    uint64_t idx =
+//        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
+//        _chainParams.sChain.nodes.size() + 1;
+//    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
+//        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
+//        _chainParams.sChain.nodes.size() + 1;
+//    }
 
-    std::string httpUrl = std::string( "http://" ) +
-                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
-                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
-    skutils::rest::client cli;
-    if ( !cli.open( httpUrl ) ) {
-        throw std::runtime_error( "REST failed to connect to server" );
-    }
+//    std::string httpUrl = std::string( "http://" ) +
+//                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
+//                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+//    skutils::rest::client cli;
+//    if ( !cli.open( httpUrl ) ) {
+//        throw std::runtime_error( "REST failed to connect to server" );
+//    }
 
-    nlohmann::json joIn = nlohmann::json::object();
-    joIn["jsonrpc"] = "2.0";
-    joIn["method"] = "skale_getLatestBlockNumber";
-    joIn["params"] = nlohmann::json::object();
-    skutils::rest::data_t d = cli.call( joIn );
-    if ( d.empty() ) {
-        throw std::runtime_error(
-            "cannot get blockNumber to decide whether download snapshot or not" );
-    }
-    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
+//    nlohmann::json joIn = nlohmann::json::object();
+//    joIn["jsonrpc"] = "2.0";
+//    joIn["method"] = "skale_getLatestBlockNumber";
+//    joIn["params"] = nlohmann::json::object();
+//    skutils::rest::data_t d = cli.call( joIn );
+//    if ( d.empty() ) {
+//        throw std::runtime_error(
+//            "cannot get blockNumber to decide whether download snapshot or not" );
+//    }
+//    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+//    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
 
-    if ( currentNumber + 10000 < blockNumber ) {
-        return true;
-    }
+//    if ( currentNumber + 10000 < blockNumber ) {
+//        return true;
+//    }
 
-    return false;
-}
+//    return false;
+//}
 
 }  // namespace
 
@@ -353,6 +355,25 @@ int main( int argc, char** argv ) try {
     BlockHeader::useTimestampHack = false;
 
     setCLocale();
+
+    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
+        if ( nSignalNo == SIGPIPE )
+            return;
+        bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        skutils::signal::g_bStop = true;
+        std::string strMessagePrefix = stopWasRaisedBefore ?
+                                           cc::error( "\nStop flag was already raised on. " ) +
+                                               cc::fatal( "WILL FORCE TERMINATE." ) +
+                                               cc::error( " Caught (second) signal. " ) :
+                                           cc::error( "\nCaught (first) signal. " );
+        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
+                  << "\n";
+        std::cerr.flush();
+        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        if ( stopWasRaisedBefore )
+            _exit( 13 );
+    } );
+
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -498,6 +519,9 @@ int main( int argc, char** argv ) try {
         "means unlimited)" );
     addClientOption( "max-http-queues", po::value< size_t >()->value_name( "<count>" ),
         "Max number of handler queues for HTTP/S connections per endpoint server" );
+    addClientOption(
+        "async-http-transfer-mode", "Use asynchronous HTTP(S) query handling, default mode" );
+    addClientOption( "sync-http-transfer-mode", "Use synchronous HTTP(S) query handling" );
 
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
@@ -1170,8 +1194,10 @@ int main( int argc, char** argv ) try {
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
                               "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
-    if ( vm.count( "download-snapshot" ) ||
-         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting ) ) {
+    bool isStartedFromSnapshot = false;
+    if ( vm.count( "download-snapshot" ) /*||
+         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
+        isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( vm.count( "download-snapshot" ) ) {
             if ( !vm.count( "public-key" ) ) {
@@ -1334,11 +1360,11 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1749,24 +1775,6 @@ int main( int argc, char** argv ) try {
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
              nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
              nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
-            //
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::attention( "IPv4 interfaces and addresses:" );
-            for ( const auto& iface_ref : listIfaceInfos4 ) {
-                // iface_ref: first-interface name, second-address
-                clog( VerbosityInfo, "main" )
-                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
-                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
-            }
-            clog( VerbosityInfo, "main" )
-                << cc::debug( "...." ) << cc::attention( "IPv6 interfaces and addresses:" );
-            for ( const auto& iface_ref : listIfaceInfos6 ) {
-                // iface_ref: first-interface name, second-address
-                clog( VerbosityInfo, "main" )
-                    << cc::debug( "........" ) << cc::sunny( iface_ref.first )
-                    << cc::debug( " -> " ) << cc::bright( iface_ref.second );
-            }
-            //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //
@@ -1850,6 +1858,7 @@ int main( int argc, char** argv ) try {
             size_t maxConnections = 0,
                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServers = 1;
+            bool is_async_http_transfer_mode = true;
 
             // First, get "max-connections" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1871,11 +1880,27 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
+                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )
-                maxConnections = vm["max-http-queues"].as< size_t >();
+                max_http_handler_queues = vm["max-http-queues"].as< size_t >();
+
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    is_async_http_transfer_mode =
+                        joConfig["skaleConfig"]["nodeInfo"]["async-http-transfer-mode"]
+                            .get< bool >();
+                } catch ( ... ) {
+                    is_async_http_transfer_mode = true;
+                }
+            }
+            if ( vm.count( "async-http-transfer-mode" ) )
+                is_async_http_transfer_mode = true;
+            if ( vm.count( "sync-http-transfer-mode" ) )
+                is_async_http_transfer_mode = false;
 
             // First, get "acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1939,6 +1964,9 @@ int main( int argc, char** argv ) try {
                 << cc::debug( ".......................... " )
                 << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
                                                        cc::notice( "default" ) );
+            clog( VerbosityInfo, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
+                                          << cc::debug( "........................ " )
+                                          << cc::yn( is_async_http_transfer_mode );
             //
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
@@ -1956,6 +1984,7 @@ int main( int argc, char** argv ) try {
                 nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
                 strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
+            skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
