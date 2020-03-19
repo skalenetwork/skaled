@@ -61,10 +61,11 @@ public:
     boost::optional< std::string > singleTestFile;
     std::string singleTestName;
     std::string singleTestNet;
-    int trDataIndex;   ///< GeneralState data
-    int trGasIndex;    ///< GeneralState gas
-    int trValueIndex;  ///< GeneralState value
-    bool all = false;  ///< Running every test, including time consuming ones.
+    int trDataIndex;       ///< GeneralState data
+    int trGasIndex;        ///< GeneralState gas
+    int trValueIndex;      ///< GeneralState value
+    bool all = false;      ///< Running every test, including time consuming ones.
+    bool express = false;  ///< run only carefullty selected "express" test
     /// @}
 
     /// Get reference to options

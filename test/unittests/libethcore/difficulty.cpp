@@ -162,7 +162,8 @@ BOOST_AUTO_TEST_CASE( difficultyTestsFrontier ) {
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyTestsRopsten ) {
+BOOST_AUTO_TEST_CASE( difficultyTestsRopsten, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyRopsten.json" );
 
@@ -188,7 +189,8 @@ BOOST_AUTO_TEST_CASE( difficultyTestsHomestead ) {
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyByzantium ) {
+BOOST_AUTO_TEST_CASE( difficultyByzantium, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyByzantium.json" );
 
@@ -201,7 +203,8 @@ BOOST_AUTO_TEST_CASE( difficultyByzantium ) {
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyTestsMainNetwork ) {
+BOOST_AUTO_TEST_CASE( difficultyTestsMainNetwork, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyMainNetwork.json" );
 

@@ -25,9 +25,7 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
-#include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
-#include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace dev;
@@ -35,10 +33,6 @@ using namespace dev::eth;
 using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
-
-boost::unit_test::assertion_result option_all_tests( boost::unit_test::test_unit_id ) {
-    return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
-}
 
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
@@ -504,7 +498,7 @@ static std::string const c_skaleConfigString = R"(
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
 
-BOOST_AUTO_TEST_CASE( ClientSnapshotsTest ) {
+BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
