@@ -84,12 +84,12 @@ void time_holder::set_running( bool b ) {
         if ( b )
             return;
         isRunning_ = false;
-        tpStart_ = tpEnd_ = clock::now();
+        tpEnd_ = clock::now();
     } else {
         if ( !b )
             return;
         isRunning_ = true;
-        tpEnd_ = clock::now();
+        tpStart_ = tpEnd_ = clock::now();
     }
 }
 
