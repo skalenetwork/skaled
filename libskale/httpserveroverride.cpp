@@ -706,8 +706,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     //
     std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
         getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
-    std::string strPerformanceActionName =
-        skutils::tools::format( "task %zu", nTaskNumberInPeer_++ );
+    std::string strPerformanceActionName = skutils::tools::format(
+        "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
     skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
     //
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
@@ -2107,8 +2107,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             //
             std::string strPerformanceQueueName = skutils::tools::format(
                 "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
-            std::string strPerformanceActionName =
-                skutils::tools::format( "task %zu, %s", nTaskNumberCall_++, strMethod.c_str() );
+            std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
+                bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName );
             //
