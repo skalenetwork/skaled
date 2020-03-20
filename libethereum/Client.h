@@ -465,7 +465,10 @@ private:
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
     bool is_started_from_snapshot = true;
-    std::pair< dev::h256, dev::h256 > last_snapshot_hashes;
+    const dev::h256 empty_str_hash =
+        dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );
+    std::pair< dev::h256, dev::h256 > last_snapshot_hashes = {
+        empty_str_hash, empty_str_hash};  // empty string hash
 
 public:
     FILE* performance_fd;
