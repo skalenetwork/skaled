@@ -377,12 +377,12 @@ public:
     size_t get_keep_alive_max_count() const;
     void set_keep_alive_max_count( size_t cnt );
 
-    int bind_to_any_port(
-        int ipVer, const char* host, int socket_flags = 0, bool is_reuse_address = false );
+    int bind_to_any_port( int ipVer, const char* host, int socket_flags = 0,
+        bool is_reuse_address = false, bool is_reuse_port = false );
     bool listen_after_bind();
 
     bool listen( int ipVer, const char* host, int port, int socket_flags = 0,
-        bool is_reuse_address = false );
+        bool is_reuse_address = false, bool is_reuse_port = false );
 
     bool is_running() const;
     void stop();
@@ -395,9 +395,9 @@ protected:
     std::atomic< size_t > keep_alive_max_count_;
 
     virtual socket_t create_server_socket( int ipVer, const char* host, int port, int socket_flags,
-        bool is_reuse_address = false ) const;
-    virtual int bind_internal(
-        int ipVer, const char* host, int port, int socket_flags, bool is_reuse_address = false );
+        bool is_reuse_address = false, bool is_reuse_port = false ) const;
+    virtual int bind_internal( int ipVer, const char* host, int port, int socket_flags,
+        bool is_reuse_address = false, bool is_reuse_port = false );
 
 private:
     typedef std::vector< std::pair< std::regex, Handler > > Handlers;
@@ -533,8 +533,8 @@ protected:
     const std::string host_and_port_;
 
 protected:
-    socket_t create_client_socket(
-        int ipVer, int socket_flags = 0, bool is_reuse_address = false ) const;
+    socket_t create_client_socket( int ipVer, int socket_flags = 0, bool is_reuse_address = false,
+        bool is_reuse_port = false ) const;
 
 private:
     bool read_response_line( stream& strm, response& res );
