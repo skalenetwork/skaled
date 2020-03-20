@@ -1859,12 +1859,12 @@ int main( int argc, char** argv ) try {
                 pTracker->set_enabled( false );
             if ( vm.count( "performance-timeline-max-items" ) > 0 ) {
                 size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
-                pTracker->set_max_item_count( maxItemCount );
+                pTracker->set_safe_max_item_count( maxItemCount );
             }
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
                 << cc::debug( "............. " )
-                << ( pTracker->is_enabled() ? cc::num10( pTracker->get_max_item_count() ) :
+                << ( pTracker->is_enabled() ? cc::num10( pTracker->get_safe_max_item_count() ) :
                                               cc::error( "off" ) );
 
             if ( !bHaveSSL )

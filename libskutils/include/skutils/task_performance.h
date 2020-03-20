@@ -183,7 +183,8 @@ class tracker : public skutils::ref_retain_release,
     mutable map_type map_;
 
     atomic_bool isEnabled_ = true;
-    atomic_index_type maxItemCount_ = 100 * 1000;
+    atomic_index_type safeMaxItemCount_ = 10 * 1000 * 1000;
+    atomic_index_type sessionMaxItemCount_ = 0;  // zero means use safeMaxItemCount_
 
 public:
     tracker();
@@ -199,8 +200,10 @@ private:
 public:
     bool is_enabled() const;
     void set_enabled( bool b );
-    size_t get_max_item_count() const;
-    void set_max_item_count( size_t n );
+    size_t get_safe_max_item_count() const;
+    void set_safe_max_item_count( size_t n );
+    size_t get_session_max_item_count() const;
+    void set_session_max_item_count( size_t n );
     bool is_running() const override;
     void set_running( bool b = true ) override;
     queue_ptr get_queue( const string& strName );

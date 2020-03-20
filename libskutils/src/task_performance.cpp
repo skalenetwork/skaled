@@ -245,28 +245,46 @@ void tracker::reset() {
 
 bool tracker::is_enabled() const {
     bool b = isEnabled_ ? true : false;
+    if ( b ) {
+        if ( safeMaxItemCount_ == 0 )
+            b = false;
+    }
     return b;
 }
 void tracker::set_enabled( bool b ) {
+    if ( b ) {
+        if ( get_safe_max_item_count() == 0 )
+            b = false;
+    }
     isEnabled_ = b;
     if ( !b )
         cancel();
 }
 
-size_t tracker::get_max_item_count() const {
-    size_t n = maxItemCount_;
+size_t tracker::get_safe_max_item_count() const {
+    size_t n = safeMaxItemCount_;
     return n;
 }
+void tracker::set_safe_max_item_count( size_t n ) {
+    safeMaxItemCount_ = n;
+}
 
-void tracker::set_max_item_count( size_t n ) {
-    maxItemCount_ = n;
+size_t tracker::get_session_max_item_count() const {
+    size_t n = sessionMaxItemCount_;
+    if ( n == 0 )
+        n = safeMaxItemCount_;
+    return n;
+}
+void tracker::set_session_max_item_count( size_t n ) {
+    if ( n > safeMaxItemCount_ )
+        n = safeMaxItemCount_;
+    sessionMaxItemCount_ = n;
 }
 
 bool tracker::is_running() const {
     bool b = time_holder::is_running();
     return b;
 }
-
 void tracker::set_running( bool b ) {
     lockable::lock_type lock( mtx() );
     time_holder::set_running( b );
@@ -368,7 +386,11 @@ void action::init( const string& strQueueName, const string& strActionName, cons
         isSkipped_ = true;
         return;
     }
-    if ( pTracker->get_index() >= pTracker->get_max_item_count() ) {
+    if ( pTracker->get_index() >= pTracker->get_safe_max_item_count() ) {
+        isSkipped_ = true;
+        return;
+    }
+    if ( pTracker->get_index() >= pTracker->get_session_max_item_count() ) {
         isSkipped_ = true;
         return;
     }

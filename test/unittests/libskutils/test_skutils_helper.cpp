@@ -994,7 +994,7 @@ int close_socket( socket_t sock ) {
 }
 
 template < typename Fn >
-socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0 ) {
+socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0, bool is_reuse_address = false ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
@@ -1016,8 +1016,10 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
         if ( sock == INVALID_SOCKET ) {
             continue;
         }
-        int yes = 1;
-        setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
+        if ( is_reuse_address ) {
+          int yes = 1;
+          setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
+        }
         if ( fn( sock, *rp ) ) {
             freeaddrinfo( result );
             return sock;
@@ -1032,7 +1034,7 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
 
 void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
     fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4,
-    bool isIPv6 ) {
+    bool isIPv6, bool is_reuse_address ) {
     socket_t fd4 = INVALID_SOCKET, fd6 = INVALID_SOCKET;
     try {
         if ( isIPv4 ) {  // "0.0.0.0"
@@ -1048,14 +1050,14 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
                             "Failed to start IPv4 busy test listener to port %d,error=%d=0x%x",
                             nSocketListenPort, ret, ret ) );
                     return true;
-                } );
+                }, 0, is_reuse_address );
             if ( fd4 == INVALID_SOCKET )
                 throw std::runtime_error( skutils::tools::format(
                     "Failed to create IPv4 busy test listener on port %d", nSocketListenPort ) );
         }
         if ( isIPv6 ) {  // "0:0:0:0:0:0:0:0"
-            fd6 = tcp_helpers::create_socket(
-                6, "::1", nSocketListenPort, [&]( socket_t sock, struct addrinfo& ai ) -> bool {
+            fd6 = tcp_helpers::create_socket( 6, "::1", nSocketListenPort,
+                [&]( socket_t sock, struct addrinfo& ai ) -> bool {
                     int ret = 0;
                     if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
                         throw std::runtime_error( skutils::tools::format(
@@ -1066,7 +1068,7 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
                             "Failed to start IPv6 busy test listener to port %d,error=%d=0x%x",
                             nSocketListenPort, ret, ret ) );
                     return true;
-                } );
+                }, 0, is_reuse_address );
             if ( fd6 == INVALID_SOCKET )
                 throw std::runtime_error( skutils::tools::format(
                     "Failed to create IPv6 busy test listener on port %d", nSocketListenPort ) );
