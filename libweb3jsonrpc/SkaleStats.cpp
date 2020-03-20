@@ -1811,6 +1811,9 @@ Json::Value SkaleStats::skale_performanceTrackingStatus( const Json::Value& /*re
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
         jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
         //
         std::string s = jo.dump();
         Json::Value ret;
@@ -1855,6 +1858,9 @@ Json::Value SkaleStats::skale_performanceTrackingStart( const Json::Value& reque
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
         jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
         //
         std::string s = jo.dump();
         Json::Value ret;
@@ -1890,7 +1896,10 @@ Json::Value SkaleStats::skale_performanceTrackingStop( const Json::Value& /*requ
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = bTrackerIsRunning;
         jo["trackerIsRunning"] = false;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
         jo["performance"] = joPerformance;
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
         //
         std::string s = jo.dump();
         Json::Value ret;
@@ -1933,6 +1942,9 @@ Json::Value SkaleStats::skale_performanceTrackingFetch( const Json::Value& reque
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = bTrackerIsRunning;
         jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
         jo["performance"] = joPerformance;
         //
         std::string s = jo.dump();

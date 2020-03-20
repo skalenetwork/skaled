@@ -185,6 +185,7 @@ class tracker : public skutils::ref_retain_release,
     atomic_bool isEnabled_ = true;
     atomic_index_type safeMaxItemCount_ = 10 * 1000 * 1000;
     atomic_index_type sessionMaxItemCount_ = 0;  // zero means use safeMaxItemCount_
+    string strFirstEncounteredStopReason_;
 
 public:
     tracker();
@@ -211,6 +212,8 @@ public:
     void cancel();
     void start();
     json stop( index_type minIndexT = 0 );
+    void came_accross_with_possible_session_stop_reason( const string& strPossibleStopReason );
+    string get_first_encountered_stop_reason() const;
 };
 
 extern tracker_ptr get_default_tracker();

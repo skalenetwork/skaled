@@ -335,6 +335,8 @@ void tracker::cancel() {
 }
 
 void tracker::start() {
+    lockable::lock_type lock( mtx() );
+    strFirstEncounteredStopReason_.clear();
     set_running( true );
 }
 
@@ -342,12 +344,31 @@ json tracker::stop( index_type minIndexT ) {
     json jsn = json::object();
     {  // block
         lockable::lock_type lock( mtx() );
+        came_accross_with_possible_session_stop_reason(
+            "performance tracker stopped by user request" );
         jsn = compose_json( minIndexT );
         set_running( false );
     }  // block
     return jsn;
 }
 
+void tracker::came_accross_with_possible_session_stop_reason(
+    const string& strPossibleStopReason ) {
+    if ( strPossibleStopReason.empty() )
+        return;
+    lockable::lock_type lock( mtx() );
+    if ( strFirstEncounteredStopReason_.empty() )
+        strFirstEncounteredStopReason_ = strPossibleStopReason;
+}
+
+string tracker::get_first_encountered_stop_reason() const {
+    string s;
+    {  // block
+        lockable::lock_type lock( mtx() );
+        s = strFirstEncounteredStopReason_;
+    }  // block
+    return s;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -388,10 +409,13 @@ void action::init( const string& strQueueName, const string& strActionName, cons
     }
     if ( pTracker->get_index() >= pTracker->get_safe_max_item_count() ) {
         isSkipped_ = true;
+        pTracker->came_accross_with_possible_session_stop_reason( "max limit of events reached" );
         return;
     }
     if ( pTracker->get_index() >= pTracker->get_session_max_item_count() ) {
         isSkipped_ = true;
+        pTracker->came_accross_with_possible_session_stop_reason(
+            "number of reuested of events saved" );
         return;
     }
     queue_ptr pQueue = pTracker->get_queue( strQueueName );
