@@ -176,7 +176,7 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
 
 template < typename Fn >
 socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0,
-    bool is_reuse_address = false, bool is_reuse_port = false ) {
+    bool is_reuse_address = true, bool is_reuse_port = false ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
@@ -214,7 +214,7 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
 
 template < typename Fn >
 socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0,
-    bool is_reuse_address = false, bool is_reuse_port = false ) {
+    bool is_reuse_address = true, bool is_reuse_port = false ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
