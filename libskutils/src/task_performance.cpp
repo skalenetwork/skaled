@@ -22,8 +22,11 @@ lockable::mutex_type& lockable::mtx() const {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-describable::describable( const string& strName, const json& jsn )
-    : strName_( strName ), json_( jsn ) {
+describable::describable( const string& strName, const json& jsnIn )
+    : strName_( strName ),
+      jsonIn_( jsnIn ),
+      jsonOut_( json::object() ),
+      jsonErr_( json::object() ) {
     if ( strName_.empty() )
         throw std::runtime_error(
             "Attempt to instatiate performance describable instance without name provided" );
@@ -35,8 +38,23 @@ const string& describable::get_name() const {
     return strName_;
 }
 
-const json& describable::get_json() const {
-    return json_;
+json describable::get_json_in() const {
+    return jsonIn_;
+}
+json describable::get_json_out() const {
+    return jsonOut_;
+}
+json describable::get_json_err() const {
+    return jsonErr_;
+}
+void describable::set_json_in( const json& jsn ) {
+    jsonIn_ = jsn;
+}
+void describable::set_json_out( const json& jsn ) {
+    jsonOut_ = jsn;
+}
+void describable::set_json_err( const json& jsn ) {
+    jsonErr_ = jsn;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +165,9 @@ json item::compose_json() const {
     jsn["name"] = get_name();
     jsn["iq"] = get_index_in_queue();
     jsn["it"] = get_index_in_tracker();
-    jsn["jsn"] = get_json();
+    jsn["jsnIn"] = get_json_in();
+    jsn["jsnOut"] = get_json_out();
+    jsn["jsnErr"] = get_json_err();
     jsn["fin"] = is_funished();
     jsn["tsStart"] = tp_start_s();
     jsn["tsEnd"] = tp_end_s();
@@ -165,6 +185,43 @@ void item::set_running( bool b ) {
 
 void item::finish() {
     set_running( false );
+}
+
+json item::get_json_in() const {
+    json jsn;
+    {  // block
+        lockable::lock_type lock( get_queue()->mtx() );
+        jsn = describable::get_json_in();
+    }  // block
+    return jsn;
+}
+json item::get_json_out() const {
+    json jsn;
+    {  // block
+        lockable::lock_type lock( get_queue()->mtx() );
+        jsn = describable::get_json_out();
+    }  // block
+    return jsn;
+}
+json item::get_json_err() const {
+    json jsn;
+    {  // block
+        lockable::lock_type lock( get_queue()->mtx() );
+        jsn = describable::get_json_err();
+    }  // block
+    return jsn;
+}
+void item::set_json_in( const json& jsn ) {
+    lockable::lock_type lock( get_queue()->mtx() );
+    describable::set_json_in( jsn );
+}
+void item::set_json_out( const json& jsn ) {
+    lockable::lock_type lock( get_queue()->mtx() );
+    describable::set_json_out( jsn );
+}
+void item::set_json_err( const json& jsn ) {
+    lockable::lock_type lock( get_queue()->mtx() );
+    describable::set_json_err( jsn );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +277,6 @@ json queue::compose_json( index_type minIndexT ) const {
     }  // block
     return jsn;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -422,6 +478,51 @@ void action::init( const string& strQueueName, const string& strActionName, cons
     pItem_ = pQueue->new_item( strActionName, jsnAction );
 }
 
+json action::get_json_in() const {
+    if ( isSkipped_ )
+        return json::object();
+    item_ptr pItem = get_item();
+    if ( !pItem )
+        return json::object();
+    return get_item()->get_json_in();
+}
+json action::get_json_out() const {
+    if ( isSkipped_ )
+        return json::object();
+    item_ptr pItem = get_item();
+    if ( !pItem )
+        return json::object();
+    return pItem->get_json_out();
+}
+json action::get_json_err() const {
+    if ( isSkipped_ )
+        return json::object();
+    item_ptr pItem = get_item();
+    if ( !pItem )
+        return json::object();
+    return pItem->get_json_err();
+}
+void action::set_json_in( const json& jsn ) {
+    if ( isSkipped_ )
+        return;
+    item_ptr pItem = get_item();
+    if ( pItem )
+        pItem->set_json_in( jsn );
+}
+void action::set_json_out( const json& jsn ) {
+    if ( isSkipped_ )
+        return;
+    item_ptr pItem = get_item();
+    if ( pItem )
+        pItem->set_json_out( jsn );
+}
+void action::set_json_err( const json& jsn ) {
+    if ( isSkipped_ )
+        return;
+    item_ptr pItem = get_item();
+    if ( pItem )
+        pItem->set_json_err( jsn );
+}
 
 item_ptr action::get_item() const {
     if ( isSkipped_ )

@@ -703,13 +703,6 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
-    //
-    std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
-        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
-    std::string strPerformanceActionName = skutils::tools::format(
-        "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
-    skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
-    //
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
     std::string strRequest( msg );
     nlohmann::json joRequest;
@@ -746,6 +739,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
         return;
     }
+    //
+    std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
+        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
+    std::string strPerformanceActionName = skutils::tools::format(
+        "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
+    skutils::task::performance::action a(
+        strPerformanceQueueName, strPerformanceActionName, joRequest );
     //
     //
     skutils::stats::time_tracker::element_ptr_t rttElement;
@@ -797,6 +797,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
             joResponse );
         stats::register_stats_answer( "RPC", joRequest, joResponse );
+        a.set_json_out( joResponse );
         bPassed = true;
     } catch ( const std::exception& ex ) {
         rttElement->setError();
@@ -818,6 +819,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
             stats::register_stats_exception( "RPC", strMethod.c_str() );
         }
+        a.set_json_err( joErrorResponce );
     } catch ( ... ) {
         rttElement->setError();
         const char* e = "unknown exception in SkaleServerOverride";
@@ -839,6 +841,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
             stats::register_stats_exception( "RPC", strMethod.c_str() );
         }
+        a.set_json_err( joErrorResponce );
     }
     if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
         clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
@@ -2110,7 +2113,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
                 bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
             skutils::task::performance::action a(
-                strPerformanceQueueName, strPerformanceActionName );
+                strPerformanceQueueName, strPerformanceActionName, joRequest );
             //
             skutils::stats::time_tracker::element_ptr_t rttElement;
             rttElement.emplace(
@@ -2167,6 +2170,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     joResponse );
                 stats::register_stats_answer( "RPC", joRequest, joResponse );
                 //
+                a.set_json_out( joResponse );
                 bPassed = true;
             } catch ( const std::exception& ex ) {
                 rttElement->setError();
@@ -2182,6 +2186,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
+                a.set_json_err( joErrorResponce );
             } catch ( ... ) {
                 rttElement->setError();
                 const char* e = "unknown exception in SkaleServerOverride";
@@ -2197,6 +2202,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
+                a.set_json_err( joErrorResponce );
             }
             if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
                 logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",

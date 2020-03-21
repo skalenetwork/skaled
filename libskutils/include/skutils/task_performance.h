@@ -65,16 +65,22 @@ public:
 
 class describable {
     const string strName_;
-    const json json_;  // attached custom data
+    json jsonIn_, jsonOut_, jsonErr_;
+
 public:
-    describable( const string& strName, const json& jsn );
+    describable( const string& strName, const json& jsnIn );
     describable( const describable& ) = delete;
     describable( describable&& ) = delete;
     virtual ~describable();
     describable& operator=( const describable& ) = delete;
     describable& operator=( describable&& ) = delete;
     const string& get_name() const;
-    const json& get_json() const;
+    virtual json get_json_in() const;
+    virtual json get_json_out() const;
+    virtual json get_json_err() const;
+    virtual void set_json_in( const json& jsn );
+    virtual void set_json_out( const json& jsn );
+    virtual void set_json_err( const json& jsn );
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +147,12 @@ public:
     bool is_running() const override;
     void set_running( bool b = true ) override;
     void finish();
+    json get_json_in() const override;
+    json get_json_out() const override;
+    json get_json_err() const override;
+    void set_json_in( const json& jsn ) override;
+    void set_json_out( const json& jsn ) override;
+    void set_json_err( const json& jsn ) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +253,12 @@ private:
         tracker_ptr pTracker );
 
 public:
+    json get_json_in() const;
+    json get_json_out() const;
+    json get_json_err() const;
+    void set_json_in( const json& jsn );
+    void set_json_out( const json& jsn );
+    void set_json_err( const json& jsn );
     item_ptr get_item() const;
     queue_ptr get_queue() const;
     tracker_ptr get_tracker() const;

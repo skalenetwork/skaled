@@ -221,8 +221,12 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     std::string strPerformanceQueueName_fetch_transactions = "bc/fetch_transactions";
     std::string strPerformanceActionName_fetch_transactions =
         skutils::tools::format( "fetch task %zu", nFetchTransactionsTaskNumber );
+    skutils::task::performance::json jsn = skutils::task::performance::json::object();
+    jsn["limit"] = toJS( _limit );
+    jsn["stateRoot"] = toJS( _stateRoot );
     skutils::task::performance::action a_fetch_transactions(
-        strPerformanceQueueName_fetch_transactions, strPerformanceActionName_fetch_transactions );
+        strPerformanceQueueName_fetch_transactions, strPerformanceActionName_fetch_transactions,
+        jsn );
     //
     m_debugTracer.tracepoint( "fetch_transactions" );
 
@@ -264,20 +268,27 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
-    //
-    static std::atomic_size_t g_nDropBadTransactionsTaskNumber = 0;
-    size_t nDropBadTransactionsTaskNumber = g_nDropBadTransactionsTaskNumber++;
-    std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
-    std::string strPerformanceActionName_drop_bad_transactions =
-        skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
-    skutils::task::performance::action a_drop_bad_transactions(
-        strPerformanceQueueName_drop_bad_transactions,
-        strPerformanceActionName_drop_bad_transactions );
-    //
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
     {
         std::lock_guard< std::mutex > localGuard( m_receivedMutex );
+        //
+        static std::atomic_size_t g_nDropBadTransactionsTaskNumber = 0;
+        size_t nDropBadTransactionsTaskNumber = g_nDropBadTransactionsTaskNumber++;
+        std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
+        std::string strPerformanceActionName_drop_bad_transactions =
+            skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
+        skutils::task::performance::json jsn = skutils::task::performance::json::object();
+        skutils::task::performance::json jarrDroppedTransactions =
+            skutils::task::performance::json::array();
+        for ( auto sha : to_delete ) {
+            jarrDroppedTransactions.push_back( toJS( sha ) );
+        }
+        jsn["droppedTransactions"] = jarrDroppedTransactions;
+        skutils::task::performance::action a_drop_bad_transactions(
+            strPerformanceQueueName_drop_bad_transactions,
+            strPerformanceActionName_drop_bad_transactions, jsn );
+        //
         for ( auto sha : to_delete ) {
             m_debugTracer.tracepoint( "drop_bad" );
             m_tq.drop( sha );
@@ -351,8 +362,21 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::string strPerformanceQueueName_create_block = "bc/create_block";
     std::string strPerformanceActionName_create_block =
         skutils::tools::format( "b-create %zu", nCreateBlockTaskNumber );
-    skutils::task::performance::action a_create_block(
-        strPerformanceQueueName_create_block, strPerformanceActionName_create_block );
+    skutils::task::performance::json jsn_create_block = skutils::task::performance::json::object();
+    jsn_create_block["blockID"] = toJS( _blockID );
+    jsn_create_block["timeStamp"] = toJS( _timeStamp );
+    jsn_create_block["gasPrice"] = toJS( _gasPrice );
+    jsn_create_block["stateRoot"] = toJS( _stateRoot );
+    skutils::task::performance::json jarrApprovedTransactions =
+        skutils::task::performance::json::array();
+    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
+        const bytes& data = *it;
+        h256 sha = sha3( data );
+        jarrApprovedTransactions.push_back( toJS( sha ) );
+    }
+    jsn_create_block["approvedTransactions"] = jarrApprovedTransactions;
+    skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
+        strPerformanceActionName_create_block, jsn_create_block );
     //
     LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
@@ -377,11 +401,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     m_debugTracer.tracepoint( "drop_good_transactions" );
 
+    skutils::task::performance::json jarrProcessedTxns = skutils::task::performance::json::array();
+
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
         h256 sha = sha3( data );
         LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
-
+        jarrProcessedTxns.push_back( toJS( sha ) );
 #ifdef DEBUG_TX_BALANCE
         if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
             std::cerr << cc::error( "createBlock assert" ) << std::endl;
@@ -435,8 +461,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::string strPerformanceQueueName_import_block = "bc/import_block";
     std::string strPerformanceActionName_import_block =
         skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-    skutils::task::performance::action a_import_block(
-        strPerformanceQueueName_import_block, strPerformanceActionName_import_block );
+    skutils::task::performance::json jsn_import_block = skutils::task::performance::json::object();
+    jsn_import_block["txns"] = jarrProcessedTxns;
+    skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
+        strPerformanceActionName_import_block, jsn_import_block );
     //
     m_debugTracer.tracepoint( "import_block" );
 
@@ -562,15 +590,21 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
+                        std::string rlp = toJS( txn.rlp() );
+                        std::string h = toJS( txn.sha3() );
                         //
                         std::string strPerformanceQueueName = "bc/broadcast";
                         std::string strPerformanceActionName =
                             skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
+                        skutils::task::performance::json jsn =
+                            skutils::task::performance::json::object();
+                        jsn["rlp"] = rlp;
+                        jsn["hash"] = h;
                         skutils::task::performance::action a(
-                            strPerformanceQueueName, strPerformanceActionName );
+                            strPerformanceQueueName, strPerformanceActionName, jsn );
                         //
                         m_debugTracer.tracepoint( "broadcast" );
-                        m_broadcaster->broadcast( toJS( txn.rlp() ) );
+                        m_broadcaster->broadcast( rlp );
                     }
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
