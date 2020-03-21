@@ -68,7 +68,6 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
-    std::cout << "CURRENT CLIENT BLOCK: " << m_client.number() << std::endl;
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
     return make_unique< ConsensusStub >( _extFace, m_client.number() );
@@ -367,11 +366,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         debug_block_id = _blockID;
         // this is need for testing. should add better handling
-        _stateRoot = dev::u256( 0 );
-        //        assert(
-        //            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber(
-        //            _blockID ) )
-        //                                  .stateRoot() ) == _stateRoot );
+        assert(
+            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
+                                  .stateRoot() ) == _stateRoot );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
