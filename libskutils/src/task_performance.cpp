@@ -114,18 +114,23 @@ void time_holder::set_running( bool b ) {
 time_point time_holder::tp_start() const {
     return tpStart_;
 }
-
 time_point time_holder::tp_end() const {
     return is_funished() ? tpEnd_ : clock::now();
 }
-
+std::chrono::nanoseconds time_holder::tp_duration() const {
+    std::chrono::nanoseconds d = tp_end() - tp_start();
+    return d;
+}
 string time_holder::tp_start_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
     string s = cc::time2string( tp_start(), isUTC, isDaysInsteadOfYMD, false );
     return s;
 }
-
 string time_holder::tp_end_s( bool isUTC, bool isDaysInsteadOfYMD ) const {
     string s = cc::time2string( tp_end(), isUTC, isDaysInsteadOfYMD, false );
+    return s;
+}
+string time_holder::tp_duration_s() const {
+    string s = cc::duration2string( tp_duration() );
     return s;
 }
 
@@ -171,6 +176,7 @@ json item::compose_json() const {
     jsn["fin"] = is_funished();
     jsn["tsStart"] = tp_start_s();
     jsn["tsEnd"] = tp_end_s();
+    jsn["duration"] = tp_duration_s();
     return jsn;
 }
 

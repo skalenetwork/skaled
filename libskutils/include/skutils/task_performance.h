@@ -120,8 +120,10 @@ public:
     virtual void set_running( bool b = true );
     time_point tp_start() const;
     time_point tp_end() const;
+    std::chrono::nanoseconds tp_duration() const;
     string tp_start_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
     string tp_end_s( bool isUTC = true, bool isDaysInsteadOfYMD = false ) const;
+    string tp_duration_s() const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
