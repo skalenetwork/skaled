@@ -1246,6 +1246,7 @@ void VM::interpretCases() {
                 m_runGas = m_rev == EVMC_CONSTANTINOPLE ? VMSchedule::sstoreUnchangedGas :
                                                           VMSchedule::sstoreResetGas;
                 break;
+            }
 
             updateIOGas();
         }
