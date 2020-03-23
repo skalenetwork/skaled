@@ -162,10 +162,10 @@ static const chrono::system_clock::duration c_collectionDuration = chrono::secon
 static const unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 4;  // 64;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 2;  // 32;
+static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -307,15 +307,9 @@ void BlockChain::close() {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
     }
-    m_details.clear();
-    m_blocks.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blockHashes.clear();
-    m_blocksBlooms.clear();
-    m_cacheUsage.clear();
-    m_inUse.clear();
+
+    clearCaches();
+
     m_lastBlockHashes->clear();
 }
 
@@ -675,8 +669,18 @@ void BlockChain::rotateDBIfNeeded() {
     if ( r <= 0 )
         return;
     auto n = this->number();
-    if ( ( n % r ) == 0 )
+    if ( ( n % r ) == 0 ) {
+        // remember genesis
+        BlockDetails details = this->details( m_genesisHash );
+
+        clearCaches();
         this->m_rotating_db->rotate();
+
+        // re-insert genesis
+        auto r = details.rlp();
+        m_details[m_genesisHash] = details;
+        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+    }
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -1205,6 +1209,44 @@ void BlockChain::garbageCollect( bool _force ) {
     m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
 }
 
+void BlockChain::clearCaches() {
+    {
+        Guard l( x_cacheUsage );
+        m_inUse.clear();
+
+        int n = m_cacheUsage.size();
+        m_cacheUsage.clear();
+        m_cacheUsage.resize( n );
+    }
+    {
+        WriteGuard l( x_details );
+        m_details.clear();
+    }
+    {
+        WriteGuard l( x_blocks );
+        m_blocks.clear();
+    }
+    {
+        WriteGuard l( x_logBlooms );
+        m_logBlooms.clear();
+    }
+    {
+        WriteGuard l( x_receipts );
+        m_receipts.clear();
+    }
+    {
+        WriteGuard l( x_transactionAddresses );
+        m_transactionAddresses.clear();
+    }
+    {
+        WriteGuard l( x_blocksBlooms );
+        m_blocksBlooms.clear();
+    }
+    {
+        WriteGuard l( x_blockHashes );
+        m_blockHashes.clear();
+    }
+}
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
@@ -1276,7 +1318,8 @@ vector< unsigned > BlockChain::withBlockBloom(
     unsigned u = upow( c_bloomIndexSize, c_bloomIndexLevels );
 
     // run through each of the top-level blockbloom blocks
-    for ( unsigned index = _earliest / u; index <= ceilDiv( _latest, u ); ++index )  // 0
+    // TODO here should be another blockBlooms() filtering!?
+    for ( unsigned index = _earliest / u; index <= _latest / u; ++index )  // 0
         ret += withBlockBloom( _b, _earliest, _latest, c_bloomIndexLevels - 1, index );
 
     return ret;
