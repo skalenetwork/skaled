@@ -13,6 +13,7 @@ add_library( skutils STATIC
     ./src/network.cpp               ./include/skutils/network.h
     ./src/rest_call.cpp             ./include/skutils/rest_call.h
     ./src/stats.cpp                 ./include/skutils/stats.h
+    ./src/task_performance.cpp      ./include/skutils/task_performance.h
     ./src/thread_pool.cpp           ./include/skutils/thread_pool.h
     ./src/url.cpp                   ./include/skutils/url.h
     ./src/utils.cpp                 ./include/skutils/utils.h

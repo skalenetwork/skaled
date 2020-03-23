@@ -356,7 +356,7 @@ typedef std::function< bool( const std::string& strErrorDescription ) >
     fn_with_busy_tcp_port_error_t;  // returns true if errror should be ignored
 extern void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
     fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4 = true,
-    bool isIPv6 = true );
+    bool isIPv6 = true, bool is_reuse_address = true, bool is_reuse_port = false );
 
 typedef std::function< void( test_server& refServer ) > fn_with_test_server_t;
 extern void with_test_server(
