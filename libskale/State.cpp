@@ -513,7 +513,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
     m_cache[_contract].setStorage( _key, _value );
-    
+
     dev::u256 _currentValue = storage( _contract, _key );
     if ( _currentValue == 0 && _value != 0 ) {
         if ( !m_isCurrentTxCall ) {
@@ -801,7 +801,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
-    
+
     if ( _t.isCall() ) {
         if ( checkStorageChanges() ) {
             resetCallStorageChanges();
@@ -811,15 +811,15 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             throw;
         }
     }
-    
+
     if ( account( _t.from() )->code() == bytes() ) {
-        if ( res.excepted == dev::eth::TransactionException::None ) { 
+        if ( res.excepted == dev::eth::TransactionException::None ) {
             updateStorageUsage();
         } else {
             resetStorageChanges();
         }
     }
-    
+
     return make_pair( res, receipt );
 }
 
@@ -848,13 +848,15 @@ bool State::checkVersion() const {
     return *m_storedVersion == m_currentVersion;
 }
 
-bool State::checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const {
+bool State::checkValidStorageChange(
+    const dev::Address& _address, const std::queue< int >& _queueChanges ) const {
     auto _queueChangesCopy = _queueChanges;
-    dev::u256 _spaceLeft = std::numeric_limits<dev::u256>::max() - this->m_storageUsed.at( _address );
+    dev::u256 _spaceLeft =
+        std::numeric_limits< dev::u256 >::max() - this->m_storageUsed.at( _address );
     size_t _countChanges = _queueChangesCopy.size();
     for ( size_t i = 0; i < _countChanges; ++i ) {
         int _curValue = _queueChangesCopy.front();
-        if ( ( _curValue == 1 && _spaceLeft == dev::u256(0) ) ) {
+        if ( ( _curValue == 1 && _spaceLeft == dev::u256( 0 ) ) ) {
             return false;
         }
         _spaceLeft += _curValue;
@@ -871,7 +873,7 @@ bool State::checkStorageChanges() const {
             return false;
         }
     }
-    
+
     for ( const auto& elem : this->m_storageUsageCall ) {
         dev::Address _address = elem.first;
         auto _queueChanges = elem.second;
@@ -879,7 +881,7 @@ bool State::checkStorageChanges() const {
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -887,7 +889,7 @@ void State::updateStorageUsage() {
     if ( !checkStorageChanges() ) {
         BOOST_THROW_EXCEPTION( StorageOverflow() );
     }
-    
+
     for ( const auto& elem : this->m_storageUsageTx ) {
         dev::Address _address = elem.first;
         auto _queueChanges = elem.second;

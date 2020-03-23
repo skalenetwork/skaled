@@ -25,8 +25,8 @@
 #pragma once
 
 #include <array>
-#include <unordered_map>
 #include <queue>
+#include <unordered_map>
 
 #include <boost/optional.hpp>
 #include <boost/thread/mutex.hpp>
@@ -368,7 +368,7 @@ public:
 
     /// Check if state is empty
     bool empty() const;
-    
+
     void resetStorageChanges() { m_storageUsageTx.clear(); }
     void resetCallStorageChanges() { m_storageUsageCall.clear(); }
 
@@ -403,11 +403,12 @@ private:
     /// exception occurred.
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
-    
+
     bool checkStorageChanges() const;
-    bool checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const;
+    bool checkValidStorageChange(
+        const dev::Address& _address, const std::queue< int >& _queueChanges ) const;
     void updateStorageUsage();
-    
+
 
 public:
     bool checkVersion() const;
@@ -439,7 +440,7 @@ private:
     ChangeLog m_changeLog;
 
     dev::u256 m_initial_funds = 0;
-    
+
     bool m_isCurrentTxCall = false;
     std::map< dev::Address, dev::u256 > m_storageUsed;
     std::map< dev::Address, std::queue< int > > m_storageUsageTx;

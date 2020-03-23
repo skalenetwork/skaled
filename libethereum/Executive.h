@@ -20,7 +20,6 @@
 #pragma once
 
 #include <functional>
-#include <queue>
 
 #include <json/json.h>
 #include <libdevcore/Log.h>
@@ -79,7 +78,6 @@ private:
     Json::Value m_trace;
     DebugOptions m_options;
 };
-
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
@@ -213,7 +211,7 @@ private:
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
         u256 const& _version );
-    
+
     void resetStorageChanges();
 
     skale::State& m_s;  ///< The state to which this operation/transaction is applied.

@@ -136,7 +136,7 @@ public:
 
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
-    
+
     /// @returns true if transaction is message-call.
     bool isCall() const { return m_type == MessageCall; }
 
