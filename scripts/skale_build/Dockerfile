@@ -9,7 +9,8 @@ RUN apt-get -q update && \
         nettle-bin \
         gnutls-bin \
         python3 \
-        python3-pip
+        python3-pip \
+        btrfs-tools
 
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
     apt update && \
