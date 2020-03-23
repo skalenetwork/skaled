@@ -134,42 +134,11 @@ dev::eth::LogFilter toLogFilter( const nlohmann::json& jo ) {
 
     // check only !empty. it should throw exceptions if input params are incorrect
     if ( jo.count( "fromBlock" ) > 0 )
-        filter.withEarliest( dev::jsToFixed< 32 >( jo["fromBlock"].get< std::string >() ) );
+        filter.withEarliest( dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) );
     if ( jo.count( "toBlock" ) > 0 )
-        filter.withLatest( dev::jsToFixed< 32 >( jo["toBlock"].get< std::string >() ) );
+        filter.withLatest( dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) );
     if ( jo.count( "address" ) > 0 ) {
         if ( jo["address"].is_array() )
-            for ( auto i : jo["address"] )
-                filter.address( dev::jsToAddress( i.get< std::string >() ) );
-        else
-            filter.address( dev::jsToAddress( jo["address"].get< std::string >() ) );
-    }
-    if ( jo.count( "topics" ) > 0 )
-        for ( unsigned i = 0; i < jo["topics"].size(); i++ ) {
-            if ( jo["topics"][i].is_array() ) {
-                for ( auto t : jo["topics"][i] )
-                    if ( !t.is_null() )
-                        filter.topic( i, dev::jsToFixed< 32 >( t.get< std::string >() ) );
-            } else if ( !jo["topics"][i].is_null() )  // if it is anything else then string, it
-                                                      // should and will fail
-                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< std::string >() ) );
-        }
-    return filter;
-}
-
-dev::eth::LogFilter toLogFilter( const nlohmann::json& jo, dev::eth::Interface const& _client ) {
-    dev::eth::LogFilter filter;
-    if ( ( !jo.is_object() ) || jo.size() == 0 )
-        return filter;
-    // check only !empty. it should throw exceptions if input params are incorrect
-    if ( jo.count( "fromBlock" ) > 0 )
-        filter.withEarliest( _client.hashFromNumber(
-            dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) ) );
-    if ( jo.count( "toBlock" ) > 0 )
-        filter.withLatest( _client.hashFromNumber(
-            dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) ) );
-    if ( jo.count( "address" ) > 0 ) {
-        if ( jo.count( "address" ) > 0 )
             for ( auto i : jo["address"] )
                 filter.address( dev::jsToAddress( i.get< std::string >() ) );
         else
@@ -1093,7 +1062,7 @@ void SkaleWsPeer::eth_subscribe_logs(
             if ( joParamItem.is_object() ) {
                 if ( !bHaveLogFilter ) {
                     bHaveLogFilter = true;
-                    logFilter = skale::server::helper::toLogFilter( joParamItem, *ethereum() );
+                    logFilter = skale::server::helper::toLogFilter( joParamItem );
                 }
             }
         }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
