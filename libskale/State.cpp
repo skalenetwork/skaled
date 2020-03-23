@@ -516,10 +516,18 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     
     dev::u256 _currentValue = storage( _contract, _key );
     if ( _currentValue == 0 && _value != 0 ) {
-        m_storageUsageTx[_contract].push( 1 );
+        if ( !m_isCurrentTxCall ) {
+            m_storageUsageTx[_contract].push( 1 );
+        } else {
+            m_storageUsageCall[_contract].push( 1 );
+        }
     }
     if ( _value == 0 && _currentValue != 0 ) {
-        m_storageUsageTx[_contract].push( -1 );
+        if ( !m_isCurrentTxCall ) {
+            m_storageUsageTx[_contract].push( -1 );
+        } else {
+            m_storageUsageCall[_contract].push( -1 );
+        }
     }
     // TODO::review it |^
 }
@@ -798,6 +806,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         if ( checkStorageChanges() ) {
             resetCallStorageChanges();
         } else {
+            resetCallStorageChanges();
+            resetStorageChanges();
             throw;
         }
     }
@@ -818,6 +828,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 bool State::executeTransaction(
     eth::Executive& _e, eth::Transaction const& _t, eth::OnOpFunc const& _onOp ) {
     size_t const savept = savepoint();
+    m_isCurrentTxCall = _t.isCall();
     try {
         _e.initialize( _t );
 
@@ -846,6 +857,7 @@ bool State::checkValidStorageChange( const dev::Address& _address, const std::qu
         if ( ( _curValue == 1 && _spaceLeft == dev::u256(0) ) ) {
             return false;
         }
+        _spaceLeft += _curValue;
         _queueChangesCopy.pop();
     }
     return true;
@@ -853,6 +865,14 @@ bool State::checkValidStorageChange( const dev::Address& _address, const std::qu
 
 bool State::checkStorageChanges() const {
     for ( const auto& elem : this->m_storageUsageTx ) {
+        dev::Address _address = elem.first;
+        auto _queueChanges = elem.second;
+        if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
+            return false;
+        }
+    }
+    
+    for ( const auto& elem : this->m_storageUsageCall ) {
         dev::Address _address = elem.first;
         auto _queueChanges = elem.second;
         if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {

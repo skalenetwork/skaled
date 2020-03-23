@@ -438,6 +438,7 @@ private:
 
     dev::u256 m_initial_funds = 0;
     
+    bool m_isCurrentTxCall = false;
     std::map< dev::Address, dev::u256 > m_storageUsed;
     std::map< dev::Address, std::queue< int > > m_storageUsageTx;
     std::map< dev::Address, std::queue< int > > m_storageUsageCall;
