@@ -513,7 +513,15 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
     m_cache[_contract].setStorage( _key, _value );
-    m_storageUsageTx[_contract].push(1); // proceed storage change type
+    
+    dev::u256 _currentValue = storage( _contract, _key );
+    if ( _currentValue == 0 && _value != 0 ) {
+        m_storageUsageTx[_contract].push( 1 );
+    }
+    if ( _value == 0 && _currentValue != 0 ) {
+        m_storageUsageTx[_contract].push( -1 );
+    }
+    // TODO::review it |^
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -785,6 +793,23 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
+    
+    if ( _t.isCall() ) {
+        if ( checkStorageChanges() ) {
+            resetCallStorageChanges();
+        } else {
+            throw;
+        }
+    }
+    
+    if ( account( _t.from() )->code() == bytes() ) {
+        if ( res.excepted == dev::eth::TransactionException::None ) { 
+            updateStorageUsage();
+        } else {
+            resetStorageChanges();
+        }
+    }
+    
     return make_pair( res, receipt );
 }
 
@@ -839,6 +864,10 @@ bool State::checkStorageChanges() const {
 }
 
 void State::updateStorageUsage() {
+    if ( !checkStorageChanges() ) {
+        throw;
+    }
+    
     for ( const auto& elem : this->m_storageUsageTx ) {
         dev::Address _address = elem.first;
         auto _queueChanges = elem.second;

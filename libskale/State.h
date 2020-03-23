@@ -366,6 +366,9 @@ public:
 
     /// Check if state is empty
     bool empty() const;
+    
+    void resetStorageChanges() { m_storageUsageTx.clear(); }
+    void resetCallStorageChanges() { m_storageUsageCall.clear(); }
 
 private:
     void updateToLatestVersion();
@@ -398,8 +401,6 @@ private:
     /// exception occurred.
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
-    
-    void resetStorageChanges() { m_storageUsed.clear(); }
     
     bool checkStorageChanges() const;
     bool checkValidStorageChange( const dev::Address& _address, const std::queue<int>& _queueChanges ) const;
@@ -436,8 +437,10 @@ private:
     ChangeLog m_changeLog;
 
     dev::u256 m_initial_funds = 0;
-    std::map<dev::Address, dev::u256> m_storageUsed;
-    std::map<dev::Address, std::queue<int>> m_storageUsageTx;
+    
+    std::map< dev::Address, dev::u256 > m_storageUsed;
+    std::map< dev::Address, std::queue< int > > m_storageUsageTx;
+    std::map< dev::Address, std::queue< int > > m_storageUsageCall;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -579,4 +579,5 @@ void Executive::revert() {
         
 void Executive::resetStorageChanges() {
     this->m_s.resetStorageChanges();
+    this->m_s.resetCallStorageChanges();
 }
