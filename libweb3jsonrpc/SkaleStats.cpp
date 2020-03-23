@@ -35,6 +35,7 @@
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
 #include <skutils/rest_call.h>
+#include <skutils/task_performance.h>
 
 #include <array>
 #include <csignal>
@@ -1798,7 +1799,175 @@ uint256 amount
                   << cc::warn( "unknown exception" ) << "\n";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
-}  // namespace rpc
+}  // skale_imaVerifyAndSign()
+
+Json::Value SkaleStats::skale_performanceTrackingStatus( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "Performance tracking status" );
+    try {
+        skutils::task::performance::tracker_ptr pTracker =
+            skutils::task::performance::get_default_tracker();
+        bool bTrackerIsRunning = pTracker->is_running();
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = true;
+        jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
+        //
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " )
+                  << cc::warn( "unknown exception" ) << "\n";
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_performanceTrackingStart( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "Performance tracking start" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        bool bIsRestart = true;
+        if ( joRequest.count( "isRestart" ) > 0 )
+            bIsRestart = joRequest["isRestart"].get< bool >();
+        //
+        skutils::task::performance::tracker_ptr pTracker =
+            skutils::task::performance::get_default_tracker();
+        if ( bIsRestart )
+            pTracker->cancel();
+        pTracker->start();
+        bool bTrackerIsRunning = pTracker->is_running();
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = true;
+        jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
+        //
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " )
+                  << cc::warn( "unknown exception" ) << "\n";
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_performanceTrackingStop( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "Performance tracking stop" );
+    try {
+        skutils::task::performance::tracker_ptr pTracker =
+            skutils::task::performance::get_default_tracker();
+        bool bTrackerIsRunning = pTracker->is_running();
+        //
+        nlohmann::json joPerformance =
+            bTrackerIsRunning ? pTracker->stop() : nlohmann::json::object();
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = bTrackerIsRunning;
+        jo["trackerIsRunning"] = false;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["performance"] = joPerformance;
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
+        //
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " )
+                  << cc::warn( "unknown exception" ) << "\n";
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_performanceTrackingFetch( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "Performance tracking fetch" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        skutils::task::performance::index_type minIndexT = 0;
+        if ( joRequest.count( "minIndex" ) > 0 )
+            minIndexT = joRequest["minIndex"].get< size_t >();
+        //
+        skutils::task::performance::tracker_ptr pTracker =
+            skutils::task::performance::get_default_tracker();
+        bool bTrackerIsRunning = pTracker->is_running();
+        nlohmann::json joPerformance =
+            bTrackerIsRunning ? pTracker->compose_json( minIndexT ) : nlohmann::json::object();
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = bTrackerIsRunning;
+        jo["trackerIsRunning"] = bTrackerIsRunning;
+        jo["maxItemCount"] = pTracker->get_safe_max_item_count();
+        jo["sessionMaxItemCount"] = pTracker->get_session_max_item_count();
+        jo["sessionStopReason"] = pTracker->get_first_encountered_stop_reason();
+        jo["performance"] = joPerformance;
+        //
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " ) << cc::warn( ex.what() )
+                  << "\n";
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << " " << cc::fatal( "FATAL:" )
+                  << cc::error( " Exception while processing request: " )
+                  << cc::warn( "unknown exception" ) << "\n";
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
 
 };  // namespace rpc
 };  // namespace dev

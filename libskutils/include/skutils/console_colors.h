@@ -18,7 +18,6 @@
 namespace cc {
 
 typedef std::chrono::system_clock default_clock_t;
-// typedef std::chrono::high_resolution_clock default_clock_t;
 
 enum class e_reset_mode_t {
     __ERM_COLORS,

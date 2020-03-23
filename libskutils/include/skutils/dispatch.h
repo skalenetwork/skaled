@@ -41,10 +41,11 @@ typedef std::function< void() > fn_invoke_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // if uint64_t max value 18446744073709551615 nanoseconds, then...
-// 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e. approximately 500 years,
-// i.e. acceptable but not too high
-// typedef std::chrono::nanoseconds duration_t; // classic std::chrono::nanoseconds is based on
-// int64_t - not uint64_t
+// ... 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e. approximately 500
+// years,
+// ... i.e. acceptable but not too high
+// ... typedef std::chrono::nanoseconds duration_t; // classic std::chrono::nanoseconds is based on
+// ... int64_t - not uint64_t
 typedef uint64_t duration_base_t;
 typedef std::ratio< 1, 1000000000 > nano_t;
 typedef std::chrono::duration< duration_base_t, nano_t > duration_t;
@@ -540,6 +541,7 @@ class queue : public ref_retain_release {
     //
     domain_ptr_t pDomain_;
     const queue_id_t id_;
+    std::atomic_size_t nTaskNumberInQueue_ = 0;
     atomic_priority_t priority_, accumulator_;
     std::atomic_bool is_removed_, is_running_, auto_remove_after_first_job_;
     //
