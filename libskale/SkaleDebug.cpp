@@ -56,7 +56,8 @@ void SkaleDebugTracer::tracepoint( const std::string& name ) {
     std::unique_lock< std::mutex > lock2( tp_obj.thread_mutex );
     ++tp_obj.pass_count;
 
-    skutils::task::performance::action action("trace/"+name, std::to_string(tp_obj.pass_count));
+    skutils::task::performance::action action(
+        "trace/" + name, std::to_string( tp_obj.pass_count ) );
 
     if ( tp_obj.need_break ) {
         ++tp_obj.waiting_count;
