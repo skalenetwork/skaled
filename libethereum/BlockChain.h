@@ -408,6 +408,8 @@ public:
     /// Deallocate unused data.
     void garbageCollect( bool _force = false );
 
+    void clearCaches();
+
     /// Change the function that is called with a bad block.
     void setOnBad( std::function< void( Exception& ) > _t ) { m_onBad = _t; }
 
