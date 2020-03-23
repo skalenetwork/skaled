@@ -26,6 +26,7 @@
 
 #include <array>
 #include <unordered_map>
+#include <queue>
 
 #include <boost/optional.hpp>
 #include <boost/thread/mutex.hpp>
@@ -82,6 +83,7 @@ DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
 DEV_SIMPLE_EXCEPTION( AttemptToWriteToStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToReadFromStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
+DEV_SIMPLE_EXCEPTION( StorageOverflow );
 }  // namespace error
 
 enum class BaseState { PreExisting, Empty };

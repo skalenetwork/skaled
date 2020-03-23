@@ -885,7 +885,7 @@ bool State::checkStorageChanges() const {
 
 void State::updateStorageUsage() {
     if ( !checkStorageChanges() ) {
-        throw;
+        BOOST_THROW_EXCEPTION( StorageOverflow() );
     }
     
     for ( const auto& elem : this->m_storageUsageTx ) {
