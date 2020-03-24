@@ -1173,7 +1173,7 @@ std::string duration2string( std::chrono::nanoseconds time ) {
     using T = std::tuple< std::chrono::nanoseconds, int, const char* >;
 
     constexpr T formats[] = {T{hours( 1 ), 2, ""}, T{minutes( 1 ), 2, ":"}, T{seconds( 1 ), 2, ":"},
-        T{milliseconds( 1 ), 3, "."}};
+        T{milliseconds( 1 ), 3, "."}, T{microseconds( 1 ), 3, " "}, T{nanoseconds( 1 ), 3, " "}};
 
     std::ostringstream o;
     tuple_for_each( formats, [&time, &o]( auto denominator, auto width, auto separator ) {

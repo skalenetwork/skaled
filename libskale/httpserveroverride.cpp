@@ -60,6 +60,7 @@
 
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
+#include <skutils/task_performance.h>
 #include <skutils/url.h>
 
 #include <iostream>
@@ -96,7 +97,10 @@ namespace server {
 namespace helper {
 
 bool isSkipMethodTrafficTrace( const std::string& strMethod ) {
-    if ( strMethod == "skale_stats" )
+    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
+         strMethod == "skale_performanceTrackingStart" ||
+         strMethod == "skale_performanceTrackingStop" ||
+         strMethod == "skale_performanceTrackingFetch" )
         return true;
     return false;
 }
@@ -130,42 +134,11 @@ dev::eth::LogFilter toLogFilter( const nlohmann::json& jo ) {
 
     // check only !empty. it should throw exceptions if input params are incorrect
     if ( jo.count( "fromBlock" ) > 0 )
-        filter.withEarliest( dev::jsToFixed< 32 >( jo["fromBlock"].get< std::string >() ) );
+        filter.withEarliest( dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) );
     if ( jo.count( "toBlock" ) > 0 )
-        filter.withLatest( dev::jsToFixed< 32 >( jo["toBlock"].get< std::string >() ) );
+        filter.withLatest( dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) );
     if ( jo.count( "address" ) > 0 ) {
         if ( jo["address"].is_array() )
-            for ( auto i : jo["address"] )
-                filter.address( dev::jsToAddress( i.get< std::string >() ) );
-        else
-            filter.address( dev::jsToAddress( jo["address"].get< std::string >() ) );
-    }
-    if ( jo.count( "topics" ) > 0 )
-        for ( unsigned i = 0; i < jo["topics"].size(); i++ ) {
-            if ( jo["topics"][i].is_array() ) {
-                for ( auto t : jo["topics"][i] )
-                    if ( !t.is_null() )
-                        filter.topic( i, dev::jsToFixed< 32 >( t.get< std::string >() ) );
-            } else if ( !jo["topics"][i].is_null() )  // if it is anything else then string, it
-                                                      // should and will fail
-                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< std::string >() ) );
-        }
-    return filter;
-}
-
-dev::eth::LogFilter toLogFilter( const nlohmann::json& jo, dev::eth::Interface const& _client ) {
-    dev::eth::LogFilter filter;
-    if ( ( !jo.is_object() ) || jo.size() == 0 )
-        return filter;
-    // check only !empty. it should throw exceptions if input params are incorrect
-    if ( jo.count( "fromBlock" ) > 0 )
-        filter.withEarliest( _client.hashFromNumber(
-            dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) ) );
-    if ( jo.count( "toBlock" ) > 0 )
-        filter.withLatest( _client.hashFromNumber(
-            dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) ) );
-    if ( jo.count( "address" ) > 0 ) {
-        if ( jo.count( "address" ) > 0 )
             for ( auto i : jo["address"] )
                 filter.address( dev::jsToAddress( i.get< std::string >() ) );
         else
@@ -736,6 +709,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         return;
     }
     //
+    std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
+        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
+    std::string strPerformanceActionName = skutils::tools::format(
+        "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
+    skutils::task::performance::action a(
+        strPerformanceQueueName, strPerformanceActionName, joRequest );
+    //
     //
     skutils::stats::time_tracker::element_ptr_t rttElement;
     rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(), strMethod.c_str(),
@@ -786,6 +766,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
             joResponse );
         stats::register_stats_answer( "RPC", joRequest, joResponse );
+        a.set_json_out( joResponse );
         bPassed = true;
     } catch ( const std::exception& ex ) {
         rttElement->setError();
@@ -807,6 +788,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
             stats::register_stats_exception( "RPC", strMethod.c_str() );
         }
+        a.set_json_err( joErrorResponce );
     } catch ( ... ) {
         rttElement->setError();
         const char* e = "unknown exception in SkaleServerOverride";
@@ -828,6 +810,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
             stats::register_stats_exception( "RPC", strMethod.c_str() );
         }
+        a.set_json_err( joErrorResponce );
     }
     if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
         clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
@@ -1079,7 +1062,7 @@ void SkaleWsPeer::eth_subscribe_logs(
             if ( joParamItem.is_object() ) {
                 if ( !bHaveLogFilter ) {
                     bHaveLogFilter = true;
-                    logFilter = skale::server::helper::toLogFilter( joParamItem, *ethereum() );
+                    logFilter = skale::server::helper::toLogFilter( joParamItem );
                 }
             }
         }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
@@ -2093,6 +2076,14 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
                 return true;
             }
+            //
+            std::string strPerformanceQueueName = skutils::tools::format(
+                "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
+            std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
+                bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
+            skutils::task::performance::action a(
+                strPerformanceQueueName, strPerformanceActionName, joRequest );
+            //
             skutils::stats::time_tracker::element_ptr_t rttElement;
             rttElement.emplace(
                 "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(), pSrv->serverIndex(), ipVer );
@@ -2148,6 +2139,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     joResponse );
                 stats::register_stats_answer( "RPC", joRequest, joResponse );
                 //
+                a.set_json_out( joResponse );
                 bPassed = true;
             } catch ( const std::exception& ex ) {
                 rttElement->setError();
@@ -2163,6 +2155,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
+                a.set_json_err( joErrorResponce );
             } catch ( ... ) {
                 rttElement->setError();
                 const char* e = "unknown exception in SkaleServerOverride";
@@ -2178,6 +2171,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
                     stats::register_stats_exception( "RPC", strMethod.c_str() );
                 }
+                a.set_json_err( joErrorResponce );
             }
             if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
                 logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",

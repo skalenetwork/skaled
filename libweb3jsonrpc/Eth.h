@@ -109,16 +109,16 @@ public:
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(
         std::string const& _blockNumber, std::string const& _uncleIndex ) override;
     virtual std::string eth_newFilter( Json::Value const& _json ) override;
-    virtual std::string eth_newFilterEx( Json::Value const& _json ) override;
+    //    virtual std::string eth_newFilterEx( Json::Value const& _json ) override;
     virtual std::string eth_newBlockFilter() override;
     virtual std::string eth_newPendingTransactionFilter() override;
     virtual bool eth_uninstallFilter( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChanges( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChangesEx( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterLogs( std::string const& _filterId ) override;
-    virtual Json::Value eth_getFilterLogsEx( std::string const& _filterId ) override;
+    //    virtual Json::Value eth_getFilterLogsEx( std::string const& _filterId ) override;
     virtual Json::Value eth_getLogs( Json::Value const& _json ) override;
-    virtual Json::Value eth_getLogsEx( Json::Value const& _json ) override;
+    //    virtual Json::Value eth_getLogsEx( Json::Value const& _json ) override;
     virtual Json::Value eth_getWork() override;
     virtual bool eth_submitWork(
         std::string const& _nonce, std::string const&, std::string const& _mixHash ) override;

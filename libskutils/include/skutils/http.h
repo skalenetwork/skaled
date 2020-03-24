@@ -3,7 +3,8 @@
 #if ( !defined SKUTILS_HTTP_H )
 #define SKUTILS_HTTP_H 1
 
-#ifdef _WIN32
+#if ( defined _WIN32 )
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif  //_CRT_SECURE_NO_WARNINGS
@@ -39,21 +40,15 @@
 #endif  // strcasecmp
 
 typedef SOCKET socket_t;
-#else
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/poll.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
+
+#else  // (defined _WIN32)
+
 #include <cstring>
 
 typedef int socket_t;
 #define INVALID_SOCKET ( -1 )
-#endif  //_WIN32
+
+#endif  // else from (defined _WIN32)
 
 #include <assert.h>
 #include <fcntl.h>
@@ -377,10 +372,12 @@ public:
     size_t get_keep_alive_max_count() const;
     void set_keep_alive_max_count( size_t cnt );
 
-    int bind_to_any_port( int ipVer, const char* host, int socket_flags = 0 );
+    int bind_to_any_port( int ipVer, const char* host, int socket_flags = 0,
+        bool is_reuse_address = true, bool is_reuse_port = false );
     bool listen_after_bind();
 
-    bool listen( int ipVer, const char* host, int port, int socket_flags = 0 );
+    bool listen( int ipVer, const char* host, int port, int socket_flags = 0,
+        bool is_reuse_address = true, bool is_reuse_port = false );
 
     bool is_running() const;
     void stop();
@@ -392,11 +389,14 @@ protected:
 
     std::atomic< size_t > keep_alive_max_count_;
 
+    virtual socket_t create_server_socket( int ipVer, const char* host, int port, int socket_flags,
+        bool is_reuse_address = true, bool is_reuse_port = false ) const;
+    virtual int bind_internal( int ipVer, const char* host, int port, int socket_flags,
+        bool is_reuse_address = true, bool is_reuse_port = false );
+
 private:
     typedef std::vector< std::pair< std::regex, Handler > > Handlers;
 
-    socket_t create_server_socket( int ipVer, const char* host, int port, int socket_flags ) const;
-    int bind_internal( int ipVer, const char* host, int port, int socket_flags );
     bool listen_internal();
 
     bool routing( request& req, response& res );
@@ -527,8 +527,11 @@ protected:
     int timeout_milliseconds_;
     const std::string host_and_port_;
 
+protected:
+    socket_t create_client_socket( int ipVer, int socket_flags = 0, bool is_reuse_address = true,
+        bool is_reuse_port = false ) const;
+
 private:
-    socket_t create_client_socket( int ipVer ) const;
     bool read_response_line( stream& strm, response& res );
     void write_request( stream& strm, request& req );
     virtual bool read_and_close_socket( socket_t sock, request& req, response& res );

@@ -91,6 +91,7 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
+#include <skutils/task_performance.h>
 #include <skutils/utils.h>
 
 using namespace std;
@@ -505,6 +506,14 @@ int main( int argc, char** argv ) try {
     addClientOption( "performance-warning-duration",
         po::value< double >()->value_name( "<seconds>" ),
         strPerformanceWarningDurationOptionDescription.c_str() );
+
+    addClientOption( "performance-timeline-enable",
+        "Enable performance timeline tracker and corresponding JSON RPC APIs" );
+    addClientOption( "performance-timeline-disable",
+        "Disabled performance timeline tracker and corresponding JSON RPC APIs" );
+    addClientOption( "performance-timeline-max-items",
+        po::value< size_t >()->value_name( "<number>" ),
+        "Specifies max number of items performance timeline tracker can save" );
 
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
@@ -1841,6 +1850,22 @@ int main( int argc, char** argv ) try {
                 if ( lfExecutionDurationMaxForPerformanceWarning < 0.0 )
                     lfExecutionDurationMaxForPerformanceWarning = 0.0;
             }
+
+            skutils::task::performance::tracker_ptr pTracker =
+                skutils::task::performance::get_default_tracker();
+            if ( vm.count( "performance-timeline-enable" ) > 0 )
+                pTracker->set_enabled( true );
+            if ( vm.count( "performance-timeline-disable" ) > 0 )
+                pTracker->set_enabled( false );
+            if ( vm.count( "performance-timeline-max-items" ) > 0 ) {
+                size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
+                pTracker->set_safe_max_item_count( maxItemCount );
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
+                << cc::debug( "............. " )
+                << ( pTracker->is_enabled() ? cc::size10( pTracker->get_safe_max_item_count() ) :
+                                              cc::error( "off" ) );
 
             if ( !bHaveSSL )
                 nExplicitPortHTTPS4 = nExplicitPortWSS4 = nExplicitPortHTTPS6 = nExplicitPortWSS6 =

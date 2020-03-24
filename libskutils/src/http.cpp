@@ -1,5 +1,19 @@
 #include <skutils/http.h>
 
+#if ( !defined _WIN32 )
+
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <signal.h>
+#include <sys/poll.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#endif  // (!defined _WIN32)
+
 //#define __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ 1
 
 namespace skutils {
@@ -175,7 +189,8 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
 }
 
 template < typename Fn >
-socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0 ) {
+socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0,
+    bool is_reuse_address = true, bool is_reuse_port = false ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
@@ -197,10 +212,10 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
         if ( sock == INVALID_SOCKET ) {
             continue;
         }
-        // make "reuse address" option available
-        int yes = 1;
+        int yes = is_reuse_address ? 1 : 0;
         setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
-        // bind or connect
+        yes = is_reuse_port ? 1 : 0;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, ( char* ) &yes, sizeof( yes ) );
         if ( fn( sock, *rp ) ) {
             freeaddrinfo( result );
             return sock;
@@ -212,7 +227,8 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
 }
 
 template < typename Fn >
-socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0 ) {
+socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0,
+    bool is_reuse_address = true, bool is_reuse_port = false ) {
 #ifdef _WIN32
 #define SO_SYNCHRONOUS_NONALERT 0x20
 #define SO_OPENTYPE 0x7008
@@ -234,10 +250,10 @@ socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0
         if ( sock == INVALID_SOCKET ) {
             continue;
         }
-        // make "reuse address" option available
-        int yes = 1;
+        int yes = is_reuse_address ? 1 : 0;
         setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
-        // bind or connect
+        yes = is_reuse_port ? 1 : 0;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, ( char* ) &yes, sizeof( yes ) );
         if ( fn( sock, *rp ) ) {
             freeaddrinfo( result );
             return sock;
@@ -1537,16 +1553,18 @@ void server::set_keep_alive_max_count( size_t cnt ) {
     keep_alive_max_count_ = cnt;
 }
 
-int server::bind_to_any_port( int ipVer, const char* host, int socket_flags ) {
-    return bind_internal( ipVer, host, 0, socket_flags );
+int server::bind_to_any_port(
+    int ipVer, const char* host, int socket_flags, bool is_reuse_address, bool is_reuse_port ) {
+    return bind_internal( ipVer, host, 0, socket_flags, is_reuse_address, is_reuse_port );
 }
 
 bool server::listen_after_bind() {
     return listen_internal();
 }
 
-bool server::listen( int ipVer, const char* host, int port, int socket_flags ) {
-    if ( bind_internal( ipVer, host, port, socket_flags ) < 0 )
+bool server::listen( int ipVer, const char* host, int port, int socket_flags, bool is_reuse_address,
+    bool is_reuse_port ) {
+    if ( bind_internal( ipVer, host, port, socket_flags, is_reuse_address, is_reuse_port ) < 0 )
         return false;
     return listen_internal();
 }
@@ -1677,8 +1695,8 @@ bool server::handle_file_request( request& req, response& res ) {
     return false;
 }
 
-socket_t server::create_server_socket(
-    int ipVer, const char* host, int port, int socket_flags ) const {
+socket_t server::create_server_socket( int ipVer, const char* host, int port, int socket_flags,
+    bool is_reuse_address, bool is_reuse_port ) const {
     detail::auto_detect_ipVer( ipVer, host );
     ipVer_ = ipVer;
     return detail::create_socket( ipVer, host, port,
@@ -1692,14 +1710,16 @@ socket_t server::create_server_socket(
             }
             return true;
         },
-        socket_flags );
+        socket_flags, is_reuse_address, is_reuse_port );
 }
 
-int server::bind_internal( int ipVer, const char* host, int port, int socket_flags ) {
+int server::bind_internal( int ipVer, const char* host, int port, int socket_flags,
+    bool is_reuse_address, bool is_reuse_port ) {
     if ( !is_valid() ) {
         return -1;
     }
-    svr_sock_ = create_server_socket( ipVer, host, port, socket_flags );
+    svr_sock_ =
+        create_server_socket( ipVer, host, port, socket_flags, is_reuse_address, is_reuse_port );
     if ( svr_sock_ == INVALID_SOCKET ) {
         return -1;
     }
@@ -2020,11 +2040,12 @@ bool client::is_valid() const {
     return true;
 }
 
-socket_t client::create_client_socket( int ipVer ) const {
+socket_t client::create_client_socket(
+    int ipVer, int socket_flags, bool is_reuse_address, bool is_reuse_port ) const {
     detail::auto_detect_ipVer( ipVer, host_.c_str() );
     ipVer_ = ipVer;
-    return detail::create_socket(
-        ipVer, host_.c_str(), port_, [=]( socket_t sock, struct addrinfo& ai ) -> bool {
+    return detail::create_socket( ipVer, host_.c_str(), port_,
+        [=]( socket_t sock, struct addrinfo& ai ) -> bool {
             detail::set_nonblocking( sock, true );
             auto ret = connect( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) );
             if ( ret < 0 ) {
@@ -2037,7 +2058,8 @@ socket_t client::create_client_socket( int ipVer ) const {
 
             detail::set_nonblocking( sock, false );
             return true;
-        } );
+        },
+        socket_flags, is_reuse_address, is_reuse_port );
 }
 
 bool client::read_response_line( stream& strm, response& res ) {
