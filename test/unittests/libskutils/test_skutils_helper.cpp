@@ -1,5 +1,4 @@
 #include "test_skutils_helper.h"
-#include <test/tools/libtestutils/Common.h>
 #include <boost/test/unit_test.hpp>
 #include <mutex>
 
@@ -1515,7 +1514,7 @@ void test_protocol_busy_port( const char* strProto, int nPort ) {
 BOOST_AUTO_TEST_SUITE( SkUtils )
 BOOST_AUTO_TEST_SUITE( helper )
 
-BOOST_AUTO_TEST_CASE( simple, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( simple ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()

@@ -3,7 +3,8 @@
 #if ( !defined SKUTILS_HTTP_H )
 #define SKUTILS_HTTP_H 1
 
-#ifdef _WIN32
+#if ( defined _WIN32 )
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif  //_CRT_SECURE_NO_WARNINGS
@@ -39,21 +40,15 @@
 #endif  // strcasecmp
 
 typedef SOCKET socket_t;
-#else
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/poll.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
+
+#else  // (defined _WIN32)
+
 #include <cstring>
 
 typedef int socket_t;
 #define INVALID_SOCKET ( -1 )
-#endif  //_WIN32
+
+#endif  // else from (defined _WIN32)
 
 #include <assert.h>
 #include <fcntl.h>

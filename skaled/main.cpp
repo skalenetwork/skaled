@@ -1864,7 +1864,7 @@ int main( int argc, char** argv ) try {
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
                 << cc::debug( "............. " )
-                << ( pTracker->is_enabled() ? cc::num10( pTracker->get_safe_max_item_count() ) :
+                << ( pTracker->is_enabled() ? cc::size10( pTracker->get_safe_max_item_count() ) :
                                               cc::error( "off" ) );
 
             if ( !bHaveSSL )
