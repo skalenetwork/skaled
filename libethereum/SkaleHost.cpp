@@ -66,7 +66,6 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
-    std::cout << "CURRENT CLIENT BLOCK: " << m_client.number() << std::endl;
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
     return make_unique< ConsensusStub >( _extFace, m_client.number() );
