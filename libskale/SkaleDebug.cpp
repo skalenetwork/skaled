@@ -5,6 +5,7 @@
 #include <cassert>
 #include <sstream>
 
+
 SkaleDebugInterface::SkaleDebugInterface() {}
 
 int SkaleDebugInterface::add_handler( handler h ) {
