@@ -150,6 +150,89 @@ struct Change {
 
 using ChangeLog = std::vector< Change >;
 
+struct StorageCalculator {
+    class StorageCalculatorException : std::exception {
+    protected:
+        std::string what_str;
+
+    public:
+        StorageCalculatorException( const std::string& err_str ) { what_str = err_str; }
+
+        virtual const char* what() const noexcept override { return what_str.c_str(); }
+    };
+
+    StorageCalculator( dev::u256 _limit = 1 ) : limit_( _limit ) {}
+
+    dev::u256 limit() { return limit_; }
+
+    void resetStorageChanges() { storageUsageTx.clear(); }
+
+    void resetCallStorageChanges() { storageUsageCall.clear(); }
+
+    void setTxType( bool _isCall ) { isCurrentTxCall = _isCall; }
+
+    bool TxIsCall() { return isCurrentTxCall; }
+
+    bool checkStorageChanges() const {
+        for ( const auto& elem : this->storageUsageTx ) {
+            dev::Address _address = elem.first;
+            auto _queueChanges = elem.second;
+            if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
+                return false;
+            }
+        }
+
+        for ( const auto& elem : this->storageUsageCall ) {
+            dev::Address _address = elem.first;
+            auto _queueChanges = elem.second;
+            if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool checkValidStorageChange(
+        const dev::Address& _address, const std::queue< int >& _queueChanges ) const {
+        auto _queueChangesCopy = _queueChanges;
+        dev::u256 _spaceLeft = this->limit_ - this->storageUsed.at( _address );
+        size_t _countChanges = _queueChangesCopy.size();
+        for ( size_t i = 0; i < _countChanges; ++i ) {
+            int _curValue = _queueChangesCopy.front();
+            if ( ( _curValue == 1 && _spaceLeft == dev::u256( 0 ) ) ) {
+                return false;
+            }
+            _spaceLeft += _curValue;
+            _queueChangesCopy.pop();
+        }
+        return true;
+    }
+
+    void updateStorageUsage() {
+        if ( !checkStorageChanges() ) {
+            throw StorageCalculatorException( "Storage overflow" );
+        }
+
+        for ( const auto& elem : this->storageUsageTx ) {
+            dev::Address _address = elem.first;
+            auto _queueChanges = elem.second;
+            size_t _countChanges = _queueChanges.size();
+            for ( size_t i = 0; i < _countChanges; ++i ) {
+                int _curValue = _queueChanges.front();
+                this->storageUsed[_address] += _curValue;
+                _queueChanges.pop();
+            }
+        }
+    }
+
+    dev::u256 limit_;
+    bool isCurrentTxCall = false;
+    std::map< dev::Address, dev::u256 > storageUsed;
+    std::map< dev::Address, std::queue< int > > storageUsageTx;
+    std::map< dev::Address, std::queue< int > > storageUsageCall;
+};
+
 /**
  * Model of an Skale state.
  *
@@ -179,12 +262,12 @@ public:
     /// than BaseState::PreExisting in order to prepopulate the state.
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0 )
+        dev::u256 _initialFunds = 0, dev::u256 _storageLimit = 1 )
         : State( _accountStartNonce,
               openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
-              _bs, _initialFunds ) {}
+              _bs, _initialFunds, _storageLimit ) {}
 
     State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
 
@@ -369,14 +452,15 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    void resetStorageChanges() { m_storageUsageTx.clear(); }
-    void resetCallStorageChanges() { m_storageUsageCall.clear(); }
+    void resetStorageChanges() { m_storageCalculator.resetStorageChanges(); }
+    void resetCallStorageChanges() { m_storageCalculator.resetCallStorageChanges(); }
 
 private:
     void updateToLatestVersion();
 
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
-        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0 );
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
+        dev::u256 _storageLimit = 1 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
@@ -403,12 +487,6 @@ private:
     /// exception occurred.
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
-
-    bool checkStorageChanges() const;
-    bool checkValidStorageChange(
-        const dev::Address& _address, const std::queue< int >& _queueChanges ) const;
-    void updateStorageUsage();
-
 
 public:
     bool checkVersion() const;
@@ -441,10 +519,7 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-    bool m_isCurrentTxCall = false;
-    std::map< dev::Address, dev::u256 > m_storageUsed;
-    std::map< dev::Address, std::queue< int > > m_storageUsageTx;
-    std::map< dev::Address, std::queue< int > > m_storageUsageCall;
+    StorageCalculator m_storageCalculator;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -60,14 +60,15 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State(
-    u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
+    u256 _initialFunds, u256 _storageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ) {
+      m_initial_funds( _initialFunds ),
+      m_storageCalculator( _storageLimit ) {
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -135,6 +136,7 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    m_storageCalculator = _s.m_storageCalculator;
 
     return *this;
 }
@@ -516,17 +518,17 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
 
     dev::u256 _currentValue = storage( _contract, _key );
     if ( _currentValue == 0 && _value != 0 ) {
-        if ( !m_isCurrentTxCall ) {
-            m_storageUsageTx[_contract].push( 1 );
+        if ( !m_storageCalculator.isCurrentTxCall ) {
+            m_storageCalculator.storageUsageTx[_contract].push( 1 );
         } else {
-            m_storageUsageCall[_contract].push( 1 );
+            m_storageCalculator.storageUsageCall[_contract].push( 1 );
         }
     }
     if ( _value == 0 && _currentValue != 0 ) {
-        if ( !m_isCurrentTxCall ) {
-            m_storageUsageTx[_contract].push( -1 );
+        if ( !m_storageCalculator.isCurrentTxCall ) {
+            m_storageCalculator.storageUsageTx[_contract].push( -1 );
         } else {
-            m_storageUsageCall[_contract].push( -1 );
+            m_storageCalculator.storageUsageCall[_contract].push( -1 );
         }
     }
     // TODO::review it |^
@@ -803,20 +805,24 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     receipt.setRevertReason( strRevertReason );
 
     if ( _t.isCall() ) {
-        if ( checkStorageChanges() ) {
-            resetCallStorageChanges();
+        if ( m_storageCalculator.checkStorageChanges() ) {
+            m_storageCalculator.resetCallStorageChanges();
         } else {
-            resetCallStorageChanges();
-            resetStorageChanges();
-            throw;
+            m_storageCalculator.resetCallStorageChanges();
+            m_storageCalculator.resetStorageChanges();
+            BOOST_THROW_EXCEPTION( StorageOverflow() );
         }
     }
 
     if ( account( _t.from() )->code() == bytes() ) {
         if ( res.excepted == dev::eth::TransactionException::None ) {
-            updateStorageUsage();
+            try {
+                m_storageCalculator.updateStorageUsage();
+            } catch ( StorageCalculator::StorageCalculatorException& ) {
+                BOOST_THROW_EXCEPTION( StorageOverflow() );
+            }
         } else {
-            resetStorageChanges();
+            m_storageCalculator.resetStorageChanges();
         }
     }
 
@@ -828,7 +834,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 bool State::executeTransaction(
     eth::Executive& _e, eth::Transaction const& _t, eth::OnOpFunc const& _onOp ) {
     size_t const savept = savepoint();
-    m_isCurrentTxCall = _t.isCall();
+    m_storageCalculator.isCurrentTxCall = _t.isCall();
     try {
         _e.initialize( _t );
 
@@ -846,60 +852,6 @@ bool State::executeTransaction(
 
 bool State::checkVersion() const {
     return *m_storedVersion == m_currentVersion;
-}
-
-bool State::checkValidStorageChange(
-    const dev::Address& _address, const std::queue< int >& _queueChanges ) const {
-    auto _queueChangesCopy = _queueChanges;
-    dev::u256 _spaceLeft =
-        std::numeric_limits< dev::u256 >::max() - this->m_storageUsed.at( _address );
-    size_t _countChanges = _queueChangesCopy.size();
-    for ( size_t i = 0; i < _countChanges; ++i ) {
-        int _curValue = _queueChangesCopy.front();
-        if ( ( _curValue == 1 && _spaceLeft == dev::u256( 0 ) ) ) {
-            return false;
-        }
-        _spaceLeft += _curValue;
-        _queueChangesCopy.pop();
-    }
-    return true;
-}
-
-bool State::checkStorageChanges() const {
-    for ( const auto& elem : this->m_storageUsageTx ) {
-        dev::Address _address = elem.first;
-        auto _queueChanges = elem.second;
-        if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
-            return false;
-        }
-    }
-
-    for ( const auto& elem : this->m_storageUsageCall ) {
-        dev::Address _address = elem.first;
-        auto _queueChanges = elem.second;
-        if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void State::updateStorageUsage() {
-    if ( !checkStorageChanges() ) {
-        BOOST_THROW_EXCEPTION( StorageOverflow() );
-    }
-
-    for ( const auto& elem : this->m_storageUsageTx ) {
-        dev::Address _address = elem.first;
-        auto _queueChanges = elem.second;
-        size_t _countChanges = _queueChanges.size();
-        for ( size_t i = 0; i < _countChanges; ++i ) {
-            int _curValue = _queueChanges.front();
-            this->m_storageUsed[_address] += _curValue;
-            _queueChanges.pop();
-        }
-    }
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
