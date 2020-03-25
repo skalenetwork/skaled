@@ -455,6 +455,10 @@ public:
     void resetStorageChanges() { m_storageCalculator.resetStorageChanges(); }
     void resetCallStorageChanges() { m_storageCalculator.resetCallStorageChanges(); }
 
+    dev::u256 storageUsed( const dev::Address& _addr ) const {
+        return m_storageCalculator.storageUsed.at( _addr );
+    }
+
 private:
     void updateToLatestVersion();
 
