@@ -1249,6 +1249,88 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
         "Transaction gas price lower than current eth_gasPrice." );
 }
 
+BOOST_AUTO_TEST_CASE( storage_limit ) {
+    JsonRpcFixture fixture;
+    
+//pragma solidity 0.4.25;
+//
+//contract TestStorageLimit {
+//
+//    uint[] public storageArray;
+//
+//    function store(uint256 num) public {
+//        storageArray.push( num );
+//    }
+//
+//    function erase(uint256 index) public {
+//        delete storageArray[index];
+//    }
+//
+//    function foo() public view {
+//        uint len = storageArray.length;
+//        storageArray.push(1);
+//    }
+//}
+    
+    std::string bytecode = "608060405234801561001057600080fd5b506101f0806100206000396000f300608060405260043610610062576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630e031ab1146100675780631007f753146100a85780636057361d146100d5578063c298557814610102575b600080fd5b34801561007357600080fd5b5061009260048036038101908080359060200190929190505050610119565b6040518082815260200191505060405180910390f35b3480156100b457600080fd5b506100d36004803603810190808035906020019092919050505061013c565b005b3480156100e157600080fd5b506101006004803603810190808035906020019092919050505061015c565b005b34801561010e57600080fd5b5061011761018b565b005b60008181548110151561012857fe5b906000526020600020016000915090505481565b60008181548110151561014b57fe5b906000526020600020016000905550565b600081908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b600080805490509050600060019080600181540180825580915050906001820390600052602060002001600090919290919091505550505600a165627a7a72305820c1237ab97a95c28d48de2b24fe4384ff2bcef34dd95160523decfcc525dec16a0029";
+    
+    Json::Value create;
+    create["data"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+    dev::Address contract = dev::Address( contractAddress );
+    
+    auto senderAddress = fixture.coinbase.address();
+    
+    Json::Value txPushValue;  // call store(1)
+    txPushValue["to"] = contractAddress;
+    txPushValue["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    txPushValue["from"] = toJS( senderAddress );
+    txPushValue["gas"];
+    txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
+    
+    Json::Value txCall;  // call foo()
+    txCall["to"] = contractAddress;
+    txCall["data"] = "0xc2985578";
+    txCall["from"] = toJS( senderAddress );
+    txCall["gas"];
+    txHash = fixture.rpcClient->eth_sendTransaction( txCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
+    
+    Json::Value txThrow;  // trying to call store(2)
+    txThrow["to"] = contractAddress;
+    txThrow["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
+    txThrow["from"] = toJS( senderAddress );
+    txThrow["gas"];
+    txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
+    
+    Json::Value txEraseValue;  // call erase(1)
+    txEraseValue["to"] = contractAddress;
+    txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000001";
+    txEraseValue["from"] = toJS( senderAddress );
+    txEraseValue["gas"];
+    txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 0 );
+    
+    Json::Value txPushValueAndCall;
+    txPushValueAndCall["to"] = contractAddress;
+    txPushValueAndCall["data"];
+    txPushValueAndCall["from"] = toJS( senderAddress );
+    txPushValueAndCall["gas"];
+    txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
+    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
+}
+
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
