@@ -1115,8 +1115,11 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         "fffffffffffffffffffffffff16815260200191505060405180910390f3"
         "5b60003390509056fea165627a7a72305820abfa953fead48d8f657bca6"
         "57713501650734d40342585cafcf156a3fe1f41d20029";
+    
+    auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
+    create["from"] = toJS( senderAddress );
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
@@ -1126,6 +1129,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     string contractAddress = receipt["contractAddress"].asString();
 
     Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
     transactionCallObject["to"] = contractAddress;
     transactionCallObject["data"] = "0xda91254c";
 
@@ -1168,8 +1172,11 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
         "0200191505060405180910390f35b600081600081905550600190509190"
         "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
         "5ee8909b83094a3f856b9051274500029";
+    
+    auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
+    create["from"] = toJS( senderAddress );
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
@@ -1274,7 +1281,10 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     
     std::string bytecode = "608060405234801561001057600080fd5b506101f0806100206000396000f300608060405260043610610062576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630e031ab1146100675780631007f753146100a85780636057361d146100d5578063c298557814610102575b600080fd5b34801561007357600080fd5b5061009260048036038101908080359060200190929190505050610119565b6040518082815260200191505060405180910390f35b3480156100b457600080fd5b506100d36004803603810190808035906020019092919050505061013c565b005b3480156100e157600080fd5b506101006004803603810190808035906020019092919050505061015c565b005b34801561010e57600080fd5b5061011761018b565b005b60008181548110151561012857fe5b906000526020600020016000915090505481565b60008181548110151561014b57fe5b906000526020600020016000905550565b600081908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b600080805490509050600060019080600181540180825580915050906001820390600052602060002001600090919290919091505550505600a165627a7a72305820c1237ab97a95c28d48de2b24fe4384ff2bcef34dd95160523decfcc525dec16a0029";
     
+    auto senderAddress = fixture.coinbase.address();
+    
     Json::Value create;
+    create["from"] = toJS( senderAddress );
     create["data"] = bytecode;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
@@ -1284,13 +1294,11 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     string contractAddress = receipt["contractAddress"].asString();
     dev::Address contract = dev::Address( contractAddress );
     
-    auto senderAddress = fixture.coinbase.address();
-    
     Json::Value txPushValue;  // call store(1)
     txPushValue["to"] = contractAddress;
     txPushValue["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
     txPushValue["from"] = toJS( senderAddress );
-    txPushValue["gas"];
+    txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
@@ -1299,7 +1307,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txCall["to"] = contractAddress;
     txCall["data"] = "0xc2985578";
     txCall["from"] = toJS( senderAddress );
-    txCall["gas"];
+    txCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
@@ -1308,7 +1316,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txThrow["to"] = contractAddress;
     txThrow["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
     txThrow["from"] = toJS( senderAddress );
-    txThrow["gas"];
+    txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
@@ -1317,18 +1325,18 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txEraseValue["to"] = contractAddress;
     txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000001";
     txEraseValue["from"] = toJS( senderAddress );
-    txEraseValue["gas"];
+    txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 0 );
     
-    Json::Value txPushValueAndCall;
-    txPushValueAndCall["to"] = contractAddress;
-    txPushValueAndCall["data"];
-    txPushValueAndCall["from"] = toJS( senderAddress );
-    txPushValueAndCall["gas"];
-    txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
-    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
+//    Json::Value txPushValueAndCall;
+//    txPushValueAndCall["to"] = contractAddress;
+//    txPushValueAndCall["data"];
+//    txPushValueAndCall["from"] = toJS( senderAddress );
+//    txPushValueAndCall["gas"];
+//    txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
+//    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
