@@ -184,7 +184,7 @@ private:
     bool m_will_exit = false;
 
 public:
-    unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
+    explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
     ~unlock_guard() {
         if ( !m_will_exit )
             mutex_ref.lock();
@@ -542,13 +542,16 @@ void SkaleHost::stopWorking() {
     auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
                              m_consensusWorkingMutex, std::adopt_lock ) :
                          std::unique_ptr< std::lock_guard< std::timed_mutex > >();
+    ( void ) lock;  // for Codacy
 
     m_exitNeeded = true;
     pauseConsensus( false );
     m_consensus->exitGracefully();
 
-    while ( m_consensus->getStatus() != CONSENSUS_EXITED )
-        usleep( 100000 );
+    while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+        timespec ms100{0, 100000000};
+        nanosleep( &ms100, nullptr );
+    }
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
