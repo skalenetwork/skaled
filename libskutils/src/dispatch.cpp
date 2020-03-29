@@ -1,5 +1,6 @@
 #include <skutils/console_colors.h>
 #include <skutils/dispatch.h>
+#include <skutils/task_performance.h>
 #include <skutils/utils.h>
 #include <time.h>
 #include <uv.h>
@@ -995,6 +996,14 @@ bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicity specified job syn
                 "dispatch queue %s before run job fn %p\n", id_.c_str(), this );
             std::cout.flush();
 #endif
+            //
+            std::string strPerformanceQueueName =
+                skutils::tools::format( "dispatch/queue/%s", id_.c_str() );
+            std::string strPerformanceActionName =
+                skutils::tools::format( "task %zu", nTaskNumberInQueue_++ );
+            skutils::task::performance::action a(
+                strPerformanceQueueName, strPerformanceActionName );
+            //
             fn();
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
             std::cout << skutils::tools::format(
@@ -1241,31 +1250,41 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         cntFailedToStartThreads = 0;
         for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
             try {
-                bool bThreadStartedOK = thread_pool_.safe_submit_without_future( [this]() {
-                    ++cntRunningThreads_;
-                    try {
-                        for ( ; true; ) {
-                            if ( shutdown_flag_ )
-                                break;
-                            {  // block
-                                std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
-                                fetch_lock_.wait( lock );
-                            }  // block
-                            if ( shutdown_flag_ )
-                                break;
-                            //
-                            // run_one();
-                            //
-                            for ( ; run_one(); ) {
+                std::string strPerformanceQueueName = skutils::tools::format(
+                    "dispatch/thread/%zu", idxThread );  // notice - no domain reference
+                bool bThreadStartedOK =
+                    thread_pool_.safe_submit_without_future( [this, strPerformanceQueueName]() {
+                        ++cntRunningThreads_;
+                        try {
+                            size_t nTaskNumberInThisThread = 0;
+                            for ( ; true; ) {
                                 if ( shutdown_flag_ )
                                     break;
-                                // fetch_lock_.notify_one(); // spread the work into other threads
-                            }
-                        }  /// for( ; true ; )
-                    } catch ( ... ) {
-                    }
-                    --cntRunningThreads_;
-                } );
+                                {  // block
+                                    std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
+                                    fetch_lock_.wait( lock );
+                                }  // block
+                                if ( shutdown_flag_ )
+                                    break;
+                                for ( ; true; ) {
+                                    //
+                                    std::string strPerformanceActionName = skutils::tools::format(
+                                        "task %zu", nTaskNumberInThisThread++ );
+                                    skutils::task::performance::action a(
+                                        strPerformanceQueueName, strPerformanceActionName );
+                                    //
+                                    if ( !run_one() )
+                                        break;
+                                    if ( shutdown_flag_ )
+                                        break;
+                                    // fetch_lock_.notify_one(); // spread the work into other
+                                    // threads
+                                }
+                            }  /// for( ; true ; )
+                        } catch ( ... ) {
+                        }
+                        --cntRunningThreads_;
+                    } );
                 if ( !bThreadStartedOK )
                     throw std::runtime_error( "failed to start thread in dispatch pool" );
             } catch ( ... ) {
