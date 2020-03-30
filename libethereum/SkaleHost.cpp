@@ -110,7 +110,15 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     : m_client( _client ),
       m_tq( _client.m_tq ),
       total_sent( 0 ),
-      total_arrived( 0 ) {
+      total_arrived( 0 )
+    {
+
+    m_debugTracer.call_on_tracepoint([this](const std::string& name){
+        skutils::task::performance::action action(
+            "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count(name) ) );
+
+    });
+
     m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     } );
