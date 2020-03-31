@@ -196,7 +196,15 @@ struct StorageCalculator {
     bool checkValidStorageChange(
         const dev::Address& _address, const std::queue< int >& _queueChanges ) const {
         auto _queueChangesCopy = _queueChanges;
-        dev::u256 _spaceLeft = this->limit_ - this->storageUsed.at( _address );
+
+        dev::u256 _storageUsed;
+        try {
+            _storageUsed = this->storageUsed.at( _address );
+        } catch ( std::out_of_range& ) {
+            _storageUsed = 0;
+        }
+
+        dev::u256 _spaceLeft = this->limit_ - _storageUsed;
         size_t _countChanges = _queueChangesCopy.size();
         for ( size_t i = 0; i < _countChanges; ++i ) {
             int _curValue = _queueChangesCopy.front();
@@ -455,9 +463,7 @@ public:
     void resetStorageChanges() { m_storageCalculator.resetStorageChanges(); }
     void resetCallStorageChanges() { m_storageCalculator.resetCallStorageChanges(); }
 
-    dev::u256 storageUsed( const dev::Address& _addr ) const {
-        return m_storageCalculator.storageUsed.at( _addr );
-    }
+    dev::u256 storageUsed( const dev::Address& _addr ) const;
 
 private:
     void updateToLatestVersion();

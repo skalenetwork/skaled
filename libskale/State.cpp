@@ -850,6 +850,17 @@ bool State::executeTransaction(
     }
 }
 
+dev::u256 State::storageUsed( const dev::Address& _addr ) const {
+    dev::u256 _returnValue;
+    try {
+        _returnValue = m_storageCalculator.storageUsed.at( _addr );
+    } catch ( std::out_of_range& ) {
+        _returnValue = 0;
+    }
+
+    return _returnValue;
+}
+
 bool State::checkVersion() const {
     return *m_storedVersion == m_currentVersion;
 }
