@@ -172,11 +172,6 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
             m_snapshotManager->doSnapshot( 0 );
-            //            this->last_snapshot_time = this->latestBlock().info().timestamp();
-            //            std::cerr << "THIS LAST SNAPSHOT TIME: " << this->last_snapshot_time <<
-            //            '\n';
-        } else {
-            // this->fillLastSnapshotTime();
         }
     }
 
