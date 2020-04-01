@@ -360,8 +360,6 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-extern int debug_block_id;
-
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
