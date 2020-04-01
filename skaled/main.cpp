@@ -291,49 +291,6 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         fs::remove( saveTo );
 }
 
-// bool isNeededToDownloadSnapshot( const ChainParams& _chainParams,
-//    const boost::filesystem::path& _dbPath, WithExisting _forceAction ) {
-//    if ( _chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
-//      return false;
-//    }
-//    BlockChain bc( _chainParams, _dbPath, _forceAction );
-//    unsigned currentNumber = bc.number();
-
-//    uint64_t idx =
-//        dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
-//        _chainParams.sChain.nodes.size() + 1;
-//    while ( _chainParams.sChain.nodes[idx].id == _chainParams.nodeInfo.id ) {
-//        idx = dev::h64::Arith( dev::h64::random() ).convert_to< size_t >() %
-//        _chainParams.sChain.nodes.size() + 1;
-//    }
-
-//    std::string httpUrl = std::string( "http://" ) +
-//                          std::string( _chainParams.sChain.nodes[idx].ip ) + std::string( ":" ) +
-//                          ( _chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
-//    skutils::rest::client cli;
-//    if ( !cli.open( httpUrl ) ) {
-//        throw std::runtime_error( "REST failed to connect to server" );
-//    }
-
-//    nlohmann::json joIn = nlohmann::json::object();
-//    joIn["jsonrpc"] = "2.0";
-//    joIn["method"] = "skale_getLatestBlockNumber";
-//    joIn["params"] = nlohmann::json::object();
-//    skutils::rest::data_t d = cli.call( joIn );
-//    if ( d.empty() ) {
-//        throw std::runtime_error(
-//            "cannot get blockNumber to decide whether download snapshot or not" );
-//    }
-//    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-//    unsigned blockNumber = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
-
-//    if ( currentNumber + 10000 < blockNumber ) {
-//        return true;
-//    }
-
-//    return false;
-//}
-
 }  // namespace
 
 static const std::list< std::pair< std::string, std::string > >
@@ -1204,8 +1161,7 @@ int main( int argc, char** argv ) try {
                               "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
     bool isStartedFromSnapshot = false;
-    if ( vm.count( "download-snapshot" ) /*||
-         isNeededToDownloadSnapshot( chainParams, dev::getDataDir(), withExisting )*/ ) {
+    if ( vm.count( "download-snapshot" ) ) {
         isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( vm.count( "download-snapshot" ) ) {
