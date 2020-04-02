@@ -814,15 +814,22 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         }
     }
 
-    if ( account( _t.from() )->code() == bytes() ) {
-        if ( res.excepted == dev::eth::TransactionException::None ) {
-            try {
-                m_storageCalculator.updateStorageUsage();
-            } catch ( StorageCalculator::StorageCalculatorException& ) {
-                BOOST_THROW_EXCEPTION( StorageOverflow() );
+    dev::Address _sender = _t.from();
+
+    if ( _sender !=
+         dev::Address( "0x0000000000000000000000000000000000000000000000000000000000000000" ) ) {
+        if ( m_nonExistingAccountsCache.count( _sender ) != 0 ) {
+            if ( account( _sender )->code() == bytes() ) {
+                if ( res.excepted == dev::eth::TransactionException::None ) {
+                    try {
+                        m_storageCalculator.updateStorageUsage();
+                    } catch ( StorageCalculator::StorageCalculatorException& ) {
+                        BOOST_THROW_EXCEPTION( StorageOverflow() );
+                    }
+                } else {
+                    m_storageCalculator.resetStorageChanges();
+                }
             }
-        } else {
-            m_storageCalculator.resetStorageChanges();
         }
     }
 

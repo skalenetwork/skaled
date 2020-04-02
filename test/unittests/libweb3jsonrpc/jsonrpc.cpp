@@ -1129,7 +1129,6 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     string contractAddress = receipt["contractAddress"].asString();
 
     Json::Value transactionCallObject;
-    transactionCallObject["from"] = toJS( senderAddress );
     transactionCallObject["to"] = contractAddress;
     transactionCallObject["data"] = "0xda91254c";
 
