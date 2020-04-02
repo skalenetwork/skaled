@@ -42,7 +42,7 @@ addons:
             - yasm
             - flex
             - bison
-            - btrfs-tools
+            - btrfs-progs
 jobs:
     include:
         - stage: test
