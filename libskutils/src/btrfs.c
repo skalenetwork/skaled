@@ -102,7 +102,7 @@ int btrfs_subvolume_create(const char* path){
 }
 
 int btrfs_subvolume_delete(const char* path){
-    char fmt[] = "btrfs subvolume delete %s";
+    char fmt[] = "btrfs subvolume delete -c %s";
 
     int len = 1 + snprintf(NULL, 0, fmt, path);
 
