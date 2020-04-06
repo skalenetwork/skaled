@@ -10,7 +10,7 @@ RUN apt-get -q update && \
         gnutls-bin \
         python3 \
         python3-pip \
-        btrfs-tools
+        btrfs-progs
 
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
     apt update && \
