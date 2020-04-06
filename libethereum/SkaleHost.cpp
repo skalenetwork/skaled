@@ -114,6 +114,9 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     {
 
     m_debugTracer.call_on_tracepoint([this](const std::string& name){
+
+        LOG(m_traceLogger) << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count(name);
+
         skutils::task::performance::action action(
             "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count(name) ) );
 
