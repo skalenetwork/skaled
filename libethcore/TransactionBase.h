@@ -137,9 +137,6 @@ public:
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
 
-    /// @returns true if transaction is message-call.
-    bool isCall() const { return m_type == MessageCall; }
-
     /// Serialises this transaction to an RLPStream.
     /// @throws TransactionIsUnsigned if including signature was requested but it was not
     /// initialized

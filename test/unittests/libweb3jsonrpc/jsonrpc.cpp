@@ -1286,7 +1286,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["data"] = bytecode;
-    create["gas"] = "180000";  // TODO or change global default of 90000?
+    create["gas"] = "1800000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 

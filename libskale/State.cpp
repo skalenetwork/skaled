@@ -513,10 +513,11 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 }
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
+    dev::u256 _currentValue = storage( _contract, _key );
+
     m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
     m_cache[_contract].setStorage( _key, _value );
 
-    dev::u256 _currentValue = storage( _contract, _key );
     if ( _currentValue == 0 && _value != 0 ) {
         if ( !m_storageCalculator.isCurrentTxCall ) {
             m_storageCalculator.storageUsageTx[_contract].push( 1 );
@@ -771,6 +772,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
+    m_storageCalculator.isCurrentTxCall = _p == Permanence::Reverted;
     bool const statusCode = executeTransaction( e, _t, onOp );
 
     std::string strRevertReason;
@@ -804,7 +806,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
 
-    if ( _t.isCall() ) {
+    if ( m_storageCalculator.isCurrentTxCall ) {
         if ( m_storageCalculator.checkStorageChanges() ) {
             m_storageCalculator.resetCallStorageChanges();
         } else {
@@ -818,6 +820,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     dev::eth::Account* _account = account( _sender );
 
     if ( _account == nullptr ) {
+        // what situation could cause it|^? clarify and review
         m_storageCalculator.checkStorageChanges();
     } else {
         if ( account( _sender )->code() == bytes() ) {
@@ -841,7 +844,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 bool State::executeTransaction(
     eth::Executive& _e, eth::Transaction const& _t, eth::OnOpFunc const& _onOp ) {
     size_t const savept = savepoint();
-    m_storageCalculator.isCurrentTxCall = _t.isCall();
     try {
         _e.initialize( _t );
 
