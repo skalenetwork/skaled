@@ -434,7 +434,7 @@ size_t Client::importTransactionsAsBlock(
                     .detach();
             }
             // TODO Make this number configurable
-            m_snapshotManager->leaveNLastSnapshots( 2 );
+            // m_snapshotManager->leaveNLastSnapshots( 2 ); // temporary silent this code
         }  // if snapshot
 
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
