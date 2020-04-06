@@ -30,8 +30,9 @@ class SkaleDebugTracer {
 public:
     void tracepoint( const std::string& name );
 
-    void call_on_tracepoint(const std::function<void(const std::string&)> &callee);
-    void call_on_tracepoint(const std::string& name, const std::function<void(const std::string&)> &callee);
+    void call_on_tracepoint( const std::function< void( const std::string& ) >& callee );
+    void call_on_tracepoint(
+        const std::string& name, const std::function< void( const std::string& ) >& callee );
     void break_on_tracepoint( const std::string& name, int count );
     void wait_for_tracepoint( const std::string& name );
     void continue_on_tracepoint( const std::string& name );
@@ -56,10 +57,10 @@ private:
         bool need_break = false;
         int waiting_count = 0;
         int needed_waiting_count = 0;
-        std::vector<std::function<void(const std::string& tp_name)>> callbacks;
+        std::vector< std::function< void( const std::string& tp_name ) > > callbacks;
     };
 
-    std::vector<std::function<void(const std::string& tp_name)>> global_callbacks;
+    std::vector< std::function< void( const std::string& tp_name ) > > global_callbacks;
 
     std::map< std::string, tracepoint_struct > tracepoints;
     std::mutex local_mutex;
