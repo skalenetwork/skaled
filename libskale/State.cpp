@@ -68,7 +68,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      m_storageCalculator( _storageLimit ) {
+      storageLimit_( _storageLimit ) {
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -136,7 +136,6 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
-    m_storageCalculator = _s.m_storageCalculator;
 
     return *this;
 }
@@ -519,17 +518,17 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     m_cache[_contract].setStorage( _key, _value );
 
     if ( _currentValue == 0 && _value != 0 ) {
-        if ( !m_storageCalculator.isCurrentTxCall ) {
-            m_storageCalculator.storageUsageTx[_contract].push( 1 );
+        if ( !isStorageChangesRevertable ) {
+            storageUsage[_contract] += 1;
         } else {
-            m_storageCalculator.storageUsageCall[_contract].push( 1 );
+            storageUsageRevertable[_contract] += 1;
         }
     }
     if ( _value == 0 && _currentValue != 0 ) {
-        if ( !m_storageCalculator.isCurrentTxCall ) {
-            m_storageCalculator.storageUsageTx[_contract].push( -1 );
+        if ( !isStorageChangesRevertable ) {
+            storageUsage[_contract] -= 1;
         } else {
-            m_storageCalculator.storageUsageCall[_contract].push( -1 );
+            storageUsageRevertable[_contract] -= 1;
         }
     }
     // TODO::review it |^
@@ -562,6 +561,7 @@ void State::clearStorage( Address const& _contract ) {
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
+    acc->updateStorageUsage( -acc->storageUsed() );
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -772,7 +772,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    m_storageCalculator.isCurrentTxCall = _p == Permanence::Reverted;
+    isStorageChangesRevertable = _p == Permanence::Reverted;
     bool const statusCode = executeTransaction( e, _t, onOp );
 
     std::string strRevertReason;
@@ -788,13 +788,20 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
+        resetRevertableStorageChanges();
+        break;
     case Permanence::CommittedWithoutState:
+        resetStorageChanges();
+        resetRevertableStorageChanges();
         m_cache.clear();
         break;
     case Permanence::Committed:
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                       State::CommitBehaviour::KeepEmptyAccounts );
+        if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
+            updateStorageUsage();
+        }
         break;
     case Permanence::Uncommitted:
         break;
@@ -805,36 +812,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
-
-    if ( m_storageCalculator.isCurrentTxCall ) {
-        if ( m_storageCalculator.checkStorageChanges() ) {
-            m_storageCalculator.resetCallStorageChanges();
-        } else {
-            m_storageCalculator.resetCallStorageChanges();
-            m_storageCalculator.resetStorageChanges();
-            BOOST_THROW_EXCEPTION( StorageOverflow() );
-        }
-    }
-
-    dev::Address _sender = _t.from();
-    dev::eth::Account* _account = account( _sender );
-
-    if ( _account == nullptr ) {
-        // what situation could cause it|^? clarify and review
-        m_storageCalculator.checkStorageChanges();
-    } else {
-        if ( account( _sender )->code() == bytes() ) {
-            if ( res.excepted == dev::eth::TransactionException::None ) {
-                try {
-                    m_storageCalculator.updateStorageUsage();
-                } catch ( StorageCalculator::StorageCalculatorException& ) {
-                    BOOST_THROW_EXCEPTION( StorageOverflow() );
-                }
-            } else {
-                m_storageCalculator.resetStorageChanges();
-            }
-        }
-    }
 
     return make_pair( res, receipt );
 }
@@ -859,15 +836,10 @@ bool State::executeTransaction(
     }
 }
 
-dev::u256 State::storageUsed( const dev::Address& _addr ) const {
-    dev::u256 _returnValue;
-    try {
-        _returnValue = m_storageCalculator.storageUsed.at( _addr );
-    } catch ( std::out_of_range& ) {
-        _returnValue = 0;
+void State::updateStorageUsage() {
+    for ( const auto& [_address, _value] : storageUsage ) {
+        account( _address )->updateStorageUsage( _value );
     }
-
-    return _returnValue;
 }
 
 bool State::checkVersion() const {

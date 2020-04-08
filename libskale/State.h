@@ -150,97 +150,6 @@ struct Change {
 
 using ChangeLog = std::vector< Change >;
 
-struct StorageCalculator {
-    class StorageCalculatorException : std::exception {
-    protected:
-        std::string what_str;
-
-    public:
-        StorageCalculatorException( const std::string& err_str ) { what_str = err_str; }
-
-        virtual const char* what() const noexcept override { return what_str.c_str(); }
-    };
-
-    StorageCalculator( dev::u256 _limit = 1 ) : limit_( _limit ) {}
-
-    dev::u256 limit() { return limit_; }
-
-    void resetStorageChanges() { storageUsageTx.clear(); }
-
-    void resetCallStorageChanges() { storageUsageCall.clear(); }
-
-    void setTxType( bool _isCall ) { isCurrentTxCall = _isCall; }
-
-    bool TxIsCall() { return isCurrentTxCall; }
-
-    bool checkStorageChanges() const {
-        for ( const auto& elem : this->storageUsageTx ) {
-            dev::Address _address = elem.first;
-            auto _queueChanges = elem.second;
-            if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
-                return false;
-            }
-        }
-
-        for ( const auto& elem : this->storageUsageCall ) {
-            dev::Address _address = elem.first;
-            auto _queueChanges = elem.second;
-            if ( !this->checkValidStorageChange( _address, _queueChanges ) ) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    bool checkValidStorageChange(
-        const dev::Address& _address, const std::queue< int >& _queueChanges ) const {
-        auto _queueChangesCopy = _queueChanges;
-
-        dev::u256 _storageUsed;
-        try {
-            _storageUsed = this->storageUsed.at( _address );
-        } catch ( std::out_of_range& ) {
-            _storageUsed = 0;
-        }
-
-        dev::u256 _spaceLeft = this->limit_ - _storageUsed;
-        size_t _countChanges = _queueChangesCopy.size();
-        for ( size_t i = 0; i < _countChanges; ++i ) {
-            int _curValue = _queueChangesCopy.front();
-            if ( ( _curValue == 1 && _spaceLeft == dev::u256( 0 ) ) ) {
-                return false;
-            }
-            _spaceLeft += _curValue;
-            _queueChangesCopy.pop();
-        }
-        return true;
-    }
-
-    void updateStorageUsage() {
-        if ( !checkStorageChanges() ) {
-            throw StorageCalculatorException( "Storage overflow" );
-        }
-
-        for ( const auto& elem : this->storageUsageTx ) {
-            dev::Address _address = elem.first;
-            auto _queueChanges = elem.second;
-            size_t _countChanges = _queueChanges.size();
-            for ( size_t i = 0; i < _countChanges; ++i ) {
-                int _curValue = _queueChanges.front();
-                this->storageUsed[_address] += _curValue;
-                _queueChanges.pop();
-            }
-        }
-    }
-
-    dev::u256 limit_;
-    bool isCurrentTxCall = false;
-    std::map< dev::Address, dev::u256 > storageUsed;
-    std::map< dev::Address, std::queue< int > > storageUsageTx;
-    std::map< dev::Address, std::queue< int > > storageUsageCall;
-};
-
 /**
  * Model of an Skale state.
  *
@@ -460,10 +369,12 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    void resetStorageChanges() { m_storageCalculator.resetStorageChanges(); }
-    void resetCallStorageChanges() { m_storageCalculator.resetCallStorageChanges(); }
+    void resetStorageChanges() { storageUsage.clear(); }
+    void resetRevertableStorageChanges() { storageUsageRevertable.clear(); }
 
-    dev::u256 storageUsed( const dev::Address& _addr ) const;
+    dev::s256 storageUsed( const dev::Address& _addr ) const {
+        return account( _addr )->storageUsed();
+    }
 
 private:
     void updateToLatestVersion();
@@ -498,6 +409,8 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+    void updateStorageUsage();
+
 public:
     bool checkVersion() const;
 
@@ -529,7 +442,10 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-    StorageCalculator m_storageCalculator;
+    dev::s256 storageLimit_;
+    bool isStorageChangesRevertable = false;
+    std::map< dev::Address, dev::s256 > storageUsage;
+    std::map< dev::Address, dev::s256 > storageUsageRevertable;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

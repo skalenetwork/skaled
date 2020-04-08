@@ -218,6 +218,10 @@ public:
 
     u256 version() const { return m_version; }
 
+    s256 storageUsed() const { return m_storageUsed; }
+
+    void updateStorageUsage( const s256& _value ) { m_storageUsed += _value; }
+
 private:
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -264,6 +268,9 @@ private:
 
     /// Value for m_codeHash when this account is having its code determined.
     static const h256 c_contractConceptionCodeHash;
+
+    // is only valuable if account has code
+    s256 m_storageUsed = 0;
 };
 
 class AccountMask {
