@@ -111,6 +111,14 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       total_sent( 0 ),
       total_arrived( 0 ) {
+    m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
+        LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
+                             << m_debugTracer.get_tracepoint_count( name );
+
+        skutils::task::performance::action action(
+            "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
+    } );
+
     m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     } );
@@ -352,8 +360,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     return out_vector;
 }
 
-int debug_block_id = 0;
-
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
     //
@@ -388,7 +394,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
-        debug_block_id = _blockID;
         // this is need for testing. should add better handling
         assert(
             dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )

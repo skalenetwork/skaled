@@ -172,11 +172,6 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
             m_snapshotManager->doSnapshot( 0 );
-            //            this->last_snapshot_time = this->latestBlock().info().timestamp();
-            //            std::cerr << "THIS LAST SNAPSHOT TIME: " << this->last_snapshot_time <<
-            //            '\n';
-        } else {
-            // this->fillLastSnapshotTime();
         }
     }
 
@@ -365,8 +360,6 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-extern int debug_block_id;
-
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
@@ -441,7 +434,7 @@ size_t Client::importTransactionsAsBlock(
                     .detach();
             }
             // TODO Make this number configurable
-            m_snapshotManager->leaveNLastSnapshots( 2 );
+            // m_snapshotManager->leaveNLastSnapshots( 2 ); // temporary silent this code
         }  // if snapshot
 
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );

@@ -261,8 +261,11 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     for ( const auto& p : time_map ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
-            for ( const string& v : this->volumes )
-                btrfs.subvolume._delete( ( path / v ).c_str() );
+            for ( const string& v : this->volumes ) {
+                if ( btrfs.subvolume._delete( ( path / v ).c_str() ) ) {
+                    throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+                }
+            }
             fs::remove_all( path );
         }  // if
     }      // for
