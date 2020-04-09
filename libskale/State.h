@@ -372,9 +372,7 @@ public:
     void resetStorageChanges() { storageUsage.clear(); }
     void resetRevertableStorageChanges() { storageUsageRevertable.clear(); }
 
-    dev::s256 storageUsed( const dev::Address& _addr ) const {
-        return account( _addr )->storageUsed();
-    }
+    dev::s256 storageUsed( const dev::Address& _addr ) const;
 
 private:
     void updateToLatestVersion();

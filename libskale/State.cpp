@@ -531,6 +531,10 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
             storageUsageRevertable[_contract] -= 1;
         }
     }
+
+    if ( storageUsed( _contract ) + storageUsage[_contract] + storageUsageRevertable[_contract] ) {
+        BOOST_THROW_EXCEPTION( StorageOverflow() << errinfo_comment( _contract.hex() ) );
+    }
     // TODO::review it |^
 }
 
@@ -839,6 +843,14 @@ bool State::executeTransaction(
 void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
         account( _address )->updateStorageUsage( _value );
+    }
+}
+
+dev::s256 State::storageUsed( const dev::Address& _addr ) const {
+    if ( auto a = account( _addr ) ) {
+        return a->storageUsed();
+    } else {
+        return 0;
     }
 }
 
