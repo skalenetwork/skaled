@@ -1317,7 +1317,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txThrow["from"] = toJS( senderAddress );
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
-    //BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), skale::error::StorageOverflow );
+    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), dev::Exception );
     
     Json::Value txEraseValue;  // call erase(1)
     txEraseValue["to"] = contractAddress;
