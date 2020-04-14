@@ -174,6 +174,9 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
+        if ( sChainObj.count( "testMode" ) )
+            s.testMode = sChainObj.at( "testMode" ).get_bool();
+
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
             sChainNode node{};
