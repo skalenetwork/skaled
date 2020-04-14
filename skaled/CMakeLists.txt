@@ -1,3 +1,17 @@
+
+#if( CLOCK_GETTIME )
+    check_library_exists( rt clock_gettime "" FOUND_CLOCK_GETTIME )
+    if( FOUND_CLOCK_GETTIME )
+        list( APPEND EXTRA_LIBS rt )
+        set( HAVE_CLOCK_GETTIME 1 )
+    else()
+        check_library_exists( c clock_gettime "" FOUND_CLOCK_GETTIME )
+        if( FOUND_CLOCK_GETTIME )
+            set( HAVE_CLOCK_GETTIME 1 )
+        endif()
+    endif()
+#endif()
+
 set(
     sources
     AccountManager.cpp AccountManager.h

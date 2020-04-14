@@ -210,7 +210,7 @@ void client::addRecipient( const char* email, const char* name ) {
     if ( name != nullptr )
         recipient.name_ = name;
     else
-        recipient.name_.empty();
+        recipient.name_.clear();
     vecRecipients_.insert( vecRecipients_.end(), recipient );
 }
 void client::addCCRecipient( const char* email, const char* name ) {
@@ -221,7 +221,7 @@ void client::addCCRecipient( const char* email, const char* name ) {
     if ( name != nullptr )
         recipient.name_ = name;
     else
-        recipient.name_.empty();
+        recipient.name_.clear();
     vecCCRecipients_.insert( vecCCRecipients_.end(), recipient );
 }
 void client::addBCCRecipient( const char* email, const char* name ) {
@@ -232,7 +232,7 @@ void client::addBCCRecipient( const char* email, const char* name ) {
     if ( name != nullptr )
         recipient.name_ = name;
     else
-        recipient.name_.empty();
+        recipient.name_.clear();
     vecBvecCCRecipients__.insert( vecBvecCCRecipients__.end(), recipient );
 }
 

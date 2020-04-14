@@ -14,7 +14,7 @@ RUN apt-get -q update && \
 
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
     apt update && \
-    apt install g++-7 gdb -y
+    apt install gcc-9 g++-9 gdb -y
 
 RUN mkdir /skaled
 COPY ./executable /skaled

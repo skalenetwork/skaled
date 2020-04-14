@@ -57,6 +57,12 @@ if( SKALED_HATE_WARNINGS )
     add_compile_options(-Wno-error=int-in-bool-context)
 endif()
 
+add_compile_options( -Wno-error=deprecated-copy ) # g++-9, many places
+add_compile_options( -Wno-error=reorder ) # g++-9, libethcore at least
+add_compile_options( -Wno-error=effc++ ) # g++-9, various places
+add_compile_options( -Wno-error=unused-but-set-variable ) # g++-9, various places
+add_compile_options( -Wno-error=sign-compare ) # g++-9, various places
+
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
 
     # Disable warnings about unknown pragmas (which is enabled by -Wall).

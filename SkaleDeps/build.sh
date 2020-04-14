@@ -358,16 +358,33 @@ then
 	else
 		if [ "$UNIX_SYSTEM_NAME" = "Linux" ];
 		then
-			export CC=`which gcc-7`
-			if [ -z "${CC}" ];
-			then
-				export CC=`which gcc`
-			fi
-			export CXX=`which g++-7`
+            export CC=`which gcc-9`
+            if [ -z "${CC}" ];
+            then
+                export CC=`which gcc-8`
+                if [ -z "${CC}" ];
+                then
+                    export CC=`which gcc-7`
+                    if [ -z "${CC}" ];
+                    then
+                        export CC=`which gcc`
+                    fi
+                fi
+            fi
+            ###
+            export CXX=`which g++-9`
 			if [ -z "${CXX}" ];
 			then
-				export CXX=`which g++`
-			fi
+                export CXX=`which g++-8`
+                if [ -z "${CXX}" ];
+                then
+                    export CXX=`which g++-7`
+                    if [ -z "${CXX}" ];
+                    then
+                        export CXX=`which g++`
+                    fi
+                fi
+            fi
 		else
 			export CC=`which gcc`
 			export CXX=`which g++`
@@ -2116,6 +2133,10 @@ then
         cd build
         $CMAKE $CMAKE_CROSSCOMPILING_OPTS -DCMAKE_INSTALL_PREFIX=$INSTALL_ROOT -DCMAKE_BUILD_TYPE=$TOP_CMAKE_BUILD_TYPE .. -DWITH_PROCPS=OFF
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        # with gcc-8/g++-8 we need 2 or more make attempts, temporarily glitch fix
+        $MAKE $PARALLEL_MAKE_OPTIONS || true
+        $MAKE $PARALLEL_MAKE_OPTIONS || true
+        $MAKE $PARALLEL_MAKE_OPTIONS || true
         $MAKE $PARALLEL_MAKE_OPTIONS
         $MAKE $PARALLEL_MAKE_OPTIONS install
         cd $SOURCES_ROOT
