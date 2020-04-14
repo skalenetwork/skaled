@@ -796,7 +796,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["testMode"] = true;
+    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = true;
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false );
@@ -840,7 +840,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_false_flag ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["testMode"] = false;
+    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = false;
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false );

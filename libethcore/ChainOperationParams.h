@@ -120,7 +120,7 @@ public:
     Address owner;
     std::vector< sChainNode > nodes;
     size_t t = 1;
-    bool testMode = false;
+    bool freeContractDeployment = false;
 
     SChain() {
         name = "TestChain";
