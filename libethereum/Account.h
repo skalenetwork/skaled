@@ -88,14 +88,15 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account( u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 const& _version,
-        Changedness _c )
+        Changedness _c, s256 _storageUsed = 0 )
         : m_isAlive( true ),
           m_isUnchanged( _c == Unchanged ),
           m_nonce( _nonce ),
           m_balance( _balance ),
           m_storageRoot( _contractRoot ),
           m_codeHash( _codeHash ),
-          m_version( _version ) {
+          m_version( _version ),
+          m_storageUsed( _storageUsed ) {
         assert( _contractRoot );
     }
 
@@ -218,9 +219,12 @@ public:
 
     u256 version() const { return m_version; }
 
-    s256 storageUsed() const { return m_storageUsed; }
+    s256 const& storageUsed() const { return m_storageUsed; }
 
-    void updateStorageUsage( const s256& _value ) { m_storageUsed += _value; }
+    void updateStorageUsage( const s256& _value ) {
+        m_storageUsed += _value;
+        changed();
+    }
 
 private:
     /// Note that we've altered the account.

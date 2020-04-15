@@ -1309,7 +1309,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 2 );
     
     Json::Value txThrow;  // trying to call store(2)
     txThrow["to"] = contractAddress;
@@ -1317,7 +1317,8 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txThrow["from"] = toJS( senderAddress );
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
-    BOOST_REQUIRE_THROW( dev::eth::mineTransaction( *( fixture.client ), 1 ), dev::Exception );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 2 );
     
     Json::Value txEraseValue;  // call erase(1)
     txEraseValue["to"] = contractAddress;
@@ -1326,7 +1327,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 0 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 1 );
     
 //    Json::Value txPushValueAndCall;
 //    txPushValueAndCall["to"] = contractAddress;

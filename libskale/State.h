@@ -440,7 +440,7 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-    dev::s256 storageLimit_ = 1;
+    dev::s256 storageLimit_ = 2;
     bool isStorageChangesRevertable = false;
     std::map< dev::Address, dev::s256 > storageUsage;
     std::map< dev::Address, dev::s256 > storageUsageRevertable;

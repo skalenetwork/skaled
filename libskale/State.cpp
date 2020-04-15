@@ -269,12 +269,13 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+    s256 storageUsed = state[3].toInt< s256 >();
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
-            dev::eth::Account::Changedness::Unchanged ) );
+            dev::eth::Account::Changedness::Unchanged, storageUsed ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -321,8 +322,9 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream( 3 );
-                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() );
+                    RLPStream rlpStream( 4 );
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
+                              << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
                     m_db_ptr->insert( address, ref( rawValue ) );
@@ -513,23 +515,29 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     dev::u256 _currentValue = storage( _contract, _key );
+    dev::u256 _originalValue = originalStorageValue( _contract, _key );
 
-    m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
-    if ( _currentValue == 0 && _value != 0 ) {
-        if ( !isStorageChangesRevertable ) {
-            storageUsage[_contract] += 1;
-        } else {
-            storageUsageRevertable[_contract] += 1;
+    int count = 0;
+    if ( _originalValue == _currentValue ) {
+        if ( _currentValue == 0 ) {
+            count = 1;
+        } else if ( _value == 0 ) {
+            count = -1;
         }
     }
-    if ( _value == 0 && _currentValue != 0 ) {
-        if ( !isStorageChangesRevertable ) {
-            storageUsage[_contract] -= 1;
-        } else {
-            storageUsageRevertable[_contract] -= 1;
-        }
+    // copied from EXTVMFace.cpp ----- TODO: review it|^
+
+    if ( _value == _currentValue ) {
+        count = 0;
+    }
+
+    if ( !isStorageChangesRevertable ) {
+        storageUsage[_contract] += count;
+    } else {
+        storageUsageRevertable[_contract] += count;
     }
 
     if ( storageUsed( _contract ) + storageUsage[_contract] + storageUsageRevertable[_contract] >
@@ -801,12 +809,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_cache.clear();
         break;
     case Permanence::Committed:
-        removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-        commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             updateStorageUsage();
         }
+        // TODO: review logic|^
+
+        removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
+        commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+                                      State::CommitBehaviour::KeepEmptyAccounts );
         break;
     case Permanence::Uncommitted:
         resetStorageChanges();
