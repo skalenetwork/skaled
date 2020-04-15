@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
 //    BOOST_CHECK_EQUAL(listeningOff, web3->isNetworkStarted());
 //}
 
-BOOST_AUTO_TEST_CASE( jsonrpc_accounts, 
+BOOST_AUTO_TEST_CASE( jsonrpc_accounts,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     std::vector< dev::KeyPair > keys = {KeyPair::create(), KeyPair::create()};
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
 }
 
-BOOST_AUTO_TEST_CASE( eth_coinbase, 
+BOOST_AUTO_TEST_CASE( eth_coinbase,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     string coinbase = fixture.rpcClient->eth_coinbase();
@@ -444,7 +444,7 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
@@ -491,7 +491,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorZeroBalance ) {
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
@@ -792,6 +792,93 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     BOOST_REQUIRE( code.asString() == "0x" );
 }
 
+BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = true;
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false );
+    auto senderAddress = fixture.coinbase.address();
+
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+            "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+            "608060405260043610603f576000357c01000000000000000000000000"
+            "00000000000000000000000000000000900463ffffffff168063b3de64"
+            "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+            "019080803590602001909291905050506080565b604051808281526020"
+            "0191505060405180910390f35b60006007820290509190505600a16562"
+            "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+            "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
+    BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+    Json::Value code =
+            fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_contract_false_flag ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = false;
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false );
+    auto senderAddress = fixture.coinbase.address();
+
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+            "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+            "608060405260043610603f576000357c01000000000000000000000000"
+            "00000000000000000000000000000000900463ffffffff168063b3de64"
+            "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+            "019080803590602001909291905050506080565b604051808281526020"
+            "0191505060405180910390f35b60006007820290509190505600a16562"
+            "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+            "8fb480406fc2728a960029";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    Json::Value code =
+            fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x" );
+}
+
 BOOST_AUTO_TEST_CASE( create_opcode ) {
     JsonRpcFixture fixture( c_genesisConfigString );
     auto senderAddress = fixture.coinbase.address();
@@ -976,7 +1063,7 @@ BOOST_AUTO_TEST_CASE( contract_storage ) {
     BOOST_REQUIRE( receipt2["contractAddress"].isNull() );
 }
 
-BOOST_AUTO_TEST_CASE( web3_sha3, 
+BOOST_AUTO_TEST_CASE( web3_sha3,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     string testString = "multiply(uint256)";
