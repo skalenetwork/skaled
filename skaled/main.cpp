@@ -608,6 +608,8 @@ int main( int argc, char** argv ) try {
     std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
               << cc::size10( size_t( this_process_pid ) ) << std::endl;
 
+    setupLogging( loggingOptions );
+
     skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
     // skutils::dispatch::default_domain( 48 );
 
@@ -1146,8 +1148,6 @@ int main( int argc, char** argv ) try {
             return 0;
         }
     }
-
-    setupLogging( loggingOptions );
 
     if ( !chainConfigIsSet )
         // default to skale if not already set with `--config`
