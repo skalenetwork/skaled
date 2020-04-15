@@ -115,4 +115,7 @@ dependency_graph.svg
 test_run/node_modules
 test_run/package-lock.json
 
+#environment files
+saved_environment_on_startup.txt
+
 scripts/skale_build/executable/skaled
