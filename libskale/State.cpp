@@ -542,7 +542,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
 
     if ( storageUsed( _contract ) + storageUsage[_contract] + storageUsageRevertable[_contract] >
          storageLimit_ ) {
-        BOOST_THROW_EXCEPTION( StorageOverflow() << errinfo_comment( _contract.hex() ) );
+        BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
     // TODO::review it |^
 }

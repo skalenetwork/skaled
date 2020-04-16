@@ -1512,7 +1512,7 @@ void LegacyVM::interpretCases() {
 
             try {
                 m_ext->setStore( m_SP[0], m_SP[1] );
-            } catch ( dev::Exception& ex ) {
+            } catch ( dev::StorageOverflow& ex ) {
                 throwStorageOverflow( ex.what() );
             }
         }
