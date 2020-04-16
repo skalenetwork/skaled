@@ -311,7 +311,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         const std::string sgx_cert_path = "/root/.skale/node_data/sgx_certs/";
         const std::string sgx_cert_filename = "sgx.crt";
-        const std::string sgx_key_filename = "sgx.pem";
+        const std::string sgx_key_filename = "sgx.key";
 
         skutils::http::SSL_client_options ssl_options;
         ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
