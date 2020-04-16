@@ -1334,14 +1334,13 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 4 );
     
-    Json::Value txEraseValue;  // call erase(3)
+    Json::Value txEraseValue;  // call erase(2)
     txEraseValue["to"] = contractAddress;
-    txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000003";
+    txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000002";
     txEraseValue["from"] = toJS( senderAddress );
     txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    std::cout << fixture.client->state().storageUsed( contract ) << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 3 );
 }
 
