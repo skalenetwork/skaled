@@ -212,8 +212,6 @@ private:
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
         u256 const& _version );
 
-    void resetStorageChanges();
-
     skale::State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
     EnvInfo m_envInfo;               ///< Information on the runtime environment.

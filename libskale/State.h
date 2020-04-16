@@ -369,7 +369,6 @@ public:
     bool empty() const;
 
     void resetStorageChanges() { storageUsage.clear(); }
-    void resetRevertableStorageChanges() { storageUsageRevertable.clear(); }
 
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
@@ -439,10 +438,8 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-    dev::s256 storageLimit_ = 2;
-    bool isStorageChangesRevertable = false;
+    dev::s256 storageLimit_ = 4;
     std::map< dev::Address, dev::s256 > storageUsage;
-    std::map< dev::Address, dev::s256 > storageUsageRevertable;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -534,14 +534,9 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
         count = 0;
     }
 
-    if ( !isStorageChangesRevertable ) {
-        storageUsage[_contract] += count;
-    } else {
-        storageUsageRevertable[_contract] += count;
-    }
+    storageUsage[_contract] += count;
 
-    if ( storageUsed( _contract ) + storageUsage[_contract] + storageUsageRevertable[_contract] >
-         storageLimit_ ) {
+    if ( storageUsed( _contract ) + storageUsage[_contract] > storageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
     // TODO::review it |^
@@ -677,6 +672,7 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+    resetStorageChanges();
 }
 
 void State::updateToLatestVersion() {
@@ -785,7 +781,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    isStorageChangesRevertable = _p == Permanence::Reverted;
     bool const statusCode = executeTransaction( e, _t, onOp );
 
     std::string strRevertReason;
@@ -801,11 +796,10 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
-        resetRevertableStorageChanges();
+        resetStorageChanges();
         break;
     case Permanence::CommittedWithoutState:
         resetStorageChanges();
-        resetRevertableStorageChanges();
         m_cache.clear();
         break;
     case Permanence::Committed:
@@ -820,7 +814,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     case Permanence::Uncommitted:
         resetStorageChanges();
-        resetRevertableStorageChanges();
         break;
     }
 
@@ -857,6 +850,7 @@ void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
         account( _address )->updateStorageUsage( _value );
     }
+    resetStorageChanges();
 }
 
 dev::s256 State::storageUsed( const dev::Address& _addr ) const {
