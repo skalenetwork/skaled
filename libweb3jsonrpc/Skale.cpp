@@ -309,29 +309,9 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
 
-        const std::string sgx_cert_path = "/root/.skale/node_data/sgx_certs";
+        const std::string sgx_cert_path = "/root/.skale/node_data/sgx_certs/";
         const std::string sgx_cert_filename = "sgx.crt";
-        const std::string sgx_key_filename = "sgx.key";
-
-        std::ifstream sgx_cert_file( sgx_cert_path + sgx_cert_filename );
-        std::string sgx_cert;
-
-        sgx_cert_file.seekg( 0, std::ios::end );
-        sgx_cert.reserve( sgx_cert_file.tellg() );
-        sgx_cert_file.seekg( 0, std::ios::beg );
-
-        sgx_cert.assign( ( std::istreambuf_iterator< char >( sgx_cert_file ) ),
-            std::istreambuf_iterator< char >() );
-
-        std::ifstream sgx_key_file( sgx_cert_path + sgx_key_filename );
-        std::string sgx_key;
-
-        sgx_key_file.seekg( 0, std::ios::end );
-        sgx_key.reserve( sgx_key_file.tellg() );
-        sgx_key_file.seekg( 0, std::ios::beg );
-
-        sgx_key.assign( ( std::istreambuf_iterator< char >( sgx_key_file ) ),
-            std::istreambuf_iterator< char >() );
+        const std::string sgx_key_filename = "sgx.pem";
 
         skutils::http::SSL_client_options ssl_options;
         ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
