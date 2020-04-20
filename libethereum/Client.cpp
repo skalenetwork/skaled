@@ -132,7 +132,7 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
     m_state = State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds );
+        BaseState::PreExisting, chainParams().accountInitialFunds, chainParams().sChain.storageLimit );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -169,7 +169,7 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     if ( _dbPath.size() )
         Defaults::setDBPath( _dbPath );
 
-    if ( chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+    if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
             m_snapshotManager->doSnapshot( 0 );
         }
@@ -365,7 +365,7 @@ size_t Client::importTransactionsAsBlock(
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
 
-        int64_t snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
+        int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
              block_number != 0 ) {
             try {
@@ -582,7 +582,7 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    int snapshotIntervalMs = chainParams().nodeInfo.snapshotIntervalMs;
+    int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
     return _timestamp / uint64_t( snapshotIntervalMs ) !=
            this->last_snapshot_time / int64_t( snapshotIntervalMs );
 }
@@ -997,7 +997,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::fillLastSnapshotTime() {
-    int snapshotIntervalMs = this->chainParams().nodeInfo.snapshotIntervalMs;
+    int snapshotIntervalMs = this->chainParams().sChain.snapshotIntervalMs;
     uint64_t proposed_last_snapshot_time =
         ( this->blockInfo( this->hashFromNumber( this->number() ) ).timestamp() /
             snapshotIntervalMs ) *

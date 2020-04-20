@@ -156,12 +156,8 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        int snapshotIntervalMs = infoObj.count( "snapshotIntervalMs" ) ?
-                                     infoObj.at( "snapshotIntervalMs" ).get_int() :
-                                     0;
-
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName,
+            static_cast< uint16_t >( port6 ), sgxServerUrl, keyShareName,
             insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
@@ -173,6 +169,16 @@ ChainParams ChainParams::loadConfig(
         s.t = t;
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+
+        s.snapshotIntervalMs = sChainObj.count( "snapshotIntervalMs" ) ?
+                                     sChainObj.at( "snapshotIntervalMs" ).get_int() :
+                                     0;
+
+        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
+                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
+                                     0;
+
+        s.storageLimit = sChainObj.at( "storageLimit" ).get_int64();
 
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
@@ -409,7 +415,6 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
-    infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
 
     skaleObj["nodeInfo"] = infoObj;
 
@@ -418,6 +423,10 @@ const std::string& ChainParams::getOriginalJson() const {
 
     sChainObj["schainName"] = sChain.name;
     sChainObj["schainID"] = ( int64_t ) sChain.id;
+    sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
+    sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalMs;
+    sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
+    sChainObj["storageLimit"] = ( int64_t ) sChain.storageLimit;
 
     js::mArray nodes;
 

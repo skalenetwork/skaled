@@ -61,7 +61,7 @@ using dev::eth::TransactionReceipt;
 #endif
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
-    u256 _initialFunds, u256 _storageLimit )
+    u256 _initialFunds, s256 _storageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),

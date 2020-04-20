@@ -471,12 +471,12 @@ static std::string const c_skaleConfigString = R"(
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": 1231,
-            "snapshotIntervalMs": 10
+            "basePort": 1231
         },
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
+            "snapshotIntervalMs": 10,
             "nodes": [
               { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1}
             ]

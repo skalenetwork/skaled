@@ -1154,7 +1154,7 @@ int main( int argc, char** argv ) try {
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.nodeInfo.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
+    if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
@@ -1238,7 +1238,7 @@ int main( int argc, char** argv ) try {
     }
 
     // it was needed for snapshot downloading
-    if ( chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+    if ( chainParams.sChain.snapshotIntervalMs <= 0 ) {
         snapshotManager = nullptr;
     }
 
