@@ -309,7 +309,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
 
-        const std::string sgx_cert_path = "/root/.skale/node_data/sgx_certs/";
+        const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
         const std::string sgx_cert_filename = "sgx.crt";
         const std::string sgx_key_filename = "sgx.key";
 
