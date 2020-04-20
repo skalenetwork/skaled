@@ -1180,6 +1180,8 @@ int main( int argc, char** argv ) try {
         unsigned blockNumber;
         try {
             blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+            clog( VerbosityInfo, "main" ) << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
+                                          << cc::p( std::to_string( blockNumber ) );
         } catch ( std::exception& ex ) {
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
@@ -1195,6 +1197,8 @@ int main( int argc, char** argv ) try {
             try {
                 list_urls_to_download =
                     snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                clog( VerbosityInfo, "main" ) << cc::notice( "Got urls to download snapshot from" )
+                                              << cc::p( std::to_string( list_urls_to_download.size() ) );
                 voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
                 std::throw_with_nested( std::runtime_error(

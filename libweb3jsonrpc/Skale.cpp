@@ -323,20 +323,20 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " Exception while trying to connect to sgx server: " )
-                      << cc::warn( "connection refused" ) << "\n";
+                      << cc::warn( "connection refused" ) << std::endl;
         }
 
-        std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << "\n";
+        std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
             std::cout << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
-                      << "\n";
+                      << std::endl;
             throw std::runtime_error( g_strErrMsg );
         }
 
         nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
-        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << "\n";
+        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
                 "SGX Server call to blsSignMessageHash returned non-zero status" );
