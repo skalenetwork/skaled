@@ -2007,7 +2007,7 @@ then
 			#git clone git@github.com:cinemast/libjson-rpc-cpp.git
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			unzip -f $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
+			unzip  $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
 			cp -r libjson-rpc-cpp-develop libjson-rpc-cpp
 			#
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
