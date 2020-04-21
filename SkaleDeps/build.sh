@@ -2056,6 +2056,7 @@ then
     then
         env_restore
         cd $SOURCES_ROOT
+
         if [ ! -d "libcryptopp" ];
         then
             mkdir libcryptopp
