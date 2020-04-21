@@ -110,8 +110,8 @@ include( FindClangFormat )
 
 set( Boost_USE_STATIC_LIBS ON )
 set( Boost_USE_MULTITHREADED ON )
-hunter_add_package( Boost COMPONENTS program_options filesystem system thread context fiber log chrono )
-find_package( Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono )
+hunter_add_package( Boost COMPONENTS program_options filesystem system thread context fiber log chrono test)
+find_package( Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono)
 
 set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
@@ -219,7 +219,7 @@ if ( CONSENSUS )
     set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter" ) # hack to make libBLS compile
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
-    add_subdirectory( libconsensus )
+    add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
 endif()
 
 set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
