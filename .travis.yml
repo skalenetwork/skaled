@@ -148,7 +148,9 @@ cache:
 before_install:
     - eval "${MATRIX_EVAL}"
 install:
+    -  cd libconsensus/scripts; ./build_deps.sh
     - ./SkaleDeps/build.sh
+
 script:
     # configure
     - mkdir -p build
