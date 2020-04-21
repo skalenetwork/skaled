@@ -1,7 +1,4 @@
-set( CMAKE_CXX_STANDARD 17 )
 
-hunter_add_package(ZeroMQ)
-find_package(ZeroMQ CONFIG REQUIRED)
 
 set(sources
     State.cpp
@@ -40,7 +37,7 @@ target_include_directories( skale PUBLIC
     )
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/libzmq.a
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/lib/libzmq.a
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/build/libbls.a)
 
 #target_compile_options( skale PRIVATE -Weffc++ )

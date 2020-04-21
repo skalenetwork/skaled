@@ -1,6 +1,4 @@
 
-set( CMAKE_CXX_STANDARD 17 )
-
 
 add_library( skutils STATIC
                                     ./include/skutils/async_work.h

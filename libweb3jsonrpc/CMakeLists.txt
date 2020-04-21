@@ -1,6 +1,4 @@
 
-set( CMAKE_CXX_STANDARD 17 )
-
 set(sources
     AccountHolder.cpp
     AccountHolder.h

@@ -1,4 +1,3 @@
-set( CMAKE_CXX_STANDARD 17 )
 
 file( GLOB sources "*.cpp" "*.h" )
 add_library( ethereum ${sources} )

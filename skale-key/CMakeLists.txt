@@ -1,3 +1,7 @@
+
+
+
+
 add_executable(skale-key KeyAux.h main.cpp)
 target_link_libraries(skale-key  ethcore devcore Boost::program_options)
 if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )

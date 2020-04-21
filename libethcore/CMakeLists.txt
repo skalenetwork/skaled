@@ -1,7 +1,5 @@
 file( GLOB sources "*.cpp" "*.h" )
 
-set( CMAKE_CXX_STANDARD 17 )
-
 add_library( ethcore ${sources} )
 
 target_include_directories( ethcore PRIVATE
