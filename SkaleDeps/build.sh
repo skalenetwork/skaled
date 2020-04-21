@@ -1957,7 +1957,7 @@ then
 	then
 		env_restore
 		cd $SOURCES_ROOT
-		if [ ! -d "jsonpp" ];
+		if [ ! -d "jsoncpp" ];
 		then
 			#
 			#echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1987,6 +1987,9 @@ then
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
 fi
+
+mkdir -p $INSTALL_ROOT/jsoncpp
+cp -rf $INSTALL_ROOT/json $INSTALL_ROOT/jsoncpp
 
 #https://github.com/cinemast/libjson-rpc-cpp
 #git@github.com:cinemast/libjson-rpc-cpp.git
