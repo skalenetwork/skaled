@@ -40,9 +40,9 @@ include( GNUInstallDirs )
 
 if( UNIX )
     # Build deps with PIC to allow building shared libraries.
-    set( toolchain cxx11-pic )
+    set( toolchain cxx14-pic )
 else()
-    set( toolchain cxx11 )
+    set( toolchain cxx14 )
 endif()
 cable_configure_toolchain( DEFAULT ${toolchain} )
 
