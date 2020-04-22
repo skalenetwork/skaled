@@ -43,6 +43,7 @@ addons:
             - flex
             - bison
             - btrfs-progs
+            - libargtable2-dev
 jobs:
     include:
         - stage: test
