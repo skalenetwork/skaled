@@ -44,6 +44,8 @@ addons:
             - bison
             - btrfs-progs
             - libargtable2-dev
+            - libmicrohttpd-dev
+            - libhiredis-dev
 jobs:
     include:
         - stage: test
