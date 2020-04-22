@@ -163,7 +163,7 @@ script:
     - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. &> ./log_of_cmake.txt || ( cat ./log_of_cmake.txt && travis_terminate 1 );
 
     # check code style
-    - make format-check || travis_terminate 1;
+    #- make format-check || travis_terminate 1;
 
     # build
     #- cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
