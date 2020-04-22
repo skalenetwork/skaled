@@ -153,6 +153,7 @@ before_install:
 install:
     -  cd libconsensus/scripts && ./build_deps.sh
     - cd ../../SkaleDeps && ./build.sh
+    - cd ..
 
 script:
     # configure
