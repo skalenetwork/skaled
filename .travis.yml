@@ -28,7 +28,7 @@ env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
         - TARGET=all
 os: linux
-dist: xenial
+dist: bionic
 addons:
     apt:
         sources:
