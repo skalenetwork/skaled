@@ -1,4 +1,4 @@
-name: Build consensust container
+name: Build skaledtest container
 on: [push]
 jobs:
   build:
@@ -59,7 +59,7 @@ jobs:
       - name: submodule update
         run: git submodule update --init --recursive
       - name: Build the Docker image
-        run: docker build . --file Dockerfile --tag skalenetwork/skaledtest:latest cd scripts   > /tmp/log_of_build.txt   2>&1 || ( tail -1000 /tmp/log_of_build.txt && false );
+        run: docker build . --file Dockerfile --tag skalenetwork/skaledtest:latest  > /tmp/log_of_build.txt   2>&1 || ( tail -1000 /tmp/log_of_build.txt && false );
       - name: push docker image
         run:  docker push skalenetwork/skaledtest:latest
 
