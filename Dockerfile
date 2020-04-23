@@ -18,7 +18,7 @@ WORKDIR /consensust
 
 RUN cd libconsensus/scripts && ./build_deps.sh 
 RUN cd SkaleDeps && ./build.sh 
-RUN cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug
-RUN bash -c "cmake --build build -- -j$(nproc) --trace"
+RUN cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug .
+RUN bash -c "cmake --build build  -- -j$(nproc) --trace"
 
 
