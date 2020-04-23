@@ -30,10 +30,13 @@ target_include_directories( skale PRIVATE
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}
 	)
-target_include_directories( skale PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
-    ${BLS_WITH_FF_INCLUDE_DIR}
-    ${BLS_INCLUDE_DIRS}
+target_include_directories( skale PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
+		${BLS_WITH_FF_INCLUDE_DIR}
+		${BLS_INCLUDE_DIRS}
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
     )
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
