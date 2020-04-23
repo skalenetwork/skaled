@@ -37,7 +37,8 @@ target_include_directories( skale PUBLIC
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
-    )
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/include
+		)
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/lib/libzmq.a
