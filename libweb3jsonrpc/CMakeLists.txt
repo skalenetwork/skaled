@@ -114,7 +114,7 @@ link_directories(${BLS_WITH_FF_LIBRARY_DIR})
 target_include_directories( web3jsonrpc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
-		${CMAKE_CURRENT_SOURCE_DIR}/libjson-rpc-cpp/build/gen")
+		${CMAKE_CURRENT_SOURCE_DIR}/libjson-rpc-cpp/build/gen
 		${DEPS_INSTALL_ROOT}/include
         ${BLS_WITH_FF_INCLUDE_DIR}
         ${BLS_INCLUDE_DIRS}
