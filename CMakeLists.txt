@@ -125,7 +125,7 @@ else()
 endif()
 
 #hunter_add_package( jsoncpp )
-find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
+#find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
 
 hunter_add_package( Snappy )
 find_package( Snappy CONFIG REQUIRED )

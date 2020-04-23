@@ -131,7 +131,7 @@ target_link_libraries( web3jsonrpc
 		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
 		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
 		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
-		${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
+		${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
 		${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
 		${DEPS_INSTALL_ROOT}/lib/libcurl.a
 		${DEPS_INSTALL_ROOT}/lib/libssl.a
