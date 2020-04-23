@@ -126,15 +126,15 @@ target_include_directories( web3jsonrpc PRIVATE
 
 target_link_libraries( web3jsonrpc
 #    bls
-    ethashseal
-    skutils
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-common.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
-    ${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
-    ${DEPS_INSTALL_ROOT}/lib/libcurl.a
-    ${DEPS_INSTALL_ROOT}/lib/libssl.a
-    ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-    ${DEPS_INSTALL_ROOT}/lib/libz.a
+		ethashseal
+		skutils
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
+		${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
+		${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
+		${DEPS_INSTALL_ROOT}/lib/libcurl.a
+		${DEPS_INSTALL_ROOT}/lib/libssl.a
+		${DEPS_INSTALL_ROOT}/lib/libcrypto.a
+		${DEPS_INSTALL_ROOT}/lib/libz.a
     )
