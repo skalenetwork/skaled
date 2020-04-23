@@ -13,11 +13,13 @@ ENV CXX g++-7
 ENV TARGET all
 ENV TRAVIS_BUILD_TYPE Debug
 
-COPY . /consensust
+COPY libconsensus /consensust/libconsensus
+COPY SkaleDeps /consensust/SkaleDeps
 WORKDIR /consensust
-
 RUN cd libconsensus/scripts && ./build_deps.sh 
-RUN cd SkaleDeps && ./build.sh 
+RUN cd SkaleDeps && ./build.sh
+COPY . /consensust
+
 RUN cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug .
 RUN bash -c "cmake --build build  -- -j$(nproc) --trace"
 
