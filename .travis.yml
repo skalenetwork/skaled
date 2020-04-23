@@ -46,6 +46,7 @@ addons:
             - libargtable2-dev
             - libmicrohttpd-dev
             - libhiredis-dev
+            - vim
 jobs:
     include:
         - stage: test
