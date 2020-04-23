@@ -1949,7 +1949,7 @@ fi
 # fi
 
 #https://github.com/open-source-parsers/jsoncpp
-#git@github.com:open-source-parsers/jsoncpp.git
+#git@github.com:open-source-parsers///.git
 if [ "$WITH_JSONCPP" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libJsonC++${COLOR_SEPARATOR} ===================================${COLOR_RESET}"

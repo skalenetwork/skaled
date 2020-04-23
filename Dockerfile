@@ -15,12 +15,12 @@ ENV TRAVIS_BUILD_TYPE Debug
 
 COPY libconsensus /skaled/libconsensus
 COPY SkaleDeps /skaled/SkaleDeps
-WORKDIR /consensust
+WORKDIR /skaled
 RUN cd libconsensus/scripts && ./build_deps.sh 
 RUN cd SkaleDeps && ./build.sh
 COPY . /skaled
 
 RUN cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug .
-RUN bash -c "cmake --build build  --" ##; true;
+RUN bash -c "cmake --build build  -- -j12 "
 
 
