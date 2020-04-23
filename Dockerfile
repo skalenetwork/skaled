@@ -19,8 +19,5 @@ WORKDIR /skaled
 RUN cd libconsensus/scripts && ./build_deps.sh 
 RUN cd SkaleDeps && ./build.sh
 COPY . /skaled
-
-RUN cmake -Bbuild -DCMAKE_BUILD_TYPE=Debug .
+RUN cd /skaled && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
 RUN bash -c "cmake --build build  -- -j12 "
-
-

@@ -152,6 +152,7 @@ cache:
 before_install:
     - eval "${MATRIX_EVAL}"
 install:
+    - sh -c "while :; do clear; date; sleep 300; done" &
     -  cd libconsensus/scripts && ./build_deps.sh > ./log_of_build_deps.txt   2>&1 || ( tail -1000 ./log_of_build_deps.txt && travis_terminate 1 );
     - cd ../../SkaleDeps && ./build.sh > ./log_of_skale_deps.txt   2>&1 || ( tail -1000 ./log_of_skale_deps.txt && travis_terminate 1 );
     - cd ..
