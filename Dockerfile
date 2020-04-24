@@ -22,6 +22,6 @@ COPY . /skaled
 RUN cd /skaled && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
 RUN bash -c "cmake --build build  -- -j$(nproc)"
 RUN bash -c "cd /skaled/build/test && ./testeth -- --express"
-RUN bash -c "cd /skaled/build/test && ./testeth -t BtrfsTestSuite -- --all"
-RUN bash -c "cd /skaled/build/test && ./testeth -t HashSnapshotTestSuite -- --all"
-RUN bash -c "cd /skaled/build/test && ./testeth -t ClientSnapshotsSuite -- --all"
+#RUN bash -c "cd /skaled/build/test && ./testeth -t BtrfsTestSuite -- --all"
+#RUN bash -c "cd /skaled/build/test && ./testeth -t HashSnapshotTestSuite -- --all"
+#RUN bash -c "cd /skaled/build/test && ./testeth -t ClientSnapshotsSuite -- --all"
