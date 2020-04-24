@@ -271,8 +271,8 @@ setup_variable WITH_GNU_TLS "no"
 setup_variable WITH_GPGERROR "no"
 setup_variable WITH_GCRYPT "no"
 setup_variable WITH_MICRO_HTTP_D "yes"
-setup_variable WITH_JSONCPP "yes"
-setup_variable WITH_JSONRPCCPP "yes"
+setup_variable WITH_JSONCPP "no"
+setup_variable WITH_JSONRPCCPP "no"
 setup_variable WITH_CRYPTOPP "yes"
 
 setup_variable WITH_FF "yes"
@@ -1949,7 +1949,7 @@ fi
 # fi
 
 #https://github.com/open-source-parsers/jsoncpp
-#git@github.com:open-source-parsers/jsoncpp.git
+#git@github.com:open-source-parsers///.git
 if [ "$WITH_JSONCPP" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libJsonC++${COLOR_SEPARATOR} ===================================${COLOR_RESET}"
@@ -1957,7 +1957,7 @@ then
 	then
 		env_restore
 		cd $SOURCES_ROOT
-		if [ ! -d "jsonpp" ];
+		if [ ! -d "jsoncpp" ];
 		then
 			#
 			#echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1988,6 +1988,9 @@ then
 	fi
 fi
 
+mkdir -p $INSTALL_ROOT/jsoncpp
+cp -rf $INSTALL_ROOT/json $INSTALL_ROOT/jsoncpp
+
 #https://github.com/cinemast/libjson-rpc-cpp
 #git@github.com:cinemast/libjson-rpc-cpp.git
 if [ "$WITH_JSONRPCCPP" = "yes" ];
@@ -2004,7 +2007,8 @@ then
 			#git clone git@github.com:cinemast/libjson-rpc-cpp.git
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			tar -xzf $PREDOWNLOADED_ROOT/libjson-rpc-cpp.tar.gz
+			unzip  $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
+			cp -r libjson-rpc-cpp-develop libjson-rpc-cpp
 			#
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libjson-rpc-cpp
@@ -2052,6 +2056,7 @@ then
     then
         env_restore
         cd $SOURCES_ROOT
+
         if [ ! -d "libcryptopp" ];
         then
             mkdir libcryptopp

@@ -1,3 +1,6 @@
+set( CMAKE_CXX_STANDARD 17 )
+
+
 set(
     sources
     AccountManager.cpp AccountManager.h

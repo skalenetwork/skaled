@@ -28,7 +28,7 @@ env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
         - TARGET=all
 os: linux
-dist: xenial
+dist: bionic
 addons:
     apt:
         sources:
@@ -43,6 +43,10 @@ addons:
             - flex
             - bison
             - btrfs-progs
+            - libargtable2-dev
+            - libmicrohttpd-dev
+            - libhiredis-dev
+            - vim
 jobs:
     include:
         - stage: test
@@ -148,17 +152,21 @@ cache:
 before_install:
     - eval "${MATRIX_EVAL}"
 install:
-    - ./SkaleDeps/build.sh
+    - sh -c "while :; do clear; date; sleep 300; done" &
+    -  cd libconsensus/scripts && ./build_deps.sh > ./log_of_build_deps.txt   2>&1 || ( tail -1000 ./log_of_build_deps.txt && travis_terminate 1 );
+    - cd ../../SkaleDeps && ./build.sh > ./log_of_skale_deps.txt   2>&1 || ( tail -1000 ./log_of_skale_deps.txt && travis_terminate 1 );
+    - cd ..
+
 script:
     # configure
     - mkdir -p build
     - cd build
     - sh -c "while :; do clear; date; sleep 300; done" &
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. &> ./log_of_cmake.txt || ( cat ./log_of_cmake.txt && travis_terminate 1 );
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. > ./log_of_cmake.txt   2>&1 || ( tail -1000 ./log_of_cmake.txt && travis_terminate 1 );
 
     # check code style
-    - make format-check || travis_terminate 1;
+    #- make format-check || travis_terminate 1;
 
     # build
-    #- cmake --build . --target $TARGET -- -j$(nproc) &> ./log_of_make.txt || ( cat ./log_of_make.txt && travis_terminate 1 );
-    - cmake --build . --target $TARGET -- -j$(nproc)
+    - sh -c "cmake --build . --target $TARGET -- -j$(nproc) > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );"
+    #- cmake --build . --target $TARGET -- -j$(nproc)
