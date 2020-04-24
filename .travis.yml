@@ -168,5 +168,5 @@ script:
     #- make format-check || travis_terminate 1;
 
     # build
-    - cmake --build . --target $TARGET -- -j$(nproc) --trace > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );
+    - sh -c "cmake --build . --target $TARGET -- -j$(nproc) > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );"
     #- cmake --build . --target $TARGET -- -j$(nproc)
