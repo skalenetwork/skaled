@@ -21,3 +21,8 @@ RUN cd SkaleDeps && ./build.sh
 COPY . /skaled
 RUN cd /skaled && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
 RUN bash -c "cmake --build build  -- -j$(nproc)"
+
+RUN bash -c "cd /skaled/test && ./testeth -- --express
+RUN bash -c "cd /skaled/test && ./testeth -t BtrfsTestSuite -- --all
+RUN bash -c "cd /skaled/test && ./testeth -t HashSnapshotTestSuite -- --all
+RUN bash -c "cd /skaled/test && ./testeth -t ClientSnapshotsSuite -- --all
