@@ -1,4 +1,4 @@
-FROM skalenetwork/consensust_base:latest
+FROM ubuntu:bionic 
 
 RUN apt-get update
 RUN apt-get install -yq  libprocps-dev g++-7   ccache  \
