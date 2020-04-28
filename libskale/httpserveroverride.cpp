@@ -1821,17 +1821,24 @@ SkaleServerOverride::SkaleServerOverride(
       m_cntServers( ( cntServers < 1 ) ? 1 : cntServers ),
       pEth_( pEth ),
       chainParams_( chainParams ),
+
       fn_binary_snapshot_download_( fn_binary_snapshot_download ),
+      lfExecutionDurationMaxForPerformanceWarning_( lfExecutionDurationMaxForPerformanceWarning ),
       m_strAddrHTTP4( strAddrHTTP4 ),
       m_nBasePortHTTP4( nBasePortHTTP4 ),
+
       m_strAddrHTTP6( strAddrHTTP6 ),
       m_nBasePortHTTP6( nBasePortHTTP6 ),
       m_strAddrHTTPS4( strAddrHTTPS4 ),
+
       m_nBasePortHTTPS4( nBasePortHTTPS4 ),
+
       m_strAddrHTTPS6( strAddrHTTPS6 ),
       m_nBasePortHTTPS6( nBasePortHTTPS6 ),
+
       m_strAddrWS4( strAddrWS4 ),
       m_nBasePortWS4( nBasePortWS4 ),
+
       m_strAddrWS6( strAddrWS6 ),
       m_nBasePortWS6( nBasePortWS6 ),
       m_strAddrWSS4( strAddrWSS4 ),
@@ -1842,8 +1849,8 @@ SkaleServerOverride::SkaleServerOverride(
       m_strPathSslKey( strPathSslKey ),
       m_strPathSslCert( strPathSslCert ),
       m_cntConnections( 0 ),
-      m_cntConnectionsMax( 0 ),
-      lfExecutionDurationMaxForPerformanceWarning_( lfExecutionDurationMaxForPerformanceWarning ) {}
+      m_cntConnectionsMax( 0 ) {}
+
 
 SkaleServerOverride::~SkaleServerOverride() {
     StopListening();

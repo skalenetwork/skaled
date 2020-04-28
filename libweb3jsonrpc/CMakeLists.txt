@@ -1,3 +1,4 @@
+
 set(sources
     AccountHolder.cpp
     AccountHolder.h
@@ -112,6 +113,11 @@ link_directories(${BLS_WITH_FF_LIBRARY_DIR})
 
 target_include_directories( web3jsonrpc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
+		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
+		${DEPS_INSTALL_ROOT}/include
         ${BLS_WITH_FF_INCLUDE_DIR}
         ${BLS_INCLUDE_DIRS}
 	"${UTILS_INCLUDE_DIR}"
@@ -120,15 +126,15 @@ target_include_directories( web3jsonrpc PRIVATE
 
 target_link_libraries( web3jsonrpc
 #    bls
-    ethashseal
-    skutils
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-server.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-common.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
-    ${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
-    ${DEPS_INSTALL_ROOT}/lib/libcurl.a
-    ${DEPS_INSTALL_ROOT}/lib/libssl.a
-    ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-    ${DEPS_INSTALL_ROOT}/lib/libz.a
+		ethashseal
+		skutils
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
+		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
+		${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
+		${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
+		${DEPS_INSTALL_ROOT}/lib/libcurl.a
+		${DEPS_INSTALL_ROOT}/lib/libssl.a
+		${DEPS_INSTALL_ROOT}/lib/libcrypto.a
+		${DEPS_INSTALL_ROOT}/lib/libz.a
     )

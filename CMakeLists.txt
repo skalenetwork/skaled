@@ -40,9 +40,9 @@ include( GNUInstallDirs )
 
 if( UNIX )
     # Build deps with PIC to allow building shared libraries.
-    set( toolchain cxx11-pic )
+    set( toolchain cxx17-pic )
 else()
-    set( toolchain cxx11 )
+    set( toolchain cxx17 )
 endif()
 cable_configure_toolchain( DEFAULT ${toolchain} )
 
@@ -110,8 +110,8 @@ include( FindClangFormat )
 
 set( Boost_USE_STATIC_LIBS ON )
 set( Boost_USE_MULTITHREADED ON )
-hunter_add_package( Boost COMPONENTS program_options filesystem system thread context fiber log chrono )
-find_package( Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono )
+hunter_add_package( Boost COMPONENTS program_options filesystem system thread context fiber log chrono test)
+find_package( Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono)
 
 set( SKALE_HAVE_BOOST_FROM_HUNTER true )
 
@@ -125,7 +125,7 @@ else()
 endif()
 
 #hunter_add_package( jsoncpp )
-find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
+#find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
 
 hunter_add_package( Snappy )
 find_package( Snappy CONFIG REQUIRED )
@@ -216,10 +216,10 @@ set( CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE )
 include( CPack )
 
 if ( CONSENSUS )
-    set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Werror=unused-parameter" ) # hack to make libBLS compile
+    set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}  -Werror=unused-parameter" ) # hack to make libBLS compile
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
-    add_subdirectory( libconsensus )
+    add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
 endif()
 
 set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
