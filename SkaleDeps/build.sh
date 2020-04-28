@@ -16,6 +16,7 @@ env_restore_original() {
 
 env_save_original
 
+
 # colors/basic
 COLOR_RESET='\033[0m' # No Color
 COLOR_BLACK='\033[0;30m'
@@ -48,30 +49,40 @@ COLOR_VAR_DESC="${COLOR_BROWN}"
 COLOR_VAR_VAL="${COLOR_LIGHT_GRAY}"
 COLOR_PROJECT_NAME="${COLOR_LIGHT_BLUE}"
 
+echo -e ${COLOR_BLACK}${COLOR_DARK_GRAY}${COLOR_BLUE}${COLOR_LIGHT_BLUE}${COLOR_GREEN}${COLOR_LIGHT_GREEN}${COLOR_CYAN}${COLOR_LIGHT_CYAN}${COLOR_RED}${COLOR_LIGHT_RED}${COLOR_MAGENTA}${COLOR_LIGHT_MAGENTA}${COLOR_BROWN}${COLOR_YELLOW}${COLOR_LIGHT_GRAY}${COLOR_WHITE}${COLOR_ERROR}${COLOR_WARN}${COLOR_ATTENTION}${COLOR_SUCCESS}${COLOR_INFO}${COLOR_NOTICE}${COLOR_DOTS}${COLOR_SEPARATOR}${COLOR_VAR_NAME}${COLOR_VAR_DESC}${COLOR_VAR_VAL}${COLOR_PROJECT_NAME}${COLOR_RESET} &> /dev/null
+
 # detect system name and number of CPU cores
-export UNIX_SYSTEM_NAME=`uname -s`
+export UNIX_SYSTEM_NAME=$(uname -s)
 export NUMBER_OF_CPU_CORES=1
 if [ "$UNIX_SYSTEM_NAME" = "Linux" ];
 then
-	export NUMBER_OF_CPU_CORES=`grep -c ^processor /proc/cpuinfo`
+	export NUMBER_OF_CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 	export READLINK=readlink
 	export SO_EXT=so
 fi
 if [ "$UNIX_SYSTEM_NAME" = "Darwin" ];
 then
-	#export NUMBER_OF_CPU_CORES=`system_profiler | awk '/Number Of CPUs/{print $4}{next;}'`
-	export NUMBER_OF_CPU_CORES=`sysctl -n hw.ncpu`
+	#export NUMBER_OF_CPU_CORES=$(system_profiler | awk '/Number Of CPUs/{print $4}{next;}')
+	export NUMBER_OF_CPU_CORES=$(sysctl -n hw.ncpu)
 	# required -> brew install coreutils
 	export READLINK=/usr/local/bin/greadlink
 	export SO_EXT=dylib
 fi
 
 # detect working directories, change if needed
-WORKING_DIR_OLD=`pwd`
+WORKING_DIR_OLD=$(pwd)
 WORKING_DIR_NEW="$(dirname "$0")"
-WORKING_DIR_OLD=`$READLINK -f $WORKING_DIR_OLD`
-WORKING_DIR_NEW=`$READLINK -f $WORKING_DIR_NEW`
-cd $WORKING_DIR_NEW
+WORKING_DIR_OLD=$($READLINK -f $WORKING_DIR_OLD)
+WORKING_DIR_NEW=$($READLINK -f $WORKING_DIR_NEW)
+cd "$WORKING_DIR_NEW"
+
+cd "$WORKING_DIR_NEW/../libconsensus/scripts"
+./build_deps.sh
+cd ../../SkaleDeps
+
+# cd "$WORKING_DIR_NEW/../libconsensus/deps"
+# ./build.sh
+# cd ../../SkaleDeps
 
 #
 # MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
@@ -85,11 +96,11 @@ argc=$#
 argv=($@)
 for (( j=0; j<argc; j++ )); do
 	#echo ${argv[j]}
-	PARAM=`echo ${argv[j]} | awk -F= '{print $1}'`
-	VALUE=`echo ${argv[j]} | awk -F= '{print $2}'`
+	PARAM=$(echo ${argv[j]} | awk -F= '{print $1}')
+	VALUE=$(echo ${argv[j]} | awk -F= '{print $2}')
 	#echo ${PARAM}
 	#echo ${VALUE}
-	export ${PARAM}=${VALUE}
+	export ${PARAM}="${VALUE}"
 done
 #
 #
@@ -98,18 +109,18 @@ done
 simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_optional("yes" or "no")
 	#echo $1
 	#echo $2
-	TMP_CMD="export $2=`which $1`"
+	TMP_CMD="export $2=$(which $1)"
 	$TMP_CMD
 	TMP_CMD="echo ${!2}"
 	#echo "TMP_CMD is" $TMP_CMD
-	TMP_VAL=`$TMP_CMD`
+	TMP_VAL="$($TMP_CMD)"
 	#echo "TMP_VAL is" $TMP_VAL
 	if [ "$TMP_VAL" = "" ];
 	then
 		TMP_CMD="export $2=/usr/local/bin/$1"
 		$TMP_CMD
 		TMP_CMD="echo ${!2}"
-		TMP_VAL=`$TMP_CMD`
+		TMP_VAL="$($TMP_CMD)"
 		if [ -f "$TMP_VAL" ];
 		then
 			#echo -e "${COLOR_SUCCESS}SUCCESS: $2 found as $TMP_VAL" "${COLOR_RESET}"
@@ -118,7 +129,7 @@ simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_o
 		#TMP_CMD="export $2=/opt/local/bin/$1"
 		#$TMP_CMD
 		#TMP_CMD="echo ${!2}"
-		#TMP_VAL=`$TMP_CMD`
+		#TMP_VAL="$($TMP_CMD)"
 		#if [ -f "$TMP_VAL" ];
 		#then
 		#	#echo -e "${COLOR_SUCCESS}SUCCESS: $2 found as $TMP_VAL" "${COLOR_RESET}"
@@ -135,7 +146,7 @@ simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_o
 		return 0
 	fi
 	echo -e "${COLOR_ERROR}error: $2 tool was not found by deps build script${COLOR_RESET}"
-	cd $WORKING_DIR_OLD
+	cd "$WORKING_DIR_OLD"
 	env_restore_original
 	exit -1
 }
@@ -163,6 +174,8 @@ simple_find_tool_program "awk" "AWK" "no"
 simple_find_tool_program "yasm" "YASM" "no"
 simple_find_tool_program "nasm" "NASM" "yes"
 
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED dependencies build actions...${COLOR_RESET}"
 echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}PREPARE BUILD${COLOR_SEPARATOR} ================================${COLOR_RESET}"
 
 if [ -z "${ARCH}" ];
@@ -222,7 +235,7 @@ export CXXFLAGS="$CXXFLAGS -fPIC"
 setup_variable() {
     TMP_VAL=$1
     TMP_CMD="echo ${!TMP_VAL}"
-    TMP_VAL=`$TMP_CMD`
+    TMP_VAL="$($TMP_CMD)"
     #echo $TMP_VAL
     #if [ -z "$TMP_VAL" ]
     #then
@@ -238,9 +251,9 @@ setup_variable() {
 #setup_variable "WITH_SOMETHING" "yeah!!!"
 #echo "WITH_SOMETHING outside is " $WITH_SOMETHING
 
-setup_variable WITH_ZLIB "yes"
-setup_variable WITH_OPENSSL "yes"
-setup_variable WITH_CURL "yes"
+setup_variable WITH_ZLIB "no"
+setup_variable WITH_OPENSSL "no"
+setup_variable WITH_CURL "no"
 setup_variable WITH_LZMA "no"
 setup_variable WITH_SSH "no"
 
@@ -258,7 +271,7 @@ setup_variable WITH_SOURCEY "no"
 
 setup_variable WITH_BOOST "no"
 setup_variable WITH_PUPNP "no"
-setup_variable WITH_ARGTABLE2 "yes"
+setup_variable WITH_ARGTABLE2 "no"
 
 #
 # notice: nettle and gnutls are needed for microhttpd on ubuntu 18.04
@@ -270,14 +283,14 @@ setup_variable WITH_GNU_TLS "no"
 #
 setup_variable WITH_GPGERROR "no"
 setup_variable WITH_GCRYPT "no"
-setup_variable WITH_MICRO_HTTP_D "yes"
+setup_variable WITH_MICRO_HTTP_D "no"
 setup_variable WITH_JSONCPP "no"
 setup_variable WITH_JSONRPCCPP "no"
-setup_variable WITH_CRYPTOPP "yes"
+setup_variable WITH_CRYPTOPP "no"
 
-setup_variable WITH_FF "yes"
-setup_variable WITH_GMP "yes"
-setup_variable WITH_PBC "yes"
+setup_variable WITH_FF "no"
+setup_variable WITH_GMP "no"
+setup_variable WITH_PBC "no"
 
 if [ -z "${PARALLEL_COUNT}" ];
 then
@@ -291,13 +304,14 @@ else
 fi
 
 export CUSTOM_BUILD_ROOT=$PWD
-export INSTALL_ROOT_RELATIVE="$CUSTOM_BUILD_ROOT/deps_inst/$ARCH"
+#export INSTALL_ROOT_RELATIVE="$CUSTOM_BUILD_ROOT/deps_inst/$ARCH"
+export INSTALL_ROOT_RELATIVE="$CUSTOM_BUILD_ROOT/../libconsensus/libBLS/deps/deps_inst/$ARCH"
 mkdir -p "$INSTALL_ROOT_RELATIVE"
-export INSTALL_ROOT=`$READLINK -f $INSTALL_ROOT_RELATIVE`
-export SOURCES_ROOT=`$READLINK -f $CUSTOM_BUILD_ROOT`
-export PREDOWNLOADED_ROOT=`$READLINK -f $CUSTOM_BUILD_ROOT/pre_downloaded`
+export INSTALL_ROOT=$($READLINK -f $INSTALL_ROOT_RELATIVE)
+export SOURCES_ROOT=$($READLINK -f $CUSTOM_BUILD_ROOT)
+export PREDOWNLOADED_ROOT=$($READLINK -f $CUSTOM_BUILD_ROOT/pre_downloaded)
 export LIBRARIES_ROOT=$INSTALL_ROOT/lib
-#export DYLD_LIBRARY_PATH=`$READLINK -f $INSTALL_ROOT/lib`
+#export DYLD_LIBRARY_PATH=$($READLINK -f $INSTALL_ROOT/lib)
 mkdir -p $SOURCES_ROOT
 mkdir -p $INSTALL_ROOT
 mkdir -p $INSTALL_ROOT/share
@@ -341,46 +355,46 @@ then
 	export CONF_CROSSCOMPILING_OPTS_VPX=""
 	export CONF_CROSSCOMPILING_OPTS_X264=""
 	export CONF_CROSSCOMPILING_OPTS_FFMPEG=""
-	#export CC=`which gcc`
-	#export CXX=`which g++`
+	#export CC=$(which gcc)
+	#export CXX=$(which g++)
 	if [ "$USE_LLVM" = "1" ];
 	then
-		export CC=`which clang`
-		export CXX=`which clang++`
-		export AS=`which llvm-as`
-		export AR=`which llvm-ar`
-		#export LD=`which llvm-ld`
-		export LD=`which lld`
-		export RANLIB=`which llvm-ranlib`
-		export OBJCOPY=`which llvm-objcopy`
-		export OBJDUMP=`which llvm-objdump`
-		export NM=`which llvm-nm`
+		export CC=$(which clang)
+		export CXX=$(which clang++)
+		export AS=$(which llvm-as)
+		export AR=$(which llvm-ar)
+		#export LD=$(which llvm-ld)
+		export LD=$(which lld)
+		export RANLIB=$(which llvm-ranlib)
+		export OBJCOPY=$(which llvm-objcopy)
+		export OBJDUMP=$(which llvm-objdump)
+		export NM=$(which llvm-nm)
 	else
 		if [ "$UNIX_SYSTEM_NAME" = "Linux" ];
 		then
-			export CC=`which gcc-7`
+			export CC=$(which gcc-7)
 			if [ -z "${CC}" ];
 			then
-				export CC=`which gcc`
+				export CC=$(which gcc)
 			fi
-			export CXX=`which g++-7`
+			export CXX=$(which g++-7)
 			if [ -z "${CXX}" ];
 			then
-				export CXX=`which g++`
+				export CXX=$(which g++)
 			fi
 		else
-			export CC=`which gcc`
-			export CXX=`which g++`
+			export CC=$(which gcc)
+			export CXX=$(which g++)
 		fi
-		export AS=`which as`
-		export AR=`which ar`
-		export LD=`which ld`
-		export RANLIB=`which ranlib`
-		export OBJCOPY=`which objcopy`
-		export OBJDUMP=`which objdump`
-		export NM=`which nm`
+		export AS=$(which as)
+		export AR=$(which ar)
+		export LD=$(which ld)
+		export RANLIB=$(which ranlib)
+		export OBJCOPY=$(which objcopy)
+		export OBJDUMP=$(which objdump)
+		export NM=$(which nm)
 	fi
-	export STRIP=`which strip`
+	export STRIP=$(which strip)
 	export UPNP_DISABLE_LARGE_FILE_SUPPORT=""
 else
 	export HELPER_ARM_TOOLCHAIN_NAME=arm-linux-gnueabihf
@@ -399,13 +413,13 @@ else
 			echo -e "${COLOR_ERROR}error: ${COLOR_VAR_VAL}${TOOLCHAINS_PATH}${COLOR_ERROR} folder not created!${COLOR_RESET}"
 			echo -e "${COLOR_ERROR}Create ${COLOR_VAR_VAL}${TOOLCHAINS_PATH}${COLOR_ERROR} folder and give permissions for writing here to current user.${COLOR_RESET}"
 			echo -e "${COLOR_SEPARATOR}=================================================${COLOR_RESET}"
-			cd $WORKING_DIR_OLD
+			cd "$WORKING_DIR_OLD"
 			env_restore_original
 			exit -1
 		fi
 
 		mkdir -p $TOOLCHAINS_DOWNLOADED_PATH
-		cd $TOOLCHAINS_DOWNLOADED_PATH
+		cd "$TOOLCHAINS_DOWNLOADED_PATH"
 		wget $ARM_TOOLCHAIN_INTERNAL_LINK
 
 		if [ ! -f $ARM_TOOLCHAIN_ARCH_NAME ];
@@ -417,13 +431,13 @@ else
 			echo -e "${COLOR_ERROR}Mirror: ${COLOR_VAR_VAL}${ARM_TOOLCHAIN_INTERNAL_LINK}${COLOR_RESET}"
 			echo -e "${COLOR_ERROR}Copy ${COLOR_VAR_VAL}${ARM_TOOLCHAIN_ARCH_NAME}${COLOR_ERROR} to ${COLOR_VAR_VAL}${TOOLCHAINS_DOWNLOADED_PATH}${COLOR_RESET}"
 			echo -e "${COLOR_SEPARATOR}=================================================${COLOR_RESET}"
-			cd $WORKING_DIR_OLD
+			cd "$WORKING_DIR_OLD"
 			env_restore_original
 			exit -1
 		fi
 
 		mkdir -p $ARM_TOOLCHAIN_PATH
-		cd $ARM_TOOLCHAIN_PATH
+		cd "$ARM_TOOLCHAIN_PATH"
 		tar -zxvf $TOOLCHAINS_DOWNLOADED_PATH/$ARM_TOOLCHAIN_ARCH_NAME
 
 		if [ ! -d "$ARM_TOOLCHAIN_PATH/arm-linux-gnueabihf/bin" ];
@@ -432,7 +446,7 @@ else
 			echo -e "${COLOR_SEPARATOR}=================================================${COLOR_RESET}"
 			echo -e "${COLOR_ERROR}Cannot unpack toolchain archive: ${COLOR_VAR_VAL}$TOOLCHAINS_DOWNLOADED_PATH${COLOR_ERROR}/${COLOR_VAR_VAL}$TOOLCHAIN_ARCH_NAME${COLOR_RESET}"
 			echo -e "${COLOR_SEPARATOR}=================================================${COLOR_RESET}"
-			cd $WORKING_DIR_OLD
+			cd "$WORKING_DIR_OLD"
 			env_restore_original
 			exit -1
 		fi
@@ -490,14 +504,14 @@ fi
 if [ -z "${CC}" ];
 then
 	echo -e "${COLOR_ERROR}error: build requires gcc compiler or link which was not detected successfully${COLOR_RESET}"
-	cd $WORKING_DIR_OLD
+	cd "$WORKING_DIR_OLD"
 	env_restore_original
 	exit -1
 fi
 if [ -z "${CXX}" ];
 then
 	echo -e "${COLOR_ERROR}error: build requires g++ compiler or link which was not detected successfully${COLOR_RESET}"
-	cd $WORKING_DIR_OLD
+	cd "$WORKING_DIR_OLD"
 	env_restore_original
 	exit -1
 fi
@@ -583,7 +597,7 @@ echo -e "${COLOR_VAR_NAME}WITH_PBC${COLOR_DOTS}...............${COLOR_VAR_DESC}L
 #
 #
 
-cd $SOURCES_ROOT
+cd "$SOURCES_ROOT"
 
 env_save() {
 	export > $SOURCES_ROOT/saved_environment_pre_configured.txt
@@ -607,7 +621,7 @@ env_save
 # then
 # 	# https://github.com/VFR-maniac/bzip2
 # 	env_restore
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # 	if [ ! -d "bzip2" ];
 # 	then
 # 		#if [ ! -f "bzip2-from-git.tar.gz" ];
@@ -653,7 +667,7 @@ env_save
 # 	$MAKE $PARALLEL_MAKE_OPTIONS $DIRECT_MAKE_CROSSCOMPILING_OPTS
 # 	$MAKE $PARALLEL_MAKE_OPTIONS $DIRECT_MAKE_CROSSCOMPILING_OPTS install PREFIX=$INSTALL_ROOT
 # 	cd ..
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # else
 # 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # fi
@@ -664,7 +678,7 @@ env_save
 # 	if [ ! -f "$INSTALL_ROOT/lib/liblzma.a" ];
 # 	then
 # 		env_restore
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
 # 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
 # 		if [ ! -d "lzma" ];
@@ -688,7 +702,7 @@ env_save
 # 		cd ..
 # 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
 # 		export PKG_CONFIG_PATH_SAVED=
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	else
 # 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # 	fi
@@ -701,7 +715,7 @@ then
 	then
 		## (required for libssh)
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "zlib" ];
 		then
 			if [ ! -f "zlib-from-git.tar.gz" ];
@@ -724,7 +738,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -734,7 +748,7 @@ fi
 #if [ ! -f "$INSTALL_ROOT/lib/libxml2.a" ];
 #then
 #	env_restore
-#	cd $SOURCES_ROOT
+#	cd "$SOURCES_ROOT"
 #	if [ ! -d "libxml2" ];
 #	then
 #		echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -748,8 +762,8 @@ fi
 #	echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 #    cd libxml2
 #
-#    CFLAGS=`xml2-config --cflags`
-#    LIBS=`xml2-config --libs`
+#    CFLAGS=$(xml2-config --cflags)
+#    LIBS=$(xml2-config --libs)
 #
 #	$MAKE $PARALLEL_MAKE_OPTIONS
 #	$MAKE $PARALLEL_MAKE_OPTIONS install
@@ -759,7 +773,7 @@ fi
 #	#cp -r $INSTALL_ROOT/liblibxml2/include $INSTALL_ROOT/include
 #	#rm -rf $INSTALL_ROOT/include/libxml2
 #	#cd ..
-#	#cd $SOURCES_ROOTls
+#	#cd "$SOURCES_ROOT"ls
 #else
 #	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 #fi
@@ -774,7 +788,7 @@ then
 		## https://wiki.openssl.org/index.php/Compilation_and_Installation
 		## (required for libssh)
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "openssl" ];
 		then
 			if [ ! -f "openssl-from-git.tar.gz" ];
@@ -821,7 +835,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		##$MAKE $PARALLEL_MAKE_OPTIONS install
 		$MAKE $PARALLEL_MAKE_OPTIONS install_sw
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -832,7 +846,7 @@ fi
 #if [ ! -f "$INSTALL_ROOT/lib/libsasl2.a" ];
 #then
 #	env_restore
-#	cd $SOURCES_ROOT
+#	cd "$SOURCES_ROOT"
 #	if [ ! -d "cyrus-sasl" ];
 #	then
 #		if [ ! -f "sasl-from-git.tar.gz" ];
@@ -855,10 +869,10 @@ fi
 #	./autogen.sh --prefix=$INSTALL_ROOT --enable-static
 #	$MAKE $PARALLEL_MAKE_OPTIONS
 #	$MAKE $PARALLEL_MAKE_OPTIONS install
-#	cd $SOURCES_ROOT
+#	cd "$SOURCES_ROOT"
 #else
 #	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
-#	cd $SOURCES_ROOT
+#	cd "$SOURCES_ROOT"
 #fi
 
 if [ "$WITH_SSH" = "yes" ];
@@ -873,7 +887,7 @@ then
 		# https://stackoverflow.com/questions/16248775/cmake-not-able-to-find-openssl
 		# git clone https://git.libssh.org/projects/libssh.git libssh
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libssh" ];
 		then
 		if [ ! -f "libssh-from-git.tar.gz" ];
@@ -901,7 +915,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ..
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -914,7 +928,7 @@ then
 	then
 		# https://github.com/curl/curl
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
 		if [ ! -d "curl" ];
@@ -960,7 +974,7 @@ then
 		cd ..
 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
 		export PKG_CONFIG_PATH_SAVED=
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -974,7 +988,7 @@ then
 		echo -e "${COLOR_SUCCESS}skipping iconv on $UNIX_SYSTEM_NAME )))${COLOR_RESET}"
 	else
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libiconv-1.15" ];
 		then
 			if [ ! -f "libiconv-1.15.tar.gz" ];
@@ -994,7 +1008,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	fi
 else
 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
@@ -1006,7 +1020,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libSDL2.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "SDL2-2.0.7" ];
 		then
 			if [ ! -f "SDL2-2.0.7.tar.gz" ];
@@ -1027,7 +1041,7 @@ then
 		#$MAKE $PARALLEL_MAKE_OPTIONS install
 		$MAKE install
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1039,7 +1053,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libSDL2_ttf.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
 		#
@@ -1087,7 +1101,7 @@ then
 		#
 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
 		export PKG_CONFIG_PATH_SAVED=
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1099,7 +1113,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libev.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libev" ];
 		then
 			if [ ! -f "libev-from-git.tar.gz" ];
@@ -1124,7 +1138,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ../..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1136,7 +1150,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libevent" ];
 		then
 			if [ ! -f "libevent-from-git.tar.gz" ];
@@ -1166,7 +1180,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ../..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1178,7 +1192,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libuv.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libuv" ];
 		then
 			if [ ! -f "libuv-from-git.tar.gz" ];
@@ -1215,7 +1229,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1227,7 +1241,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libwebsockets.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libwebsockets" ];
 		then
 			if [ ! -f "libwebsockets-from-git.tar.gz" ];
@@ -1367,7 +1381,7 @@ then
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
 		cd ../..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1379,7 +1393,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libscy_base.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libsourcey" ];
 		then
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1405,7 +1419,7 @@ then
 		cd libsourcey/build
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		else
 			echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 		fi
@@ -1416,7 +1430,7 @@ fi
 # 	then
 # 		# (required for libssh)
 #		env_restore
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 		if [ ! -d "asio" ]; then
 # 			if [ ! -f "asio-from-git.tar.gz" ]; then
 # 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1438,7 +1452,7 @@ fi
 # 		$MAKE $PARALLEL_MAKE_OPTIONS
 # 		$MAKE $PARALLEL_MAKE_OPTIONS install
 # 		cd ../..
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	else
 # 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # 	fi
@@ -1450,7 +1464,7 @@ then
 	then
 		#####https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "boost_1_68_0" ];
 		then
 			if [ ! -f "boost_1_68_0.tar.gz" ];
@@ -1475,7 +1489,7 @@ then
 		./b2 cxxflags=-fPIC cflags=-fPIC $PARALLEL_MAKE_OPTIONS --prefix=$INSTALL_ROOT --layout=system variant=debug link=static threading=multi install
 	fi
 		cd ..
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1488,7 +1502,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libupnp.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libupnp-1.8.3" ];
 		then
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1496,13 +1510,13 @@ then
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libupnp-1.8.3
 			./configure $CONF_CROSSCOMPILING_OPTS_GENERIC --enable-static --disable-shared --with-pic --prefix=$INSTALL_ROOT $UPNP_DISABLE_LARGE_FILE_SUPPORT $CONF_DEBUG_OPTIONS
-			cd $SOURCES_ROOT
+			cd "$SOURCES_ROOT"
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd libupnp-1.8.3
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1513,7 +1527,7 @@ fi
 #if [ ! -f "$INSTALL_ROOT/lib/libreadline.a" ];
 #then
 #	env_restore
-#    cd $SOURCES_ROOT
+#    cd "$SOURCES_ROOT"
 #    if [ ! -d "readline-7.0" ];
 #    then
 #        if [ ! -f "readline-7.0.tar.gz" ];
@@ -1528,14 +1542,14 @@ fi
 #        mkdir -p build
 #        cd build
 #        ../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
-#        cd $SOURCES_ROOT
+#        cd "$SOURCES_ROOT"
 #    fi
 #    cd readline-7.0
 #    cd build
 #    make $PARALLEL_MAKE_OPTIONS
 #    make $PARALLEL_MAKE_OPTIONS install
 #    cd ..
-#    cd $SOURCES_ROOT
+#    cd "$SOURCES_ROOT"
 #else
 #	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 #fi
@@ -1544,7 +1558,7 @@ fi
 # if [ ! -f "$INSTALL_ROOT/lib/libxml2.so" ];
 # then
 # 	env_restore
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # 	if [ ! -d "libxml2-2.9.7" ];
 # 	then
 # 		if [ ! -f "libxml2-2.9.7.tar.gz" ];
@@ -1559,14 +1573,14 @@ fi
 # 		mkdir -p build
 # 		cd build
 # 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --without-html --without-python --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	fi
 # 	cd libxml2-2.9.7
 # 	cd build
 # 	make $PARALLEL_MAKE_OPTIONS
 # 	make $PARALLEL_MAKE_OPTIONS install
 # 	cd ..
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # else
 # 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # fi
@@ -1575,7 +1589,7 @@ fi
 # if [ ! -f "$INSTALL_ROOT/lib/libarchive.so" ];
 # then
 # 	env_restore
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # 	if [ ! -d "libarchive-3.3.2" ];
 # 	then
 # 		if [ ! -f "libarchive-3.3.2.tar.gz" ];
@@ -1590,13 +1604,13 @@ fi
 # 		mkdir -p build
 # 		cd build
 # 		../configure $CONF_CROSSCOMPILING_OPTS_GENERIC --host=arm-linux --prefix=$INSTALL_ROOT $CONF_DEBUG_OPTIONS
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	fi
 # 	cd libarchive-3.3.2/build
 # 	make $PARALLEL_MAKE_OPTIONS
 # 	make $PARALLEL_MAKE_OPTIONS install
 # 	cd ..
-# 	cd $SOURCES_ROOT
+# 	cd "$SOURCES_ROOT"
 # else
 # 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # fi
@@ -1609,7 +1623,7 @@ fi
 # 	if [ ! -f "$INSTALL_ROOT/lib/libgtest.a" ];
 # 	then
 # 		env_restore
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 #
 # 		if [ ! -d gtest ];
 # 		then
@@ -1633,7 +1647,7 @@ fi
 # 			mv "$LIBRARIES_ROOT/libgmock_maind.a" "$LIBRARIES_ROOT/libgmock_main.a"
 # 		fi
 #
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	else
 # 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # 	fi
@@ -1646,7 +1660,7 @@ fi
 # 	then
 # 		git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
 # 		export SAVED_PATH=$PATH
-# 		export PATH=$PATH:`realpath depot_tools`
+# 		export PATH=$PATH:$(realpath depot_tools)
 #
 # 		gclient
 # 		fetch v8
@@ -1673,7 +1687,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libargtable2${DEBUG_D}.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "argtable2" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1691,7 +1705,7 @@ then
 		cd build
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1703,7 +1717,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libnettle.a" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
         if [ ! -d "nettle-3.4.1" ];
         then
             if [ ! -f "nettle-3.4.1.tar.gz" ];
@@ -1721,7 +1735,7 @@ then
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE $PARALLEL_MAKE_OPTIONS
         $MAKE $PARALLEL_MAKE_OPTIONS install
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
@@ -1733,7 +1747,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libtasn1.a" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
         #export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
         #export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
         if [ ! -d "libtasn1" ];
@@ -1757,7 +1771,7 @@ then
         $MAKE $PARALLEL_MAKE_OPTIONS install
         #export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
         #export PKG_CONFIG_PATH_SAVED=
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
@@ -1769,7 +1783,7 @@ fi
 # 	if [ ! -f "$INSTALL_ROOT/lib/libgnutls.a" ];
 # 	then
 # 		env_restore
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
 # 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
 # 		if [ ! -d "gnutls-3.6.5" ];
@@ -1792,7 +1806,7 @@ fi
 # 		$MAKE $PARALLEL_MAKE_OPTIONS install
 # 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
 # 		export PKG_CONFIG_PATH_SAVED=
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	else
 # 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # 	fi
@@ -1806,7 +1820,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libgnutls.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "gnutls" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1821,7 +1835,7 @@ then
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		$MAKE
 		$MAKE install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1835,7 +1849,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libgpg-error.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libgpg-error" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1850,7 +1864,7 @@ then
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		$MAKE
 		$MAKE install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1864,7 +1878,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libgcrypt.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libgcrypt" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1879,7 +1893,7 @@ then
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		$MAKE
 		$MAKE install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1893,7 +1907,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libmicrohttpd.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libmicrohttpd" ];
 		then
 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1913,7 +1927,7 @@ then
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		$MAKE
 		$MAKE install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1927,7 +1941,7 @@ fi
 # 	if [ ! -f "$INSTALL_ROOT/lib/libmicrohttpd.a" ];
 # 	then
 # 		env_restore
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 		if [ ! -d "libmicrohttpd_openssl" ];
 # 		then
 # 			echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -1942,7 +1956,7 @@ fi
 # 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 # 		$MAKE
 # 		$MAKE install
-# 		cd $SOURCES_ROOT
+# 		cd "$SOURCES_ROOT"
 # 	else
 # 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # 	fi
@@ -1956,7 +1970,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libjsoncpp.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "jsoncpp" ];
 		then
 			#
@@ -1982,14 +1996,11 @@ then
 		cd build
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
 fi
-
-mkdir -p $INSTALL_ROOT/jsoncpp
-cp -rf $INSTALL_ROOT/json $INSTALL_ROOT/jsoncpp
 
 #https://github.com/cinemast/libjson-rpc-cpp
 #git@github.com:cinemast/libjson-rpc-cpp.git
@@ -1999,7 +2010,7 @@ then
 	if [ ! -f "$INSTALL_ROOT/lib/libjsonrpccpp-server.a" ];
 	then
 		env_restore
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 		if [ ! -d "libjson-rpc-cpp" ];
 		then
 			#
@@ -2007,7 +2018,7 @@ then
 			#git clone git@github.com:cinemast/libjson-rpc-cpp.git
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			unzip  $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
+			unzip -o $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
 			cp -r libjson-rpc-cpp-develop libjson-rpc-cpp
 			#
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2043,7 +2054,7 @@ then
 		cd build
 		$MAKE $PARALLEL_MAKE_OPTIONS
 		$MAKE $PARALLEL_MAKE_OPTIONS install
-		cd $SOURCES_ROOT
+		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -2055,7 +2066,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libcryptopp.a" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
 
         if [ ! -d "libcryptopp" ];
         then
@@ -2064,10 +2075,10 @@ then
             #git clone http://github.com/weidai11/cryptopp.git libcryptopp
             echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
         fi
-        cd $SOURCES_ROOT/libcryptopp
+        cd "$SOURCES_ROOT"/libcryptopp
         $MAKE $PARALLEL_MAKE_OPTIONS static
         $MAKE $PARALLEL_MAKE_OPTIONS install PREFIX=$INSTALL_ROOT
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
@@ -2079,7 +2090,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libgmp.a" ] || [ ! -f "$INSTALL_ROOT/lib/libgmpxx.a" ] || [ ! -f "$INSTALL_ROOT/lib/libgmp.la" ] || [ ! -f "$INSTALL_ROOT/lib/libgmpxx.la" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
         if [ ! -d "gmp-6.1.2" ];
         then
             if [ ! -f "gmp-6.1.2.tar.xz" ];
@@ -2097,7 +2108,7 @@ then
         $MAKE $PARALLEL_MAKE_OPTIONS
         $MAKE $PARALLEL_MAKE_OPTIONS install
         cd ..
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
@@ -2109,7 +2120,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libff.a" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
         if [ ! -d "libff" ];
         then
             echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -2123,7 +2134,7 @@ then
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE $PARALLEL_MAKE_OPTIONS
         $MAKE $PARALLEL_MAKE_OPTIONS install
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
@@ -2135,7 +2146,7 @@ then
     if [ ! -f "$INSTALL_ROOT/lib/libpbc.a" ] || [ ! -f "$INSTALL_ROOT/lib/libpbc.la" ];
     then
         env_restore
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
         if [ ! -d "pbc" ];
         then
             echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
@@ -2156,15 +2167,21 @@ then
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE $PARALLEL_MAKE_OPTIONS
         $MAKE $PARALLEL_MAKE_OPTIONS install
-        cd $SOURCES_ROOT
+        cd "$SOURCES_ROOT"
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
 fi
 
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED dependencies build actions...${COLOR_RESET}"
 echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}FINISH${COLOR_SEPARATOR} =======================================${COLOR_RESET}"
+echo -e " "
+echo -e " "
+echo -e " "
+
 #env_restore
-#cd $CUSTOM_BUILD_ROOT
-cd $WORKING_DIR_OLD
+#cd "$CUSTOM_BUILD_ROOT"
+cd "$WORKING_DIR_OLD"
 env_restore_original
 exit 0

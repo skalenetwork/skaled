@@ -92,6 +92,14 @@ WORKING_DIR_NEW="$(dirname "$0")"
 WORKING_DIR_OLD=`$READLINK -f $WORKING_DIR_OLD`
 WORKING_DIR_NEW=`$READLINK -f $WORKING_DIR_NEW`
 cd $WORKING_DIR_NEW
+
+cd $WORKING_DIR_NEW/../libconsensus/deps
+./clean.sh
+cd ../../SkaleDeps
+
+echo -e " "
+echo -e "${COLOR_LIGHT_MAGENTA}SKALED dependencies cleanup actions...${COLOR_RESET}"
+
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_OLD${COLOR_DOTS}........${COLOR_VAR_DESC}Started in directory${COLOR_DOTS}...................${COLOR_VAR_VAL}${WORKING_DIR_OLD}${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_NEW${COLOR_DOTS}........${COLOR_VAR_DESC}Switched to directory${COLOR_DOTS}..................${COLOR_VAR_VAL}${WORKING_DIR_NEW}${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}UNIX_SYSTEM_NAME${COLOR_DOTS}.......${COLOR_VAR_DESC}Running on host${COLOR_DOTS}........................${COLOR_VAR_VAL}${UNIX_SYSTEM_NAME}${COLOR_RESET}"
