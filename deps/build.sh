@@ -78,11 +78,7 @@ cd "$WORKING_DIR_NEW"
 
 cd "$WORKING_DIR_NEW/../libconsensus/scripts"
 ./build_deps.sh
-cd ../../SkaleDeps
-
-# cd "$WORKING_DIR_NEW/../libconsensus/deps"
-# ./build.sh
-# cd ../../SkaleDeps
+cd ../../deps
 
 #
 # MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config

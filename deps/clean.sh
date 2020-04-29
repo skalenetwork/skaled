@@ -97,7 +97,7 @@ cd "$WORKING_DIR_NEW"
 
 cd "$WORKING_DIR_NEW"/../libconsensus/deps
 ./clean.sh
-cd ../../SkaleDeps
+cd ../../deps
 
 echo -e " "
 echo -e "${COLOR_LIGHT_MAGENTA}SKALED dependencies cleanup actions...${COLOR_RESET}"
@@ -143,6 +143,9 @@ rm -rf ./libcryptopp
 # rm -rf ./libevent
 # rm -rf l./ibwebsockets
 # rm -rf ./gtest
+rm -rf ./gmp-6.1.2
+rm -rf ./libff
+rm -rf ./pbc
 echo "Done (all clean)."
 
 #finish
