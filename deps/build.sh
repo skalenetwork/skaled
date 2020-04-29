@@ -2109,7 +2109,7 @@ then
         fi
         cd gmp-6.1.2
         echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS}" --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" "${CONF_DEBUG_OPTIONS}" --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
@@ -2169,7 +2169,7 @@ then
         echo "    CPPFLAGS = $CPPFLAGS"
         echo "    LDFLAGS  = $LDFLAGS"
         $LIBTOOLIZE --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS}" --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" "${CONF_DEBUG_OPTIONS}" --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
