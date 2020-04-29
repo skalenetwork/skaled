@@ -43,7 +43,8 @@ target_include_directories( skale PUBLIC
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
 		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/lib/libzmq.a
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/build/libbls.a)
+		bls # ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/build/libbls.a
+        )
 
 #target_compile_options( skale PRIVATE -Weffc++ )
 #target_compile_options( skale PRIVATE -Wno-error=effc++ )
