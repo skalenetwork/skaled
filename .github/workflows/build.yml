@@ -83,8 +83,8 @@ jobs:
           export CXX=g++-7 &&
           export TARGET=all &&
           export TRAVIS_BUILD_TYPE=Debug &&
-          cd libconsensus/scripts && ./build_deps.sh
-          cd SkaleDeps && ./build.sh &&
+          cd libconsensus/scripts && ./build_deps.sh &&
+          cd ../../SkaleDeps && ./build.sh &&
           cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug &&
           cmake --build build  -- -j$(nproc)
       - name: testeth
