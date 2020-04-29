@@ -160,7 +160,7 @@ install:
     -  cd libconsensus/scripts && ./build_deps.sh > ./log_of_build_deps.txt   2>&1 || ( tail -1000 ./log_of_build_deps.txt && travis_terminate 1 );
     - # cd ../../deps && ./build.sh > ./log_of_skale_deps.txt   2>&1 || ( tail -1000 ./log_of_skale_deps.txt && travis_terminate 1 );
     - cd ../../deps
-    - ./build.sh || && travis_terminate 1
+    - ./build.sh || travis_terminate 1
     - cd ..
 
 script:
