@@ -157,7 +157,7 @@ before_install:
     - eval "${MATRIX_EVAL}"
 install:
     - sh -c "while :; do clear; date; sleep 300; done" &
-    - cd ../deps
+    - cd ./deps
     - ./build.sh || travis_terminate 1
     - cd ..
 
