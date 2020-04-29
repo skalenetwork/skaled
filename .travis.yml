@@ -157,9 +157,7 @@ before_install:
     - eval "${MATRIX_EVAL}"
 install:
     - sh -c "while :; do clear; date; sleep 300; done" &
-    -  cd libconsensus/scripts && ./build_deps.sh > ./log_of_build_deps.txt   2>&1 || ( tail -1000 ./log_of_build_deps.txt && travis_terminate 1 );
-    - # cd ../../deps && ./build.sh > ./log_of_skale_deps.txt   2>&1 || ( tail -1000 ./log_of_skale_deps.txt && travis_terminate 1 );
-    - cd ../../deps
+    - cd ../deps
     - ./build.sh || travis_terminate 1
     - cd ..
 
@@ -169,10 +167,8 @@ script:
     - cd build
     - sh -c "while :; do clear; date; sleep 300; done" &
     - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. > ./log_of_cmake.txt   2>&1 || ( tail -1000 ./log_of_cmake.txt && travis_terminate 1 );
-
     # check code style
-    #- make format-check || travis_terminate 1;
-
+    - make format-check || travis_terminate 1;
     # build
-    - sh -c "cmake --build . --target $TARGET -- -j$(nproc) > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );"
-    #- cmake --build . --target $TARGET -- -j$(nproc)
+    - #sh -c "cmake --build . --target $TARGET -- -j$(nproc) > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );"
+    - sh -c "cmake --build . --target $TARGET -- -j$(nproc)

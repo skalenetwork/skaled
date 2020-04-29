@@ -13,10 +13,10 @@ ENV CXX g++-7
 ENV TARGET all
 ENV TRAVIS_BUILD_TYPE Debug
 
-COPY libconsensus /skaled/libconsensus
-COPY deps /skaled/deps
+#COPY libconsensus /skaled/libconsensus
+#COPY deps /skaled/deps
 WORKDIR /skaled
-RUN cd libconsensus/scripts && ./build_deps.sh 
+#RUN cd libconsensus/scripts && ./build_deps.sh 
 RUN cd deps && ./build.sh
 COPY . /skaled
 RUN cd /skaled && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
