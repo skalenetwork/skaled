@@ -1249,6 +1249,7 @@ then
                 git clone https://github.com/warmcat/libwebsockets.git
 				cd libwebsockets
 				git checkout v3.1-stable
+				# git checkout v4.0-stable
 				git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1309,7 +1310,9 @@ then
 					echo " "
 				else
 					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=ON"
-					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
+					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
+					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib\""
+					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib"
 				fi
 			else
 				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
@@ -1334,15 +1337,18 @@ then
 				-DLWS_WITH_STATIC=ON -DLWS_WITH_SHARED=OFF -DLWS_STATIC_PIC=ON \
 				-DLWS_IPV6=ON -DLWS_UNIX_SOCK=ON -DLWS_WITH_HTTP2=OFF -DLWS_WITHOUT_TESTAPPS=ON \
 				-DLWS_WITH_ACCESS_LOG=ON -DLWS_WITH_SERVER_STATUS=ON \
-				-DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS $LWS_LIBUV_OPTIONS \
+				-DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS ${LWS_LIBUV_OPTIONS} \
 				-DLWS_HAVE_LIBCAP=OFF -DLWS_MAX_SMP=1024 \
 				-DLWS_WITH_THREADPOOL=1 \
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
-				-DLWS_OPENSSL_INCLUDE_DIRS="$INSTALL_ROOT/include/openssl" \
-         		-DCMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE=/usr/local/ssl \
 				-DZLIB_INCLUDE_DIR="$INSTALL_ROOT/include" \
 				..
+			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
+			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
+			# -DLWS_OPENSSL_INCLUDE_DIRS="$INSTALL_ROOT/include/openssl"
+			# -DLWS_OPENSSL_LIBRARIES="$INSTALL_ROOT/lib"
+			# -DCMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE=/usr/local/ssl
 			export CFLAGS=$SAVED_CFLAGS
 			#
 			#
@@ -2103,7 +2109,7 @@ then
         fi
         cd gmp-6.1.2
         echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS}" --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
@@ -2163,7 +2169,7 @@ then
         echo "    CPPFLAGS = $CPPFLAGS"
         echo "    LDFLAGS  = $LDFLAGS"
         $LIBTOOLIZE --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS}" --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
