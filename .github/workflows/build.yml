@@ -3,7 +3,6 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
     steps:
       - name: checkout
         uses: actions/checkout@v1
