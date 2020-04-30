@@ -166,9 +166,10 @@ script:
     - mkdir -p build
     - cd build
     - sh -c "while :; do clear; date; sleep 300; done" &
-    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. > ./log_of_cmake.txt   2>&1 || ( tail -1000 ./log_of_cmake.txt && travis_terminate 1 );
+    #- cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. > ./log_of_cmake.txt   2>&1 || ( tail -1000 ./log_of_cmake.txt && travis_terminate 1 );
+    - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE .. || travis_terminate 1
     # check code style
-    #- make format-check || travis_terminate 1;
+    - make format-check || travis_terminate 1
     # build
     #- sh -c "cmake --build . --target $TARGET -- -j$(nproc) > ./log_of_make.txt  2>&1 || ( tail -1000 ./log_of_make.txt && travis_terminate 1 );"
-    - sh -c "cmake --build . --target $TARGET -- -j$(nproc)
+    - make -j$(nproc) || travis_terminate 1
