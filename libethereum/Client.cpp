@@ -584,7 +584,7 @@ void Client::resetState() {
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
     return _timestamp / uint64_t( snapshotIntervalMs ) !=
-           this->last_snapshot_time / int64_t( snapshotIntervalMs );
+           this->last_snapshot_time / uint64_t( snapshotIntervalMs );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
@@ -1005,7 +1005,8 @@ void Client::fillLastSnapshotTime() {
         this->blockInfo( this->hashFromNumber( 0 ) ).timestamp() % snapshotIntervalMs;
     int i = this->number();
     for ( ; i > 0; --i ) {
-        if ( this->blockInfo( this->hashFromNumber( i ) ).timestamp() + snapshotIntervalMs >=
+        if ( ( uint64_t ) this->blockInfo( this->hashFromNumber( i ) ).timestamp() +
+                 snapshotIntervalMs >=
              proposed_last_snapshot_time ) {
             continue;
         } else {

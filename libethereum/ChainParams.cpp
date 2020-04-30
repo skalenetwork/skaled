@@ -110,7 +110,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t n = 0, t = 0;
+        size_t t = 0;
         uint64_t port = 0, port6 = 0;
         try {
             ip = infoObj.at( "bindIP" ).get_str();
@@ -143,7 +143,7 @@ ChainParams ChainParams::loadConfig(
             js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
             keyShareName = ima.at( "keyShareName" ).get_str();
-            n = ima.at( "n" ).get_int();
+
             t = ima.at( "t" ).get_int();
             sgxServerUrl = ima.at( "url" ).get_str();
             insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
