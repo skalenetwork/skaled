@@ -42,7 +42,7 @@ target_include_directories( skale PUBLIC
 		)
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/lib/libzmq.a
+		zmq # ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libzmq/build/lib/libzmq.a
 		bls # ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/build/libbls.a
         )
 
