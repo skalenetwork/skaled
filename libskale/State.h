@@ -372,6 +372,10 @@ public:
 
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
+    void setStorageLimit( const dev::s256& _storageLimit ) {
+        storageLimit_ = _storageLimit;
+    };  // only for tests
+
 private:
     void updateToLatestVersion();
 
