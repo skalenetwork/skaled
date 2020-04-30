@@ -131,8 +131,9 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds, chainParams().sChain.storageLimit );
+    m_state =
+        State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(), BaseState::PreExisting,
+            chainParams().accountInitialFunds, chainParams().sChain.storageLimit );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );

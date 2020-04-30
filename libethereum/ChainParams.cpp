@@ -171,14 +171,15 @@ ChainParams ChainParams::loadConfig(
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
         s.snapshotIntervalMs = sChainObj.count( "snapshotIntervalMs" ) ?
-                                     sChainObj.at( "snapshotIntervalMs" ).get_int() :
-                                     0;
+                                   sChainObj.at( "snapshotIntervalMs" ).get_int() :
+                                   0;
 
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
                                      0;
 
-        s.storageLimit = sChainObj.at( "storageLimit" ).get_int64();
+        s.storageLimit =
+            sChainObj.count( "storageLimit" ) ? sChainObj.at( "storageLimit" ).get_int64() : 0;
 
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
