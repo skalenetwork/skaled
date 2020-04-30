@@ -103,16 +103,16 @@ jobs:
             - cd ../scripts/skale_build
             - ./build_image.sh $VERSION
             - cd ../../build
-          before_deploy:
-            # Set up git user name and tag this commit
-            - (
-              test ! $TRAVIS_TAG &&
-              git config --local user.name "skale-jenkins" &&
-              git config --local user.email "$GITHUB_EMAIL" &&
-              export TRAVIS_TAG=v$VERSION &&
-              git tag "$TRAVIS_TAG" &&
-              git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_TAG
-              ) || true
+          # before_deploy:
+          #   # Set up git user name and tag this commit
+          #   - (
+          #     test ! $TRAVIS_TAG &&
+          #     git config --local user.name "skale-jenkins" &&
+          #     git config --local user.email "$GITHUB_EMAIL" &&
+          #     export TRAVIS_TAG=v$VERSION &&
+          #     git tag "$TRAVIS_TAG" &&
+          #     git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $TRAVIS_TAG
+          #     ) || true
           deploy:
             - provider: releases
               api_key: "$GITHUB_OAUTH_TOKEN"
