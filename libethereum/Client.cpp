@@ -1005,7 +1005,8 @@ void Client::fillLastSnapshotTime() {
         this->blockInfo( this->hashFromNumber( 0 ) ).timestamp() % snapshotIntervalMs;
     int i = this->number();
     for ( ; i > 0; --i ) {
-        if ( (uint64_t ) this->blockInfo( this->hashFromNumber( i ) ).timestamp() + snapshotIntervalMs >=
+        if ( ( uint64_t ) this->blockInfo( this->hashFromNumber( i ) ).timestamp() +
+                 snapshotIntervalMs >=
              proposed_last_snapshot_time ) {
             continue;
         } else {
