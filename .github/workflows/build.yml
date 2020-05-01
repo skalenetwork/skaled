@@ -8,13 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: extract repo name
-        run: |
-          echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}') &&
-          echo "$REPOSITORY_NAME"
+        run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
+        shell: bash
+      - run:   echo "$REPOSITORY_NAME"
       - name: Extract branch name
-        run: |
-          echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" &&
-          echo "${BRANCH_NAME}"
+        run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+      - name: Print branch name
+        run: echo "${BRANCH_NAME}"
       - name: checkout
         uses: actions/checkout@v1
       - name: submodule update
