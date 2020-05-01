@@ -1,35 +1,20 @@
 name: Build and test skale-consensus
 on: [push]
+defaults:
+  run:
+    shell: bash
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: extract repo name
-        run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
-        shell: bash
-      - run:   echo "$REPOSITORY_NAME"
-        shell: bash
-      - name: Extract branch name
-        shell: bash
-        run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v2.x
-      - name: Print slug/short variables
         run: |
-          echo "Slug variables"
-          echo " - ${{ env.GITHUB_REF_SLUG }}"
-          echo " - ${{ env.GITHUB_HEAD_REF_SLUG }}"
-          echo " - ${{ env.GITHUB_BASE_REF_SLUG }}"
-          echo " - ${{ env.GITHUB_REPOSITORY_SLUG }}"
-          echo "Slug URL variables"
-          echo " - ${{ env.GITHUB_REF_SLUG_URL }}"
-          echo " - ${{ env.GITHUB_HEAD_REF_SLUG_URL }}"
-          echo " - ${{ env.GITHUB_BASE_REF_SLUG_URL }}"
-          echo " - ${{ env.GITHUB_REPOSITORY_SLUG_URL }}"
-          echo "Short SHA variables"
-          echo " - ${{ env.GITHUB_SHA_SHORT }}"
-      - name: Print branch name
-        run: echo "${BRANCH_NAME}"
+          echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}') &&
+          echo "$REPOSITORY_NAME"
+      - name: Extract branch name
+        run: |
+          echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')" &&
+          echo "${BRANCH_NAME}"
       - name: checkout
         uses: actions/checkout@v1
       - name: submodule update
@@ -141,7 +126,7 @@ jobs:
           (test ! $ACTION_TAG &&
           export ACTION_TAG=v$VERSION &&
           git tag ${ACTION_TAG} &&
-          git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git ${ACTION_TAG}
+          git push https://$GITHUB_OAUTH_TOKEN@github.com/skalenetwork/${REPOSITORY_NAME}.git ${ACTION_TAG}
           ) || true
 
 
