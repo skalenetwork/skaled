@@ -7,7 +7,23 @@ jobs:
       - name: Extract branch name
         shell: bash
         run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
-      - name: Test
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v2.x
+      - name: Print slug/short variables
+        run: |
+        echo "Slug variables"
+        echo " - ${{ env.GITHUB_REF_SLUG }}"
+        echo " - ${{ env.GITHUB_HEAD_REF_SLUG }}"
+        echo " - ${{ env.GITHUB_BASE_REF_SLUG }}"
+        echo " - ${{ env.GITHUB_REPOSITORY_SLUG }}"
+        echo "Slug URL variables"
+        echo " - ${{ env.GITHUB_REF_SLUG_URL }}"
+        echo " - ${{ env.GITHUB_HEAD_REF_SLUG_URL }}"
+        echo " - ${{ env.GITHUB_BASE_REF_SLUG_URL }}"
+        echo " - ${{ env.GITHUB_REPOSITORY_SLUG_URL }}"
+        echo "Short SHA variables"
+        echo " - ${{ env.GITHUB_SHA_SHORT }}"
+      - name: Print branch name
         run: echo "${BRANCH_NAME}"
       - name: checkout
         uses: actions/checkout@v1
@@ -115,6 +131,13 @@ jobs:
           cd scripts/skale_build && \
           ./build_image.sh $VERSION && \
           cd ../../build
+      - name: set  tag
+        run |
+        (test ! $ACTION_TAG &&
+        export ACTION_TAG=v$VERSION &&
+        git tag ${ACTION_TAG} &&
+        git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $ACTION_TAG
+        ) || true
 
 
 
