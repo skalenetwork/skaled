@@ -132,12 +132,12 @@ jobs:
           ./build_image.sh $VERSION && \
           cd ../../build
       - name: set  tag
-        run |
-        (test ! $ACTION_TAG &&
-        export ACTION_TAG=v$VERSION &&
-        git tag ${ACTION_TAG} &&
-        git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $ACTION_TAG
-        ) || true
+        run: |
+          (test ! $ACTION_TAG &&
+          export ACTION_TAG=v$VERSION &&
+          git tag ${ACTION_TAG} &&
+          git push https://$GITHUB_OAUTH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git $ACTION_TAG
+          ) || true
 
 
 
