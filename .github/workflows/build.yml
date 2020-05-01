@@ -4,6 +4,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+      - name: Test
+        run: echo "${BRANCH_NAME}"
       - name: checkout
         uses: actions/checkout@v1
       - name: submodule update
@@ -105,7 +110,7 @@ jobs:
           ls && ls skaled && \
           cp skaled/skaled scripts/skale_build/executable/ && \
           export VERSION=$(cat ../VERSION) && \
-          export VERSION=$( scripts/calculate_version.sh $TRAVIS_BRANCH $VERSION ) && \
+          export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
           echo "Version $VERSION" && \
           cd scripts/skale_build && \
           ./build_image.sh $VERSION && \
