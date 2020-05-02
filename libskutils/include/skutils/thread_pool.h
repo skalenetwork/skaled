@@ -138,6 +138,14 @@ public:
         }
         return false;
     }
+    template < typename F, typename... Args >
+    void safe_submit_without_future_te( F&& f, Args&&... args ) {  // te - throws exception
+        std::function< decltype( f( args... ) )() > func =
+            std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
+        queue_.enqueue( func );
+        // wake up one thread if its waiting
+        conditional_lock_.notify_one();
+    }
 };  /// class thread_pool
 
 };  // namespace skutils

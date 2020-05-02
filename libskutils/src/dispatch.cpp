@@ -1249,11 +1249,17 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         std::atomic_size_t cntFailedToStartThreads;
         cntFailedToStartThreads = 0;
         for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
-            try {
-                std::string strPerformanceQueueName = skutils::tools::format(
-                    "dispatch/thread/%zu", idxThread );  // notice - no domain reference
-                bool bThreadStartedOK =
-                    thread_pool_.safe_submit_without_future( [this, strPerformanceQueueName]() {
+            std::string strPerformanceQueueName = skutils::tools::format(
+                "dispatch/thread/%zu", idxThread );  // notice - no domain reference
+            std::string strError;
+            static const size_t cntAttempts = 5;
+            for ( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++idxAttempt ) {
+                if ( idxAttempt > 0 ) {
+                    strError.clear();
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+                }
+                try {
+                    thread_pool_.safe_submit_without_future_te( [this, strPerformanceQueueName]() {
                         ++cntRunningThreads_;
                         try {
                             size_t nTaskNumberInThisThread = 0;
@@ -1285,10 +1291,22 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                         }
                         --cntRunningThreads_;
                     } );
-                if ( !bThreadStartedOK )
-                    throw std::runtime_error( "failed to start thread in dispatch pool" );
-            } catch ( ... ) {
+                } catch ( std::exception& ex ) {
+                    strError = ex.what();
+                    if ( strError.empty() )
+                        strError = "exception without description";
+                } catch ( ... ) {
+                    strError = "unknown description";
+                }
+                if ( strError.empty() )
+                    break;
+                std::cout << "Failed submit initialization task for the \""
+                          << strPerformanceQueueName << "\" queue at attempt " << idxAttempt
+                          << " of " << cntAttempts << ", error is: " << strError << "\n";
+            }  // for( size_t idxAttempt = 0; idxAttempt < 3; ++ idxAttempt ) {
+            if ( !strError.empty() ) {
                 ++cntFailedToStartThreads;
+                throw std::runtime_error( strError );
             }
         }  // for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
         cntThreadsToStart = size_t( cntFailedToStartThreads );
