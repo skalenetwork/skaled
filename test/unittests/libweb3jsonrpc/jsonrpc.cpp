@@ -199,7 +199,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
-            chainParams.sChain.storageLimit = 4;
+            chainParams.sChain.storageLimit = 128;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -1403,7 +1403,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 3 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
     
     Json::Value txPushValue;  // call store(2)
     txPushValue["to"] = contractAddress;
@@ -1412,7 +1412,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 4 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
     
     Json::Value txThrow;  // trying to call store(3)
     txThrow["to"] = contractAddress;
@@ -1421,7 +1421,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 4 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
     
     Json::Value txEraseValue;  // call erase(2)
     txEraseValue["to"] = contractAddress;
@@ -1430,7 +1430,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 3 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
