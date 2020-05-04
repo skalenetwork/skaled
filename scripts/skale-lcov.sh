@@ -28,7 +28,7 @@ rm -f $DST_COVERAGE_DIR/skale.info.filtered
 lcov --remove $DST_COVERAGE_DIR/skale.info \
     '/usr/include/*' '/usr/lib/*' \
     '*.hunter*' '*boost*' '*utils/json_spirit*' \
-    '*/cpp-ethereum/SkaleDeps/*' '*/cpp-ethereum/build/deps/*' \
+    '*/cpp-ethereum/deps/*' '*/cpp-ethereum/libconsensus/deps/*' '*/cpp-ethereum/libconsensus/libBLS/deps/*' '*/cpp-ethereum/build/deps/*' \
     '*test/tools/*' '*test/unittests/*' \
     -o $DST_COVERAGE_DIR/skale.info.filtered
 

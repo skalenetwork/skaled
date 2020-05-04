@@ -18,7 +18,7 @@ target_link_libraries(
     evm
     PUBLIC ethcore devcore evmc::evmc
     PRIVATE skale-interpreter skale-buildinfo
-        ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
+        jsoncpp # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
         Boost::program_options evmc::loader
 )
 

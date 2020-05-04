@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export SKALED_DEPS_CHAIN=1
+
 #env_clear_all() {
 #	for i in $(env | awk -F"=" '{print $1}') ; do
 #	unset $i ; done
@@ -78,11 +80,7 @@ cd "$WORKING_DIR_NEW"
 
 cd "$WORKING_DIR_NEW/../libconsensus/scripts"
 ./build_deps.sh
-cd ../../SkaleDeps
-
-# cd "$WORKING_DIR_NEW/../libconsensus/deps"
-# ./build.sh
-# cd ../../SkaleDeps
+cd ../../deps
 
 #
 # MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
@@ -109,7 +107,10 @@ done
 simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_optional("yes" or "no")
 	#echo $1
 	#echo $2
-	TMP_CMD="export \$\"$2\"=\"$(which $1)\""
+	#
+	TMP_P=$(which "$1")
+	TMP_CMD="export $2=$TMP_P"
+	#
 	$TMP_CMD
 	TMP_CMD="echo ${!2}"
 	#echo "TMP_CMD is" $TMP_CMD
@@ -692,7 +693,7 @@ env_save
 # 			cd lzma
 # 			mkdir -p build
 # 			cd build
-# 			cmake ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+# 			cmake "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 # 			cd ../..
 # 		fi
 # 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -819,7 +820,7 @@ then
 					./config -fPIC no-shared --prefix="$INSTALL_ROOT" --openssldir="$INSTALL_ROOT"
 				fi
 			else
-				./Configure linux-armv4 --prefix="$INSTALL_ROOT" ${ADDITIONAL_INCLUDES} ${ADDITIONAL_LIBRARIES} no-shared no-tests no-dso
+				./Configure linux-armv4 --prefix="$INSTALL_ROOT" "${ADDITIONAL_INCLUDES}" "${ADDITIONAL_LIBRARIES}" no-shared no-tests no-dso
 				#./Configure linux-armv4 --prefix=/work/deps_inst/arm no-shared no-dso no-engine
 				#./Configure linux-armv4 --prefix="$INSTALL_ROOT" no-shared no-dso no-engine
 				#./Configure linux-armv4 --prefix="$INSTALL_ROOT" no-shared no-dso no-engine no-asm
@@ -955,8 +956,8 @@ then
 			cd curl
 			mkdir -p build
 			cd build
-			#$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCMAKE_USE_LIBSSH2=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCURL_STATICLIB=ON -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a" -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" -DOPENSSL_SSL_LIBRARY="$INSTALL_ROOT/lib/libssl.a" CMAKE_C_COMPILER_WORKS=ON CMAKE_CXX_COMPILER_WORKS=ON ..
-			cmake ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DOPENSSL_ROOT_DIR="$SOURCES_ROOT/openssl" -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCMAKE_USE_LIBSSH2=OFF -DBUILD_SHARED_LIBS=OFF -DCURL_DISABLE_LDAP=ON -DCURL_STATICLIB=ON -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCMAKE_USE_LIBSSH2=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCURL_STATICLIB=ON -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a" -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" -DOPENSSL_SSL_LIBRARY="$INSTALL_ROOT/lib/libssl.a" CMAKE_C_COMPILER_WORKS=ON CMAKE_CXX_COMPILER_WORKS=ON ..
+			cmake "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DOPENSSL_ROOT_DIR="$SOURCES_ROOT/openssl" -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCMAKE_USE_LIBSSH2=OFF -DBUILD_SHARED_LIBS=OFF -DCURL_DISABLE_LDAP=ON -DCURL_STATICLIB=ON -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 			echo " " >> lib/curl_config.h
 			echo "#define HAVE_POSIX_STRERROR_R 1" >> lib/curl_config.h
 			echo " " >> lib/curl_config.h
@@ -1130,8 +1131,8 @@ then
 			cd libev
 			mkdir -p build
 			cd build
-			#$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" -DARCH=$ARCH ..
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" -DARCH=$ARCH ..
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 			cd ../..
 		fi
 		cd libev/build
@@ -1172,8 +1173,8 @@ then
 			then
 				OS_SPECIFIC_LIB_EVENT_FLAGS="-DEVENT__DISABLE_SAMPLES=ON -DEVENT__DISABLE_TESTS=ON -DEVENT__DISABLE_BENCHMARK=ON -DEVENT__DISABLE_REGRESS=ON"
 			fi
-			#$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" -DARCH=$ARCH ..
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} $OS_SPECIFIC_LIB_EVENT_FLAGS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" -DARCH=$ARCH ..
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" "${OS_SPECIFIC_LIB_EVENT_FLAGS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 			cd ../..
 		fi
 		cd libevent/build
@@ -1250,6 +1251,7 @@ then
                 git clone https://github.com/warmcat/libwebsockets.git
 				cd libwebsockets
 				git checkout v3.1-stable
+				# git checkout v4.0-stable
 				git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1310,7 +1312,9 @@ then
 					echo " "
 				else
 					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=ON"
-					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
+					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
+					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib\""
+					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib"
 				fi
 			else
 				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
@@ -1327,22 +1331,26 @@ then
 			#
 			#
 			#
-			#$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" $CMAKE_ARGS_FOR_LIB_WEB_SOCKETS ..
+			echo "$LWS_WITH_LIBEV$LWS_WITH_LIBEVENT$LWS_WITH_LIBUV" &>/dev/null
+			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" $CMAKE_ARGS_FOR_LIB_WEB_SOCKETS ..
 			export SAVED_CFLAGS=$CFLAGS
 			export CFLAGS="$CFLAGS -Wno-deprecated-declarations"
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
 				-DLWS_WITH_STATIC=ON -DLWS_WITH_SHARED=OFF -DLWS_STATIC_PIC=ON \
 				-DLWS_IPV6=ON -DLWS_UNIX_SOCK=ON -DLWS_WITH_HTTP2=OFF -DLWS_WITHOUT_TESTAPPS=ON \
 				-DLWS_WITH_ACCESS_LOG=ON -DLWS_WITH_SERVER_STATUS=ON \
-				-DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS $LWS_LIBUV_OPTIONS \
+				-DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS ${LWS_LIBUV_OPTIONS} \
 				-DLWS_HAVE_LIBCAP=OFF -DLWS_MAX_SMP=1024 \
 				-DLWS_WITH_THREADPOOL=1 \
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
-				-DLWS_OPENSSL_INCLUDE_DIRS="$INSTALL_ROOT/include/openssl" \
-         		-DCMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE=/usr/local/ssl \
 				-DZLIB_INCLUDE_DIR="$INSTALL_ROOT/include" \
 				..
+			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
+			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
+			# -DLWS_OPENSSL_INCLUDE_DIRS="$INSTALL_ROOT/include/openssl"
+			# -DLWS_OPENSSL_LIBRARIES="$INSTALL_ROOT/lib"
+			# -DCMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE=/usr/local/ssl
 			export CFLAGS=$SAVED_CFLAGS
 			#
 			#
@@ -1404,14 +1412,14 @@ then
 			mkdir -p build
 			cd build
 			$CMAKE .. -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DCMAKE_LIBRARY_PATH=$LIBS_ROOT \
+				-DCMAKE_LIBRARY_PATH="$LIBS_ROOT" \
 				-DBUILD_SHARED_LIBS=OFF \
 				-DBUILD_DEPENDENCIES=OFF -DBUILD_APPLICATIONS=OFF -DBUILD_MODULES=OFF \
 				-DBUILD_SAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_MODULE_base=ON \
 				-DBUILD_MODULE_http=ON -DBUILD_MODULE_net=ON \
 				-DBUILD_MODULE_util=ON -DBUILD_MODULE_uv=OFF -DBUILD_MODULE_crypto=ON \
 				-DWITH_LIBUV=OFF -DWITH_ZLIB=OFF \
-				-DOPENSSL_ROOT_DIR="${INSTALL_ROOT"} -DOPENSSL_LIBRARIES="${LIBS_ROOT}"
+				-DOPENSSL_ROOT_DIR="${INSTALL_ROOT}" -DOPENSSL_LIBRARIES="${LIBS_ROOT}"
 			cd ..
 			cd ..
 		fi
@@ -1483,7 +1491,7 @@ then
 	if [ ${ARCH} = "arm" ]
 	then
 		sed -i -e 's#using gcc ;#using gcc : arm : /usr/local/toolchains/gcc7.2-arm/bin/arm-linux-gnueabihf-g++ ;#g' project-config.jam
-		./b2 ${CONF_CROSSCOMPILING_OPTS_BOOST} cxxflags=-fPIC cflags=-fPIC ${PARALLEL_MAKE_OPTIONS} --prefix="$INSTALL_ROOT" --layout=system variant=debug link=static threading=multi install
+		./b2 "${CONF_CROSSCOMPILING_OPTS_BOOST}" cxxflags=-fPIC cflags=-fPIC ${PARALLEL_MAKE_OPTIONS} --prefix="$INSTALL_ROOT" --layout=system variant=debug link=static threading=multi install
 		else
 	#	    sed -i -e 's#using gcc ;#using gcc : arm : /usr/bin/g++-7 ;#g' project-config.jam
 		./b2 cxxflags=-fPIC cflags=-fPIC ${PARALLEL_MAKE_OPTIONS} --prefix="$INSTALL_ROOT" --layout=system variant=debug link=static threading=multi install
@@ -1506,7 +1514,7 @@ then
 		if [ ! -d "libupnp-1.8.3" ];
 		then
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			tar -xvjf $PREDOWNLOADED_ROOT/libupnp-1.8.3.tar.bz2
+			tar -xvjf "$PREDOWNLOADED_ROOT/libupnp-1.8.3.tar.bz2"
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libupnp-1.8.3
 			./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} --enable-static --disable-shared --with-pic --prefix="$INSTALL_ROOT" ${UPNP_DISABLE_LARGE_FILE_SUPPORT} ${CONF_DEBUG_OPTIONS}
@@ -1696,7 +1704,7 @@ then
 			cd argtable2
 			mkdir -p build
 			cd build
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 			cd ..
 		else
 			cd argtable2
@@ -1978,13 +1986,13 @@ then
 			#git clone git@github.com:open-source-parsers/jsoncpp.git
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			tar -xzf $PREDOWNLOADED_ROOT/jsoncpp.tar.gz
+			tar -xzf "$PREDOWNLOADED_ROOT/jsoncpp.tar.gz"
 			#
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd jsoncpp
 			mkdir -p build
 			cd build
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
 				-DBUILD_SHARED_LIBS=NO \
 				-DBUILD_STATIC_LIBS=YES \
 				..
@@ -2018,14 +2026,14 @@ then
 			#git clone git@github.com:cinemast/libjson-rpc-cpp.git
 			#
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			unzip -o $PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip
+			unzip -o "$PREDOWNLOADED_ROOT/libjson-rpc-cpp.zip"
 			cp -r libjson-rpc-cpp-develop libjson-rpc-cpp
 			#
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libjson-rpc-cpp
 			mkdir -p build
 			cd build
-			$CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
 				-DBUILD_SHARED_LIBS=NO \
 				-DBUILD_STATIC_LIBS=YES \
 				-DUNIX_DOMAIN_SOCKET_SERVER=YES \
@@ -2103,7 +2111,7 @@ then
         fi
         cd gmp-6.1.2
         echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" "${CONF_DEBUG_OPTIONS}" --enable-cxx --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
@@ -2130,7 +2138,7 @@ then
         echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
         mkdir -p build
         cd build
-        $CMAKE ${CMAKE_CROSSCOMPILING_OPTS} -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" .. -DWITH_PROCPS=OFF
+        $CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" .. -DWITH_PROCPS=OFF
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install
@@ -2163,7 +2171,7 @@ then
         echo "    CPPFLAGS = $CPPFLAGS"
         echo "    LDFLAGS  = $LDFLAGS"
         $LIBTOOLIZE --force && aclocal && autoheader && automake --force-missing --add-missing && autoconf
-        ./configure ${CONF_CROSSCOMPILING_OPTS_GENERIC} ${CONF_DEBUG_OPTIONS --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+        ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" "${CONF_DEBUG_OPTIONS}" --with-pic --enable-static --disable-shared --prefix="$INSTALL_ROOT"
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         $MAKE ${PARALLEL_MAKE_OPTIONS}
         $MAKE ${PARALLEL_MAKE_OPTIONS} install

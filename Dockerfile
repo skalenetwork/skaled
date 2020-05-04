@@ -13,13 +13,13 @@ ENV CXX g++-7
 ENV TARGET all
 ENV TRAVIS_BUILD_TYPE Debug
 
-COPY libconsensus /skaled/libconsensus
-COPY SkaleDeps /skaled/SkaleDeps
+#COPY libconsensus /skaled/libconsensus
+#COPY deps /skaled/deps
 WORKDIR /skaled
-RUN cd libconsensus/scripts && ./build_deps.sh 
-RUN cd SkaleDeps && ./build.sh
+#RUN cd libconsensus/scripts && ./build_deps.sh 
+#RUN cd deps && ./build.sh
 COPY . /skaled
-RUN cd /skaled && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
+RUN cd /skaled && cd deps && ./build.sh && cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug
 RUN bash -c "cmake --build build  -- -j$(nproc)"
 #RUN bash -c "cd /skaled/build/test && ./testeth -- --express"
 #RUN bash -c "cd /skaled/build/test && ./testeth -t BtrfsTestSuite -- --all"
