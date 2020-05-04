@@ -725,12 +725,13 @@ static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
     //"params.*",
 
     "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
-    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.emptyBlockIntervalMs",
-    "skaleConfig.nodeInfo.*RpcPort*", "skaleConfig.nodeInfo.acceptors",
-    "skaleConfig.nodeInfo.max-connections", "skaleConfig.nodeInfo.max-http-queues",
-    "skaleConfig.nodeInfo.ws-mode",
+    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
+    "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
+    "skaleConfig.nodeInfo.max-http-queues", "skaleConfig.nodeInfo.ws-mode",
 
     "skaleConfig.contractSettings.*",
+
+    "skaleConfig.sChain.emptyBlockIntervalMs",
 
     "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
 

@@ -122,6 +122,7 @@ private:
     void throwRevertInstruction( owning_bytes_ref&& _output );
     void throwDisallowedStateChange();
     void throwBufferOverrun( bigint const& _enfOfAccess );
+    void throwStorageOverflow( const std::string& _addr );
 
     std::vector< uint64_t > m_beginSubs;
     std::vector< uint64_t > m_jumpDests;

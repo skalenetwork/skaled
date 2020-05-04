@@ -87,6 +87,11 @@ void LegacyVM::throwBufferOverrun( bigint const& _endOfAccess ) {
         BufferOverrun() << RequirementError( _endOfAccess, bigint( m_returnData.size() ) ) );
 }
 
+void LegacyVM::throwStorageOverflow( const std::string& _addr ) {
+    BOOST_THROW_EXCEPTION(
+        StorageOverflow() << errinfo_comment( "storage at address is overflowed: " + _addr ) );
+}
+
 int64_t LegacyVM::verifyJumpDest( u256 const& _dest, bool _throw ) {
     // check for overflow
     if ( _dest <= 0x7FFFFFFFFFFFFFFF ) {
