@@ -84,11 +84,12 @@ jobs:
           docker rmi $(docker image ls -aq) >/dev/null 2>&1
       - name: install packages
         run: |
-          sudo apt-get update; sudo apt-get install -yq libprocps-dev \
-          g++-7   ccache   flex bison yasm python python-pip texinfo \
-          clang-format-6.0 btrfs-progs cmake libtool build-essential \
-          pkg-config autoconf wget git  libargtable2-dev  libmicrohttpd-dev libhiredis-dev \
-          redis-server openssl libssl-dev doxygen vim
+          sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
+          make ccache cmake libtool pkg-config autoconf autogen automake autopoint \
+          python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
+          clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
+          libhiredis-dev redis-server google-perftools libgoogle-perftools-dev
+
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
         shell: cmake -P {0}
@@ -108,8 +109,7 @@ jobs:
           export CXX=g++-7 &&
           export TARGET=all &&
           export TRAVIS_BUILD_TYPE=Debug &&
-          cd libconsensus/scripts && ./build_deps.sh &&
-          cd ../../SkaleDeps && ./build.sh &&
+          cd deps && ./build.sh &&
           cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug &&
           cmake --build build  -- -j$(nproc)
       - name: testeth
@@ -121,7 +121,7 @@ jobs:
           cd .. &&
           lcov --capture --directory . --output-file coverage.info && \
           lcov --remove coverage.info '/usr/*' --output-file coverage.info && \
-          lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info && \
+          lcov --remove coverage.info 'deps/*' --output-file coverage.info && \
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info && \
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  || \
           echo "Codecov did not collect coverage reports"
