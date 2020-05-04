@@ -1,0 +1,166 @@
+name: Build and test skale-consensus
+on: [push]
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Changes in this Release
+            - First Change
+            - Second Change
+          draft: false
+          prerelease: false
+      - name: extract repo name
+        run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
+        shell: bash
+      - run:   echo "$REPOSITORY_NAME"
+      - name: Extract branch name
+        run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+      - name: Print branch name
+        run: echo "${BRANCH_NAME}"
+      - name: checkout
+        uses: actions/checkout@v1
+      - name: submodule update
+        run: git submodule update --init --recursive
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
+      - name: Free disk space
+        run: |
+          sudo apt-get remove -yq libjsoncpp-dev aria2 ansible azure-cli shellcheck rpm xorriso zsync \
+            clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 clang-8 lldb-8 lld-8 clang-format-8 \
+            clang-9 lldb-9 lld-9 clangd-9 clang-format-9 dotnet-sdk-3.0 dotnet-sdk-3.1=3.1.101-1 \
+            esl-erlang firefox g++-8 g++-9 gfortran-8 gfortran-9 google-chrome-stable >/dev/null 2>&1;
+      - name: Free more disk space
+        run: |
+          sudo apt-get remove  -yq  \
+            google-cloud-sdk ghc-8.0.2 ghc-8.2.2 ghc-8.4.4 ghc-8.6.2 ghc-8.6.3 ghc-8.6.4 \
+            ghc-8.6.5 ghc-8.8.1 ghc-8.8.2 ghc-8.8.3 ghc-8.10.1 cabal-install-2.0 cabal-install-2.2 \
+            cabal-install-2.4 cabal-install-3.0 cabal-install-3.2 heroku imagemagick \
+            libmagickcore-dev libmagickwand-dev libmagic-dev ant ant-optional kubectl \
+            mercurial apt-transport-https mono-complete mysql-client libmysqlclient-dev \
+            mysql-server mssql-tools unixodbc-dev yarn bazel chrpath libssl-dev libxft-dev \
+            libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev php7.1 php7.1-bcmath \
+            php7.1-bz2 php7.1-cgi php7.1-cli php7.1-common php7.1-curl php7.1-dba php7.1-dev \
+            php7.1-enchant php7.1-fpm php7.1-gd php7.1-gmp php7.1-imap php7.1-interbase php7.1-intl \
+            php7.1-json php7.1-ldap php7.1-mbstring php7.1-mcrypt php7.1-mysql php7.1-odbc \
+            php7.1-opcache php7.1-pgsql php7.1-phpdbg php7.1-pspell php7.1-readline php7.1-recode \
+            php7.1-snmp php7.1-soap php7.1-sqlite3 php7.1-sybase php7.1-tidy php7.1-xml \
+            php7.1-xmlrpc php7.1-xsl php7.1-zip php7.2 php7.2-bcmath php7.2-bz2 php7.2-cgi \
+            php7.2-cli php7.2-common php7.2-curl php7.2-dba php7.2-dev php7.2-enchant php7.2-fpm \
+            php7.2-gd php7.2-gmp php7.2-imap php7.2-interbase php7.2-intl php7.2-json php7.2-ldap \
+            php7.2-mbstring php7.2-mysql php7.2-odbc php7.2-opcache php7.2-pgsql php7.2-phpdbg \
+            php7.2-pspell php7.2-readline php7.2-recode php7.2-snmp php7.2-soap php7.2-sqlite3 \
+            php7.2-sybase php7.2-tidy php7.2-xml php7.2-xmlrpc php7.2-xsl php7.2-zip php7.3 \
+            php7.3-bcmath php7.3-bz2 php7.3-cgi php7.3-cli php7.3-common php7.3-curl php7.3-dba \
+            php7.3-dev php7.3-enchant php7.3-fpm php7.3-gd php7.3-gmp php7.3-imap php7.3-interbase \
+            php7.3-intl php7.3-json php7.3-ldap php7.3-mbstring php7.3-mysql php7.3-odbc \
+            php7.3-opcache php7.3-pgsql php7.3-phpdbg php7.3-pspell php7.3-readline php7.3-recode \
+            php7.3-snmp php7.3-soap php7.3-sqlite3 php7.3-sybase php7.3-tidy php7.3-xml \
+            php7.3-xmlrpc php7.3-xsl php7.3-zip php7.4 php7.4-bcmath php7.4-bz2 php7.4-cgi \
+            php7.4-cli php7.4-common php7.4-curl php7.4-dba php7.4-dev php7.4-enchant php7.4-fpm \
+            php7.4-gd php7.4-gmp php7.4-imap php7.4-interbase php7.4-intl php7.4-json php7.4-ldap \
+            php7.4-mbstring php7.4-mysql php7.4-odbc php7.4-opcache php7.4-pgsql php7.4-phpdbg \
+            php7.4-pspell php7.4-readline php7.4-snmp php7.4-soap php7.4-sqlite3 php7.4-sybase \
+            php7.4-tidy php7.4-xml php7.4-xmlrpc php7.4-xsl php7.4-zip php-amqp php-apcu \
+            php-igbinary php-memcache php-memcached php-mongodb php-redis php-xdebug \
+            php-zmq snmp pollinate libpq-dev postgresql-client powershell ruby-full \
+            sphinxsearch subversion mongodb-org > /dev/null 2>&1;
+      - name: Cleanup
+        run: |
+          sudo apt-get autoremove -y >/dev/null 2>&1 && \
+          sudo apt-get autoclean -y >/dev/null 2>&1  && \
+          sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
+          docker rmi $(docker image ls -aq) >/dev/null 2>&1
+      - name: install packages
+        run: |
+          sudo apt-get update; sudo apt-get install -yq libprocps-dev \
+          g++-7   ccache   flex bison yasm python python-pip texinfo \
+          clang-format-6.0 btrfs-progs cmake libtool build-essential \
+          pkg-config autoconf wget git  libargtable2-dev  libmicrohttpd-dev libhiredis-dev \
+          redis-server openssl libssl-dev doxygen vim
+      - name: Prepare ccache timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: ccache cache files
+        uses: actions/cache@v1.1.0
+        with:
+          path: .ccache
+          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
+          restore-keys: |
+            ${ { matrix.config.name } }-ccache-
+      - name: build
+        run: |
+          export CC=gcc-7 &&
+          export CXX=g++-7 &&
+          export TARGET=all &&
+          export TRAVIS_BUILD_TYPE=Debug &&
+          cd libconsensus/scripts && ./build_deps.sh &&
+          cd ../../SkaleDeps && ./build.sh &&
+          cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug &&
+          cmake --build build  -- -j$(nproc)
+      - name: testeth
+        run : |
+          cd test && ./testeth -- --express &&
+          sudo ./testeth -t BtrfsTestSuite -- --all &&
+          sudo ./testeth -t HashSnapshotTestSuite -- --all &&
+          sudo ./testeth -t ClientSnapshotsSuite -- --all &&
+          cd .. &&
+          lcov --capture --directory . --output-file coverage.info && \
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info && \
+          lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info && \
+          lcov --remove coverage.info '.hunter/*' --output-file coverage.info && \
+          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  || \
+          echo "Codecov did not collect coverage reports"
+      - name: build image
+        run : |
+          ls && ls skaled && \
+          cp skaled/skaled scripts/skale_build/executable/ && \
+          export VERSION=$(cat ../VERSION) && \
+          export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
+          echo "Version $VERSION" && \
+          cd scripts/skale_build && \
+          ./build_image.sh $VERSION && \
+          cd ../../build
+      - name: set  tag
+        run: |
+          (test ! $ACTION_TAG &&
+          export ACTION_TAG=v$VERSION &&
+          git tag ${ACTION_TAG} &&
+          git push https://$GITHUB_OAUTH_TOKEN@github.com/skalenetwork/${REPOSITORY_NAME}.git ${ACTION_TAG}
+          ) || true
+      - name: build and push docker image
+        run: |
+          ../scripts/skale_build/deploy_image.sh ${VERSION} $DOCKER_USERNAME $DOCKER_PASSWORD || true
+      - name: deploy master to github releases
+        run: |
+          test ! ${BRANCH_NAME} = "master" || true
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream
+
+
+
+
+
+
