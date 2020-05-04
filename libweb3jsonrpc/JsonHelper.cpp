@@ -168,6 +168,10 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
 
 Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     Json::Value res;
+
+    res["from"] = toJS( _t.from() );
+    res["to"] = toJS( _t.to() );
+
     res["transactionHash"] = toJS( _t.hash() );
     res["transactionIndex"] = _t.transactionIndex();
     res["blockHash"] = toJS( _t.blockHash() );
