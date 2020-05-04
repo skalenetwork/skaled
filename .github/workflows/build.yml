@@ -127,24 +127,23 @@ jobs:
           echo "Codecov did not collect coverage reports"
       - name: build image
         run : |
-          ls && ls skaled && \
           cp skaled/skaled ../scripts/skale_build/executable/ && \
           export VERSION=$(cat ../VERSION) && \
           export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
           echo "Version $VERSION" && \
           cd scripts/skale_build && \
-          ./build_image.sh $VERSION && \
-          cd ../../build
-      # - name: set   tag
+          bash build_image.sh $VERSION && \
+          cd ../
+      # - name: set tag
       #   run: |
       #     (test ! $ACTION_TAG &&
       #     export ACTION_TAG=v$VERSION &&
       #     git tag ${ACTION_TAG} &&
       #     git push https://$GITHUB_OAUTH_TOKEN@github.com/skalenetwork/${REPOSITORY_NAME}.git ${ACTION_TAG}
       #     ) || true
-      # - name: build and push docker image
-      #   run: |
-      #     ../scripts/skale_build/deploy_image.sh ${VERSION} $DOCKER_USERNAME $DOCKER_PASSWORD || true
+      - name: build and push docker image
+        run: |
+          bash scripts/skale_build/deploy_image.sh ${VERSION} $DOCKER_USERNAME $DOCKER_PASSWORD || true
       - name: deploy master to github releases
         run: |
           test ! ${BRANCH_NAME} = "master" || true
