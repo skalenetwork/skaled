@@ -1,4 +1,4 @@
-name: Build and test skale-consensus
+name: Build and test skaled
 on: [push]
 defaults:
   run:
