@@ -127,6 +127,7 @@ jobs:
           echo "Codecov did not collect coverage reports"
       - name: build image
         run : |
+          cd build/
           cp skaled/skaled ../scripts/skale_build/executable/ && \
           export VERSION=$(cat ../VERSION) && \
           export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
