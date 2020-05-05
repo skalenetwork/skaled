@@ -126,6 +126,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  || \
           echo "Codecov did not collect coverage reports"   
       - name: Build and publish container
+        if: github.event.pull_request.merged
         run: |
           cp build/skaled/skaled ../scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
