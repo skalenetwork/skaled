@@ -87,15 +87,15 @@ std::ostream& operator<<( std::ostream& _out, eth::TransactionReceipt const& _r 
 class LocalisedTransactionReceipt : public TransactionReceipt {
 public:
     LocalisedTransactionReceipt( TransactionReceipt const& _t, h256 const& _hash,
-        h256 const& _blockHash, BlockNumber _blockNumber, unsigned _transactionIndex,
-        Address _from, Address _to,
-        u256 const& _gasUsed, Address const& _contractAddress = Address() )
+        h256 const& _blockHash, BlockNumber _blockNumber, unsigned _transactionIndex, Address _from,
+        Address _to, u256 const& _gasUsed, Address const& _contractAddress = Address() )
         : TransactionReceipt( _t ),
           m_hash( _hash ),
           m_blockHash( _blockHash ),
           m_blockNumber( _blockNumber ),
           m_transactionIndex( _transactionIndex ),
-          m_from(_from), m_to(_to),
+          m_from( _from ),
+          m_to( _to ),
           m_gasUsed( _gasUsed ),
           m_contractAddress( _contractAddress ) {
         LogEntries entries = log();
@@ -108,8 +108,8 @@ public:
     h256 const& blockHash() const { return m_blockHash; }
     BlockNumber blockNumber() const { return m_blockNumber; }
     unsigned transactionIndex() const { return m_transactionIndex; }
-    Address from() const {return m_from;}
-    Address to() const {return m_to;}
+    Address from() const { return m_from; }
+    Address to() const { return m_to; }
     u256 const& gasUsed() const { return m_gasUsed; }
     Address const& contractAddress() const { return m_contractAddress; }
     LocalisedLogEntries const& localisedLogs() const { return m_localisedLogs; };
