@@ -124,27 +124,18 @@ jobs:
           lcov --remove coverage.info 'deps/*' --output-file coverage.info && \
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info && \
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  || \
-          echo "Codecov did not collect coverage reports"
-      - name: build image
-        run : |
-          cd build/
-          cp skaled/skaled ../scripts/skale_build/executable/ && \
-          export VERSION=$(cat ../VERSION) && \
-          export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
-          echo "Version $VERSION" && \
-          cd scripts/skale_build && \
-          bash build_image.sh $VERSION && \
-          cd ../
-      # - name: set tag
-      #   run: |
-      #     (test ! $ACTION_TAG &&
-      #     export ACTION_TAG=v$VERSION &&
-      #     git tag ${ACTION_TAG} &&
-      #     git push https://$GITHUB_OAUTH_TOKEN@github.com/skalenetwork/${REPOSITORY_NAME}.git ${ACTION_TAG}
-      #     ) || true
-      - name: build and push docker image
+          echo "Codecov did not collect coverage reports"   
+      - name: Build and publish container
         run: |
-          bash scripts/skale_build/deploy_image.sh ${VERSION} $DOCKER_USERNAME $DOCKER_PASSWORD || true
+          cp build/skaled/skaled ../scripts/skale_build/executable/
+          export BRANCH=${GITHUB_REF##*/}
+          echo "Branch $BRANCH"
+          export VERSION=$(bash ./scripts/calculate_version.sh)
+          echo "::set-env name=VERSION::$VERSION"
+          echo "Version $VERSION"
+          export RELEASE=true
+          echo "::set-env name=RELEASE::$RELEASE"
+          bash ./scripts/build_and_publish.sh
       - name: deploy master to github releases
         run: |
           test ! ${BRANCH_NAME} = "master" || true
