@@ -393,7 +393,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
-    if ( this->m_client.chainParams().nodeInfo.snapshotIntervalMs > 0 ) {
+    if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
         // this is need for testing. should add better handling
         assert(
             dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )

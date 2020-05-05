@@ -1,3 +1,6 @@
+
+
+
 add_executable(skale-vm main.cpp)
 
 target_include_directories( skale PRIVATE

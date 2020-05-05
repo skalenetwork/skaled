@@ -89,6 +89,7 @@ static std::string const c_genesisConfigString =
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
+            "storageLimit": 128,
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1}
             ]
@@ -198,6 +199,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
+            chainParams.sChain.storageLimit = 128;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -1202,8 +1204,11 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         "fffffffffffffffffffffffff16815260200191505060405180910390f3"
         "5b60003390509056fea165627a7a72305820abfa953fead48d8f657bca6"
         "57713501650734d40342585cafcf156a3fe1f41d20029";
+    
+    auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
+    create["from"] = toJS( senderAddress );
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
@@ -1255,8 +1260,11 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
         "0200191505060405180910390f35b600081600081905550600190509190"
         "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
         "5ee8909b83094a3f856b9051274500029";
+    
+    auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
+    create["from"] = toJS( senderAddress );
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
@@ -1334,6 +1342,95 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ),
         "Transaction gas price lower than current eth_gasPrice." );
+}
+
+BOOST_AUTO_TEST_CASE( storage_limit ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 10 );
+    
+//pragma solidity 0.4.25;
+
+//contract TestStorageLimit {
+
+//    uint[] public storageArray;
+
+//    function store(uint256 num) public {
+//        storageArray.push( num );
+//    }
+
+//    function erase(uint256 index) public {
+//        delete storageArray[index];
+//    }
+
+//    function foo() public view {
+//        uint len = storageArray.length;
+//        storageArray.push(1);
+//    }
+
+//    function storeAndCall(uint256 num) public {
+//        storageArray.push( num );
+//        foo();
+//    }
+//}
+    
+    std::string bytecode = "608060405234801561001057600080fd5b5061025f806100206000396000f30060806040526004361061006d576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630e031ab1146100725780631007f753146100b35780636057361d146100e0578063c29855781461010d578063c67cd88414610124575b600080fd5b34801561007e57600080fd5b5061009d60048036038101908080359060200190929190505050610151565b6040518082815260200191505060405180910390f35b3480156100bf57600080fd5b506100de60048036038101908080359060200190929190505050610174565b005b3480156100ec57600080fd5b5061010b60048036038101908080359060200190929190505050610194565b005b34801561011957600080fd5b506101226101c3565b005b34801561013057600080fd5b5061014f600480360381019080803590602001909291905050506101fc565b005b60008181548110151561016057fe5b906000526020600020016000915090505481565b60008181548110151561018357fe5b906000526020600020016000905550565b600081908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b60008080549050905060006001908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b60008190806001815401808255809150509060018203906000526020600020016000909192909190915055506102306101c3565b505600a165627a7a72305820be696e2dc855e7b87426f0fa32eba10bb619ff335830c4465f654520ff8ef3240029";
+    
+    auto senderAddress = fixture.coinbase.address();
+    
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["data"] = bytecode;
+    create["gas"] = "1800000";  // TODO or change global default of 90000?
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+    dev::Address contract = dev::Address( contractAddress );
+
+    Json::Value txCall;  // call foo()
+    txCall["to"] = contractAddress;
+    txCall["data"] = "0xc2985578";
+    txCall["from"] = toJS( senderAddress );
+    txCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_call( txCall, "latest" );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 0 );
+
+    Json::Value txPushValueAndCall; // call storeAndCall(1)
+    txPushValueAndCall["to"] = contractAddress;
+    txPushValueAndCall["data"] = "0xc67cd8840000000000000000000000000000000000000000000000000000000000000001";
+    txPushValueAndCall["from"] = toJS( senderAddress );
+    txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
+    
+    Json::Value txPushValue;  // call store(2)
+    txPushValue["to"] = contractAddress;
+    txPushValue["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
+    txPushValue["from"] = toJS( senderAddress );
+    txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
+    
+    Json::Value txThrow;  // trying to call store(3)
+    txThrow["to"] = contractAddress;
+    txThrow["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000003";
+    txThrow["from"] = toJS( senderAddress );
+    txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
+    
+    Json::Value txEraseValue;  // call erase(2)
+    txEraseValue["to"] = contractAddress;
+    txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000002";
+    txEraseValue["from"] = toJS( senderAddress );
+    txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )

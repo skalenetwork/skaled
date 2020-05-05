@@ -110,7 +110,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t n = 0, t = 0;
+        size_t t = 0;
         uint64_t port = 0, port6 = 0;
         try {
             ip = infoObj.at( "bindIP" ).get_str();
@@ -143,7 +143,7 @@ ChainParams ChainParams::loadConfig(
             js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
             keyShareName = ima.at( "keyShareName" ).get_str();
-            n = ima.at( "n" ).get_int();
+
             t = ima.at( "t" ).get_int();
             sgxServerUrl = ima.at( "url" ).get_str();
             insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
@@ -156,12 +156,8 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        int snapshotIntervalMs = infoObj.count( "snapshotIntervalMs" ) ?
-                                     infoObj.at( "snapshotIntervalMs" ).get_int() :
-                                     0;
-
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName,
+            static_cast< uint16_t >( port6 ), sgxServerUrl, keyShareName,
             insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
@@ -173,6 +169,17 @@ ChainParams ChainParams::loadConfig(
         s.t = t;
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+
+        s.snapshotIntervalMs = sChainObj.count( "snapshotIntervalMs" ) ?
+                                   sChainObj.at( "snapshotIntervalMs" ).get_int() :
+                                   0;
+
+        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
+                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
+                                     0;
+
+        s.storageLimit =
+            sChainObj.count( "storageLimit" ) ? sChainObj.at( "storageLimit" ).get_int64() : 0;
 
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
@@ -409,7 +416,6 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
-    infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
 
     skaleObj["nodeInfo"] = infoObj;
 
@@ -418,6 +424,10 @@ const std::string& ChainParams::getOriginalJson() const {
 
     sChainObj["schainName"] = sChain.name;
     sChainObj["schainID"] = ( int64_t ) sChain.id;
+    sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
+    sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalMs;
+    sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
+    sChainObj["storageLimit"] = ( int64_t ) sChain.storageLimit;
 
     js::mArray nodes;
 

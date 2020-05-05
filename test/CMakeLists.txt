@@ -64,13 +64,15 @@ add_executable(testeth ${sources})
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
-target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR})
+target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
 target_link_libraries(testeth PRIVATE
     ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
     skutils
     Boost::system Boost::program_options
-    ${DEPS_INSTALL_ROOT}/lib/libjsonrpccpp-client.a
-    ${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a
+    jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
+    jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
+    jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
+    jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
     ${DEPS_INSTALL_ROOT}/lib/libcurl.a
     ${DEPS_INSTALL_ROOT}/lib/libssl.a
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a

@@ -69,7 +69,6 @@ static std::string const c_genesisInfoSkale = std::string() +
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "adminOrigins": [ "*" ],
-	  "emptyBlockIntervalMs": 1000,
 	  "ipc": false,
 	  "ipcpath": "./ipcx",
 	  "db-path": "./node",
@@ -88,6 +87,7 @@ static std::string const c_genesisInfoSkale = std::string() +
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
+        "emptyBlockIntervalMs": 1000,
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1}
         ]
