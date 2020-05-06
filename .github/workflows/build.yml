@@ -96,7 +96,7 @@ jobs:
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc)
           cd .. && mkdir -p build && cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=CODE_COVERAGE ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           make format-check
           make -j$(nproc)
       - name: testeth
