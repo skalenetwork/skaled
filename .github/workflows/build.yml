@@ -97,8 +97,8 @@ jobs:
           cmake --build build  -- -j$(nproc)
       - name: testeth
         run : |
-          ulimit -n $([ $((($(cat /proc/sys/fs/file-max) * 50) / 100 )) -le 65535 ] && \
-          echo "$((($(cat /proc/sys/fs/file-max) * 50) / 100 ))" || echo "65535")
+          ulimit -n $([ $((($(cat /proc/sys/fs/file-max) * 50) / 100 )) -le 1000000 ] && \
+          echo "$((($(cat /proc/sys/fs/file-max) * 50) / 100 ))" || echo "1000000")
           cd build/test
           ./testeth -- --express
           sudo ./testeth -t BtrfsTestSuite -- --all
