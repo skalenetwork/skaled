@@ -88,13 +88,17 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: build
         run: |
-          export CC=gcc-7 &&
-          export CXX=g++-7 &&
-          export TARGET=all &&
-          export TRAVIS_BUILD_TYPE=Debug &&
-          cd deps && ./build.sh &&
-          cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug &&
-          cmake --build build  -- -j$(nproc)
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd deps
+          ./build.sh PARALLEL_COUNT=$(nproc)
+          cd .. && mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=CODE_COVERAGE ..
+          make format-check
+          make -j$(nproc)
       - name: testeth
         run : |
           cd build/test
