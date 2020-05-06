@@ -60,14 +60,15 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State(
-    u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
+    u256 _initialFunds, s256 _storageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ) {
+      m_initial_funds( _initialFunds ),
+      storageLimit_( _storageLimit ) {
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -135,6 +136,7 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    storageLimit_ = _s.storageLimit_;
 
     return *this;
 }
@@ -268,12 +270,13 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+    s256 storageUsed = state[3].toInt< s256 >();
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
-            dev::eth::Account::Changedness::Unchanged ) );
+            dev::eth::Account::Changedness::Unchanged, storageUsed ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -320,8 +323,9 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream( 3 );
-                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() );
+                    RLPStream rlpStream( 4 );
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
+                              << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
                     m_db_ptr->insert( address, ref( rawValue ) );
@@ -511,8 +515,32 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 }
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
-    m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
+    dev::u256 _currentValue = storage( _contract, _key );
+    dev::u256 _originalValue = originalStorageValue( _contract, _key );
+
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
+
+    int count = 0;
+    if ( _originalValue == _currentValue ) {
+        if ( _currentValue == 0 ) {
+            count = 1;
+        } else if ( _value == 0 ) {
+            count = -1;
+        }
+    }
+    // copied from EXTVMFace.cpp ----- TODO: review it|^
+
+    if ( _value == _currentValue ) {
+        count = 0;
+    }
+
+    storageUsage[_contract] += count * 32;
+
+    if ( storageUsed( _contract ) + storageUsage[_contract] > storageLimit_ ) {
+        BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
+    }
+    // TODO::review it |^
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -542,6 +570,7 @@ void State::clearStorage( Address const& _contract ) {
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
+    acc->updateStorageUsage( -acc->storageUsed() );
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -644,6 +673,7 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+    resetStorageChanges();
 }
 
 void State::updateToLatestVersion() {
@@ -767,15 +797,24 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
+        resetStorageChanges();
+        break;
     case Permanence::CommittedWithoutState:
+        resetStorageChanges();
         m_cache.clear();
         break;
     case Permanence::Committed:
+        if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
+            updateStorageUsage();
+        }
+        // TODO: review logic|^
+
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                       State::CommitBehaviour::KeepEmptyAccounts );
         break;
     case Permanence::Uncommitted:
+        resetStorageChanges();
         break;
     }
 
@@ -784,6 +823,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
+
     return make_pair( res, receipt );
 }
 
@@ -804,6 +844,21 @@ bool State::executeTransaction(
     } catch ( Exception const& ) {
         rollback( savept );
         throw;
+    }
+}
+
+void State::updateStorageUsage() {
+    for ( const auto& [_address, _value] : storageUsage ) {
+        account( _address )->updateStorageUsage( _value );
+    }
+    resetStorageChanges();
+}
+
+dev::s256 State::storageUsed( const dev::Address& _addr ) const {
+    if ( auto a = account( _addr ) ) {
+        return a->storageUsed();
+    } else {
+        return 0;
     }
 }
 
