@@ -101,9 +101,9 @@ jobs:
           echo "$((($(cat /proc/sys/fs/file-max) * 50) / 100 ))" || echo "1000000")
           cd build/test
           ./testeth -- --express
-          sudo ./testeth -t BtrfsTestSuite -- --all
-          sudo ./testeth -t HashSnapshotTestSuite -- --all
-          sudo ./testeth -t ClientSnapshotsSuite -- --all
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all
           cd ..
           lcov --capture --directory . --output-file coverage.info
           lcov --remove coverage.info '/usr/*' --output-file coverage.info
