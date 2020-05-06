@@ -124,22 +124,22 @@ jobs:
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Create Release
-        if: github.event.pull_request.merged
+        if: ${BRANCH} = "master"
         id: create_release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ VERSION }}
+          release_name: Release ${{ VERSION }}
           body: |
             Changes in this Release
             - First Change
             - Second Change
           draft: false
-          prerelease: false
+          prerelease: true
       - name: Upload Release Asset
-        if: github.event.pull_request.merged
+        if: ${BRANCH} = "master"
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
