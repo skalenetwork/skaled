@@ -124,31 +124,20 @@ jobs:
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Create Release
-        if: ${BRANCH} = "master"
+        if: github.event.pull_request.merged
         id: create_release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ VERSION }}
-          release_name: Release ${{ VERSION }}
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
           body: |
             Changes in this Release
             - First Change
             - Second Change
           draft: false
           prerelease: true
-      - name: Upload Release Asset
-        if: ${BRANCH} = "master"
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: build/skaled/skaled
-          asset_name: skaled
-          asset_content_type: application/octet-stream
 
 
 
