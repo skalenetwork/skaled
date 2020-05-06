@@ -71,7 +71,7 @@ jobs:
           make ccache cmake libtool pkg-config autoconf autogen automake autopoint \
           python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
           clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
-          libhiredis-dev redis-server google-perftools libgoogle-perftools-dev
+          libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
 
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
@@ -103,12 +103,17 @@ jobs:
           sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all
           sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all
           cd ..
+          # Create lcov report
           lcov --capture --directory . --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info
-          lcov --remove coverage.info 'deps/*' --output-file coverage.info
-          lcov --remove coverage.info '.hunter/*' --output-file coverage.info
-          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  ||
-          echo "Codecov did not collect coverage reports"   
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+          #- lcov --list coverage.info # debug info
+
+          # Uploading report to CodeCov
+          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports 
       - name: Build and publish container
         if: github.event.pull_request.merged
         run: |
