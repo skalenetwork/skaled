@@ -117,7 +117,7 @@ jobs:
           #- lcov --list coverage.info # debug info
 
           # Uploading report to CodeCov
-          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports 
+          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
       - name: Build and publish container
         if: github.event.pull_request.merged
         run: |
