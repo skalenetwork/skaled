@@ -7,28 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            Changes in this Release
-            - First Change
-            - Second Change
-          draft: false
-          prerelease: false
       - name: extract repo name
         run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
-      - run:   echo "$REPOSITORY_NAME"
       - name: Extract branch name
         run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
-      - name: Print branch name
-        run: echo "${BRANCH_NAME}"
       - name: checkout
         uses: actions/checkout@v1
       - name: submodule update
@@ -84,11 +67,12 @@ jobs:
           docker rmi $(docker image ls -aq) >/dev/null 2>&1
       - name: install packages
         run: |
-          sudo apt-get update; sudo apt-get install -yq libprocps-dev \
-          g++-7   ccache   flex bison yasm python python-pip texinfo \
-          clang-format-6.0 btrfs-progs cmake libtool build-essential \
-          pkg-config autoconf wget git  libargtable2-dev  libmicrohttpd-dev libhiredis-dev \
-          redis-server openssl libssl-dev doxygen vim
+          sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
+          make ccache cmake libtool pkg-config autoconf autogen automake autopoint \
+          python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
+          clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
+          libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
+
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
         shell: cmake -P {0}
@@ -104,60 +88,63 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: build
         run: |
-          export CC=gcc-7 &&
-          export CXX=g++-7 &&
-          export TARGET=all &&
-          export TRAVIS_BUILD_TYPE=Debug &&
-          cd libconsensus/scripts && ./build_deps.sh &&
-          cd ../../SkaleDeps && ./build.sh &&
-          cd .. && mkdir build && cmake . -Bbuild -DCMAKE_BUILD_TYPE=Debug &&
-          cmake --build build  -- -j$(nproc)
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd deps
+          ./build.sh PARALLEL_COUNT=$(nproc)
+          cd .. && mkdir -p build && cd build
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          make format-check
+          make -j$(nproc)
       - name: testeth
         run : |
-          cd test && ./testeth -- --express &&
-          sudo ./testeth -t BtrfsTestSuite -- --all &&
-          sudo ./testeth -t HashSnapshotTestSuite -- --all &&
-          sudo ./testeth -t ClientSnapshotsSuite -- --all &&
-          cd .. &&
-          lcov --capture --directory . --output-file coverage.info && \
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info && \
-          lcov --remove coverage.info 'SkaleDeps/*' --output-file coverage.info && \
-          lcov --remove coverage.info '.hunter/*' --output-file coverage.info && \
-          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN  || \
-          echo "Codecov did not collect coverage reports"
-      - name: build image
-        run : |
-          ls && ls skaled && \
-          cp skaled/skaled scripts/skale_build/executable/ && \
-          export VERSION=$(cat ../VERSION) && \
-          export VERSION=$( scripts/calculate_version.sh ${BRANCH_NAME} ${VERSION} ) && \
-          echo "Version $VERSION" && \
-          cd scripts/skale_build && \
-          ./build_image.sh $VERSION && \
-          cd ../../build
-      - name: set  tag
+          cd build/test
+          ./testeth -- --express
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all
+          cd ..
+          # Create lcov report
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+          #- lcov --list coverage.info # debug info
+
+          # Uploading report to CodeCov
+          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+      - name: Build and publish container
+        if: github.event.pull_request.merged
         run: |
-          (test ! $ACTION_TAG &&
-          export ACTION_TAG=v$VERSION &&
-          git tag ${ACTION_TAG} &&
-          git push https://$GITHUB_OAUTH_TOKEN@github.com/skalenetwork/${REPOSITORY_NAME}.git ${ACTION_TAG}
-          ) || true
-      - name: build and push docker image
-        run: |
-          ../scripts/skale_build/deploy_image.sh ${VERSION} $DOCKER_USERNAME $DOCKER_PASSWORD || true
-      - name: deploy master to github releases
-        run: |
-          test ! ${BRANCH_NAME} = "master" || true
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+          cp build/skaled/skaled ../scripts/skale_build/executable/
+          export BRANCH=${GITHUB_REF##*/}
+          echo "Branch $BRANCH"
+          export VERSION=$(bash ./scripts/calculate_version.sh)
+          echo "::set-env name=VERSION::$VERSION"
+          echo "Version $VERSION"
+          export RELEASE=true
+          echo "::set-env name=RELEASE::$RELEASE"
+          bash ./scripts/build_and_publish.sh
+      - name: Create Release
+        if: github.event.pull_request.merged
+        id: create_release
+        uses: actions/create-release@latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: skaled/skaled
-          asset_name: skaled
-          asset_content_type: application/octet-stream
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
+          body: |
+            Changes in this Release
+            - First Change
+            - Second Change
+          draft: false
+          prerelease: true
 
 
 
