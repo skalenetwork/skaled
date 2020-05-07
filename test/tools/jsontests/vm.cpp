@@ -368,7 +368,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
+                    postState.setStorageLimit(1000000000);
                     State expectState = State();
+                    expectState.setStorageLimit(1000000000);
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
@@ -388,7 +390,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
                     State postState = State();
+                    postState.setStorageLimit(1000000000);
                     State expectState = State();
+                    expectState.setStorageLimit(1000000000);
                     AccountMaskMap expectStateMap;
 
                     // json_spirit::mObject const& debug_var = testOutput.at("post").get_obj();
@@ -451,7 +455,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
                 State postState = State();
+                postState.setStorageLimit(1000000000);
                 State expectState = State();
+                expectState.setStorageLimit(1000000000);
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
