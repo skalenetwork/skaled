@@ -1665,7 +1665,7 @@ int main( int argc, char** argv ) try {
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
-            new rpc::Net(), new rpc::Web3( clientVersion() ),
+            new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
