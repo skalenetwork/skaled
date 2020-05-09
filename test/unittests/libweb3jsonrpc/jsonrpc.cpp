@@ -1421,7 +1421,6 @@ BOOST_AUTO_TEST_CASE( storage_usage ) {
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    std::cout << fixture.client->state().storageUsed( contract ) << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
     
     Json::Value txEraseValue;  // call erase(2)

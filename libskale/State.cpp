@@ -139,7 +139,7 @@ State& State::operator=( const State& _s ) {
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
     storageLimit_ = _s.storageLimit_;
-    totalStorageUsed_ = _s.totalStorageUsed_;
+    totalStorageUsed_ = _s.storageUsedTotal();
 
     return *this;
 }
