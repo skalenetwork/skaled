@@ -197,7 +197,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         thr.join();
     }
 
-    bool result;
+    bool result = false;
     try {
         result = this->voteForHash( this->voted_hash_ );
     } catch ( NotEnoughVotesException& ex ) {
