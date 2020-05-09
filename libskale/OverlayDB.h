@@ -83,6 +83,7 @@ private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
+    dev::s256 storageUsed_ = 0;
 
     std::shared_ptr< dev::db::DatabaseFace > m_db;
 

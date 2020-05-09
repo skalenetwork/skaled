@@ -84,8 +84,6 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     auto it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
 
-    // this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
-
     if ( it == map_hash.end() ) {
         throw NotEnoughVotesException( "note enough votes to choose hash" );
         return false;

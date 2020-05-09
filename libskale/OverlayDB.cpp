@@ -118,6 +118,7 @@ void OverlayDB::commit() {
                             toSlice( getStorageKey( address, storageAddress ) ), toSlice( value ) );
                     }
                 }
+                writeBatch->insert( toSlice("storageUsed") , toSlice( storageUsed_.str() ) );
             }
             try {
                 m_db->commit( std::move( writeBatch ) );
@@ -379,11 +380,14 @@ bool OverlayDB::exists( std::string const& _s) const {
 }
 
 dev::s256 OverlayDB::storageUsed() const {
-    return dev::s256( m_db->lookup( toSlice( "storageUsed" ) ) );
+    if ( m_db ) {
+        return dev::s256( m_db->lookup( toSlice( "storageUsed" ) ) );
+    }
+    return 0;
 }
 
 void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
-    m_db->insert( toSlice( "storageUsed" ), toSlice( _storageUsed.str() ) );
+    storageUsed_ = _storageUsed;
 }
 
 }  // namespace skale
