@@ -71,6 +71,8 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       storageLimit_( _storageLimit ) {
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        auto state = startRead();
+        totalStorageUsed_ = state.storageUsedTotal();
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -137,6 +139,7 @@ State& State::operator=( const State& _s ) {
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
     storageLimit_ = _s.storageLimit_;
+    totalStorageUsed_ = _s.totalStorageUsed_;
 
     return *this;
 }
@@ -344,6 +347,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                 }
             }
         }
+        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
         m_db_ptr->commit();
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
@@ -536,8 +540,9 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     }
 
     storageUsage[_contract] += count * 32;
+    currentStorageUsed_ += count * 32;
 
-    if ( storageUsed( _contract ) + storageUsage[_contract] > storageLimit_ ) {
+    if ( totalStorageUsed_ + currentStorageUsed_ > storageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
     // TODO::review it |^
@@ -570,7 +575,9 @@ void State::clearStorage( Address const& _contract ) {
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
-    acc->updateStorageUsage( -acc->storageUsed() );
+    dev::s256 accStorageUsed = acc->storageUsed();
+    totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
+    acc->updateStorageUsage( -accStorageUsed );
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -797,14 +804,18 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
+        std::cout << "HERE1" << std::endl;
         resetStorageChanges();
         break;
     case Permanence::CommittedWithoutState:
+        std::cout << "HERE2" << std::endl;
         resetStorageChanges();
         m_cache.clear();
         break;
     case Permanence::Committed:
+        std::cout << "HERE3" << std::endl;
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
+            totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
         // TODO: review logic|^
@@ -814,6 +825,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                                       State::CommitBehaviour::KeepEmptyAccounts );
         break;
     case Permanence::Uncommitted:
+        std::cout << "HERE4" << std::endl;
         resetStorageChanges();
         break;
     }

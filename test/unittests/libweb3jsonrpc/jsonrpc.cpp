@@ -1344,7 +1344,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
         "Transaction gas price lower than current eth_gasPrice." );
 }
 
-BOOST_AUTO_TEST_CASE( storage_limit ) {
+BOOST_AUTO_TEST_CASE( storage_usage ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 10 );
     
@@ -1421,6 +1421,7 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    std::cout << fixture.client->state().storageUsed( contract ) << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
     
     Json::Value txEraseValue;  // call erase(2)
@@ -1431,6 +1432,10 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
+}
+
+BOOST_AUTO_TEST_CASE( storage_limit ) {
+
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )

@@ -68,6 +68,10 @@ public:
     void insertAuxiliary(
         dev::h160 const& _address, dev::bytesConstRef _value, _byte_ space = 0xFF );
 
+    bool exists( std::string const& _s) const;
+    dev::s256 storageUsed() const;
+    void updateStorageUsage( dev::s256 const& _storageUsed );
+
     /// @returns the set containing all accounts currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
     /// or minutes at a time.
