@@ -201,10 +201,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     try {
         result = this->voteForHash( this->voted_hash_ );
     } catch ( NotEnoughVotesException& ex ) {
-        std::cerr
-            << cc::error(
-                   "Exception while voting for snapshot hash from other skaleds: " )
-            << cc::warn( ex.what() ) << std::endl;
+        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
+                  << cc::warn( ex.what() ) << std::endl;
     }
 
     if ( !result ) {
