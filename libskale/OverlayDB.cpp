@@ -118,7 +118,7 @@ void OverlayDB::commit() {
                             toSlice( getStorageKey( address, storageAddress ) ), toSlice( value ) );
                     }
                 }
-                writeBatch->insert( toSlice("storageUsed") , toSlice( storageUsed_.str() ) );
+                writeBatch->insert( toSlice( "storageUsed" ), toSlice( storageUsed_.str() ) );
             }
             try {
                 m_db->commit( std::move( writeBatch ) );
@@ -375,7 +375,7 @@ void OverlayDB::insert(
     }
 }
 
-bool OverlayDB::exists( std::string const& _s) const {
+bool OverlayDB::exists( std::string const& _s ) const {
     return m_db->exists( toSlice( _s ) );
 }
 
