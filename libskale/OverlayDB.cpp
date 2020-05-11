@@ -375,10 +375,6 @@ void OverlayDB::insert(
     }
 }
 
-bool OverlayDB::exists( std::string const& _s ) const {
-    return m_db->exists( toSlice( _s ) );
-}
-
 dev::s256 OverlayDB::storageUsed() const {
     if ( m_db ) {
         return dev::s256( m_db->lookup( toSlice( "storageUsed" ) ) );
