@@ -59,12 +59,14 @@ jobs:
             php-igbinary php-memcache php-memcached php-mongodb php-redis php-xdebug \
             php-zmq snmp pollinate libpq-dev postgresql-client powershell ruby-full \
             sphinxsearch subversion mongodb-org  || true > /dev/null 2>&1;
+
       - name: Cleanup
         run: |
           sudo apt-get autoremove -y >/dev/null 2>&1 && \
           sudo apt-get autoclean -y >/dev/null 2>&1  && \
           sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
           docker rmi $(docker image ls -aq) >/dev/null 2>&1
+
       - name: install packages
         run: |
           sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
@@ -93,9 +95,8 @@ jobs:
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
-          cd deps
-          ./build.sh PARALLEL_COUNT=$(nproc)
-          cd .. && mkdir -p build && cd build
+          cd deps && ./build.sh PARALLEL_COUNT=$(nproc) && cd ..
+          mkdir -p build && cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           make format-check
           make -j$(nproc)
