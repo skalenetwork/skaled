@@ -7,14 +7,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: extract repo name
+      - name: Extract repo name
         run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
       - name: Extract branch name
         run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
       - name: checkout
         uses: actions/checkout@v1
-      - name: submodule update
+      - name: Submodule update
         run: git submodule update --init --recursive
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
@@ -67,13 +67,21 @@ jobs:
           sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
           docker rmi $(docker image ls -aq) >/dev/null 2>&1
 
-      - name: install packages
+      - name: Install packages
         run: |
           sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
-          make ccache cmake libtool pkg-config autoconf autogen automake autopoint \
+          make ccache libtool pkg-config autoconf autogen automake autopoint \
           python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
           clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
           libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
+
+      - name: Install cmake 3.10
+        run: |
+          sudo apt-get remove cmake || true
+          wget --no-check-certificate https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.sh && \
+          chmod +x cmake-3.10.0-Linux-x86_64.sh && \
+          ./cmake-3.10.0-Linux-x86_64.sh --skip-license --include-subdir && \
+          sudo ln -sf `pwd`/cmake-3.10.0-Linux-x86_64/bin/* /usr/local/bin
 
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
@@ -81,14 +89,14 @@ jobs:
         run: |
           string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
           message("::set-output name=timestamp::${current_date}")
-      - name: ccache cache files
+      - name: Ccache cache files
         uses: actions/cache@v1.1.0
         with:
           path: .ccache
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
           restore-keys: |
             ${ { matrix.config.name } }-ccache-
-      - name: build dependencies
+      - name: Build dependencies
         run: |
           export CC=gcc-7
           export CXX=g++-7
@@ -98,7 +106,7 @@ jobs:
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
-      - name: configure skaled
+      - name: Configure all
         run: |
           export CC=gcc-7
           export CXX=g++-7
@@ -109,7 +117,7 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      - name: format check source code
+      - name: Format-check source code
         run: |
           export CC=gcc-7
           export CXX=g++-7
@@ -119,7 +127,7 @@ jobs:
           cd build
           make format-check
           cd ..
-      - name: build skaled
+      - name: Build all
         run: |
           export CC=gcc-7
           export CXX=g++-7
@@ -129,7 +137,7 @@ jobs:
           cd build
           make -j$(nproc)
           cd ..
-      - name: testeth
+      - name: Testeth
         run : |
           cd build/test
           ./testeth -- --express
