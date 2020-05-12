@@ -609,9 +609,13 @@ env_save() {
 }
 
 env_restore() {
-	ENV_RESTORE_CMD="source \"${SOURCES_ROOT}/saved_environment_pre_configured.txt\""
-	#env_clear_all
-	$ENV_RESTORE_CMD
+	if [ -f "${SOURCES_ROOT}/saved_environment_pre_configured.txt" ]; then
+    	#echo "\"${SOURCES_ROOT}/saved_environment_pre_configured.txt\" exist, can restore env"
+		#ENV_RESTORE_CMD="source \"${SOURCES_ROOT}/saved_environment_pre_configured.txt\""
+		#env_clear_all
+		#$ENV_RESTORE_CMD || true &> /dev/null
+		source "${SOURCES_ROOT}/saved_environment_pre_configured.txt"
+	fi
 }
 
 # we will save env now, next times we will only restore it)

@@ -88,18 +88,47 @@ jobs:
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
           restore-keys: |
             ${ { matrix.config.name } }-ccache-
-      - name: build
+      - name: build dependencies
         run: |
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
-          cd deps && ./build.sh PARALLEL_COUNT=$(nproc) && cd ..
-          mkdir -p build && cd build
+          cd deps
+          ./build.sh PARALLEL_COUNT=$(nproc)
+          cd ..
+      - name: configure skaled
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          mkdir -p build
+          cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          cd ..
+      - name: format check source code
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
           make format-check
+          cd ..
+      - name: build skaled
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
           make -j$(nproc)
+          cd ..
       - name: testeth
         run : |
           cd build/test
@@ -119,6 +148,7 @@ jobs:
 
           # Uploading report to CodeCov
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+          cd ..
       - name: Build and publish container
         if: github.event.pull_request.merged
         run: |
