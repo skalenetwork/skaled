@@ -487,8 +487,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     logState();
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
 void SkaleHost::startWorking() {
@@ -530,6 +532,7 @@ void SkaleHost::startWorking() {
             std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
             std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
     };
     // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
@@ -628,9 +631,11 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }
     }  // while
