@@ -1164,22 +1164,23 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "download-snapshot" ) ) {
         isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
-        if ( vm.count( "download-snapshot" ) ) {
-            if ( !vm.count( "public-key" ) ) {
-                // for tests only! remove it later
-                commonPublicKey = "";
-                //            throw std::runtime_error(
-                //                cc::error( "Missing --public-key option - cannot download
-                //                snapshot" )
-                //                );
-            } else {
-                commonPublicKey = vm["public-key"].as< std::string >();
-            }
+        if ( !vm.count( "public-key" ) ) {
+            // for tests only! remove it later
+            commonPublicKey = "";
+            //            throw std::runtime_error(
+            //                cc::error( "Missing --public-key option - cannot download
+            //                snapshot" )
+            //                );
+        } else {
+            commonPublicKey = vm["public-key"].as< std::string >();
         }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
             blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+            clog( VerbosityInfo, "main" )
+                << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
+                << cc::p( std::to_string( blockNumber ) );
         } catch ( std::exception& ex ) {
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
@@ -1195,12 +1196,15 @@ int main( int argc, char** argv ) try {
             try {
                 list_urls_to_download =
                     snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                clog( VerbosityInfo, "main" )
+                    << cc::notice( "Got urls to download snapshot from " )
+                    << cc::p( std::to_string( list_urls_to_download.size() ) )
+                    << cc::notice( " nodes " );
                 voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
                 std::throw_with_nested( std::runtime_error(
-                    cc::fatal( "FATAL:" ) + " " +
                     cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
-                    " " + cc::warn( ex.what() ) ) );
+                    " " + cc::error( ex.what() ) ) );
             }
 
             bool successfullDownload = false;
