@@ -1669,7 +1669,7 @@ int main( int argc, char** argv ) try {
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
-            new rpc::Net(), new rpc::Web3( clientVersion() ),
+            new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
@@ -2216,8 +2216,14 @@ int main( int argc, char** argv ) try {
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
     return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
     return EXIT_FAILURE;
 }
