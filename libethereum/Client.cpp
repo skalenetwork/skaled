@@ -426,16 +426,22 @@ size_t Client::importTransactionsAsBlock(
                     } catch ( const std::exception& ex ) {
                         cerror << "CRITICAL " << dev::nested_exception_what( ex )
                                << " in computeSnapshotHash(). Exiting";
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
                         ExitHandler::exitHandler( 0 );
                     } catch ( ... ) {
                         cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
                         ExitHandler::exitHandler( 0 );
                     }
                 } )
                     .detach();
             }
             // TODO Make this number configurable
-            // m_snapshotManager->leaveNLastSnapshots( 2 ); // temporary silent this code
+            m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
