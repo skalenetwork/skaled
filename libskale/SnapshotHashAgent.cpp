@@ -107,10 +107,14 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
         try {
             lagrange_coeffs = this->bls_->LagrangeCoeffs( idx );
             common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
-        } catch ( std::exception& ex ) {
+        } catch ( signatures::Bls::IncorrectInput& ex ) {
             std::cerr << cc::error(
                              "Exception while recovering common signature from other skaleds: " )
-                      << cc::warn( ex.what() ) << "\n";
+                      << cc::warn( ex.what() ) << std::endl;
+        } catch ( signatures::Bls::IsNotWellFormed& ex ) {
+            std::cerr << cc::error(
+                             "Exception while recovering common signature from other skaleds: " )
+                      << cc::warn( ex.what() ) << std::endl;
         }
 
         try {
@@ -123,7 +127,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
         } catch ( signatures::Bls::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
-                      << cc::warn( ex.what() ) << "\n";
+                      << cc::warn( ex.what() ) << std::endl;
             return false;
         }
 
@@ -184,7 +188,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 std::cerr
                     << cc::error(
                            "Exception while collecting snapshot signatures from other skaleds: " )
-                    << cc::warn( ex.what() ) << "\n";
+                    << cc::warn( ex.what() ) << std::endl;
             }
         } ) );
     }
@@ -193,7 +197,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         thr.join();
     }
 
-    bool result = this->voteForHash( this->voted_hash_ );
+    bool result = false;
+    try {
+        result = this->voteForHash( this->voted_hash_ );
+    } catch ( NotEnoughVotesException& ex ) {
+        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
+                  << cc::warn( ex.what() ) << std::endl;
+    }
+
     if ( !result ) {
         return {};
     }
