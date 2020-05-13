@@ -64,6 +64,10 @@ inline Slice toSlice( h160 const& _h ) {
     return Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
 }
 
+inline Slice toSlice( std::string const& _s ) {
+    return Slice( reinterpret_cast< char const* >( &_s[0] ), _s.size() );
+}
+
 // inline Slice toSlice( bytesConstRef _h ) { // l_sergiy: clang did detected this as unused
 //    return Slice( reinterpret_cast< char const* >( _h.data() ), _h.size() );
 //}
@@ -114,6 +118,7 @@ void OverlayDB::commit() {
                             toSlice( getStorageKey( address, storageAddress ) ), toSlice( value ) );
                     }
                 }
+                writeBatch->insert( toSlice( "storageUsed" ), toSlice( storageUsed_.str() ) );
             }
             try {
                 m_db->commit( std::move( writeBatch ) );
@@ -368,6 +373,17 @@ void OverlayDB::insert(
     } else {
         m_storageCache[_address][_storageAddress] = _value;
     }
+}
+
+dev::s256 OverlayDB::storageUsed() const {
+    if ( m_db ) {
+        return dev::s256( m_db->lookup( toSlice( "storageUsed" ) ) );
+    }
+    return 0;
+}
+
+void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
+    storageUsed_ = _storageUsed;
 }
 
 }  // namespace skale
