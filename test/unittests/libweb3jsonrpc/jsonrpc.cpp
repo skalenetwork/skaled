@@ -1344,7 +1344,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
         "Transaction gas price lower than current eth_gasPrice." );
 }
 
-BOOST_AUTO_TEST_CASE( storage_limit ) {
+BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 10 );
     
@@ -1431,6 +1431,132 @@ BOOST_AUTO_TEST_CASE( storage_limit ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
+}
+
+BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+//    pragma solidity >=0.4.22 <0.7.0;
+
+//    contract TestStorage1 {
+
+//        uint[] array;
+
+//        function store(uint256 num) public {
+//            array.push( num + 2 );
+//        }
+
+//        function erase(uint idx) public {
+//            delete array[idx];
+//        }
+//    }
+    std::string bytecode1 = "608060405234801561001057600080fd5b5061012c806100206000396000f3fe6080604052348015600f57600080fd5b5060043610604f576000357c0100000000000000000000000000000000000000000000000000000000900480631007f7531460545780636057361d14607f575b600080fd5b607d60048036036020811015606857600080fd5b810190808035906020019092919050505060aa565b005b60a860048036036020811015609357600080fd5b810190808035906020019092919050505060c7565b005b6000818154811060b657fe5b906000526020600020016000905550565b60006002820190806001815401808255809150506001900390600052602060002001600090919091909150555056fea264697066735822122055c65b9e093cdb44864dac3fb79ec15a542db86c2f897b938043d8e15468ca4464736f6c63430006060033";
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create1;
+    create1["from"] = toJS( senderAddress );
+    create1["data"] = bytecode1;
+    create1["gas"] = "1800000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt1 = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress1 = receipt1["contractAddress"].asString();
+
+//    pragma solidity >=0.4.22 <0.7.0;
+
+//    contract TestStorage2 {
+
+//        uint[] array;
+
+//        function store(uint256 num) public {
+//            array.push( num );
+//        }
+
+//        function erase(uint idx) public {
+//            delete array[idx];
+//        }
+//    }
+    Json::Value txStore;  // call store(1)
+    txStore["to"] = contractAddress1;
+    txStore["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    txStore["from"] = toJS( senderAddress );
+    txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStore );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64);
+
+    // call store(2)
+    txStore["to"] = contractAddress1;
+    txStore["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
+    txStore["from"] = toJS( senderAddress );
+    txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStore );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
+
+    Json::Value txErase;  // call erase(1)
+    txErase["to"] = contractAddress1;
+    txErase["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000001";
+    txErase["from"] = toJS( senderAddress );
+    txErase["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txErase );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64);
+
+//    pragma solidity >=0.4.22 <0.7.0;
+
+//    contract TestStorage2 {
+
+//        uint[] array;
+
+//        function store(uint256 num) public {
+//            array.push( num );
+//        }
+
+//        function erase(uint idx) public {
+//            delete array[idx];
+//        }
+//    }
+    std::string bytecode2 = "608060405234801561001057600080fd5b50610129806100206000396000f3fe6080604052348015600f57600080fd5b5060043610604f576000357c0100000000000000000000000000000000000000000000000000000000900480631007f7531460545780636057361d14607f575b600080fd5b607d60048036036020811015606857600080fd5b810190808035906020019092919050505060aa565b005b60a860048036036020811015609357600080fd5b810190808035906020019092919050505060c7565b005b6000818154811060b657fe5b906000526020600020016000905550565b60008190806001815401808255809150506001900390600052602060002001600090919091909150555056fea26469706673582212202bfb5f6fb63ae4f1c9a362ed3f7de7aa5514029db925efa368e711e35d9ebc0a64736f6c63430006060033";
+
+    Json::Value create2;
+    create2["from"] = toJS( senderAddress );
+    create2["data"] = bytecode2;
+    create2["gas"] = "1800000";
+    txHash = fixture.rpcClient->eth_sendTransaction( create2 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt2 = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress2 = receipt2["contractAddress"].asString();
+
+    Json::Value txStoreSecondContract; // call store(1)
+    txStoreSecondContract["to"] = contractAddress2;
+    txStoreSecondContract["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    txStoreSecondContract["from"] = toJS( senderAddress );
+    txStoreSecondContract["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStoreSecondContract );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
+
+    // try call store(2) to second contract
+    txStoreSecondContract["to"] = contractAddress2;
+    txStoreSecondContract["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
+    txStoreSecondContract["from"] = toJS( senderAddress );
+    txStoreSecondContract["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStoreSecondContract );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
+
+    // try call store(3) to first contract
+    txStore["to"] = contractAddress1;
+    txStore["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    txStore["from"] = toJS( senderAddress );
+    txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStore );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
