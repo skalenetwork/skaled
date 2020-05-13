@@ -24,6 +24,9 @@
 #include "Worker.h"
 
 #include "Log.h"
+
+#include <skutils/utils.h>
+
 #include <chrono>
 #include <thread>
 
@@ -64,6 +67,7 @@ void Worker::startWorking() {
                     cwarn << "Exception thrown in Worker thread: " << _e.what();
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception thrown in Worker thread";
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 }
 
                 //				ex = WorkerState::Stopping;

@@ -25,6 +25,8 @@
 
 #include "UnixSocketServer.h"
 
+#include <skutils/utils.h>
+
 #include <libdevcore/Log.h>
 
 #include <libdevcore/microprofile.h>
@@ -120,8 +122,10 @@ void UnixDomainSocketServer::Listen() {
                     CloseConnection( connection );
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << ex.what() << " in UnixDomainSocketServer";
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception in UnixDomainSocketServer";
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 }  // catch
             }}
                 .detach();

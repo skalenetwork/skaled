@@ -426,9 +426,15 @@ size_t Client::importTransactionsAsBlock(
                     } catch ( const std::exception& ex ) {
                         cerror << "CRITICAL " << dev::nested_exception_what( ex )
                                << " in computeSnapshotHash(). Exiting";
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
                         ExitHandler::exitHandler( 0 );
                     } catch ( ... ) {
                         cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
                         ExitHandler::exitHandler( 0 );
                     }
                 } )
