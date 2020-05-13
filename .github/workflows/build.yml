@@ -160,7 +160,7 @@ jobs:
       - name: Build and publish container
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
-          cp build/skaled/skaled ./scripts/skale_build/executable/
+          cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
           echo "Branch $BRANCH"
           export VERSION=$(bash ./scripts/calculate_version.sh)
