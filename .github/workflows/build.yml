@@ -163,7 +163,8 @@ jobs:
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
           echo "Branch $BRANCH"
-          export VERSION=$(bash ./scripts/calculate_version.sh)
+          export VERSION=$(cat ../VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
