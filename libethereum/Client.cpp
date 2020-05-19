@@ -447,6 +447,10 @@ size_t Client::importTransactionsAsBlock(
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
+
+        if ( this->isTimeToRotate( _timestamp ) ) {
+            // do restart
+        }
         return n_succeeded;
     }
     assert( false );
@@ -592,6 +596,10 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
     return _timestamp / uint64_t( snapshotIntervalMs ) !=
            this->last_snapshot_time / uint64_t( snapshotIntervalMs );
+}
+
+bool Client::isTimeToRotate( uint64_t _timestamp ) const {
+    return false;
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
