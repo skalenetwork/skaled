@@ -626,6 +626,27 @@ void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
     rotationFile << rotationJson;
 }
 
+void Client::performRestart() const {}
+
+void Client::performExit() const {}
+
+void Client::performRotation( uint64_t _timestamp ) const {
+    fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
+    if ( fs::exists( rotateFilePath ) ) {
+        std::ifstream rotateFile( rotateFilePath.string() );
+        auto rotateJson = nlohmann::json::parse( rotateFile );
+        auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
+        if ( _timestamp <= rotateTimestamp ) {
+            auto isExit = rotateJson["isExit"].get< bool >();
+            if ( isExit ) {
+                Client::performExit();
+            } else {
+                Client::performRestart();
+            }
+        }
+    }
+}
+
 void Client::onChainChanged( ImportRoute const& _ir ) {
     //  ctrace << "onChainChanged()";
     h256Hash changeds;
