@@ -266,6 +266,9 @@ public:
         return path;
     }
 
+    // set restarting or exiting time for node rotation
+    void setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const;
+
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
         return this->m_snapshotManager->getSnapshotHash( _blockNumber );
     }

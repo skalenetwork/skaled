@@ -37,6 +37,8 @@
 #include <libdevcore/microprofile.h>
 
 #include <skutils/console_colors.h>
+#include <libdevcore/FileSystem.h>
+#include <json.hpp>
 
 using namespace std;
 using namespace dev;
@@ -449,7 +451,9 @@ size_t Client::importTransactionsAsBlock(
         importWorkingBlock();
 
         if ( this->isTimeToRotate( _timestamp ) ) {
-            // do restart
+            std::cout << "ROTATE";
+        } else {
+            std::cout << "NO ROTATE";
         }
         return n_succeeded;
     }
@@ -599,7 +603,22 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
 }
 
 bool Client::isTimeToRotate( uint64_t _timestamp ) const {
+    fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
+    if (fs::exists(rotateFilePath)){
+        uint64_t rotateTimestamp;
+        std::ifstream rotateFile( rotateFilePath.string() );
+        rotateFile >> rotateTimestamp;
+        std::cout << "rotate:" << rotateTimestamp;
+        if (_timestamp < rotateTimestamp) {
+            return true;
+        }
+    }
     return false;
+}
+
+void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
+    // Test functionality
+    std::cout << _timestamp << _isExit;
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
