@@ -1731,19 +1731,22 @@ void SkaleWsPeer::eth_setRestartOrExitTime(
         //
         // or specify JSON right in command line...
         //
-        // wscat -c ws://127.0.0.1:15020 -w 1 -x '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
-        // wscat -c ws://127.0.0.1:15020 -w 1 -x '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x
+        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x
+        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
         //
 
         // Result
         std::string strRequest = joRequest.dump();
         std::string strResponse = joResponse.dump();
-        jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
-
-        if ( handler == nullptr )
-            throw std::runtime_error( "No client connection handler found" );
-
-        handler->HandleRequest( strRequest, strResponse );
+        auto pEthereum = pSO->ethereum();
+        if ( !pEthereum )
+            throw std::runtime_error( "internal error, no Ethereum interface found" );
+        dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
+        if ( !pClient )
+            throw std::runtime_error( "internal error, no client interface found" );
+        // pClient->
         joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )
