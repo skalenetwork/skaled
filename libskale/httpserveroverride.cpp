@@ -1746,7 +1746,7 @@ void SkaleWsPeer::eth_setRestartOrExitTime(
         dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
-        // pClient->
+        pClient->setRestartOrExitTime( uint64_t( finishTime ), isExit );
         joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )
