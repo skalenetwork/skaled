@@ -1731,6 +1731,15 @@ void SkaleWsPeer::eth_setRestartOrExitTime(
         //
 
         // Result
+        std::string strRequest = joRequest.dump();
+        std::string strResponse = joResponse.dump();
+        jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
+
+        if ( handler == nullptr )
+            throw std::runtime_error( "No client connection handler found" );
+
+        handler->HandleRequest( strRequest, strResponse );
+        joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
