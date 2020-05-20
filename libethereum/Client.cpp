@@ -607,8 +607,8 @@ bool Client::isTimeToRotate( uint64_t _timestamp ) const {
     if ( fs::exists( rotateFilePath ) ) {
         std::ifstream rotateFile( rotateFilePath.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
-        auto rotateTimestamp = rotateJson["timestamp"].get<uint64_t>();
-        if (_timestamp < rotateTimestamp) {
+        auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
+        if ( _timestamp < rotateTimestamp ) {
             return true;
         }
     }
@@ -622,7 +622,7 @@ void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
     rotationJson["timestamp"] = _timestamp;
     rotationJson["isExit"] = _isExit;
 
-    std::ofstream rotationFile ( rotateFilePath.string() );
+    std::ofstream rotationFile( rotateFilePath.string() );
     rotationFile << rotationJson;
 }
 

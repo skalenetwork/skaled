@@ -1667,6 +1667,9 @@ void SkaleWsPeer::eth_setRestartOrExitTime(
             else
                 throw std::runtime_error(
                     "invalid value in the \"finishTime\" parameter, need number" );
+        } else {
+            // no "finishTime" present in "params"
+            throw std::runtime_error( "missing the \"finishTime\" parameter" );
         }
         // parse value of "isExit"
         bool isExit = false;
