@@ -598,7 +598,7 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
            this->last_snapshot_time / uint64_t( snapshotIntervalMs );
 }
 
-bool Client::isTimeToRotate( uint64_t _timestamp ) const {
+bool Client::isTimeToRotate( uint64_t /*_timestamp*/ ) const {
     return false;
 }
 

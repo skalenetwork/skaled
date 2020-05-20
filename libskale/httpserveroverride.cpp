@@ -1729,6 +1729,11 @@ void SkaleWsPeer::eth_setRestartOrExitTime(
         // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{}}
         // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}
         //
+        // or specify JSON right in command line...
+        //
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        //
 
         // Result
         std::string strRequest = joRequest.dump();
