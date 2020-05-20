@@ -605,11 +605,10 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
 bool Client::isTimeToRotate( uint64_t _timestamp ) const {
     fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
     if ( fs::exists( rotateFilePath ) ) {
-        uint64_t rotateTimestamp;
         std::ifstream rotateFile( rotateFilePath.string() );
-        rotateFile >> rotateTimestamp;
-        std::cout << "rotate:" << rotateTimestamp;
-        if ( _timestamp < rotateTimestamp ) {
+        auto rotateJson = nlohmann::json::parse( rotateFile );
+        auto rotateTimestamp = rotateJson["timestamp"].get<uint64_t>();
+        if (_timestamp < rotateTimestamp) {
             return true;
         }
     }
