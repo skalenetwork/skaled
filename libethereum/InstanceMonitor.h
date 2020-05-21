@@ -45,8 +45,9 @@ private:
     uint64_t m_finishTimestamp;
     bool m_isExit;
     static const fs::path rotation_info_file_path;
+    static const std::string temp_config_ext;
 
     void restoreRotationParams();
-    void restart();
-    void shutdown();
+    void restartInstance();
+    void shutdownInstance();
 };

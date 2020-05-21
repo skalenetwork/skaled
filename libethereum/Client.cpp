@@ -453,7 +453,7 @@ size_t Client::importTransactionsAsBlock(
         importWorkingBlock();
 
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
-            std::cout << "ROTATION\n";
+            m_instanceMonitor->performRotation();
         }
         return n_succeeded;
     }

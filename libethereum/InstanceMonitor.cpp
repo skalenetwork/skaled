@@ -22,16 +22,36 @@
  * @date 2020
  */
 
-
 #include "InstanceMonitor.h"
-#include <libdevcore/FileSystem.h>
+#include <csignal>
+#include <iostream>
 #include <json.hpp>
 
+#include <libdevcore/Common.h>
+#include <libdevcore/FileSystem.h>
+
+using namespace dev;
 namespace fs = boost::filesystem;
 
 const fs::path InstanceMonitor::rotation_info_file_path = dev::getDataDir() / "rotation.txt";
+const std::string InstanceMonitor::temp_config_ext = ".tmp";
 
-void InstanceMonitor::performRotation() {}
+void InstanceMonitor::performRotation() {
+    if ( getIsExit() ) {
+        fs::remove( rotation_info_file_path );
+        ExitHandler::exitHandler( SIGTERM );
+    } else {
+        fs::path newConfigPath = m_configPath;
+        newConfigPath += temp_config_ext;
+        if ( !fs::exists( newConfigPath ) ) {
+            throw std::runtime_error( "New config not found" );
+        }
+        fs::remove( m_configPath );
+        fs::rename( newConfigPath, m_configPath );
+        fs::remove( rotation_info_file_path );
+        ExitHandler::exitHandler( SIGABRT );
+    }
+}
 
 void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
     nlohmann::json rotationJson = nlohmann::json::object();
@@ -54,15 +74,19 @@ void InstanceMonitor::restoreRotationParams() {
         std::ifstream rotateFile( rotation_info_file_path.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        auto isExit = rotateJson["isExit"].get< uint64_t >();
+        auto isExit = rotateJson["isExit"].get< bool >();
         m_finishTimestamp = rotateTimestamp;
         m_isExit = isExit;
     }
 }
 
-void InstanceMonitor::restart() {}
+void InstanceMonitor::restartInstance() {
+    std::cout << "RESTARTING...\n";
+}
 
-void InstanceMonitor::shutdown() {}
+void InstanceMonitor::shutdownInstance() {
+    std::cout << "EXITING...\n";
+}
 
 uint64_t InstanceMonitor::getFinishTimestamp() {
     restoreRotationParams();
