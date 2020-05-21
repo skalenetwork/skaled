@@ -23,17 +23,17 @@
  */
 
 
-#include "SkaleMonitor.h"
+#include "InstanceMonitor.h"
 #include <libdevcore/FileSystem.h>
 #include <json.hpp>
 
 namespace fs = boost::filesystem;
 
-const fs::path SkaleMonitor::rotation_info_file_path = dev::getDataDir() / "rotation.txt";
+const fs::path InstanceMonitor::rotation_info_file_path = dev::getDataDir() / "rotation.txt";
 
-void SkaleMonitor::performRotation() {}
+void InstanceMonitor::performRotation() {}
 
-void SkaleMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
+void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
     nlohmann::json rotationJson = nlohmann::json::object();
     rotationJson["timestamp"] = _timestamp;
     rotationJson["isExit"] = _isExit;
@@ -42,12 +42,12 @@ void SkaleMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
     rotationFile << rotationJson;
 }
 
-bool SkaleMonitor::isTimeToRotate( uint64_t _timestamp ) {
+bool InstanceMonitor::isTimeToRotate( uint64_t _timestamp ) {
     return getFinishTimestamp() <= _timestamp;
 }
 
-void SkaleMonitor::restoreRotationParams() {
-    if ( SkaleMonitor::m_finishTimestamp == 0 && fs::exists( rotation_info_file_path ) ) {
+void InstanceMonitor::restoreRotationParams() {
+    if ( InstanceMonitor::m_finishTimestamp == 0 && fs::exists( rotation_info_file_path ) ) {
         std::ifstream rotateFile( rotation_info_file_path.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
@@ -57,16 +57,16 @@ void SkaleMonitor::restoreRotationParams() {
     }
 }
 
-void SkaleMonitor::restartInstance() {}
+void InstanceMonitor::restart() {}
 
-void SkaleMonitor::shutDownInstance() {}
+void InstanceMonitor::shutdown() {}
 
-uint64_t SkaleMonitor::getFinishTimestamp() {
+uint64_t InstanceMonitor::getFinishTimestamp() {
     restoreRotationParams();
     return m_finishTimestamp;
 }
 
-bool SkaleMonitor::getIsExit() {
+bool InstanceMonitor::getIsExit() {
     restoreRotationParams();
     return m_isExit;
 }

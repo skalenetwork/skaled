@@ -81,7 +81,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 
 Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
-    std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
+    std::shared_ptr< SnapshotManager > _snapshotManager,
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l, bool isStartedFromSnapshot )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
@@ -91,6 +92,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_postSeal( chainParams().accountStartNonce ),
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
+      m_instanceMonitor( _instanceMonitor ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
     init( _dbPath, _forceAction, _networkID );
 }
@@ -630,7 +632,7 @@ void Client::handleRotation( uint64_t _timestamp ) const {
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
         if ( rotateTimestamp <= _timestamp ) {
             auto isExit = rotateJson["isExit"].get< bool >();
-            ExitHandler::exitHandler( isExit ? SIGTERM : SIGABRT );
+            std::cout << "Got rotation " << isExit;
         }  // if
     }
 }

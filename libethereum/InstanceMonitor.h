@@ -28,9 +28,9 @@
 
 namespace fs = boost::filesystem;
 
-class SkaleMonitor {
+class InstanceMonitor {
 public:
-    explicit SkaleMonitor( const boost::filesystem::path& _configPath )
+    explicit InstanceMonitor( const boost::filesystem::path& _configPath )
         : m_configPath( _configPath ), m_finishTimestamp( 0 ), m_isExit( false ) {}
     void performRotation();
     void initRotationParams( uint64_t _timestamp, bool _isExit );
@@ -47,6 +47,6 @@ private:
     static const fs::path rotation_info_file_path;
 
     void restoreRotationParams();
-    void restartInstance();
-    void shutDownInstance();
+    void restart();
+    void shutdown();
 };

@@ -1319,6 +1319,9 @@ int main( int argc, char** argv ) try {
 
     std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
+    std::shared_ptr< InstanceMonitor > instanceMonitor;
+
+    instanceMonitor.reset( new InstanceMonitor( configPath ) );
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1328,12 +1331,12 @@ int main( int argc, char** argv ) try {
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );

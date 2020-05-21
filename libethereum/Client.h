@@ -49,6 +49,7 @@
 #include "BlockChainImporter.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
+#include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
@@ -81,6 +82,7 @@ class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
@@ -461,6 +463,7 @@ protected:
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
