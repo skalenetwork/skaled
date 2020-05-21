@@ -468,7 +468,7 @@ private:
     void fillLastSnapshotTime();
     void performRestart() const;
     void performExit() const;
-    void performRotation( uint64_t _timestamp ) const;
+    void handleRotation( uint64_t _timestamp ) const;
 
 
     int64_t last_snapshot_time = -1;

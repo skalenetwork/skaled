@@ -450,11 +450,7 @@ size_t Client::importTransactionsAsBlock(
         sealUnconditionally( false );
         importWorkingBlock();
 
-        if ( this->isTimeToRotate( _timestamp ) ) {
-            std::cout << "ROTATE";
-        } else {
-            std::cout << "NO ROTATE";
-        }
+        this->handleRotation( _timestamp );
         return n_succeeded;
     }
     assert( false );
@@ -608,7 +604,7 @@ bool Client::isTimeToRotate( uint64_t _timestamp ) const {
         std::ifstream rotateFile( rotateFilePath.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        if ( _timestamp < rotateTimestamp ) {
+        if ( rotateTimestamp <= _timestamp ) {
             return true;
         }
     }
@@ -626,17 +622,21 @@ void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
     rotationFile << rotationJson;
 }
 
-void Client::performRestart() const {}
+void Client::performRestart() const {
+    std::cout << "Skaled will restart";
+}
 
-void Client::performExit() const {}
+void Client::performExit() const {
+    std::cout << "Skaled will exit";
+}
 
-void Client::performRotation( uint64_t _timestamp ) const {
+void Client::handleRotation( uint64_t _timestamp ) const {
     fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
     if ( fs::exists( rotateFilePath ) ) {
         std::ifstream rotateFile( rotateFilePath.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        if ( _timestamp <= rotateTimestamp ) {
+        if ( rotateTimestamp <= _timestamp ) {
             auto isExit = rotateJson["isExit"].get< bool >();
             if ( isExit ) {
                 Client::performExit();
