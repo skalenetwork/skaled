@@ -2171,7 +2171,7 @@ int main( int argc, char** argv ) try {
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
-        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGINT ); } );
+        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGABRT ); } );
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
