@@ -716,6 +716,58 @@ contract Logger{
         BOOST_REQUIRE_EQUAL(block, i+2);
     }// for
 
+    string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
+
+    // add 256 more blocks
+    for(int i=0; i<256; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
+
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
+
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512);
+
+    // ask for logs
+    t["toBlock"] = 512;
+    logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 256+64);
+
+    ///////////////// OTHER CALLS //////////////////
+    string existing = "0x1ff"; string existing_hash = logs[256+64-1-1]["blockHash"].asString();
+
+    Json::Value res;
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
+    BOOST_REQUIRE_EQUAL(res["number"], existing);
+    BOOST_REQUIRE(res["transactions"].isArray() && res["transactions"].size() == 1);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByNumber(nonexisting, true), jsonrpc::JsonRpcException);
+
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByHash(existing_hash, false));
+    BOOST_REQUIRE_EQUAL(res["number"], existing);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByHash(nonexisting_hash, true), jsonrpc::JsonRpcException);
+
+
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByNumber(existing));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByNumber(nonexisting), jsonrpc::JsonRpcException);
+
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByHash(existing_hash));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByHash(nonexisting_hash), jsonrpc::JsonRpcException);
+
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockNumber(existing));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockNumber(nonexisting), jsonrpc::JsonRpcException);
+
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockHash(existing_hash));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockHash(nonexisting_hash), jsonrpc::JsonRpcException);
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
