@@ -452,7 +452,9 @@ size_t Client::importTransactionsAsBlock(
         sealUnconditionally( false );
         importWorkingBlock();
 
-        this->handleRotation( _timestamp );
+        if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
+            std::cout << "ROTATION\n";
+        }
         return n_succeeded;
     }
     assert( false );
@@ -600,41 +602,8 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
            this->last_snapshot_time / uint64_t( snapshotIntervalMs );
 }
 
-bool Client::isTimeToRotate( uint64_t _timestamp ) const {
-    fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
-    if ( fs::exists( rotateFilePath ) ) {
-        std::ifstream rotateFile( rotateFilePath.string() );
-        auto rotateJson = nlohmann::json::parse( rotateFile );
-        auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        if ( rotateTimestamp <= _timestamp ) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
-    fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
-
-    nlohmann::json rotationJson = nlohmann::json::object();
-    rotationJson["timestamp"] = _timestamp;
-    rotationJson["isExit"] = _isExit;
-
-    std::ofstream rotationFile( rotateFilePath.string() );
-    rotationFile << rotationJson;
-}
-
-void Client::handleRotation( uint64_t _timestamp ) const {
-    fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
-    if ( fs::exists( rotateFilePath ) ) {
-        std::ifstream rotateFile( rotateFilePath.string() );
-        auto rotateJson = nlohmann::json::parse( rotateFile );
-        auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        if ( rotateTimestamp <= _timestamp ) {
-            auto isExit = rotateJson["isExit"].get< bool >();
-            std::cout << "Got rotation " << isExit;
-        }  // if
-    }
+    m_instanceMonitor->initRotationParams( _timestamp, _isExit );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {

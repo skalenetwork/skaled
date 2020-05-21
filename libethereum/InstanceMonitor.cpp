@@ -43,6 +43,9 @@ void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _timestamp ) {
+    if ( !fs::exists( rotation_info_file_path ) ) {
+        return false;
+    }
     return getFinishTimestamp() <= _timestamp;
 }
 

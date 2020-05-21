@@ -467,9 +467,7 @@ protected:
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
-    inline bool isTimeToRotate( uint64_t _timestamp ) const;
     void fillLastSnapshotTime();
-    void handleRotation( uint64_t _timestamp ) const;
 
 
     int64_t last_snapshot_time = -1;
