@@ -279,7 +279,7 @@ Json::Value WebThreeStubClient::eth_getBlockTransactionCountByHash( const std::s
     Json::Value p;
     p.append( param1 );
     Json::Value result = this->CallMethod( "eth_getBlockTransactionCountByHash", p );
-    if ( result.isObject() )
+    if ( result.isString() )
         return result;
     else
         throw jsonrpc::JsonRpcException(
@@ -290,7 +290,7 @@ Json::Value WebThreeStubClient::eth_getBlockTransactionCountByNumber( const std:
     Json::Value p;
     p.append( param1 );
     Json::Value result = this->CallMethod( "eth_getBlockTransactionCountByNumber", p );
-    if ( result.isObject() )
+    if ( result.isString() )
         return result;
     else
         throw jsonrpc::JsonRpcException(
@@ -301,7 +301,7 @@ Json::Value WebThreeStubClient::eth_getUncleCountByBlockHash( const std::string&
     Json::Value p;
     p.append( param1 );
     Json::Value result = this->CallMethod( "eth_getUncleCountByBlockHash", p );
-    if ( result.isObject() )
+    if ( result.isString() )
         return result;
     else
         throw jsonrpc::JsonRpcException(
@@ -312,7 +312,7 @@ Json::Value WebThreeStubClient::eth_getUncleCountByBlockNumber( const std::strin
     Json::Value p;
     p.append( param1 );
     Json::Value result = this->CallMethod( "eth_getUncleCountByBlockNumber", p );
-    if ( result.isObject() )
+    if ( result.isString() )
         return result;
     else
         throw jsonrpc::JsonRpcException(
