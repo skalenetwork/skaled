@@ -431,13 +431,13 @@ size_t Client::importTransactionsAsBlock(
                         cerror << "\n"
                                << skutils::signal::generate_stack_trace() << "\n"
                                << std::endl;
-                        ExitHandler::exitHandler( 0 );
+                        ExitHandler::exitHandler( SIGABRT );
                     } catch ( ... ) {
                         cerror << "CRITICAL unknown exception in computeSnapshotHash(). Exiting";
                         cerror << "\n"
                                << skutils::signal::generate_stack_trace() << "\n"
                                << std::endl;
-                        ExitHandler::exitHandler( 0 );
+                        ExitHandler::exitHandler( SIGABRT );
                     }
                 } )
                     .detach();
@@ -622,14 +622,6 @@ void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
     rotationFile << rotationJson;
 }
 
-void Client::performRestart() const {
-    std::cout << "Skaled will restart";
-}
-
-void Client::performExit() const {
-    std::cout << "Skaled will exit";
-}
-
 void Client::handleRotation( uint64_t _timestamp ) const {
     fs::path rotateFilePath = dev::getDataDir() / "rotation.txt";
     if ( fs::exists( rotateFilePath ) ) {
@@ -638,12 +630,8 @@ void Client::handleRotation( uint64_t _timestamp ) const {
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
         if ( rotateTimestamp <= _timestamp ) {
             auto isExit = rotateJson["isExit"].get< bool >();
-            if ( isExit ) {
-                Client::performExit();
-            } else {
-                Client::performRestart();
-            }
-        }
+            ExitHandler::exitHandler( isExit ? SIGTERM : SIGABRT );
+        }  // if
     }
 }
 
