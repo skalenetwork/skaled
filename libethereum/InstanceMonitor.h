@@ -44,20 +44,15 @@ public:
 
 protected:
     void restoreRotationParams();
-    [[nodiscard]] uint64_t finishTimestamp() const {
-        return m_finishTimestamp;
-    }
+    [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
 
-    [[nodiscard]] bool isExit() const {
+        [[nodiscard]] bool isExit() const {
         return m_isExit;
     }
 
-    [[nodiscard]] fs::path rotationFilePath() const {
-        return m_rotationFilePath;
-    }
+    [[nodiscard]] fs::path rotationFilePath() const { return m_rotationFilePath; }
 
-private:
-    boost::filesystem::path const m_configPath;
+    private : boost::filesystem::path const m_configPath;
     uint64_t m_finishTimestamp;
     bool m_isExit;
     const fs::path m_rotationFilePath;
