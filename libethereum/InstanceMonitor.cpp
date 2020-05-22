@@ -28,17 +28,16 @@
 #include <json.hpp>
 
 #include <libdevcore/Common.h>
-#include <libdevcore/FileSystem.h>
 
 using namespace dev;
 namespace fs = boost::filesystem;
 
-const fs::path InstanceMonitor::rotation_info_file_path = dev::getDataDir() / "rotation.txt";
+const std::string InstanceMonitor::rotation_file_name = "rotation.txt";
 const std::string InstanceMonitor::temp_config_ext = ".tmp";
 
 void InstanceMonitor::performRotation() {
     if ( getIsExit() ) {
-        fs::remove( rotation_info_file_path );
+        fs::remove( m_rotationFilePath );
         ExitHandler::exitHandler( SIGTERM );
     } else {
         fs::path newConfigPath = m_configPath;
@@ -48,7 +47,7 @@ void InstanceMonitor::performRotation() {
         }
         fs::remove( m_configPath );
         fs::rename( newConfigPath, m_configPath );
-        fs::remove( rotation_info_file_path );
+        fs::remove( m_rotationFilePath );
         ExitHandler::exitHandler( SIGABRT );
     }
 }
@@ -58,20 +57,20 @@ void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
     rotationJson["timestamp"] = _timestamp;
     rotationJson["isExit"] = _isExit;
 
-    std::ofstream rotationFile( rotation_info_file_path.string() );
+    std::ofstream rotationFile( m_rotationFilePath.string() );
     rotationFile << rotationJson;
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _timestamp ) {
-    if ( !fs::exists( rotation_info_file_path ) ) {
+    if ( !fs::exists( m_rotationFilePath ) ) {
         return false;
     }
     return getFinishTimestamp() <= _timestamp;
 }
 
 void InstanceMonitor::restoreRotationParams() {
-    if ( InstanceMonitor::m_finishTimestamp == 0 && fs::exists( rotation_info_file_path ) ) {
-        std::ifstream rotateFile( rotation_info_file_path.string() );
+    if ( InstanceMonitor::m_finishTimestamp == 0 && fs::exists( m_rotationFilePath ) ) {
+        std::ifstream rotateFile( m_rotationFilePath.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
         auto isExit = rotateJson["isExit"].get< bool >();

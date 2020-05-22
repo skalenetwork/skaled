@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <libdevcore/FileSystem.h>
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
@@ -31,7 +32,10 @@ namespace fs = boost::filesystem;
 class InstanceMonitor {
 public:
     explicit InstanceMonitor( const boost::filesystem::path& _configPath )
-        : m_configPath( _configPath ), m_finishTimestamp( 0 ), m_isExit( false ) {}
+        : m_configPath( _configPath ),
+          m_finishTimestamp( 0 ),
+          m_isExit( false ),
+          m_rotationFilePath( dev::getDataDir() / rotation_file_name ) {}
     void performRotation();
     void initRotationParams( uint64_t _timestamp, bool _isExit );
     bool isTimeToRotate( uint64_t _timestamp );
@@ -44,7 +48,9 @@ private:
     boost::filesystem::path const m_configPath;
     uint64_t m_finishTimestamp;
     bool m_isExit;
-    static const fs::path rotation_info_file_path;
+    const fs::path m_rotationFilePath;
+
+    static const std::string rotation_file_name;
     static const std::string temp_config_ext;
 
     void restoreRotationParams();
