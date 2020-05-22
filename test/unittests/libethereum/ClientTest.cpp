@@ -123,7 +123,7 @@ public:
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, NULL, dir, WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -189,7 +189,7 @@ public:
         mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ) );
 
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), mgr, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), mgr, shared_ptr< InstanceMonitor >(), dir, WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<

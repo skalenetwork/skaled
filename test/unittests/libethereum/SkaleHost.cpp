@@ -104,7 +104,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         client = make_unique< Client >(
-            chainParams, chainParams.networkID, gasPricer, nullptr, tempDir.path() );
+            chainParams, chainParams.networkID, gasPricer, nullptr, nullptr, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 

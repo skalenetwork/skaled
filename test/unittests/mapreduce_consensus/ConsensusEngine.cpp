@@ -217,7 +217,7 @@ public:
 
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, NULL, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();

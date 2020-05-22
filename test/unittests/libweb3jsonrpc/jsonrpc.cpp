@@ -211,7 +211,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            true ) );
 
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, tempDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, NULL, tempDir.path(), WithExisting::Kill ) );
 
         //        client.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
