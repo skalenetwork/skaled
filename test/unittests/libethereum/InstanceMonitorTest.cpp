@@ -3,6 +3,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
+#include <json.hpp>
 
 using namespace dev;
 using namespace dev::eth;
@@ -29,6 +30,8 @@ public:
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {
 public:
+    fs::path configPath = "testConfig.json";
+
     InstanceMonitorTestFixture() : instanceMonitor( configPath ) {
         std::fstream file;
         file.open( configPath.string(), std::ios::out );
@@ -36,7 +39,6 @@ public:
     }
 
     InstanceMonitorMock instanceMonitor;
-    fs::path configPath = "testConfig.json";
     fs::path rotationFilePath;
 
     ~InstanceMonitorTestFixture() override {
@@ -58,7 +60,33 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     instanceMonitor.initRotationParams(ts, isExit);
     BOOST_CHECK_EQUAL(instanceMonitor.getIsExit(), isExit);
     BOOST_CHECK_EQUAL(instanceMonitor.getFinishTimestamp(), ts);
+
     BOOST_REQUIRE(fs::exists(instanceMonitor.getRotationFilePath()));
+
+    auto rotateJson = nlohmann::json::parse( rotateFile );
+    BOOST_CHECK_EQUAL(rotateJson["isExit"].get< bool >(), isExit);
+    BOOST_CHECK_EQUAL(rotateJson["timestamp"].get< uint64_t >(), ts);
 }
+
+BOOST_AUTO_TEST_CASE( test_isTimeToRotate_false ) {
+    uint64_t currentTime = 100;
+    uint64_t finishTime = 200;
+    BOOST_REQUIRE(!instanceMonitor.isTimeToRotate(currentTime));
+    instanceMonitor.initRotationParams(finishTime, false);
+    BOOST_REQUIRE(!instanceMonitor.isTimeToRotate(currentTime));
+}
+
+BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
+    uint64_t currentTime = 100;
+
+    BOOST_REQUIRE(!instanceMonitor.isTimeToRotate(currentTime));
+
+    instanceMonitor.initRotationParams(100, false);
+    BOOST_REQUIRE(instanceMonitor.isTimeToRotate(currentTime));
+
+    instanceMonitor.initRotationParams(50, false);
+    BOOST_REQUIRE(instanceMonitor.isTimeToRotate(currentTime));
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
