@@ -686,6 +686,18 @@ contract Logger{
     Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
     string contractAddress = deployReceipt["contractAddress"].asString();
 
+    Json::Value filterObj;
+    filterObj["address"] = contractAddress;
+    filterObj["fromBlock"] = "0x1";
+    string filterId = fixture.rpcClient->eth_newFilter( filterObj );
+
+    Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId);
+    BOOST_REQUIRE(res.isArray());
+    BOOST_REQUIRE_EQUAL(res.size(), 0);
+    res = fixture.rpcClient->eth_getFilterChanges(filterId);
+    BOOST_REQUIRE(res.isArray());
+    BOOST_REQUIRE_EQUAL(res.size(), 0);
+
     // need blockNumber==256 afterwards
     for(int i=0; i<255; ++i){
         Json::Value t;
@@ -740,10 +752,15 @@ contract Logger{
     BOOST_REQUIRE(logs.isArray());
     BOOST_REQUIRE_EQUAL(logs.size(), 256+64);
 
+    // and filter
+    res = fixture.rpcClient->eth_getFilterChanges(filterId);
+    BOOST_REQUIRE_EQUAL(res.size(), (256+255)*2);     // HACK!! in prod there should be *1! (no pending!)
+    res = fixture.rpcClient->eth_getFilterLogs(filterId);
+    BOOST_REQUIRE_EQUAL(res.size(), 256+64);
+
     ///////////////// OTHER CALLS //////////////////
     string existing = "0x1ff"; string existing_hash = logs[256+64-1-1]["blockHash"].asString();
 
-    Json::Value res;
     BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
     BOOST_REQUIRE_EQUAL(res["number"], existing);
     BOOST_REQUIRE(res["transactions"].isArray() && res["transactions"].size() == 1);
