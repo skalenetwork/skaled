@@ -36,7 +36,7 @@ const std::string InstanceMonitor::rotation_file_name = "rotation.txt";
 const std::string InstanceMonitor::temp_config_ext = ".tmp";
 
 void InstanceMonitor::performRotation() {
-    if ( getIsExit() ) {
+    if ( m_isExit ) {
         fs::remove( m_rotationFilePath );
         ExitHandler::exitHandler( SIGTERM );
     } else {
@@ -59,17 +59,20 @@ void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
 
     std::ofstream rotationFile( m_rotationFilePath.string() );
     rotationFile << rotationJson;
+
+    m_finishTimestamp = _timestamp;
+    m_isExit = _isExit;
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _timestamp ) {
     if ( !fs::exists( m_rotationFilePath ) ) {
         return false;
     }
-    return getFinishTimestamp() <= _timestamp;
+    return m_finishTimestamp <= _timestamp;
 }
 
 void InstanceMonitor::restoreRotationParams() {
-    if ( InstanceMonitor::m_finishTimestamp == 0 && fs::exists( m_rotationFilePath ) ) {
+    if ( fs::exists( m_rotationFilePath ) ) {
         std::ifstream rotateFile( m_rotationFilePath.string() );
         auto rotateJson = nlohmann::json::parse( rotateFile );
         auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
@@ -77,22 +80,4 @@ void InstanceMonitor::restoreRotationParams() {
         m_finishTimestamp = rotateTimestamp;
         m_isExit = isExit;
     }
-}
-
-void InstanceMonitor::restartInstance() {
-    std::cout << "RESTARTING...\n";
-}
-
-void InstanceMonitor::shutdownInstance() {
-    std::cout << "EXITING...\n";
-}
-
-uint64_t InstanceMonitor::getFinishTimestamp() {
-    restoreRotationParams();
-    return m_finishTimestamp;
-}
-
-bool InstanceMonitor::getIsExit() {
-    restoreRotationParams();
-    return m_isExit;
 }

@@ -35,14 +35,15 @@ public:
         : m_configPath( _configPath ),
           m_finishTimestamp( 0 ),
           m_isExit( false ),
-          m_rotationFilePath( dev::getDataDir() / rotation_file_name ) {}
+          m_rotationFilePath( dev::getDataDir() / rotation_file_name ) {
+        restoreRotationParams();
+    }
     void performRotation();
     void initRotationParams( uint64_t _timestamp, bool _isExit );
     bool isTimeToRotate( uint64_t _timestamp );
 
 protected:
-    uint64_t getFinishTimestamp();
-    bool getIsExit();
+    void restoreRotationParams();
 
 private:
     boost::filesystem::path const m_configPath;
@@ -52,8 +53,4 @@ private:
 
     static const std::string rotation_file_name;
     static const std::string temp_config_ext;
-
-    void restoreRotationParams();
-    void restartInstance();
-    void shutdownInstance();
 };
