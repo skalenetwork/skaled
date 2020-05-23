@@ -215,9 +215,10 @@ public:
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
+        auto monitor = make_shared< InstanceMonitor >("test");
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, NULL, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, monitor, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();

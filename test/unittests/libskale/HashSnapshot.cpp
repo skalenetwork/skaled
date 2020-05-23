@@ -307,8 +307,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         newFileHash << fileHash;
 
+        auto monitor = make_shared< InstanceMonitor >("test");
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
+            shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
         //        client.reset(
