@@ -6,6 +6,9 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
       - name: Extract repo name
         run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
