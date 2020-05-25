@@ -49,6 +49,7 @@
 #include "BlockChainImporter.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
+#include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
@@ -81,6 +82,7 @@ class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
@@ -265,6 +267,9 @@ public:
         m_snapshotManager->leaveNLastDiffs( 2 );
         return path;
     }
+
+    // set restarting or exiting time for node rotation
+    void setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
         return this->m_snapshotManager->getSnapshotHash( _blockNumber );
@@ -458,10 +463,13 @@ protected:
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void fillLastSnapshotTime();
+
+
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
     bool is_started_from_snapshot = true;

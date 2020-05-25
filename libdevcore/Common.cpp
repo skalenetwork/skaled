@@ -86,5 +86,6 @@ string inUnits( bigint const& _b, strings const& _units ) {
 }
 
 volatile bool ExitHandler::s_shouldExit = false;
+volatile int ExitHandler::m_signal = -1;
 
 }  // namespace dev

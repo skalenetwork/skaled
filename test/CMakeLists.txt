@@ -60,7 +60,7 @@ endforeach(file)
 hunter_add_package(yaml-cpp)
 find_package(yaml-cpp CONFIG REQUIRED)
 
-add_executable(testeth ${sources})
+add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()

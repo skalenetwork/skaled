@@ -166,6 +166,8 @@ protected:
         const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
     bool checkParamsIsArray(
         const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    bool checkParamsIsObject(
+        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
     void eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_logs( const nlohmann::json& joRequest, nlohmann::json& joResponse );
@@ -175,6 +177,8 @@ protected:
         const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions );
     void eth_subscribe_skaleStats( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+    void eth_setRestartOrExitTime( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
     friend class SkaleRelayWS;

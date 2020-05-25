@@ -47,6 +47,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include <signal.h>
+
 #pragma warning( push )
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -329,11 +332,16 @@ int64_t utcTime();
 
 class ExitHandler {
 public:
-    static void exitHandler( int ) { s_shouldExit = true; }
-    bool shouldExit() const { return s_shouldExit; }
+    static void exitHandler( int s ) {
+        m_signal = s;
+        s_shouldExit = true;
+    }
+    static bool shouldExit() { return s_shouldExit; }
+    static int getSignal() { return m_signal; }
 
 private:
     static volatile bool s_shouldExit;
+    static volatile int m_signal;
 };
 
 }  // namespace dev

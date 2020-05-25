@@ -210,8 +210,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
+        auto monitor = make_shared< InstanceMonitor >("test");
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, tempDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
         //        client.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
