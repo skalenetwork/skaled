@@ -257,7 +257,7 @@ map_method_call_stats_t g_map_method_traffic_stats_in;
 map_method_call_stats_t g_map_method_traffic_stats_out;
 static size_t g_nDefaultQueueSize = 10;
 
-static skutils::stats::named_event_stats& stat_sybsystem_call_queue( const char* strSubSystem ) {
+static skutils::stats::named_event_stats& stat_subsystem_call_queue( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_call_stats.find( strSubSystem ),
                                       itEnd = g_map_method_call_stats.end();
@@ -270,7 +270,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_call_queue( const char*
     g_map_method_call_stats[strSubSystem] = x;
     return ( *x );
 }
-static skutils::stats::named_event_stats& stat_sybsystem_answer_queue( const char* strSubSystem ) {
+static skutils::stats::named_event_stats& stat_subsystem_answer_queue( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_answer_stats.find( strSubSystem ),
                                       itEnd = g_map_method_answer_stats.end();
@@ -283,7 +283,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_answer_queue( const cha
     g_map_method_answer_stats[strSubSystem] = x;
     return ( *x );
 }
-static skutils::stats::named_event_stats& stat_sybsystem_error_queue( const char* strSubSystem ) {
+static skutils::stats::named_event_stats& stat_subsystem_error_queue( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_error_stats.find( strSubSystem ),
                                       itEnd = g_map_method_error_stats.end();
@@ -296,7 +296,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_error_queue( const char
     g_map_method_error_stats[strSubSystem] = x;
     return ( *x );
 }
-static skutils::stats::named_event_stats& stat_sybsystem_exception_queue(
+static skutils::stats::named_event_stats& stat_subsystem_exception_queue(
     const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     map_method_call_stats_t::iterator itFind = g_map_method_exception_stats.find( strSubSystem ),
@@ -311,7 +311,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_exception_queue(
     return ( *x );
 }
 
-static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_in(
+static skutils::stats::named_event_stats& stat_subsystem_traffic_queue_in(
     const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     const auto itFind = g_map_method_traffic_stats_in.find( strSubSystem );
@@ -324,7 +324,7 @@ static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_in(
     g_map_method_traffic_stats_in[strSubSystem] = x;
     return ( *x );
 }
-static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_out(
+static skutils::stats::named_event_stats& stat_subsystem_traffic_queue_out(
     const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     const auto itFind = g_map_method_traffic_stats_out.find( strSubSystem );
@@ -342,33 +342,33 @@ static skutils::stats::named_event_stats& stat_sybsystem_traffic_queue_out(
 void register_stats_message(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
+    skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
     cq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     cq.event_add( strMethodName );
-    skutils::stats::named_event_stats& tq = stat_sybsystem_traffic_queue_in( strSubSystem );
+    skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_in( strSubSystem );
     tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_answer(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
     aq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     aq.event_add( strMethodName );
 
-    skutils::stats::named_event_stats& tq = stat_sybsystem_traffic_queue_out( strSubSystem );
+    skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_out( strSubSystem );
     tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_error( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& eq = stat_sybsystem_error_queue( strSubSystem );
+    skutils::stats::named_event_stats& eq = stat_subsystem_error_queue( strSubSystem );
     eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     eq.event_add( strMethodName );
 }
 void register_stats_exception( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& eq = stat_sybsystem_exception_queue( strSubSystem );
+    skutils::stats::named_event_stats& eq = stat_subsystem_exception_queue( strSubSystem );
     eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
     eq.event_add( strMethodName );
 }
@@ -398,12 +398,12 @@ void register_stats_exception( const char* strSubSystem, const nlohmann::json& j
 static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
     nlohmann::json jo = nlohmann::json::object();
-    skutils::stats::named_event_stats& cq = stat_sybsystem_call_queue( strSubSystem );
-    skutils::stats::named_event_stats& aq = stat_sybsystem_answer_queue( strSubSystem );
-    skutils::stats::named_event_stats& erq = stat_sybsystem_error_queue( strSubSystem );
-    skutils::stats::named_event_stats& exq = stat_sybsystem_exception_queue( strSubSystem );
-    skutils::stats::named_event_stats& tq_in = stat_sybsystem_traffic_queue_in( strSubSystem );
-    skutils::stats::named_event_stats& tq_out = stat_sybsystem_traffic_queue_out( strSubSystem );
+    skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
+    skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
+    skutils::stats::named_event_stats& erq = stat_subsystem_error_queue( strSubSystem );
+    skutils::stats::named_event_stats& exq = stat_subsystem_exception_queue( strSubSystem );
+    skutils::stats::named_event_stats& tq_in = stat_subsystem_traffic_queue_in( strSubSystem );
+    skutils::stats::named_event_stats& tq_out = stat_subsystem_traffic_queue_out( strSubSystem );
     std::set< std::string > setNames = cq.all_queue_names(), setNames_aq = aq.all_queue_names(),
                             setNames_erq = erq.all_queue_names(),
                             setNames_exq = exq.all_queue_names(),
@@ -428,27 +428,27 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
     for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
           ++itNameWalk ) {
         const std::string& strMethodName = ( *itNameWalk );
-        size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptopns = 0;
+        size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptions = 0;
         skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
         skutils::stats::time_point tpNow = skutils::stats::clock::now();
         double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, nullptr, &nCalls );
         double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, nullptr, &nAnswers );
         double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, nullptr, &nErrors );
-        double lfExceptopnsPerSecond =
-            exq.compute_eps( strMethodName, tpNow, nullptr, &nExceptopns );
+        double lfExceptionsPerSecond =
+            exq.compute_eps( strMethodName, tpNow, nullptr, &nExceptions );
         double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv );
         double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow, &nBytesSent );
         nlohmann::json joMethod = nlohmann::json::object();
         joMethod["cps"] = lfCallsPerSecond;
         joMethod["aps"] = lfAnswersPerSecond;
         joMethod["erps"] = lfErrorsPerSecond;
-        joMethod["exps"] = lfExceptopnsPerSecond;
+        joMethod["exps"] = lfExceptionsPerSecond;
         joMethod["bps_recv"] = lfBytesPerSecondRecv;
         joMethod["bps_sent"] = lfBytesPerSecondSent;
         joMethod["calls"] = nCalls;
         joMethod["answers"] = nAnswers;
         joMethod["errors"] = nErrors;
-        joMethod["exceptions"] = nExceptopns;
+        joMethod["exceptions"] = nExceptions;
         joMethod["bytes_recv"] = nBytesRecv;
         joMethod["bytes_sent"] = nBytesSent;
         jo[strMethodName] = joMethod;
@@ -633,7 +633,7 @@ SkaleWsPeer::~SkaleWsPeer() {
     if ( pSO->m_bTraceCalls )
         clog( dev::VerbosityTrace, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                                        cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::notice( " peer dctor" ) );
+            << ( desc() + cc::notice( " peer dtor" ) );
     uninstallAllWatches();
     skutils::dispatch::remove( m_strPeerQueueID );
 }
@@ -1027,34 +1027,34 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
     if ( !checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
     const nlohmann::json& jarrParams = joRequest["params"];
-    std::string strSubcscriptionType;
+    std::string strSubscriptionType;
     size_t idxParam, cntParams = jarrParams.size();
     for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
         const nlohmann::json& joParamItem = jarrParams[idxParam];
         if ( !joParamItem.is_string() )
             continue;
-        strSubcscriptionType = skutils::tools::trim_copy( joParamItem.get< std::string >() );
+        strSubscriptionType = skutils::tools::trim_copy( joParamItem.get< std::string >() );
         break;
     }
-    if ( strSubcscriptionType == "logs" ) {
+    if ( strSubscriptionType == "logs" ) {
         eth_subscribe_logs( joRequest, joResponse );
         return;
     }
-    if ( strSubcscriptionType == "newPendingTransactions" ||
-         strSubcscriptionType == "pendingTransactions" ) {
+    if ( strSubscriptionType == "newPendingTransactions" ||
+         strSubscriptionType == "pendingTransactions" ) {
         eth_subscribe_newPendingTransactions( joRequest, joResponse );
         return;
     }
-    if ( strSubcscriptionType == "newHeads" || strSubcscriptionType == "newBlockHeaders" ) {
+    if ( strSubscriptionType == "newHeads" || strSubscriptionType == "newBlockHeaders" ) {
         eth_subscribe_newHeads( joRequest, joResponse, false );
         return;
     }
-    if ( strSubcscriptionType == "skaleStats" ) {
+    if ( strSubscriptionType == "skaleStats" ) {
         eth_subscribe_skaleStats( joRequest, joResponse );
         return;
     }
-    if ( strSubcscriptionType.empty() )
-        strSubcscriptionType = "<empty>";
+    if ( strSubscriptionType.empty() )
+        strSubscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
     if ( pSO->m_bTraceCalls )
         clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
@@ -1063,13 +1063,13 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
             << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe" ) +
                    cc::error( " rpc method, missing valid subscription type in parameters, was "
                               "specifiedL " ) +
-                   cc::warn( strSubcscriptionType ) );
+                   cc::warn( strSubscriptionType ) );
     nlohmann::json joError = nlohmann::json::object();
     joError["code"] = -32603;
     joError["message"] =
         "error in \"eth_subscribe\" rpc method, missing valid subscription type in parameters, was "
         "specified: " +
-        strSubcscriptionType;
+        strSubscriptionType;
     joResponse["error"] = joError;
 }
 
@@ -1105,7 +1105,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                  joRW.count( "blockHash" ) > 0 &&
                                  joRW.count( "blockNumber" ) > 0 ) {
                                 std::string strBlockHash = joRW["blockHash"].get< std::string >();
-                                unsigned nBlockBumber = joRW["blockNumber"].get< unsigned >();
+                                unsigned nBlockNumber = joRW["blockNumber"].get< unsigned >();
                                 const nlohmann::json& joResultLogs = joRW["logs"];
                                 if ( joResultLogs.is_array() ) {
                                     for ( const auto& joWalk : joResultLogs ) {
@@ -1113,7 +1113,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                             continue;
                                         nlohmann::json joLog = joWalk;  // copy
                                         joLog["blockHash"] = strBlockHash;
-                                        joLog["blockNumber"] = nBlockBumber;
+                                        joLog["blockNumber"] = nBlockNumber;
                                         nlohmann::json joParams = nlohmann::json::object();
                                         joParams["subscription"] = dev::toJS( iw );
                                         joParams["result"] = joLog;
@@ -1543,11 +1543,11 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                                                           cc::debug( "/" ) +
                                                           cc::num10( getRelay().serverIndex() ) )
                     << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_unsubscribe" ) +
-                           cc::error( " rpc method, bad subsription ID " ) + cc::j( joParamItem ) );
+                           cc::error( " rpc method, bad subscription ID " ) + cc::j( joParamItem ) );
             nlohmann::json joError = nlohmann::json::object();
             joError["code"] = -32602;
             joError["message"] =
-                "error in \"eth_unsubscribe\" rpc method, ad subsription ID " + joParamItem.dump();
+                "error in \"eth_unsubscribe\" rpc method, ad subscription ID " + joParamItem.dump();
             joResponse["error"] = joError;
             return;
         }
@@ -1563,13 +1563,13 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                             cc::num10( getRelay().serverIndex() ) )
                         << ( desc() + " " + cc::error( "error in " ) +
                                cc::warn( "eth_unsubscribe/newPendingTransactionWatch" ) +
-                               cc::error( " rpc method, bad subsription ID " ) +
+                               cc::error( " rpc method, bad subscription ID " ) +
                                cc::warn( strIW ) );
                 nlohmann::json joError = nlohmann::json::object();
                 joError["code"] = -32602;
                 joError["message"] =
                     "error in \"eth_unsubscribe/newPendingTransactionWatch\" rpc method, ad "
-                    "subsription ID " +
+                    "subscription ID " +
                     strIW;
                 joResponse["error"] = joError;
                 return;
@@ -1588,12 +1588,12 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                             cc::num10( getRelay().serverIndex() ) )
                         << ( desc() + " " + cc::error( "error in " ) +
                                cc::warn( "eth_unsubscribe/newHeads" ) +
-                               cc::error( " rpc method, bad subsription ID " ) +
+                               cc::error( " rpc method, bad subscription ID " ) +
                                cc::warn( strIW ) );
                 nlohmann::json joError = nlohmann::json::object();
                 joError["code"] = -32602;
                 joError["message"] =
-                    "error in \"eth_unsubscribe/newHeads\" rpc method, ad subsription ID " + strIW;
+                    "error in \"eth_unsubscribe/newHeads\" rpc method, ad subscription ID " + strIW;
                 joResponse["error"] = joError;
                 return;
             }
@@ -1612,12 +1612,12 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                             cc::num10( getRelay().serverIndex() ) )
                         << ( desc() + " " + cc::error( "error in " ) +
                                cc::warn( "eth_unsubscribe/newHeads" ) +
-                               cc::error( " rpc method, bad subsription ID " ) +
+                               cc::error( " rpc method, bad subscription ID " ) +
                                cc::warn( strIW ) );
                 nlohmann::json joError = nlohmann::json::object();
                 joError["code"] = -32602;
                 joError["message"] =
-                    "error in \"eth_unsubscribe/skaleStats\" rpc method, ad subsription ID " +
+                    "error in \"eth_unsubscribe/skaleStats\" rpc method, ad subscription ID " +
                     strIW;
                 joResponse["error"] = joError;
                 return;
@@ -1631,12 +1631,12 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                             cc::num10( getRelay().serverIndex() ) )
                         << ( desc() + " " + cc::error( "error in " ) +
                                cc::warn( "eth_unsubscribe/logs" ) +
-                               cc::error( " rpc method, bad subsription ID " ) +
+                               cc::error( " rpc method, bad subscription ID " ) +
                                cc::warn( strIW ) );
                 nlohmann::json joError = nlohmann::json::object();
                 joError["code"] = -32602;
                 joError["message"] =
-                    "error in \"eth_unsubscribe/logs\" rpc method, ad subsription ID " + strIW;
+                    "error in \"eth_unsubscribe/logs\" rpc method, ad subscription ID " + strIW;
                 joResponse["error"] = joError;
                 return;
             }
@@ -2020,7 +2020,7 @@ SkaleServerOverride::~SkaleServerOverride() {
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
     if ( !pEth_ ) {
-        std::cerr << "SLAKLE server fatal error: no eth interface\n";
+        std::cerr << "SKALE server fatal error: no eth interface\n";
         std::cerr.flush();
         std::terminate();
     }
@@ -2069,7 +2069,7 @@ void SkaleServerOverride::logPerformanceWarning( double lfExecutionDuration, int
               << cc::info( strCallID ) << cc::warn( " when called from origin " )
               << cc::notice( strOrigin );
     if ( nServerIndex >= 0 )
-        ssMessage << cc::warn( " throug server with " ) << cc::notice( "index" ) << cc::warn( "=" )
+        ssMessage << cc::warn( " through server with " ) << cc::notice( "index" ) << cc::warn( "=" )
                   << cc::num10( nServerIndex );
     std::string strMessage = ssMessage.str();
     clog( dev::VerbosityWarning, strProtocolDescription ) << strMessage;

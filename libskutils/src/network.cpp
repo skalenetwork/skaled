@@ -289,7 +289,7 @@ std::string resolve_address_for_client_connection(
             sa46.sa6.sin6_addr.s6_addr[11] = 0xff;
             ::memcpy( &sa46.sa6.sin6_addr.s6_addr[12],
                 &( ( struct sockaddr_in* ) result->ai_addr )->sin_addr, sizeof( struct in_addr ) );
-            // ...log... ( "uplevelling AF_INET to AF_INET6" );
+            // ...log... ( "unleveling AF_INET to AF_INET6" );
             break;
         case AF_INET6:
             ::memcpy( &sa46.sa6.sin6_addr, &( ( struct sockaddr_in6* ) result->ai_addr )->sin6_addr,
@@ -377,7 +377,7 @@ bool fd_configure_pipe( int fd ) {
     if ( fd == -1 )
         return false;
         // struct timeval tv;
-        // tv.tv_sec = 3;  // timeuout
+        // tv.tv_sec = 3;  // timeout
         // tv.tv_usec = 0;
 #if ( defined SO_RCVTIMEO ) && ( defined SO_RCVTIMEO )
     const unsigned int timeout_milli = 20 * 1000;

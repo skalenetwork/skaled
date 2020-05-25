@@ -1369,7 +1369,7 @@ std::string now2string( bool isUTC, bool isDaysInsteadOfYMD, bool isColored /*= 
 }
 
 std::string jsNow2string( bool isUTC /*= true*/ ) {
-    return now2string( isUTC, false, false );  // a.kozachenko TODO: make it in jsTime format
+    return now2string( isUTC, false, false );
 }
 
 volatile bool g_bEnableJsonColorization = true;
@@ -1638,10 +1638,10 @@ std::string p( const char* strProbablyPath ) {
     return p( std::string( strProbablyPath ) );
 }
 
-std::string pe( const std::string& strPath ) {  // path with comment about file existance and size
+std::string pe( const std::string& strPath ) {  // path with comment about file existence and size
     return pe( strPath.c_str() );
 }
-std::string pe( const char* strPath ) {  // path with comment about file existance and size
+std::string pe( const char* strPath ) {  // path with comment about file existence and size
     if ( strPath == nullptr )
         return null_str();
     if ( strPath[0] == '\0' )
@@ -1801,11 +1801,11 @@ std::string binary_singleline_ascii( const void* pBinary, size_t cnt,
         if ( i > 0 && strSeparator != nullptr && strSeparator[0] != '\0' )
             ss << strSeparator;
         const uint8_t a_byte = ( *p );
-        bool is_pribtable = ::isprint( a_byte ) ? true : false;
-        char c = is_pribtable ? char( a_byte ) : chrNonPrintable;
+        bool is_printable = ::isprint( a_byte ) ? true : false;
+        char c = is_printable ? char( a_byte ) : chrNonPrintable;
         std::string part;
         part += c;
-        ss << ( is_pribtable ? cc::note( part ) : cc::debug( part ) );
+        ss << ( is_printable ? cc::note( part ) : cc::debug( part ) );
     }
     for ( ; i < cntAlign; ++i, ++p ) {
         if ( i > 0 && strSeparator != nullptr && strSeparator[0] != '\0' )

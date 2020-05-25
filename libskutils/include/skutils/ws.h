@@ -160,20 +160,20 @@ public:
     static const char g_strEventNameWebSocketMessagesSentText[];
     static const char g_strEventNameWebSocketMessagesSentBinary[];
     static const char g_strEventNameWebSocketMessagesSent[];
-    void registrer_default_event_queues_for_web_socket();
+    void register_default_event_queues_for_web_socket();
     static const char g_strEventNameWebSocketPeerConnect[];
     static const char g_strEventNameWebSocketPeerDisconnect[];
     static const char g_strEventNameWebSocketPeerDisconnectFail[];
-    void registrer_default_event_queues_for_web_socket_peer();
+    void register_default_event_queues_for_web_socket_peer();
     static const char g_strEventNameWebSocketServerStart[];
     static const char g_strEventNameWebSocketServerStartFail[];
     static const char g_strEventNameWebSocketServerStop[];
-    void registrer_default_event_queues_for_web_socket_server();
+    void register_default_event_queues_for_web_socket_server();
     static const char g_strEventNameWebSocketClientConnect[];
     static const char g_strEventNameWebSocketClientConnectFail[];
     static const char g_strEventNameWebSocketClientDisconnect[];
     static const char g_strEventNameWebSocketClientReconnect[];
-    void registrer_default_event_queues_for_web_socket_client();
+    void register_default_event_queues_for_web_socket_client();
 };  /// class traffic_stats
 
 class guarded_traffic_stats : public traffic_stats {
@@ -444,7 +444,7 @@ public:
     basic_api& operator=( basic_api&& ) = delete;
     virtual ~basic_api();
     void locked_execute( fn_lock_callback_t fn );
-    //				bool try_locked_execute( fn_lock_callback_t fn, size_t cntAttemts = 10, uint64_t
+    //				bool try_locked_execute( fn_lock_callback_t fn, size_t cntAttempts = 10, uint64_t
     // nMillisecondsWaitBetweenAttempts = 20 );
     void clear_fields();
     void do_writable_callbacks_all_protocol();

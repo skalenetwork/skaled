@@ -11,7 +11,7 @@ namespace command_line {
 parser::parser( const char* strAppName,  // = nullptr
     const char* strAppVersion,           // = nullptr
     const char* strDefaultCategoryName,  // = nullptr // default is "Other", should not be empty
-    char chrCateoryAndNameDelimiter      // = '\n' // default is '\n'
+    char chrCategoryAndNameDelimiter      // = '\n' // default is '\n'
     )
     : app_name_( ( strAppName != nullptr && strAppName[0] != '\0' ) ? strAppName : "" ),
       app_version_( ( strAppVersion != nullptr && strAppVersion[0] != '\0' ) ? strAppVersion : "" ),
@@ -20,7 +20,7 @@ parser::parser( const char* strAppName,  // = nullptr
               strDefaultCategoryName :
               "Other" )  // default is "Other", should not be empty
       ,
-      chrCateoryAndNameDelimiter_( chrCateoryAndNameDelimiter )  // default is '\n'
+      chrCategoryAndNameDelimiter_( chrCategoryAndNameDelimiter )  // default is '\n'
 {
     clear();
 }
@@ -141,7 +141,7 @@ bool parser::stat_detect_arg_name( std::string& str, std::string& strExractedVal
 bool parser::describe( const char* name, const char* desc ) {  // describes only existing
     if ( name == nullptr || name[0] == '\0' || desc == nullptr || desc[0] == '\0' )
         return false;
-    skutils::string_list_t listParts = skutils::tools::split( name, chrCateoryAndNameDelimiter_ );
+    skutils::string_list_t listParts = skutils::tools::split( name, chrCategoryAndNameDelimiter_ );
     size_t cntParts = listParts.size();
     if ( !( 1 <= cntParts && cntParts <= 2 ) )
         return false;
@@ -157,7 +157,7 @@ std::string parser::description( const char* name ) const {
     std::string desc;
     if ( name == nullptr || name[0] == '\0' )
         return desc;
-    skutils::string_list_t listParts = skutils::tools::split( name, chrCateoryAndNameDelimiter_ );
+    skutils::string_list_t listParts = skutils::tools::split( name, chrCategoryAndNameDelimiter_ );
     size_t cntParts = listParts.size();
     if ( !( 1 <= cntParts && cntParts <= 2 ) )
         return desc;
@@ -325,7 +325,7 @@ bool parser::flag_handler(
         return false;
     if ( !fn )
         return false;
-    skutils::string_list_t listParts = skutils::tools::split( name, chrCateoryAndNameDelimiter_ );
+    skutils::string_list_t listParts = skutils::tools::split( name, chrCategoryAndNameDelimiter_ );
     size_t cntParts = listParts.size();
     if ( !( 1 <= cntParts && cntParts <= 2 ) )
         return false;
@@ -351,7 +351,7 @@ bool parser::value_handler(
         return false;
     if ( !fn )
         return false;
-    skutils::string_list_t listParts = skutils::tools::split( name, chrCateoryAndNameDelimiter_ );
+    skutils::string_list_t listParts = skutils::tools::split( name, chrCategoryAndNameDelimiter_ );
     size_t cntParts = listParts.size();
     if ( !( 1 <= cntParts && cntParts <= 2 ) )
         return false;
@@ -372,7 +372,7 @@ bool parser::value_handler(
     return true;
 }
 bool parser::remove_entry( const char* name ) {
-    skutils::string_list_t listParts = skutils::tools::split( name, chrCateoryAndNameDelimiter_ );
+    skutils::string_list_t listParts = skutils::tools::split( name, chrCategoryAndNameDelimiter_ );
     size_t cntParts = listParts.size();
     if ( !( 1 <= cntParts && cntParts <= 2 ) )
         return false;
