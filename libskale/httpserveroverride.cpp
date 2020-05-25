@@ -215,6 +215,48 @@ nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
     return toJson( entriesByBlock, order );
 }
 
+bool checkParamsPresent(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( joRequest.count( "params" ) > 0 )
+        return true;
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32602;
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" is missing";
+    joResponse["error"] = joError;
+    return false;
+}
+
+bool checkParamsIsArray(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
+        return false;
+    const nlohmann::json& jarrParams = joRequest["params"];
+    if ( jarrParams.is_array() )
+        return true;
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32602;
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" must be array";
+    joResponse["error"] = joError;
+    return false;
+}
+
+bool checkParamsIsObject(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
+        return false;
+    const nlohmann::json& joParams = joRequest["params"];
+    if ( joParams.is_object() )
+        return true;
+    nlohmann::json joError = nlohmann::json::object();
+    joError["code"] = -32602;
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" must be object";
+    joResponse["error"] = joError;
+    return false;
+}
+
 };  // namespace helper
 };  // namespace server
 };  // namespace skale
@@ -934,8 +976,11 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     if ( joRequest.count( "id" ) > 0 )
         joResponse["id"] = joRequest["id"];
     joResponse["result"] = nullptr;
-    if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
-        return false;
+    if ( !pso()->handleProtocolSpecificRequest(
+             getRelay(), getRemoteIp(), joRequest, joResponse ) ) {
+        if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
+            return false;
+    }
     strResponse = joResponse.dump();
     return true;
 }
@@ -943,88 +988,20 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     std::string strMethod = joRequest["method"].get< std::string >();
-    rpc_map_t::const_iterator itFind = g_rpc_map.find( strMethod );
-    if ( itFind == g_rpc_map.end() )
+    ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
+    if ( itFind == g_ws_rpc_map.end() )
         return false;
     ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
     return true;
 }
 
-const SkaleWsPeer::rpc_map_t SkaleWsPeer::g_rpc_map = {
+const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
     {"eth_subscribe", &SkaleWsPeer::eth_subscribe},
     {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
-    {"eth_setRestartOrExitTime", &SkaleWsPeer::eth_setRestartOrExitTime},
-    {"setRestartOrExitTime", &SkaleWsPeer::eth_setRestartOrExitTime},
 };
 
-bool SkaleWsPeer::checkParamsPresent(
-    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( joRequest.count( "params" ) > 0 )
-        return true;
-    SkaleServerOverride* pSO = pso();
-    if ( pSO->m_bTraceCalls )
-        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                  cc::debug( "/" ) +
-                                                  cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + " " + cc::error( "error in " ) + cc::warn( strMethodName ) +
-                   cc::error( " rpc method, json entry " ) + cc::warn( "params" ) +
-                   cc::error( " is missing" ) );
-    nlohmann::json joError = nlohmann::json::object();
-    joError["code"] = -32602;
-    joError["message"] = std::string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" is missing";
-    joResponse["error"] = joError;
-    return false;
-}
-
-bool SkaleWsPeer::checkParamsIsArray(
-    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
-        return false;
-    const nlohmann::json& jarrParams = joRequest["params"];
-    if ( jarrParams.is_array() )
-        return true;
-    SkaleServerOverride* pSO = pso();
-    if ( pSO->m_bTraceCalls )
-        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                  cc::debug( "/" ) +
-                                                  cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + " " + cc::error( "error in " ) + cc::warn( strMethodName ) +
-                   cc::error( " rpc method, json entry " ) + cc::warn( "params" ) +
-                   cc::error( " must be array" ) );
-    nlohmann::json joError = nlohmann::json::object();
-    joError["code"] = -32602;
-    joError["message"] = std::string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" must be array";
-    joResponse["error"] = joError;
-    return false;
-}
-
-bool SkaleWsPeer::checkParamsIsObject(
-    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
-        return false;
-    const nlohmann::json& joParams = joRequest["params"];
-    if ( joParams.is_object() )
-        return true;
-    SkaleServerOverride* pSO = pso();
-    if ( pSO->m_bTraceCalls )
-        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                  cc::debug( "/" ) +
-                                                  cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + " " + cc::error( "error in " ) + cc::warn( strMethodName ) +
-                   cc::error( " rpc method, json entry " ) + cc::warn( "params" ) +
-                   cc::error( " must be object" ) );
-    nlohmann::json joError = nlohmann::json::object();
-    joError["code"] = -32602;
-    joError["message"] = std::string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" must be object";
-    joResponse["error"] = joError;
-    return false;
-}
-
 void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
+    if ( !skale::server::helper::checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
     const nlohmann::json& jarrParams = joRequest["params"];
     std::string strSubscriptionType;
@@ -1522,7 +1499,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
 }
 
 void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
+    if ( !skale::server::helper::checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
         return;
     SkaleServerOverride* pSO = pso();
     const nlohmann::json& jarrParams = joRequest["params"];
@@ -1543,7 +1520,8 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
                                                           cc::debug( "/" ) +
                                                           cc::num10( getRelay().serverIndex() ) )
                     << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_unsubscribe" ) +
-                           cc::error( " rpc method, bad subscription ID " ) + cc::j( joParamItem ) );
+                           cc::error( " rpc method, bad subscription ID " ) +
+                           cc::j( joParamItem ) );
             nlohmann::json joError = nlohmann::json::object();
             joError["code"] = -32602;
             joError["message"] =
@@ -1644,142 +1622,6 @@ void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::js
             setInstalledWatchesLogs_.erase( iw );
         }
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void SkaleWsPeer::eth_setRestartOrExitTime(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    SkaleServerOverride* pSO = pso();
-    try {
-        // check "params" in joRequest and it's JSON object { }
-        if ( !checkParamsIsObject( "eth_setRestartOrExitTime", joRequest, joResponse ) )
-            return;
-        const nlohmann::json& joParams = joRequest["params"];
-        // parse value of "finishTime"
-        size_t finishTime = 0;
-        if ( joParams.count( "finishTime" ) > 0 ) {
-            const nlohmann::json& joValue = joParams["finishTime"];
-            if ( joValue.is_number() )
-                finishTime = joValue.get< size_t >();
-            else
-                throw std::runtime_error(
-                    "invalid value in the \"finishTime\" parameter, need number" );
-        } else {
-            // no "finishTime" present in "params"
-            throw std::runtime_error( "missing the \"finishTime\" parameter" );
-        }
-        // parse value of "isExit"
-        bool isExit = false;
-        if ( joParams.count( "isExit" ) > 0 ) {
-            const nlohmann::json& joValue = joParams["isExit"];
-            if ( joValue.is_boolean() )
-                isExit = joValue.get< bool >();
-            else if ( joValue.is_number() )
-                isExit = joValue.get< int >() ? true : false;
-            else if ( joValue.is_string() ) {
-                std::string s = skutils::tools::to_lower(
-                    skutils::tools::trim_copy( joValue.get< std::string >() ) );
-                if ( s.length() > 0 ) {
-                    char c = s[0];
-                    if ( c == 't' || c == 'y' )  // "true", "yes"
-                        isExit = true;
-                    else if ( '0' <= c && c <= '9' )
-                        isExit = atoi( s.c_str() ) ? true : false;
-                    else
-                        throw std::runtime_error(
-                            "invalid value in the \"isExit\" parameter, need boolean flag" );
-                }
-            } else
-                throw std::runtime_error(
-                    "invalid value in the \"isExit\" parameter, need boolean flag" );
-        }
-        // get connection info
-        std::string strOrigin = getOrigin();  // NOTICE: web socket affects to this value, it can be
-                                              // invalid, DNS string, etc
-        std::string strRemoteIp = getRemoteIp();  // NOTICE: prefer this
-        skutils::url u( strRemoteIp );
-        std::string strIP = u.host();
-        bool isLocalAddress = skutils::is_local_private_network_address(
-            strIP );  // NOTICE: supports both IPv4 and IPv6
-        // print info about this method call into log output
-        clog( dev::VerbosityInfo, cc::warn( "ADMIN-CALL" ) )
-            << ( cc::debug( "Got " ) + cc::info( "eth_setRestartOrExitTime" ) +
-                   cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
-                   cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "isExit" ) +
-                   cc::debug( "=" ) + cc::yn( isExit ) + cc::debug( ", " ) +
-                   cc::notice( "origin" ) + cc::debug( "=" ) + cc::notice( strOrigin ) +
-                   cc::debug( ", " ) + cc::notice( "remote IP" ) + cc::debug( "=" ) +
-                   cc::notice( strIP ) + cc::debug( ", " ) + cc::notice( "isLocalAddress" ) +
-                   cc::debug( "=" ) + cc::yn( isLocalAddress ) );
-        // return call error if call from outside of local network
-        if ( !isLocalAddress )
-            throw std::runtime_error(
-                "caller have no permition for this action" );  // NOTICE: just throw exception and
-                                                               // RPC call will extract text from it
-                                                               // and return it as call error
-        //
-        // TO-DO: handle call to eth_setRestartOrExitTime or setRestartOrExitTime - both names are
-        // supported
-        //
-        // TO-DO: optionally, put some data into joResponse which represents return value JSON
-        //
-        // TESTING: you can use wascat console
-        // npm install -g
-        // wscat -c 127.0.0.1:15020
-        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{}}
-        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}
-        //
-        // or specify JSON right in command line...
-        //
-        // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
-        // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
-        //
-
-        // Result
-        std::string strRequest = joRequest.dump();
-        std::string strResponse = joResponse.dump();
-        auto pEthereum = pSO->ethereum();
-        if ( !pEthereum )
-            throw std::runtime_error( "internal error, no Ethereum interface found" );
-        dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
-        if ( !pClient )
-            throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setRestartOrExitTime( uint64_t( finishTime ), isExit );
-        joResponse = nlohmann::json::parse( strResponse );
-    } catch ( const std::exception& ex ) {
-        if ( pSO->m_bTraceCalls )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_setRestartOrExitTime" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] =
-            std::string( "error in \"eth_setRestartOrExitTime\" rpc method, exception: " ) +
-            ex.what();
-        joResponse["error"] = joError;
-        return;
-    } catch ( ... ) {
-        if ( pSO->m_bTraceCalls )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_setRestartOrExitTime" ) +
-                       cc::error( " rpc method, unknown exception " ) );
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] = "error in \"eth_setRestartOrExitTime\" rpc method, unknown exception";
-        joResponse["error"] = joError;
-        return;
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1939,10 +1781,11 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
-    const char* cert_path, const char* private_key_path, int nServerIndex,
+SkaleRelayHTTP::SkaleRelayHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr,
+    int nPort, const char* cert_path, const char* private_key_path, int nServerIndex,
     size_t a_max_http_handler_queues, bool is_async_http_transfer_mode )
     : SkaleServerHelper( nServerIndex ),
+      m_pSO( pSO ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
       nPort_( nPort ),
@@ -1961,6 +1804,40 @@ SkaleRelayHTTP::SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort,
 SkaleRelayHTTP::~SkaleRelayHTTP() {
     m_pServer.reset();
 }
+
+bool SkaleRelayHTTP::handleHttpSpecificRequest(
+    const std::string& strOrigin, const std::string& strRequest, std::string& strResponse ) {
+    strResponse.clear();
+    nlohmann::json joRequest;
+    try {
+        joRequest = nlohmann::json::parse( strRequest );
+    } catch ( ... ) {
+        return false;
+    }
+    nlohmann::json joResponse = nlohmann::json::object();
+    joResponse["jsonrpc"] = "2.0";
+    if ( joRequest.count( "id" ) > 0 )
+        joResponse["id"] = joRequest["id"];
+    joResponse["result"] = nullptr;
+    if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
+        if ( !handleHttpSpecificRequest( strOrigin, joRequest, joResponse ) )
+            return false;
+    }
+    strResponse = joResponse.dump();
+    return true;
+}
+
+bool SkaleRelayHTTP::handleHttpSpecificRequest(
+    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::string strMethod = joRequest["method"].get< std::string >();
+    http_rpc_map_t::const_iterator itFind = g_http_rpc_map.find( strMethod );
+    if ( itFind == g_http_rpc_map.end() )
+        return false;
+    ( ( *this ).*( itFind->second ) )( strOrigin, joRequest, joResponse );
+    return true;
+}
+
+const SkaleRelayHTTP::http_rpc_map_t SkaleRelayHTTP::g_http_rpc_map = {};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2181,11 +2058,11 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 cc::info( strAddr ) + cc::debug( " and port " ) + cc::c( nPort ) +
                 cc::debug( "..." ) );
         if ( bIsSSL )
-            pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, strPathSslCert.c_str(),
-                strPathSslKey.c_str(), nServerIndex, a_max_http_handler_queues,
-                is_async_http_transfer_mode ) );
+            pSrv.reset( new SkaleRelayHTTP( pSO, ipVer, strAddr.c_str(), nPort,
+                strPathSslCert.c_str(), strPathSslKey.c_str(), nServerIndex,
+                a_max_http_handler_queues, is_async_http_transfer_mode ) );
         else
-            pSrv.reset( new SkaleRelayHTTP( ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
+            pSrv.reset( new SkaleRelayHTTP( pSO, ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
                 nServerIndex, a_max_http_handler_queues, is_async_http_transfer_mode ) );
         pSrv->m_pServer->Options(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
@@ -2209,7 +2086,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             if ( isShutdownMode() ) {
                 logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
                     cc::notice( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
-                        cc::num10( pSrv->serverIndex() ) + " " + cc::warn( "" ) );
+                        cc::num10( pSrv->serverIndex() ) + " " + cc::debug( " from  " ) +
+                        cc::info( req.origin_ ) + " " + cc::warn( "" ) );
                 pSrv->m_pServer->close_all_handler_queues();  // remove queues earlier
                 return true;
             }
@@ -2298,7 +2176,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     rttElement->stop();
                     return true;
                 }
-                handler->HandleRequest( req.body_.c_str(), strResponse );
+                if ( !pSrv->handleHttpSpecificRequest( req.origin_, req.body_, strResponse ) ) {
+                    handler->HandleRequest( req.body_.c_str(), strResponse );
+                }
                 //
                 stats::register_stats_answer(
                     bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
@@ -2375,7 +2255,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::debug( "/" ) + cc::num10( pSrv->serverIndex() ) +
                 cc::success( " server on address " ) + cc::info( strAddr ) +
-                cc::success( " and port " ) + cc::c( nPort ) );
+                cc::success( " and port " ) + cc::c( nPort ) + " " );
         return true;
     } catch ( const std::exception& ex ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
@@ -2792,6 +2672,153 @@ bool SkaleServerOverride::handleAdminOriginFilter(
     if ( !checkAdminOriginAllowed( origin ) )
         return false;
     return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool SkaleServerOverride::handleProtocolSpecificRequest( SkaleServerHelper& sse,
+    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::string strMethod = joRequest["method"].get< std::string >();
+    protocol_rpc_map_t::const_iterator itFind = g_protocol_rpc_map.find( strMethod );
+    if ( itFind == g_protocol_rpc_map.end() )
+        return false;
+    ( ( *this ).*( itFind->second ) )( sse, strOrigin, joRequest, joResponse );
+    return true;
+}
+
+const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
+    {"eth_setRestartOrExitTime", &SkaleServerOverride::eth_setRestartOrExitTime},
+    {"setRestartOrExitTime", &SkaleServerOverride::eth_setRestartOrExitTime},
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
+    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    SkaleServerOverride* pSO = this;
+    try {
+        // check "params" in joRequest and it's JSON object { }
+        if ( !skale::server::helper::checkParamsIsObject(
+                 "eth_setRestartOrExitTime", joRequest, joResponse ) )
+            return;
+        const nlohmann::json& joParams = joRequest["params"];
+        // parse value of "finishTime"
+        size_t finishTime = 0;
+        if ( joParams.count( "finishTime" ) > 0 ) {
+            const nlohmann::json& joValue = joParams["finishTime"];
+            if ( joValue.is_number() )
+                finishTime = joValue.get< size_t >();
+            else
+                throw std::runtime_error(
+                    "invalid value in the \"finishTime\" parameter, need number" );
+        } else {
+            // no "finishTime" present in "params"
+            throw std::runtime_error( "missing the \"finishTime\" parameter" );
+        }
+        // parse value of "isExit"
+        bool isExit = false;
+        if ( joParams.count( "isExit" ) > 0 ) {
+            const nlohmann::json& joValue = joParams["isExit"];
+            if ( joValue.is_boolean() )
+                isExit = joValue.get< bool >();
+            else if ( joValue.is_number() )
+                isExit = joValue.get< int >() ? true : false;
+            else if ( joValue.is_string() ) {
+                std::string s = skutils::tools::to_lower(
+                    skutils::tools::trim_copy( joValue.get< std::string >() ) );
+                if ( s.length() > 0 ) {
+                    char c = s[0];
+                    if ( c == 't' || c == 'y' )  // "true", "yes"
+                        isExit = true;
+                    else if ( '0' <= c && c <= '9' )
+                        isExit = atoi( s.c_str() ) ? true : false;
+                    else
+                        throw std::runtime_error(
+                            "invalid value in the \"isExit\" parameter, need boolean flag" );
+                }
+            } else
+                throw std::runtime_error(
+                    "invalid value in the \"isExit\" parameter, need boolean flag" );
+        }
+        // get connection info
+        skutils::url u( strOrigin );
+        std::string strIP = u.host();
+        bool isLocalAddress = skutils::is_local_private_network_address(
+            strIP );  // NOTICE: supports both IPv4 and IPv6
+        // print info about this method call into log output
+        clog( dev::VerbosityInfo, cc::warn( "ADMIN-CALL" ) )
+            << ( cc::debug( "Got " ) + cc::info( "eth_setRestartOrExitTime" ) +
+                   cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
+                   cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "isExit" ) +
+                   cc::debug( "=" ) + cc::yn( isExit ) + cc::debug( ", " ) +
+                   cc::notice( "origin" ) + cc::debug( "=" ) + cc::notice( strOrigin ) +
+                   cc::debug( ", " ) + cc::notice( "remote IP" ) + cc::debug( "=" ) +
+                   cc::notice( strIP ) + cc::debug( ", " ) + cc::notice( "isLocalAddress" ) +
+                   cc::debug( "=" ) + cc::yn( isLocalAddress ) );
+        // return call error if call from outside of local network
+        if ( !isLocalAddress )
+            throw std::runtime_error(
+                "caller have no permition for this action" );  // NOTICE: just throw exception and
+                                                               // RPC call will extract text from it
+                                                               // and return it as call error
+        //
+        // TO-DO: handle call to eth_setRestartOrExitTime or setRestartOrExitTime - both names are
+        // supported
+        //
+        // TO-DO: optionally, put some data into joResponse which represents return value JSON
+        //
+        // TESTING: you can use wascat console
+        // npm install -g
+        // wscat -c 127.0.0.1:15020
+        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{}}
+        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}
+        //
+        // or specify JSON right in command line...
+        //
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x
+        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // wscat -c ws://127.0.0.1:15020 -w 1 -x
+        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        //
+
+        // Result
+        std::string strRequest = joRequest.dump();
+        std::string strResponse = joResponse.dump();
+        auto pEthereum = pSO->ethereum();
+        if ( !pEthereum )
+            throw std::runtime_error( "internal error, no Ethereum interface found" );
+        dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
+        if ( !pClient )
+            throw std::runtime_error( "internal error, no client interface found" );
+        pClient->setRestartOrExitTime( uint64_t( finishTime ), isExit );
+        joResponse = nlohmann::json::parse( strResponse );
+    } catch ( const std::exception& ex ) {
+        if ( pSO->m_bTraceCalls )
+            clog( dev::Verbosity::VerbosityError,
+                cc::debug( " during call from " ) + cc::u( strOrigin ) )
+                << ( " " + cc::error( "error in " ) + cc::warn( "eth_setRestartOrExitTime" ) +
+                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] =
+            std::string( "error in \"eth_setRestartOrExitTime\" rpc method, exception: " ) +
+            ex.what();
+        joResponse["error"] = joError;
+        return;
+    } catch ( ... ) {
+        if ( pSO->m_bTraceCalls )
+            clog( dev::Verbosity::VerbosityError,
+                cc::debug( " during call from " ) + cc::u( strOrigin ) )
+                << ( " " + cc::error( "error in " ) + cc::warn( "eth_setRestartOrExitTime" ) +
+                       cc::error( " rpc method, unknown exception " ) );
+        nlohmann::json joError = nlohmann::json::object();
+        joError["code"] = -32602;
+        joError["message"] = "error in \"eth_setRestartOrExitTime\" rpc method, unknown exception";
+        joResponse["error"] = joError;
+        return;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

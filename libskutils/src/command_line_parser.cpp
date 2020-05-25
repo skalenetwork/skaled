@@ -11,7 +11,7 @@ namespace command_line {
 parser::parser( const char* strAppName,  // = nullptr
     const char* strAppVersion,           // = nullptr
     const char* strDefaultCategoryName,  // = nullptr // default is "Other", should not be empty
-    char chrCategoryAndNameDelimiter      // = '\n' // default is '\n'
+    char chrCategoryAndNameDelimiter     // = '\n' // default is '\n'
     )
     : app_name_( ( strAppName != nullptr && strAppName[0] != '\0' ) ? strAppName : "" ),
       app_version_( ( strAppVersion != nullptr && strAppVersion[0] != '\0' ) ? strAppVersion : "" ),

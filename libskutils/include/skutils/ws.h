@@ -444,7 +444,8 @@ public:
     basic_api& operator=( basic_api&& ) = delete;
     virtual ~basic_api();
     void locked_execute( fn_lock_callback_t fn );
-    //				bool try_locked_execute( fn_lock_callback_t fn, size_t cntAttempts = 10, uint64_t
+    //				bool try_locked_execute( fn_lock_callback_t fn, size_t cntAttempts = 10,
+    // uint64_t
     // nMillisecondsWaitBetweenAttempts = 20 );
     void clear_fields();
     void do_writable_callbacks_all_protocol();

@@ -44,10 +44,10 @@ private:
 
 public:
     std::string strDefaultCategoryName_;  // default is "Other", should not be empty
-    char chrCategoryAndNameDelimiter_;     // default is '\n'
+    char chrCategoryAndNameDelimiter_;    // default is '\n'
     parser( const char* strAppName = nullptr, const char* strAppVersion = nullptr,
         const char* strDefaultCategoryName = nullptr,  // default is "Other", should not be empty
-        char chrCategoryAndNameDelimiter = '\n'         // default is '\n'
+        char chrCategoryAndNameDelimiter = '\n'        // default is '\n'
     );
     virtual ~parser();
     parser( const parser& ) = delete;

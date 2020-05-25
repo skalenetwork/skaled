@@ -145,7 +145,8 @@ item::item(
       indexQ_( indexQ ),
       indexT_( indexT ) {
     if ( !pQueue_ )
-        throw std::runtime_error( "Attempt to instantiate performance item without queue provided" );
+        throw std::runtime_error(
+            "Attempt to instantiate performance item without queue provided" );
 }
 
 item::~item() {}
