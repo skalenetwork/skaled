@@ -112,7 +112,7 @@ struct SkaleServerConnectionsTrackHelper {
     SkaleServerOverride& m_sso;
     SkaleServerConnectionsTrackHelper( SkaleServerOverride& sso );
     ~SkaleServerConnectionsTrackHelper();
-};  /// truct SkaleServerConnectionsTrackHelper
+};  /// struct SkaleServerConnectionsTrackHelper
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,15 +159,8 @@ public:
 protected:
     typedef void ( SkaleWsPeer::*rpc_method_t )(
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    typedef std::map< std::string, rpc_method_t > rpc_map_t;
-    static const rpc_map_t g_rpc_map;
-
-    bool checkParamsPresent(
-        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    bool checkParamsIsArray(
-        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    bool checkParamsIsObject(
-        const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    typedef std::map< std::string, rpc_method_t > ws_rpc_map_t;
+    static const ws_rpc_map_t g_ws_rpc_map;
 
     void eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_subscribe_logs( const nlohmann::json& joRequest, nlohmann::json& joResponse );
@@ -177,8 +170,6 @@ protected:
         const nlohmann::json& joRequest, nlohmann::json& joResponse, bool bIncludeTransactions );
     void eth_subscribe_skaleStats( const nlohmann::json& joRequest, nlohmann::json& joResponse );
     void eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse );
-
-    void eth_setRestartOrExitTime( const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
     friend class SkaleRelayWS;
@@ -247,17 +238,33 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleRelayHTTP : public SkaleServerHelper {
+protected:
+    SkaleServerOverride* m_pSO = nullptr;
+
 public:
     int ipVer_;
     std::string strBindAddr_;
     int nPort_;
     const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
-    SkaleRelayHTTP( int ipVer, const char* strBindAddr, int nPort, const char* cert_path = nullptr,
-        const char* private_key_path = nullptr, int nServerIndex = -1,
+    SkaleRelayHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
+        const char* cert_path = nullptr, const char* private_key_path = nullptr,
+        int nServerIndex = -1,
         size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
         bool is_async_http_transfer_mode = true );
     ~SkaleRelayHTTP() override;
+    SkaleServerOverride* pso() { return m_pSO; }
+    const SkaleServerOverride* pso() const { return m_pSO; }
+    bool handleHttpSpecificRequest(
+        const std::string& strOrigin, const std::string& strRequest, std::string& strResponse );
+    bool handleHttpSpecificRequest(
+        const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+protected:
+    typedef void ( SkaleRelayHTTP::*rpc_method_t )(
+        const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    typedef std::map< std::string, rpc_method_t > http_rpc_map_t;
+    static const http_rpc_map_t g_http_rpc_map;
 };  /// class SkaleRelayHTTP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,6 +393,18 @@ public:
     bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
 
     bool isShutdownMode() const { return m_bShutdownMode; }
+
+    bool handleProtocolSpecificRequest( SkaleServerHelper& sse, const std::string& strOrigin,
+        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+protected:
+    typedef void ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
+        const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+    typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
+    static const protocol_rpc_map_t g_protocol_rpc_map;
+
+    void eth_setRestartOrExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
+        const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;

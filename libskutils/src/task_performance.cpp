@@ -29,7 +29,7 @@ describable::describable( const string& strName, const json& jsnIn )
       jsonErr_( json::object() ) {
     if ( strName_.empty() )
         throw std::runtime_error(
-            "Attempt to instatiate performance describable instance without name provided" );
+            "Attempt to instantiate performance describable instance without name provided" );
 }
 
 describable::~describable() {}
@@ -88,7 +88,7 @@ time_holder::time_holder( bool isRunning ) : tpStart_( clock::now() ), isRunning
 
 time_holder::~time_holder() {}
 
-bool time_holder::is_funished() const {
+bool time_holder::is_finished() const {
     bool b = isRunning_ ? false : true;
     return b;
 }
@@ -115,7 +115,7 @@ time_point time_holder::tp_start() const {
     return tpStart_;
 }
 time_point time_holder::tp_end() const {
-    return is_funished() ? tpEnd_ : clock::now();
+    return is_finished() ? tpEnd_ : clock::now();
 }
 std::chrono::nanoseconds time_holder::tp_duration() const {
     std::chrono::nanoseconds d = tp_end() - tp_start();
@@ -145,7 +145,8 @@ item::item(
       indexQ_( indexQ ),
       indexT_( indexT ) {
     if ( !pQueue_ )
-        throw std::runtime_error( "Attempt to instatiate performance item without queue provided" );
+        throw std::runtime_error(
+            "Attempt to instantiate performance item without queue provided" );
 }
 
 item::~item() {}
@@ -173,7 +174,7 @@ json item::compose_json() const {
     jsn["jsnIn"] = get_json_in();
     jsn["jsnOut"] = get_json_out();
     jsn["jsnErr"] = get_json_err();
-    jsn["fin"] = is_funished();
+    jsn["fin"] = is_finished();
     jsn["tsStart"] = tp_start_s();
     jsn["tsEnd"] = tp_end_s();
     jsn["duration"] = tp_duration_s();
@@ -237,7 +238,7 @@ queue::queue( const string& strName, const json& jsn, tracker_ptr pTracker )
     : describable( strName, jsn ), pTracker_( pTracker ? pTracker : get_default_tracker() ) {
     if ( !pTracker_ )
         throw std::runtime_error(
-            "Attempt to instatiate performance queue without tracker provided" );
+            "Attempt to instantiate performance queue without tracker provided" );
 }
 
 queue::~queue() {
@@ -459,7 +460,7 @@ void action::init( const string& strQueueName, const string& strActionName, cons
         pTracker = get_default_tracker();
         if ( !pTracker )
             throw std::runtime_error(
-                "Attempt to instatiate performance action without tracker provided" );
+                "Attempt to instantiate performance action without tracker provided" );
     }
     if ( !pTracker->is_enabled() ) {
         isSkipped_ = true;
@@ -477,7 +478,7 @@ void action::init( const string& strQueueName, const string& strActionName, cons
     if ( pTracker->get_index() >= pTracker->get_session_max_item_count() ) {
         isSkipped_ = true;
         pTracker->came_accross_with_possible_session_stop_reason(
-            "number of reuested of events saved" );
+            "number of requested of events saved" );
         return;
     }
     queue_ptr pQueue = pTracker->get_queue( strQueueName );
@@ -532,7 +533,7 @@ void action::set_json_err( const json& jsn ) {
 
 item_ptr action::get_item() const {
     if ( isSkipped_ )
-        throw std::runtime_error( "Attempt to access performance task acion in skipped state" );
+        throw std::runtime_error( "Attempt to access performance task action in skipped state" );
     return pItem_;
 }
 
