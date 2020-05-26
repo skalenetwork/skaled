@@ -83,10 +83,8 @@ SnapshotManager::SnapshotManager(
             if ( fs::exists( _dataDir / vol ) && 0 != btrfs.present( ( _dataDir / vol ).c_str() ) )
                 throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
 
-            int res = btrfs.subvolume.create( ( _dataDir / vol ).c_str() );
-            if ( res ) {
-                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-            }
+            // Ignoring exception
+            btrfs.subvolume.create( ( _dataDir / vol ).c_str() );
 
         } catch ( const fs::filesystem_error& ex ) {
             throw_with_nested( CannotRead( ex.path1() ) );
