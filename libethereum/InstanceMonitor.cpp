@@ -48,7 +48,7 @@ void InstanceMonitor::performRotation() {
         fs::remove( m_configPath );
         fs::rename( newConfigPath, m_configPath );
         fs::remove( m_rotationFilePath );
-        ExitHandler::exitHandler( SIGABRT );
+        ExitHandler::exitHandler( SIGTERM );
     }
 }
 
