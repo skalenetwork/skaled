@@ -6,6 +6,9 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
       - name: Extract repo name
         run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
@@ -163,7 +166,8 @@ jobs:
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
           echo "Branch $BRANCH"
-          export VERSION=$(bash ./scripts/calculate_version.sh)
+          export VERSION=$(cat VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
