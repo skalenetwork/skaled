@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( test_restarting ) {
     newConfig.close();
     instanceMonitor.initRotationParams(0, false);
     instanceMonitor.performRotation();
-    BOOST_REQUIRE( ExitHandler::getSignal() == SIGABRT );
+    BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
     BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
     BOOST_REQUIRE( !( fs::exists( newConfigPath) ) );
     std::ifstream config(configPath.string() );
