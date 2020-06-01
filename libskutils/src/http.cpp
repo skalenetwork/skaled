@@ -1248,7 +1248,7 @@ bool async_read_and_close_socket_base::schedule_check_clock() {
 
 void async_read_and_close_socket_base::schedule_first_step() {
 #if ( defined __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ )
-    std::cout << skutils::tools::format( "http task shedule 1st step %p\n", this );
+    std::cout << skutils::tools::format( "http task schedule 1st step %p\n", this );
     std::cout.flush();
 #endif
     skutils::retain_release_ptr< async_read_and_close_socket_base > pThis = this;
@@ -1616,7 +1616,7 @@ void server::write_response(
     }
     // response line
     strm.write_format( "HTTP/1.1 %d %s\r\n", res.status_, detail::status_message( res.status_ ) );
-    // neaders
+    // headers
     if ( last_connection || req.get_header_value( "Connection" ) == "close" ) {
         res.set_header( "Connection", "close" );
     }

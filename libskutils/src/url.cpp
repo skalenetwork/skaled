@@ -588,7 +588,7 @@ url& url::user_info( const std::string& s ) {
 }
 std::pair< std::string, std::string > url::user_name_and_password() const {  // returns strings pair
                                                                              // object, not
-                                                                             // referemnce
+                                                                             // reference
     std::pair< std::string, std::string > n_p;
     std::list< std::string > lst = split2list( user_info(), ':', 1 );
     std::list< std::string >::const_iterator itWalk = lst.begin(), itEnd = lst.end();
@@ -618,7 +618,7 @@ url& url::user_name_and_password(
     return user_name_and_password(
         std::pair< std::string, std::string >( strName, strPassword ), bRemoveIfEmpty );
 }
-std::string url::user_name() const {  // returns string object, not referemnce
+std::string url::user_name() const {  // returns string object, not reference
     return user_name_and_password().first;
 }
 url& url::user_name( const std::string& s ) {
@@ -626,7 +626,7 @@ url& url::user_name( const std::string& s ) {
     n_p.first = s;
     return user_name_and_password( n_p, true );
 }
-std::string url::user_password() const {  // returns string object, not referemnce
+std::string url::user_password() const {  // returns string object, not reference
     return user_name_and_password().second;
 }
 url& url::user_password( const std::string& s ) {
@@ -1122,7 +1122,7 @@ extern bool is_local_private_network_address_ipv6( const std::string& s ) {
         return true;
     if ( s[0] == ':' )
         return false;
-    // note: read about adress scopes
+    // note: read about address scopes
     // https://en.wikipedia.org/wiki/IPv6_address
     // http://www.gestioip.net/docu/ipv6_address_examples.html
     if ( s[0] == 'f' || s[0] == 'F' )
