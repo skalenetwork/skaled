@@ -268,7 +268,7 @@ public:
         return path;
     }
 
-    // set restarting or exiting time for node rotation
+    // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
