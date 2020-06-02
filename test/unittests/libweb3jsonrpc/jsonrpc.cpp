@@ -1564,7 +1564,6 @@ BOOST_AUTO_TEST_CASE( eth_setRestartOrExitTime ){
     JsonRpcFixture fixture;
     Json::Value requestJson;
     requestJson["finishTime"] = 100;
-    requestJson["isExit"] = true;
     BOOST_REQUIRE_THROW(fixture.rpcClient->eth_setRestartOrExitTime(requestJson), jsonrpc::JsonRpcException);
 }
 

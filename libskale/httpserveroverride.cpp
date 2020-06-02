@@ -2717,31 +2717,7 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
             // no "finishTime" present in "params"
             throw std::runtime_error( "missing the \"finishTime\" parameter" );
         }
-        // parse value of "isExit"
-        bool isExit = false;
-        if ( joParams.count( "isExit" ) > 0 ) {
-            const nlohmann::json& joValue = joParams["isExit"];
-            if ( joValue.is_boolean() )
-                isExit = joValue.get< bool >();
-            else if ( joValue.is_number() )
-                isExit = joValue.get< int >() ? true : false;
-            else if ( joValue.is_string() ) {
-                std::string s = skutils::tools::to_lower(
-                    skutils::tools::trim_copy( joValue.get< std::string >() ) );
-                if ( s.length() > 0 ) {
-                    char c = s[0];
-                    if ( c == 't' || c == 'y' )  // "true", "yes"
-                        isExit = true;
-                    else if ( '0' <= c && c <= '9' )
-                        isExit = atoi( s.c_str() ) ? true : false;
-                    else
-                        throw std::runtime_error(
-                            "invalid value in the \"isExit\" parameter, need boolean flag" );
-                }
-            } else
-                throw std::runtime_error(
-                    "invalid value in the \"isExit\" parameter, need boolean flag" );
-        }
+
         // get connection info
         skutils::url u( strOrigin );
         std::string strIP = u.host();
@@ -2751,12 +2727,11 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
         clog( dev::VerbosityInfo, cc::warn( "ADMIN-CALL" ) )
             << ( cc::debug( "Got " ) + cc::info( "eth_setRestartOrExitTime" ) +
                    cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
-                   cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "isExit" ) +
-                   cc::debug( "=" ) + cc::yn( isExit ) + cc::debug( ", " ) +
-                   cc::notice( "origin" ) + cc::debug( "=" ) + cc::notice( strOrigin ) +
-                   cc::debug( ", " ) + cc::notice( "remote IP" ) + cc::debug( "=" ) +
-                   cc::notice( strIP ) + cc::debug( ", " ) + cc::notice( "isLocalAddress" ) +
-                   cc::debug( "=" ) + cc::yn( isLocalAddress ) );
+                   cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "origin" ) +
+                   cc::debug( "=" ) + cc::notice( strOrigin ) + cc::debug( ", " ) +
+                   cc::notice( "remote IP" ) + cc::debug( "=" ) + cc::notice( strIP ) +
+                   cc::debug( ", " ) + cc::notice( "isLocalAddress" ) + cc::debug( "=" ) +
+                   cc::yn( isLocalAddress ) );
         // return call error if call from outside of local network
         if ( !isLocalAddress )
             throw std::runtime_error(
@@ -2773,14 +2748,14 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
         // npm install -g
         // wscat -c 127.0.0.1:15020
         // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{}}
-        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}
+        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123}}
         //
         // or specify JSON right in command line...
         //
         // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123}}'
         // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123,"isExit":true}}'
+        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123}}'
         //
 
         // Result
