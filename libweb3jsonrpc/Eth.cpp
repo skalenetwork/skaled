@@ -255,10 +255,10 @@ Json::Value Eth::eth_unsubscribe( Json::Value const& /*_transaction*/ ) {
     }
 }
 
-Json::Value Eth::eth_setRestartOrExitTime( Json::Value const& /*_transaction*/ ) {
+Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
     try {
         throw JsonRpcException(
-            "eth_setRestartOrExitTime() API is not supported yet over HTTP(S)" );
+            "setSchainExitTime() API is not supported yet over HTTP(S)" );
     } catch ( Exception const& ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }

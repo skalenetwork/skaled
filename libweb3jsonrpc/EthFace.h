@@ -190,13 +190,9 @@ public:
             &dev::rpc::EthFace::eth_unsubscribeI );
 
         this->bindAndAddMethod(
-            jsonrpc::Procedure( "eth_setRestartOrExitTime", jsonrpc::PARAMS_BY_POSITION,
+            jsonrpc::Procedure( "setSchainExitTime", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
-            &dev::rpc::EthFace::eth_setRestartOrExitTimeI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "setRestartOrExitTime", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
-            &dev::rpc::EthFace::eth_setRestartOrExitTimeI );
+            &dev::rpc::EthFace::setSchainExitTimeI );
 
         this->bindAndAddMethod(
             jsonrpc::Procedure( "eth_inspectTransaction", jsonrpc::PARAMS_BY_POSITION,
@@ -396,9 +392,9 @@ public:
     inline virtual void eth_unsubscribeI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_unsubscribe( request[0u] );
     }
-    inline virtual void eth_setRestartOrExitTimeI(
+    inline virtual void setSchainExitTimeI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->eth_setRestartOrExitTime( request[0u] );
+        response = this->setSchainExitTime( request[0u] );
     }
     inline virtual void eth_signTransactionI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_signTransaction( request[0u] );
@@ -481,7 +477,7 @@ public:
     virtual Json::Value eth_signTransaction( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_subscribe( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_unsubscribe( const Json::Value& param1 ) = 0;
-    virtual Json::Value eth_setRestartOrExitTime( const Json::Value& param1 ) = 0;
+    virtual Json::Value setSchainExitTime( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_inspectTransaction( const std::string& param1 ) = 0;
     virtual std::string eth_sendRawTransaction( const std::string& param1 ) = 0;
     virtual bool eth_notePassword( const std::string& param1 ) = 0;

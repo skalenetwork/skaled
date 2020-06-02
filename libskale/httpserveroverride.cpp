@@ -2688,20 +2688,19 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( SkaleServerHelper& sse,
 }
 
 const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
-    {"eth_setRestartOrExitTime", &SkaleServerOverride::eth_setRestartOrExitTime},
-    {"setRestartOrExitTime", &SkaleServerOverride::eth_setRestartOrExitTime},
+    {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
+void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
         // check "params" in joRequest and it's JSON object { }
         if ( !skale::server::helper::checkParamsIsObject(
-                 "eth_setRestartOrExitTime", joRequest, joResponse ) )
+                 "setSchainExitTime", joRequest, joResponse ) )
             return;
         const nlohmann::json& joParams = joRequest["params"];
         // parse value of "finishTime"
@@ -2725,7 +2724,7 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
             strIP );  // NOTICE: supports both IPv4 and IPv6
         // print info about this method call into log output
         clog( dev::VerbosityInfo, cc::warn( "ADMIN-CALL" ) )
-            << ( cc::debug( "Got " ) + cc::info( "eth_setRestartOrExitTime" ) +
+            << ( cc::debug( "Got " ) + cc::info( "setSchainExitTime" ) +
                    cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
                    cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "origin" ) +
                    cc::debug( "=" ) + cc::notice( strOrigin ) + cc::debug( ", " ) +
@@ -2739,24 +2738,18 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
                                                                // RPC call will extract text from it
                                                                // and return it as call error
         //
-        // TO-DO: handle call to eth_setRestartOrExitTime or setRestartOrExitTime - both names are
-        // supported
-        //
         // TO-DO: optionally, put some data into joResponse which represents return value JSON
         //
         // TESTING: you can use wascat console
         // npm install -g
         // wscat -c 127.0.0.1:15020
-        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{}}
-        // {"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123}}
+        // {"jsonrpc":"2.0","id":12345,"method":"setSchainExitTime","params":{}}
+        // {"jsonrpc":"2.0","id":12345,"method":"setSchainExitTime","params":{"finishTime":123}}
         //
         // or specify JSON right in command line...
         //
         // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"eth_setRestartOrExitTime","params":{"finishTime":123}}'
-        // wscat -c ws://127.0.0.1:15020 -w 1 -x
-        // '{"jsonrpc":"2.0","id":12345,"method":"setRestartOrExitTime","params":{"finishTime":123}}'
-        //
+        // '{"jsonrpc":"2.0","id":12345,"method":"setSchainExitTime","params":{"finishTime":123}}'
 
         // Result
         std::string strRequest = joRequest.dump();
@@ -2767,18 +2760,18 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
         dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setRestartOrExitTime( uint64_t( finishTime ) );
+        pClient->setSchainExitTime(uint64_t(finishTime));
         joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )
             clog( dev::Verbosity::VerbosityError,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
-                << ( " " + cc::error( "error in " ) + cc::warn( "eth_setRestartOrExitTime" ) +
+                << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
-            std::string( "error in \"eth_setRestartOrExitTime\" rpc method, exception: " ) +
+            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) +
             ex.what();
         joResponse["error"] = joError;
         return;
@@ -2786,11 +2779,11 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
         if ( pSO->m_bTraceCalls )
             clog( dev::Verbosity::VerbosityError,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
-                << ( " " + cc::error( "error in " ) + cc::warn( "eth_setRestartOrExitTime" ) +
+                << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, unknown exception " ) );
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
-        joError["message"] = "error in \"eth_setRestartOrExitTime\" rpc method, unknown exception";
+        joError["message"] = "error in \"setSchainExitTime\" rpc method, unknown exception";
         joResponse["error"] = joError;
         return;
     }
