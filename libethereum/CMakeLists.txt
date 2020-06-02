@@ -1,6 +1,6 @@
 
 file( GLOB sources "*.cpp" "*.h" )
-add_library( ethereum ${sources} )
+add_library( ethereum ${sources} InstanceMonitor.cpp InstanceMonitor.h)
 target_include_directories( ethereum PRIVATE "${UTILS_INCLUDE_DIR}" ${SKUTILS_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
         ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include

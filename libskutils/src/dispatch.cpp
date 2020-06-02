@@ -875,7 +875,7 @@ size_t queue::impl_job_cancel_all() {
     return cnt;
 }
 bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interval,
-    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke once asyncronously
+    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke once asynchronously
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
     std::cout << skutils::tools::format( "dispatch queue %s add job %p\n", id_.c_str(), this );
     std::cout.flush();
@@ -922,7 +922,7 @@ bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interva
     }
     return false;
 }
-bool queue::impl_job_run() {  // fetch first asynchronosly stored job and run
+bool queue::impl_job_run() {  // fetch first asynchronously stored job and run
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
     std::cout << skutils::tools::format( "dispatch queue %s try run job %p\n", id_.c_str(), this );
     std::cout.flush();
@@ -975,7 +975,7 @@ bool queue::impl_job_run_sync( job_t /*&*/ fn ) {
         pDomain->fetch_lock_.notify_one();
     return rv;
 }
-bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicity specified job synchronosly
+bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicitly specified job synchronosly
     if ( !fn )
         return false;
     if ( is_removed() )
@@ -1038,7 +1038,7 @@ size_t queue::async_job_count() const {
 }
 bool queue::job_add( job_t /*&*/ fn,
     duration_t timeout,   // = duration_t(0) // if both timeout and interval are zero, then invoke
-                          // once asyncronously
+                          // once asynchronously
     duration_t interval,  // = 0
     job_id_t* pJobID      // = nullptr // periodical job id
 ) {
@@ -1083,7 +1083,7 @@ bool queue::job_run_sync( job_t /*&*/ fn ) {
     // lock_type lock( mtx_run() );
     return impl_job_run_sync( fn );
 }
-bool queue::job_run( job_t /*&*/ fn ) {  // run explicity specified job synchronosly
+bool queue::job_run( job_t /*&*/ fn ) {  // run explicitly specified job synchronosly
     if ( !fn )
         return false;
     if ( is_removed() )
@@ -1091,7 +1091,7 @@ bool queue::job_run( job_t /*&*/ fn ) {  // run explicity specified job synchron
     // lock_type lock( mtx_run() );
     return impl_job_run( fn );
 }
-bool queue::job_run() {  // fetch first asynchronosly stored job and run
+bool queue::job_run() {  // fetch first asynchronously stored job and run
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_run() );
@@ -1325,7 +1325,7 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
     }
     if ( cntStartedAndRunningThreads != cntThreads ) {
-        fetch_lock_.notify_all();  // notrify earlier
+        fetch_lock_.notify_all();  // notify earlier
         throw std::runtime_error(
             "dispatch domain failed to initialize all threads in thread pool" );
     }

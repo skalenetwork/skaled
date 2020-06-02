@@ -416,7 +416,7 @@ queue& queue::getQueueForSubsystem( const char* strSubSystem ) {
     static map_subsystem_time_trackers_t g_map_subsystem_time_trackers;
     std::string sn = ( strSubSystem != nullptr && strSubSystem[0] != '\0' ) ?
                          strSubSystem :
-                         "unknowm-time-tracker-subsystem";
+                         "unknown-time-tracker-subsystem";
     map_subsystem_time_trackers_t::iterator itFind = g_map_subsystem_time_trackers.find( sn );
     skutils::retain_release_ptr< queue > pq;
     if ( itFind != g_map_subsystem_time_trackers.end() )
