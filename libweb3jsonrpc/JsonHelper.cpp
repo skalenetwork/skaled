@@ -173,9 +173,9 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["to"] = toJS( _t.to() );
 
     res["transactionHash"] = toJS( _t.hash() );
-    res["transactionIndex"] = _t.transactionIndex();
+    res["transactionIndex"] = toJS( _t.transactionIndex() );
     res["blockHash"] = toJS( _t.blockHash() );
-    res["blockNumber"] = _t.blockNumber();
+    res["blockNumber"] = toJS( _t.blockNumber() );
     res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["gasUsed"] = toJS( _t.gasUsed() );
     //
@@ -259,11 +259,11 @@ Json::Value toJson( dev::eth::LocalisedLogEntry const& _e ) {
         res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
         if ( _e.mined ) {
             res["type"] = "mined";
-            res["blockNumber"] = _e.blockNumber;
+            res["blockNumber"] = toJS( _e.blockNumber );
             res["blockHash"] = toJS( _e.blockHash );
-            res["logIndex"] = _e.logIndex;
+            res["logIndex"] = toJS( _e.logIndex );
             res["transactionHash"] = toJS( _e.transactionHash );
-            res["transactionIndex"] = _e.transactionIndex;
+            res["transactionIndex"] = toJS( _e.transactionIndex );
         } else {
             res["type"] = "pending";
             res["blockNumber"] = Json::Value( Json::nullValue );

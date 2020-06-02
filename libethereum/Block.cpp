@@ -867,32 +867,9 @@ void Block::commitToSeal(
 
     RLPStream unclesData;
     unsigned unclesCount = 0;
-    if ( m_previousBlock.number() != 0 ) {
-        // Find great-uncles (or second-cousins or whatever they are) - children of
-        // great-grandparents, great-great-grandparents... that were not already uncles in previous
-        // generations.
-        LOG( m_loggerDetailed ) << cc::debug( "Checking " ) << m_previousBlock.hash()
-                                << cc::debug( ", parent = " ) << m_previousBlock.parentHash();
-        h256Hash excluded = _bc.allKinFrom( m_currentBlock.parentHash(), 6 );
-        auto p = m_previousBlock.parentHash();
-        for ( unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2;
-              ++gen, p = _bc.details( p ).parent ) {
-            auto us = _bc.details( p ).children;
-            assert( us.size() >= 1 );  // must be at least 1 child of our grandparent - it's our own
-                                       // parent!
-            for ( auto const& u : us )
-                if ( !excluded.count( u ) )  // ignore any uncles/mainline blocks that we know
-                                             // about.
-                {
-                    uncleBlockHeaders.push_back( _bc.info( u ) );
-                    unclesData.appendRaw( _bc.headerData( u ) );
-                    ++unclesCount;
-                    if ( unclesCount == 2 )
-                        break;
-                    excluded.insert( u );
-                }
-        }
-    }
+
+    // here was code to handle 6 generations of uncles
+    // it was wtiting its results in two variables above
 
     BytesMap transactionsMap;
     BytesMap receiptsMap;
