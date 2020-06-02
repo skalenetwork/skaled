@@ -2760,7 +2760,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setSchainExitTime(uint64_t(finishTime));
+        pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )
@@ -2771,8 +2771,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
-            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) +
-            ex.what();
+            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) + ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {

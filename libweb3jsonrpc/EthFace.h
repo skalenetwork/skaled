@@ -392,8 +392,7 @@ public:
     inline virtual void eth_unsubscribeI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_unsubscribe( request[0u] );
     }
-    inline virtual void setSchainExitTimeI(
-        const Json::Value& request, Json::Value& response ) {
+    inline virtual void setSchainExitTimeI( const Json::Value& request, Json::Value& response ) {
         response = this->setSchainExitTime( request[0u] );
     }
     inline virtual void eth_signTransactionI( const Json::Value& request, Json::Value& response ) {
