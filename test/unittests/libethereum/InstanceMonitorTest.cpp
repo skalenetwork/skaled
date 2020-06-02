@@ -13,7 +13,7 @@ namespace fs = boost::filesystem;
 
 class InstanceMonitorMock: public InstanceMonitor {
 public:
-    explicit InstanceMonitorMock(fs::path const &config) : InstanceMonitor(config) {};
+    explicit InstanceMonitorMock() : InstanceMonitor() {};
 
     uint64_t getFinishTimestamp() {
         return this->finishTimestamp();
@@ -30,11 +30,9 @@ public:
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {
 public:
-    fs::path configPath = "testConfig.json";
 
-    InstanceMonitorTestFixture() : instanceMonitor( configPath ) {
+    InstanceMonitorTestFixture() : instanceMonitor() {
         std::fstream file;
-        file.open( configPath.string(), std::ios::out );
         rotationFilePath = instanceMonitor.getRotationFilePath();
     }
 
@@ -42,9 +40,6 @@ public:
     fs::path rotationFilePath;
 
     ~InstanceMonitorTestFixture() override {
-        if (fs::exists(configPath)) {
-            fs::remove(configPath);
-        }
         if (fs::exists(rotationFilePath)) {
             fs::remove(rotationFilePath);
         }
@@ -96,23 +91,5 @@ BOOST_AUTO_TEST_CASE( test_exiting ) {
     BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
     BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
 }
-
-//BOOST_AUTO_TEST_CASE( test_restarting ) {
-//    fs::path newConfigPath = configPath;
-//    newConfigPath += ".tmp";
-//    std::ofstream newConfig;
-//    newConfig.open(newConfigPath.string());
-//    newConfig << 1;
-//    newConfig.close();
-//    instanceMonitor.initRotationParams(0, false);
-//    instanceMonitor.performRotation();
-//    BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
-//    BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
-//    BOOST_REQUIRE( !( fs::exists( newConfigPath) ) );
-//    std::ifstream config(configPath.string() );
-//    int val;
-//    config >> val;
-//    BOOST_REQUIRE(val == 1 );
-//}
 
 BOOST_AUTO_TEST_SUITE_END()

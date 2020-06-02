@@ -31,9 +31,8 @@ namespace fs = boost::filesystem;
 
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _configPath )
-        : m_configPath( _configPath ),
-          m_finishTimestamp( 0 ),
+    explicit InstanceMonitor()
+        : m_finishTimestamp( 0 ),
           m_isExit( false ),
           m_rotationFilePath( dev::getDataDir() / rotation_file_name ) {
         restoreRotationParams();
@@ -52,7 +51,6 @@ protected:
 
     [[nodiscard]] fs::path rotationFilePath() const { return m_rotationFilePath; }
 
-    private : boost::filesystem::path const m_configPath;
     uint64_t m_finishTimestamp;
     bool m_isExit;
     const fs::path m_rotationFilePath;
