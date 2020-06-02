@@ -2792,7 +2792,7 @@ void SkaleServerOverride::eth_setRestartOrExitTime( SkaleServerHelper& /*sse*/,
         dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setRestartOrExitTime( uint64_t( finishTime ), isExit );
+        pClient->setRestartOrExitTime( uint64_t( finishTime ) );
         joResponse = nlohmann::json::parse( strResponse );
     } catch ( const std::exception& ex ) {
         if ( pSO->m_bTraceCalls )

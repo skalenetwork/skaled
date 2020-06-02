@@ -19,10 +19,6 @@ public:
         return this->finishTimestamp();
     };
 
-    bool getIsExit() {
-        return this->isExit();
-    };
-
     fs::path getRotationFilePath() {
         return this->rotationFilePath();
     }
@@ -50,10 +46,8 @@ BOOST_FIXTURE_TEST_SUITE( InstanceMonitorSuite, InstanceMonitorTestFixture )
 
 BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     uint64_t ts = 100;
-    bool isExit = false;
     BOOST_REQUIRE( !fs::exists( instanceMonitor.getRotationFilePath() ) );
-    instanceMonitor.initRotationParams(ts, isExit);
-    BOOST_CHECK_EQUAL(instanceMonitor.getIsExit(), isExit);
+    instanceMonitor.initRotationParams(ts);
     BOOST_CHECK_EQUAL(instanceMonitor.getFinishTimestamp(), ts);
 
     BOOST_REQUIRE( fs::exists( instanceMonitor.getRotationFilePath() ) );
@@ -61,7 +55,6 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
 
     std::ifstream rotateFile( instanceMonitor.getRotationFilePath().string() );
     auto rotateJson = nlohmann::json::parse( rotateFile );
-    BOOST_CHECK_EQUAL(rotateJson["isExit"].get< bool >(), isExit);
     BOOST_CHECK_EQUAL(rotateJson["timestamp"].get< uint64_t >(), ts);
 }
 
@@ -69,7 +62,7 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_false ) {
     uint64_t currentTime = 100;
     uint64_t finishTime = 200;
     BOOST_REQUIRE( !instanceMonitor.isTimeToRotate( currentTime ) );
-    instanceMonitor.initRotationParams(finishTime, false);
+    instanceMonitor.initRotationParams(finishTime);
     BOOST_REQUIRE( !instanceMonitor.isTimeToRotate( currentTime ) );
 }
 
@@ -78,15 +71,15 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 
     BOOST_REQUIRE( !instanceMonitor.isTimeToRotate( currentTime ) );
 
-    instanceMonitor.initRotationParams(100, false);
+    instanceMonitor.initRotationParams(100);
     BOOST_REQUIRE( instanceMonitor.isTimeToRotate( currentTime ) );
 
-    instanceMonitor.initRotationParams(50, false);
+    instanceMonitor.initRotationParams(50);
     BOOST_REQUIRE( instanceMonitor.isTimeToRotate( currentTime ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_exiting ) {
-    instanceMonitor.initRotationParams(0, true);
+BOOST_AUTO_TEST_CASE( test_rotation ) {
+    instanceMonitor.initRotationParams(0);
     instanceMonitor.performRotation();
     BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
     BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );

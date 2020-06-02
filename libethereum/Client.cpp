@@ -571,8 +571,8 @@ bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
            this->last_snapshot_time / uint64_t( snapshotIntervalMs );
 }
 
-void Client::setRestartOrExitTime( uint64_t _timestamp, bool _isExit ) const {
-    m_instanceMonitor->initRotationParams( _timestamp, _isExit );
+void Client::setRestartOrExitTime( uint64_t _timestamp ) const {
+    m_instanceMonitor->initRotationParams( _timestamp );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
