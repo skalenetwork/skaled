@@ -97,22 +97,22 @@ BOOST_AUTO_TEST_CASE( test_exiting ) {
     BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_restarting ) {
-    fs::path newConfigPath = configPath;
-    newConfigPath += ".tmp";
-    std::ofstream newConfig;
-    newConfig.open(newConfigPath.string());
-    newConfig << 1;
-    newConfig.close();
-    instanceMonitor.initRotationParams(0, false);
-    instanceMonitor.performRotation();
-    BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
-    BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
-    BOOST_REQUIRE( !( fs::exists( newConfigPath) ) );
-    std::ifstream config(configPath.string() );
-    int val;
-    config >> val;
-    BOOST_REQUIRE(val == 1 );
-}
+//BOOST_AUTO_TEST_CASE( test_restarting ) {
+//    fs::path newConfigPath = configPath;
+//    newConfigPath += ".tmp";
+//    std::ofstream newConfig;
+//    newConfig.open(newConfigPath.string());
+//    newConfig << 1;
+//    newConfig.close();
+//    instanceMonitor.initRotationParams(0, false);
+//    instanceMonitor.performRotation();
+//    BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
+//    BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
+//    BOOST_REQUIRE( !( fs::exists( newConfigPath) ) );
+//    std::ifstream config(configPath.string() );
+//    int val;
+//    config >> val;
+//    BOOST_REQUIRE(val == 1 );
+//}
 
 BOOST_AUTO_TEST_SUITE_END()

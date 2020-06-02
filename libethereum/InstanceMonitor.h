@@ -58,5 +58,4 @@ protected:
     const fs::path m_rotationFilePath;
 
     static const std::string rotation_file_name;
-    static const std::string temp_config_ext;
 };

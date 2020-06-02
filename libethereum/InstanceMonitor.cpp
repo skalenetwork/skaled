@@ -33,23 +33,10 @@ using namespace dev;
 namespace fs = boost::filesystem;
 
 const std::string InstanceMonitor::rotation_file_name = "rotation.txt";
-const std::string InstanceMonitor::temp_config_ext = ".tmp";
 
 void InstanceMonitor::performRotation() {
-    if ( m_isExit ) {
-        fs::remove( m_rotationFilePath );
-        ExitHandler::exitHandler( SIGTERM );
-    } else {
-        fs::path newConfigPath = m_configPath;
-        newConfigPath += temp_config_ext;
-        if ( !fs::exists( newConfigPath ) ) {
-            throw std::runtime_error( "New config not found" );
-        }
-        fs::remove( m_configPath );
-        fs::rename( newConfigPath, m_configPath );
-        fs::remove( m_rotationFilePath );
-        ExitHandler::exitHandler( SIGTERM );
-    }
+    fs::remove( m_rotationFilePath );
+    ExitHandler::exitHandler( SIGTERM );
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _timestamp, bool _isExit ) {
