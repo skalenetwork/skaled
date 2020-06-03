@@ -24,7 +24,7 @@ struct uv_loop_s;
 };  /// extern "C"
 
 //
-// uncomment line below to enable exeperimental early timer initialization for async tasks with
+// uncomment line below to enable experimental early timer initialization for async tasks with
 // non-zero start timeout:
 // #define __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ 1
 //
@@ -54,7 +54,7 @@ duration_t duration_from_nanoseconds( const T& x ) {
     return duration_t( duration_base_t( x ) );
 }
 template < typename T >
-duration_t duration_from_microiseconds( const T& x ) {
+duration_t duration_from_microseconds( const T& x ) {
     return duration_t( duration_base_t( x ) * duration_base_t( 1000 ) );
 }
 template < typename T >
@@ -583,10 +583,10 @@ private:
     size_t impl_job_cancel_all();
     bool impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interval,
         job_id_t* pJobID );  // if both timeout and interval are zero, then invoke once
-                             // asyncronously
+                             // asynchronously
     bool impl_job_run_sync( job_t /*&*/ fn );
-    bool impl_job_run( job_t /*&*/ fn );  // run explicity specified job synchronosly
-    bool impl_job_run();                  // fetch first asynchronosly stored job and run
+    bool impl_job_run( job_t /*&*/ fn );  // run explicitly specified job synchronosly
+    bool impl_job_run();                  // fetch first asynchronously stored job and run
 public:
     domain_ptr_t get_domain();
     bool is_detached();
@@ -595,7 +595,7 @@ public:
     size_t async_job_count() const;
     bool job_add( job_t /*&*/ fn,
         duration_t timeout = duration_t( 0 ),  // if both timeout and interval are zero, then invoke
-                                               // once asyncronously
+                                               // once asynchronously
         duration_t interval = duration_t( 0 ),
         job_id_t* pJobID = nullptr  // periodical job id
     );
@@ -641,14 +641,14 @@ public:
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         return job_run_sync( fn );
     }
-    bool job_run( job_t /*&*/ fn );  // run explicity specified job synchronosly
+    bool job_run( job_t /*&*/ fn );  // run explicitly specified job synchronosly
     template < typename F, typename... Args >
     inline bool job_run( F&& f, Args&&... args ) {
         std::function< decltype( f( args... ) )() > fn =
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         return job_run( fn );
     }
-    bool job_run();  // fetch first asynchronosly stored job and run
+    bool job_run();  // fetch first asynchronously stored job and run
     //
     friend class domain;
 };  /// class queue
