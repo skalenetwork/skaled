@@ -688,10 +688,10 @@ Json::Value WebThreeStubClient::eth_unsubscribe( const Json::Value& param1 ) {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::eth_setRestartOrExitTime( const Json::Value& param1 ) {
+Json::Value WebThreeStubClient::setSchainExitTime( const Json::Value& param1 ) {
     Json::Value p;
     p.append( param1 );
-    Json::Value result = this->CallMethod( "eth_setRestartOrExitTime", p );
+    Json::Value result = this->CallMethod( "setSchainExitTime", p );
     if ( result.isObject() )
         return result;
     else

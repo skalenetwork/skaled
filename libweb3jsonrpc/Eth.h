@@ -134,7 +134,7 @@ public:
     virtual std::string eth_chainId() override;
     virtual Json::Value eth_subscribe( Json::Value const& _transaction ) override;
     virtual Json::Value eth_unsubscribe( Json::Value const& _transaction ) override;
-    virtual Json::Value eth_setRestartOrExitTime( Json::Value const& _transaction ) override;
+    virtual Json::Value setSchainExitTime( Json::Value const& _transaction ) override;
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 

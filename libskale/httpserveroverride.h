@@ -403,7 +403,7 @@ protected:
     typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
-    void eth_setRestartOrExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
+    void setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
     friend class SkaleRelayWS;

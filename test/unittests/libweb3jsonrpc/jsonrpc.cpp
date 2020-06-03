@@ -210,7 +210,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
-        auto monitor = make_shared< InstanceMonitor >("test");
+        auto monitor = make_shared< InstanceMonitor >();
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
@@ -1666,12 +1666,11 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
 }
 
-BOOST_AUTO_TEST_CASE( eth_setRestartOrExitTime ){
+BOOST_AUTO_TEST_CASE( setSchainExitTime ){
     JsonRpcFixture fixture;
     Json::Value requestJson;
     requestJson["finishTime"] = 100;
-    requestJson["isExit"] = true;
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_setRestartOrExitTime(requestJson), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->setSchainExitTime(requestJson), jsonrpc::JsonRpcException);
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
