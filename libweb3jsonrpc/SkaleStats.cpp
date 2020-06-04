@@ -898,7 +898,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(1), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(1), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 contractPosition =
@@ -909,7 +909,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(2), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(2), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 addressTo =
@@ -920,7 +920,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(3), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(3), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 amount =
@@ -931,7 +931,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(4), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(4), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfName =
@@ -942,7 +942,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // std::cout << "\"nFiledSize\" is " << nFiledSize << std::endl;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(5), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(5), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
@@ -953,7 +953,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(6), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(6), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfSymbol =
@@ -964,7 +964,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // std::cout << "\"nFiledSize\" is " << nFiledSize << std::endl;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(7), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(7), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
@@ -975,7 +975,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 1;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(8), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(8), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const uint8_t nDecimals = uint8_t( vecBytes[nPos] );
@@ -985,7 +985,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC20(9), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC20(9), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 totalSupply =
@@ -1040,7 +1040,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(1), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(1), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 contractPosition =
@@ -1050,7 +1050,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(2), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(2), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 addressTo =
@@ -1060,7 +1060,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(3), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(3), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 tokenID =
@@ -1070,7 +1070,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(4), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(4), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfName =
@@ -1079,7 +1079,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = sizeOfName.convert_to< size_t >();
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(5), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(5), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
@@ -1090,7 +1090,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(6), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(6), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfSymbol =
@@ -1099,7 +1099,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 nFiledSize = sizeOfSymbol.convert_to< size_t >();
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
                     throw std::runtime_error(
-                        skutils::tools::format( "IMA message to short, ERC721(7), nPos=%zu, "
+                        skutils::tools::format( "IMA message too short, ERC721(7), nPos=%zu, "
                                                 "nFiledSize=%zu, cntMessageBytes=%zu",
                             nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
