@@ -61,14 +61,14 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     try {
         this->verifyAllData( verified );
     } catch ( IsNotVerified& ex ) {
-        IsNotVerified(
+        IsNotVerified( cc::fatal( "FATAL:" ) + " " +
+                       cc::error( "Exception while verifying signatures from other skaleds: " ) +
+                       " " + cc::warn( ex.what() ) );
+    } catch ( std::exception& ex ) {
+        std::throw_with_nested(
             cc::fatal( "FATAL:" ) + " " +
             cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
             cc::warn( ex.what() ) );
-    } catch ( std::exception& ex ) {
-        std::throw_with_nested( cc::fatal( "FATAL:" ) + " " +
-                                cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
-                                cc::warn( ex.what() ) );
     }
 
     if ( !verified ) {
