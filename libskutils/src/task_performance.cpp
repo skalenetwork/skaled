@@ -16,6 +16,9 @@ lockable::lockable() {}
 lockable::~lockable() {}
 
 lockable::mutex_type& lockable::mtx() const {
+    //  static skutils::multithreading::recursive_mutex_type g_lockable_mtx(
+    //      "skutils::task::performance::lockable::g_lockable_mtx");
+    //  return g_lockable_mtx;
     return skutils::get_ref_mtx();
 }
 
@@ -29,7 +32,8 @@ describable::describable( const string& strName, const json& jsnIn )
       jsonErr_( json::object() ) {
     if ( strName_.empty() )
         throw std::runtime_error(
-            "Attempt to instantiate performance describable instance without name provided" );
+            "Attempt to instantiate performance describable "
+            "instance without name provided" );
 }
 
 describable::~describable() {}
@@ -68,7 +72,6 @@ index_type index_holder::alloc_index() {
     index_type n = nextItemIndex_++;
     return n;
 }
-
 
 index_type index_holder::get_index() const {
     index_type n = nextItemIndex_;
