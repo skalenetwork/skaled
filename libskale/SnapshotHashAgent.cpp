@@ -229,8 +229,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 }
 
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
-    assert( this->voted_hash_.first != dev::h256() &&
-            this->voted_hash_.second != libff::alt_bn128_G1::zero() &&
-            this->voted_hash_.second.is_well_formed() );
+    if ( this->voted_hash_.first == dev::h256() ) {
+        throw std::invalid_argument( "Hash is empty" );
+    }
+
+    if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
+         !this->voted_hash_.second.is_well_formed() ) {
+        throw std::invalid_argument( "Signature is not well formed" );
+    }
+
     return this->voted_hash_;
 }
