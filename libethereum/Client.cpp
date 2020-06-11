@@ -991,7 +991,8 @@ void Client::updateHashes( unsigned block_number ) {
         if ( this->last_snapshot_hashes.second != this->empty_str_hash ) {
             std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
         }
-        this->last_snapshot_hashes.second = this->m_snapshotManager->getSnapshotHash( block_number );
+        this->last_snapshot_hashes.second =
+            this->m_snapshotManager->getSnapshotHash( block_number );
     }
     this->last_snapshoted_block = block_number;
 }
