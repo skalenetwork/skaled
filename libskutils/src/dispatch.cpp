@@ -14,25 +14,28 @@
 //#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ 1
 
 #define LOCAL_DEBUG_TRACE( x )
-// static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty() ) return;
-// std::cout.flush(); std::cerr.flush(); std::cout << x << "\n"; std::cout.flush(); }
+// static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty()
+// ) return; std::cout.flush(); std::cerr.flush(); std::cout << x << "\n";
+// std::cout.flush(); }
 
 namespace skutils {
 namespace dispatch {
 
 skutils::multithreading::recursive_mutex_type& get_dispatch_mtx() {
     // static skutils::multithreading::recursive_mutex_type g_dispatch_mtx(
-    // "skutils::dispatch::g_dispatch_mtx" ); return g_dispatch_mtx;
+    //    "skutils::dispatch::g_dispatch_mtx" );
+    // return g_dispatch_mtx;
     return skutils::get_ref_mtx();
 }
 
 static void stat_sleep( duration_t how_much ) {
     // auto nNanoSeconds = how_much.count();
-    // struct timespec ts{ time_t(nNanoSeconds/1000000000), long(nNanoSeconds%1000000000) };
-    // nanosleep( &ts,nullptr );
+    // struct timespec ts{ time_t(nNanoSeconds/1000000000),
+    // long(nNanoSeconds%1000000000) }; nanosleep( &ts,nullptr );
     std::this_thread::sleep_for( how_much );
 }
-bool sleep_while_true(  // returns false if timeout is reached and fn() never returned false
+bool sleep_while_true(  // returns false if timeout is reached and fn() never
+                        // returned false
     while_true_t fn,
     duration_t timeout,        // = duration_t(0) // zero means no timeout
     duration_t step,           // = duration_t(10*1000*1000)
@@ -217,7 +220,8 @@ loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {
 #if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     if ( p_uvAsyncInitForTimers_ == nullptr )
         p_uvAsyncInitForTimers_ = ( void* ) calloc( 1, sizeof( uv_async_t ) );
-#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
 }
 loop::~loop() {
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
@@ -232,7 +236,8 @@ loop::~loop() {
         free( p_uvAsyncInitForTimers_ );
         p_uvAsyncInitForTimers_ = nullptr;
     }
-#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     std::cout << skutils::tools::format( "dispatch loop dtor finish %p\n", this );
     std::cout.flush();
@@ -333,7 +338,8 @@ void loop::run() {
                         pLoop->pending_timer_init();
                 } );
             }  // if ( p_uvAsyncInitForTimers_ != nullptr )
-#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+               // )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
@@ -371,7 +377,8 @@ void loop::pending_timer_add( void* p_uvTimer, void* pTimerData,
 #if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     if ( p_uvAsyncInitForTimers_ == nullptr )
         return;
-#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
     pending_timer_t rpt;
     rpt.pUvTimer_ = p_uvTimer;
     rpt.pFnCb_ = pFnCb;
@@ -386,7 +393,8 @@ void loop::pending_timer_add( void* p_uvTimer, void* pTimerData,
 #endif
 #if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
     uv_async_send( ( uv_async_t* ) p_uvAsyncInitForTimers_ );
-#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     std::cout << skutils::tools::format(
         "dispatch loop after async send pending timer %p\n", this );
@@ -444,8 +452,8 @@ void loop::on_idle() {
 }
 void loop::on_state_check() {
     //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop state check %p\n", this );
-    //    std::cout.flush();
+    //    std::cout << skutils::tools::format( "dispatch loop state check %p\n",
+    //    this ); std::cout.flush();
     //#endif
     isAlive_ = true;
     if ( on_check_cancel_mode() )
@@ -454,8 +462,8 @@ void loop::on_state_check() {
 }
 bool loop::on_check_cancel_mode() {
     //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop check cancel mode %p\n", this );
-    //    std::cout.flush();
+    //    std::cout << skutils::tools::format( "dispatch loop check cancel mode
+    //    %p\n", this ); std::cout.flush();
     //#endif
     if ( cancelMode_ ) {
         // cancelMode_ = false;
@@ -470,8 +478,8 @@ void loop::on_check_jobs() {
     if ( cancelMode_ )
         return;
     //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop check jobs %p\n", this );
-    //    std::cout.flush();
+    //    std::cout << skutils::tools::format( "dispatch loop check jobs %p\n",
+    //    this ); std::cout.flush();
     //#endif
     if ( on_check_jobs_ )
         on_check_jobs_();
@@ -699,12 +707,12 @@ void loop::job_add( const job_id_t& id, job_t /*&*/ fn, duration_t timeout, dura
     lock_type lock( loop_mtx() );
     return impl_job_add( id, fn, timeout, interval );
 }
-void loop::job_add_once(
-    const job_id_t& id, job_t /*&*/ fn, duration_t timeout ) {  // like JavaScript setTimeout()
+void loop::job_add_once( const job_id_t& id, job_t /*&*/ fn,
+    duration_t timeout ) {  // like JavaScript setTimeout()
     job_add( id, fn, timeout, duration_t( 0 ) );
 }
-void loop::job_add_periodic(
-    const job_id_t& id, job_t /*&*/ fn, duration_t interval ) {  // like JavaScript setInterval()
+void loop::job_add_periodic( const job_id_t& id, job_t /*&*/ fn,
+    duration_t interval ) {  // like JavaScript setInterval()
     job_add( id, fn, duration_t( 0 ), interval );
 }
 
@@ -783,7 +791,8 @@ queue::queue( domain_ptr_t pDomain, const queue_id_t& id,
       is_removed_( false ),
       is_running_( false ),
       auto_remove_after_first_job_( false ),
-      mtx_jobs_( skutils::tools::format( "skutils::dispatch::queue-%p/mutex/jobs", this ) ),
+      // mtx_jobs_(skutils::tools::format("skutils::dispatch::queue-%p/mutex/jobs",
+      // this)),
       mtx_run_( skutils::tools::format( "skutils::dispatch::queue-%p/mutex/run", this ) ),
       async_job_count_( 0 )  // cached value of jobs_.size()
       ,
@@ -805,7 +814,8 @@ queue::~queue() {
 #endif
 }
 queue::mutex_type& queue::mtx_jobs() const {
-    return mtx_jobs_;
+    return skutils::get_ref_mtx();
+    // return mtx_jobs_;
 }
 queue::mutex_type& queue::mtx_run() const {
     return mtx_run_;
@@ -875,7 +885,8 @@ size_t queue::impl_job_cancel_all() {
     return cnt;
 }
 bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interval,
-    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke once asynchronously
+    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke
+                          // once asynchronously
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
     std::cout << skutils::tools::format( "dispatch queue %s add job %p\n", id_.c_str(), this );
     std::cout.flush();
@@ -1037,8 +1048,8 @@ size_t queue::async_job_count() const {
     return cntJobs;
 }
 bool queue::job_add( job_t /*&*/ fn,
-    duration_t timeout,   // = duration_t(0) // if both timeout and interval are zero, then invoke
-                          // once asynchronously
+    duration_t timeout,   // = duration_t(0) // if both timeout and interval are
+                          // zero, then invoke once asynchronously
     duration_t interval,  // = 0
     job_id_t* pJobID      // = nullptr // periodical job id
 ) {
@@ -1061,7 +1072,8 @@ bool queue::job_add_once( job_t /*&*/ fn, duration_t timeout,
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_jobs() );
-    return impl_job_add( fn, timeout, duration_t( 0 ), pJobID );  // like JavaScript setTimeout()
+    return impl_job_add( fn, timeout, duration_t( 0 ),
+        pJobID );  // like JavaScript setTimeout()
 }
 bool queue::job_add_periodic( job_t /*&*/ fn, duration_t interval,
     job_id_t* pJobID  // = nullptr // periodical job id
@@ -1073,7 +1085,8 @@ bool queue::job_add_periodic( job_t /*&*/ fn, duration_t interval,
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_jobs() );
-    return impl_job_add( fn, duration_t( 0 ), interval, pJobID );  // like JavaScript setInterval()
+    return impl_job_add( fn, duration_t( 0 ), interval,
+        pJobID );  // like JavaScript setInterval()
 }
 bool queue::job_run_sync( job_t /*&*/ fn ) {
     if ( !fn )
@@ -1106,8 +1119,11 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
     )
     : async_job_count_( 0 ),
       accumulator_base_( 0 )
-      //	, domain_mtx_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this )
-      //) 	, mtx_with_jobs_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
+      //	, domain_mtx_(
+      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this
+      // )
+      //) 	, mtx_with_jobs_(
+      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
       // this ) )
       ,
       shutdown_flag_( true ),
@@ -1146,7 +1162,8 @@ domain_ptr_t domain::get_current() {
 size_t domain::async_job_count() const {
     if ( shutdown_flag_ )
         return 0;
-    size_t cntJobs = async_job_count_;  // sum of all cached values of jobs_.size() from all queues
+    size_t cntJobs = async_job_count_;  // sum of all cached values of jobs_.size()
+                                        // from all queues
     return cntJobs;
 }
 set_queue_ids_t domain::impl_queue_get_all_names() {
@@ -1363,8 +1380,8 @@ void domain::impl_shutdown() {
     // shutdown, remove all queues
     queue_remove_all();
 }
-queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and remove it
-                                                // from with_jobs_
+queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and
+                                                // remove it from with_jobs_
     queue_ptr_t pQueueFound;
     if ( shutdown_flag_ )
         return pQueueFound;
@@ -1509,24 +1526,31 @@ loop_ptr_t domain::get_loop() {
         }
     };
     // init loop
-    //			pLoop->on_job_will_add_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool {
-    //					return true;
+    //			pLoop->on_job_will_add_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool {
+    // return true;
     //				};
-    //			pLoop->on_job_was_added_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void {
+    //			pLoop->on_job_was_added_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void {
     //				};
-    //			pLoop->on_job_will_remove_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool
+    //			pLoop->on_job_will_remove_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool
     //{ 					return true;
     //				};
-    //			pLoop->on_job_did_removed_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void
+    //			pLoop->on_job_did_removed_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void
     //{
     //				};
-    //			pLoop->on_job_will_execute_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool
+    //			pLoop->on_job_will_execute_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool
     //{ 					return true;
     //				};
-    //			pLoop->on_job_did_executed_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void
+    //			pLoop->on_job_did_executed_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void
     //{
     //				};
-    //			pLoop->on_job_exception_ = [&] ( const skutils::dispatch::job_id_t & id,
+    //			pLoop->on_job_exception_ = [&] ( const
+    // skutils::dispatch::job_id_t & id,
     // std::exception
     //* pe ) -> void {
     //				};
