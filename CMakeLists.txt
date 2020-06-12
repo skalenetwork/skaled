@@ -218,6 +218,9 @@ if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
+else()
+    add_subdirectory( libconsensus/libBLS )
+    set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 
 set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
