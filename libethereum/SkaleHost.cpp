@@ -71,7 +71,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 #else
     unsigned block_number = m_client.number();
-    dev::h256 state_root = m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
+    dev::h256 state_root =
+        m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
     return make_unique< ConsensusStub >( _extFace, block_number, state_root );
 #endif
 }
