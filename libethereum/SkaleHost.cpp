@@ -398,6 +398,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
         // this is need for testing. should add better handling
+        LOG( m_traceLogger )
+            << cc::debug( "STATE ROOT FOR BLOCK: " ) << cc::debug( std::to_string( _blockID ) )
+            << cc::debug( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
+                              .stateRoot()
+                              .hex() );
         assert(
             dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
                                   .stateRoot() ) == _stateRoot );
