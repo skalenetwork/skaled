@@ -2,13 +2,13 @@
 
 # Snapshots
 
-- [Introduction](#introduction)
-- [Design](#design)    
-- [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
-    - [skale_getSnapshot](#skale_getsnapshot)
-    - [skale_downloadSnapshotFragment](#skale_downloadsnapshotfragment)
-    - [skale_getSnapshotSignature](#skale_getsnapshotsignature)
-    - [skale_getLatestSnapshotBlockNumber](#skale_getlatestsnapshotblocknumber)
+  -   [Introduction](#introduction)
+  -   [Design](#design)    
+  -   [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
+    -   [skale_getSnapshot](#skale_getsnapshot)
+    -   [skale_downloadSnapshotFragment](#skale_downloadsnapshotfragment)
+    -   [skale_getSnapshotSignature](#skale_getsnapshotsignature)
+    -   [skale_getLatestSnapshotBlockNumber](#skale_getlatestsnapshotblocknumber)
 
 ## Introduction
 
@@ -22,7 +22,7 @@ Additionally, a node can be restarted from a snapshot it the node was offline fo
 
 Skaled uses the btrfs file system to create snapshots.
 
-SKALE Chain nodes perform snapshots once the current block timestamp crosses a boundary in T seconds, where T<sub>snapshotInterval</sub> is a configurable number defined in the node config file. After creating the snapshot, each node calculates it's hash and passes it to stateRoot. If the first block on the SKALE chain occurred at T<sub>firstBlock</sub>, then the first snapshot will be performed once another block's timestamp crosses the boundary ([T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>] + 1) \* T<sub>snapshotInterval.
+SKALE Chain nodes perform snapshots once the current block timestamp crosses a boundary in T seconds, where T<sub>snapshotInterval</sub> is a configurable number defined in the node config file. After creating the snapshot, each node calculates it's hash and passes it to stateRoot. If the first block on the SKALE chain occurred at T<sub>firstBlock</sub>, then the first snapshot will be performed once another block's timestamp crosses the boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>\] + 1) \* T<sub>snapshotInterval.
 
 To start from a snapshot, a node must confirm whether a snapshot is valid. To prevent downloading of snapshots from malicious nodes, the following procedure was designed:
 
@@ -37,17 +37,17 @@ NOTE: stateRoot is needed to determine whether there are any node software issue
 
 ### skale_getSnapshot
 
-**Parameters**
+Parameters
 
 `blockNumber`: a block number, or the string "latest"
 `autoCreate`: `Boolean`, create snapshot if it does not exist
 
-**Returns**
+Returns
 
 `dataSize`: integer, the size of snapshot in bytes
 `maxAllowedChunkSize`: integer, the maximum chunk size in bytes
 
-**Example**
+Example
 
 ```sh
 // Request
@@ -66,19 +66,19 @@ curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshot", "params"
 
 Returns a snapshot fragment.
 
-**Parameters**
+Parameters
 
 `blockNumber`: a block number, or the string "latest"
 `from`: a block number
 `size`: integer, the size of fragment in bytes
 `isBinary`: `Boolean`
 
-**Returns**
+Returns
 
 `size`: integer, the size of chunk in bytes
 `data`: `base64`, btrfs data
 
-**Example**
+Example
 
 ```sh
 // Request
@@ -97,11 +97,11 @@ curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_downloadSnapshotFragme
 
 Returns signature of snapshot hash on given block number.
 
-**Parameters**
+Parameters
 
 `blockNumber`: a block number
 
-**Returns**
+Returns
 
 `X`: string, X coordinate of signature
 `Y`: string, Y coordinate of signature
@@ -109,7 +109,7 @@ Returns signature of snapshot hash on given block number.
 `hash`: string, hash of a snapshot on given block number
 `signerIndex`: integer, receiver's index in SKALE chain
 
-**Example**
+Example
 
 ```sh
 // Request
@@ -131,15 +131,15 @@ curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshotSignature",
 
 Returns the latest snapshotted block's number.
 
-**Parameters**
+Parameters
 
 NULL
 
-**Returns**
+Returns
 
 `blockNumber`: integer, the latest snapshotted block's number
 
-**Example**
+Example
 
 ```sh
 // Request
