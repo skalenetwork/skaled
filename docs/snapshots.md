@@ -2,9 +2,9 @@
 
 # Snapshots
 
-  -   [Introduction](#introduction)
-  -   [Design](#design)    
-  -   [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
+-   [Introduction](#introduction)
+-   [Design](#design)    
+-   [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
     -   [skale_getSnapshot](#skale_getsnapshot)
     -   [skale_downloadSnapshotFragment](#skale_downloadsnapshotfragment)
     -   [skale_getSnapshotSignature](#skale_getsnapshotsignature)
@@ -22,7 +22,7 @@ Additionally, a node can be restarted from a snapshot it the node was offline fo
 
 Skaled uses the btrfs file system to create snapshots.
 
-SKALE Chain nodes perform snapshots once the current block timestamp crosses a boundary in T seconds, where T<sub>snapshotInterval</sub> is a configurable number defined in the node config file. After creating the snapshot, each node calculates it's hash and passes it to stateRoot. If the first block on the SKALE chain occurred at T<sub>firstBlock</sub>, then the first snapshot will be performed once another block's timestamp crosses the boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>\] + 1) \* T<sub>snapshotInterval.
+SKALE Chain nodes perform snapshots once the current block timestamp crosses a boundary in T seconds, where T<sub>snapshotInterval</sub> is a configurable number defined in the node config file. After creating the snapshot, each node calculates it's hash and passes it to stateRoot. If the first block on the SKALE chain occurred at T<sub>firstBlock</sub>, then the first snapshot will be performed once another block's timestamp crosses the boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>] + 1) \* T<sub>snapshotInterval</sub>.
 
 To start from a snapshot, a node must confirm whether a snapshot is valid. To prevent downloading of snapshots from malicious nodes, the following procedure was designed:
 
@@ -39,13 +39,13 @@ NOTE: stateRoot is needed to determine whether there are any node software issue
 
 Parameters
 
-`blockNumber`: a block number, or the string "latest"
-`autoCreate`: `Boolean`, create snapshot if it does not exist
+-   `blockNumber`: a block number, or the string "latest"
+-   `autoCreate`: `Boolean`, create snapshot if it does not exist
 
 Returns
 
-`dataSize`: integer, the size of snapshot in bytes
-`maxAllowedChunkSize`: integer, the maximum chunk size in bytes
+-   `dataSize`: integer, the size of snapshot in bytes
+-   `maxAllowedChunkSize`: integer, the maximum chunk size in bytes
 
 Example
 
@@ -68,15 +68,15 @@ Returns a snapshot fragment.
 
 Parameters
 
-`blockNumber`: a block number, or the string "latest"
-`from`: a block number
-`size`: integer, the size of fragment in bytes
-`isBinary`: `Boolean`
+-   `blockNumber`: a block number, or the string "latest"
+-   `from`: a block number
+-   `size`: integer, the size of fragment in bytes
+-   `isBinary`: `Boolean`
 
 Returns
 
-`size`: integer, the size of chunk in bytes
-`data`: `base64`, btrfs data
+-   `size`: integer, the size of chunk in bytes
+-   `data`: `base64`, btrfs data
 
 Example
 
@@ -99,15 +99,15 @@ Returns signature of snapshot hash on given block number.
 
 Parameters
 
-`blockNumber`: a block number
+-   `blockNumber`: a block number
 
 Returns
 
-`X`: string, X coordinate of signature
-`Y`: string, Y coordinate of signature
-`helper`: integer, minimum number such that Y=(X+helper)^3 is a square in F<sub>q</sub>
-`hash`: string, hash of a snapshot on given block number
-`signerIndex`: integer, receiver's index in SKALE chain
+-   `X`: string, X coordinate of signature
+-   `Y`: string, Y coordinate of signature
+-   `helper`: integer, minimum number such that Y=(X+helper)^3 is a square in F<sub>q</sub>
+-   `hash`: string, hash of a snapshot on given block number
+-   `signerIndex`: integer, receiver's index in SKALE chain
 
 Example
 
@@ -137,7 +137,7 @@ NULL
 
 Returns
 
-`blockNumber`: integer, the latest snapshotted block's number
+-   `blockNumber`: integer, the latest snapshotted block's number
 
 Example
 
