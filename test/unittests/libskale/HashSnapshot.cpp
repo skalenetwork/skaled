@@ -2,10 +2,15 @@
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcrypto/Hash.h>
 #include <libethcore/KeyManager.h>
-#include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
+
+#define private public          // TODO refactor SnapshotManager
+    #include <libskale/SnapshotManager.h>
+#undef private
+
+#include <libethereum/ClientTest.h>
 #include <libskale/SnapshotHashAgent.h>
-#include <libskale/SnapshotManager.h>
+
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/Debug.h>
@@ -228,6 +233,7 @@ struct FixtureCommon {
 #endif
     }
 };
+}//namespace
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
@@ -390,7 +396,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
     TransientDirectory tempDir;
 };
-}  // namespace
 
 BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
@@ -606,7 +611,7 @@ contract StorageFiller{
     std::cout << "Hash = " << hash1 << std::endl;
 }
 
-BOOST_FIXTURE_TEST_CASE( hashing_speed, SnapshotHashingFixture,
+BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture,
     *boost::unit_test::disabled() ) {
     // 21s
     // dev::db::LevelDB db("/home/dimalit/skaled/big_states/1GR_1.4GB/a77d61c4/12041/state");
@@ -614,6 +619,19 @@ BOOST_FIXTURE_TEST_CASE( hashing_speed, SnapshotHashingFixture,
     dev::db::LevelDB db("/home/dimalit/skaled/big_states/100MR_300MB/cddf5aa1/12041/state");
     auto t1 = std::chrono::high_resolution_clock::now();
     auto hash = db.hashBase();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
+}
+
+BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    // 140s - with 4k and 1b files both
+    mgr->computeFileSystemHash("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx, false);
+    dev::h256 hash;
+    secp256k1_sha256_finalize( &ctx, hash.data() );
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
 }
