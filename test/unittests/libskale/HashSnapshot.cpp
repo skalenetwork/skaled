@@ -232,7 +232,6 @@ struct FixtureCommon {
 #endif
     }
 };
-}//namespace
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
@@ -395,6 +394,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
     TransientDirectory tempDir;
 };
+} //namespace
 
 BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
