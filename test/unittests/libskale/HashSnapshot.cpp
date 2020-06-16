@@ -173,7 +173,6 @@ private:
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
     const string BTRFS_DIR_PATH = "btrfs";
-    const uint64_t BIG_SNAPSHOT_N = 1024LL*1024*100LL;
     uid_t sudo_uid;
     gid_t sudo_gid;
 
@@ -242,7 +241,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(BIG_SNAPSHOT_N*50/1024/1024 + 200) ).c_str() );
+        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
         system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
         system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
@@ -266,7 +265,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.byzantiumForkBlock = 0;
         chainParams.externalGasDifficulty = 1;
-        chainParams.sChain.storageLimit = (long long) 1.1 * BIG_SNAPSHOT_N * 32;
+        chainParams.sChain.storageLimit = 0x1122334455667788UL;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
@@ -551,71 +550,13 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE( SnapshotPerformanceSuite, *boost::unit_test::precondition( option_all_test ) )
-
-BOOST_FIXTURE_TEST_CASE( big_storage_snapshot, SnapshotHashingFixture,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    auto senderAddress = coinbase.address();
-    auto receiver = KeyPair::create();
-
-    const int blocksToMine = 1;
-    dev::eth::simulateMining( *( client ), blocksToMine );
-
-    /********* deploy ***********/
-
-/*
-pragma solidity >=0.4.10 <0.7.0;
-
-
-contract StorageFiller{
-
-    mapping (uint32 => bytes32) public store;
-
-    fallback() external payable {
-        uint n = msg.value;
-        for(uint32 i=0; i<n; ++i){
-            store[i] = keccak256(abi.encodePacked(i));
-        }// for
-    }// fallback
-}
-*/
-
-    string bytecode = "608060405234801561001057600080fd5b5061017f806100206000396000f3fe60806040526004361061003f576000357c010000000000000000000000000000000000000000000000000000000090048063b9e95382146100dc57610040565b5b600034905060008090505b818163ffffffff1610156100d85780604051602001808263ffffffff1663ffffffff167c0100000000000000000000000000000000000000000000000000000000028152600401915050604051602081830303815290604052805190602001206000808363ffffffff1663ffffffff1681526020019081526020016000208190555080600101905061004b565b5050005b3480156100e857600080fd5b5061011b600480360360208110156100ff57600080fd5b81019080803563ffffffff169060200190929190505050610131565b6040518082815260200191505060405180910390f35b6000602052806000526040600020600091509050548156fea2646970667358221220f5b12b5cf2d3d7907e2d36e5751ea15fd120efe5955353a77fa6c880982622c864736f6c63430006060033";
-
-    Json::Value create;
-    create["code"] = bytecode;
-    create["gas"] = "180000";  // TODO or change global default of 90000?
-
-    string deployHash = rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( client ), 1 );
-
-    Json::Value deployReceipt = rpcClient->eth_getTransactionReceipt( deployHash );
-    string contractAddress = deployReceipt["contractAddress"].asString();
-
-    /*************** call *****************/
-    Json::Value t;
-    t["from"] = toJS( senderAddress );
-    t["value"] = jsToDecimal( toJS( BIG_SNAPSHOT_N ) );
-    t["to"] = contractAddress;
-    t["gas"] = jsToDecimal( toJS( 200000 + BIG_SNAPSHOT_N * 1000 ) );
-
-    std::string txHash = rpcClient->eth_sendTransaction( t );
-    dev::eth::mineTransaction( *( client ), 1 );
-
-    mgr->doSnapshot( 1 );
-    std::cout << "Computing hash" << std::endl;
-    mgr->computeSnapshotHash( 1 );
-
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
-    auto hash1 = mgr->getSnapshotHash( 1 );
-    std::cout << "Hash = " << hash1 << std::endl;
-}
+BOOST_AUTO_TEST_SUITE( SnapshotPerformanceSuite, *boost::unit_test::disabled() )
 
 BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture ) {
 //    *boost::unit_test::disabled() ) {
     // 21s
     // dev::db::LevelDB db("/home/dimalit/skaled/big_states/1GR_1.4GB/a77d61c4/12041/state");
-    // 4.3s
+    // 150s
     dev::db::LevelDB db("/home/dimalit/skale-node-tests/big_states/1/da3e7c49/12041/state");
     auto t1 = std::chrono::high_resolution_clock::now();
     auto hash = db.hashBase();
