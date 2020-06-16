@@ -611,12 +611,12 @@ contract StorageFiller{
     std::cout << "Hash = " << hash1 << std::endl;
 }
 
-BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture,
-    *boost::unit_test::disabled() ) {
+BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture ) {
+//    *boost::unit_test::disabled() ) {
     // 21s
     // dev::db::LevelDB db("/home/dimalit/skaled/big_states/1GR_1.4GB/a77d61c4/12041/state");
     // 4.3s
-    dev::db::LevelDB db("/home/dimalit/skaled/big_states/100MR_300MB/cddf5aa1/12041/state");
+    dev::db::LevelDB db("/home/dimalit/skale-node-tests/big_states/1/da3e7c49/12041/state");
     auto t1 = std::chrono::high_resolution_clock::now();
     auto hash = db.hashBase();
     auto t2 = std::chrono::high_resolution_clock::now();

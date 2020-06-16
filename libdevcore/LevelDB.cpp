@@ -176,6 +176,7 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 }
 
 h256 LevelDB::hashBase() const {
+    unsigned long long cnt = 0;
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -189,9 +190,11 @@ h256 LevelDB::hashBase() const {
         const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
         bytesConstRef str_key_value( usc.data(), usc.size() );
         secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
+        ++cnt;
     }
     h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
+    std::cout << "cnt = " << cnt << std::endl;
     return hash;
 }
 
