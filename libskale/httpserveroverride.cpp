@@ -756,8 +756,6 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
     std::string strPerformanceActionName = skutils::tools::format(
         "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
-    skutils::task::performance::action a(
-        strPerformanceQueueName, strPerformanceActionName, joRequest );
     //
     //
     skutils::stats::time_tracker::element_ptr_t rttElement;
@@ -775,105 +773,116 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     }
     size_t nRequestSize = strRequest.size();
 
-    // skutils::dispatch::async( pThis->m_strPeerQueueID, [rttElement, pThis, joID, joRequest,
-    // strMethod, strRequest, nRequestSize, pSO]() -> void {  // WS-processing-lambda
-    //
-    //
-    //
-    bool bSkipMethodTrafficTrace = skale::server::helper::isSkipMethodTrafficTrace( strMethod );
-    if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-        clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                      cc::debug( "/" ) +
-                                      cc::num10( pThis->getRelay().serverIndex() ) )
-            << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( pThis->getRelay().serverIndex() ) + "/RX >>> " ) +
-                   pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
-    std::string strResponse;
-    bool bPassed = false;
-    try {
-        stats::register_stats_message(
-            pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", nRequestSize );
-        stats::register_stats_message(
-            ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest );
-        stats::register_stats_message( "RPC", joRequest );
-        if ( !pThis.get_unconst()->handleWebSocketSpecificRequest( joRequest, strResponse ) ) {
-            jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
-            if ( handler == nullptr )
-                throw std::runtime_error( "No client connection handler found" );
-            handler->HandleRequest( strRequest, strResponse );
-        }
-        nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-        stats::register_stats_answer(
-            pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-        stats::register_stats_answer(
-            ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), joRequest,
-            joResponse );
-        stats::register_stats_answer( "RPC", joRequest, joResponse );
-        a.set_json_out( joResponse );
-        bPassed = true;
-    } catch ( const std::exception& ex ) {
-        rttElement->setError();
-        clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                       cc::debug( "/" ) +
-                                       cc::num10( pThis->getRelay().serverIndex() ) )
-            << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
-                   pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
-        nlohmann::json joErrorResponce;
-        joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( ex.what() );
-        strResponse = joErrorResponce.dump();
-        stats::register_stats_exception(
-            ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
-        if ( !strMethod.empty() ) {
-            stats::register_stats_exception(
-                pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
-            stats::register_stats_exception( "RPC", strMethod.c_str() );
-        }
-        a.set_json_err( joErrorResponce );
-    } catch ( ... ) {
-        rttElement->setError();
-        const char* e = "unknown exception in SkaleServerOverride";
-        clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                       cc::debug( "/" ) +
-                                       cc::num10( pThis->getRelay().serverIndex() ) )
-            << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
-                   pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
-        nlohmann::json joErrorResponce;
-        joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
-        strResponse = joErrorResponce.dump();
-        stats::register_stats_exception(
-            ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
-        if ( !strMethod.empty() ) {
-            stats::register_stats_exception(
-                pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
-            stats::register_stats_exception( "RPC", strMethod.c_str() );
-        }
-        a.set_json_err( joErrorResponce );
-    }
-    if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-        clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                      cc::debug( "/" ) +
-                                      cc::num10( pThis->getRelay().serverIndex() ) )
-            << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( pThis->getRelay().serverIndex() ) + "/TX <<< " ) +
-                   pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
-    pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
-    if ( !bPassed )
-        stats::register_stats_answer(
-            pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-    rttElement->stop();
-    double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
-    if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
-        pSO->logPerformanceWarning( lfExecutionDuration, -1,
-            pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
-            pThis->getOrigin().c_str(), strMethod.c_str(), joID );
+    skutils::dispatch::async( pThis->m_strPeerQueueID,
+        [rttElement, pThis, joID, joRequest, strMethod, strRequest, nRequestSize, pSO,
+            strPerformanceQueueName, strPerformanceActionName]() -> void {  // WS-processing-lambda
+            //
+            //
+            //
+            skutils::task::performance::action a(
+                strPerformanceQueueName, strPerformanceActionName, joRequest );
+            bool bSkipMethodTrafficTrace =
+                skale::server::helper::isSkipMethodTrafficTrace( strMethod );
+            if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
+                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                              cc::debug( "/" ) +
+                                              cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/RX >>> " ) +
+                           pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
+            std::string strResponse;
+            bool bPassed = false;
+            try {
+                stats::register_stats_message(
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", nRequestSize );
+                stats::register_stats_message(
+                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                    joRequest );
+                stats::register_stats_message( "RPC", joRequest );
+                if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
+                         joRequest, strResponse ) ) {
+                    jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
+                    if ( handler == nullptr )
+                        throw std::runtime_error( "No client connection handler found" );
+                    handler->HandleRequest( strRequest, strResponse );
+                }
+                nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                stats::register_stats_answer(
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
+                stats::register_stats_answer(
+                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                    joRequest, joResponse );
+                stats::register_stats_answer( "RPC", joRequest, joResponse );
+                a.set_json_out( joResponse );
+                bPassed = true;
+            } catch ( const std::exception& ex ) {
+                rttElement->setError();
+                clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                               cc::debug( "/" ) +
+                                               cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/ERR !!! " ) +
+                           pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = joID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( ex.what() );
+                strResponse = joErrorResponce.dump();
+                stats::register_stats_exception(
+                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
+                if ( !strMethod.empty() ) {
+                    stats::register_stats_exception(
+                        pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
+                    stats::register_stats_exception( "RPC", strMethod.c_str() );
+                }
+                a.set_json_err( joErrorResponce );
+            } catch ( ... ) {
+                rttElement->setError();
+                const char* e = "unknown exception in SkaleServerOverride";
+                clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                               cc::debug( "/" ) +
+                                               cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/ERR !!! " ) +
+                           pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = joID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( e );
+                strResponse = joErrorResponce.dump();
+                stats::register_stats_exception(
+                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                    "messages" );
+                if ( !strMethod.empty() ) {
+                    stats::register_stats_exception(
+                        pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
+                    stats::register_stats_exception( "RPC", strMethod.c_str() );
+                }
+                a.set_json_err( joErrorResponce );
+            }
+            if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
+                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                              cc::debug( "/" ) +
+                                              cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/TX <<< " ) +
+                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+            pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
+            if ( !bPassed )
+                stats::register_stats_answer(
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
+            rttElement->stop();
+            double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+            if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
+                pSO->logPerformanceWarning( lfExecutionDuration, -1,
+                    pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
+                    pThis->getOrigin().c_str(), strMethod.c_str(), joID );
 
-    // } );  // WS-processing-lambda
+        } );  // WS-processing-lambda
 
     // skutils::ws::peer::onMessage( msg, eOpCode );
 }

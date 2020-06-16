@@ -124,7 +124,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         // to calculate how many of gas will be used.
         // Then we execute transaction with this gas limit
         // and check if it will be enough.
-        // If not repeat process iteratevly.
+        // If not repeat process iteratively.
         ExecutionResult goodResult;
         int64_t goodGas = c_maxGasEstimate;
         bool haveGoodResult = false;
@@ -399,8 +399,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     if ( tl.second > 0 )
         gasUsed -= bc().transactionReceipt( tl.first, tl.second - 1 ).cumulativeGasUsed();
     //
-    // The "contractAddress" field must be null for all types of trasactions but contract deployment
-    // ones. The contract deployment transaction is special because it's the only type of
+    // The "contractAddress" field must be null for all types of transactions but contract
+    // deployment ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
     //
     dev::Address contractAddress;

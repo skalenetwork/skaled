@@ -60,11 +60,15 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
     bool verified = false;
     try {
         this->verifyAllData( verified );
+    } catch ( IsNotVerified& ex ) {
+        IsNotVerified( cc::fatal( "FATAL:" ) + " " +
+                       cc::error( "Exception while verifying signatures from other skaleds: " ) +
+                       " " + cc::warn( ex.what() ) );
     } catch ( std::exception& ex ) {
-        std::throw_with_nested( std::runtime_error(
+        std::throw_with_nested(
             cc::fatal( "FATAL:" ) + " " +
             cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
-            cc::warn( ex.what() ) ) );
+            cc::warn( ex.what() ) );
     }
 
     if ( !verified ) {
@@ -200,7 +204,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     bool result = false;
     try {
         result = this->voteForHash( this->voted_hash_ );
-    } catch ( NotEnoughVotesException& ex ) {
+    } catch ( SnapshotHashAgentException& ex ) {
+        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
+                  << cc::warn( ex.what() ) << std::endl;
+    } catch ( std::exception& ex ) {
         std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
                   << cc::warn( ex.what() ) << std::endl;
     }
@@ -222,8 +229,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 }
 
 std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
-    assert( this->voted_hash_.first != dev::h256() &&
-            this->voted_hash_.second != libff::alt_bn128_G1::zero() &&
-            this->voted_hash_.second.is_well_formed() );
+    if ( this->voted_hash_.first == dev::h256() ) {
+        throw std::invalid_argument( "Hash is empty" );
+    }
+
+    if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
+         !this->voted_hash_.second.is_well_formed() ) {
+        throw std::invalid_argument( "Signature is not well formed" );
+    }
+
     return this->voted_hash_;
 }
