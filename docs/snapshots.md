@@ -39,7 +39,7 @@ NOTE: stateRoot is needed to determine whether there are any node software issue
 
 Parameters
 
--   `blockNumber`: a block number, or the string "latest"
+-   `blockNumber`: integer, the block number
 -   `autoCreate`: `Boolean`, create snapshot if it does not exist
 
 Returns
@@ -52,7 +52,7 @@ Example
 ```sh
 // Request
 
-curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshot", "params": { "blockNumber": "latest",  "autoCreate": false }, "id": 73 }'
+curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshot", "params": { "blockNumber": 68,  "autoCreate": false }, "id": 73 }'
 
 // Result
 { 
@@ -99,7 +99,7 @@ Returns signature of snapshot hash on given block number.
 
 Parameters
 
--   `blockNumber`: a block number
+-   `blockNumber`: integer, a block number
 
 Returns
 
