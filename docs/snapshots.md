@@ -39,7 +39,7 @@ NOTE: stateRoot is needed to determine whether there are any node software issue
 
 Parameters
 
--   `blockNumber`: integer, the block number
+-   `blockNumber`: integer, a block number
 -   `autoCreate`: `Boolean`, create snapshot if it does not exist
 
 Returns
