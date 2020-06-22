@@ -81,6 +81,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #endif
 }
 
+#if CONSENSUS
 void DefaultConsensusFactory::setSgxInfo( std::unique_ptr < ConsensusEngine > consensus_ptr ) const {
     auto sgxServerUrl = std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
 
@@ -121,6 +122,7 @@ void DefaultConsensusFactory::setSgxInfo( std::unique_ptr < ConsensusEngine > co
 
     consensus_ptr->setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, ecdsaPublicKeys, blsKeyName, blsPublicKeys, t, n );
 }
+#endif
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:

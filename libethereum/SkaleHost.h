@@ -86,7 +86,9 @@ public:
 
 private:
     const dev::eth::Client& m_client;
+#if CONSENSUS
     void setSgxInfo( std::unique_ptr< ConsensusEngine > consensus_ptr ) const;
+#endif
     std::string m_blsPrivateKey, m_blsPublicKey1, m_blsPublicKey2, m_blsPublicKey3, m_blsPublicKey4;
 };
 
