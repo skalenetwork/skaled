@@ -1165,12 +1165,8 @@ int main( int argc, char** argv ) try {
         isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( !vm.count( "public-key" ) ) {
-            // for tests only! remove it later
-            commonPublicKey = "";
-            //            throw std::runtime_error(
-            //                cc::error( "Missing --public-key option - cannot download
-            //                snapshot" )
-            //                );
+            throw std::runtime_error(
+                cc::error( "Missing --public-key option - cannot download snapshot" ) );
         } else {
             commonPublicKey = vm["public-key"].as< std::string >();
         }

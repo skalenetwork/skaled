@@ -340,6 +340,14 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
     }
 }
 
+dev::h256 SnapshotManager::getLatestSnapshotHash() const {
+    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    for ( const auto& f : fs::directory_iterator( snapshots_dir ) ) {
+        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+    }
+
+}
+
 void SnapshotManager::computeDatabaseHash(
     const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const try {
     if ( !boost::filesystem::exists( _dbDir ) ) {
