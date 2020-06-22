@@ -70,7 +70,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 
-    this->setSgxInfo( std::move( consensus_engine_ptr ) );
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+        this->fillSgxInfo( *consensus_engine_ptr );
+    }
 
     return consensus_engine_ptr;
 #else
@@ -82,7 +84,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 }
 
 #if CONSENSUS
-void DefaultConsensusFactory::setSgxInfo( std::unique_ptr< ConsensusEngine > consensus_ptr ) const {
+void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     auto sgxServerUrl =
         std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
 
@@ -98,35 +100,46 @@ void DefaultConsensusFactory::setSgxInfo( std::unique_ptr< ConsensusEngine > con
     auto blsKeyName =
         std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
 
-    std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys;
+    std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
+        std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
         ecdsaPublicKeys->push_back( node.publicKey );
     }
 
-    std::shared_ptr< std::vector< std::shared_ptr< std::vector< std::string > > > > blsPublicKeys;
-
+    std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
-            "http://" + node.ip + ':' + ( node.port + 3 ).convert_to< std::string >() );
-        SkaleClient skaleClient( *jsonRpcClient );
-
-        Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
-
         std::vector< std::string > public_key_share( 4 );
-        public_key_share[0] = joPublicKeyResponse["insecureBLSPublicKey0"].asString();
-        public_key_share[1] = joPublicKeyResponse["insecureBLSPublicKey1"].asString();
-        public_key_share[2] = joPublicKeyResponse["insecureBLSPublicKey2"].asString();
-        public_key_share[3] = joPublicKeyResponse["insecureBLSPublicKey3"].asString();
+        if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
+            jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
+                "http://" + node.ip + ':' + ( node.port + 3 ).convert_to< std::string >() );
+            SkaleClient skaleClient( *jsonRpcClient );
 
-        blsPublicKeys->push_back(
+            Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
+
+            public_key_share[0] = joPublicKeyResponse["insecureBLSPublicKey0"].asString();
+            public_key_share[1] = joPublicKeyResponse["insecureBLSPublicKey1"].asString();
+            public_key_share[2] = joPublicKeyResponse["insecureBLSPublicKey2"].asString();
+            public_key_share[3] = joPublicKeyResponse["insecureBLSPublicKey3"].asString();
+        } else {
+            public_key_share[0] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
+            public_key_share[1] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
+            public_key_share[2] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
+            public_key_share[3] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
+        }
+
+        blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
     }
+
+    auto blsPublicKeysPtr =
+        std::make_shared< std::vector< std::shared_ptr< std::vector< std::string > > > >(
+            blsPublicKeys );
 
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 2 ) / 3;
 
-    consensus_ptr->setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-        ecdsaPublicKeys, blsKeyName, blsPublicKeys, t, n );
+    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+        ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
 }
 #endif
 

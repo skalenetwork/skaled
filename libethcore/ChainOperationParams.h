@@ -81,12 +81,14 @@ public:
     std::string sgxServerUrl;
     std::string keyShareName;
     std::string ecdsaKeyName;
+    std::array< std::string, 4 > insecureBLSPublicKeys;
     std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
         std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
         std::string _keyShareName = "",
+        const std::array< std::string, 4 >& _insecureBLSPublicKeys = {"0", "1", "0", "1"},
         const std::array< std::string, 4 >& _insecureCommonBLSPublicKeys = {"0", "1", "0", "1"} ) {
         name = _name;
         id = _id;
@@ -97,6 +99,7 @@ public:
         sgxServerUrl = _sgxServerUrl;
         ecdsaKeyName = _ecdsaKeyName;
         keyShareName = _keyShareName;
+        insecureBLSPublicKeys = _insecureBLSPublicKeys;
         insecureCommonBLSPublicKeys = _insecureCommonBLSPublicKeys;
     }
 };

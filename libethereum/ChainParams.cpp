@@ -137,6 +137,7 @@ ChainParams ChainParams::loadConfig(
             cp.rotateAfterBlock_ = 0;
 
         std::string ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        std::array< std::string, 4 > insecureBLSPublicKeys;
         std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
         try {
@@ -146,6 +147,12 @@ ChainParams ChainParams::loadConfig(
 
             t = ima.at( "t" ).get_int();
             sgxServerUrl = ima.at( "url" ).get_str();
+
+            insecureBLSPublicKeys[0] = ima["insecureBLSPublicKey0"].get_str();
+            insecureBLSPublicKeys[1] = ima["insecureBLSPublicKey1"].get_str();
+            insecureBLSPublicKeys[2] = ima["insecureBLSPublicKey2"].get_str();
+            insecureBLSPublicKeys[3] = ima["insecureBLSPublicKey3"].get_str();
+
             insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
             insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
             insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
@@ -158,7 +165,7 @@ ChainParams ChainParams::loadConfig(
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            insecureCommonBLSPublicKeys};
+            insecureBLSPublicKeys, insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -417,7 +424,7 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
-    infoObj["ecdsaKeyName"] = "NEK:fa112";
+    infoObj["ecdsaKeyName"] = nodeInfo.ecdsaKeyName;
 
     skaleObj["nodeInfo"] = infoObj;
 
