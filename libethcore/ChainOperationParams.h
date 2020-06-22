@@ -80,11 +80,13 @@ public:
     uint16_t port6;
     std::string sgxServerUrl;
     std::string keyShareName;
+    std::string ecdsaKeyName;
     std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
-        std::string _sgxServerUrl = "", std::string _keyShareName = "",
+        std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
+        std::string _keyShareName = "",
         const std::array< std::string, 4 >& _insecureCommonBLSPublicKeys = {"0", "1", "0", "1"} ) {
         name = _name;
         id = _id;
@@ -93,6 +95,7 @@ public:
         ip6 = _ip6;
         port6 = _port6;
         sgxServerUrl = _sgxServerUrl;
+        ecdsaKeyName = _ecdsaKeyName;
         keyShareName = _keyShareName;
         insecureCommonBLSPublicKeys = _insecureCommonBLSPublicKeys;
     }
@@ -107,6 +110,7 @@ public:
     std::string ip6;
     u256 port6;
     u256 sChainIndex;
+    std::string publicKey;
 };
 
 /// skale
@@ -128,7 +132,8 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 )};
+        sChainNode me = {
+            u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa"};
         nodes.push_back( me );
     }
 };

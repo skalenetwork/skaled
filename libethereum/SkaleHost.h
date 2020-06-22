@@ -55,6 +55,8 @@ class BlockHeader;
 }  // namespace eth
 }  // namespace dev
 
+class ConsensusEngine;
+
 struct tx_hash_small {
     size_t operator()( const dev::eth::Transaction& t ) const {
         const dev::h256& h = t.sha3();
@@ -84,6 +86,7 @@ public:
 
 private:
     const dev::eth::Client& m_client;
+    void setSgxInfo( std::unique_ptr< ConsensusEngine > consensus_ptr ) const;
     std::string m_blsPrivateKey, m_blsPublicKey1, m_blsPublicKey2, m_blsPublicKey3, m_blsPublicKey4;
 };
 

@@ -136,7 +136,7 @@ ChainParams ChainParams::loadConfig(
         if ( cp.rotateAfterBlock_ < 0 )
             cp.rotateAfterBlock_ = 0;
 
-
+        std::string ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
         std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
         try {
@@ -157,7 +157,7 @@ ChainParams ChainParams::loadConfig(
         }
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), sgxServerUrl, keyShareName,
+            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
             insecureCommonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
@@ -201,6 +201,7 @@ ChainParams ChainParams::loadConfig(
                 node.port6 = 0;
             }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+            node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
             s.nodes.push_back( node );
         }
         cp.sChain = s;
@@ -439,6 +440,7 @@ const std::string& ChainParams::getOriginalJson() const {
         nodeConfObj["ip6"] = node.ip6;
         nodeConfObj["basePort6"] = ( int64_t ) node.port6;
         nodeConfObj["schainIndex"] = ( int64_t ) node.sChainIndex;
+        nodeConfObj["publicKey"] = node.publicKey;
 
         nodes.push_back( nodeConfObj );
     }
