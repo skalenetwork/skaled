@@ -417,6 +417,7 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
+    infoObj["ecdsaKeyName"] = "NEK:fa112";
 
     skaleObj["nodeInfo"] = infoObj;
 

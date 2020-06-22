@@ -81,9 +81,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #endif
 }
 
-void DefaultConsensusFactory::setSgxInfo( std::unique_ptr< ConsensusEngine > consensus_ptr ) const {
-    auto sgxServerUrl =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
+void DefaultConsensusFactory::setSgxInfo( std::unique_ptr < ConsensusEngine > consensus_ptr ) const {
+    auto sgxServerUrl = std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
 
     const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
     const std::string sgx_cert_filename = "sgx.crt";
@@ -91,41 +90,36 @@ void DefaultConsensusFactory::setSgxInfo( std::unique_ptr< ConsensusEngine > con
     auto sgxSSLKeyFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_key_filename );
     auto sgxSSLCertFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_cert_filename );
 
-    auto ecdsaKeyName =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.ecdsaKeyName );
+    auto ecdsaKeyName = std::make_shared< std::string >( m_client.chainParams().nodeInfo.ecdsaKeyName );
 
-    auto blsKeyName =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
+    auto blsKeyName = std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys;
-    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+    for (const auto& node : m_client.chainParams().sChain.nodes) {
         ecdsaPublicKeys->push_back( node.publicKey );
     }
 
     std::shared_ptr< std::vector< std::shared_ptr< std::vector< std::string > > > > blsPublicKeys;
 
-    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
-            "http://" + node.ip + ':' + ( node.port + 3 ).convert_to< std::string >() );
+    for (const auto& node : m_client.chainParams().sChain.nodes) {
+        jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( "http://" + node.ip + ':' + ( node.port + 3 ).convert_to< std::string >() );
         SkaleClient skaleClient( *jsonRpcClient );
 
         Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
 
-        std::vector< std::string > public_key_share( 4 );
+        std::vector<std::string> public_key_share(4);
         public_key_share[0] = joPublicKeyResponse["insecureBLSPublicKey0"].asString();
         public_key_share[1] = joPublicKeyResponse["insecureBLSPublicKey1"].asString();
         public_key_share[2] = joPublicKeyResponse["insecureBLSPublicKey2"].asString();
         public_key_share[3] = joPublicKeyResponse["insecureBLSPublicKey3"].asString();
 
-        blsPublicKeys->push_back(
-            std::make_shared< std::vector< std::string > >( public_key_share ) );
+        blsPublicKeys->push_back( std::make_shared< std::vector< std::string > >( public_key_share ) );
     }
 
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 2 ) / 3;
 
-    consensus_ptr->setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-        ecdsaPublicKeys, blsKeyName, blsPublicKeys, t, n );
+    consensus_ptr->setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, ecdsaPublicKeys, blsKeyName, blsPublicKeys, t, n );
 }
 
 class ConsensusExtImpl : public ConsensusExtFace {
