@@ -279,7 +279,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
         time_map.insert( make_pair( fs::last_write_time( f ), f ) );
     }  // for
 
-    // delete all efter n first
+    // delete all after n first
     unsigned i = 1;
     for ( const auto& p : time_map ) {
         if ( i++ > n ) {
@@ -345,7 +345,20 @@ dev::h256 SnapshotManager::getLatestSnapshotHash() const {
     for ( const auto& f : fs::directory_iterator( snapshots_dir ) ) {
         time_map.insert( make_pair( fs::last_write_time( f ), f ) );
     }
+    fs::path path_to_latest = ( *time_map.rbegin() ).second;
+    std::string hash_file = ( path_to_latest / this->snapshot_hash_file_name ).string();
 
+    std::lock_guard< std::mutex > lock( hash_file_mutex );
+
+    dev::h256 hash;
+
+    try {
+        std::ifstream in( hash_file );
+        in >> hash;
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( SnapshotManager::CannotRead( hash_file ) );
+    }
+    return hash;
 }
 
 void SnapshotManager::computeDatabaseHash(
@@ -484,6 +497,10 @@ void SnapshotManager::computeAllVolumesHash(
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
+    if ( this->isSnapshotHashPresent( _blockNumber ) ) {
+        return;
+    }
+
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
