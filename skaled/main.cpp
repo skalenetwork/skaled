@@ -398,8 +398,6 @@ int main( int argc, char** argv ) try {
     string masterPassword;
     bool masterSet = false;
 
-    std::string blsJson;
-
     strings passwordsToNote;
     Secrets toImport;
 
@@ -981,18 +979,6 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
-    if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
-        try {
-            fs::path blsFile = vm["bls-key-file"].as< string >();
-            blsJson = contentsString( blsFile.string() );
-            if ( blsJson.empty() )
-                throw "BLS key file probably not found";
-        } catch ( ... ) {
-            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
-            return -1;
-        }
-    }
-
     if ( vm.count( "public-ip" ) ) {
         publicIP = vm["public-ip"].as< string >();
     }
@@ -1115,40 +1101,6 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    string blsPrivateKey;
-    string blsPublicKey1;
-    string blsPublicKey2;
-    string blsPublicKey3;
-    string blsPublicKey4;
-
-    if ( !blsJson.empty() ) {
-        try {
-            using namespace json_spirit;
-
-            mValue val;
-            json_spirit::read_string_or_throw( blsJson, val );
-            mObject obj = val.get_obj();
-
-            string blsPrivateKey = obj["secret_key"].get_str();
-
-            mArray pub = obj["common_public"].get_array();
-
-            string blsPublicKey1 = pub[0].get_str();
-            string blsPublicKey2 = pub[1].get_str();
-            string blsPublicKey3 = pub[2].get_str();
-            string blsPublicKey4 = pub[3].get_str();
-
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing BLS keyfile:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << blsJson << endl;
-        } catch ( ... ) {
-            cerr << "BLS keyfile is not well formatted\n";
-            cerr << blsJson << endl;
-            return 0;
-        }
-    }
-
     if ( !chainConfigIsSet )
         // default to skale if not already set with `--config`
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
@@ -1165,12 +1117,8 @@ int main( int argc, char** argv ) try {
         isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
         if ( !vm.count( "public-key" ) ) {
-            // for tests only! remove it later
-            commonPublicKey = "";
-            //            throw std::runtime_error(
-            //                cc::error( "Missing --public-key option - cannot download
-            //                snapshot" )
-            //                );
+            throw std::runtime_error(
+                cc::error( "Missing --public-key option - cannot download snapshot" ) );
         } else {
             commonPublicKey = vm["public-key"].as< std::string >();
         }
@@ -1343,8 +1291,7 @@ int main( int argc, char** argv ) try {
 
         client->setAuthor( chainParams.sChain.owner );
 
-        DefaultConsensusFactory cons_fact(
-            *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
+        DefaultConsensusFactory cons_fact( *client );
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *client, &cons_fact );
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
