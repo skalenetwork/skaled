@@ -153,7 +153,6 @@ public:
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
-    dev::h256 getLatestSnapshotHash() const;
 
 private:
     boost::filesystem::path data_dir;
