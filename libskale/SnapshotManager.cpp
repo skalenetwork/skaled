@@ -307,11 +307,10 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hash_file ) );
     }
 
-    std::lock_guard< std::mutex > lock( hash_file_mutex );
-
     dev::h256 hash;
 
     try {
+        std::lock_guard< std::mutex > lock( hash_file_mutex );
         std::ifstream in( hash_file );
         in >> hash;
     } catch ( const std::exception& ex ) {
