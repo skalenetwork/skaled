@@ -193,7 +193,7 @@ public:
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
 
-        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa"};
+        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
         chainParams.sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 

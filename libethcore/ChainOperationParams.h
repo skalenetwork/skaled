@@ -114,6 +114,7 @@ public:
     u256 port6;
     u256 sChainIndex;
     std::string publicKey;
+    std::array< std::string, 4 > blsPublicKey;
 };
 
 /// skale
@@ -135,8 +136,8 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = {
-            u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa"};
+        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
+            "0xfa", {"0", "1", "0", "1"}};
         nodes.push_back( me );
     }
 };
