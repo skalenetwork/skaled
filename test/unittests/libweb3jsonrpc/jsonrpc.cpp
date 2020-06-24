@@ -84,14 +84,15 @@ static std::string const c_genesisConfigString =
             "bindIP": "127.0.0.1",
             "basePort": 1231,
             "logLevel": "trace",
-            "logLevelProposal": "trace"
+            "logLevelProposal": "trace",
+            "ecdsaKeyName": "NEK:fa112"
         },
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
             "storageLimit": 128,
             "nodes": [
-                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1}
+                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
         }
     },

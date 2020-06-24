@@ -55,6 +55,8 @@ class BlockHeader;
 }  // namespace eth
 }  // namespace dev
 
+class ConsensusEngine;
+
 struct tx_hash_small {
     size_t operator()( const dev::eth::Transaction& t ) const {
         const dev::h256& h = t.sha3();
@@ -70,21 +72,14 @@ public:
 
 class DefaultConsensusFactory : public ConsensusFactory {
 public:
-    DefaultConsensusFactory( const dev::eth::Client& _client,
-        const std::string& _blsPrivateKey = "", const std::string& _blsPublicKey1 = "",
-        const std::string& _blsPublicKey2 = "", const std::string& _blsPublicKey3 = "",
-        const std::string& _blsPublicKey4 = "" )
-        : m_client( _client ),
-          m_blsPrivateKey( _blsPrivateKey ),
-          m_blsPublicKey1( _blsPublicKey1 ),
-          m_blsPublicKey2( _blsPublicKey2 ),
-          m_blsPublicKey3( _blsPublicKey3 ),
-          m_blsPublicKey4( _blsPublicKey4 ) {}
+    DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
     virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
 
 private:
     const dev::eth::Client& m_client;
-    std::string m_blsPrivateKey, m_blsPublicKey1, m_blsPublicKey2, m_blsPublicKey3, m_blsPublicKey4;
+#if CONSENSUS
+    void fillSgxInfo( ConsensusEngine& consensus ) const;
+#endif
 };
 
 class SkaleHost {

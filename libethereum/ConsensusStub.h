@@ -25,6 +25,7 @@
 #ifndef LIBETHEREUM_CONSENSUSSTUB_H_
 #define LIBETHEREUM_CONSENSUSSTUB_H_
 
+using namespace std;
 #include <libconsensus/node/ConsensusInterface.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
