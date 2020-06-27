@@ -135,7 +135,7 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     try {
         consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
             ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
-    } catch (const std::exception& ex) {
+    } catch ( const std::exception& ex ) {
         std::throw_with_nested( ex.what() );
     }
 }
