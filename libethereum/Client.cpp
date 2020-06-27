@@ -176,7 +176,12 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
-            m_snapshotManager->doSnapshot( 0 );
+            LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
+            try {
+                m_snapshotManager->doSnapshot( 0 );
+            } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                cerror << "WARNING " << dev::nested_exception_what( ex );
+            }
         }
     }
 
