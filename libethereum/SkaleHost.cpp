@@ -110,16 +110,10 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
         std::vector< std::string > public_key_share( 4 );
         if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
-            jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
-                "http://" + node.ip + ':' + ( node.port + 3 ).convert_to< std::string >() );
-            SkaleClient skaleClient( *jsonRpcClient );
-
-            Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
-
-            public_key_share[0] = joPublicKeyResponse["insecureBLSPublicKey0"].asString();
-            public_key_share[1] = joPublicKeyResponse["insecureBLSPublicKey1"].asString();
-            public_key_share[2] = joPublicKeyResponse["insecureBLSPublicKey2"].asString();
-            public_key_share[3] = joPublicKeyResponse["insecureBLSPublicKey3"].asString();
+            public_key_share[0] = node.blsPublicKey[0];
+            public_key_share[1] = node.blsPublicKey[1];
+            public_key_share[2] = node.blsPublicKey[2];
+            public_key_share[3] = node.blsPublicKey[3];
         } else {
             public_key_share[0] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
             public_key_share[1] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];

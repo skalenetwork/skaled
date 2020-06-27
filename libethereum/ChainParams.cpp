@@ -209,6 +209,12 @@ ChainParams ChainParams::loadConfig(
             }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
             node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            if ( !keyShareName.empty() ) {
+                node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+            }
             s.nodes.push_back( node );
         }
         cp.sChain = s;
