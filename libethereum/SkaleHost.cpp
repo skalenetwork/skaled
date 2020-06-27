@@ -132,8 +132,12 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 2 ) / 3;
 
-    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-        ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    try {
+        consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+            ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    } catch (const std::exception& ex) {
+        std::throw_with_nested( ex.what() );
+    }
 }
 #endif
 
