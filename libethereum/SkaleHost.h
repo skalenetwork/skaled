@@ -108,6 +108,8 @@ public:
 
     void startWorking();
     void stopWorking();
+    bool isWorking() const { return this->working; }
+    bool exitedForcefully() const { return m_exitedForcefully; }
 
     void noteNewTransactions();
     void noteNewBlocks();
@@ -137,6 +139,7 @@ public:
 
 private:
     std::atomic_bool working = false;
+    std::atomic_bool m_exitedForcefully = false;
 
     std::unique_ptr< Broadcaster > m_broadcaster;
 

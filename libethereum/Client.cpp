@@ -68,6 +68,25 @@ std::string filtersToString( h256Hash const& _fs ) {
     str << "}";
     return str.str();
 }
+
+void create_lock_file_or_fail() {
+    fs::path p = getDataDir() / "skaled.lock";
+    if ( fs::exists( p ) )
+        throw runtime_error( string( "Data dir unclean! Remove " ) + p.string() +
+                             " and continue at your own risk!" );
+    FILE* fp = fopen( p.c_str(), "w" );
+    if ( !fp )
+        throw runtime_error(
+            string( "Cannot create lock file " ) + p.string() + ": " + strerror( errno ) );
+    fclose( fp );
+}
+
+void delete_lock_file() {
+    fs::path p = getDataDir() / "skaled.lock";
+    if ( fs::exists( p ) )
+        fs::remove( p );
+}
+
 }  // namespace
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r ) {
@@ -94,6 +113,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
+    create_lock_file_or_fail();
     init( _dbPath, _forceAction, _networkID );
 }
 
@@ -114,6 +134,9 @@ Client::~Client() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     terminate();
+
+    if ( !m_skaleHost || m_skaleHost->exitedForcefully() == false )
+        delete_lock_file();
 }
 
 void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
