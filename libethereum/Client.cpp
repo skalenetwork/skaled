@@ -123,7 +123,6 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 
     if ( !m_skaleHost )
         m_skaleHost = make_shared< SkaleHost >( *this );
-
     if ( Worker::isWorking() )
         m_skaleHost->startWorking();
 }

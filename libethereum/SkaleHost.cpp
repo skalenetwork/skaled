@@ -137,6 +137,8 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
             ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
     } catch ( const std::exception& ex ) {
         std::throw_with_nested( ex.what() );
+    } catch ( const boost::exception& ex ) {
+        std::throw_with_nested( boost::diagnostic_information( ex ) );
     }
 }
 #endif
