@@ -1089,12 +1089,12 @@ int main( int argc, char** argv ) try {
             cerr << err.reason_ << " line " << err.line_ << endl;
             cerr << configJSON << endl;
         } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is not well formatted\n";
+            cerr << "provided configuration is incorrect\n";
             cerr << configJSON << endl;
             cerr << ex.what() << endl;
             return 0;
         } catch ( ... ) {
-            cerr << "provided configuration is not well formatted\n";
+            cerr << "provided configuration is incorrect\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
             cerr << configJSON << endl;
             return 0;
