@@ -229,4 +229,3 @@ if ( SANITIZE )
     SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${SANITIZE}" )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${SANITIZE}" )
 endif()
-
