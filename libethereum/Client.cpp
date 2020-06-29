@@ -69,8 +69,8 @@ std::string filtersToString( h256Hash const& _fs ) {
     return str.str();
 }
 
-void create_lock_file_or_fail() {
-    fs::path p = getDataDir() / "skaled.lock";
+void create_lock_file_or_fail( const fs::path& dir ) {
+    fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
         throw runtime_error( string( "Data dir unclean! Remove " ) + p.string() +
                              " and continue at your own risk!" );
@@ -81,8 +81,8 @@ void create_lock_file_or_fail() {
     fclose( fp );
 }
 
-void delete_lock_file() {
-    fs::path p = getDataDir() / "skaled.lock";
+void delete_lock_file( const fs::path& dir ) {
+    fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
         fs::remove( p );
 }
@@ -112,9 +112,10 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
+      m_dbPath( _dbPath ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
-    create_lock_file_or_fail();
-    init( _dbPath, _forceAction, _networkID );
+    create_lock_file_or_fail( m_dbPath );
+    init( _forceAction, _networkID );
 }
 
 Client::~Client() {
@@ -136,7 +137,7 @@ Client::~Client() {
     terminate();
 
     if ( !m_skaleHost || m_skaleHost->exitedForcefully() == false )
-        delete_lock_file();
+        delete_lock_file( m_dbPath );
 }
 
 void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
@@ -151,16 +152,16 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
         m_skaleHost->startWorking();
 }
 
-void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _networkId ) {
+void Client::init( WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
 
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state =
-        State( chainParams().accountStartNonce, _dbPath, bc().genesisHash(), BaseState::PreExisting,
-            chainParams().accountInitialFunds, chainParams().sChain.storageLimit );
+    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds,
+        chainParams().sChain.storageLimit );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -194,8 +195,8 @@ void Client::init( fs::path const& _dbPath, WithExisting _forceAction, u256 _net
 
     m_gp->update( bc() );
 
-    if ( _dbPath.size() )
-        Defaults::setDBPath( _dbPath );
+    if ( m_dbPath.size() )
+        Defaults::setDBPath( m_dbPath );
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
