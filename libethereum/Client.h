@@ -293,7 +293,7 @@ protected:
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
-    void init( boost::filesystem::path const& _dbPath, WithExisting _forceAction, u256 _networkId );
+    void init( WithExisting _forceAction, u256 _networkId );
 
     /// InterfaceStub methods
     BlockChain& bc() override { return m_bc; }
@@ -464,6 +464,7 @@ protected:
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
+    fs::path m_dbPath;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;

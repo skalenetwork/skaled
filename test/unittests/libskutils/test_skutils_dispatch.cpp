@@ -1,5 +1,6 @@
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
+#include <test/tools/libtesteth/TestHelper.h>
 
 static const bool g_bShowDetailedJobLogs = false;  // useful for dispatch development only
 
@@ -64,7 +65,7 @@ static std::string thread_prefix_str() {
 
 
 BOOST_AUTO_TEST_SUITE( SkUtils )
-BOOST_AUTO_TEST_SUITE( dispatch )
+BOOST_AUTO_TEST_SUITE( dispatch, *boost::unit_test::precondition( dev::test::option_all_tests ) )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

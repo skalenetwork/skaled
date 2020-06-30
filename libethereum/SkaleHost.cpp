@@ -574,6 +574,7 @@ void SkaleHost::startWorking() {
     // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
     // recursively calls this func - so working is still false!)
     working = true;
+    m_exitedForcefully = false;
 
     try {
         m_broadcaster->startService();
@@ -625,6 +626,13 @@ void SkaleHost::stopWorking() {
                              m_consensusWorkingMutex, std::adopt_lock ) :
                          std::unique_ptr< std::lock_guard< std::timed_mutex > >();
     ( void ) lock;  // for Codacy
+
+    // if we could not lock from 1st attempt - then exit forcefully!
+    if ( !locked ) {
+        m_exitedForcefully = true;
+        clog( VerbosityWarning, "skale-host" ) << "Forcefully shutting down consensus!";
+    }
+
 
     m_exitNeeded = true;
     pauseConsensus( false );
