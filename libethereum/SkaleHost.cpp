@@ -103,7 +103,7 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        ecdsaPublicKeys->push_back( node.publicKey );
+        ecdsaPublicKeys->push_back( node.publicKey.substr(2) );
     }
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
@@ -130,7 +130,7 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
             blsPublicKeys );
 
     size_t n = m_client.chainParams().sChain.nodes.size();
-    size_t t = ( 2 * n + 2 ) / 3;
+    size_t t = ( 2 * n + 1 ) / 3;
 
     try {
         consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,

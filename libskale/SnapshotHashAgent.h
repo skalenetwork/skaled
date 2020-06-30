@@ -68,7 +68,7 @@ public:
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
         this->public_keys_.resize( n_ );
-        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
+        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
         if ( common_public_key == "" ) {
             this->common_public_key_.X.c0 = libff::alt_bn128_Fq(
                 chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
