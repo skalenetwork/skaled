@@ -237,7 +237,7 @@ public:
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
-    u256 enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc );
+    void enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
     /// Returns back to a pristine state after having done a playback.
     void cleanup();
@@ -295,7 +295,7 @@ private:
 
     /// Execute the given block, assuming it corresponds to m_currentBlock.
     /// Throws on failure.
-    u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
+    void enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
     /// Finalise the block, applying the earned rewards.
     void applyRewards(

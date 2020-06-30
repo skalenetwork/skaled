@@ -170,7 +170,6 @@ void SnapshotImporter::importBlockChunks(
         size_t const itemCount = blockChunk.itemCount();
         h256 parentHash = firstBlockHash;
         int64_t number = firstBlockNumber + 1;
-        u256 totalDifficulty = firstBlockDifficulty;
         for ( size_t i = 3; i < itemCount; ++i, ++number ) {
             RLP blockAndReceipts = blockChunk[i];
             if ( blockAndReceipts.itemCount() != 2 )
@@ -198,7 +197,7 @@ void SnapshotImporter::importBlockChunks(
 
             header.setLogBloom( abridgedBlock[2].toHash< LogBloom >( RLP::VeryStrict ) );
             u256 const difficulty = abridgedBlock[3].toInt< u256 >( RLP::VeryStrict );
-            header.setDifficulty( difficulty );
+            header.setMicrosecondsExDifficulty( difficulty );
             header.setNumber( number );
             header.setGasLimit( abridgedBlock[4].toInt< u256 >( RLP::VeryStrict ) );
             header.setGasUsed( abridgedBlock[5].toInt< u256 >( RLP::VeryStrict ) );
@@ -208,9 +207,9 @@ void SnapshotImporter::importBlockChunks(
             Ethash::setMixHash( header, abridgedBlock[10].toHash< h256 >( RLP::VeryStrict ) );
             Ethash::setNonce( header, abridgedBlock[11].toHash< Nonce >( RLP::VeryStrict ) );
 
-            totalDifficulty += difficulty;
+            //totalDifficulty += difficulty;
             m_blockChainImporter.importBlock(
-                header, transactions, uncles, receipts, totalDifficulty );
+                header, transactions, uncles, receipts );
 
             parentHash = header.hash();
         }

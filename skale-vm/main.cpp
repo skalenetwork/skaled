@@ -234,7 +234,7 @@ int main( int argc, char** argv ) {
     if ( vm.count( "author" ) )
         blockHeader.setAuthor( vm["author"].as< Address >() );
     if ( vm.count( "difficulty" ) )
-        blockHeader.setDifficulty( vm["difficulty"].as< u256 >() );
+        blockHeader.setMicrosecondsExDifficulty( vm["difficulty"].as< u256 >() );
     if ( vm.count( "gas-limit" ) )
         blockHeader.setGasLimit( ( vm["gas-limit"].as< u256 >() ).convert_to< int64_t >() );
     if ( vm.count( "value" ) )

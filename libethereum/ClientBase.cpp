@@ -471,9 +471,8 @@ BlockHeader ClientBase::pendingInfo() const {
 
 BlockDetails ClientBase::pendingDetails() const {
     auto pm = postSeal().info();
-    auto li = Interface::blockDetails( LatestBlock );
     return BlockDetails(
-        ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{} );
+        ( unsigned ) pm.number(), 0, pm.parentHash(), h256s{} );
 }
 
 u256 ClientBase::gasLimitRemaining() const {

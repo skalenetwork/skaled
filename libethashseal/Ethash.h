@@ -70,7 +70,7 @@ public:
     static Nonce nonce( BlockHeader const& _bi ) { return _bi.seal< Nonce >( NonceField ); }
     static h256 mixHash( BlockHeader const& _bi ) { return _bi.seal< h256 >( MixHashField ); }
     static h256 boundary( BlockHeader const& _bi ) {
-        auto d = _bi.difficulty();
+        auto d = _bi.microsecondsExDifficulty();
         return d ? ( h256 ) u256( ( bigint( 1 ) << 256 ) / d ) : h256();
     }
     static BlockHeader& setNonce( BlockHeader& _bi, Nonce _v ) {

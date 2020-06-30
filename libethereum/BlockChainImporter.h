@@ -40,7 +40,7 @@ public:
     virtual ~BlockChainImporterFace() = default;
 
     virtual void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles,
-        RLP _receipts, u256 const& _totalDifficulty ) = 0;
+        RLP _receipts ) = 0;
 
     virtual void setChainStartBlockNumber( u256 const& _number ) = 0;
 };

@@ -38,10 +38,10 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     _bi.verify( _s, _parent, _block );
 
     if ( _s != CheckNothingNew ) {
-        if ( _bi.difficulty() < chainParams().minimumDifficulty )
+        if ( _bi.microsecondsExDifficulty() < chainParams().minimumDifficulty )
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
-                    bigint( chainParams().minimumDifficulty ), bigint( _bi.difficulty() ) ) );
+                    bigint( chainParams().minimumDifficulty ), bigint( _bi.microsecondsExDifficulty() ) ) );
 
         if ( _bi.gasLimit() < chainParams().minGasLimit )
             BOOST_THROW_EXCEPTION(

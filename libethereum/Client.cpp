@@ -132,7 +132,6 @@ Client::~Client() {
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
-    m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     terminate();
 
@@ -172,17 +171,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;
 
-    m_bq.setChain( bc() );
-
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
     m_tqReady = m_tq.onReady( [=]() {
         this->onTransactionQueueReady();
     } );  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
-    m_bqReady = m_bq.onReady( [=]() {
-        this->onBlockQueueReady();
-    } );  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
-    m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
         if ( m_skaleHost )
@@ -205,19 +198,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     }
 
     doWork( false );
-}
-
-ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
-    if ( m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000 ) {
-        MICROPROFILE_SCOPEI( "Client", "queueBlock sleep 500", MP_DIMGRAY );
-        this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
-    }
-    return m_bq.import( &_block, _isSafe );
-}
-
-tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
-    stopWorking();
-    return bc().sync( m_bq, m_state, _max );
 }
 
 void Client::onBadBlock( Exception& _ex ) const {
@@ -364,30 +344,6 @@ void Client::appendFromBlock( h256 const& _block, BlockPolarity _polarity, h256H
 unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
-
-void Client::syncBlockQueue() {
-    //  cdebug << "syncBlockQueue()";
-
-    ImportRoute ir;
-    unsigned count;
-    Timer t;
-    tie( ir, m_syncBlockQueue, count ) = bc().sync( m_bq, m_state, m_syncAmount );
-    double elapsed = t.elapsed();
-
-    if ( count ) {
-        LOG( m_logger ) << count << " blocks imported in " << unsigned( elapsed * 1000 ) << " ms ("
-                        << ( count / elapsed ) << " blocks/s) in #" << bc().number();
-    }
-
-    if ( elapsed > c_targetDuration * 1.1 && count > c_syncMin )
-        m_syncAmount = max( c_syncMin, count * 9 / 10 );
-    else if ( count == m_syncAmount && elapsed < c_targetDuration * 0.9 &&
-              m_syncAmount < c_syncMax )
-        m_syncAmount = min( c_syncMax, m_syncAmount * 11 / 10 + 1 );
-    if ( ir.liveBlocks.empty() )
-        return;
-    onChainChanged( ir );
-}
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
@@ -821,7 +777,6 @@ void Client::tick() {
     if ( chrono::system_clock::now() - m_lastTick > chrono::seconds( 1 ) ) {
         m_report.ticks++;
         checkWatchGarbage();
-        m_bq.tick();
         m_lastTick = chrono::system_clock::now();
         if ( m_report.ticks == 15 )
             LOG( m_loggerDetail ) << activityReport();

@@ -135,15 +135,11 @@ public:
     }
     /// Get the object representing the current canonical blockchain.
     BlockChain const& blockChain() const { return bc(); }
-    /// Get some information on the block queue.
-    BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
     /// Get some information on the block syncing.
     SyncStatus syncStatus() const override;
     /// Populate the uninitialized fields in the supplied transaction with default values
     TransactionSkeleton populateTransactionWithDefaults(
         TransactionSkeleton const& _t ) const override;
-    /// Get the block queue.
-    BlockQueue const& blockQueue() const { return m_bq; }
     /// Get the state database.
     skale::State const& state() const { return m_state; }
     /// Get some information on the transaction queue.
@@ -212,8 +208,6 @@ public:
     DownloadMan const* downloadMan() const;
     /// Clears pending transactions. Just for debug use.
     void clearPending();
-    /// Retries all blocks with unknown parents.
-    void retryUnknown() { m_bq.retryAllUnknown(); }
     /// Get a report of activity.
     ActivityReport activityReport() {
         ActivityReport ret;
@@ -392,8 +386,6 @@ protected:
     void callQueuedFunctions();
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
-    BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
-                      ///< imported).
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
 

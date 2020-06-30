@@ -107,7 +107,7 @@ public:
                m_author == _cmp.author() && m_stateRoot == _cmp.stateRoot() &&
                m_transactionsRoot == _cmp.transactionsRoot() &&
                m_receiptsRoot == _cmp.receiptsRoot() && m_logBloom == _cmp.logBloom() &&
-               m_difficulty == _cmp.difficulty() && m_number == _cmp.number() &&
+               m_microseconds_ex_difficulty == _cmp.microsecondsExDifficulty() && m_number == _cmp.number() &&
                m_gasLimit == _cmp.gasLimit() && m_gasUsed == _cmp.gasUsed() &&
                m_timestamp == _cmp.timestamp() && m_extraData == _cmp.extraData();
     }
@@ -167,8 +167,8 @@ public:
         m_logBloom = _v;
         noteDirty();
     }
-    void setDifficulty( u256 const& _v ) {
-        m_difficulty = _v;
+    void setMicrosecondsExDifficulty( u256 const& _v ) {
+        m_microseconds_ex_difficulty = _v;
         noteDirty();
     }
     template < class T >
@@ -197,7 +197,7 @@ public:
     u256 const& gasLimit() const { return m_gasLimit; }
     bytes const& extraData() const { return m_extraData; }
     LogBloom const& logBloom() const { return m_logBloom; }
-    u256 const& difficulty() const { return m_difficulty; }
+    u256 const& microsecondsExDifficulty() const { return m_microseconds_ex_difficulty; }
     template < class T >
     T seal( unsigned _offset = 0 ) const {
         T ret;
@@ -236,7 +236,7 @@ private:
     int64_t m_timestamp = -1;
 
     Address m_author;
-    u256 m_difficulty;
+    u256 m_microseconds_ex_difficulty;
 
     std::vector< bytes > m_seal;  ///< Additional (RLP-encoded) header fields.
     mutable Mutex m_sealLock;
@@ -251,7 +251,7 @@ private:
 inline std::ostream& operator<<( std::ostream& _out, BlockHeader const& _bi ) {
     _out << _bi.hash( WithoutSeal ) << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " "
          << _bi.author() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " "
-         << _bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.difficulty() << " "
+         << _bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.microsecondsExDifficulty() << " "
          << _bi.number() << " " << _bi.gasLimit() << " " << _bi.gasUsed() << " " << _bi.timestamp();
     return _out;
 }

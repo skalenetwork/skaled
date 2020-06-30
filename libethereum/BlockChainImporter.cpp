@@ -32,8 +32,7 @@ class BlockChainImporter : public BlockChainImporterFace {
 public:
     explicit BlockChainImporter( BlockChain& _blockChain ) : m_blockChain( _blockChain ) {}
 
-    void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts,
-        u256 const& _totalDifficulty ) override {
+    void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts ) override {
         RLPStream headerRlp;
         _header.streamRLP( headerRlp );
 
@@ -41,7 +40,7 @@ public:
         block.appendRaw( headerRlp.out() );
         block << _transactions << _uncles;
 
-        m_blockChain.insertWithoutParent( block.out(), _receipts.data(), _totalDifficulty );
+        m_blockChain.insertWithoutParent( block.out(), _receipts.data() );
     }
 
     void setChainStartBlockNumber( u256 const& _number ) override {

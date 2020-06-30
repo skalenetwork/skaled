@@ -57,7 +57,7 @@ BlockHeader::BlockHeader( BlockHeader const& _other )
       m_extraData( _other.extraData() ),
       m_timestamp( _other.timestamp() ),
       m_author( _other.author() ),
-      m_difficulty( _other.difficulty() ),
+      m_microseconds_ex_difficulty( _other.microsecondsExDifficulty() ),
       m_seal( _other.seal() ),
       m_hash( _other.hashRawRead() ),
       m_hashWithout( _other.hashWithoutRawRead() ) {
@@ -79,7 +79,7 @@ BlockHeader& BlockHeader::operator=( BlockHeader const& _other ) {
     m_extraData = _other.extraData();
     m_timestamp = _other.timestamp();
     m_author = _other.author();
-    m_difficulty = _other.difficulty();
+    m_microseconds_ex_difficulty = _other.microsecondsExDifficulty();
     std::vector< bytes > seal = _other.seal();
     {
         Guard l( m_sealLock );
@@ -104,7 +104,7 @@ void BlockHeader::clear() {
     m_transactionsRoot = EmptyTrie;
     m_receiptsRoot = EmptyTrie;
     m_logBloom = LogBloom();
-    m_difficulty = 0;
+    m_microseconds_ex_difficulty = 0;
     m_number = 0;
     m_gasLimit = 0;
     m_gasUsed = 0;
@@ -128,7 +128,7 @@ h256 BlockHeader::hash( IncludeSeal _i ) const {
 
 void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
-       << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
+       << m_receiptsRoot << m_logBloom << m_microseconds_ex_difficulty << m_number << m_gasLimit << m_gasUsed
        << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
 }
 
@@ -177,7 +177,7 @@ void BlockHeader::populate( RLP const& _header ) {
         m_transactionsRoot = _header[field = 4].toHash< h256 >( RLP::VeryStrict );
         m_receiptsRoot = _header[field = 5].toHash< h256 >( RLP::VeryStrict );
         m_logBloom = _header[field = 6].toHash< LogBloom >( RLP::VeryStrict );
-        m_difficulty = _header[field = 7].toInt< u256 >();
+        m_microseconds_ex_difficulty = _header[field = 7].toInt< u256 >();
         m_number = _header[field = 8].toPositiveInt64();
         m_gasLimit = _header[field = 9].toInt< u256 >();
         m_gasUsed = _header[field = 10].toInt< u256 >();
@@ -198,7 +198,7 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_number = _parent.m_number + 1;
     m_parentHash = _parent.m_hash;
     m_gasLimit = _parent.m_gasLimit;
-    m_difficulty = _parent.m_difficulty;
+//    m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
 }
 

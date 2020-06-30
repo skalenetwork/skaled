@@ -338,7 +338,8 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
     BlockHeader bi( _genesisRLP, RLP( &_genesisRLP )[0].isList() ? BlockData : HeaderData );
     parentHash = bi.parentHash();
     author = bi.author();
-    difficulty = bi.difficulty();
+    difficulty = bi.microsecondsExDifficulty();
+    assert( difficulty == 0 );
     gasLimit = bi.gasLimit();
     gasUsed = bi.gasUsed();
     timestamp = bi.timestamp();
