@@ -69,7 +69,7 @@ void fillDifficulty( boost::filesystem::path const& _testFileFullName, Ethash& _
 
                 BlockHeader parent;
                 parent.setTimestamp( pStamp );
-                parent.setDifficulty( pDiff );
+                parent.setMicrosecondsExDifficulty( pDiff );
                 parent.setNumber( cNum - 1 );
                 parent.setSha3Uncles( ( pUncles == 0 ) ? EmptyListSHA3 : nonzeroHash );
 
@@ -134,7 +134,7 @@ void testDifficulty( fs::path const& _testFileFullName, Ethash& _sealEngine ) {
 
         BlockHeader parent;
         parent.setTimestamp( test::toPositiveInt64( o["parentTimestamp"] ) );
-        parent.setDifficulty( test::toInt( o["parentDifficulty"] ) );
+        parent.setMicrosecondsExDifficulty( test::toInt( o["parentDifficulty"] ) );
         parent.setNumber( test::toPositiveInt64( o["currentBlockNumber"] ) - 1 );
         parent.setSha3Uncles( h256( o["parentUncles"].get_str() ) );
 
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE( difficultyTestsCustomMainNetwork ) {
 
                         BlockHeader parent;
                         parent.setTimestamp( pStamp );
-                        parent.setDifficulty( pDiff );
+                        parent.setMicrosecondsExDifficulty( pDiff );
                         parent.setNumber( cNum - 1 );
 
                         parent.setSha3Uncles( ( pUncles == 0 ) ? EmptyListSHA3 : nonzeroHash );

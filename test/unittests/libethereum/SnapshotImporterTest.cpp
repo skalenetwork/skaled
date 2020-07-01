@@ -72,15 +72,14 @@ struct ImportedBlock {
     bytes transactions;
     bytes uncles;
     bytes receipts;
-    u256 totalDifficulty;
+//    u256 totalDifficulty;
 };
 
 class MockBlockChainImporter : public BlockChainImporterFace {
 public:
-    void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts,
-        u256 const& _totalDifficulty ) override {
+    void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts ) override {
         importedBlocks.push_back( {_header, _transactions.data().toBytes(),
-            _uncles.data().toBytes(), _receipts.data().toBytes(), _totalDifficulty} );
+            _uncles.data().toBytes(), _receipts.data().toBytes()} );
     }
     void setChainStartBlockNumber( u256 const& _number ) override {
         chainStartBlockNumber = _number;
@@ -368,7 +367,7 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importEmptyBlock,
     BOOST_CHECK_EQUAL( header.author(), author );
     BOOST_CHECK_EQUAL( header.stateRoot(), stateRoot );
     BOOST_CHECK_EQUAL( header.logBloom(), logBloom );
-    BOOST_CHECK_EQUAL( header.difficulty(), difficulty );
+    BOOST_CHECK_EQUAL( header.microsecondsExDifficulty(), difficulty );
     BOOST_CHECK_EQUAL( header.gasLimit(), gasLimit );
     BOOST_CHECK_EQUAL( header.gasUsed(), gasUsed );
     BOOST_CHECK_EQUAL( header.timestamp(), timestamp );
@@ -378,7 +377,6 @@ BOOST_AUTO_TEST_CASE( SnapshotImporterSuite_importEmptyBlock,
     BOOST_CHECK_EQUAL( Ethash::nonce( header ), nonce );
     BOOST_CHECK_EQUAL( header.number(), parentNumber + 1 );
     BOOST_CHECK_EQUAL( header.parentHash(), parentHash );
-    BOOST_CHECK_EQUAL( importedBlock.totalDifficulty, parentTotalDifficulty + difficulty );
 
     BOOST_CHECK_EQUAL( blockChainImporter.chainStartBlockNumber, parentNumber + 1 );
 }

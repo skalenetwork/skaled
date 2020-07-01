@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE( insertWithoutParent ) {
 
     BlockChain& bcRef = bc.interfaceUnsafe();
 
-    bcRef.insertWithoutParent( block.bytes(), block.receipts(), 0x040000 );
+    bcRef.insertWithoutParent( block.bytes(), block.receipts());//, 0x040000 );
     BOOST_CHECK_EQUAL( bcRef.number(), 10 );
 
     bcRef.setChainStartBlockNumber( 10 );
@@ -208,39 +208,6 @@ BOOST_AUTO_TEST_CASE( insertWithoutParent ) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( BlockChainMainNetworkSuite, MainNetworkNoProofTestFixture )
-
-BOOST_AUTO_TEST_CASE( Mining_5_BlockFutureTime ) {
-    TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-
-    TestBlock uncleBlock;
-    uncleBlock.mine( bc );
-
-    BlockHeader uncleHeader = uncleBlock.blockHeader();
-    uncleHeader.setTimestamp( uncleHeader.timestamp() + 10000 );
-    uncleBlock.setBlockHeader( uncleHeader );
-    uncleBlock.updateNonce( bc );
-
-    BlockQueue uncleBlockQueue;
-    uncleBlockQueue.setChain( bc.getInterface() );
-    uncleBlockQueue.import( &uncleBlock.bytes(), false );
-    std::this_thread::sleep_for( std::chrono::seconds( 2 ) );
-
-    BlockChain& bcRef = bc.interfaceUnsafe();
-    bcRef.sync( uncleBlockQueue, bc.testGenesis().mutableState(), unsigned( 4 ) );
-    BOOST_REQUIRE(
-        uncleBlockQueue.blockStatus( uncleBlock.blockHeader().hash() ) == QueueStatus::Unknown );
-
-    pair< ImportResult, ImportRoute > importAttempt;
-    importAttempt = bcRef.attemptImport( uncleBlock.bytes(), bc.testGenesis().mutableState() );
-    BOOST_REQUIRE( importAttempt.first == ImportResult::FutureTimeKnown );
-
-    auto is_critical = []( std::exception const& _e ) {
-        cnote << _e.what();
-        return true;
-    };
-    BOOST_CHECK_EXCEPTION(
-        bcRef.insert( uncleBlock.bytes(), uncleBlock.receipts() ), FutureTime, is_critical );
-}
 
 bool onBadwasCalled = false;
 void onBad( Exception& ) {

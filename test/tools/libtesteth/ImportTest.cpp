@@ -376,7 +376,7 @@ void ImportTest::importEnv( json_spirit::mObject const& _o ) {
     BOOST_REQUIRE( gasLimit <= std::numeric_limits< int64_t >::max() );
     BlockHeader header;
     header.setGasLimit( gasLimit.convert_to< int64_t >() );
-    header.setDifficulty( toInt( _o.at( "currentDifficulty" ) ) );
+    header.setMicrosecondsExDifficulty( toInt( _o.at( "currentDifficulty" ) ) );
     header.setNumber( toPositiveInt64( _o.at( "currentNumber" ) ) );
     header.setTimestamp( toPositiveInt64( _o.at( "currentTimestamp" ) ) );
     header.setAuthor( Address( _o.at( "currentCoinbase" ).get_str() ) );

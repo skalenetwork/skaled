@@ -128,7 +128,7 @@ private:
     void doBenchmark( std::string const& _m, unsigned _warmupDuration = 15,
         unsigned _trialDuration = 3, unsigned _trials = 5 ) {
         BlockHeader genesis;
-        genesis.setDifficulty( 1 << 18 );
+        genesis.setMicrosecondsExDifficulty( 1 << 18 );
         cdebug << Ethash::boundary( genesis );
 
         GenericFarm< EthashProofOfWork > f;
@@ -144,7 +144,7 @@ private:
         string platformInfo = EthashCPUMiner::platformInfo();
         cout << "Benchmarking on platform: " << platformInfo << endl;
 
-        genesis.setDifficulty( u256( 1 ) << 63 );
+        genesis.setMicrosecondsExDifficulty( u256( 1 ) << 63 );
         f.setWork( genesis );
         f.start( _m );
 
