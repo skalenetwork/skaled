@@ -214,37 +214,6 @@ void onBad( Exception& ) {
     onBadwasCalled = true;
 }
 
-BOOST_AUTO_TEST_CASE( attemptImport ) {
-    // UnknownParent
-    // Success
-    // AlreadyKnown
-    // FutureTimeKnown
-    // Malformed
-
-    TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-
-    TestTransaction tr = TestTransaction::defaultTransaction();
-    TestBlock block;
-    block.addTransaction( tr );
-    block.mine( bc );
-
-    pair< ImportResult, ImportRoute > importAttempt;
-    BlockChain& bcRef = bc.interfaceUnsafe();
-    bcRef.setOnBad( onBad );
-
-    importAttempt = bcRef.attemptImport( block.bytes(), bc.testGenesis().mutableState() );
-    BOOST_REQUIRE( importAttempt.first == ImportResult::Success );
-
-    importAttempt = bcRef.attemptImport( block.bytes(), bc.testGenesis().mutableState() );
-    BOOST_REQUIRE( importAttempt.first == ImportResult::AlreadyKnown );
-
-    bytes blockBytes = block.bytes();
-    blockBytes[0] = 0;
-    importAttempt = bcRef.attemptImport( blockBytes, bc.testGenesis().mutableState() );
-    BOOST_REQUIRE( importAttempt.first == ImportResult::Malformed );
-    BOOST_REQUIRE( onBadwasCalled == true );
-}
-
 BOOST_AUTO_TEST_CASE( insert ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
     TestTransaction tr = TestTransaction::defaultTransaction();

@@ -346,7 +346,6 @@ int main( int argc, char** argv ) try {
 
     /// File name for import/export.
     string filename;
-    bool safeImport = false;
 
     /// Hashes/numbers for export range.
     string exportFrom = "1";
@@ -1004,8 +1003,7 @@ int main( int argc, char** argv ) try {
         masterPassword = vm["master"].as< string >();
         masterSet = true;
     }
-    if ( vm.count( "dont-check" ) )
-        safeImport = true;
+
     if ( vm.count( "format" ) ) {
         string m = vm["format"].as< string >();
         if ( m == "binary" )
@@ -1345,112 +1343,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( mode == OperationMode::Import ) {
-        std::thread th( [&]() {
-            dev::setThreadName( "import" );
-
-            ifstream fin( filename, std::ifstream::binary );
-            istream& in = ( filename.empty() || filename == "--" ) ? cin : fin;
-            unsigned alreadyHave = 0;
-            unsigned good = 0;
-            unsigned futureTime = 0;
-            unsigned unknownParent = 0;
-            unsigned bad = 0;
-            chrono::steady_clock::time_point t = chrono::steady_clock::now();
-            double last = 0;
-            unsigned lastImported = 0;
-            unsigned imported = 0;
-
-            unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
-            MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-            while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
-                bytes block( 8 );
-                {
-                    if ( block_no >= client->number() ) {
-                        MICROPROFILE_ENTERI( "main", "in.read", -1 );
-                    }
-                    in.read( reinterpret_cast< char* >( block.data() ),
-                        std::streamsize( block.size() ) );
-                    block.resize( RLP( block, RLP::LaissezFaire ).actualSize() );
-                    if ( block.size() >= 8 ) {
-                        in.read( reinterpret_cast< char* >( block.data() + 8 ),
-                            std::streamsize( block.size() ) - 8 );
-                        if ( block_no >= client->number() ) {
-                            MICROPROFILE_LEAVE();
-                        }
-                    } else {
-                        throw std::runtime_error( "Buffer error" );
-                    }
-                }
-                block_no++;
-
-                if ( block_no <= client->number() )
-                    continue;
-
-                switch ( client->queueBlock( block, safeImport ) ) {
-                case ImportResult::Success:
-                    good++;
-                    break;
-                case ImportResult::AlreadyKnown:
-                    alreadyHave++;
-                    break;
-                case ImportResult::UnknownParent:
-                    unknownParent++;
-                    break;
-                case ImportResult::FutureTimeUnknown:
-                    unknownParent++;
-                    futureTime++;
-                    break;
-                case ImportResult::FutureTimeKnown:
-                    futureTime++;
-                    break;
-                default:
-                    bad++;
-                    break;
-                }
-
-                // sync chain with queue
-                tuple< ImportRoute, bool, unsigned > r = client->syncQueue( 10 );
-                imported += get< 2 >( r );
-
-                double e =
-                    chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
-                        .count() /
-                    1000.0;
-                if ( static_cast< unsigned int >( e ) >= last + 10 ) {
-                    MICROPROFILE_LEAVE();
-                    auto i = imported - lastImported;
-                    auto d = e - last;
-                    cout << i << " more imported at " << i / d << " blocks/s. " << imported
-                         << " imported in " << e << " seconds at "
-                         << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                         << client->number() << ")"
-                         << "\n";
-                    fprintf( client->performance_fd, "%d\t%.2lf\n", client->number(), i / d );
-                    last = static_cast< unsigned >( e );
-                    lastImported = imported;
-                    MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-                }
-            }  // while
-            MICROPROFILE_LEAVE();
-
-            bool moreToImport = true;
-            while ( moreToImport ) {
-                {
-                    MICROPROFILE_SCOPEI( "main", "sleep 1 sec", MP_DIMGREY );
-                    this_thread::sleep_for( chrono::seconds( 1 ) );
-                }
-                tie( ignore, moreToImport, ignore ) = client->syncQueue( 100000 );
-            }
-            double e =
-                chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
-                    .count() /
-                1000.0;
-            cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << client->number()
-                 << ")\n";
-        } );  // thread
-        th.join();
+        assert( false && "OperationMode::Import not implemented" );
         return 0;
     }
 

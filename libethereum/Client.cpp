@@ -200,6 +200,14 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     doWork( false );
 }
 
+ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
+    if ( m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified > 10000 ) {
+        MICROPROFILE_SCOPEI( "Client", "queueBlock sleep 500", MP_DIMGRAY );
+        this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+    }
+    return m_bq.import( &_block, _isSafe );
+}
+
 void Client::onBadBlock( Exception& _ex ) const {
     // BAD BLOCK!!!
     bytes const* block = boost::get_error_info< errinfo_block >( _ex );
@@ -738,16 +746,11 @@ void Client::noteChanged( h256Hash const& _filters ) {
 }
 
 void Client::doWork( bool _doWait ) {
-    bool t = true;
-    if ( m_syncBlockQueue.compare_exchange_strong( t, false ) )
-        syncBlockQueue();
-
     if ( m_needStateReset ) {
         resetState();
         m_needStateReset = false;
     }
 
-    t = true;
     bool isSealed = false;
     DEV_READ_GUARDED( x_working )
     isSealed = m_working.isSealed();

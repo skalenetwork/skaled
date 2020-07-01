@@ -102,20 +102,3 @@ bool ClientTest::mineBlocks( unsigned _count ) noexcept {
         return false;
     }
 }
-
-h256 ClientTest::importRawBlock( const string& _blockRLP ) {
-    bytes blockBytes = jsToBytes( _blockRLP, OnFailed::Throw );
-    h256 blockHash = BlockHeader::headerHashFromBlock( blockBytes );
-    ImportResult result = queueBlock( blockBytes, true );
-    if ( result != ImportResult::Success )
-        BOOST_THROW_EXCEPTION( ImportBlockFailed() << errinfo_importResult( result ) );
-
-    // TOOD notify some sync component
-
-    bool moreToImport = true;
-    while ( moreToImport ) {
-        tie( ignore, moreToImport, ignore ) = syncQueue( 100000 );
-        this_thread::sleep_for( chrono::milliseconds( 100 ) );
-    }
-    return blockHash;
-}

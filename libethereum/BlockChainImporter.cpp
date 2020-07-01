@@ -32,7 +32,8 @@ class BlockChainImporter : public BlockChainImporterFace {
 public:
     explicit BlockChainImporter( BlockChain& _blockChain ) : m_blockChain( _blockChain ) {}
 
-    void importBlock( BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts ) override {
+    void importBlock(
+        BlockHeader const& _header, RLP _transactions, RLP _uncles, RLP _receipts ) override {
         RLPStream headerRlp;
         _header.streamRLP( headerRlp );
 

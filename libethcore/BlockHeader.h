@@ -107,9 +107,10 @@ public:
                m_author == _cmp.author() && m_stateRoot == _cmp.stateRoot() &&
                m_transactionsRoot == _cmp.transactionsRoot() &&
                m_receiptsRoot == _cmp.receiptsRoot() && m_logBloom == _cmp.logBloom() &&
-               m_microseconds_ex_difficulty == _cmp.microsecondsExDifficulty() && m_number == _cmp.number() &&
-               m_gasLimit == _cmp.gasLimit() && m_gasUsed == _cmp.gasUsed() &&
-               m_timestamp == _cmp.timestamp() && m_extraData == _cmp.extraData();
+               m_microseconds_ex_difficulty == _cmp.microsecondsExDifficulty() &&
+               m_number == _cmp.number() && m_gasLimit == _cmp.gasLimit() &&
+               m_gasUsed == _cmp.gasUsed() && m_timestamp == _cmp.timestamp() &&
+               m_extraData == _cmp.extraData();
     }
     bool operator!=( BlockHeader const& _cmp ) const { return !operator==( _cmp ); }
 
@@ -251,8 +252,9 @@ private:
 inline std::ostream& operator<<( std::ostream& _out, BlockHeader const& _bi ) {
     _out << _bi.hash( WithoutSeal ) << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " "
          << _bi.author() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " "
-         << _bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.microsecondsExDifficulty() << " "
-         << _bi.number() << " " << _bi.gasLimit() << " " << _bi.gasUsed() << " " << _bi.timestamp();
+         << _bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.microsecondsExDifficulty()
+         << " " << _bi.number() << " " << _bi.gasLimit() << " " << _bi.gasUsed() << " "
+         << _bi.timestamp();
     return _out;
 }
 

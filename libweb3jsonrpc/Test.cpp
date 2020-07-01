@@ -87,12 +87,3 @@ bool Test::test_modifyTimestamp( int _timestamp ) {
     }
     return true;
 }
-
-std::string Test::test_importRawBlock( string const& _blockRLP ) {
-    try {
-        ClientTest& client = asClientTest( m_eth );
-        return toJS( client.importRawBlock( _blockRLP ) );
-    } catch ( std::exception const& ex ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, ex.what() ) );
-    }
-}

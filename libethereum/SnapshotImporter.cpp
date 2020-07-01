@@ -207,9 +207,8 @@ void SnapshotImporter::importBlockChunks(
             Ethash::setMixHash( header, abridgedBlock[10].toHash< h256 >( RLP::VeryStrict ) );
             Ethash::setNonce( header, abridgedBlock[11].toHash< Nonce >( RLP::VeryStrict ) );
 
-            //totalDifficulty += difficulty;
-            m_blockChainImporter.importBlock(
-                header, transactions, uncles, receipts );
+            // totalDifficulty += difficulty;
+            m_blockChainImporter.importBlock( header, transactions, uncles, receipts );
 
             parentHash = header.hash();
         }

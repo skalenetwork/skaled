@@ -53,12 +53,12 @@ Json::Value AdminEth::admin_eth_findBlock( string const& _blockHash, string cons
 
 string AdminEth::admin_eth_blockQueueFirstUnknown( string const& _session ) {
     RPC_ADMIN;
-    return h256().hex(); //m_eth.blockQueue().firstUnknown().hex();
+    return h256().hex();  // m_eth.blockQueue().firstUnknown().hex();
 }
 
 bool AdminEth::admin_eth_blockQueueRetryUnknown( string const& _session ) {
     RPC_ADMIN;
-//    m_eth.retryUnknown();
+    //    m_eth.retryUnknown();
     return true;
 }
 

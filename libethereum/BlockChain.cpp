@@ -44,6 +44,7 @@
 #include <libethcore/Exceptions.h>
 
 #include "Block.h"
+#include "BlockQueue.h"
 #include "Defaults.h"
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
@@ -331,6 +332,70 @@ string BlockChain::dumpDatabase() const {
     return oss.str();
 }
 
+tuple< ImportRoute, bool, unsigned > BlockChain::sync(
+    BlockQueue& _bq, State& _state, unsigned _max ) {
+    MICROPROFILE_SCOPEI( "BlockChain", "sync many blocks", MP_LIGHTGOLDENROD );
+
+    //  _bq.tick(*this);
+
+    VerifiedBlocks blocks;
+    _bq.drain( blocks, _max );
+
+    h256s fresh;
+    h256s dead;
+    h256s badBlocks;
+    Transactions goodTransactions;
+    unsigned count = 0;
+    for ( VerifiedBlock const& block : blocks ) {
+        do {
+            try {
+                // Nonce & uncle nonces already verified in verification thread at this point.
+                ImportRoute r;
+                DEV_TIMED_ABOVE( "Block import " + toString( block.verified.info.number() ), 500 )
+                r = import( block.verified, _state,
+                    ( ImportRequirements::Everything & ~ImportRequirements::ValidSeal &
+                        ~ImportRequirements::CheckUncles ) != 0 );
+                fresh += r.liveBlocks;
+                dead += r.deadBlocks;
+                goodTransactions.reserve( goodTransactions.size() + r.goodTranactions.size() );
+                std::move( std::begin( r.goodTranactions ), std::end( r.goodTranactions ),
+                    std::back_inserter( goodTransactions ) );
+                ++count;
+            } catch ( dev::eth::AlreadyHaveBlock const& ) {
+                cwarn << "ODD: Import queue contains already imported block";
+                continue;
+            } catch ( dev::eth::UnknownParent const& ) {
+                cwarn
+                    << "ODD: Import queue contains block with unknown parent.";  // << LogTag::Error
+                                                                                 // <<
+                                                                                 // boost::current_exception_diagnostic_information();
+                // NOTE: don't reimport since the queue should guarantee everything in the right
+                // order. Can't continue - chain bad.
+                badBlocks.push_back( block.verified.info.hash() );
+            } catch ( dev::eth::FutureTime const& ) {
+                cwarn << "ODD: Import queue contains a block with future time.";
+                this_thread::sleep_for( chrono::seconds( 1 ) );
+                continue;
+            } catch ( dev::eth::TransientError const& ) {
+                this_thread::sleep_for( chrono::milliseconds( 100 ) );
+                continue;
+            } catch ( Exception& ex ) {
+                cerr << "Exception while importing block. Someone (Jeff? That you?) seems to be "
+                     << "giving us dodgy blocks !";
+                cerr << diagnostic_information( ex );
+                cerr.flush();
+                if ( m_onBad )
+                    m_onBad( ex );
+                // NOTE: don't reimport since the queue should guarantee everything in the right
+                // order. Can't continue - chain  bad.
+                badBlocks.push_back( block.verified.info.hash() );
+            }
+        } while ( false );
+    }
+    return make_tuple(
+        ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain( badBlocks ), count );
+}
+
 ImportRoute BlockChain::import( bytes const& _block, State& _state, bool _mustBeNew ) {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block =
@@ -417,8 +482,7 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
     extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
         ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-    BlockDetails bd( ( unsigned ) pd.number + 1, 0,
-        _block.info.parentHash(), {} );
+    BlockDetails bd( ( unsigned ) pd.number + 1, 0, _block.info.parentHash(), {} );
     bytes bd_rlp = bd.rlp();
     bd.size = bd_rlp.size();
 
@@ -544,12 +608,10 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     ImportPerformanceLogger performanceLogger;
 
-    return insertBlockAndExtras(
-        verifiedBlock, ref( receipts ), performanceLogger );
+    return insertBlockAndExtras( verifiedBlock, ref( receipts ), performanceLogger );
 }
 
-ImportRoute BlockChain::insertWithoutParent(
-    bytes const& _block, bytesConstRef _receipts ) {
+ImportRoute BlockChain::insertWithoutParent( bytes const& _block, bytesConstRef _receipts ) {
     VerifiedBlockRef const block =
         verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
 
@@ -629,8 +691,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-        BlockDetails details(
-            ( unsigned ) _block.info.number(), 0, _block.info.parentHash(), {} );
+        BlockDetails details( ( unsigned ) _block.info.number(), 0, _block.info.parentHash(), {} );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
         extrasWriteBatch->insert(
@@ -693,13 +754,13 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
 
             // Pre-memoize everything we need before locking x_blocksBlooms
-            for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                  level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize )
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize )
                 blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
 
             WriteGuard l( x_blocksBlooms );
-            for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                  level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize ) {
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize ) {
                 unsigned i = index / c_bloomIndexSize;
                 unsigned o = index % c_bloomIndexSize;
                 alteredBlooms.push_back( chunkId( level, i ) );
@@ -716,8 +777,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
 
             bytes blockBytes;
-            RLP blockRLP(
-                *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
+            RLP blockRLP( *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
             TransactionAddress ta;
             ta.blockHash = tbi.hash();
             ta.index = 0;
@@ -755,8 +815,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         isImportedAndBest = true;
     }
 
-    LOG( m_logger ) << cc::debug( "   Imported and best " ) << 0
-                    << cc::debug( " (" ) << cc::warn( "#" ) << cc::num10( _block.info.number() )
+    LOG( m_logger ) << cc::debug( "   Imported and best " ) << 0 << cc::debug( " (" )
+                    << cc::warn( "#" ) << cc::num10( _block.info.number() )
                     << cc::debug( "). Has " )
                     << ( details( _block.info.parentHash() ).children.size() - 1 )
                     << cc::debug( " siblings. Route: " ) << route;

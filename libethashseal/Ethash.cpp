@@ -170,8 +170,10 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
     if ( _bi.number() < chainParams().homesteadForkBlock )
         // Frontier-era difficulty adjustment
         target = _bi.timestamp() >= _parent.timestamp() + durationLimit ?
-                     _parent.microsecondsExDifficulty() - ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) :
-                     ( _parent.microsecondsExDifficulty() + ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) );
+                     _parent.microsecondsExDifficulty() -
+                         ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) :
+                     ( _parent.microsecondsExDifficulty() +
+                         ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) );
     else {
         bigint const timestampDiff = bigint( _bi.timestamp() ) - _parent.timestamp();
         bigint const adjFactor =
@@ -181,7 +183,8 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
                 max< bigint >( ( _parent.hasUncles() ? 2 : 1 ) - timestampDiff / 9,
                     -99 );  // Byzantium-era difficulty adjustment
 
-        target = _parent.microsecondsExDifficulty() + _parent.microsecondsExDifficulty() / 2048 * adjFactor;
+        target = _parent.microsecondsExDifficulty() +
+                 _parent.microsecondsExDifficulty() / 2048 * adjFactor;
     }
 
     bigint o = target;
@@ -213,7 +216,7 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
-//    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    //    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
     _bi.setGasLimit( childGasLimit( _parent, chainParams().minGasLimit ) );
 }
 

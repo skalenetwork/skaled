@@ -128,8 +128,8 @@ h256 BlockHeader::hash( IncludeSeal _i ) const {
 
 void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
-       << m_receiptsRoot << m_logBloom << m_microseconds_ex_difficulty << m_number << m_gasLimit << m_gasUsed
-       << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
+       << m_receiptsRoot << m_logBloom << m_microseconds_ex_difficulty << m_number << m_gasLimit
+       << m_gasUsed << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
@@ -198,7 +198,7 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_number = _parent.m_number + 1;
     m_parentHash = _parent.m_hash;
     m_gasLimit = _parent.m_gasLimit;
-//    m_difficulty = _parent.m_difficulty;
+    //    m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
 }
 

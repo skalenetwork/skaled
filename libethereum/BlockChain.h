@@ -72,6 +72,7 @@ static const h256s NullH256s;
 
 class Block;
 class ImportPerformanceLogger;
+class BlockQueue;
 
 DEV_SIMPLE_EXCEPTION( AlreadyHaveBlock );
 DEV_SIMPLE_EXCEPTION( FutureTime );
@@ -129,6 +130,12 @@ public:
     /// To be called from main loop every 100ms or so.
     void process();
 
+    /// Sync the chain with any incoming blocks. All blocks should, if processed in order.
+    /// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed
+    /// waiting. last - tx count
+    std::tuple< ImportRoute, bool, unsigned > sync(
+        BlockQueue& _bq, skale::State& _state, unsigned _max );
+
     /// Attempt to import the given block directly into the BlockChain and sync with the state DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block
     /// chain.
@@ -150,8 +157,7 @@ public:
     void insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew = true );
     /// Insert that doesn't require parent to be imported, useful when we don't have the full
     /// blockchain (like restoring from partial snapshot).
-    ImportRoute insertWithoutParent(
-        bytes const& _block, bytesConstRef _receipts );
+    ImportRoute insertWithoutParent( bytes const& _block, bytesConstRef _receipts );
 
     /// Returns true if the given block is known (though not necessarily a part of the canon chain).
     bool isKnown( h256 const& _hash, bool _isCurrent = true ) const;
@@ -449,7 +455,8 @@ private:
 
     void rotateDBIfNeeded();
 
-    ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts, ImportPerformanceLogger& _performanceLogger );
+    ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
+        ImportPerformanceLogger& _performanceLogger );
     void checkBlockIsNew( VerifiedBlockRef const& _block ) const;
     void checkBlockTimestamp( BlockHeader const& _header ) const;
 

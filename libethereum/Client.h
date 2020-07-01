@@ -47,6 +47,7 @@
 #include "Block.h"
 #include "BlockChain.h"
 #include "BlockChainImporter.h"
+#include "BlockQueue.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "InstanceMonitor.h"
@@ -386,6 +387,8 @@ protected:
     void callQueuedFunctions();
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
+    BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
+                      ///< imported).
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
 

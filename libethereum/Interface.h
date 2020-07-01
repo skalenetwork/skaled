@@ -93,9 +93,6 @@ public:
         return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _ff );
     }
 
-    /// Injects the RLP-encoded block given by the _rlp into the block queue directly.
-    virtual ImportResult injectBlock( bytes const& _block ) = 0;
-
     /// Estimate gas usage for call/create.
     /// @param _maxGas An upper bound value for estimation, if not provided default value of
     /// c_maxGasEstimate will be used.
