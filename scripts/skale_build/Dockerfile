@@ -21,8 +21,4 @@ COPY ./executable /skaled
 WORKDIR /skaled
 RUN chmod +x skaled
 
-EXPOSE 30303
-
-ENV DATA_DIR $DATA_DIR
-
 ENTRYPOINT /skaled/skaled $OPTIONS
