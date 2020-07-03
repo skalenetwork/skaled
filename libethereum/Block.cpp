@@ -423,8 +423,8 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone(
-    BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions _transactions, uint64_t _timestamp, uint32_t _timeStampMs, u256 _gasPrice ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -437,6 +437,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
+    m_currentBlock.setMicrosecondsExDifficulty( _timeStampMs * 1000 );
 
     m_state = m_state.delegateWrite();  // mainly for debugging
 

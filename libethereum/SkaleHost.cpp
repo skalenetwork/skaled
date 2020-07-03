@@ -160,9 +160,10 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) {
+    uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot );
+    m_host.createBlock(
+        _approvedTransactions, _timeStamp, _timeStampMs, _blockID, _gasPrice, _stateRoot );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -424,7 +425,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
+    uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
+    u256 _stateRoot ) try {
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
@@ -541,13 +543,15 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     //
     m_debugTracer.tracepoint( "import_block" );
 
-    size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+    size_t n_succeeded =
+        m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp, _timeStampMs );
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
     LOG( m_traceLogger ) << cc::success( "Successfully imported " ) << n_succeeded
                          << cc::success( " of " ) << out_txns.size()
-                         << cc::success( " transactions" ) << std::endl;
+                         << cc::success( " transactions" ) << "time = " << _timeStamp << "."
+                         << _timeStampMs << std::endl;
 
     if ( have_consensus_born )
         this->m_lastBlockWithBornTransactions = _blockID;

@@ -254,7 +254,7 @@ public:
 
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), uint32_t _timeStampMs = 0 );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
@@ -277,7 +277,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), uint32_t _timeStampMs = 0 );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

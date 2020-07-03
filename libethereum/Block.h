@@ -233,7 +233,8 @@ public:
 
     /// Sync all transactions unconditionally
     std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice );
+        const Transactions _transactions, uint64_t _timestamp, uint32_t _timeStampMs,
+        u256 _gasPrice );
 
     /// Execute all transactions within a given block.
     void enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc );
