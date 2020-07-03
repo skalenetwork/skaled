@@ -28,6 +28,9 @@
 
 #include <ethash/ethash.hpp>
 
+// For mining in some tests
+#define SKALE_FAKE_DIFFICULTY 16384
+
 namespace dev {
 
 namespace eth {

@@ -91,15 +91,6 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     bytesConstRef _block ) const {
     SealEngineFace::verify( _s, _bi, _parent, _block );
 
-    if ( _parent ) {
-        // Check difficulty is correct given the two timestamps.
-        auto expected = calculateDifficulty( _bi, _parent );
-        auto difficulty = _bi.microsecondsExDifficulty();
-        if ( difficulty != expected )
-            BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
-                                       ( bigint ) expected, ( bigint ) difficulty ) );
-    }
-
     // check it hashes according to proof of work or that it's the genesis block.
     // SKALE disabled PoW checking
     if ( false && _s == CheckEverything && _bi.parentHash() && !verifySeal( _bi ) ) {
@@ -222,7 +213,8 @@ void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) 
 
 bool Ethash::quickVerifySeal( BlockHeader const& _blockHeader ) const {
     h256 const h = _blockHeader.hash( WithoutSeal );
-    h256 const b = boundary( _blockHeader );
+    h256 const b =
+        u256( ( bigint( 1 ) << 256 ) / SKALE_FAKE_DIFFICULTY );  // boundary( _blockHeader );
     Nonce const n = nonce( _blockHeader );
     h256 const m = mixHash( _blockHeader );
 
@@ -243,8 +235,7 @@ bool Ethash::verifySeal( BlockHeader const& _blockHeader ) const {
 void Ethash::generateSeal( BlockHeader const& _bi ) {
     Guard l( m_submitLock );
     m_sealing = _bi;
-    m_sealing.setMicrosecondsExDifficulty( 131072 );  // HACK for mining in tests only! no
-                                                      // difficulty no more!
+
     m_farm.setWork( m_sealing );
     m_farm.start( m_sealer );
     m_farm.setWork( m_sealing );
