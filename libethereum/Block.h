@@ -236,7 +236,6 @@ public:
         const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice );
 
     /// Execute all transactions within a given block.
-    /// @returns the additional total difficulty.
     void enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
     /// Returns back to a pristine state after having done a playback.

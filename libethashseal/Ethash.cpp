@@ -243,6 +243,8 @@ bool Ethash::verifySeal( BlockHeader const& _blockHeader ) const {
 void Ethash::generateSeal( BlockHeader const& _bi ) {
     Guard l( m_submitLock );
     m_sealing = _bi;
+    m_sealing.setMicrosecondsExDifficulty( 131072 );  // HACK for mining in tests only! no
+                                                      // difficulty no more!
     m_farm.setWork( m_sealing );
     m_farm.start( m_sealer );
     m_farm.setWork( m_sealing );

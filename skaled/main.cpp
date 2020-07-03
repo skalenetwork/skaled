@@ -1081,6 +1081,7 @@ int main( int argc, char** argv ) try {
     if ( !configJSON.empty() ) {
         try {
             chainParams = chainParams.loadConfig( configJSON, configPath );
+            assert( chainParams.difficulty == 0 );
             chainConfigIsSet = true;
         } catch ( const json_spirit::Error_position& err ) {
             cerr << "error in parsing config json:\n";
