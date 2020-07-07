@@ -362,6 +362,30 @@ unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 1000;
 double static const c_targetDuration = 1;
 
+void Client::syncBlockQueue() {
+    //  cdebug << "syncBlockQueue()";
+
+    ImportRoute ir;
+    unsigned count;
+    Timer t;
+    tie( ir, m_syncBlockQueue, count ) = bc().sync( m_bq, m_state, m_syncAmount );
+    double elapsed = t.elapsed();
+
+    if ( count ) {
+        LOG( m_logger ) << count << " blocks imported in " << unsigned( elapsed * 1000 ) << " ms ("
+                        << ( count / elapsed ) << " blocks/s) in #" << bc().number();
+    }
+
+    if ( elapsed > c_targetDuration * 1.1 && count > c_syncMin )
+        m_syncAmount = max( c_syncMin, count * 9 / 10 );
+    else if ( count == m_syncAmount && elapsed < c_targetDuration * 0.9 &&
+              m_syncAmount < c_syncMax )
+        m_syncAmount = min( c_syncMax, m_syncAmount * 11 / 10 + 1 );
+    if ( ir.liveBlocks.empty() )
+        return;
+    onChainChanged( ir );
+}
+
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
     uint64_t _timestamp, uint32_t _timeStampMs ) {
     DEV_GUARDED( m_blockImportMutex ) {
@@ -755,11 +779,16 @@ void Client::noteChanged( h256Hash const& _filters ) {
 }
 
 void Client::doWork( bool _doWait ) {
+    bool t = true;
+    if ( m_syncBlockQueue.compare_exchange_strong( t, false ) )
+        syncBlockQueue();  // !! needed for mining in tests!
+
     if ( m_needStateReset ) {
         resetState();
         m_needStateReset = false;
     }
 
+    t = true;
     bool isSealed = false;
     DEV_READ_GUARDED( x_working )
     isSealed = m_working.isSealed();
