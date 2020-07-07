@@ -25,6 +25,7 @@
 #ifndef LIBETHEREUM_CONSENSUSSTUB_H_
 #define LIBETHEREUM_CONSENSUSSTUB_H_
 
+using namespace std;
 #include <libconsensus/node/ConsensusInterface.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
@@ -43,7 +44,7 @@ public:
     void bootStrapAll() override;
     void exitGracefully() override;
     u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }
-    // consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }
+    consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }  // moch
 
     void stop();
 

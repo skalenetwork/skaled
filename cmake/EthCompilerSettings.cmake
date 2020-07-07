@@ -84,7 +84,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     endif ()
 
     # Hide all symbols by default.
-    add_compile_options(-fvisibility=hidden)
+    #add_compile_options(-fvisibility=hidden)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         # Do not export symbols from dependencies.
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")

@@ -68,6 +68,9 @@ public:
     void insertAuxiliary(
         dev::h160 const& _address, dev::bytesConstRef _value, _byte_ space = 0xFF );
 
+    dev::s256 storageUsed() const;
+    void updateStorageUsage( dev::s256 const& _storageUsed );
+
     /// @returns the set containing all accounts currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
     /// or minutes at a time.
@@ -79,6 +82,7 @@ private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
+    dev::s256 storageUsed_ = 0;
 
     std::shared_ptr< dev::db::DatabaseFace > m_db;
 

@@ -68,11 +68,74 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
-    return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+        this->fillSgxInfo( *consensus_engine_ptr );
+    }
+
+    return consensus_engine_ptr;
 #else
-    return make_unique< ConsensusStub >( _extFace, m_client.number() );
+    unsigned block_number = m_client.number();
+    dev::h256 state_root =
+        m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
+    return make_unique< ConsensusStub >( _extFace, block_number, state_root );
 #endif
 }
+
+#if CONSENSUS
+void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
+    auto sgxServerUrl =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
+
+    const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
+    const std::string sgx_cert_filename = "sgx.crt";
+    const std::string sgx_key_filename = "sgx.key";
+    auto sgxSSLKeyFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_key_filename );
+    auto sgxSSLCertFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_cert_filename );
+
+    auto ecdsaKeyName =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.ecdsaKeyName );
+
+    auto blsKeyName =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
+
+    std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
+        std::make_shared< std::vector< std::string > >();
+    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        ecdsaPublicKeys->push_back( node.publicKey );
+    }
+
+    std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
+    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        std::vector< std::string > public_key_share( 4 );
+        if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
+            public_key_share[0] = node.blsPublicKey[0];
+            public_key_share[1] = node.blsPublicKey[1];
+            public_key_share[2] = node.blsPublicKey[2];
+            public_key_share[3] = node.blsPublicKey[3];
+        } else {
+            public_key_share[0] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
+            public_key_share[1] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
+            public_key_share[2] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
+            public_key_share[3] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
+        }
+
+        blsPublicKeys.push_back(
+            std::make_shared< std::vector< std::string > >( public_key_share ) );
+    }
+
+    auto blsPublicKeysPtr =
+        std::make_shared< std::vector< std::shared_ptr< std::vector< std::string > > > >(
+            blsPublicKeys );
+
+    size_t n = m_client.chainParams().sChain.nodes.size();
+    size_t t = ( 2 * n + 2 ) / 3;
+
+    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+        ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+}
+#endif
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
@@ -383,7 +446,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     jsn_create_block["approvedTransactions"] = jarrApprovedTransactions;
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
-    //
+
     LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
@@ -395,6 +458,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
         // this is need for testing. should add better handling
+        LOG( m_traceLogger )
+            << cc::debug( "STATE ROOT FOR BLOCK: " ) << cc::debug( std::to_string( _blockID ) )
+            << cc::debug( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
+                              .stateRoot()
+                              .hex() );
         assert(
             dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
                                   .stateRoot() ) == _stateRoot );
@@ -487,8 +555,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     logState();
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
 void SkaleHost::startWorking() {
@@ -498,6 +568,7 @@ void SkaleHost::startWorking() {
     // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
     // recursively calls this func - so working is still false!)
     working = true;
+    m_exitedForcefully = false;
 
     try {
         m_broadcaster->startService();
@@ -530,6 +601,7 @@ void SkaleHost::startWorking() {
             std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
             std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
     };
     // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
@@ -548,6 +620,13 @@ void SkaleHost::stopWorking() {
                              m_consensusWorkingMutex, std::adopt_lock ) :
                          std::unique_ptr< std::lock_guard< std::timed_mutex > >();
     ( void ) lock;  // for Codacy
+
+    // if we could not lock from 1st attempt - then exit forcefully!
+    if ( !locked ) {
+        m_exitedForcefully = true;
+        clog( VerbosityWarning, "skale-host" ) << "Forcefully shutting down consensus!";
+    }
+
 
     m_exitNeeded = true;
     pauseConsensus( false );
@@ -628,9 +707,11 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }
     }  // while

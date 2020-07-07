@@ -387,7 +387,7 @@ const char traffic_stats::g_strEventNameWebSocketMessagesRecv[] = "rx";
 const char traffic_stats::g_strEventNameWebSocketMessagesSentText[] = "tx-txt";
 const char traffic_stats::g_strEventNameWebSocketMessagesSentBinary[] = "tx-bin";
 const char traffic_stats::g_strEventNameWebSocketMessagesSent[] = "tx";
-void traffic_stats::registrer_default_event_queues_for_web_socket() {
+void traffic_stats::register_default_event_queues_for_web_socket() {
     event_queue_add( g_strEventNameWebSocketFail, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add(
         g_strEventNameWebSocketMessagesRecvText, g_nDefaultEventQueueSizeForWebSocket );
@@ -403,8 +403,8 @@ void traffic_stats::registrer_default_event_queues_for_web_socket() {
 const char traffic_stats::g_strEventNameWebSocketPeerConnect[] = "peer connect";
 const char traffic_stats::g_strEventNameWebSocketPeerDisconnect[] = "peer disconnect";
 const char traffic_stats::g_strEventNameWebSocketPeerDisconnectFail[] = "peer disconnect fail";
-void traffic_stats::registrer_default_event_queues_for_web_socket_peer() {
-    registrer_default_event_queues_for_web_socket();
+void traffic_stats::register_default_event_queues_for_web_socket_peer() {
+    register_default_event_queues_for_web_socket();
     event_queue_add( g_strEventNameWebSocketPeerConnect, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add(
@@ -413,8 +413,8 @@ void traffic_stats::registrer_default_event_queues_for_web_socket_peer() {
 const char traffic_stats::g_strEventNameWebSocketServerStart[] = "server start";
 const char traffic_stats::g_strEventNameWebSocketServerStartFail[] = "server start fail";
 const char traffic_stats::g_strEventNameWebSocketServerStop[] = "server stop";
-void traffic_stats::registrer_default_event_queues_for_web_socket_server() {
-    registrer_default_event_queues_for_web_socket();
+void traffic_stats::register_default_event_queues_for_web_socket_server() {
+    register_default_event_queues_for_web_socket();
     event_queue_add( g_strEventNameWebSocketPeerConnect, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add(
@@ -427,8 +427,8 @@ const char traffic_stats::g_strEventNameWebSocketClientConnect[] = "connect";
 const char traffic_stats::g_strEventNameWebSocketClientConnectFail[] = "fail connect";
 const char traffic_stats::g_strEventNameWebSocketClientDisconnect[] = "disconnect";
 const char traffic_stats::g_strEventNameWebSocketClientReconnect[] = "reconnect attempt";
-void traffic_stats::registrer_default_event_queues_for_web_socket_client() {
-    registrer_default_event_queues_for_web_socket();
+void traffic_stats::register_default_event_queues_for_web_socket_client() {
+    register_default_event_queues_for_web_socket();
     event_queue_add( g_strEventNameWebSocketClientConnect, g_nDefaultEventQueueSizeForWebSocket );
     event_queue_add(
         g_strEventNameWebSocketClientConnectFail, g_nDefaultEventQueueSizeForWebSocket );
@@ -1055,12 +1055,12 @@ void basic_api::locked_execute( fn_lock_callback_t fn ) {
     lock_type lock( mtx_api() );
     fn();
 }
-//			bool basic_api::try_locked_execute( fn_lock_callback_t fn, size_t cntAttemts, uint64_t
-// nMillisecondsWaitBetweenAttempts ) { 				if( cntAttemts < 1 ) return false; if( ! fn
+//			bool basic_api::try_locked_execute( fn_lock_callback_t fn, size_t cntAttempts, uint64_t
+// nMillisecondsWaitBetweenAttempts ) { 				if( cntAttempts < 1 ) return false; if( ! fn
 // ) return false;
 //				//++ cntTryLockExecutes_;
 //				bool bWasLocked = false;
-//				for( size_t i = 0; i < cntAttemts; ++ i ) {
+//				for( size_t i = 0; i < cntAttempts; ++ i ) {
 //					if( ! initialized_ )
 //						break;
 //					bWasLocked = mtx_api().try_lock();
@@ -1068,10 +1068,10 @@ void basic_api::locked_execute( fn_lock_callback_t fn ) {
 //						break;
 //					if( ! initialized_ )
 //						break;
-//					if( nMillisecondsWaitBetweenAttempts > 0 && i < (cntAttemts-1) )
+//					if( nMillisecondsWaitBetweenAttempts > 0 && i < (cntAttempts-1) )
 //						std::this_thread::sleep_for(
 // std::chrono::milliseconds(nMillisecondsWaitBetweenAttempts) ); 				} // for( size_t i =
-// 0; i < cntAttemts; ++ i ) 				if( bWasLocked ) { 					try { fn();
+// 0; i < cntAttempts; ++ i ) 				if( bWasLocked ) { 					try { fn();
 // } catch( ... ) {
 //						//-- cntTryLockExecutes_;
 //						mtx_api().unlock();
@@ -1322,7 +1322,7 @@ int basic_api::stat_callback_client(
         if ( self ) {
             //						if( self->writeable_flag_ ) {
             //							//self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-            //"NLWS: LWS_CALLBACK_CLIENT_RECEIVE: client recvived data" );
+            //"NLWS: LWS_CALLBACK_CLIENT_RECEIVE: client received data" );
             // self->destroy_flag_ = true; 							self->onDisconnect( "read
             // attempt when writable"
             // ); 							return
@@ -1411,7 +1411,7 @@ int basic_api::stat_callback_client(
                 }  // else from if( ! cached_delayed_close_reason.empty() )
             }      // block
             if ( bCloseAction )
-                return -1;  // this closes connection accoriding to
+                return -1;  // this closes connection according to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
         }  // if( self )
         break;
@@ -1479,11 +1479,11 @@ int basic_api::stat_callback_server(
                 server_api::map_connections_t::iterator itCnFind = self->connections_.find( fd ),
                                                         itCnEnd = self->connections_.end();
                 if ( itCnFind == itCnEnd )
-                    return -1;  // this closes connection accoriding to
+                    return -1;  // this closes connection according to
                                 // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
                 server_api::connection_data* pcd = itCnFind->second;
                 if ( !pcd )
-                    return -1;  // this closes connection accoriding to
+                    return -1;  // this closes connection according to
                                 // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
                 std::string cached_delayed_close_reason = pcd->delayed_close_reason_;
                 lws_close_status cached_delayed_close_status =
@@ -1558,7 +1558,7 @@ int basic_api::stat_callback_server(
                    // if( bCallWriteable )
             ::lws_callback_on_writable( wsi );
             if ( bCloseAction )
-                return -1;  // this closes connection accoriding to
+                return -1;  // this closes connection according to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
         }  // if( self )
         break;
@@ -3119,7 +3119,7 @@ void server_api::wait( uint64_t timeout ) {
     if ( !initialized_ )
         return;
     if (::lws_service( ctx_, timeout ) < 0 )
-        throw std::runtime_error( "failyure while polling for socket activity" );
+        throw std::runtime_error( "failure while polling for socket activity" );
 }
 
 bool server_api::impl_eraseConnection( connection_identifier_t cid ) {
@@ -3271,7 +3271,7 @@ peer::peer( server& srv, const hdl_t& hdl )
       hdl_( hdl ),
       cid_( 0 ),
       was_disconnected_( false ) {
-    traffic_stats::registrer_default_event_queues_for_web_socket_peer();
+    traffic_stats::register_default_event_queues_for_web_socket_peer();
     cid_ = stat_getCid( hdl );
 }
 peer::~peer() {
@@ -3534,7 +3534,7 @@ std::string peer::getCidString() const {
 
 
 server::server() : server_serial_number_( 0 ), listen_backlog_( 0 ) {
-    traffic_stats::registrer_default_event_queues_for_web_socket_server();
+    traffic_stats::register_default_event_queues_for_web_socket_server();
     api_.onConnect_ = [this]( connection_identifier_t cid, struct lws* /*wsi*/,
                           const char* /*strPeerClientAddressName*/,
                           const char* /*strPeerRemoteIP*/ ) { onOpen( cid ); };
@@ -3799,7 +3799,7 @@ const security_args& server::onGetSecurityArgs() const {
 
 
 client::client() {
-    traffic_stats::registrer_default_event_queues_for_web_socket_client();
+    traffic_stats::register_default_event_queues_for_web_socket_client();
     api_.onConnect_ = [this]() {
         onOpen( api_.cid_ );
         setConnected( true );

@@ -368,9 +368,14 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    void resetStorageChanges() { storageUsage.clear(); }
+    void resetStorageChanges() {
+        storageUsage.clear();
+        currentStorageUsed_ = 0;
+    }
 
     dev::s256 storageUsed( const dev::Address& _addr ) const;
+
+    dev::s256 storageUsedTotal() const { return m_db_ptr->storageUsed(); }
 
     void setStorageLimit( const dev::s256& _storageLimit ) {
         storageLimit_ = _storageLimit;
@@ -444,6 +449,8 @@ private:
 
     dev::s256 storageLimit_ = 0;
     std::map< dev::Address, dev::s256 > storageUsage;
+    dev::s256 totalStorageUsed_ = 0;
+    dev::s256 currentStorageUsed_ = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -69,8 +69,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),
     //        chainParams, WithExisting::Kill, set< string >{"eth"} );
-
-    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL,
+    auto monitor = make_shared< InstanceMonitor >();
+    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL, monitor,
         getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
     client.injectSkaleHost();

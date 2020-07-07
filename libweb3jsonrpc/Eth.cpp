@@ -242,7 +242,7 @@ Json::Value Eth::eth_signTransaction( Json::Value const& _json ) {
 
 Json::Value Eth::eth_subscribe( Json::Value const& /*_transaction*/ ) {
     try {
-        throw JsonRpcException( "eth_subscribe() API is not supported yet" );
+        throw JsonRpcException( "eth_subscribe() API is not supported yet over HTTP(S)" );
     } catch ( Exception const& ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }
@@ -254,6 +254,15 @@ Json::Value Eth::eth_unsubscribe( Json::Value const& /*_transaction*/ ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }
 }
+
+Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
+    try {
+        throw JsonRpcException( "setSchainExitTime() API is not supported yet over HTTP(S)" );
+    } catch ( Exception const& ) {
+        throw JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
@@ -637,7 +646,7 @@ string dev::rpc::exceptionToErrorMessage() {
     } catch ( InvalidSignature const& ) {
         ret = "Invalid transaction signature.";
     }
-    // Acount holder exceptions
+    // Account holder exceptions
     catch ( AccountLocked const& ) {
         ret = "Account is locked.";
     } catch ( UnknownAccount const& ) {

@@ -6,15 +6,18 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
-      - name: extract repo name
+      - name: Extract repo name
         run:   echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
       - name: Extract branch name
         run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
       - name: checkout
         uses: actions/checkout@v1
-      - name: submodule update
+      - name: Submodule update
         run: git submodule update --init --recursive
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
@@ -26,7 +29,7 @@ jobs:
             esl-erlang firefox g++-8 g++-9 gfortran-8 gfortran-9 google-chrome-stable >/dev/null 2>&1;
       - name: Free more disk space
         run: |
-          sudo apt-get remove  -yq  \
+          sudo apt-get remove -yq  \
             google-cloud-sdk ghc-8.0.2 ghc-8.2.2 ghc-8.4.4 ghc-8.6.2 ghc-8.6.3 ghc-8.6.4 \
             ghc-8.6.5 ghc-8.8.1 ghc-8.8.2 ghc-8.8.3 ghc-8.10.1 cabal-install-2.0 cabal-install-2.2 \
             cabal-install-2.4 cabal-install-3.0 cabal-install-3.2 heroku imagemagick \
@@ -58,20 +61,30 @@ jobs:
             php7.4-tidy php7.4-xml php7.4-xmlrpc php7.4-xsl php7.4-zip php-amqp php-apcu \
             php-igbinary php-memcache php-memcached php-mongodb php-redis php-xdebug \
             php-zmq snmp pollinate libpq-dev postgresql-client powershell ruby-full \
-            sphinxsearch subversion mongodb-org > /dev/null 2>&1;
+            sphinxsearch subversion mongodb-org  || true > /dev/null 2>&1;
+
       - name: Cleanup
         run: |
           sudo apt-get autoremove -y >/dev/null 2>&1 && \
           sudo apt-get autoclean -y >/dev/null 2>&1  && \
           sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
           docker rmi $(docker image ls -aq) >/dev/null 2>&1
-      - name: install packages
+
+      - name: Install packages
         run: |
           sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
-          make ccache cmake libtool pkg-config autoconf autogen automake autopoint \
+          make ccache libtool pkg-config autoconf autogen automake autopoint \
           python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
           clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
           libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
+
+      - name: Install cmake 3.10
+        run: |
+          sudo apt-get remove cmake || true
+          wget --no-check-certificate https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.sh && \
+          chmod +x cmake-3.10.0-Linux-x86_64.sh && \
+          ./cmake-3.10.0-Linux-x86_64.sh --skip-license --include-subdir && \
+          sudo ln -sf `pwd`/cmake-3.10.0-Linux-x86_64/bin/* /usr/local/bin
 
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
@@ -79,14 +92,14 @@ jobs:
         run: |
           string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
           message("::set-output name=timestamp::${current_date}")
-      - name: ccache cache files
+      - name: Ccache cache files
         uses: actions/cache@v1.1.0
         with:
           path: .ccache
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
           restore-keys: |
             ${ { matrix.config.name } }-ccache-
-      - name: build
+      - name: Build dependencies
         run: |
           export CC=gcc-7
           export CXX=g++-7
@@ -95,11 +108,39 @@ jobs:
           export CODE_COVERAGE=ON
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc)
-          cd .. && mkdir -p build && cd build
+          cd ..
+      - name: Configure all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          mkdir -p build
+          cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          cd ..
+      - name: Format-check source code
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
           make format-check
+          cd ..
+      - name: Build all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
           make -j$(nproc)
-      - name: testeth
+          cd ..
+      - name: Testeth
         run : |
           cd build/test
           ./testeth -- --express
@@ -118,31 +159,29 @@ jobs:
 
           # Uploading report to CodeCov
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+          cd ..
       - name: Build and publish container
-        if: github.event.pull_request.merged
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
-          cp build/skaled/skaled ../scripts/skale_build/executable/
+          cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
           echo "Branch $BRANCH"
-          export VERSION=$(bash ./scripts/calculate_version.sh)
+          export VERSION=$(cat VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Create Release
-        if: github.event.pull_request.merged
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         id: create_release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
-          body: |
-            Changes in this Release
-            - First Change
-            - Second Change
+          release_name: ${{ env.VERSION }}
           draft: false
           prerelease: true
 

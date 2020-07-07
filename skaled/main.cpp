@@ -398,8 +398,6 @@ int main( int argc, char** argv ) try {
     string masterPassword;
     bool masterSet = false;
 
-    std::string blsJson;
-
     strings passwordsToNote;
     Secrets toImport;
 
@@ -981,18 +979,6 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
-    if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
-        try {
-            fs::path blsFile = vm["bls-key-file"].as< string >();
-            blsJson = contentsString( blsFile.string() );
-            if ( blsJson.empty() )
-                throw "BLS key file probably not found";
-        } catch ( ... ) {
-            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
-            return -1;
-        }
-    }
-
     if ( vm.count( "public-ip" ) ) {
         publicIP = vm["public-ip"].as< string >();
     }
@@ -1103,48 +1089,14 @@ int main( int argc, char** argv ) try {
             cerr << err.reason_ << " line " << err.line_ << endl;
             cerr << configJSON << endl;
         } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is not well formatted\n";
+            cerr << "provided configuration is incorrect\n";
             cerr << configJSON << endl;
             cerr << ex.what() << endl;
             return 0;
         } catch ( ... ) {
-            cerr << "provided configuration is not well formatted\n";
+            cerr << "provided configuration is incorrect\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
             cerr << configJSON << endl;
-            return 0;
-        }
-    }
-
-    string blsPrivateKey;
-    string blsPublicKey1;
-    string blsPublicKey2;
-    string blsPublicKey3;
-    string blsPublicKey4;
-
-    if ( !blsJson.empty() ) {
-        try {
-            using namespace json_spirit;
-
-            mValue val;
-            json_spirit::read_string_or_throw( blsJson, val );
-            mObject obj = val.get_obj();
-
-            string blsPrivateKey = obj["secret_key"].get_str();
-
-            mArray pub = obj["common_public"].get_array();
-
-            string blsPublicKey1 = pub[0].get_str();
-            string blsPublicKey2 = pub[1].get_str();
-            string blsPublicKey3 = pub[2].get_str();
-            string blsPublicKey4 = pub[3].get_str();
-
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing BLS keyfile:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << blsJson << endl;
-        } catch ( ... ) {
-            cerr << "BLS keyfile is not well formatted\n";
-            cerr << blsJson << endl;
             return 0;
         }
     }
@@ -1164,22 +1116,19 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "download-snapshot" ) ) {
         isStartedFromSnapshot = true;
         std::string commonPublicKey = "";
-        if ( vm.count( "download-snapshot" ) ) {
-            if ( !vm.count( "public-key" ) ) {
-                // for tests only! remove it later
-                commonPublicKey = "";
-                //            throw std::runtime_error(
-                //                cc::error( "Missing --public-key option - cannot download
-                //                snapshot" )
-                //                );
-            } else {
-                commonPublicKey = vm["public-key"].as< std::string >();
-            }
+        if ( !vm.count( "public-key" ) ) {
+            throw std::runtime_error(
+                cc::error( "Missing --public-key option - cannot download snapshot" ) );
+        } else {
+            commonPublicKey = vm["public-key"].as< std::string >();
         }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
             blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+            clog( VerbosityInfo, "main" )
+                << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
+                << cc::p( std::to_string( blockNumber ) );
         } catch ( std::exception& ex ) {
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
@@ -1195,12 +1144,15 @@ int main( int argc, char** argv ) try {
             try {
                 list_urls_to_download =
                     snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                clog( VerbosityInfo, "main" )
+                    << cc::notice( "Got urls to download snapshot from " )
+                    << cc::p( std::to_string( list_urls_to_download.size() ) )
+                    << cc::notice( " nodes " );
                 voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
                 std::throw_with_nested( std::runtime_error(
-                    cc::fatal( "FATAL:" ) + " " +
                     cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
-                    " " + cc::warn( ex.what() ) ) );
+                    " " + cc::error( ex.what() ) ) );
             }
 
             bool successfullDownload = false;
@@ -1315,6 +1267,9 @@ int main( int argc, char** argv ) try {
 
     std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
+    std::shared_ptr< InstanceMonitor > instanceMonitor;
+
+    instanceMonitor.reset( new InstanceMonitor() );
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1324,20 +1279,19 @@ int main( int argc, char** argv ) try {
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         client->setAuthor( chainParams.sChain.owner );
 
-        DefaultConsensusFactory cons_fact(
-            *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
+        DefaultConsensusFactory cons_fact( *client );
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *client, &cons_fact );
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
@@ -1665,7 +1619,7 @@ int main( int argc, char** argv ) try {
         jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
-            new rpc::Net(), new rpc::Web3( clientVersion() ),
+            new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *client ),
             new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
@@ -2167,7 +2121,7 @@ int main( int argc, char** argv ) try {
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
-        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( 0 ); } );
+        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGABRT ); } );
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
@@ -2201,7 +2155,8 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
-    return 0;
+    bool returnCode = ExitHandler::getSignal() != SIGINT && ExitHandler::getSignal() != SIGTERM;
+    return returnCode;
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
@@ -2212,8 +2167,14 @@ int main( int argc, char** argv ) try {
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
     return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
     return EXIT_FAILURE;
 }

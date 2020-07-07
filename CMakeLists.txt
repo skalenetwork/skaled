@@ -214,10 +214,12 @@ set( CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE )
 include( CPack )
 
 if ( CONSENSUS )
-    set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS}  -Werror=unused-parameter" ) # hack to make libBLS compile
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
+else()
+    add_subdirectory( libconsensus/libBLS )
+    set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 
 set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
@@ -227,3 +229,4 @@ if ( SANITIZE )
     SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=${SANITIZE}" )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${SANITIZE}" )
 endif()
+
