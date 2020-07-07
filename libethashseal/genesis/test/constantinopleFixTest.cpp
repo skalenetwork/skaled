@@ -45,7 +45,7 @@ static std::string const c_genesisInfoConstantinopleFixTest = std::string() +
     },
     "genesis": {
         "nonce": "0x0000000000000042",
-        "difficulty": "0x020000",
+        "difficulty": "0x0",
         "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "author": "0x0000000000000000000000000000000000000000",
         "timestamp": "0x00",

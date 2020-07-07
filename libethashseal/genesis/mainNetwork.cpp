@@ -38,7 +38,7 @@ static std::string const c_genesisInfoMainNetwork = std::string() +
 		"minGasLimit": "0x1388",
 		"maxGasLimit": "7fffffffffffffff",
 		"gasLimitBoundDivisor": "0x0400",
-		"minimumDifficulty": "0x020000",
+                "minimumDifficulty": "0x0",
 		"difficultyBoundDivisor": "0x0800",
 		"durationLimit": "0x0d",
 		"blockReward": "0x4563918244F40000"

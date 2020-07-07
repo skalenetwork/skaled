@@ -249,7 +249,7 @@ static std::string const c_configString = R"(
         "timestamp": "0x00",
         "extraData": "0x",
         "gasLimit": "0x1000000000000",
-        "difficulty": "0x020000",
+        "difficulty": "0x0",
         "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
     },
     "accounts": {
@@ -291,7 +291,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     },
     "genesis": {
         "nonce": "0x0000000000000042",
-        "difficulty": "0x020000",
+        "difficulty": "0x0",
         "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "author": "0x0000000000000000000000000000000000000000",
         "timestamp": "0x00",
@@ -466,7 +466,7 @@ static std::string const c_skaleConfigString = R"(
         "timestamp": "0x00",
         "extraData": "0x",
         "gasLimit": "0x1000000000000",
-        "difficulty": "0x020000",
+        "difficulty": "0x0",
         "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
     },
     "skaleConfig": {

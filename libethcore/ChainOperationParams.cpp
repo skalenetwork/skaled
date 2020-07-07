@@ -48,7 +48,7 @@ ChainOperationParams::ChainOperationParams()
       maxGasLimit( "0x7fffffffffffffff" ),
       gasLimitBoundDivisor( 0x0400 ),
       networkID( 0x0 ),
-      minimumDifficulty( 0x20000 ),
+      minimumDifficulty( 0x0 ),
       difficultyBoundDivisor( 0x0800 ),
       durationLimit( 0x0d ) {}
 

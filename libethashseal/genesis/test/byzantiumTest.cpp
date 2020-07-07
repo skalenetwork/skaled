@@ -33,7 +33,7 @@ static std::string const c_genesisInfoByzantiumTest = std::string() +
 		"maxGasLimit": "7fffffffffffffff",
 		"tieBreakingGas": false,
 		"gasLimitBoundDivisor": "0x0400",
-		"minimumDifficulty": "0x020000",
+                "minimumDifficulty": "0x0",
 		"difficultyBoundDivisor": "0x0800",
 		"durationLimit": "0x0d",
 		"blockReward": "0x4563918244F40000",
@@ -43,7 +43,7 @@ static std::string const c_genesisInfoByzantiumTest = std::string() +
 	},
 	"genesis": {
 		"nonce": "0x0000000000000042",
-		"difficulty": "0x020000",
+                "difficulty": "0x0",
 		"mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		"author": "0x0000000000000000000000000000000000000000",
 		"timestamp": "0x00",
