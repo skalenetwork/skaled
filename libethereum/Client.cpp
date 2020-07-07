@@ -132,6 +132,7 @@ Client::~Client() {
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
+    m_bq.stop();
 
     terminate();
 
@@ -171,11 +172,19 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;
 
+    m_bq.setChain( bc() );
+
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
     m_tqReady = m_tq.onReady( [=]() {
         this->onTransactionQueueReady();
     } );  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
+
+    m_bqReady = m_bq.onReady( [=]() {
+        this->onBlockQueueReady();
+    } );  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+    m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
+
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
         if ( m_skaleHost )
