@@ -84,21 +84,12 @@ h256 Ethash::seedHash( BlockHeader const& _bi ) {
 StringHashMap Ethash::jsInfo( BlockHeader const& _bi ) const {
     return {{"nonce", toJS( nonce( _bi ) )}, {"seedHash", toJS( seedHash( _bi ) )},
         {"mixHash", toJS( mixHash( _bi ) )}, {"boundary", toJS( boundary( _bi ) )},
-        {"difficulty", toJS( _bi.difficulty() )}};
+        {"difficulty", toJS( _bi.microsecondsExDifficulty() )}};
 }
 
 void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent,
     bytesConstRef _block ) const {
     SealEngineFace::verify( _s, _bi, _parent, _block );
-
-    if ( _parent ) {
-        // Check difficulty is correct given the two timestamps.
-        auto expected = calculateDifficulty( _bi, _parent );
-        auto difficulty = _bi.difficulty();
-        if ( difficulty != expected )
-            BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
-                                       ( bigint ) expected, ( bigint ) difficulty ) );
-    }
 
     // check it hashes according to proof of work or that it's the genesis block.
     // SKALE disabled PoW checking
@@ -116,7 +107,7 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
         ex << errinfo_seedHash( seedHash( _bi ) );
         ex << errinfo_ethashResult( make_tuple( final, mix ) );
         ex << errinfo_hash256( _bi.hash( WithoutSeal ) );
-        ex << errinfo_difficulty( _bi.difficulty() );
+        ex << errinfo_difficulty( _bi.microsecondsExDifficulty() );
         ex << errinfo_target( boundary( _bi ) );
         BOOST_THROW_EXCEPTION( ex );
     }
@@ -124,7 +115,7 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     else if ( false && _s == QuickNonce && _bi.parentHash() && !quickVerifySeal( _bi ) ) {
         InvalidBlockNonce ex;
         ex << errinfo_hash256( _bi.hash( WithoutSeal ) );
-        ex << errinfo_difficulty( _bi.difficulty() );
+        ex << errinfo_difficulty( _bi.microsecondsExDifficulty() );
         ex << errinfo_nonce( nonce( _bi ) );
         BOOST_THROW_EXCEPTION( ex );
     }
@@ -170,8 +161,10 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
     if ( _bi.number() < chainParams().homesteadForkBlock )
         // Frontier-era difficulty adjustment
         target = _bi.timestamp() >= _parent.timestamp() + durationLimit ?
-                     _parent.difficulty() - ( _parent.difficulty() / difficultyBoundDivisor ) :
-                     ( _parent.difficulty() + ( _parent.difficulty() / difficultyBoundDivisor ) );
+                     _parent.microsecondsExDifficulty() -
+                         ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) :
+                     ( _parent.microsecondsExDifficulty() +
+                         ( _parent.microsecondsExDifficulty() / difficultyBoundDivisor ) );
     else {
         bigint const timestampDiff = bigint( _bi.timestamp() ) - _parent.timestamp();
         bigint const adjFactor =
@@ -181,7 +174,8 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
                 max< bigint >( ( _parent.hasUncles() ? 2 : 1 ) - timestampDiff / 9,
                     -99 );  // Byzantium-era difficulty adjustment
 
-        target = _parent.difficulty() + _parent.difficulty() / 2048 * adjFactor;
+        target = _parent.microsecondsExDifficulty() +
+                 _parent.microsecondsExDifficulty() / 2048 * adjFactor;
     }
 
     bigint o = target;
@@ -213,13 +207,14 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
-    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    //    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
     _bi.setGasLimit( childGasLimit( _parent, chainParams().minGasLimit ) );
 }
 
 bool Ethash::quickVerifySeal( BlockHeader const& _blockHeader ) const {
     h256 const h = _blockHeader.hash( WithoutSeal );
-    h256 const b = boundary( _blockHeader );
+    h256 const b =
+        u256( ( bigint( 1 ) << 256 ) / SKALE_FAKE_DIFFICULTY );  // boundary( _blockHeader );
     Nonce const n = nonce( _blockHeader );
     h256 const m = mixHash( _blockHeader );
 
@@ -240,6 +235,7 @@ bool Ethash::verifySeal( BlockHeader const& _blockHeader ) const {
 void Ethash::generateSeal( BlockHeader const& _bi ) {
     Guard l( m_submitLock );
     m_sealing = _bi;
+
     m_farm.setWork( m_sealing );
     m_farm.start( m_sealer );
     m_farm.setWork( m_sealing );

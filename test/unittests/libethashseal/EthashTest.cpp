@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithoutUncles,
     parentHeader.clear();
     parentHeader.setNumber( 0x2000 );
     parentHeader.setTimestamp( 100 );
-    parentHeader.setDifficulty( 1000000 );
+    parentHeader.setMicrosecondsExDifficulty( 1000000 );
 
     BlockHeader header;
     header.clear();
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithUncles,
     parentHeader.clear();
     parentHeader.setNumber( 0x2000 );
     parentHeader.setTimestamp( 100 );
-    parentHeader.setDifficulty( 1000000 );
+    parentHeader.setMicrosecondsExDifficulty( 1000000 );
     parentHeader.setSha3Uncles(
         h256( "0x949d991d685738352398dff73219ab19c62c06e6f8ce899fbae755d5127ed1ef" ) );
 
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumMaxAdjustment,
     parentHeader.clear();
     parentHeader.setNumber( 0x2000 );
     parentHeader.setTimestamp( 100 );
-    parentHeader.setDifficulty( 1000000 );
+    parentHeader.setMicrosecondsExDifficulty( 1000000 );
 
     BlockHeader header;
     header.clear();

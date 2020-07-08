@@ -176,10 +176,6 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
     }
 }
 
-ImportResult ClientBase::injectBlock( bytes const& _block ) {
-    return bc().attemptImport( _block, preSeal().mutableState() ).first;
-}
-
 u256 ClientBase::balanceAt( Address _a ) const {
     return latestBlock().balance( _a );
 }
@@ -471,9 +467,7 @@ BlockHeader ClientBase::pendingInfo() const {
 
 BlockDetails ClientBase::pendingDetails() const {
     auto pm = postSeal().info();
-    auto li = Interface::blockDetails( LatestBlock );
-    return BlockDetails(
-        ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{} );
+    return BlockDetails( ( unsigned ) pm.number(), 0, pm.parentHash(), h256s{} );
 }
 
 u256 ClientBase::gasLimitRemaining() const {

@@ -159,7 +159,7 @@ void TestBlock::premineUpdate( BlockHeader& _blockInfo ) {
     if ( m_premineUpdate.count( "bloom" ) > 0 )
         _blockInfo.setLogBloom( m_blockHeader.logBloom() );
     if ( m_premineUpdate.count( "difficulty" ) > 0 )
-        _blockInfo.setDifficulty( m_blockHeader.difficulty() );
+        _blockInfo.setMicrosecondsExDifficulty( m_blockHeader.microsecondsExDifficulty() );
     if ( m_premineUpdate.count( "number" ) > 0 )
         _blockInfo.setNumber( m_blockHeader.number() );
     if ( m_premineUpdate.count( "gasLimit" ) > 0 )
@@ -335,7 +335,7 @@ dev::bytes TestBlock::createBlockRLPFromFields( mObject const& _tObj, h256 const
 }
 
 void TestBlock::updateNonce( TestBlockChain const& _bc ) {
-    if ( ( ( BlockHeader ) m_blockHeader ).difficulty() == 0 )
+    if ( ( ( BlockHeader ) m_blockHeader ).microsecondsExDifficulty() == 0 )
         BOOST_TEST_MESSAGE(
             "Trying to mine a block with 0 difficulty! " + TestOutputHelper::get().testName() );
     else {

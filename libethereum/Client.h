@@ -47,6 +47,7 @@
 #include "Block.h"
 #include "BlockChain.h"
 #include "BlockChainImporter.h"
+#include "BlockQueue.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "InstanceMonitor.h"
@@ -135,15 +136,11 @@ public:
     }
     /// Get the object representing the current canonical blockchain.
     BlockChain const& blockChain() const { return bc(); }
-    /// Get some information on the block queue.
-    BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
     /// Get some information on the block syncing.
     SyncStatus syncStatus() const override;
     /// Populate the uninitialized fields in the supplied transaction with default values
     TransactionSkeleton populateTransactionWithDefaults(
         TransactionSkeleton const& _t ) const override;
-    /// Get the block queue.
-    BlockQueue const& blockQueue() const { return m_bq; }
     /// Get the state database.
     skale::State const& state() const { return m_state; }
     /// Get some information on the transaction queue.
@@ -212,8 +209,6 @@ public:
     DownloadMan const* downloadMan() const;
     /// Clears pending transactions. Just for debug use.
     void clearPending();
-    /// Retries all blocks with unknown parents.
-    void retryUnknown() { m_bq.retryAllUnknown(); }
     /// Get a report of activity.
     ActivityReport activityReport() {
         ActivityReport ret;
@@ -259,7 +254,7 @@ public:
 
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), uint32_t _timeStampMs = 0 );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
@@ -282,7 +277,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), uint32_t _timeStampMs = 0 );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

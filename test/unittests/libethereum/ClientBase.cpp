@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE( blocks, *boost::unit_test::precondition( dev::test::run_no
                 h256 expectedBlockInfoUncldeHash = h256( fromHex( _b["uncleHash"].asString() ) );
                 ETH_CHECK_EQUAL( expectedBlockInfoBloom, _blockInfo.logBloom() );
                 ETH_CHECK_EQUAL( expectedBlockInfoCoinbase, _blockInfo.author() );
-                ETH_CHECK_EQUAL( expectedBlockInfoDifficulty, _blockInfo.difficulty() );
+                ETH_CHECK_EQUAL( expectedBlockInfoDifficulty, _blockInfo.microsecondsExDifficulty() );
                 ETH_CHECK_EQUAL_COLLECTIONS( expectedBlockInfoExtraData.begin(),
                     expectedBlockInfoExtraData.end(), _blockInfo.extraData().begin(),
                     _blockInfo.extraData().end() );

@@ -60,7 +60,7 @@ public:
 
     /// @returns true only if it's worth bothering to prep the mining block.
     bool shouldServeWork() const {
-        return m_bq.items().first == 0 && ( isMining() || remoteActive() );
+        return /*m_bq.items().first == 0 &&*/ ( isMining() || remoteActive() );
     }
 
     /// Update to the latest transactions and get hash of the current block to be mined minus the

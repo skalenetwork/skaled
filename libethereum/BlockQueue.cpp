@@ -218,7 +218,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
             buf[0] = '\0';  // empty if case strftime fails
         LOG( m_loggerDetail ) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTime()
                               << "] - will wait until " << buf;
-        m_difficulty += bi.difficulty();
+        m_difficulty += bi.microsecondsExDifficulty();
         h256 const parentHash = bi.parentHash();
         bool const unknown = !contains( m_readySet, parentHash ) &&
                              !contains( m_drainingSet, parentHash ) &&
@@ -238,7 +238,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
             LOG( m_loggerDetail ) << "OK - queued as unknown parent: " << bi.parentHash();
             m_unknown.insert( bi.parentHash(), h, _block.toBytes() );
             m_unknownSet.insert( h );
-            m_difficulty += bi.difficulty();
+            m_difficulty += bi.microsecondsExDifficulty();
 
             return ImportResult::UnknownParent;
         } else {
@@ -248,7 +248,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
             m_unverified.enqueue( UnverifiedBlock{h, bi.parentHash(), _block.toBytes()} );
             m_moreToVerify.notify_one();
             m_readySet.insert( h );
-            m_difficulty += bi.difficulty();
+            m_difficulty += bi.microsecondsExDifficulty();
 
             noteReady_WITH_LOCK( h );
 
@@ -421,7 +421,7 @@ void BlockQueue::drain( VerifiedBlocks& o_out, unsigned _max ) {
                 // TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
                 auto h = bs.verified.info.hash();
                 m_drainingSet.insert( h );
-                m_drainingDifficulty += bs.verified.info.difficulty();
+                m_drainingDifficulty += bs.verified.info.microsecondsExDifficulty();
                 m_readySet.erase( h );
             }
         }

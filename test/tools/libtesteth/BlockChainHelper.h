@@ -27,6 +27,7 @@
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/TransactionQueue.h>
+#include <libethereum/BlockQueue.h>
 
 using namespace std;
 using namespace json_spirit;

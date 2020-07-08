@@ -157,8 +157,6 @@ public:
         return sealEngine()->evmSchedule( pendingInfo().number() );
     }
 
-    ImportResult injectBlock( bytes const& _block ) override;
-
     u256 gasLimitRemaining() const override;
     u256 gasBidPrice() const override { return DefaultGasPrice; }
 

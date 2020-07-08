@@ -586,8 +586,8 @@ void overwriteBlockHeaderForTest(
             ho.count( "bloom" ) ? LogBloom( ho["bloom"].get_str() ) : header.logBloom(),
             ho.count( "difficulty" ) ?
                 toInt( ho["difficulty"] ) :
-                ho.count( "relDifficulty" ) ? header.difficulty() + toInt( ho["relDifficulty"] ) :
-                                              header.difficulty(),
+                ho.count( "relDifficulty" ) ? header.microsecondsExDifficulty() + toInt( ho["relDifficulty"] ) :
+                                              header.microsecondsExDifficulty(),
             ho.count( "number" ) ? toInt( ho["number"] ) : header.number(),
             ho.count( "gasLimit" ) ? toInt( ho["gasLimit"] ) : header.gasLimit(),
             ho.count( "gasUsed" ) ? toInt( ho["gasUsed"] ) : header.gasUsed(),
@@ -613,7 +613,7 @@ void overwriteBlockHeaderForTest(
         if ( ho.count( "RelTimestamp" ) ) {
             BlockHeader parentHeader = importedBlocks.at( importedBlocks.size() - 1 ).blockHeader();
             tmp.setTimestamp( toPositiveInt64( ho["RelTimestamp"] ) + parentHeader.timestamp() );
-            tmp.setDifficulty(
+            tmp.setMicrosecondsExDifficulty(
                 ( ( const Ethash* ) sealEngine )->calculateDifficulty( tmp, parentHeader ) );
         }
 
@@ -729,7 +729,7 @@ void overwriteUncleHeaderForTest( mObject& uncleHeaderObj, TestBlock& uncle,
                 BlockHeader parentHeader = importedBlocks.at( number ).blockHeader();
                 uncleHeader.setTimestamp(
                     toPositiveInt64( uncleHeaderObj["RelTimestamp"] ) + parentHeader.timestamp() );
-                uncleHeader.setDifficulty( ( ( const Ethash* ) sealEngine )
+                uncleHeader.setMicrosecondsExDifficulty( ( ( const Ethash* ) sealEngine )
                                                ->calculateDifficulty( uncleHeader, parentHeader ) );
                 uncleHeaderObj.erase( "RelTimestamp" );
             }
@@ -759,7 +759,7 @@ void overwriteUncleHeaderForTest( mObject& uncleHeaderObj, TestBlock& uncle,
                         ->calculateDifficulty(
                             uncleHeader, importedBlocks.at( ( size_t ) uncleHeader.number() - 1 )
                                              .blockHeader() ) :
-                uncleHeader.difficulty(),
+                uncleHeader.microsecondsExDifficulty(),
             overwrite == "number" ? toInt( uncleHeaderObj.at( "number" ) ) : uncleHeader.number(),
             overwrite == "gasLimit" ? toInt( uncleHeaderObj.at( "gasLimit" ) ) :
                                       uncleHeader.gasLimit(),
@@ -819,7 +819,7 @@ mObject writeBlockHeaderToJson( BlockHeader const& _bi ) {
     o["transactionsTrie"] = toString( _bi.transactionsRoot() );
     o["receiptTrie"] = toString( _bi.receiptsRoot() );
     o["bloom"] = toString( _bi.logBloom() );
-    o["difficulty"] = toCompactHexPrefixed( _bi.difficulty(), 1 );
+    o["difficulty"] = toCompactHexPrefixed( _bi.microsecondsExDifficulty(), 1 );
     o["number"] = toCompactHexPrefixed( _bi.number(), 1 );
     o["gasLimit"] = toCompactHexPrefixed( _bi.gasLimit(), 1 );
     o["gasUsed"] = toCompactHexPrefixed( _bi.gasUsed(), 1 );
@@ -907,7 +907,7 @@ void checkBlocks(
         _testname + "receiptsRoot in given RLP not matching the block receiptsRoot!" );
     BOOST_CHECK_MESSAGE( blockHeaderFromFields.logBloom() == blockFromRlp.logBloom(),
         _testname + "logBloom in given RLP not matching the block logBloom!" );
-    BOOST_CHECK_MESSAGE( blockHeaderFromFields.difficulty() == blockFromRlp.difficulty(),
+    BOOST_CHECK_MESSAGE( blockHeaderFromFields.microsecondsExDifficulty() == blockFromRlp.microsecondsExDifficulty(),
         _testname + "difficulty in given RLP not matching the block difficulty!" );
     BOOST_CHECK_MESSAGE( blockHeaderFromFields.number() == blockFromRlp.number(),
         _testname + "number in given RLP not matching the block number!" );

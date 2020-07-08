@@ -423,8 +423,8 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone(
-    BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions _transactions, uint64_t _timestamp, uint32_t _timeStampMs, u256 _gasPrice ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -437,6 +437,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
+    m_currentBlock.setMicrosecondsExDifficulty( _timeStampMs * 1000 );
 
     m_state = m_state.delegateWrite();  // mainly for debugging
 
@@ -486,7 +487,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     return make_tuple( receipts, receipts.size() - count_bad );
 }
 
-u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
+void Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     MICROPROFILE_SCOPEI( "Block", "enactOn", MP_INDIANRED );
 
     noteChain( _bc );
@@ -528,7 +529,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 #endif
 
     m_previousBlock = biParent;
-    auto ret = enact( _block, _bc );
+    enact( _block, _bc );
 
 #if ETH_TIMED_ENACTMENTS
     enactment = t.elapsed();
@@ -536,10 +537,9 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         LOG( m_logger ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
                         << populateGrand << " / " << syncReset << " / " << enactment;
 #endif
-    return ret;
 }
 
-u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
+void Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     noteChain( _bc );
 
     DEV_TIMED_FUNCTION_ABOVE( 500 );
@@ -613,9 +613,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         ex << errinfo_receipts( receipts );
         BOOST_THROW_EXCEPTION( ex );
     }
-
-    // Initialise total difficulty calculation.
-    u256 tdIncrease = m_currentBlock.difficulty();
 
     // Check uncles & apply their rewards to state.
     if ( rlp[2].itemCount() > 2 ) {
@@ -728,8 +725,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     //        BOOST_THROW_EXCEPTION(
     //            InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
     //    }
-
-    return tdIncrease;
 }
 
 ExecutionResult Block::execute(

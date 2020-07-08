@@ -132,7 +132,7 @@ Client::~Client() {
     stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
-    m_bq.stop();               // l_sergiy: added to stop block queue processing
+    m_bq.stop();
 
     terminate();
 
@@ -179,10 +179,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         this->onTransactionQueueReady();
     } );  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
     m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
+
     m_bqReady = m_bq.onReady( [=]() {
         this->onBlockQueueReady();
     } );  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
+
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
         if ( m_skaleHost )
@@ -213,11 +215,6 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
         this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     }
     return m_bq.import( &_block, _isSafe );
-}
-
-tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
-    stopWorking();
-    return bc().sync( m_bq, m_state, _max );
 }
 
 void Client::onBadBlock( Exception& _ex ) const {
@@ -389,8 +386,8 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, uint32_t _timeStampMs ) {
     DEV_GUARDED( m_blockImportMutex ) {
         unsigned block_number = this->number();
 
@@ -441,7 +438,7 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
-        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp, _timeStampMs );
         sealUnconditionally( false );
         importWorkingBlock();
 
@@ -454,8 +451,8 @@ size_t Client::importTransactionsAsBlock(
     return 0;
 }
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, uint32_t _timeStampMs ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -476,7 +473,7 @@ size_t Client::syncTransactions(
 
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _timeStampMs, _gasPrice );
         m_state = m_state.startNew();
     }
 
@@ -784,7 +781,7 @@ void Client::noteChanged( h256Hash const& _filters ) {
 void Client::doWork( bool _doWait ) {
     bool t = true;
     if ( m_syncBlockQueue.compare_exchange_strong( t, false ) )
-        syncBlockQueue();
+        syncBlockQueue();  // !! needed for mining in tests!
 
     if ( m_needStateReset ) {
         resetState();
@@ -821,7 +818,6 @@ void Client::tick() {
     if ( chrono::system_clock::now() - m_lastTick > chrono::seconds( 1 ) ) {
         m_report.ticks++;
         checkWatchGarbage();
-        m_bq.tick();
         m_lastTick = chrono::system_clock::now();
         if ( m_report.ticks == 15 )
             LOG( m_loggerDetail ) << activityReport();
