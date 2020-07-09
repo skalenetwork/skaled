@@ -115,10 +115,10 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
             public_key_share[2] = node.blsPublicKey[2];
             public_key_share[3] = node.blsPublicKey[3];
         } else {
-            public_key_share[0] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
-            public_key_share[1] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
-            public_key_share[2] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
-            public_key_share[3] = this->m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
+            public_key_share[0] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
+            public_key_share[1] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
+            public_key_share[2] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
+            public_key_share[3] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
         }
 
         blsPublicKeys.push_back(
@@ -212,7 +212,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_debugLogger ) << cc::debug( "sent_to_consensus = " ) << total_sent
+    LOG( m_debugLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
                          << cc::debug( " got_from_consensus = " ) << total_arrived
                          << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
@@ -463,15 +463,24 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
+        LOG( m_traceLogger ) << cc::debug( "STATE ROOT FOR BLOCK: " )
+                             << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
+                             << cc::debug(
+                                    this->m_client
+                                        .blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) )
+                                        .stateRoot()
+                                        .hex() )
+                             << std::endl;
         // this is need for testing. should add better handling
-        LOG( m_traceLogger )
-            << cc::debug( "STATE ROOT FOR BLOCK: " ) << cc::debug( std::to_string( _blockID ) )
-            << cc::debug( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
-                              .stateRoot()
-                              .hex() );
-        assert(
-            dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) )
-                                  .stateRoot() ) == _stateRoot );
+        //        if ( dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber(
+        //        _blockID ) )
+        //                                   .stateRoot() ) != _stateRoot ) {
+        //            cerror << "StateRoot assertion failed. Clean up /data_dir. Exiting";
+        //            ExitHandler::exitHandler( SIGABRT );
+        //        }
+        assert( dev::h256::Arith(
+                    this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) )
+                        .stateRoot() ) == _stateRoot );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector

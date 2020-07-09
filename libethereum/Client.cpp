@@ -208,6 +208,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         }
     }
 
+    this->initHashes();
+
     doWork( false );
 }
 
@@ -1018,6 +1020,24 @@ void Client::updateHashes() {
     }
     this->last_snapshot_hashes.second =
         this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
+}
+
+void Client::initHashes() {
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphot();
+    this->last_snapshoted_block = ( latest_snapshots.first ? latest_snapshots.first : -1 );
+
+    this->last_snapshot_time =
+        ( latest_snapshots.first ?
+                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
+                -1 );
+    this->last_snapshot_hashes.first =
+        ( latest_snapshots.second ?
+                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
+                this->empty_str_hash );
+    this->last_snapshot_hashes.second =
+        ( latest_snapshots.first ?
+                this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
+                this->empty_str_hash );
 }
 
 // new block watch

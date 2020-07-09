@@ -214,16 +214,16 @@ ChainParams ChainParams::loadConfig(
             }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
             try {
-                node.publicKey = nodeConfObj.at("publicKey").get_str();
-            } catch (...) {
+                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            } catch ( ... ) {
             }
-            if (!keyShareName.empty()) {
+            if ( !keyShareName.empty() ) {
                 try {
-                    node.blsPublicKey[0] = nodeConfObj.at("blsPublicKey0").get_str();
-                    node.blsPublicKey[1] = nodeConfObj.at("blsPublicKey1").get_str();
-                    node.blsPublicKey[2] = nodeConfObj.at("blsPublicKey2").get_str();
-                    node.blsPublicKey[3] = nodeConfObj.at("blsPublicKey3").get_str();
-                } catch (...) {
+                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                } catch ( ... ) {
                     node.blsPublicKey[0] = "";
                     node.blsPublicKey[1] = "";
                     node.blsPublicKey[2] = "";
