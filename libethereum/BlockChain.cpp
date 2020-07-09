@@ -743,121 +743,108 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // This might be the new best block...
     h256 last = currentHash();
     // we import every block even if it's difficulty is not enough
-    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0
-                               */
-         || ( m_sealEngine->chainParams().tieBreakingGas &&
-                _totalDifficulty == details( last ).totalDifficulty &&
-                _block.info.gasUsed() > info( last ).gasUsed() ) ) {
-        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
+    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
 
-        // don't include bi.hash() in treeRoute, since it's not yet in details DB...
-        // just tack it on afterwards.
-        unsigned commonIndex;
-        tie( route, common, commonIndex ) = treeRoute( last, _block.info.parentHash() );
-        route.push_back( _block.info.hash() );
+    // don't include bi.hash() in treeRoute, since it's not yet in details DB...
+    // just tack it on afterwards.
+    unsigned commonIndex;
+    tie( route, common, commonIndex ) = treeRoute( last, _block.info.parentHash() );
+    route.push_back( _block.info.hash() );
 
-        // Most of the time these two will be equal - only when we're doing a chain revert
-        // will they not be
-        if ( common != last )
-            DEV_READ_GUARDED( x_lastBlockHash )
-        clearCachesDuringChainReversion( number( common ) + 1 );
+    // Most of the time these two will be equal - only when we're doing a chain revert
+    // will they not be
+    if ( common != last )
+        DEV_READ_GUARDED( x_lastBlockHash )
+    clearCachesDuringChainReversion( number( common ) + 1 );
 
-        // TODO Understand and remove this trash with "routes"
+    // TODO Understand and remove this trash with "routes"
 
-        // Go through ret backwards (i.e. from new head to common) until hash !=
-        // last.parent and update m_transactionAddresses, m_blockHashes
-        for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
+    // Go through ret backwards (i.e. from new head to common) until hash !=
+    // last.parent and update m_transactionAddresses, m_blockHashes
+    for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
 
-            BlockHeader tbi;
-            if ( *i == _block.info.hash() )
-                tbi = _block.info;
-            else
-                tbi = BlockHeader( block( *i ) );
+        BlockHeader tbi;
+        if ( *i == _block.info.hash() )
+            tbi = _block.info;
+        else
+            tbi = BlockHeader( block( *i ) );
 
-            // Collate logs into blooms.
-            h256s alteredBlooms;
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
+        // Collate logs into blooms.
+        h256s alteredBlooms;
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
 
-                LogBloom blockBloom = tbi.logBloom();
-                blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
+            LogBloom blockBloom = tbi.logBloom();
+            blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
 
-                // Pre-memoize everything we need before locking x_blocksBlooms
-                for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                      level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize )
-                    blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
+            // Pre-memoize everything we need before locking x_blocksBlooms
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize )
+                blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
 
-                WriteGuard l( x_blocksBlooms );
-                for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                      level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize ) {
-                    unsigned i = index / c_bloomIndexSize;
-                    unsigned o = index % c_bloomIndexSize;
-                    alteredBlooms.push_back( chunkId( level, i ) );
-                    m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
-                }
+            WriteGuard l( x_blocksBlooms );
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize ) {
+                unsigned i = index / c_bloomIndexSize;
+                unsigned o = index % c_bloomIndexSize;
+                alteredBlooms.push_back( chunkId( level, i ) );
+                m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
             }
+        }
+
+        for ( auto const& h : alteredBlooms )
+            noteUsed( h, ExtraBlocksBlooms );
+
+        // Collate transaction hashes and remember who they were.
+        // h256s newTransactionAddresses;
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
+
+            bytes blockBytes;
+            RLP blockRLP( *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
+            TransactionAddress ta;
+            ta.blockHash = tbi.hash();
+            ta.index = 0;
+
+            RLP txns_rlp = blockRLP[1];
+
+            for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
+
+                extrasWriteBatch->insert(
+                    toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+                    ( db::Slice ) dev::ref( ta.rlp() ) );
+                ++ta.index;
+            }
+        }
+
+        // Update database with them.
+        // ReadGuard l1( x_blocksBlooms );
+        WriteGuard l1( x_blocksBlooms );
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
 
             for ( auto const& h : alteredBlooms )
-                noteUsed( h, ExtraBlocksBlooms );
-
-            // Collate transaction hashes and remember who they were.
-            // h256s newTransactionAddresses;
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
-
-                bytes blockBytes;
-                RLP blockRLP(
-                    *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
-                TransactionAddress ta;
-                ta.blockHash = tbi.hash();
-                ta.index = 0;
-
-                RLP txns_rlp = blockRLP[1];
-
-                for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
-                    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
-
-                    extrasWriteBatch->insert(
-                        toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
-                        ( db::Slice ) dev::ref( ta.rlp() ) );
-                    ++ta.index;
-                }
-            }
-
-            // Update database with them.
-            // ReadGuard l1( x_blocksBlooms );
-            WriteGuard l1( x_blocksBlooms );
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
-
-                for ( auto const& h : alteredBlooms )
-                    extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
-                        ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-                extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-                    ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
-            }
+                extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
+                    ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+            extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+                ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
         }
-
-        // FINALLY! change our best hash.
-        {
-            newLastBlockHash = _block.info.hash();
-            newLastBlockNumber = ( unsigned ) _block.info.number();
-            isImportedAndBest = true;
-        }
-
-        LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty
-                        << cc::debug( " (" ) << cc::warn( "#" ) << cc::num10( _block.info.number() )
-                        << cc::debug( "). Has " )
-                        << ( details( _block.info.parentHash() ).children.size() - 1 )
-                        << cc::debug( " siblings. Route: " ) << route;
-    } else {
-        LOG( m_loggerDetail ) << cc::debug( "   Imported but not best (oTD: " )
-                              << details( last ).totalDifficulty << cc::debug( " > TD: " )
-                              << _totalDifficulty << cc::debug( "; " )
-                              << cc::num10( details( last ).number ) << cc::debug( ".." )
-                              << _block.info.number() << cc::debug( ")" );
     }
+
+    // FINALLY! change our best hash.
+    {
+        newLastBlockHash = _block.info.hash();
+        newLastBlockNumber = ( unsigned ) _block.info.number();
+        isImportedAndBest = true;
+    }
+
+    LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty << cc::debug( " (" )
+                    << cc::warn( "#" ) << cc::num10( _block.info.number() )
+                    << cc::debug( "). Has " )
+                    << ( details( _block.info.parentHash() ).children.size() - 1 )
+                    << cc::debug( " siblings. Route: " ) << route;
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
