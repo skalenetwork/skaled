@@ -136,7 +136,12 @@ ChainParams ChainParams::loadConfig(
         if ( cp.rotateAfterBlock_ < 0 )
             cp.rotateAfterBlock_ = 0;
 
-        std::string ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        std::string ecdsaKeyName;
+        try {
+            ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        } catch ( ... ) {
+        }
+
         std::array< std::string, 4 > insecureBLSPublicKeys;
         std::array< std::string, 4 > insecureCommonBLSPublicKeys;
 
@@ -208,12 +213,22 @@ ChainParams ChainParams::loadConfig(
                 node.port6 = 0;
             }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
-            node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            try {
+                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            } catch ( ... ) {
+            }
             if ( !keyShareName.empty() ) {
-                node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
-                node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
-                node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
-                node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                try {
+                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                } catch ( ... ) {
+                    node.blsPublicKey[0] = "";
+                    node.blsPublicKey[1] = "";
+                    node.blsPublicKey[2] = "";
+                    node.blsPublicKey[3] = "";
+                }
             }
             s.nodes.push_back( node );
         }

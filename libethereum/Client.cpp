@@ -147,7 +147,6 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 
     if ( !m_skaleHost )
         m_skaleHost = make_shared< SkaleHost >( *this );
-
     if ( Worker::isWorking() )
         m_skaleHost->startWorking();
 }
@@ -200,8 +199,14 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         if ( this->number() == 0 ) {
-            m_snapshotManager->doSnapshot( 0 );
+            LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
+            try {
+                m_snapshotManager->doSnapshot( 0 );
+            } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                cerror << "WARNING " << dev::nested_exception_what( ex );
+            }
         }
+        this->initHashes();
     }
 
     doWork( false );
@@ -397,6 +402,9 @@ size_t Client::importTransactionsAsBlock(
         int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
              block_number != 0 ) {
+            if ( this->last_snapshoted_block != -1 ) {
+                this->updateHashes();
+            }
             try {
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
                 m_snapshotManager->doSnapshot( block_number );
@@ -412,31 +420,23 @@ size_t Client::importTransactionsAsBlock(
                 this->last_snapshot_time += snapshotIntervalMs;
             }
 
-            if ( this->m_snapshotManager->isSnapshotHashPresent( block_number ) ) {
-                this->updateHashes( block_number );
-            } else {
-                std::thread( [this, block_number]() {
-                    try {
-                        this->m_snapshotManager->computeSnapshotHash( block_number );
-                        this->updateHashes( block_number );
-                    } catch ( const std::exception& ex ) {
-                        cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                               << " in computeSnapshotHash() or updateHashes(). Exiting";
-                        cerror << "\n"
-                               << skutils::signal::generate_stack_trace() << "\n"
-                               << std::endl;
-                        ExitHandler::exitHandler( SIGABRT );
-                    } catch ( ... ) {
-                        cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
-                                  "updateHashes(). Exiting";
-                        cerror << "\n"
-                               << skutils::signal::generate_stack_trace() << "\n"
-                               << std::endl;
-                        ExitHandler::exitHandler( SIGABRT );
-                    }
-                } )
-                    .detach();
-            }
+            std::thread( [this, block_number]() {
+                try {
+                    this->m_snapshotManager->computeSnapshotHash( block_number );
+                    this->last_snapshoted_block = block_number;
+                } catch ( const std::exception& ex ) {
+                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
+                           << " in computeSnapshotHash() or updateHashes(). Exiting";
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                    ExitHandler::exitHandler( SIGABRT );
+                } catch ( ... ) {
+                    cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
+                              "updateHashes(). Exiting";
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                    ExitHandler::exitHandler( SIGABRT );
+                }
+            } )
+                .detach();
             // TODO Make this number configurable
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
@@ -1008,17 +1008,35 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     return ret;
 }
 
-void Client::updateHashes( unsigned block_number ) {
-    if ( this->last_snapshoted_block == -1 ) {
-        this->last_snapshot_hashes.first = this->m_snapshotManager->getSnapshotHash( block_number );
-    } else {
-        if ( this->last_snapshot_hashes.second != this->empty_str_hash ) {
-            std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
-        }
-        this->last_snapshot_hashes.second =
-            this->m_snapshotManager->getSnapshotHash( block_number );
+void Client::updateHashes() {
+    if ( this->last_snapshot_hashes.first == this->empty_str_hash ) {
+        this->last_snapshot_hashes.first =
+            this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
+        return;
     }
-    this->last_snapshoted_block = block_number;
+    if ( this->last_snapshot_hashes.second != this->empty_str_hash ) {
+        std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
+    }
+    this->last_snapshot_hashes.second =
+        this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
+}
+
+void Client::initHashes() {
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphot();
+    this->last_snapshoted_block = ( latest_snapshots.first ? latest_snapshots.first : -1 );
+
+    this->last_snapshot_time =
+        ( latest_snapshots.first ?
+                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
+                -1 );
+    this->last_snapshot_hashes.first =
+        ( latest_snapshots.second ?
+                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
+                this->empty_str_hash );
+    this->last_snapshot_hashes.second =
+        ( latest_snapshots.first ?
+                this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
+                this->empty_str_hash );
 }
 
 // new block watch
