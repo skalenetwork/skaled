@@ -272,6 +272,28 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     }      // for
 }
 
+std::pair< int, int > SnapshotManager::getLatestSnasphot() const {
+    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+        // HACK We exclude 0 snapshot forcefully
+        if ( fs::basename( f ) != "0" )
+            time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+    }
+    if ( time_map.empty() ) {
+        return std::make_pair( 0, 0 );
+    }
+    auto it = time_map.rbegin();
+    int fst = std::stoi( fs::basename( ( *it++ ).second ) );
+
+    int snd;
+    if ( time_map.size() > 1 ) {
+        snd = 0;
+    } else {
+        snd = std::stoi( fs::basename( ( *it ).second ) );
+    }
+    return std::make_pair( fst, snd );
+}
+
 // exeptions: filesystem
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     multimap< time_t, fs::path, std::greater< time_t > > time_map;
@@ -279,7 +301,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
         time_map.insert( make_pair( fs::last_write_time( f ), f ) );
     }  // for
 
-    // delete all efter n first
+    // delete all after n first
     unsigned i = 1;
     for ( const auto& p : time_map ) {
         if ( i++ > n ) {
@@ -307,11 +329,10 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hash_file ) );
     }
 
-    std::lock_guard< std::mutex > lock( hash_file_mutex );
-
     dev::h256 hash;
 
     try {
+        std::lock_guard< std::mutex > lock( hash_file_mutex );
         std::ifstream in( hash_file );
         in >> hash;
     } catch ( const std::exception& ex ) {
@@ -476,6 +497,10 @@ void SnapshotManager::computeAllVolumesHash(
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
+    if ( this->isSnapshotHashPresent( _blockNumber ) ) {
+        return;
+    }
+
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 

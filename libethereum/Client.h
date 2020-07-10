@@ -468,8 +468,8 @@ protected:
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
-    void updateHashes( unsigned block_number );
-
+    void initHashes();
+    void updateHashes();
 
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
