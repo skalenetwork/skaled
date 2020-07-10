@@ -921,23 +921,6 @@ void with_test_environment( fn_with_test_environment_t fn ) {
         //???::g_nPeerStatsLoggingFlags = __???_PEER_STATS_ALL;
         test_log_e(
             cc::debug( "Will initialize " ) + cc::note( "test environment" ) + cc::debug( "..." ) );
-        skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-            if ( nSignalNo == SIGPIPE )
-                return;
-            bool stopWasRaisedBefore = skutils::signal::g_bStop;
-            skutils::signal::g_bStop = true;
-            std::string strMessagePrefix = stopWasRaisedBefore ?
-                                               cc::error( "\nStop flag was already raised on. " ) +
-                                                   cc::fatal( "WILL FORCE TERMINATE." ) +
-                                                   cc::error( " Caught (second) signal. " ) :
-                                               cc::error( "\nCaught (first) signal. " );
-            test_log_ef( strMessagePrefix + cc::error( skutils::signal::signal2str( nSignalNo ) ) );
-            if ( stopWasRaisedBefore )
-                _exit( 13 );
-            // stat_handle_shutdown( &nSignalNo );
-            //_exit( 13 );
-        } );
-        //
         //
         SSL_library_init();
         OpenSSL_add_all_ciphers();

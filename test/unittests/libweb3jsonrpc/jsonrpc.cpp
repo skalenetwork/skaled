@@ -253,7 +253,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    ~JsonRpcFixture() { system( "rm -rf /tmp/*.db*" ); }
+    ~JsonRpcFixture() {}
 
     string sendingRawShouldFail( string const& _t ) {
         try {
