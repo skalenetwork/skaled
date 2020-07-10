@@ -206,9 +206,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
         }
+        this->initHashes();
     }
-
-    this->initHashes();
 
     doWork( false );
 }
