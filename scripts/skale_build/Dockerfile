@@ -21,4 +21,4 @@ COPY ./executable /skaled
 WORKDIR /skaled
 RUN chmod +x skaled
 
-ENTRYPOINT /skaled/skaled $OPTIONS
+ENTRYPOINT ["/skaled/skaled"]
