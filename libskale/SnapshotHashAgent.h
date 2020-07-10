@@ -87,7 +87,6 @@ public:
             common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
             common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
             common_public_key_.Z = libff::alt_bn128_Fq2::one();
-            common_public_key_.print_coordinates();
         }
     }
 
