@@ -250,16 +250,16 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
 
 // exeptions: filesystem
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
-    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
-            time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
     }  // for
 
-    // delete all efter n first
+    // delete all after n first
     unsigned i = 1;
-    for ( const auto& p : time_map ) {
+    for ( const auto& p : numbers ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
             for ( const string& v : this->volumes ) {
@@ -273,37 +273,40 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
 }
 
 std::pair< int, int > SnapshotManager::getLatestSnasphot() const {
-    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
-            time_map.insert( make_pair( fs::last_write_time( f ), f ) );
-    }
-    if ( time_map.empty() ) {
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+    }  // for
+
+    if ( numbers.empty() ) {
         return std::make_pair( 0, 0 );
     }
-    auto it = time_map.rbegin();
+
+    auto it = numbers.rbegin();
     int fst = std::stoi( fs::basename( ( *it++ ).second ) );
 
     int snd;
-    if ( time_map.size() > 1 ) {
+    if ( numbers.size() > 1 ) {
         snd = 0;
     } else {
         snd = std::stoi( fs::basename( ( *it ).second ) );
     }
+
     return std::make_pair( fst, snd );
 }
 
 // exeptions: filesystem
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
-    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
-        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
     }  // for
 
     // delete all after n first
     unsigned i = 1;
-    for ( const auto& p : time_map ) {
+    for ( const auto& p : numbers ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
             fs::remove( path );
@@ -446,7 +449,10 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
         } else {
             if ( !is_checking ) {
                 if ( !boost::filesystem::exists( fileHashPathStr ) ) {
-                    throw SnapshotManager::CannotRead( fileHashPathStr );
+                    // hash file hasn't been computed
+                    std::ofstream hash_file( fileHashPathStr );
+                    dev::h256 hash = dev::sha256( it->path().string() );
+                    hash_file << hash;
                 }
                 std::ifstream hash_file( fileHashPathStr );
                 dev::h256 hash;
