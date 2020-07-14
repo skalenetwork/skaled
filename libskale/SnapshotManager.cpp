@@ -250,12 +250,12 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
 
 // exeptions: filesystem
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
-  map< int, fs::path, std::greater< int > > numbers;
-  for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
-      // HACK We exclude 0 snapshot forcefully
-      if ( fs::basename( f ) != "0" )
-        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
-  }  // for
+    map< int, fs::path, std::greater< int > > numbers;
+    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+        // HACK We exclude 0 snapshot forcefully
+        if ( fs::basename( f ) != "0" )
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+    }  // for
 
     // delete all after n first
     unsigned i = 1;
@@ -277,7 +277,7 @@ std::pair< int, int > SnapshotManager::getLatestSnasphot() const {
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
-          numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
     }  // for
 
     if ( numbers.empty() ) {
