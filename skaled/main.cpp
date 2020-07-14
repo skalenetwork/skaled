@@ -495,6 +495,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "enable-debug-behavior-apis",
         "Enables debug set of JSON RPC APIs which are changing app behavior" );
 
+    addClientOption( "max-batch", po::value< size_t >()->value_name( "<count>" ),
+        "Maximum count of requests in JSON RPC batch request array" );
+
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
         "start-up)" );
@@ -1792,7 +1795,7 @@ int main( int argc, char** argv ) try {
             //
             size_t maxConnections = 0,
                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-                   cntServers = 1;
+                   cntServers = 1, cntInBatch = 128;
             bool is_async_http_transfer_mode = true;
 
             // First, get "max-connections" true/false from config.json
@@ -1851,6 +1854,20 @@ int main( int argc, char** argv ) try {
             if ( cntServers < 1 )
                 cntServers = 1;
 
+            // First, get "acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntInBatch = joConfig["skaleConfig"]["nodeInfo"]["max-batch"].get< size_t >();
+                } catch ( ... ) {
+                    cntInBatch = 128;
+                }
+            }
+            if ( vm.count( "max-batch" ) )
+                cntInBatch = vm["max-batch"].as< size_t >();
+            if ( cntInBatch < 1 )
+                cntInBatch = 1;
+
             // First, get "ws-mode" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
             if ( chainConfigParsed ) {
@@ -1904,6 +1921,9 @@ int main( int argc, char** argv ) try {
                                           << cc::yn( is_async_http_transfer_mode );
             //
             clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "Max count in batch JSON RPC request" )
+                << cc::debug( "...... " ) << cc::size10( cntInBatch );
+            clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "........ " ) << cc::size10( cntServers );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
@@ -1920,6 +1940,7 @@ int main( int argc, char** argv ) try {
                 strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
+            skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );

@@ -750,6 +750,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
             joID = joRequest["id"];
         }  // for( const nlohmann::json & joRequest : jarrRequest )
+        if ( isBatch ) {
+            size_t cntInBatch = jarrRequest.size();
+            if ( cntInBatch > pSO->maxCountInBatchJsonRpcRequest_ )
+                throw std::runtime_error( "Bad JSON RPC request, too much requests in batch" );
+        }
     } catch ( ... ) {
         if ( strMethod.empty() ) {
             if ( isBatch )
@@ -2159,6 +2164,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
                     joID = joRequest["id"];
                 }  // for( const nlohmann::json & joRequest : jarrRequest )
+                if ( isBatch ) {
+                    size_t cntInBatch = jarrRequest.size();
+                    if ( cntInBatch > maxCountInBatchJsonRpcRequest_ )
+                        throw std::runtime_error(
+                            "Bad JSON RPC request, too much requests in batch" );
+                }
             } catch ( ... ) {
                 if ( strMethod.empty() ) {
                     if ( isBatch )
