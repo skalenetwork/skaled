@@ -616,23 +616,20 @@ void SkaleHost::startWorking() {
         throw;
     }
 
-    auto csus_func = [&]() {
-        try {
-            dev::setThreadName( "bootStrapAll" );
-            m_consensus->bootStrapAll();
-        } catch ( std::exception& ex ) {
-            std::string s = ex.what();
-            if ( s.empty() )
-                s = "no description";
-            std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
-        } catch ( ... ) {
-            std::cout << "Consensus thread in scale host will exit with unknown exception\n";
-            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-        }
-    };
-    // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
-    // m_consensus->bootStrapAll();
-    m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
+    try {
+        dev::setThreadName( "bootStrapAll" );
+        m_consensus->bootStrapAll();
+        int x = 1;
+        x = x + 1;
+    } catch ( std::exception& ex ) {
+        std::string s = ex.what();
+        if ( s.empty() )
+            s = "no description";
+        std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
+    } catch ( ... ) {
+        std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+    }
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
