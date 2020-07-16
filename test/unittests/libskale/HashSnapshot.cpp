@@ -270,6 +270,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
 
+        chainParams.sChain.emptyBlockIntervalMs = 1000;
+
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
@@ -380,7 +382,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         return string();
     }
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -391,8 +395,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
-
-    TransientDirectory tempDir;
 };
 } //namespace
 

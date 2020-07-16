@@ -98,6 +98,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
 
+        chainParams.sChain.emptyBlockIntervalMs = 1000;
+
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
 
@@ -141,7 +143,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     TransactionQueue* tq;
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -149,8 +153,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     shared_ptr< SkaleHost > skaleHost;
     ConsensusTestStub* stub;
-
-    TransientDirectory tempDir;
 };
 
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()

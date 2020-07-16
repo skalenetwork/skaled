@@ -65,6 +65,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     chainParams.allowFutureBlocks = true;
     chainParams.difficulty = chainParams.minimumDifficulty;
     chainParams.gasLimit = chainParams.maxGasLimit;
+    chainParams.sChain.emptyBlockIntervalMs = 1000;
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),

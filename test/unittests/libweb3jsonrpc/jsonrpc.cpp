@@ -205,6 +205,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
             chainParams.extraData = h256::random().asBytes();
+
+            chainParams.sChain.emptyBlockIntervalMs = 2000;
         }
 
         //        web3.reset( new WebThreeDirect(
@@ -265,7 +267,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         return string();
     }
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -275,8 +279,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
-
-    TransientDirectory tempDir;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {

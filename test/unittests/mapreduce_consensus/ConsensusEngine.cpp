@@ -102,6 +102,8 @@ public:
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
 
+        chainParams.sChain.emptyBlockIntervalMs = 1000;
+
         //////////////////////////////////////////////
 
         m_consensus.reset( new ConsensusEngine(
@@ -192,6 +194,8 @@ public:
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
+
+        chainParams.sChain.emptyBlockIntervalMs = 1000;
 
         sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
         chainParams.sChain.nodes.push_back( node2 );

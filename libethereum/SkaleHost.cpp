@@ -619,8 +619,6 @@ void SkaleHost::startWorking() {
     try {
         dev::setThreadName( "bootStrapAll" );
         m_consensus->bootStrapAll();
-        int x = 1;
-        x = x + 1;
     } catch ( std::exception& ex ) {
         std::string s = ex.what();
         if ( s.empty() )
