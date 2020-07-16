@@ -1292,6 +1292,8 @@ int main( int argc, char** argv ) try {
         client->setAuthor( chainParams.sChain.owner );
 
         DefaultConsensusFactory cons_fact( *client );
+        setenv( "DATA_DIR", getDataDir().c_str(), 0 );
+
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *client, &cons_fact );
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
