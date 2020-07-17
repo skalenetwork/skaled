@@ -182,11 +182,21 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       total_sent( 0 ),
       total_arrived( 0 ) {
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-        LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
-                             << m_debugTracer.get_tracepoint_count( name );
-
         skutils::task::performance::action action(
             "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
+
+        // HACK reduce TRACEPOINT log output
+        static uint64_t last_block_when_log = -1;
+        if ( name == "fetch_transactions" || name == "drop_bad_transactions" ) {
+            uint64_t current_block = this->m_client.number();
+            if ( current_block == last_block_when_log )
+                return;
+            if ( name == "drop_bad_transactions" )
+                last_block_when_log = current_block;
+        }
+
+        LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
+                             << m_debugTracer.get_tracepoint_count( name );
     } );
 
     m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
