@@ -715,22 +715,54 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
+    if ( eOpCode != skutils::ws::opcv::text ) {
+        // throw std::runtime_error( "only ws text messages are supported" );
+        clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                         cc::num10( getRelay().serverIndex() ) )
+            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
+                   desc() + cc::ws_rx( " >>> " ) +
+                   cc::error( " got binary message and will try to interpret it as text: " ) +
+                   cc::warn( msg ) );
+    }
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
-    std::string strRequest( msg );
-    nlohmann::json joRequest;
+    nlohmann::json jarrRequest;
     std::string strMethod;
     nlohmann::json joID = "-1";
+    bool isBatch = false;
     try {
         // fetch method name and id earlier
-        joRequest = nlohmann::json::parse( strRequest );
-        strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-        if ( strMethod.empty() )
-            throw std::runtime_error( "Bad JSON RPC request" );
-        joID = joRequest["id"];
+        nlohmann::json joRequestOriginal = nlohmann::json::parse( msg );
+        if ( joRequestOriginal.is_array() ) {
+            isBatch = true;
+            jarrRequest = joRequestOriginal;
+        } else {
+            jarrRequest = nlohmann::json::array();
+            jarrRequest.push_back( joRequestOriginal );
+        }
+        for ( const nlohmann::json& joRequest : jarrRequest ) {
+            std::string strMethodWalk =
+                skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+            if ( strMethodWalk.empty() )
+                throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
+            strMethod = strMethodWalk;
+            if ( joRequest.count( "id" ) == 0 )
+                throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
+            joID = joRequest["id"];
+        }  // for( const nlohmann::json & joRequest : jarrRequest )
+        if ( isBatch ) {
+            size_t cntInBatch = jarrRequest.size();
+            if ( cntInBatch > pSO->maxCountInBatchJsonRpcRequest_ )
+                throw std::runtime_error( "Bad JSON RPC request, too much requests in batch" );
+        }
     } catch ( ... ) {
-        if ( strMethod.empty() )
-            strMethod = "unknown_json_rpc_method";
-        std::string e = "Bad JSON RPC request: " + strRequest;
+        if ( strMethod.empty() ) {
+            if ( isBatch )
+                strMethod = "batch_json_rpc_request";
+            else
+                strMethod = "unknown_json_rpc_method";
+        }
+        std::string e = "Bad JSON RPC request: " + msg;
         clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
                                        cc::debug( "/" ) +
                                        cc::num10( pThis->getRelay().serverIndex() ) )
@@ -745,39 +777,36 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
         stats::register_stats_exception( pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
-        stats::register_stats_exception( "RPC", strMethod.c_str() );
+        // stats::register_stats_exception( "RPC", strMethod.c_str() );
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         stats::register_stats_answer(
             pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
         return;
     }
     //
-    std::string strPerformanceQueueName = skutils::tools::format( "rpc/%s/%zu/%s",
-        getRelay().nfoGetSchemeUC().c_str(), getRelay().serverIndex(), desc( false ).c_str() );
-    std::string strPerformanceActionName = skutils::tools::format(
-        "%s task %zu", getRelay().nfoGetSchemeUC().c_str(), nTaskNumberInPeer_++ );
-    //
-    //
-    skutils::stats::time_tracker::element_ptr_t rttElement;
-    rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(), strMethod.c_str(),
-        pThis->getRelay().serverIndex(), -1 );
-    if ( eOpCode != skutils::ws::opcv::text ) {
-        // throw std::runtime_error( "only ws text messages are supported" );
-        clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                         cc::num10( getRelay().serverIndex() ) )
-            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + cc::ws_rx( " >>> " ) +
-                   cc::error( " got binary message and will try to interpret it as text: " ) +
-                   cc::warn( msg ) );
-    }
-    size_t nRequestSize = strRequest.size();
-
-    skutils::dispatch::async( pThis->m_strPeerQueueID,
-        [rttElement, pThis, joID, joRequest, strMethod, strRequest, nRequestSize, pSO,
-            strPerformanceQueueName, strPerformanceActionName]() -> void {  // WS-processing-lambda
+    // WS-processing-lambda
+    auto fnAsyncMessageHandler = [pThis, jarrRequest, pSO,
+                                     isBatch]() -> void {  // WS-processing-lambda
+        nlohmann::json jarrBatchAnswer;
+        if ( isBatch )
+            jarrBatchAnswer = nlohmann::json::array();
+        for ( const nlohmann::json& joRequest : jarrRequest ) {
+            std::string strRequest = joRequest.dump();
+            std::string strMethod =
+                skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+            nlohmann::json joID = joRequest["id"];
             //
+            std::string strPerformanceQueueName =
+                skutils::tools::format( "rpc/%s/%zu/%s", pThis->getRelay().nfoGetSchemeUC().c_str(),
+                    pThis->getRelay().serverIndex(), pThis->desc( false ).c_str() );
+            std::string strPerformanceActionName =
+                skutils::tools::format( "%s task %zu", pThis->getRelay().nfoGetSchemeUC().c_str(),
+                    pThis.get_unconst()->nTaskNumberInPeer_++ );
             //
+            skutils::stats::time_tracker::element_ptr_t rttElement;
+            rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(),
+                strMethod.c_str(), pThis->getRelay().serverIndex(), -1 );
+            size_t nRequestSize = strRequest.size();
             //
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName, joRequest );
@@ -871,7 +900,11 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
                            pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
-            pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
+            if ( isBatch ) {
+                nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
+                jarrBatchAnswer.push_back( joAnswerPart );
+            } else
+                pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
             if ( !bPassed )
                 stats::register_stats_answer(
                     pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
@@ -881,9 +914,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 pSO->logPerformanceWarning( lfExecutionDuration, -1,
                     pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
                     pThis->getOrigin().c_str(), strMethod.c_str(), joID );
-
-        } );  // WS-processing-lambda
-
+        }  // for( const nlohmann::json & joRequest : jarrRequest )
+        if ( isBatch ) {
+            std::string strResponse = jarrBatchAnswer.dump();
+            pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
+        }
+    };  // WS-processing-lambda
+    skutils::dispatch::async( pThis->m_strPeerQueueID, fnAsyncMessageHandler );
     // skutils::ws::peer::onMessage( msg, eOpCode );
 }
 
@@ -2104,17 +2141,42 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             //
             //
             std::string strMethod;
-            nlohmann::json joRequest, joID = "-1";
+            nlohmann::json jarrRequest, joID = "-1";
+            bool isBatch = false;
             try {
                 // fetch method name and id earlier
-                joRequest = nlohmann::json::parse( req.body_ );
-                strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-                if ( strMethod.empty() )
-                    throw std::runtime_error( "Bad JSON RPC request" );
-                joID = joRequest["id"];
+                nlohmann::json joRequestOriginal = nlohmann::json::parse( req.body_ );
+                if ( joRequestOriginal.is_array() ) {
+                    isBatch = true;
+                    jarrRequest = joRequestOriginal;
+                } else {
+                    jarrRequest = nlohmann::json::array();
+                    jarrRequest.push_back( joRequestOriginal );
+                }
+                for ( const nlohmann::json& joRequest : jarrRequest ) {
+                    std::string strMethodWalk =
+                        skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                    if ( strMethodWalk.empty() )
+                        throw std::runtime_error(
+                            "Bad JSON RPC request, \"method\" name is missing" );
+                    strMethod = strMethodWalk;
+                    if ( joRequest.count( "id" ) == 0 )
+                        throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
+                    joID = joRequest["id"];
+                }  // for( const nlohmann::json & joRequest : jarrRequest )
+                if ( isBatch ) {
+                    size_t cntInBatch = jarrRequest.size();
+                    if ( cntInBatch > maxCountInBatchJsonRpcRequest_ )
+                        throw std::runtime_error(
+                            "Bad JSON RPC request, too much requests in batch" );
+                }
             } catch ( ... ) {
-                if ( strMethod.empty() )
-                    strMethod = "unknown_json_rpc_method";
+                if ( strMethod.empty() ) {
+                    if ( isBatch )
+                        strMethod = "batch_json_rpc_request";
+                    else
+                        strMethod = "unknown_json_rpc_method";
+                }
                 std::string e = "Bad JSON RPC request: " + req.body_;
                 logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
@@ -2133,117 +2195,137 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 return true;
             }
             //
-            std::string strPerformanceQueueName = skutils::tools::format(
-                "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
-            std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
-                bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
-            skutils::task::performance::action a(
-                strPerformanceQueueName, strPerformanceActionName, joRequest );
-            //
-            skutils::stats::time_tracker::element_ptr_t rttElement;
-            rttElement.emplace(
-                "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(), pSrv->serverIndex(), ipVer );
-            //
-            //
-            //
-            bool bSkipMethodTrafficTrace =
-                skale::server::helper::isSkipMethodTrafficTrace( strMethod );
-            SkaleServerConnectionsTrackHelper sscth( *this );
-            if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-                logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_.c_str(), cc::j( req.body_ ) );
-            std::string strResponse;
-            bool bPassed = false;
-            try {
-                if ( is_connection_limit_overflow() ) {
-                    on_connection_overflow_peer_closed(
-                        ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
-                    throw std::runtime_error( "server too busy" );
-                }
-                strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-                if ( !handleAdminOriginFilter( strMethod, req.origin_ ) ) {
-                    throw std::runtime_error( "origin not allowed for call attempt" );
-                }
-                jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
-                if ( handler == nullptr )
-                    throw std::runtime_error( "No client connection handler found" );
+            nlohmann::json jarrBatchAnswer;
+            if ( isBatch )
+                jarrBatchAnswer = nlohmann::json::array();
+            for ( const nlohmann::json& joRequest : jarrRequest ) {
+                std::string strBody = joRequest.dump();  // = req.body_;
+                std::string strPerformanceQueueName = skutils::tools::format(
+                    "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
+                std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
+                    bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
+                skutils::task::performance::action a(
+                    strPerformanceQueueName, strPerformanceActionName, joRequest );
                 //
-                stats::register_stats_message(
-                    bIsSSL ? "HTTPS" : "HTTP", "POST", req.body_.size() );
-                stats::register_stats_message(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest );
-                stats::register_stats_message( "RPC", joRequest );
+                skutils::stats::time_tracker::element_ptr_t rttElement;
+                rttElement.emplace( "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(),
+                    pSrv->serverIndex(), ipVer );
                 //
-                std::vector< uint8_t > buffer;
-                if ( handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+                bool bSkipMethodTrafficTrace =
+                    skale::server::helper::isSkipMethodTrafficTrace( strMethod );
+                SkaleServerConnectionsTrackHelper sscth( *this );
+                if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
+                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                        pSrv->serverIndex(), req.origin_.c_str(), cc::j( strBody ) );
+                std::string strResponse;
+                bool bPassed = false;
+                try {
+                    if ( is_connection_limit_overflow() ) {
+                        on_connection_overflow_peer_closed(
+                            ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort );
+                        throw std::runtime_error( "server too busy" );
+                    }
+                    strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+                    if ( !handleAdminOriginFilter( strMethod, req.origin_ ) ) {
+                        throw std::runtime_error( "origin not allowed for call attempt" );
+                    }
+                    jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
+                    if ( handler == nullptr )
+                        throw std::runtime_error( "No client connection handler found" );
+                    //
+                    stats::register_stats_message(
+                        bIsSSL ? "HTTPS" : "HTTP", "POST", strBody.size() );
+                    stats::register_stats_message(
+                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
+                        joRequest );
+                    stats::register_stats_message( "RPC", joRequest );
+                    //
+                    std::vector< uint8_t > buffer;
+                    if ( handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+                        res.set_header( "access-control-allow-origin", "*" );
+                        res.set_header( "vary", "Origin" );
+                        res.set_content(
+                            ( char* ) buffer.data(), buffer.size(), "application/octet-stream" );
+                        stats::register_stats_answer(
+                            bIsSSL ? "HTTPS" : "HTTP", "POST", buffer.size() );
+                        rttElement->stop();
+                        return true;
+                    }
+                    if ( !pSrv->handleHttpSpecificRequest( req.origin_, strBody, strResponse ) ) {
+                        handler->HandleRequest( strBody.c_str(), strResponse );
+                    }
+                    //
+                    stats::register_stats_answer(
+                        bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
+                    nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                    stats::register_stats_answer(
+                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
+                        joRequest, joResponse );
+                    stats::register_stats_answer( "RPC", joRequest, joResponse );
+                    //
+                    a.set_json_out( joResponse );
+                    bPassed = true;
+                } catch ( const std::exception& ex ) {
+                    rttElement->setError();
+                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                        pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = joID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( ex.what() );
+                    strResponse = joErrorResponce.dump();
+                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
+                    if ( !strMethod.empty() ) {
+                        stats::register_stats_exception(
+                            bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
+                        stats::register_stats_exception( "RPC", strMethod.c_str() );
+                    }
+                    a.set_json_err( joErrorResponce );
+                } catch ( ... ) {
+                    rttElement->setError();
+                    const char* e = "unknown exception in SkaleServerOverride";
+                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                        pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
+                    nlohmann::json joErrorResponce;
+                    joErrorResponce["id"] = joID;
+                    joErrorResponce["result"] = "error";
+                    joErrorResponce["error"] = std::string( e );
+                    strResponse = joErrorResponce.dump();
+                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
+                    if ( !strMethod.empty() ) {
+                        stats::register_stats_exception(
+                            bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
+                        stats::register_stats_exception( "RPC", strMethod.c_str() );
+                    }
+                    a.set_json_err( joErrorResponce );
+                }
+                if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
+                    logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                        pSrv->serverIndex(), req.origin_.c_str(), cc::j( strResponse ) );
+                if ( isBatch ) {
+                    nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
+                    jarrBatchAnswer.push_back( joAnswerPart );
+                } else {
                     res.set_header( "access-control-allow-origin", "*" );
                     res.set_header( "vary", "Origin" );
-                    res.set_content(
-                        ( char* ) buffer.data(), buffer.size(), "application/octet-stream" );
+                    res.set_content( strResponse.c_str(), "application/json" );
+                }
+                if ( !bPassed )
                     stats::register_stats_answer(
-                        bIsSSL ? "HTTPS" : "HTTP", "POST", buffer.size() );
-                    rttElement->stop();
-                    return true;
-                }
-                if ( !pSrv->handleHttpSpecificRequest( req.origin_, req.body_, strResponse ) ) {
-                    handler->HandleRequest( req.body_.c_str(), strResponse );
-                }
-                //
-                stats::register_stats_answer(
-                    bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
-                nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(), joRequest,
-                    joResponse );
-                stats::register_stats_answer( "RPC", joRequest, joResponse );
-                //
-                a.set_json_out( joResponse );
-                bPassed = true;
-            } catch ( const std::exception& ex ) {
-                rttElement->setError();
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_.c_str(), cc::warn( ex.what() ) );
-                nlohmann::json joErrorResponce;
-                joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( ex.what() );
-                strResponse = joErrorResponce.dump();
-                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                if ( !strMethod.empty() ) {
-                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                    stats::register_stats_exception( "RPC", strMethod.c_str() );
-                }
-                a.set_json_err( joErrorResponce );
-            } catch ( ... ) {
-                rttElement->setError();
-                const char* e = "unknown exception in SkaleServerOverride";
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
-                nlohmann::json joErrorResponce;
-                joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
-                strResponse = joErrorResponce.dump();
-                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                if ( !strMethod.empty() ) {
-                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                    stats::register_stats_exception( "RPC", strMethod.c_str() );
-                }
-                a.set_json_err( joErrorResponce );
+                        bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
+                rttElement->stop();
+                double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+                if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
+                    pSO->logPerformanceWarning( lfExecutionDuration, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), req.origin_.c_str(),
+                        strMethod.c_str(), joID );
+            }  // for( const nlohmann::json & joRequest : jarrRequest )
+            if ( isBatch ) {
+                std::string strResponse = jarrBatchAnswer.dump();
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "vary", "Origin" );
+                res.set_content( strResponse.c_str(), "application/json" );
             }
-            if ( m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-                logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_.c_str(), cc::j( strResponse ) );
-            res.set_header( "access-control-allow-origin", "*" );
-            res.set_header( "vary", "Origin" );
-            res.set_content( strResponse.c_str(), "application/json" );
-            if ( !bPassed )
-                stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
-            rttElement->stop();
-            double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
-            if ( lfExecutionDuration >= pSO->lfExecutionDurationMaxForPerformanceWarning_ )
-                pSO->logPerformanceWarning( lfExecutionDuration, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_.c_str(), strMethod.c_str(), joID );
             return true;
         } );
         // check if somebody is already listening
