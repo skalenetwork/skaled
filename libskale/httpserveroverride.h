@@ -290,6 +290,8 @@ public:
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
                                                                                // default 1 second
 
+    size_t maxCountInBatchJsonRpcRequest_ = 128;
+
     SkaleServerOverride( dev::eth::ChainParams& chainParams,
         fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
         dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
