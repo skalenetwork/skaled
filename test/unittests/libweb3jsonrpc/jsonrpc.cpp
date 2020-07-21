@@ -741,9 +741,9 @@ contract Logger{
 
     string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
 
-    // add 256 more blocks
+    // add 255 more blocks
     string lastHash;
-    for(int i=0; i<256; ++i){
+    for(int i=0; i<255; ++i){
         Json::Value t;
         t["from"] = toJS( fixture.coinbase.address() );
         t["value"] = jsToDecimal( "0" );
@@ -755,7 +755,7 @@ contract Logger{
 
         dev::eth::mineTransaction( *( fixture.client ), 1 );
     }
-    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512 + 1);     // 1 for initial block
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512);
 
     // ask for logs
     t["toBlock"] = 512;
@@ -765,7 +765,7 @@ contract Logger{
 
     // and filter
     res = fixture.rpcClient->eth_getFilterChanges(filterId);
-    BOOST_REQUIRE_EQUAL(res.size(), (256+255)*2);     // HACK!! in prod there should be *1! (no pending!)
+    BOOST_REQUIRE_EQUAL(res.size(), (255+255)*2);     // HACK!! in prod there should be *1! (no pending!)
     res = fixture.rpcClient->eth_getFilterLogs(filterId);
     BOOST_REQUIRE_EQUAL(res.size(), 256+64);
 
