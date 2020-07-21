@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <future>
 #include <string>
 
 using namespace std;
@@ -616,18 +617,27 @@ void SkaleHost::startWorking() {
         throw;
     }
 
-    try {
-        dev::setThreadName( "bootStrapAll" );
-        m_consensus->bootStrapAll();
-    } catch ( std::exception& ex ) {
-        std::string s = ex.what();
-        if ( s.empty() )
-            s = "no description";
-        std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
-    } catch ( ... ) {
-        std::cout << "Consensus thread in scale host will exit with unknown exception\n";
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-    }
+    std::promise< void > bootstrap_promise;
+
+    auto csus_func = [&]() {
+        try {
+            dev::setThreadName( "bootStrapAll" );
+            m_consensus->bootStrapAll();
+        } catch ( std::exception& ex ) {
+            std::string s = ex.what();
+            if ( s.empty() )
+                s = "no description";
+            std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
+        } catch ( ... ) {
+            std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+        }
+
+        bootstrap_promise.set_value();
+    };  // func
+
+    m_consensusThread = std::thread( csus_func );
+    bootstrap_promise.get_future().wait();
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished

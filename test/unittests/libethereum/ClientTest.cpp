@@ -106,7 +106,6 @@ public:
         }
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
-        chainParams.sChain.emptyBlockIntervalMs = 1000;
 
         fs::path dir = m_tmpDir.path();
 

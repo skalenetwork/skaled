@@ -805,6 +805,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     switch ( _p ) {
     case Permanence::Reverted:
         resetStorageChanges();
+        m_cache.clear();
         break;
     case Permanence::CommittedWithoutState:
         resetStorageChanges();

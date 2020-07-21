@@ -98,8 +98,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
 
-        chainParams.sChain.emptyBlockIntervalMs = 1000;
-
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
 
