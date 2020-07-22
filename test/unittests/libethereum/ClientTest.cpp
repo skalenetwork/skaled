@@ -148,8 +148,8 @@ public:
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
 private:
-    std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
+    std::unique_ptr< dev::eth::Client > m_ethereum;
     dev::KeyPair coinbase{KeyPair::create()};
 };
 
