@@ -650,10 +650,11 @@ int main( int argc, char** argv ) try {
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
+        is_ipc = false;
         try {
-            is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "ipc" ) )
+                is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
         } catch ( ... ) {
-            is_ipc = false;
         }
     }
     if ( vm.count( "ipc" ) )
@@ -666,11 +667,14 @@ int main( int argc, char** argv ) try {
     // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
     // Second, get them from command line parameters (higher priority source)
     if ( chainConfigParsed ) {
+        nExplicitPortHTTP4 = -1;
         try {
-            nExplicitPortHTTP4 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort" ) )
+                nExplicitPortHTTP4 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTP4 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
             nExplicitPortHTTP4 = -1;
         else
@@ -679,11 +683,14 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "HTTP/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTP4 );
         //
+        nExplicitPortHTTP6 = -1;
         try {
-            nExplicitPortHTTP6 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort6" ) )
+                nExplicitPortHTTP6 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTP6 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
             nExplicitPortHTTP6 = nExplicitPortHTTP4;
         if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
@@ -695,11 +702,14 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortHTTP6 );
         //
         //
+        nExplicitPortHTTPS4 = -1;
         try {
-            nExplicitPortHTTPS4 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort" ) )
+                nExplicitPortHTTPS4 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTPS4 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
             nExplicitPortHTTPS4 = -1;
         else
@@ -708,11 +718,14 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "HTTPS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTPS4 );
         //
+        nExplicitPortHTTPS6 = -1;
         try {
-            nExplicitPortHTTPS6 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort6" ) )
+                nExplicitPortHTTPS6 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTPS6 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
             nExplicitPortHTTPS6 = nExplicitPortHTTPS4;
         if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
@@ -724,10 +737,11 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortHTTPS6 );
         //
         //
+        nExplicitPortWS4 = -1;
         try {
-            nExplicitPortWS4 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort" ) )
+                nExplicitPortWS4 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWS4 = -1;
         }
         if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
             nExplicitPortWS4 = -1;
@@ -737,10 +751,11 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "WS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWS4 );
         //
+        nExplicitPortWS6 = -1;
         try {
-            nExplicitPortWS6 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort6" ) )
+                nExplicitPortWS6 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWS6 = -1;
         }
         if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
             nExplicitPortWS6 = nExplicitPortWS4;
@@ -753,10 +768,11 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortWS6 );
         //
         //
+        nExplicitPortWSS4 = -1;
         try {
-            nExplicitPortWSS4 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort" ) )
+                nExplicitPortWSS4 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWSS4 = -1;
         }
         if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
             nExplicitPortWSS4 = -1;
@@ -766,10 +782,11 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "WSS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWSS4 );
         //
+        nExplicitPortWSS6 = -1;
         try {
-            nExplicitPortWSS6 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort6" ) )
+                nExplicitPortWSS6 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWSS6 = -1;
         }
         if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
             nExplicitPortWSS6 = nExplicitPortWSS4;
@@ -890,7 +907,9 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            bTraceJsonRpcCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "web3-trace" ) )
+                bTraceJsonRpcCalls =
+                    joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -904,8 +923,9 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            bEnabledDebugBehaviorAPIs =
-                joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-debug-behavior-apis" ) )
+                bEnabledDebugBehaviorAPIs =
+                    joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -920,9 +940,9 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            alwaysConfirm =
-                joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >() ? false :
-                                                                                           true;
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "unsafe-transactions" ) )
+                alwaysConfirm =
+                    !joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -937,8 +957,9 @@ int main( int argc, char** argv ) try {
     bool bEnabledShutdownViaWeb3 = false;
     if ( chainConfigParsed ) {
         try {
-            bEnabledShutdownViaWeb3 =
-                joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "web3-shutdown" ) )
+                bEnabledShutdownViaWeb3 =
+                    joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -953,9 +974,9 @@ int main( int argc, char** argv ) try {
     std::string strPathIPC;
     if ( chainConfigParsed ) {
         try {
-            strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "ipcpath" ) )
+                strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
         } catch ( ... ) {
-            strPathIPC.clear();
         }
     }
     clog( VerbosityInfo, "main" ) << cc::notice( "IPC path" ) + cc::debug( " is: " )
@@ -970,9 +991,9 @@ int main( int argc, char** argv ) try {
     std::string strPathDB;
     if ( chainConfigParsed ) {
         try {
-            strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "db-path" ) )
+                strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
         } catch ( ... ) {
-            strPathDB.clear();
         }
     }
     if ( vm.count( "db-path" ) )
