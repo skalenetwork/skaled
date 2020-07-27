@@ -1156,8 +1156,8 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
     // TO-DO: OpenSSL 1.0.2 occasionally crashes...
     // The upcoming 1.1.0 is going to be thread safe.
     SSL_CTX* ctx, std::mutex& ctx_mutex, U SSL_connect_or_accept, V setup, T callback,
-    std::string& strErrorDescription ) {
-    strErrorDescription.clear();
+    common::error_info& ei ) {
+    ei.clear();
     SSL* ssl = nullptr;
     bool ret = false;
     try {
@@ -1169,13 +1169,17 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
                 std::string strErrorDescription = SSL_extract_current_error_as_text();
                 if ( !strErrorDescription.empty() )
                     strError += ", error details: " + strErrorDescription;
+                ei.et_ = common::error_type::et_ssl_fatal;
+                ei.strError_ = strError;
                 throw std::runtime_error( strError );
             }
         }
         auto bio = BIO_new_socket( sock, BIO_NOCLOSE );
         SSL_set_bio( ssl, bio, bio );
         setup( ssl );
+        ei.et_ = common::error_type::et_ssl_error;  // assume it's et_ssl_error for a while
         SSL_connect_or_accept( ssl );
+        ei.et_ = common::error_type::et_no_error;
         if ( keep_alive_max_count > 0 ) {
             size_t cnt = keep_alive_max_count;
             for ( ; cnt > 0; --cnt ) {
@@ -1194,12 +1198,17 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
             auto dummy_connection_close = false;
             ret = callback( strm, true, dummy_connection_close );
         }
+        ei.clear();
     } catch ( std::exception& ex ) {
-        strErrorDescription = ex.what();
-        if ( strErrorDescription.empty() )
-            strErrorDescription = "exception without description";
+        ei.strError_ = ex.what();
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == common::error_type::et_no_error )
+            ei.et_ = common::error_type::et_unknown;
     } catch ( ... ) {
-        strErrorDescription = "unknown exception";
+        ei.strError_ = "unknown exception";
+        if ( ei.et_ == common::error_type::et_no_error )
+            ei.et_ = common::error_type::et_unknown;
     }
     if ( ssl ) {
         SSL_shutdown( ssl );
@@ -1207,7 +1216,7 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
         SSL_free( ssl );
     }
     close_socket( sock );
-    if ( !strErrorDescription.empty() ) {
+    if ( !ei.strError_.empty() ) {
         ret = false;
         // throw std::runtime_error( strErrorDescription );
     }
@@ -2054,8 +2063,8 @@ bool SSL_server::is_valid() const {
 bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
-    strLastError_.clear();
-    std::string strErrorDescription;
+    eiLast_.clear();
+    common::error_info ei;
     if ( !detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
              detail::SSL_accept_wrapper,
              [origin]( SSL*  // ssl
@@ -2063,8 +2072,8 @@ bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
              [this, origin]( stream& strm, bool last_connection, bool& connection_close ) {
                  return process_request( origin, strm, last_connection, connection_close );
              },
-             strErrorDescription ) ) {
-        strLastError_ = strErrorDescription.c_str();
+             ei ) ) {
+        eiLast_ = ei;
         return false;
     }
     return true;
@@ -2415,16 +2424,16 @@ bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& r
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", false );
     if ( !is_valid() )
         return false;
-    strLastError_.clear();
-    std::string strErrorDescription;
+    eiLast_.clear();
+    common::error_info ei;
     if ( !detail::read_and_close_socket_ssl( sock, 0, ctx_, ctx_mutex_, detail::SSL_connect_wrapper,
              [&]( SSL* ssl ) { SSL_set_tlsext_host_name( ssl, host_.c_str() ); },
              [&, origin]( stream& strm, bool,  // last_connection
                  bool& connection_close ) {
                  return process_request( origin, strm, req, res, connection_close );
              },
-             strErrorDescription ) ) {
-        strLastError_ = strErrorDescription.c_str();
+             ei ) ) {
+        eiLast_ = ei;
         return false;
     }
     return true;

@@ -344,7 +344,21 @@ public:
 class common {
 public:
     mutable int ipVer_ = -1;  // not known before connect or listen
-    std::string strLastError_;
+    enum error_type {
+        et_no_error = 0,
+        et_unknown = 1,
+        et_ssl_fatal = 2,
+        et_ssl_error = 3,
+    };
+    struct error_info {
+        error_type et_ = et_no_error;
+        std::string strError_;
+        void clear() {
+            et_ = et_no_error;
+            strError_.clear();
+        }
+    };
+    error_info eiLast_;
     common( int ipVer );
     virtual ~common();
 };
