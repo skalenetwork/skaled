@@ -1003,6 +1003,52 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
+    ///////////////// CACHE PARAMS ///////////////
+    extern chrono::system_clock::duration c_collectionDuration;
+    extern unsigned c_collectionQueueSize;
+    extern unsigned c_maxCacheSize;
+    extern unsigned c_minCacheSize;
+
+    unsigned c_transactionQueueSize = 100000;
+
+    if ( chainConfigParsed ) {
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "minCacheSize" ) )
+                c_minCacheSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["minCacheSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxCacheSize" ) )
+                c_maxCacheSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["c_maxCacheSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "collectionQueueSize" ) )
+                c_collectionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["collectionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "collectionDuration" ) )
+                c_collectionDuration = chrono::seconds(
+                    joConfig["skaleConfig"]["nodeInfo"]["collectionDuration"].get< unsigned >() );
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
+                c_transactionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+    }
+    ////////////// END CACHE PARAMS ////////////
+
     if ( vm.count( "public-ip" ) ) {
         publicIP = vm["public-ip"].as< string >();
     }
@@ -1304,11 +1350,13 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
+                isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{100000, 1024}, isStartedFromSnapshot ) );
+                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
+                isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
