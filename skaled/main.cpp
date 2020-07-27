@@ -941,7 +941,8 @@ int main( int argc, char** argv ) try {
     if ( chainConfigParsed ) {
         try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "unsafe-transactions" ) )
-                alwaysConfirm = ! joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >();
+                alwaysConfirm =
+                    !joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >();
         } catch ( ... ) {
         }
     }
