@@ -1131,24 +1131,30 @@ void SSL_accept_wrapper( SSL* ssl ) {
     auto rv = SSL_accept( ssl );
     if ( rv == 1 )
         return;
-    std::string strError =
+    common_network_exception::error_info ei;
+    ei.et_ = common_network_exception::error_type::et_ssl_fatal;
+    ei.ec_ = SSL_get_error( ssl, rv );
+    ei.strError_ =
         skutils::tools::format( "SSL_accept() error, returned %d=0x%X", int( rv ), int( rv ) );
     std::string strErrorDescription = SSL_extract_current_error_as_text();
     if ( !strErrorDescription.empty() )
-        strError += ", error details: " + strErrorDescription;
-    throw std::runtime_error( strError );
+        ei.strError_ += ", error details: " + strErrorDescription;
+    throw common_network_exception( ei );
 }
 
 void SSL_connect_wrapper( SSL* ssl ) {
     auto rv = SSL_connect( ssl );
     if ( rv == 1 )
         return;
-    std::string strError =
+    common_network_exception::error_info ei;
+    ei.et_ = common_network_exception::error_type::et_ssl_fatal;
+    ei.ec_ = SSL_get_error( ssl, rv );
+    ei.strError_ =
         skutils::tools::format( "SSL_connect() error, returned %d=0x%X", int( rv ), int( rv ) );
     std::string strErrorDescription = SSL_extract_current_error_as_text();
     if ( !strErrorDescription.empty() )
-        strError += ", error details: " + strErrorDescription;
-    throw std::runtime_error( strError );
+        ei.strError_ += ", error details: " + strErrorDescription;
+    throw common_network_exception( ei );
 }
 
 template < typename U, typename V, typename T >
@@ -1156,7 +1162,7 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
     // TO-DO: OpenSSL 1.0.2 occasionally crashes...
     // The upcoming 1.1.0 is going to be thread safe.
     SSL_CTX* ctx, std::mutex& ctx_mutex, U SSL_connect_or_accept, V setup, T callback,
-    common::error_info& ei ) {
+    common_network_exception::error_info& ei ) {
     ei.clear();
     SSL* ssl = nullptr;
     bool ret = false;
@@ -1169,17 +1175,18 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
                 std::string strErrorDescription = SSL_extract_current_error_as_text();
                 if ( !strErrorDescription.empty() )
                     strError += ", error details: " + strErrorDescription;
-                ei.et_ = common::error_type::et_ssl_fatal;
+                ei.et_ = common_network_exception::error_type::et_ssl_fatal;
                 ei.strError_ = strError;
-                throw std::runtime_error( strError );
+                throw common_network_exception( ei );
             }
         }
         auto bio = BIO_new_socket( sock, BIO_NOCLOSE );
         SSL_set_bio( ssl, bio, bio );
         setup( ssl );
-        ei.et_ = common::error_type::et_ssl_error;  // assume it's et_ssl_error for a while
+        ei.et_ = common_network_exception::error_type::et_ssl_error;  // assume it's et_ssl_error
+                                                                      // for a while
         SSL_connect_or_accept( ssl );
-        ei.et_ = common::error_type::et_no_error;
+        ei.et_ = common_network_exception::error_type::et_no_error;
         if ( keep_alive_max_count > 0 ) {
             size_t cnt = keep_alive_max_count;
             for ( ; cnt > 0; --cnt ) {
@@ -1199,16 +1206,22 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
             ret = callback( strm, true, dummy_connection_close );
         }
         ei.clear();
+    } catch ( common_network_exception& ex ) {
+        ei = ex.ei_;
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
     } catch ( std::exception& ex ) {
         ei.strError_ = ex.what();
         if ( ei.strError_.empty() )
             ei.strError_ = "exception without description";
-        if ( ei.et_ == common::error_type::et_no_error )
-            ei.et_ = common::error_type::et_unknown;
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
     } catch ( ... ) {
         ei.strError_ = "unknown exception";
-        if ( ei.et_ == common::error_type::et_no_error )
-            ei.et_ = common::error_type::et_unknown;
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
     }
     if ( ssl ) {
         SSL_shutdown( ssl );
@@ -2064,7 +2077,7 @@ bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
     eiLast_.clear();
-    common::error_info ei;
+    common_network_exception::error_info ei;
     if ( !detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
              detail::SSL_accept_wrapper,
              [origin]( SSL*  // ssl
@@ -2425,7 +2438,7 @@ bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& r
     if ( !is_valid() )
         return false;
     eiLast_.clear();
-    common::error_info ei;
+    common_network_exception::error_info ei;
     if ( !detail::read_and_close_socket_ssl( sock, 0, ctx_, ctx_mutex_, detail::SSL_connect_wrapper,
              [&]( SSL* ssl ) { SSL_set_tlsext_host_name( ssl, host_.c_str() ); },
              [&, origin]( stream& strm, bool,  // last_connection

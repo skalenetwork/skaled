@@ -341,9 +341,8 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class common {
+class common_network_exception : public std::exception {
 public:
-    mutable int ipVer_ = -1;  // not known before connect or listen
     enum error_type {
         et_no_error = 0,
         et_unknown = 1,
@@ -353,12 +352,31 @@ public:
     struct error_info {
         error_type et_ = et_no_error;
         std::string strError_;
+        int ec_ = 0;
         void clear() {
             et_ = et_no_error;
             strError_.clear();
+            ec_ = 0;
         }
     };
-    error_info eiLast_;
+    error_info ei_;
+    explicit common_network_exception( const char* strError ) {
+        ei_.strError_ = strError;
+        ei_.et_ = common_network_exception::error_type::et_unknown;
+    }
+    explicit common_network_exception( const std::string& strError ) {
+        ei_.strError_ = strError;
+        ei_.et_ = common_network_exception::error_type::et_unknown;
+    }
+    explicit common_network_exception( const error_info& ei ) { ei_ = ei; }
+    virtual ~common_network_exception() throw() {}
+    virtual const char* what() const throw() { return ei_.strError_.c_str(); }
+};
+
+class common {
+public:
+    mutable int ipVer_ = -1;  // not known before connect or listen
+    common_network_exception::error_info eiLast_;
     common( int ipVer );
     virtual ~common();
 };
