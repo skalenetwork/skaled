@@ -1022,7 +1022,7 @@ int main( int argc, char** argv ) try {
         try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxCacheSize" ) )
                 c_maxCacheSize =
-                    joConfig["skaleConfig"]["nodeInfo"]["c_maxCacheSize"].get< unsigned >();
+                    joConfig["skaleConfig"]["nodeInfo"]["maxCacheSize"].get< unsigned >();
         } catch ( ... ) {
         }
 
