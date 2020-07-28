@@ -166,24 +166,48 @@ bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds 
 }
 
 template < typename T >
-bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callback ) {
+bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callback,
+    common_network_exception::error_info& ei ) {
+    ei.clear();
     bool ret = false;
-    if ( keep_alive_max_count > 0 ) {
-        size_t cnt = keep_alive_max_count;
-        for ( ; cnt > 0; --cnt ) {
-            if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
-                continue;
+    try {
+        if ( keep_alive_max_count > 0 ) {
+            size_t cnt = keep_alive_max_count;
+            for ( ; cnt > 0; --cnt ) {
+                if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
+                    continue;
+                socket_stream strm( sock );
+                auto last_connection = ( cnt == 1 ) ? true : false;
+                auto connection_close = false;
+                ret = callback( strm, last_connection, connection_close );
+                if ( !ret )
+                    ei.ec_ = errno;
+                if ( ( !ret ) || connection_close )
+                    break;
+            }
+        } else {
             socket_stream strm( sock );
-            auto last_connection = ( cnt == 1 ) ? true : false;
-            auto connection_close = false;
-            ret = callback( strm, last_connection, connection_close );
-            if ( ( !ret ) || connection_close )
-                break;
+            auto dummy_connection_close = false;
+            ret = callback( strm, true, dummy_connection_close );
+            if ( !ret )
+                ei.ec_ = errno;
         }
-    } else {
-        socket_stream strm( sock );
-        auto dummy_connection_close = false;
-        ret = callback( strm, true, dummy_connection_close );
+    } catch ( common_network_exception& ex ) {
+        ei = ex.ei_;
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
+    } catch ( std::exception& ex ) {
+        ei.strError_ = ex.what();
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
+    } catch ( ... ) {
+        ei.strError_ = "unknown exception";
+        if ( ei.et_ == common_network_exception::error_type::et_no_error )
+            ei.et_ = common_network_exception::error_type::et_unknown;
     }
     close_socket( sock );
     return ret;
@@ -2009,12 +2033,19 @@ bool server::is_valid() const {
 }
 
 bool server::read_and_close_socket_sync( socket_t sock ) {
-    return detail::read_and_close_socket( sock, get_keep_alive_max_count(),
-        [this, sock]( stream& strm, bool last_connection, bool& connection_close ) {
-            std::string origin =
-                skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
-            return process_request( origin, strm, last_connection, connection_close );
-        } );
+    eiLast_.clear();
+    common_network_exception::error_info ei;
+    if ( !detail::read_and_close_socket( sock, get_keep_alive_max_count(),
+             [this, sock]( stream& strm, bool last_connection, bool& connection_close ) {
+                 std::string origin = skutils::network::get_fd_name_as_url(
+                     sock, is_ssl() ? "HTTPS" : "HTTP", true );
+                 return process_request( origin, strm, last_connection, connection_close );
+             },
+             ei ) ) {
+        eiLast_ = ei;
+        return false;
+    }
+    return true;
 }
 
 void server::read_and_close_socket_async( socket_t sock ) {
@@ -2262,11 +2293,18 @@ bool client::process_request( const std::string& /*origin*/, stream& strm, reque
 bool client::read_and_close_socket( socket_t sock, request& req, response& res ) {
     std::string origin =
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", false );
-    return detail::read_and_close_socket( sock, 0,
-        [&, origin]( stream& strm, bool,  // last_connection
-            bool& connection_close ) {
-            return process_request( origin, strm, req, res, connection_close );
-        } );
+    eiLast_.clear();
+    common_network_exception::error_info ei;
+    if ( !detail::read_and_close_socket( sock, 0,
+             [&, origin]( stream& strm, bool,  // last_connection
+                 bool& connection_close ) {
+                 return process_request( origin, strm, req, res, connection_close );
+             },
+             ei ) ) {
+        eiLast_ = ei;
+        return false;
+    }
+    return true;
 }
 
 std::shared_ptr< response > client::Get( const char* path, fn_progress progress ) {
