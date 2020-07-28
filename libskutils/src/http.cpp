@@ -2203,9 +2203,9 @@ bool client::send( request& req, response& res ) {
     }
     auto sock = create_client_socket( ipVer_ );
     if ( sock == INVALID_SOCKET ) {
-        eiLast.et_ = common_network_exception::error_type::et_fatal;
-        eiLast.strError_ = "Failed to create socket";
-        eiLast.ec_ = errno;
+        eiLast_.et_ = common_network_exception::error_type::et_fatal;
+        eiLast_.strError_ = "Failed to create socket";
+        eiLast_.ec_ = errno;
         return false;
     }
     return read_and_close_socket( sock, req, res );
