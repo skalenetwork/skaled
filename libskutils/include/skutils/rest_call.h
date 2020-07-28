@@ -36,6 +36,7 @@ enum class e_data_fetch_strategy {
 struct data_t {
     std::string s_;
     std::string content_type_;
+    skutils::http::common_network_exception::error_info ei_;
     data_t();
     data_t( const data_t& d );
     ~data_t();
