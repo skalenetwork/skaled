@@ -346,8 +346,9 @@ public:
     enum error_type {
         et_no_error = 0,
         et_unknown = 1,
-        et_ssl_fatal = 2,
-        et_ssl_error = 3,
+        et_fatal = 2,
+        et_ssl_fatal = 3,
+        et_ssl_error = 4,
     };
     struct error_info {
         error_type et_ = et_no_error;
