@@ -43,6 +43,7 @@ void data_t::clear() {
 void data_t::assign( const data_t& d ) {
     s_ = d.s_;
     content_type_ = d.content_type_;
+    ei_ = d.ei_;
 }
 
 nlohmann::json data_t::extract_json() const {
@@ -328,10 +329,11 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
             data_t d;
             std::shared_ptr< skutils::http::response > resp =
                 ch_->Post( "/", strJsonIn, "application/json" );
+            d.ei_ = ch_->eiLast_;
             if ( !resp )
-                return data_t();
+                return d;  // data_t();
             if ( resp->status_ != 200 )
-                return data_t();
+                return d;  // data_t();
             d.s_ = resp->body_;
             std::string h;
             if ( resp->has_header( "Content-Type" ) )
@@ -353,6 +355,11 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
         }
     }
     data_t d = fetch_data_with_strategy( edfs );
+    if ( d.empty() ) {
+        d.ei_.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+        d.ei_.ec_ = errno;
+        d.ei_.strError_ = "WS(S) data transfer error";
+    }
     return d;
 }
 data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,

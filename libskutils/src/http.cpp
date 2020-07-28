@@ -180,8 +180,11 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
                 auto last_connection = ( cnt == 1 ) ? true : false;
                 auto connection_close = false;
                 ret = callback( strm, last_connection, connection_close );
-                if ( !ret )
+                if ( !ret ) {
+                    ei.et_ = common_network_exception::error_type::et_unknown;
                     ei.ec_ = errno;
+                    ei.strError_ = "data transfer error";
+                }
                 if ( ( !ret ) || connection_close )
                     break;
             }
@@ -189,9 +192,14 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
             socket_stream strm( sock );
             auto dummy_connection_close = false;
             ret = callback( strm, true, dummy_connection_close );
-            if ( !ret )
+            if ( !ret ) {
+                ei.et_ = common_network_exception::error_type::et_unknown;
                 ei.ec_ = errno;
+                ei.strError_ = "data transfer error";
+            }
         }
+        if ( ret )
+            ei.clear();
     } catch ( common_network_exception& ex ) {
         ei = ex.ei_;
         if ( ei.strError_.empty() )
@@ -1220,6 +1228,11 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
                 auto last_connection = ( cnt == 1 ) ? true : false;
                 auto connection_close = false;
                 ret = callback( strm, last_connection, connection_close );
+                if ( !ret ) {
+                    ei.et_ = common_network_exception::error_type::et_unknown;
+                    ei.ec_ = errno;
+                    ei.strError_ = "data transfer error";
+                }
                 if ( ( !ret ) || connection_close ) {
                     break;
                 }
@@ -1228,8 +1241,14 @@ bool read_and_close_socket_ssl( socket_t sock, size_t keep_alive_max_count,
             SSL_socket_stream strm( sock, ssl );
             auto dummy_connection_close = false;
             ret = callback( strm, true, dummy_connection_close );
+            if ( !ret ) {
+                ei.et_ = common_network_exception::error_type::et_unknown;
+                ei.ec_ = errno;
+                ei.strError_ = "data transfer error";
+            }
         }
-        ei.clear();
+        if ( ret )
+            ei.clear();
     } catch ( common_network_exception& ex ) {
         ei = ex.ei_;
         if ( ei.strError_.empty() )
