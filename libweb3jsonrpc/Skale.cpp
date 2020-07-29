@@ -328,7 +328,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         skutils::rest::data_t d;
         while ( true ) {
-            bool is_continue = true;
             std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
             d = cli.call( joCall );
             if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -339,15 +338,12 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                               << cc::error( " error with connection: " )
                               << cc::info( " retrying... " ) << std::endl;
                 } else {
-                    is_continue = false;
                     std::cerr << cc::error( "ERROR:" )
                               << cc::error( " Exception while trying to connect to sgx server: " )
                               << cc::error( " error with ssl certificates " )
                               << cc::error( d.ei_.strError_ ) << std::endl;
                 }
-            }
-
-            if ( !is_continue ) {
+            } else {
                 break;
             }
         }
