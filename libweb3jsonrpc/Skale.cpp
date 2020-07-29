@@ -331,24 +331,20 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             bool is_continue = true;
             std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
             d = cli.call( joCall );
-            switch ( d.ei_.et_ ) {
-                case skutils::http::common_network_exception::error_type::et_no_error:
-                case skutils::http::common_network_exception::error_type::et_unknown:
-                case skutils::http::common_network_exception::error_type::et_fatal:
-                std::cerr << cc::error( "ERROR:" )
-                          << cc::error( " Exception while trying to connect to sgx server: " )
-                          << cc::error( " error with connection: " )
-                          << cc::error( d.ei_.strError_ )
-                          << cc::info( " retrying... " ) << std::endl;
-                    break;
-                case skutils::http::common_network_exception::error_type::et_ssl_error:
-                case skutils::http::common_network_exception::error_type::et_ssl_fatal:
+            if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
+                if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
+                     d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
+                    std::cerr << cc::error( "ERROR:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::error( " error with connection: " )
+                              << cc::info( " retrying... " ) << std::endl;
+                } else {
                     is_continue = false;
                     std::cerr << cc::error( "ERROR:" )
                               << cc::error( " Exception while trying to connect to sgx server: " )
                               << cc::error( " error with ssl certificates " )
                               << cc::error( d.ei_.strError_ ) << std::endl;
-                    break;
+                }
             }
 
             if ( !is_continue ) {
