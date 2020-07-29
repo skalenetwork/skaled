@@ -319,11 +319,30 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         skutils::rest::client cli;
         cli.optsSSL = ssl_options;
-        bool fl = cli.open( sgxServerURL );
-        if ( !fl ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while trying to connect to sgx server: " )
-                      << cc::warn( "connection refused" ) << std::endl;
+        while ( true ) {
+            try {
+                bool fl = cli.open( sgxServerURL );
+                if ( !fl ) {
+                    std::cerr << cc::fatal( "FATAL:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::warn( "connection refused" ) << std::endl;
+                } else {
+                    break;
+                }
+            } catch ( skutils::http::common_network_exception& ex ) {
+                switch ( ex.ei_.et_ ) {
+                    case skutils::http::common_network_exception::error_type::et_no_error:
+                    case skutils::http::common_network_exception::error_type::et_unknown:
+                    case skutils::http::common_network_exception::error_type::et_fatal:
+                        break;
+                    case skutils::http::common_network_exception::error_type::et_ssl_error:
+                    case skutils::http::common_network_exception::error_type::et_ssl_fatal:
+                        std::cerr << cc::fatal( "FATAL:" )
+                                  << cc::error( " Exception while trying to connect to sgx server: " )
+                                  << cc::warn( " error with ssl certificates " ) << std::endl;
+                        break;
+                }
+            }
         }
 
         std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
