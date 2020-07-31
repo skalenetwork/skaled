@@ -326,8 +326,28 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                       << cc::warn( "connection refused" ) << std::endl;
         }
 
-        std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
-        skutils::rest::data_t d = cli.call( joCall );
+        skutils::rest::data_t d;
+        while ( true ) {
+            std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
+            d = cli.call( joCall );
+            if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
+                if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
+                     d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
+                    std::cerr << cc::error( "ERROR:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::error( " error with connection: " )
+                              << cc::info( " retrying... " ) << std::endl;
+                } else {
+                    std::cerr << cc::error( "ERROR:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::error( " error with ssl certificates " )
+                              << cc::error( d.ei_.strError_ ) << std::endl;
+                }
+            } else {
+                break;
+            }
+        }
+
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
             std::cout << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
