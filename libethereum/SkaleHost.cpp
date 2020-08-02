@@ -285,6 +285,13 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    // HACK this should be field (or better do it another way)
+    static bool first_run = true;
+    if ( first_run ) {
+        m_consensusWorkingMutex.lock();
+        first_run = false;
+    }
+
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
     unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
@@ -608,7 +615,6 @@ void SkaleHost::startWorking() {
 
     try {
         m_consensus->startAll();
-        m_consensusWorkingMutex.lock();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
