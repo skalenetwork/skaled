@@ -71,10 +71,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 
-    //    temproray hack, remove it in further versions
-    //    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
-    //        this->fillSgxInfo( *consensus_engine_ptr );
-    //    }
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+        this->fillSgxInfo( *consensus_engine_ptr );
+    }
 
     return consensus_engine_ptr;
 #else
