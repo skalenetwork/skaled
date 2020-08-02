@@ -341,10 +341,53 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class server {
+class common_network_exception : public std::exception {
+public:
+    enum error_type {
+        et_no_error = 0,
+        et_unknown = 1,
+        et_fatal = 2,
+        et_ssl_fatal = 3,
+        et_ssl_error = 4,
+    };
+    struct error_info {
+        error_type et_ = et_no_error;
+        std::string strError_;
+        int ec_ = 0;
+        void clear() {
+            et_ = et_no_error;
+            strError_.clear();
+            ec_ = 0;
+        }
+    };
+    error_info ei_;
+    explicit common_network_exception( const char* strError ) {
+        ei_.strError_ = strError;
+        ei_.et_ = common_network_exception::error_type::et_unknown;
+    }
+    explicit common_network_exception( const std::string& strError ) {
+        ei_.strError_ = strError;
+        ei_.et_ = common_network_exception::error_type::et_unknown;
+    }
+    explicit common_network_exception( const error_info& ei ) { ei_ = ei; }
+    virtual ~common_network_exception() throw() {}
+    virtual const char* what() const throw() { return ei_.strError_.c_str(); }
+};
+
+class common {
+public:
+    mutable int ipVer_ = -1;  // not known before connect or listen
+    common_network_exception::error_info eiLast_;
+    common( int ipVer );
+    virtual ~common();
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class server : public common {
 public:
     mutable bool is_async_http_transfer_mode_;
-    mutable int ipVer_ = -1;  // not known before listen
     mutable int boundToPort_ = -1;
     typedef std::function< void( const request&, response& ) > Handler;
     typedef std::function< void( const request&, const response& ) > Logger;
@@ -474,10 +517,10 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class client {
+class client : public common {
 public:
-    mutable int ipVer_ = -1;  // not known before connect
-    client( int ipVer, const char* host, int port = 80,
+    client( int ipVer,  // is not known before connect
+        const char* host, int port = 80,
         int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ );
 
     virtual ~client();
