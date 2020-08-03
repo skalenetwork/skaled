@@ -26,6 +26,9 @@
 
 namespace dev {
 namespace db {
+
+unsigned c_maxOpenLeveldbFiles = 25;
+
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
     return leveldb::Slice( _slice.data(), _slice.size() );
@@ -91,7 +94,7 @@ leveldb::WriteOptions LevelDB::defaultWriteOptions() {
 leveldb::Options LevelDB::defaultDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = 256;
+    options.max_open_files = c_maxOpenLeveldbFiles;
     return options;
 }
 
