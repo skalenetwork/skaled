@@ -666,12 +666,19 @@ void SkaleHost::stopWorking() {
 
     m_exitNeeded = true;
     pauseConsensus( false );
+
+    std::cerr << "1 before exitGracefully()" << std::endl;
+
     m_consensus->exitGracefully();
+
+    std::cerr << "2 after exitGracefully()" << std::endl;
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{0, 100000000};
         nanosleep( &ms100, nullptr );
     }
+
+    std::cerr << "3 after wait loop" << std::endl;
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -680,6 +687,8 @@ void SkaleHost::stopWorking() {
         m_broadcastThread.join();
 
     working = false;
+
+    std::cerr << "4 before dtor" << std::endl;
 }
 
 void SkaleHost::broadcastFunc() {
