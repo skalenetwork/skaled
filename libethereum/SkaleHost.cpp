@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <future>
 #include <string>
 
 using namespace std;
@@ -621,6 +622,8 @@ void SkaleHost::startWorking() {
         throw;
     }
 
+    std::promise< void > bootstrap_promise;
+
     auto csus_func = [&]() {
         try {
             dev::setThreadName( "bootStrapAll" );
@@ -634,10 +637,12 @@ void SkaleHost::startWorking() {
             std::cout << "Consensus thread in scale host will exit with unknown exception\n";
             std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
-    };
-    // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
-    // m_consensus->bootStrapAll();
-    m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
+
+        bootstrap_promise.set_value();
+    };  // func
+
+    m_consensusThread = std::thread( csus_func );
+    bootstrap_promise.get_future().wait();
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
@@ -661,12 +666,19 @@ void SkaleHost::stopWorking() {
 
     m_exitNeeded = true;
     pauseConsensus( false );
+
+    std::cerr << "1 before exitGracefully()" << std::endl;
+
     m_consensus->exitGracefully();
+
+    std::cerr << "2 after exitGracefully()" << std::endl;
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{0, 100000000};
         nanosleep( &ms100, nullptr );
     }
+
+    std::cerr << "3 after wait loop" << std::endl;
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -675,6 +687,8 @@ void SkaleHost::stopWorking() {
         m_broadcastThread.join();
 
     working = false;
+
+    std::cerr << "4 before dtor" << std::endl;
 }
 
 void SkaleHost::broadcastFunc() {

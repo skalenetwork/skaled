@@ -131,8 +131,17 @@ public:
         //            GasPricer >(),
         //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
+        // wait for 1st block - because it's always empty
+        std::promise< void > block_promise;
+        auto importHandler = m_ethereum->setOnBlockImport(
+            [&block_promise]( BlockHeader const& ) {
+                    block_promise.set_value();
+        } );
+
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
+
+        block_promise.get_future().wait();
 
         m_ethereum->setAuthor( coinbase.address() );
 
@@ -148,8 +157,8 @@ public:
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
 private:
-    std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
+    std::unique_ptr< dev::eth::Client > m_ethereum;
     dev::KeyPair coinbase{KeyPair::create()};
 };
 
@@ -198,8 +207,17 @@ public:
         //            GasPricer >(),
         //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
+        // wait for 1st block - because it's always empty
+        std::promise< void > block_promise;
+        auto importHandler = m_ethereum->setOnBlockImport(
+            [&block_promise]( BlockHeader const& ) {
+                    block_promise.set_value();
+        } );
+
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
+
+        block_promise.get_future().wait();
 
         m_ethereum->setAuthor( coinbase.address() );
 
@@ -506,14 +524,14 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
-
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
+
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );

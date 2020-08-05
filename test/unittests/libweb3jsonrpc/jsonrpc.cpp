@@ -221,8 +221,17 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
         //                1024} ) );
 
+        // wait for 1st block - because it's always empty
+        std::promise< void > block_promise;
+        auto importHandler = client->setOnBlockImport(
+            [&block_promise]( BlockHeader const& ) {
+                    block_promise.set_value();
+        } );
+
         client->injectSkaleHost();
         client->startWorking();
+
+        block_promise.get_future().wait();
 
         client->setAuthor( coinbase.address() );
 
@@ -265,7 +274,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         return string();
     }
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -275,8 +286,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
-
-    TransientDirectory tempDir;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
@@ -639,7 +648,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     create["code"] = compiled;
     create["gas"] = "180000";  // TODO or change global default of 90000?
 
-    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 1 );
     BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_getTransactionCount(
                            toJS( fixture.coinbase.address() ), "latest" ) ),
         0 );
@@ -713,12 +722,12 @@ contract Logger{
 
         dev::eth::mineTransaction( *( fixture.client ), 1 );
     }
-    BOOST_REQUIRE_EQUAL(fixture.client->number(), 256);
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 256 + 1);     // 1 block on bootstrapAll
 
     // ask for logs
     Json::Value t;
     t["fromBlock"] = 0;         // really 2
-    t["toBlock"] = 250;
+    t["toBlock"] = 251;
     t["address"] = contractAddress;
     Json::Value logs = fixture.rpcClient->eth_getLogs(t);
     BOOST_REQUIRE(logs.isArray());
@@ -727,14 +736,14 @@ contract Logger{
     // check logs
     for(size_t i=0; i<logs.size(); ++i){
         u256 block = dev::jsToU256( logs[(int)i]["topics"][0].asString() );
-        BOOST_REQUIRE_EQUAL(block, i+2);
+        BOOST_REQUIRE_EQUAL(block, i+3);
     }// for
 
     string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
 
-    // add 256 more blocks
+    // add 255 more blocks
     string lastHash;
-    for(int i=0; i<256; ++i){
+    for(int i=0; i<255; ++i){
         Json::Value t;
         t["from"] = toJS( fixture.coinbase.address() );
         t["value"] = jsToDecimal( "0" );
@@ -756,7 +765,7 @@ contract Logger{
 
     // and filter
     res = fixture.rpcClient->eth_getFilterChanges(filterId);
-    BOOST_REQUIRE_EQUAL(res.size(), (256+255)*2);     // HACK!! in prod there should be *1! (no pending!)
+    BOOST_REQUIRE_EQUAL(res.size(), (255+255)*2);     // HACK!! in prod there should be *1! (no pending!)
     res = fixture.rpcClient->eth_getFilterLogs(filterId);
     BOOST_REQUIRE_EQUAL(res.size(), 256+64);
 
@@ -1095,7 +1104,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     create["gas"] = gas;
     create["gasPrice"] = gasPrice;
 
-    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 0 );
+    BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_blockNumber() ), 1 );
     BOOST_CHECK_EQUAL( jsToU256( fixture.rpcClient->eth_getTransactionCount(
                            toJS( fixture.coinbase.address() ), "latest" ) ),
         0 );
@@ -1322,7 +1331,15 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::cout << cc::now2string() << " eth_getTransactionReceipt" << std::endl;
+    Json::Value receipt;
+    try{
+        receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    }catch(...){
+        std::cout << cc::now2string() << " /eth_getTransactionReceipt" << std::endl;
+        throw;
+    }
+    std::cout << cc::now2string() << " /eth_getTransactionReceipt" << std::endl;
     string contractAddress = receipt["contractAddress"].asString();
 
     Json::Value transactionCallObject;

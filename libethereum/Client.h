@@ -241,8 +241,8 @@ public:
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {
         assert( m_skaleHost );
+        Worker::startWorking();  // these two lines are dependent!!
         m_skaleHost->startWorking();
-        Worker::startWorking();
     };
 
     /// Change the function that is called when a new block is imported
