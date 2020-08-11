@@ -350,7 +350,8 @@ Json::Value SkaleStats::skale_imaInfo() {
         //
         // validate wallet description
         static const char* g_arrMustHaveWalletFields[] = {"url", "keyShareName", "t", "n",
-            "insecureCommonBLSPublicKey0", "insecureCommonBLSPublicKey1",
+            "insecureBLSPublicKey0", "insecureBLSPublicKey1", "insecureBLSPublicKey2",
+            "insecureBLSPublicKey3", "insecureCommonBLSPublicKey0", "insecureCommonBLSPublicKey1",
             "insecureCommonBLSPublicKey2", "insecureCommonBLSPublicKey3"};
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
@@ -384,19 +385,23 @@ Json::Value SkaleStats::skale_imaInfo() {
         jo["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         jo["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         //
-        jo["insecureBLSPublicKey0"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey0"];
-        jo["insecureBLSPublicKey1"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey1"];
-        jo["insecureBLSPublicKey2"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey2"];
-        jo["insecureBLSPublicKey3"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey3"];
+        jo["insecureBLSPublicKey0"] =
+            joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey0"].get< std::string >();
+        jo["insecureBLSPublicKey1"] =
+            joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey1"].get< std::string >();
+        jo["insecureBLSPublicKey2"] =
+            joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey2"].get< std::string >();
+        jo["insecureBLSPublicKey3"] =
+            joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey3"].get< std::string >();
         //
         jo["insecureCommonBLSPublicKey0"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey0"];
+            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey0"].get< std::string >();
         jo["insecureCommonBLSPublicKey1"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey1"];
+            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey1"].get< std::string >();
         jo["insecureCommonBLSPublicKey2"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey2"];
+            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey2"].get< std::string >();
         jo["insecureCommonBLSPublicKey3"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey3"];
+            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey3"].get< std::string >();
         //
         std::string s = jo.dump();
         Json::Value ret;
