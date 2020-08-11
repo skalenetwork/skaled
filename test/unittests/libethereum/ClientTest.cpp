@@ -26,6 +26,7 @@
 #include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
+#include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -330,6 +331,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
+        "storageLimit": 32000,
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
@@ -345,7 +347,8 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
         "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } },
         "0xca4409573a5129a72edf85d6c51e26760fc9c903": { "balance": "100000000000000000000000" },
-        "0xD2001300000000000000000000000000000000D2": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c8063815b8ab41460375780638273f754146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050606a565b005b60686081565b005b60005a90505b815a82031015607d576070565b5050565b60005a9050609660028281609157fe5b04606a565b5056fea165627a7a72305820f5fb5a65e97cbda96c32b3a2e1497cd6b7989179b5dc29e9875bcbea5a96c4520029"}
+        "0xD2001300000000000000000000000000000000D2": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c8063815b8ab41460375780638273f754146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050606a565b005b60686081565b005b60005a90505b815a82031015607d576070565b5050565b60005a9050609660028281609157fe5b04606a565b5056fea165627a7a72305820f5fb5a65e97cbda96c32b3a2e1497cd6b7989179b5dc29e9875bcbea5a96c4520029"},
+        "0xd40B3c51D0ECED279b1697DbdF45d4D19b872164": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c80636057361d146037578063b05784b8146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050607e565b005b60686088565b6040518082815260200191505060405180910390f35b8060008190555050565b6000805490509056fea2646970667358221220e5ff9593bfa9540a34cad5ecbe137dcafcfe1f93e3c4832610438d6f0ece37db64736f6c63430006060033"}
     }
 }
 )E";
@@ -462,6 +465,40 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
                         .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
+}
+
+BOOST_AUTO_TEST_CASE( runsInterference ) {
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    //    This contract is listed in c_genesisInfoSkaleTest, address:
+    //    0xd40B3c51D0ECED279b1697DbdF45d4D19b872164
+
+    //    pragma solidity >=0.4.22 <0.7.0;
+    //    contract Storage {
+    //        uint256 number;
+    //        function store(uint256 num) public {
+    //            number = num;
+    //        }
+    //        function retreive() public view returns (uint256){
+    //            return number;
+    //        }
+    //    }
+
+    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address contractAddress( "0xd40B3c51D0ECED279b1697DbdF45d4D19b872164" );
+
+    // data to call store()
+    bytes data =
+        jsToBytes( "0x6057361d0000000000000000000000000000000000000000000000000000000000000016" );
+
+    int64_t maxGas = 50000;
+    u256 estimate = testClient
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
+
+    BOOST_CHECK_EQUAL( estimate, u256( 41684 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
