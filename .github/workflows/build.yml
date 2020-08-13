@@ -174,7 +174,7 @@ jobs:
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Create Release
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
+        #if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         id: create_release
         uses: actions/create-release@latest
         env:
@@ -184,6 +184,16 @@ jobs:
           release_name: ${{ env.VERSION }}
           draft: false
           prerelease: true
+      - name: Upload skaled binary to Release
+        #if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream
 
 
 
