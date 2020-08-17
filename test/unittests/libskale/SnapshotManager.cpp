@@ -213,8 +213,14 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     std::pair< int, int > expected2 { 1, 2 };
     BOOST_REQUIRE( latest2 == expected2 );
 
+    mgr.doSnapshot( 3 );
+    auto latest3 = mgr.getLatestSnasphots();
+    std::pair< int, int > expected3 { 2, 3 };
+    BOOST_REQUIRE( latest3 == expected3 );
+
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 1 ) );
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 2 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 3 ) );
 }
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture,
