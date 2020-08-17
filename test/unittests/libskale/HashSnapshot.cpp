@@ -52,13 +52,13 @@ public:
         }
 
 
-        insecureBlsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
+        blsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
         for ( size_t i = 0; i < _chainParams.sChain.nodes.size(); ++i ) {
-            insecureBlsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
+            blsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
 
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
-                insecureBlsPrivateKeys_[i] =
-                    insecureBlsPrivateKeys_[i] +
+                blsPrivateKeys_[i] =
+                    blsPrivateKeys_[i] +
                     coeffs[j] *
                         libff::power( libff::alt_bn128_Fr( std::to_string( i + 1 ).c_str() ), j );
             }
@@ -71,18 +71,18 @@ public:
             idx[i] = i + 1;
         }
         auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
-        auto keys = obj.KeysRecover( lagrange_coeffs, this->insecureBlsPrivateKeys_ );
+        auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
         keys.second.to_affine_coordinates();
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[0] =
+        _chainParams.nodeInfo.commonBLSPublicKeys[0] =
             BLSutils::ConvertToString( keys.second.X.c0 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[1] =
+        _chainParams.nodeInfo.commonBLSPublicKeys[1] =
             BLSutils::ConvertToString( keys.second.X.c1 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[2] =
+        _chainParams.nodeInfo.commonBLSPublicKeys[2] =
             BLSutils::ConvertToString( keys.second.Y.c0 );
-        _chainParams.nodeInfo.insecureCommonBLSPublicKeys[3] =
+        _chainParams.nodeInfo.commonBLSPublicKeys[3] =
             BLSutils::ConvertToString( keys.second.Y.c1 );
 
-        this->insecure_secret = keys.first;
+        this->secret_as_is = keys.first;
 
         this->hashAgent_.reset( new SnapshotHashAgent( _chainParams ) );
     }
@@ -92,11 +92,11 @@ public:
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
             this->hashAgent_->public_keys_[i] =
-                this->insecureBlsPrivateKeys_[i] * libff::alt_bn128_G2::one();
+                this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
                 signatures::Bls::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
                     this->hashAgent_->hashes_[i].asArray() ) ),
-                this->insecureBlsPrivateKeys_[i] );
+                this->blsPrivateKeys_[i] );
         }
     }
 
@@ -138,11 +138,11 @@ public:
         this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
     }
 
-    libff::alt_bn128_Fr insecure_secret;
+    libff::alt_bn128_Fr secret_as_is;
 
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
 
-    std::vector< libff::alt_bn128_Fr > insecureBlsPrivateKeys_;
+    std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
 };
 }  // namespace test
 }  // namespace dev
@@ -422,7 +422,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
                    signatures::Bls::Signing(
                        signatures::Bls::HashtoG1(
                            std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
-                       test_agent.insecure_secret ) );
+                       test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {

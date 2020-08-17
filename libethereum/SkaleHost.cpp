@@ -116,10 +116,10 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
             public_key_share[2] = node.blsPublicKey[2];
             public_key_share[3] = node.blsPublicKey[3];
         } else {
-            public_key_share[0] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
-            public_key_share[1] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
-            public_key_share[2] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
-            public_key_share[3] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
+            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys[0];
+            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys[1];
+            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys[2];
+            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys[3];
         }
 
         blsPublicKeys.push_back(

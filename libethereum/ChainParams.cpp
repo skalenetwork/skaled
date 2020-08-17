@@ -142,8 +142,8 @@ ChainParams ChainParams::loadConfig(
         } catch ( ... ) {
         }
 
-        std::array< std::string, 4 > insecureBLSPublicKeys;
-        std::array< std::string, 4 > insecureCommonBLSPublicKeys;
+        std::array< std::string, 4 > BLSPublicKeys;
+        std::array< std::string, 4 > commonBLSPublicKeys;
 
         try {
             js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
@@ -153,15 +153,15 @@ ChainParams ChainParams::loadConfig(
             t = ima.at( "t" ).get_int();
             sgxServerUrl = ima.at( "url" ).get_str();
 
-            insecureBLSPublicKeys[0] = ima["insecureBLSPublicKey0"].get_str();
-            insecureBLSPublicKeys[1] = ima["insecureBLSPublicKey1"].get_str();
-            insecureBLSPublicKeys[2] = ima["insecureBLSPublicKey2"].get_str();
-            insecureBLSPublicKeys[3] = ima["insecureBLSPublicKey3"].get_str();
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
 
-            insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
-            insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
-            insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
-            insecureCommonBLSPublicKeys[3] = ima["insecureCommonBLSPublicKey3"].get_str();
+            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
         } catch ( ... ) {
             // all or nothing
             if ( !keyShareName.empty() )
@@ -170,7 +170,7 @@ ChainParams ChainParams::loadConfig(
 
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            insecureBLSPublicKeys, insecureCommonBLSPublicKeys};
+            BLSPublicKeys, commonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
