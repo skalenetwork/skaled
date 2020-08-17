@@ -272,7 +272,7 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     }      // for
 }
 
-std::pair< int, int > SnapshotManager::getLatestSnasphot() const {
+std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
@@ -284,14 +284,14 @@ std::pair< int, int > SnapshotManager::getLatestSnasphot() const {
         return std::make_pair( 0, 0 );
     }
 
-    auto it = numbers.rbegin();
-    int fst = std::stoi( fs::basename( ( *it++ ).second ) );
+    auto it = numbers.begin();
+    int snd = std::stoi( fs::basename( ( *it++ ).second ) );
 
-    int snd;
-    if ( numbers.size() > 1 ) {
-        snd = 0;
+    int fst;
+    if ( numbers.size() == 1 ) {
+        fst = 0;
     } else {
-        snd = std::stoi( fs::basename( ( *it ).second ) );
+        fst = std::stoi( fs::basename( ( *it ).second ) );
     }
 
     return std::make_pair( fst, snd );
