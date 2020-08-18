@@ -173,13 +173,13 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                 libff::alt_bn128_G2 public_key;
                 public_key.X.c0 =
-                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey0"].asCString() );
+                    libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
                 public_key.X.c1 =
-                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey1"].asCString() );
+                    libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey1"].asCString() );
                 public_key.Y.c0 =
-                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey2"].asCString() );
+                    libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
                 public_key.Y.c1 =
-                    libff::alt_bn128_Fq( joPublicKeyResponse["insecureBLSPublicKey3"].asCString() );
+                    libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
                 public_key.Z = libff::alt_bn128_Fq2::one();
 
                 const std::lock_guard< std::mutex > lock( this->hashes_mutex );
