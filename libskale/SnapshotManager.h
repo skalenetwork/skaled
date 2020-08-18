@@ -151,7 +151,7 @@ public:
     void leaveNLastDiffs( unsigned n );
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
-    std::pair< int, int > getLatestSnasphot() const;
+    std::pair< int, int > getLatestSnasphots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
 

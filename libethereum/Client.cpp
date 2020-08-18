@@ -1026,7 +1026,7 @@ void Client::updateHashes() {
 }
 
 void Client::initHashes() {
-    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphot();
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
     this->last_snapshoted_block = ( latest_snapshots.first ? latest_snapshots.first : -1 );
 
     this->last_snapshot_time =

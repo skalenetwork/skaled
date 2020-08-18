@@ -141,6 +141,7 @@ jobs:
           make -j$(nproc)
           cd ..
       - name: Testeth
+        if : ${{ github.ref != 'develop' && github.ref != 'beta' && github.ref != 'master' && github.ref != 'stable' }}
         run : |
           cd build/test
           ./testeth -- --express --verbosity 4
