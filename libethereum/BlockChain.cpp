@@ -208,7 +208,7 @@ void BlockChain::init( ChainParams const& _p ) {
     genesis();
 }
 
-unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
+void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
     fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
@@ -216,19 +216,6 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     fs::create_directories( extrasPath );
     DEV_IGNORE_EXCEPTIONS( fs::permissions( extrasPath, fs::owner_all ) );
 
-    bytes status = contents( extrasPath / fs::path( "minor" ) );
-    unsigned lastMinor = c_minorProtocolVersion;
-    if ( !status.empty() )
-        DEV_IGNORE_EXCEPTIONS( lastMinor = ( unsigned ) RLP( status ) );
-    if ( c_minorProtocolVersion != lastMinor ) {
-        cnote << "Killing extras database (DB minor version:" << lastMinor
-              << " != our miner version: " << c_minorProtocolVersion << ").";
-        DEV_IGNORE_EXCEPTIONS( fs::remove_all( extrasPath / fs::path( "details.old" ) ) );
-        fs::rename( extrasPath / fs::path( "extras" ), extrasPath / fs::path( "extras.old" ) );
-        fs::remove_all( extrasPath / fs::path( "state" ) );
-        writeFile( extrasPath / fs::path( "minor" ), rlp( c_minorProtocolVersion ) );
-        lastMinor = ( unsigned ) RLP( status );
-    }
     if ( _we == WithExisting::Kill ) {
         cnote << "Killing blockchain & extras database (WithExisting::Kill).";
         fs::remove_all( chainPath / fs::path( "blocks_and_extras" ) );
@@ -265,7 +252,8 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
         // Insert details of genesis block.
-        BlockDetails details( 0, gb.difficulty(), h256(), {} );
+        bytes const& genesisBlockBytes = m_params.genesisBlock();
+        BlockDetails details( 0, gb.difficulty(), h256(), {}, genesisBlockBytes.size() );
         auto r = details.rlp();
         details.size = r.size();
         m_details[m_genesisHash] = details;
@@ -284,11 +272,7 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     m_lastBlockNumber = number( m_lastBlockHash );
 
     ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
-           << m_lastBlockNumber << ' '
-           << ( lastMinor == c_minorProtocolVersion ? cc::success( "(rebuild not needed)" ) :
-                                                      cc::warn( "*** REBUILD NEEDED ***" ) );
-
-    return lastMinor;
+           << m_lastBlockNumber;
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -501,7 +485,7 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
         ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
     BlockDetails bd( ( unsigned ) pd.number + 1, pd.totalDifficulty + _block.info.difficulty(),
-        _block.info.parentHash(), {} );
+        _block.info.parentHash(), {}, _block.block.size() );
     bytes bd_rlp = bd.rlp();
     bd.size = bd_rlp.size();
 
@@ -715,8 +699,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-        BlockDetails details(
-            ( unsigned ) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {} );
+        BlockDetails details( ( unsigned ) _block.info.number(), _totalDifficulty,
+            _block.info.parentHash(), {}, _block.block.size() );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
         extrasWriteBatch->insert(

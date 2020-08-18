@@ -450,7 +450,7 @@ private:
     /// Initialise everything and ready for openning the database.
     void init( ChainParams const& _p );
     /// Open the database.
-    unsigned open( boost::filesystem::path const& _path, WithExisting _we );
+    void open( boost::filesystem::path const& _path, WithExisting _we );
     /// Finalise everything and close the database.
     void close();
 

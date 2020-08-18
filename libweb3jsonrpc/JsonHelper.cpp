@@ -111,7 +111,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
-        res["size"] = toJS( _bd.size );
+        res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -128,7 +128,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
-        res["size"] = toJS( _bd.size );
+        res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
