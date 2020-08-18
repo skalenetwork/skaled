@@ -350,9 +350,9 @@ Json::Value SkaleStats::skale_imaInfo() {
         //
         // validate wallet description
         static const char* g_arrMustHaveWalletFields[] = {"url", "keyShareName", "t", "n",
-            "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
-            "BLSPublicKey3", "commonBLSPublicKey0", "commonBLSPublicKey1",
-            "commonBLSPublicKey2", "commonBLSPublicKey3"};
+            "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2", "BLSPublicKey3",
+            "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
+            "commonBLSPublicKey3"};
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
         for ( i = 0; i < cnt; ++i ) {
