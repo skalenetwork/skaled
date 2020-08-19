@@ -67,6 +67,10 @@ void InstanceMonitor::restoreRotationParams() {
     }
 }
 
-void InstanceMonitor::createFlagFile() {}
+void InstanceMonitor::createFlagFile() {
+    std::ofstream( m_rotationFlagPath.string() );
+}
 
-void InstanceMonitor::removeFlagFile() {}
+void InstanceMonitor::removeFlagFile() {
+    fs::remove( m_rotationFlagPath );
+}

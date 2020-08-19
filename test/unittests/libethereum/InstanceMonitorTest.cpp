@@ -22,14 +22,27 @@ public:
     fs::path getRotationFilePath() {
         return this->rotationFilePath();
     }
+
+    fs::path getRotationFlagPath() {
+        return this->m_rotationFlagPath;
+    }
+
+    void createFlagFileTest(){
+        this->createFlagFile();
+    }
+
+    void removeFlagFileTest(){
+        this->createFlagFile();
+    }
 };
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {
 public:
-    fs::path rotationFlagPath = "test";
+    fs::path rotationFlagDirPath = "test";
 
-    InstanceMonitorTestFixture() : instanceMonitor(rotationFlagPath) {
+    InstanceMonitorTestFixture() : instanceMonitor(rotationFlagDirPath) {
         std::fstream file;
+        fs::create_directory(rotationFlagDirPath);
         rotationFilePath = instanceMonitor.getRotationFilePath();
     }
 
@@ -39,6 +52,12 @@ public:
     ~InstanceMonitorTestFixture() override {
         if (fs::exists(rotationFilePath)) {
             fs::remove(rotationFilePath);
+        }
+        if (fs::exists(instanceMonitor.getRotationFlagPath())) {
+            fs::remove(instanceMonitor.getRotationFlagPath());
+        }
+        if (fs::exists(rotationFlagDirPath)) {
+            fs::remove(rotationFlagDirPath);
         }
     };
 };
@@ -82,7 +101,17 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 BOOST_AUTO_TEST_CASE( test_rotation ) {
     instanceMonitor.initRotationParams(0);
     instanceMonitor.performRotation();
+
+    BOOST_REQUIRE( fs::exists( instanceMonitor.getRotationFlagPath() ) );
     BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
+    BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( test_create_remove_flag_file ) {
+    instanceMonitor.createFlagFileTest();
+    BOOST_REQUIRE( fs::exists( instanceMonitor.getRotationFlagPath() ) );
+
+    instanceMonitor.removeFlagFileTest();
     BOOST_REQUIRE( !( fs::exists( instanceMonitor.getRotationFilePath() ) ) );
 }
 
