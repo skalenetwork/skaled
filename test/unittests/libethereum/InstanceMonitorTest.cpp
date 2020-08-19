@@ -13,7 +13,7 @@ namespace fs = boost::filesystem;
 
 class InstanceMonitorMock: public InstanceMonitor {
 public:
-    explicit InstanceMonitorMock() : InstanceMonitor() {};
+    explicit InstanceMonitorMock(fs::path const &rotationFlagPath) : InstanceMonitor(rotationFlagPath) {};
 
     uint64_t getFinishTimestamp() {
         return this->finishTimestamp();
@@ -26,8 +26,9 @@ public:
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {
 public:
+    fs::path rotationFlagPath = "test";
 
-    InstanceMonitorTestFixture() : instanceMonitor() {
+    InstanceMonitorTestFixture() : instanceMonitor(rotationFlagPath) {
         std::fstream file;
         rotationFilePath = instanceMonitor.getRotationFilePath();
     }

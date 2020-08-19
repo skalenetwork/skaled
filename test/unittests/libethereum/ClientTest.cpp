@@ -123,7 +123,7 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
 
@@ -199,7 +199,7 @@ public:
         std::shared_ptr< SnapshotManager > mgr;
         mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
 

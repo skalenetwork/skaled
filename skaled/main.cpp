@@ -1353,7 +1353,8 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< GasPricer > gasPricer;
     std::shared_ptr< InstanceMonitor > instanceMonitor;
 
-    instanceMonitor.reset( new InstanceMonitor() );
+    auto rotationFlagDirPath = configPath.parent_path();
+    instanceMonitor.reset( new InstanceMonitor( rotationFlagDirPath ) );
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );

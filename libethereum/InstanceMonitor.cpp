@@ -33,8 +33,10 @@ using namespace dev;
 namespace fs = boost::filesystem;
 
 const std::string InstanceMonitor::rotation_file_name = "rotation.txt";
+const std::string InstanceMonitor::rotation_flag_name = ".rotation";
 
 void InstanceMonitor::performRotation() {
+    createFlagFile();
     fs::remove( m_rotationFilePath );
     ExitHandler::exitHandler( SIGTERM );
 }
@@ -64,3 +66,7 @@ void InstanceMonitor::restoreRotationParams() {
         m_finishTimestamp = rotateTimestamp;
     }
 }
+
+void InstanceMonitor::createFlagFile() {}
+
+void InstanceMonitor::removeFlagFile() {}
