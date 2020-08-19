@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <future>
 #include <string>
 
 using namespace std;
@@ -70,10 +71,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 
-    //    temproray hack, remove it in further versions
-    //    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
-    //        this->fillSgxInfo( *consensus_engine_ptr );
-    //    }
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+        this->fillSgxInfo( *consensus_engine_ptr );
+    }
 
     return consensus_engine_ptr;
 #else
@@ -116,10 +116,10 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
             public_key_share[2] = node.blsPublicKey[2];
             public_key_share[3] = node.blsPublicKey[3];
         } else {
-            public_key_share[0] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[0];
-            public_key_share[1] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[1];
-            public_key_share[2] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[2];
-            public_key_share[3] = m_client.chainParams().nodeInfo.insecureBLSPublicKeys[3];
+            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys[0];
+            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys[1];
+            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys[2];
+            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys[3];
         }
 
         blsPublicKeys.push_back(
@@ -284,6 +284,13 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
+
+    // HACK this should be field (or better do it another way)
+    static bool first_run = true;
+    if ( first_run ) {
+        m_consensusWorkingMutex.lock();
+        first_run = false;
+    }
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
@@ -608,13 +615,14 @@ void SkaleHost::startWorking() {
 
     try {
         m_consensus->startAll();
-        m_consensusWorkingMutex.lock();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
         m_broadcastThread.join();
         throw;
     }
+
+    std::promise< void > bootstrap_promise;
 
     auto csus_func = [&]() {
         try {
@@ -629,10 +637,12 @@ void SkaleHost::startWorking() {
             std::cout << "Consensus thread in scale host will exit with unknown exception\n";
             std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
-    };
-    // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
-    // m_consensus->bootStrapAll();
-    m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
+
+        bootstrap_promise.set_value();
+    };  // func
+
+    m_consensusThread = std::thread( csus_func );
+    bootstrap_promise.get_future().wait();
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
@@ -656,12 +666,19 @@ void SkaleHost::stopWorking() {
 
     m_exitNeeded = true;
     pauseConsensus( false );
+
+    std::cerr << "1 before exitGracefully()" << std::endl;
+
     m_consensus->exitGracefully();
+
+    std::cerr << "2 after exitGracefully()" << std::endl;
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{0, 100000000};
         nanosleep( &ms100, nullptr );
     }
+
+    std::cerr << "3 after wait loop" << std::endl;
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -670,6 +687,8 @@ void SkaleHost::stopWorking() {
         m_broadcastThread.join();
 
     working = false;
+
+    std::cerr << "4 before dtor" << std::endl;
 }
 
 void SkaleHost::broadcastFunc() {

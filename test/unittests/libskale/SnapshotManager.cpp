@@ -162,6 +162,10 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
 
+    auto latest0 = mgr.getLatestSnasphots();
+    std::pair< int, int > expected0 { 0, 0 };
+    BOOST_REQUIRE( latest0 == expected0 );
+
     // create snapshot 1 and check its presense
     mgr.doSnapshot( 1 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "vol1" / "d11" ) );
@@ -172,6 +176,10 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     fs::remove( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
+
+    auto latest1 = mgr.getLatestSnasphots();
+    std::pair< int, int > expected1 { 0, 1 };
+    BOOST_REQUIRE( latest1 == expected1 );
 
     // create snapshot 2 and check files 1 and files 2
     mgr.doSnapshot( 2 );
@@ -201,8 +209,18 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
 
+    auto latest2 = mgr.getLatestSnasphots();
+    std::pair< int, int > expected2 { 1, 2 };
+    BOOST_REQUIRE( latest2 == expected2 );
+
+    mgr.doSnapshot( 3 );
+    auto latest3 = mgr.getLatestSnasphots();
+    std::pair< int, int > expected3 { 2, 3 };
+    BOOST_REQUIRE( latest3 == expected3 );
+
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 1 ) );
     BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 2 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.removeSnapshot( 3 ) );
 }
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture,

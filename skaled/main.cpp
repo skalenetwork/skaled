@@ -43,6 +43,7 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
@@ -104,6 +105,12 @@ namespace fs = boost::filesystem;
 #ifndef ETH_MINIUPNPC
 #define ETH_MINIUPNPC 0
 #endif
+
+namespace dev {
+namespace db {
+extern unsigned c_maxOpenLeveldbFiles;
+}
+}  // namespace dev
 
 namespace {
 std::atomic< bool > g_silence = {false};
@@ -1044,6 +1051,13 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
                 c_transactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxOpenLeveldbFiles" ) )
+                dev::db::c_maxOpenLeveldbFiles =
+                    joConfig["skaleConfig"]["nodeInfo"]["maxOpenLeveldbFiles"].get< unsigned >();
         } catch ( ... ) {
         }
     }

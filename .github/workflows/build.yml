@@ -141,9 +141,10 @@ jobs:
           make -j$(nproc)
           cd ..
       - name: Testeth
+        if : ${{ github.ref != 'develop' && github.ref != 'beta' && github.ref != 'master' && github.ref != 'stable' }}
         run : |
           cd build/test
-          #./testeth -- --express
+          ./testeth -- --express --verbosity 4
           sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all
           sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all
           sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all
@@ -184,9 +185,13 @@ jobs:
           release_name: ${{ env.VERSION }}
           draft: false
           prerelease: true
-
-
-
-
-
-
+      - name: Upload skaled binary to Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream
