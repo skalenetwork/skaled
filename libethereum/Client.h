@@ -90,6 +90,11 @@ public:
     /// Destructor.
     virtual ~Client();
 
+    /// make it accessible
+    void stopWorking() {
+        Worker::stopWorking();
+    }
+
     void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
 
     /// Get information on this chain.

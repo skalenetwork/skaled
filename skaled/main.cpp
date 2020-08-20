@@ -313,6 +313,8 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
     return listIfaceInfos6;
 }
 
+static std::unique_ptr< Client > client;
+
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -325,6 +327,8 @@ int main( int argc, char** argv ) try {
         if ( nSignalNo == SIGPIPE )
             return;
         bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        if( ! stopWasRaisedBefore )
+            client->stopWorking();
         skutils::signal::g_bStop = true;
         std::string strMessagePrefix = stopWasRaisedBefore ?
                                            cc::error( "\nStop flag was already raised on. " ) +
@@ -1349,7 +1353,6 @@ int main( int argc, char** argv ) try {
     //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
     //        );
 
-    std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
     std::shared_ptr< InstanceMonitor > instanceMonitor;
 
@@ -2244,9 +2247,12 @@ int main( int argc, char** argv ) try {
         unsigned int mining = 0;
         while ( !exitHandler.shouldExit() )
             stopSealingAfterXBlocks( client.get(), n, mining );
+        client->stopWorking();
     } else
         while ( !exitHandler.shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
+
+    client.release();
 
     if ( jsonrpcIpcServer.get() )
         jsonrpcIpcServer->StopListening();

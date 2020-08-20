@@ -146,6 +146,8 @@ public:
         // wake up one thread if its waiting
         conditional_lock_.notify_one();
     }
+    void notify_one() { conditional_lock_.notify_one(); }
+    void notify_all() { conditional_lock_.notify_all(); }
 };  /// class thread_pool
 
 };  // namespace skutils
