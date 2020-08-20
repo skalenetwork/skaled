@@ -128,6 +128,14 @@ void Client::stopWorking() {
     if ( m_snapshotHashComputing != nullptr )
         m_snapshotHashComputing->join();
 
+    if ( m_snapshotHashComputing != nullptr ) {
+        try {
+            if ( m_snapshotHashComputing->joinable() )
+                m_snapshotHashComputing->join();
+        } catch ( ... ) {
+        }
+    }
+
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
 
