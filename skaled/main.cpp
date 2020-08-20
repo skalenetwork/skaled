@@ -314,6 +314,7 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 }
 
 static std::unique_ptr< Client > g_client;
+unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
@@ -327,8 +328,15 @@ int main( int argc, char** argv ) try {
         if ( nSignalNo == SIGPIPE )
             return;
         bool stopWasRaisedBefore = skutils::signal::g_bStop;
-        if ( !stopWasRaisedBefore )
-            g_client->stopWorking();
+        if ( !stopWasRaisedBefore ) {
+            if ( g_jsonrpcIpcServer.get() ) {
+                g_jsonrpcIpcServer->StopListening();
+                g_jsonrpcIpcServer.release();
+            }
+            if ( g_client ) {
+                g_client->stopWorking();
+            }
+        }
         skutils::signal::g_bStop = true;
         std::string strMessagePrefix = stopWasRaisedBefore ?
                                            cc::error( "\nStop flag was already raised on. " ) +
@@ -1602,7 +1610,6 @@ int main( int argc, char** argv ) try {
 
     cout << "Mining Beneficiary: " << g_client->author() << endl;
 
-    unique_ptr< ModularServer<> > jsonrpcIpcServer;
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
 
@@ -1708,7 +1715,7 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }
 
-        jsonrpcIpcServer.reset( new FullServer( ethFace,
+        g_jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
@@ -1720,7 +1727,7 @@ int main( int argc, char** argv ) try {
         if ( is_ipc ) {
             try {
                 auto ipcConnector = new IpcServer( "geth" );
-                jsonrpcIpcServer->addConnector( ipcConnector );
+                g_jsonrpcIpcServer->addConnector( ipcConnector );
                 if ( !ipcConnector->StartListening() ) {
                     clog( VerbosityError, "main" )
                         << "Cannot start listening for RPC requests on ipc port: "
@@ -2036,7 +2043,7 @@ int main( int argc, char** argv ) try {
             //
             skale_server_connector->m_bTraceCalls = bTraceJsonRpcCalls;
             skale_server_connector->max_connection_set( maxConnections );
-            jsonrpcIpcServer->addConnector( skale_server_connector );
+            g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EXIT_FAILURE;
             }
@@ -2248,15 +2255,18 @@ int main( int argc, char** argv ) try {
         unsigned int mining = 0;
         while ( !exitHandler.shouldExit() )
             stopSealingAfterXBlocks( g_client.get(), n, mining );
-        g_client->stopWorking();
-    } else
+    } else {
         while ( !exitHandler.shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
-
-    g_client.release();
-
-    if ( jsonrpcIpcServer.get() )
-        jsonrpcIpcServer->StopListening();
+    }
+    if ( g_jsonrpcIpcServer.get() ) {
+        g_jsonrpcIpcServer->StopListening();
+        g_jsonrpcIpcServer.release();
+    }
+    if ( g_client ) {
+        g_client->stopWorking();
+        g_client.release();
+    }
 
     std::cerr << localeconv()->decimal_point << std::endl;
 
