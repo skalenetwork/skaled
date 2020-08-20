@@ -84,6 +84,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
 }
 
 bool ClientTest::mineBlocks( unsigned _count ) noexcept {
+    std::cout << "mineBlocks begin " << _count << std::endl;
     if ( wouldSeal() )
         return false;
     try {
@@ -99,6 +100,7 @@ bool ClientTest::mineBlocks( unsigned _count ) noexcept {
         startSealing();
         future_status ret = allBlocksImported.get_future().wait_for(
             std::chrono::seconds( m_singleBlockMaxMiningTimeInSeconds * _count ) );
+        std::cout << "mineBlocks end 0 is OK:" << ( int ) ret << std::endl;
         return ( ret == future_status::ready );
     } catch ( std::exception const& ) {
         LOG( m_logger ) << boost::current_exception_diagnostic_information();
