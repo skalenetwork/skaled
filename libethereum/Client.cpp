@@ -124,6 +124,10 @@ Client::~Client() {
 
 void Client::stopWorking() {
     Worker::stopWorking();
+
+    if ( m_snapshotHashComputing != nullptr )
+        m_snapshotHashComputing->join();
+
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
 
@@ -440,7 +444,10 @@ size_t Client::importTransactionsAsBlock(
                 this->last_snapshot_time += snapshotIntervalMs;
             }
 
-            std::thread( [this, block_number]() {
+            if ( m_snapshotHashComputing != nullptr ) {
+                m_snapshotHashComputing->join();
+            }
+            m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
@@ -455,8 +462,7 @@ size_t Client::importTransactionsAsBlock(
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT );
                 }
-            } )
-                .detach();
+            } ) );
             // TODO Make this number configurable
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot

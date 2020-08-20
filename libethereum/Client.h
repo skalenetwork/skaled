@@ -473,6 +473,7 @@ private:
     void initHashes();
     void updateHashes();
 
+    std::unique_ptr< std::thread > m_snapshotHashComputing;
     int64_t last_snapshot_time = -1;
     int64_t last_snapshoted_block = -1;
     bool is_started_from_snapshot = true;
