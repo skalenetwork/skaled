@@ -67,6 +67,7 @@ void thread_pool::shutdown() {
         }
         conditional_lock_.notify_all();
     }
+    threads_.clear();
 }
 
 };  // namespace skutils

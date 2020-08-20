@@ -63,8 +63,8 @@ protected:
 public:
     /// Stop worker thread; causes call to stopWorking().
     void stopWorking();
-protected:
 
+protected:
     /// Returns if worker thread is present.
     bool isWorking() const {
         Guard l( x_work );

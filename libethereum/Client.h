@@ -90,10 +90,7 @@ public:
     /// Destructor.
     virtual ~Client();
 
-    /// make it accessible
-    void stopWorking() {
-        Worker::stopWorking();
-    }
+    void stopWorking();
 
     void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
 

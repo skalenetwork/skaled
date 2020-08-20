@@ -119,6 +119,11 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
+    stopWorking();
+}
+
+void Client::stopWorking() {
+    Worker::stopWorking();
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
 
@@ -129,16 +134,31 @@ Client::~Client() {
         cerror << "Instance of SkaleHost was not properly created.";
 
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
-    stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
-    terminate();
+    m_bc.close();
+    std::cout << cc::success( "Blockchain is closed" ) << "\n";
 
-    if ( !m_skaleHost || m_skaleHost->exitedForcefully() == false )
-        delete_lock_file( m_dbPath );
+    bool isForcefulExit =
+        ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
+    delete_lock_file( m_dbPath );
+    if ( !isForcefulExit )
+        std::cout << cc::success( "Deleted lock file " )
+                  << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                            std::string( "/skaled.lock" ) )
+                  << "\n";
+    else
+        std::cout << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
+                  << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                            std::string( "/skaled.lock" ) )
+                  << cc::error( " after foreceful exit" ) << "\n";
+    std::cout.flush();
+
+    terminate();
 }
+
 
 void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
     assert( !m_skaleHost );
