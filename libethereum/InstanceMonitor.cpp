@@ -32,12 +32,12 @@
 using namespace dev;
 namespace fs = boost::filesystem;
 
-const std::string InstanceMonitor::rotation_file_name = "rotation.txt";
-const std::string InstanceMonitor::rotation_flag_name = ".rotation";
+const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
+const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 
 void InstanceMonitor::performRotation() {
     createFlagFile();
-    fs::remove( m_rotationFilePath );
+    fs::remove( m_rotationInfoFilePath );
     ExitHandler::exitHandler( SIGTERM );
 }
 
@@ -45,32 +45,34 @@ void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
     nlohmann::json rotationJson = nlohmann::json::object();
     rotationJson["timestamp"] = _finishTimestamp;
 
-    std::ofstream rotationFile( m_rotationFilePath.string() );
-    rotationFile << rotationJson;
+    std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
+    rotationInfoFile << rotationJson;
 
     m_finishTimestamp = _finishTimestamp;
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
-    if ( !fs::exists( m_rotationFilePath ) ) {
+    if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
     return m_finishTimestamp <= _finishTimestamp;
 }
 
 void InstanceMonitor::restoreRotationParams() {
-    if ( fs::exists( m_rotationFilePath ) ) {
-        std::ifstream rotateFile( m_rotationFilePath.string() );
-        auto rotateJson = nlohmann::json::parse( rotateFile );
-        auto rotateTimestamp = rotateJson["timestamp"].get< uint64_t >();
-        m_finishTimestamp = rotateTimestamp;
+    if ( fs::exists( m_rotationInfoFilePath ) ) {
+        std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
+        auto rotationJson = nlohmann::json::parse( rotationInfoFile );
+        auto rotationTimestamp = rotationJson["timestamp"].get< uint64_t >();
+        m_finishTimestamp = rotationTimestamp;
     }
 }
 
 void InstanceMonitor::createFlagFile() {
-    std::ofstream( m_rotationFlagPath.string() );
+    std::ofstream( m_rotationFlagFilePath.string() );
 }
 
 void InstanceMonitor::removeFlagFile() {
-    fs::remove( m_rotationFlagPath );
+    if ( fs::exists( m_rotationFlagFilePath ) ) {
+        fs::remove( m_rotationFlagFilePath );
+    }
 }

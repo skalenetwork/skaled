@@ -31,10 +31,10 @@ namespace fs = boost::filesystem;
 
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagDirPath )
+    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath )
         : m_finishTimestamp( 0 ),
-          m_rotationFilePath( dev::getDataDir() / rotation_file_name ),
-          m_rotationFlagPath( _rotationFlagDirPath / rotation_flag_name ) {
+          m_rotationInfoFilePath( dev::getDataDir() / rotation_info_file_name ),
+          m_rotationFlagFilePath( _rotationFlagFileDirPath / rotation_flag_file_name ) {
         restoreRotationParams();
         removeFlagFile();
     }
@@ -46,16 +46,16 @@ protected:
     void restoreRotationParams();
     [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
 
-        [[nodiscard]] fs::path rotationFilePath() const {
-        return m_rotationFilePath;
+        [[nodiscard]] fs::path rotationInfoFilePath() const {
+        return m_rotationInfoFilePath;
     }
 
     uint64_t m_finishTimestamp;
-    const fs::path m_rotationFilePath;
-    const fs::path m_rotationFlagPath;
+    const fs::path m_rotationInfoFilePath;
+    const fs::path m_rotationFlagFilePath;
 
-    static const std::string rotation_file_name;
-    static const std::string rotation_flag_name;
+    static const std::string rotation_info_file_name;
+    static const std::string rotation_flag_file_name;
 
     void createFlagFile();
     void removeFlagFile();
