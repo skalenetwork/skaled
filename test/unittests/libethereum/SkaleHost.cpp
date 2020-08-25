@@ -102,7 +102,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         accountHolder->setAccounts( {coinbase, account2} );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
