@@ -39,6 +39,7 @@ void InstanceMonitor::performRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
     ExitHandler::exitHandler( SIGTERM );
+    LOG( m_logger ) << "Rotation is completed. Instance is exiting";
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
@@ -49,6 +50,7 @@ void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
     rotationInfoFile << rotationJson;
 
     m_finishTimestamp = _finishTimestamp;
+    LOG( m_logger ) << "Set rotation time to " << m_finishTimestamp;
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
@@ -67,10 +69,12 @@ void InstanceMonitor::restoreRotationParams() {
 }
 
 void InstanceMonitor::createFlagFile() {
+    LOG( m_logger ) << "Creating flag file " << m_rotationFlagFilePath.string();
     std::ofstream( m_rotationFlagFilePath.string() );
 }
 
 void InstanceMonitor::removeFlagFile() {
+    LOG( m_logger ) << "Removing flag file " << m_rotationFlagFilePath.string();
     if ( fs::exists( m_rotationFlagFilePath ) ) {
         fs::remove( m_rotationFlagFilePath );
     }

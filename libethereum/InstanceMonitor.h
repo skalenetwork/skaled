@@ -25,6 +25,7 @@
 #pragma once
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
@@ -59,4 +60,7 @@ protected:
 
     void createFlagFile();
     void removeFlagFile();
+
+private:
+    dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};
 };
