@@ -62,8 +62,7 @@ void InstanceMonitor::restoreRotationParams() {
     if ( fs::exists( m_rotationInfoFilePath ) ) {
         std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
         auto rotationJson = nlohmann::json::parse( rotationInfoFile );
-        auto rotationTimestamp = rotationJson["timestamp"].get< uint64_t >();
-        m_finishTimestamp = rotationTimestamp;
+        m_finishTimestamp = rotationJson["timestamp"].get< uint64_t >();
     }
 }
 
