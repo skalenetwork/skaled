@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <boost/algorithm/string.hpp>
@@ -593,12 +594,12 @@ int main( int argc, char** argv ) try {
         po::notify( vm );
     } catch ( po::error const& e ) {
         cerr << e.what();
-        return -1;
+        return EX_USAGE;
     }
     for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
         if ( !m.interpretOption( i, unrecognisedOptions ) ) {
             cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
-            return -1;
+            return EX_USAGE;
         }
 
     if ( vm.count( "no-colors" ) )
@@ -638,21 +639,48 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "admin" ) )
         strJsonAdminSessionKey = vm["admin"].as< string >();
 
+    if ( vm.count( "skale" ) ) {
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+        chainConfigIsSet = true;
+    }
+
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
                 throw "Config file probably not found";
+            chainParams = chainParams.loadConfig( configJSON, configPath );
+            chainConfigIsSet = true;
+            // TODO avoid double-parse!!
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
+        } catch ( const char* str ) {
+            cerr << "Error: " << str << ": " << configPath << "\n";
+            return EX_USAGE;
+        } catch ( const json_spirit::Error_position& err ) {
+            cerr << "error in parsing config json:\n";
+            cerr << configJSON << endl;
+            cerr << err.reason_ << " line " << err.line_ << endl;
+            return EX_CONFIG;
+        } catch ( const std::exception& ex ) {
+            cerr << "provided configuration is incorrect\n";
+            cerr << configJSON << endl;
+            cerr << nested_exception_what( ex ) << endl;
+            return EX_CONFIG;
         } catch ( ... ) {
-            cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
-            return -1;
+            cerr << "provided configuration is incorrect\n";
+            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
+            cerr << configJSON << endl;
+            return EX_CONFIG;
         }
     }
+
+    if ( !chainConfigIsSet )
+        // default to skale if not already set with `--config`
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1102,7 +1130,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--format"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
     if ( vm.count( "to" ) )
@@ -1122,7 +1150,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--upnp"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
 #endif
@@ -1133,7 +1161,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--network-id"
                  << " option: " << vm["network-id"].as< string >() << "\n";
-            return -1;
+            return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
         withExisting = WithExisting::Kill;
@@ -1158,36 +1186,6 @@ int main( int argc, char** argv ) try {
         cout << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
-
-    if ( vm.count( "skale" ) ) {
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
-        chainConfigIsSet = true;
-    }
-
-    if ( !configJSON.empty() ) {
-        try {
-            chainParams = chainParams.loadConfig( configJSON, configPath );
-            chainConfigIsSet = true;
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing config json:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << configJSON << endl;
-        } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is incorrect\n";
-            cerr << configJSON << endl;
-            cerr << ex.what() << endl;
-            return 0;
-        } catch ( ... ) {
-            cerr << "provided configuration is incorrect\n";
-            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            cerr << configJSON << endl;
-            return 0;
-        }
-    }
-
-    if ( !chainConfigIsSet )
-        // default to skale if not already set with `--config`
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
@@ -1563,7 +1561,7 @@ int main( int argc, char** argv ) try {
     } catch ( ... ) {
         cerr << "Error initializing key manager: "
              << boost::current_exception_diagnostic_information() << "\n";
-        return -1;
+        return 1;
     }
 
     for ( auto const& presale : presaleImports )
@@ -1586,7 +1584,7 @@ int main( int argc, char** argv ) try {
         } catch ( ... ) {
             cerr << "Error during importing the snapshot: "
                  << boost::current_exception_diagnostic_information() << endl;
-            return -1;
+            return EX_DATAERR;
         }
     }
 
@@ -1625,7 +1623,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--aa"
                  << " option: " << strAA << "\n";
-            return -1;
+            return EX_USAGE;
         }
         clog( VerbosityInfo, "main" )
             << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
@@ -1721,12 +1719,12 @@ int main( int argc, char** argv ) try {
                     clog( VerbosityError, "main" )
                         << "Cannot start listening for RPC requests on ipc port: "
                         << strerror( errno );
-                    return EXIT_FAILURE;
+                    return EX_IOERR;
                 }  // error
             } catch ( const std::exception& ex ) {
                 clog( VerbosityError, "main" )
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }  // catch
         }      // if ( is_ipc )
 
@@ -1734,49 +1732,49 @@ int main( int argc, char** argv ) try {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTP6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
 
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
@@ -2034,7 +2032,7 @@ int main( int argc, char** argv ) try {
             skale_server_connector->max_connection_set( maxConnections );
             jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }
             int nStatHTTP4 = skale_server_connector->getServerPortStatusHTTP( 4 );
             int nStatHTTP6 = skale_server_connector->getServerPortStatusHTTP( 6 );

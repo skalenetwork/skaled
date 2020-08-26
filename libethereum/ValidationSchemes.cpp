@@ -109,6 +109,82 @@ void validateConfigJson( js::mObject const& _obj ) {
             {c_parentHash, {{js::str_type}, JsonFieldPresence::Optional}},
             {c_stateRoot, {{js::str_type}, JsonFieldPresence::Optional}}} );
 
+    requireJsonFields( _obj.at( c_skaleConfig ).get_obj(), "ChainParams::loadConfig::skaleConfig",
+        {
+            {"nodeInfo", {{js::obj_type}, JsonFieldPresence::Required}},
+            {"sChain", {{js::obj_type}, JsonFieldPresence::Required}},
+        } );
+
+    const js::mObject& nodeInfo = _obj.at( c_skaleConfig ).get_obj().at( "nodeInfo" ).get_obj();
+    requireJsonFields( nodeInfo, "ChainParams::loadConfig::skaleConfig::nodeInfo",
+        {{"nodeName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"nodeID", {{js::int_type}, JsonFieldPresence::Required}},
+            {"bindIP", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"basePort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"bindIP6", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"basePort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wallets", {{js::obj_type}, JsonFieldPresence::Optional}},
+            {"ecdsaKeyName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"minCacheSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxCacheSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"collectionQueueSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"collectionDuration", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"transactionQueueSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxOpenLeveldbFiles", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"logLevel", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"logLevelProposal", {{js::str_type}, JsonFieldPresence::Optional}}} );
+
+    std::string keyShareName = "";
+    try {
+        nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
+    } catch ( ... ) {
+    }
+
+    if ( !keyShareName.empty() ) {
+        requireJsonFields( nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj(),
+            "ChainParams::loadConfig::skaleConfig::nodeInfo::wallets::ima",
+            {{"t", {{js::int_type}, JsonFieldPresence::Required}},
+                {"url", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey0", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey1", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey2", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey3", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey0", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey1", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey2", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey3", {{js::str_type}, JsonFieldPresence::Required}}} );
+    }  // keyShareName
+
+    const js::mObject& sChain = _obj.at( c_skaleConfig ).get_obj().at( "sChain" ).get_obj();
+    requireJsonFields( sChain, "ChainParams::loadConfig::skaleConfig::sChain",
+        {{"schainName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"schainID", {{js::int_type}, JsonFieldPresence::Required}},
+            {"schainOwner", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"storageLimit", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"nodes", {{js::array_type}, JsonFieldPresence::Required}}} );
+
+    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+    for ( auto const& obj : nodes ) {
+        const js::mObject node = obj.get_obj();
+
+        requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+            {{"nodeID", {{js::int_type}, JsonFieldPresence::Required}},
+                {"ip", {{js::str_type}, JsonFieldPresence::Required}},
+                {"basePort", {{js::int_type}, JsonFieldPresence::Required}},
+                {"schainIndex", {{js::int_type}, JsonFieldPresence::Required}},
+                {"publicKey", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey0", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey1", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey2", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey3", {{js::int_type}, JsonFieldPresence::Optional}}} );
+    }
+
     js::mObject const& accounts = _obj.at( c_accounts ).get_obj();
     for ( auto const& acc : accounts )
         validateAccountObj( acc.second.get_obj() );
