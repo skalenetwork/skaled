@@ -20,6 +20,7 @@
  */
 
 #include <libdevcore/CommonJS.h>
+#include <libdevcore/DBImpl.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
@@ -123,7 +124,7 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
 
@@ -197,9 +198,17 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
         std::shared_ptr< SnapshotManager > mgr;
-        mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ) );
+        mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2", "filestorage"} ) );
+        boost::filesystem::create_directory(
+            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" );
+        boost::filesystem::create_directory(
+            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" );
+        std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" ) );
+        boost::filesystem::create_directory(
+            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "blocks_and_extras" );
+        std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "blocks_and_extras" ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
 
@@ -234,6 +243,7 @@ public:
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
     ~TestClientSnapshotsFixture() {
+        m_ethereum.reset(0);
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
