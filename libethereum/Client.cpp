@@ -253,7 +253,7 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
 }
 
 tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
-    stopWorking();
+    Worker::stopWorking();
     return bc().sync( m_bq, m_state, _max );
 }
 
