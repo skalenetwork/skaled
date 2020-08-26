@@ -124,7 +124,7 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
 
@@ -208,7 +208,7 @@ public:
             boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "blocks_and_extras" );
         std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "blocks_and_extras" ) );
 
-        auto monitor = make_shared< InstanceMonitor >();
+        auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
 
