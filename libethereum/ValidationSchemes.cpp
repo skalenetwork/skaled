@@ -109,6 +109,14 @@ void validateConfigJson( js::mObject const& _obj ) {
             {c_parentHash, {{js::str_type}, JsonFieldPresence::Optional}},
             {c_stateRoot, {{js::str_type}, JsonFieldPresence::Optional}}} );
 
+
+    js::mObject const& accounts = _obj.at( c_accounts ).get_obj();
+    for ( auto const& acc : accounts )
+        validateAccountObj( acc.second.get_obj() );
+
+    if( _obj.count(c_skaleConfig) == 0)
+        return;
+
     requireJsonFields( _obj.at( c_skaleConfig ).get_obj(), "ChainParams::loadConfig::skaleConfig",
         {{"nodeInfo", {{js::obj_type}, JsonFieldPresence::Required}},
             {"sChain", {{js::obj_type}, JsonFieldPresence::Required}},
@@ -209,10 +217,6 @@ void validateConfigJson( js::mObject const& _obj ) {
                 {"blsPublicKey3", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"owner", {{js::str_type}, JsonFieldPresence::Optional}}} );
     }
-
-    js::mObject const& accounts = _obj.at( c_accounts ).get_obj();
-    for ( auto const& acc : accounts )
-        validateAccountObj( acc.second.get_obj() );
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {
