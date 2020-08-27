@@ -155,17 +155,18 @@ void Client::stopWorking() {
 
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
-    delete_lock_file( m_dbPath );
-    if ( !isForcefulExit )
+    if ( !isForcefulExit ) {
+        delete_lock_file( m_dbPath );
         std::cout << cc::success( "Deleted lock file " )
                   << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
                             std::string( "/skaled.lock" ) )
                   << "\n";
-    else
+    } else {
         std::cout << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
                   << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
                             std::string( "/skaled.lock" ) )
                   << cc::error( " after foreceful exit" ) << "\n";
+    }
     std::cout.flush();
 
     terminate();
