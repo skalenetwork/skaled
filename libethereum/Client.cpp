@@ -151,23 +151,23 @@ void Client::stopWorking() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     m_bc.close();
-    std::cout << cc::success( "Blockchain is closed" ) << "\n";
+    LOG( m_logger ) << cc::success( "Blockchain is closed" ) << "\n";
 
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
         delete_lock_file( m_dbPath );
-        std::cout << cc::success( "Deleted lock file " )
-                  << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
-                            std::string( "/skaled.lock" ) )
-                  << "\n";
+        LOG( m_logger ) << cc::success( "Deleted lock file " )
+                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                                  std::string( "/skaled.lock" ) )
+                        << "\n";
     } else {
-        std::cout << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
-                  << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
-                            std::string( "/skaled.lock" ) )
-                  << cc::error( " after foreceful exit" ) << "\n";
+        LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
+                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                                  std::string( "/skaled.lock" ) )
+                        << cc::error( " after foreceful exit" ) << "\n";
     }
-    std::cout.flush();
+    LOG( m_logger ).flush();
 
     terminate();
 }
@@ -1036,12 +1036,12 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
-        std::cout << "exception in client call(1):"
-                  << boost::current_exception_diagnostic_information() << std::endl;
+        LOG( m_logger ) << "exception in client call(1):"
+                        << boost::current_exception_diagnostic_information() << std::endl;
         throw std::runtime_error( "call with invalid nonce" );
     } catch ( ... ) {
-        std::cout << "exception in client call(2):"
-                  << boost::current_exception_diagnostic_information() << std::endl;
+        LOG( m_logger ) << "exception in client call(2):"
+                        << boost::current_exception_diagnostic_information() << std::endl;
         throw;
     }
     return ret;
