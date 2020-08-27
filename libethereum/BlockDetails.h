@@ -40,8 +40,12 @@ static const unsigned c_invalidNumber = ( unsigned ) -1;
 
 struct BlockDetails {
     BlockDetails() : number( c_invalidNumber ), totalDifficulty( Invalid256 ) {}
-    BlockDetails( unsigned _n, u256 _tD, h256 _p, h256s _c )
-        : number( _n ), totalDifficulty( _tD ), parent( _p ), children( _c ) {}
+    BlockDetails( unsigned _n, u256 _tD, h256 _p, h256s _c, size_t _blockBytes )
+        : number( _n ),
+          totalDifficulty( _tD ),
+          parent( _p ),
+          children( _c ),
+          blockSizeBytes( _blockBytes ) {}
     BlockDetails( RLP const& _r );
     bytes rlp() const;
 
@@ -52,6 +56,7 @@ struct BlockDetails {
     u256 totalDifficulty = Invalid256;
     h256 parent;
     h256s children;
+    size_t blockSizeBytes = 0;
 
     unsigned size;
 };
