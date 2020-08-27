@@ -33,11 +33,12 @@ BlockDetails::BlockDetails( RLP const& _r ) {
     totalDifficulty = _r[1].toInt< u256 >();
     parent = _r[2].toHash< h256 >();
     children = _r[3].toVector< h256 >();
-    size = _r.size();
+    blockSizeBytes = _r[4].toInt< unsigned >();
+    size = _r.actualSize();
 }
 
 bytes BlockDetails::rlp() const {
-    auto ret = rlpList( number, totalDifficulty, parent, children );
+    auto ret = rlpList( number, totalDifficulty, parent, children, blockSizeBytes );
     // size = ret.size();
     return ret;
 }
