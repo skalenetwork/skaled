@@ -114,7 +114,7 @@ void validateConfigJson( js::mObject const& _obj ) {
     for ( auto const& acc : accounts )
         validateAccountObj( acc.second.get_obj() );
 
-    if( _obj.count(c_skaleConfig) == 0)
+    if ( _obj.count( c_skaleConfig ) == 0 )
         return;
 
     requireJsonFields( _obj.at( c_skaleConfig ).get_obj(), "ChainParams::loadConfig::skaleConfig",
