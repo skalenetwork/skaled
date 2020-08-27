@@ -151,7 +151,7 @@ void Client::stopWorking() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     m_bc.close();
-    LOG( m_logger ) << cc::success( "Blockchain is closed" ) << "\n";
+    LOG( m_logger ) << cc::success( "Blockchain is closed" );
 
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
@@ -159,13 +159,12 @@ void Client::stopWorking() {
         delete_lock_file( m_dbPath );
         LOG( m_logger ) << cc::success( "Deleted lock file " )
                         << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
-                                  std::string( "/skaled.lock" ) )
-                        << "\n";
+                                  std::string( "/skaled.lock" ) );
     } else {
         LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
                         << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
                                   std::string( "/skaled.lock" ) )
-                        << cc::error( " after foreceful exit" ) << "\n";
+                        << cc::error( " after foreceful exit" );
     }
     LOG( m_logger ).flush();
 
