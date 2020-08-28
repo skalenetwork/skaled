@@ -664,6 +664,7 @@ public:
 
 class domain : public ref_retain_release {
 public:
+    static std::atomic_bool g_bVerboseDispatchThreadDetailsLogging;
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
 
@@ -708,6 +709,7 @@ private:
     //
     skutils::thread_pool thread_pool_;
     std::atomic_size_t cntRunningThreads_;
+    std::atomic_size_t cntStartTestedThreads_;
     //
     std::atomic_uint64_t decrease_accumulators_counter_, decrease_accumulators_period_;
     //
