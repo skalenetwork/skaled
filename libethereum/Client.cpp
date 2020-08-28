@@ -125,8 +125,11 @@ Client::~Client() {
 void Client::stopWorking() {
     Worker::stopWorking();
 
-    if ( m_snapshotHashComputing != nullptr )
-        m_snapshotHashComputing->join();
+    if ( m_skaleHost )
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+                                     // workers
+    else
+        cerror << "Instance of SkaleHost was not properly created.";
 
     if ( m_snapshotHashComputing != nullptr ) {
         try {
@@ -138,12 +141,6 @@ void Client::stopWorking() {
 
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
-
-    if ( m_skaleHost )
-        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
-                                     // workers
-    else
-        cerror << "Instance of SkaleHost was not properly created.";
 
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
 
