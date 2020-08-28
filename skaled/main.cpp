@@ -332,7 +332,7 @@ int main( int argc, char** argv ) try {
         if ( !stopWasRaisedBefore ) {
             if ( g_jsonrpcIpcServer.get() ) {
                 g_jsonrpcIpcServer->StopListening();
-                g_jsonrpcIpcServer.release();
+                g_jsonrpcIpcServer.reset( nullptr );
             }
             if ( g_client ) {
                 g_client->stopWorking();
@@ -2259,11 +2259,11 @@ int main( int argc, char** argv ) try {
     }
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
-        g_jsonrpcIpcServer.release();
+        g_jsonrpcIpcServer.reset( nullptr );
     }
     if ( g_client ) {
         g_client->stopWorking();
-        g_client.release();
+        g_client.reset( nullptr );
     }
 
     std::cerr << localeconv()->decimal_point << std::endl;
@@ -2281,25 +2281,25 @@ int main( int argc, char** argv ) try {
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
-    g_client.release();
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const SkaleHost::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
-    g_client.release();
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
-    g_client.release();
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
-    g_client.release();
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 }
