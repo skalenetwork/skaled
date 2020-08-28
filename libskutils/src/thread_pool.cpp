@@ -19,7 +19,8 @@ void thread_pool::worker::invoke() {
             if ( pool_->queue_.empty() ) {
                 pool_->conditional_lock_.wait( lock );
             }
-            was_dequeued = pool_->queue_.dequeue( func );
+            if ( !pool_->shutdown_flag_ )
+                was_dequeued = pool_->queue_.dequeue( func );
         }  // block
         if ( was_dequeued ) {
             try {
@@ -64,7 +65,9 @@ void thread_pool::shutdown() {
                 threads_[i].join();
         } catch ( ... ) {
         }
+        conditional_lock_.notify_all();
     }
+    threads_.clear();
 }
 
 };  // namespace skutils
