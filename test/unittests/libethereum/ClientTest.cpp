@@ -28,6 +28,8 @@
 #include <libp2p/Network.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/TestHelper.h>
+#include <libweb3jsonrpc/AccountHolder.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -147,6 +149,10 @@ public:
 
         m_ethereum->setAuthor( coinbase.address() );
 
+        accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
+        accountHolder->setAccounts( {coinbase} );
+
+        dev::eth::simulateMining( *( m_ethereum ), 10 );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -157,11 +163,32 @@ public:
     }
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
+    dev::KeyPair coinbase{KeyPair::create()};
+
+    bool getTransactionStatus(const Json::Value& json) {
+        try {
+            Transaction tx = tx_from_json(json);
+            auto txHash = m_ethereum->importTransaction(tx);
+            dev::eth::mineTransaction(*(m_ethereum), 1);
+            Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
+            cout << "STATUS:" << receipt["status"];
+            return receipt["status"] == "1";
+        } catch (...) {
+            return false;
+        }
+    }
+
+    Transaction tx_from_json( const Json::Value& json ) {
+        TransactionSkeleton ts = toTransactionSkeleton( json );
+        ts = m_ethereum->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = accountHolder->authenticate( ts );
+        return Transaction( ts, ar.second );
+    }
 
 private:
     TransientDirectory m_tmpDir;
     std::unique_ptr< dev::eth::Client > m_ethereum;
-    dev::KeyPair coinbase{KeyPair::create()};
+    std::unique_ptr< FixedAccountHolder > accountHolder;
 };
 
 class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
@@ -531,7 +558,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     //            }
     //    }
 
-    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address from = fixture.coinbase.address();
     Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
 
     // data to call method setA(0)
@@ -544,7 +571,16 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
                            GasEstimationCallback() )
             .first;
 
-    BOOST_CHECK( !(estimate == u256( maxGas )) );
+    Json::Value estimateTransaction;
+    estimateTransaction["from"] = toJS(from );
+    estimateTransaction["to"] = toJS (contractAddress);
+    estimateTransaction["data"] = toJS (data);
+
+    estimateTransaction["gas"] = toJS(estimate );
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate - 1 );
+    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
@@ -572,7 +608,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     //        }
     //    }
 
-    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address from = fixture.coinbase.address();
     Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
 
     // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
@@ -586,7 +622,16 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
                            GasEstimationCallback() )
             .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 49409 ) );
+    Json::Value estimateTransaction;
+    estimateTransaction["from"] = toJS(from );
+    estimateTransaction["to"] = toJS (contractAddress);
+    estimateTransaction["data"] = toJS (data);
+
+    estimateTransaction["gas"] = toJS(estimate );
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate - 1 );
+    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
