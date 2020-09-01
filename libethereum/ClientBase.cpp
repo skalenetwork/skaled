@@ -128,39 +128,32 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         ExecutionResult goodResult;
         int64_t goodGas = c_maxGasEstimate;
         bool haveGoodResult = false;
-        while ( lowerBound + 1 < upperBound ) {
-            auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
+
+        auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
+        if ( step.first ) {
+            haveGoodResult = true;
+            goodResult = step.second;
+            auto gasUsed = goodResult.gasUsed.convert_to< int64_t >();
+
+            step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
             if ( step.first ) {
-                if ( !haveGoodResult || goodGas > upperBound ) {
-                    haveGoodResult = true;
-                    goodResult = step.second;
-                    goodGas = upperBound;
-                }
-                int64_t gasUsed = step.second.gasUsed.convert_to< int64_t >();
-
-                step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
-                if ( step.first ) {
-                    if ( !haveGoodResult || goodGas > gasUsed ) {
-                        haveGoodResult = true;
-                        goodResult = step.second;
-                        goodGas = gasUsed;
-                    }
-
-                    if ( step.second.gasUsed.convert_to< int64_t >() == gasUsed ) {
-                        upperBound = gasUsed;
-                        lowerBound = upperBound - 1;
-                    } else {
-                        upperBound = min( gasUsed, upperBound - 1 );
-                    }
-                } else {
-                    lowerBound = max( gasUsed, lowerBound + 1 );
-                }
+                goodGas = gasUsed;
             } else {
-                lowerBound = upperBound;
-            }
-
-            if ( _callback ) {
-                _callback( GasEstimationProgress{lowerBound, upperBound} );
+                while ( lowerBound + 1 < upperBound ) {
+                    int64_t middle = ( lowerBound + upperBound ) / 2;
+                    step = estimateGasStep( middle, bk, _from, _dest, _value, gasPrice, _data );
+                    if ( step.first ) {
+                        upperBound = middle - 1;
+                    } else {
+                        lowerBound = middle + 1;
+                    }
+                    if ( _callback ) {
+                        _callback( GasEstimationProgress{lowerBound, upperBound} );
+                    }
+                }
+                goodGas = upperBound;
+                goodResult =
+                    estimateGasStep( goodGas, bk, _from, _dest, _value, gasPrice, _data ).second;
             }
         }
 
