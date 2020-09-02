@@ -415,7 +415,8 @@ size_t Client::importTransactionsAsBlock(
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
 
-            this->last_snapshot_time = ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
+            this->last_snapshot_time =
+                ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
 
             if ( m_snapshotHashComputing != nullptr ) {
                 m_snapshotHashComputing->join();
