@@ -1114,6 +1114,8 @@ bool queue::job_run() {  // fetch first asynchronously stored job and run
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::atomic_bool domain::g_bVerboseDispatchThreadDetailsLogging = false;
+
 domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
     const size_t nQueueLimit                    // = 0
     )
@@ -1130,6 +1132,7 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
       thread_pool_(
           ( nNumberOfThreads > 0 ) ? nNumberOfThreads : skutils::tools::cpu_count(), nQueueLimit ),
       cntRunningThreads_( 0 ),
+      cntStartTestedThreads_( 0 ),
       decrease_accumulators_counter_( uint64_t( 0 ) ),
       decrease_accumulators_period_( uint64_t( 1000 ) * uint64_t( 1000 ) )  // rare enough
 {
@@ -1256,12 +1259,12 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
     //			if( ! shutdown_flag_ )
     //				return;
     shutdown_flag_ = false;
-    size_t idxThread, cntThreads = thread_pool_.number_of_threads();
-    if ( cntThreads == 0 )
+    size_t idxThread, cntThreadsInPool = thread_pool_.number_of_threads();
+    if ( cntThreadsInPool == 0 )
         throw std::runtime_error( "dispatch domain failed to initialize thread pool" );
     // init thread pool
-    size_t cntThreadsToStart = cntThreads;
-    for ( size_t cntThreadStartupAttempts = cntThreads * 2; cntThreadStartupAttempts != 0;
+    size_t cntThreadsToStart = cntThreadsInPool;
+    for ( size_t cntThreadStartupAttempts = cntThreadsInPool * 2; cntThreadStartupAttempts != 0;
           --cntThreadStartupAttempts ) {
         std::atomic_size_t cntFailedToStartThreads;
         cntFailedToStartThreads = 0;
@@ -1276,38 +1279,89 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                     std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
                 }
                 try {
-                    thread_pool_.safe_submit_without_future_te( [this, strPerformanceQueueName]() {
-                        ++cntRunningThreads_;
-                        try {
-                            size_t nTaskNumberInThisThread = 0;
-                            for ( ; true; ) {
-                                if ( shutdown_flag_ )
-                                    break;
-                                {  // block
-                                    std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
-                                    fetch_lock_.wait( lock );
-                                }  // block
-                                if ( shutdown_flag_ )
-                                    break;
+                    thread_pool_.safe_submit_without_future_te(
+                        [this, strPerformanceQueueName, idxThread, cntThreadsToStart]() {
+                            ++cntRunningThreads_;
+                            ++cntStartTestedThreads_;
+                            try {
+                                if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                                    std::string strThreadStartupMessage =
+                                        cc::deep_note( "Dispatch:" ) + " " +
+                                        cc::debug( "Started thread " ) + cc::size10( idxThread ) +
+                                        cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
+                                        cc::debug( ", have " ) +
+                                        cc::size10( size_t( cntRunningThreads_ ) ) +
+                                        cc::debug( " running thread(s)" ) + "\n";
+                                    std::cout << strThreadStartupMessage;
+                                    std::cout.flush();
+                                }
+                                size_t nTaskNumberInThisThread = 0;
                                 for ( ; true; ) {
-                                    //
-                                    std::string strPerformanceActionName = skutils::tools::format(
-                                        "task %zu", nTaskNumberInThisThread++ );
-                                    skutils::task::performance::action a(
-                                        strPerformanceQueueName, strPerformanceActionName );
-                                    //
-                                    if ( !run_one() )
-                                        break;
                                     if ( shutdown_flag_ )
                                         break;
-                                    // fetch_lock_.notify_one(); // spread the work into other
-                                    // threads
-                                }
-                            }  /// for( ; true ; )
-                        } catch ( ... ) {
-                        }
-                        --cntRunningThreads_;
-                    } );
+                                    {  // block
+                                        std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
+                                        fetch_lock_.wait( lock );
+                                    }  // block
+                                    if ( shutdown_flag_ )
+                                        break;
+                                    for ( ; true; ) {
+                                        //
+                                        std::string strPerformanceActionName =
+                                            skutils::tools::format(
+                                                "task %zu", nTaskNumberInThisThread++ );
+                                        skutils::task::performance::action a(
+                                            strPerformanceQueueName, strPerformanceActionName );
+                                        //
+                                        if ( !run_one() )
+                                            break;
+                                        if ( shutdown_flag_ )
+                                            break;
+                                        // fetch_lock_.notify_one(); // spread the work into other
+                                        // threads
+                                    }
+                                }  /// for( ; true ; )
+                            } catch ( const std::exception& ex ) {
+                                std::string strError( ex.what() );
+                                if ( strError.empty() )
+                                    strError = "Exception without description";
+                                std::string strErrorMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::fatal( "CRITICAL ERROR:" ) +
+                                    cc::error( "Got exception in thread " ) +
+                                    cc::size10( idxThread ) + cc::error( " of " ) +
+                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::error( " running threads, exception info: " ) +
+                                    cc::warn( strError ) + "\n";
+                                std::cout << strErrorMessage;
+                                std::cout.flush();
+                            } catch ( ... ) {
+                                std::string strErrorMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::fatal( "CRITICAL ERROR:" ) +
+                                    cc::error( "Got exception in thread " ) +
+                                    cc::size10( idxThread ) + cc::error( " of " ) +
+                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::error( " running threads, exception info: " ) +
+                                    cc::warn( "Unknown exception" ) + "\n";
+                                std::cout << strErrorMessage;
+                                std::cout.flush();
+                            }
+                            --cntRunningThreads_;
+                            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                                std::string strThreadFinalMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::debug( "Exiting thread " ) + cc::size10( idxThread ) +
+                                    cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
+                                    cc::debug( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::debug( " running thread(s)" ) + "\n";
+                                std::cout << strThreadFinalMessage;
+                                std::cout.flush();
+                            }
+                        } );
                 } catch ( std::exception& ex ) {
                     strError = ex.what();
                     if ( strError.empty() )
@@ -1317,9 +1371,14 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                 }
                 if ( strError.empty() )
                     break;
-                std::cout << "Failed submit initialization task for the \""
-                          << strPerformanceQueueName << "\" queue at attempt " << idxAttempt
-                          << " of " << cntAttempts << ", error is: " << strError << "\n";
+                std::string strErrorMessage =
+                    cc::deep_note( "Dispatch:" ) + " " + cc::fatal( "CRITICAL ERROR:" ) +
+                    cc::error( " Failed submit initialization task for the " ) +
+                    cc::info( strPerformanceQueueName ) + cc::error( " queue at attempt " ) +
+                    cc::size10( idxAttempt ) + cc::error( " of " ) + cc::size10( cntAttempts ) +
+                    cc::error( ", error is: " ) + cc::warn( strError ) + "\n";
+                std::cout << strErrorMessage;
+                std::cout.flush();
             }  // for( size_t idxAttempt = 0; idxAttempt < 3; ++ idxAttempt ) {
             if ( !strError.empty() ) {
                 ++cntFailedToStartThreads;
@@ -1332,19 +1391,36 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
     }  // for ( size_t cntThreadStartupAttempts = 1; cntThreadStartupAttempts != 0;
     // --cntThreadStartupAttempts )
-    size_t cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
+    thread_pool_.notify_all();  // faster encueued call processing here because we knew we did
+                                // submit first calls above
+    size_t cntStartedAndRunningThreads = size_t( cntStartTestedThreads_ );
     size_t cntWaitAttempts =
-        ( nWaitMilliSeconds == 0 || nWaitMilliSeconds == size_t( -1 ) ) ? 3000 : nWaitMilliSeconds;
+        ( nWaitMilliSeconds == 0 || nWaitMilliSeconds == size_t( -1 ) ) ? 10000 : nWaitMilliSeconds;
     for ( size_t idxWaitAttempt = 0; idxWaitAttempt < cntWaitAttempts; ++idxWaitAttempt ) {
-        if ( cntStartedAndRunningThreads == cntThreads )
+        if ( cntStartedAndRunningThreads == cntThreadsInPool )
             break;
         std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
-        cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
+        cntStartedAndRunningThreads = size_t( cntStartTestedThreads_ );
     }
-    if ( cntStartedAndRunningThreads != cntThreads ) {
+    if ( cntStartedAndRunningThreads != cntThreadsInPool ) {
         fetch_lock_.notify_all();  // notify earlier
-        throw std::runtime_error(
-            "dispatch domain failed to initialize all threads in thread pool" );
+        // throw std::runtime_error(
+        //     "dispatch domain failed to initialize all threads in thread pool" );
+        std::string strWarningMessage =
+            cc::deep_note( "Dispatch:" ) + " " + cc::warn( "WARNING: expected " ) +
+            cc::size10( size_t( cntThreadsInPool ) ) +
+            cc::warn( " threads in pool to be started at this time but have " ) +
+            cc::size10( size_t( cntStartedAndRunningThreads ) ) + cc::warn( ", startup is slow!" ) +
+            "\n";
+        std::cout << strWarningMessage;
+        std::cout.flush();
+    } else {
+        std::string strSuccessMessage = cc::deep_note( "Dispatch:" ) + " " +
+                                        cc::success( "Have all " ) +
+                                        cc::size10( size_t( cntThreadsInPool ) ) +
+                                        cc::success( " threads in pool started fast" ) + "\n";
+        std::cout << strSuccessMessage;
+        std::cout.flush();
     }
 }
 void domain::impl_shutdown() {
@@ -1360,6 +1436,13 @@ void domain::impl_shutdown() {
     size_t cntThreads = thread_pool_.number_of_threads();
     if ( cntThreads > 0 ) {
         for ( ; true; ) {
+            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                std::string strMessage = cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Have " ) +
+                                         cc::size10( size_t( cntRunningThreads_ ) ) +
+                                         cc::debug( " thread(s) still running..." ) + "\n";
+                std::cout << strMessage;
+                std::cout.flush();
+            }
             shutdown_flag_ = true;
             fetch_lock_.notify_all();
             size_t cntRunningThreads = size_t( cntRunningThreads_ );
@@ -1368,17 +1451,40 @@ void domain::impl_shutdown() {
             std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         }  // for( ; true; )
     }      // if( cntThreads > 0 )
+    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All threads stopped" ) + "\n";
+    std::cout.flush();
     // wait loop to shutdown
     if ( pLoop ) {
+        if ( g_bVerboseDispatchThreadDetailsLogging ) {
+            std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                             cc::debug( "Waiting for dispatch loop" ) + "\n";
+            std::cout.flush();
+        }
         pLoop->wait();
         try {
+            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                                 cc::debug( "Stopping for dispatch loop" ) + "\n";
+                std::cout.flush();
+            }
             if ( loop_thread_.joinable() )
                 loop_thread_.join();
+            std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                             cc::success( "Dispatch loop stopped" ) + "\n";
+            std::cout.flush();
         } catch ( ... ) {
         }
     }  // if( pLoop )
     // shutdown, remove all queues
+    if ( g_bVerboseDispatchThreadDetailsLogging ) {
+        std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Removing dispatch queues" ) +
+                         "\n";
+        std::cout.flush();
+    }
     queue_remove_all();
+    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All dispatch queues removed" ) +
+                     "\n";
+    std::cout.flush();
 }
 queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and
                                                 // remove it from with_jobs_
