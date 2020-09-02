@@ -227,6 +227,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         Defaults::setDBPath( m_dbPath );
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
+        LOG( m_logger ) << "Snapshots enabled, snapshotInterval is: "
+                        << chainParams().sChain.snapshotIntervalMs;
         if ( this->number() == 0 ) {
             LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
             try {
@@ -448,6 +450,9 @@ size_t Client::importTransactionsAsBlock(
             } else {
                 this->last_snapshot_time += snapshotIntervalMs;
             }
+
+            LOG( m_logger ) << "Block timestamp: " << _timestamp;
+            LOG( m_logger ) << "Last snapshot time: " << this->last_snapshot_time;
 
             if ( m_snapshotHashComputing != nullptr ) {
                 m_snapshotHashComputing->join();
