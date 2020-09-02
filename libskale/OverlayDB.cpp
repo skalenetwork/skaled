@@ -80,6 +80,16 @@ const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
     []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
         std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
 
+dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
+    dev::h256 shaLastTx;
+    if ( m_db ) {
+        const std::string l =
+            m_db->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
+        if ( !l.empty() )
+            shaLastTx = dev::h256( l, dev::h256::FromBinary );
+    }
+    return shaLastTx;
+}
 
 void OverlayDB::commit() {
     commit( g_fn_pre_commit_empty );

@@ -467,6 +467,13 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
+        dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
+        for ( const Transaction& txWalk : _transactions ) {
+            const h256 shaWalk = txWalk.sha3();
+            if ( shaWalk == shaLastTx )
+                std::cout << "--- found partially executed block\n";
+        }
+
         bool isSaveLastTxHash = true;
         size_t n_succeeded =
             syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash );

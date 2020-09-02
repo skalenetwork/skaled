@@ -56,6 +56,8 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
+    dev::h256 safeLastExecutedTransactionHash();
+
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
         std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
         fn_pre_commit_t;

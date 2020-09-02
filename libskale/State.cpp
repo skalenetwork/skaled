@@ -144,6 +144,13 @@ State& State::operator=( const State& _s ) {
     return *this;
 }
 
+dev::h256 State::safeLastExecutedTransactionHash() {
+    dev::h256 shaLastTx;
+    if ( m_db_ptr )
+        shaLastTx = m_db_ptr->safeLastExecutedTransactionHash();
+    return shaLastTx;
+}
+
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
@@ -821,10 +828,10 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
                 std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
                 if ( isSaveLastTxHash ) {
-                    h256 sha =
-                        _t.hasSignature() ? _t.sha3() : _t.sha3( dev::eth::WithoutSignature );
-                    // std::cout << "--- saving safeLastExecutedTransactionHash = " << sha.hex() <<
-                    // "\n";
+                    h256 sha = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
+                                           // dev::eth::WithoutSignature );
+                    std::cout << "--- saving safeLastExecutedTransactionHash = " << sha.hex()
+                              << "\n";
                     writeBatch->insert(
                         skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                         skale::slicing::toSlice( sha ) );
