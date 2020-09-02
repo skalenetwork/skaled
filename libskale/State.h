@@ -316,14 +316,15 @@ public:
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
-    void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts );
+    void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts,
+        OverlayDB::fn_pre_commit_t fn_pre_commit = OverlayDB::g_fn_pre_commit_empty );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool isSaveLastTxHash = false );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }

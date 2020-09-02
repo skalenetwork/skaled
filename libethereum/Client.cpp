@@ -472,7 +472,9 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
-        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+        bool isSaveLastTxHash = true;
+        size_t n_succeeded =
+            syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
         sealUnconditionally( false );
         importWorkingBlock();
 
@@ -485,8 +487,8 @@ size_t Client::importTransactionsAsBlock(
     return 0;
 }
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, bool isSaveLastTxHash ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -511,7 +513,7 @@ size_t Client::syncTransactions(
 
         //        assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, isSaveLastTxHash );
         m_state = m_state.startNew();
     }
 

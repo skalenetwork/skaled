@@ -47,32 +47,26 @@ using dev::db::Slice;
 #endif
 
 namespace skale {
-namespace {
-inline Slice toSlice( h256 const& _h ) {
-    return Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
+
+namespace slicing {
+
+dev::db::Slice toSlice( dev::h256 const& _h ) {
+    return dev::db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
 }
 
-// inline Slice toSlice( std::string const& _str ) { // l_sergiy: clang did detected this as unused
-//    return Slice( _str.data(), _str.size() );
-//}
-
-inline Slice toSlice( bytes const& _b ) {
-    return Slice( reinterpret_cast< char const* >( &_b[0] ), _b.size() );
+dev::db::Slice toSlice( dev::bytes const& _b ) {
+    return dev::db::Slice( reinterpret_cast< char const* >( &_b[0] ), _b.size() );
 }
 
-inline Slice toSlice( h160 const& _h ) {
-    return Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
+dev::db::Slice toSlice( dev::h160 const& _h ) {
+    return dev::db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
 }
 
-inline Slice toSlice( std::string const& _s ) {
-    return Slice( reinterpret_cast< char const* >( &_s[0] ), _s.size() );
+dev::db::Slice toSlice( std::string const& _s ) {
+    return dev::db::Slice( reinterpret_cast< char const* >( &_s[0] ), _s.size() );
 }
 
-// inline Slice toSlice( bytesConstRef _h ) { // l_sergiy: clang did detected this as unused
-//    return Slice( reinterpret_cast< char const* >( _h.data() ), _h.size() );
-//}
-
-}  // namespace
+};  // namespace slicing
 
 OverlayDB::OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db )
     : m_db( _db.release(), []( dev::db::DatabaseFace* db ) {
@@ -82,7 +76,15 @@ OverlayDB::OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db )
           delete db;
       } ) {}
 
+const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
+    []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
+        std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
+
+
 void OverlayDB::commit() {
+    commit( g_fn_pre_commit_empty );
+}
+void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
     if ( m_db ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
             auto writeBatch = m_db->createWriteBatch();
@@ -94,7 +96,8 @@ void OverlayDB::commit() {
                 for ( auto const& addressValuePair : m_cache ) {
                     h160 const& address = addressValuePair.first;
                     bytes const& value = addressValuePair.second;
-                    writeBatch->insert( toSlice( address ), toSlice( value ) );
+                    writeBatch->insert(
+                        skale::slicing::toSlice( address ), skale::slicing::toSlice( value ) );
                 }
                 for ( auto const& addressSpacePair : m_auxiliaryCache ) {
                     h160 const& address = addressSpacePair.first;
@@ -104,7 +107,8 @@ void OverlayDB::commit() {
                         bytes const& value = spaceValuePair.second;
 
                         writeBatch->insert(
-                            toSlice( getAuxiliaryKey( address, space ) ), toSlice( value ) );
+                            skale::slicing::toSlice( getAuxiliaryKey( address, space ) ),
+                            skale::slicing::toSlice( value ) );
                     }
                 }
                 for ( auto const& addressStoragePair : m_storageCache ) {
@@ -115,22 +119,44 @@ void OverlayDB::commit() {
                         h256 const& value = stateAddressValuePair.second;
 
                         writeBatch->insert(
-                            toSlice( getStorageKey( address, storageAddress ) ), toSlice( value ) );
+                            skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
+                            skale::slicing::toSlice( value ) );
                     }
                 }
-                writeBatch->insert( toSlice( "storageUsed" ), toSlice( storageUsed_.str() ) );
+                writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
+                    skale::slicing::toSlice( storageUsed_.str() ) );
             }
+            bool bIsPreCommitCallbackPassed = false;
             try {
+                if ( fn_pre_commit )
+                    fn_pre_commit( m_db, writeBatch );
+                bIsPreCommitCallbackPassed = true;
                 m_db->commit( std::move( writeBatch ) );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail writing to state database. Bombing out.";
+                    cwarn << "Fail(1) writing to state database. Bombing out. "
+                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
+                                                            "(during pre-commit callback)" );
                     exit( -1 );
                 }
-                std::cerr << "Error writing to state database: "
-                          << boost::diagnostic_information( ex ) << std::endl;
+                std::cerr << "Error(2) writing to state database (during "
+                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
+                          << "): " << boost::diagnostic_information( ex ) << std::endl;
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
+                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
+            } catch ( std::exception const& ex ) {
+                if ( commitTry == 9 ) {
+                    cwarn << "Fail(2) writing to state database. Bombing out. "
+                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
+                                                            "(during pre-commit callback)" );
+                    exit( -1 );
+                }
+                std::cerr << "Error(2) writing to state database (during "
+                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
+                          << "): " << ex.what() << std::endl;
+                cwarn << "Error(2) writing to state database: " << ex.what();
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
@@ -158,7 +184,8 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     if ( !value.empty() || !m_db )
         return value;
 
-    std::string const loadedValue = m_db->lookup( toSlice( getAuxiliaryKey( _address, _space ) ) );
+    std::string const loadedValue =
+        m_db->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
         cwarn << "Aux not found: " << _address;
 
@@ -180,7 +207,7 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
     }
     if ( !cache_hit ) {
         if ( m_db ) {
-            Slice key = toSlice( getAuxiliaryKey( _address, _space ) );
+            Slice key = skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) );
             if ( m_db->exists( key ) ) {
                 m_db->kill( key );
             } else {
@@ -310,13 +337,13 @@ string OverlayDB::lookup( h160 const& _h ) const {
     if ( !ret.empty() || !m_db )
         return ret;
 
-    return m_db->lookup( toSlice( _h ) );
+    return m_db->lookup( skale::slicing::toSlice( _h ) );
 }
 
 bool OverlayDB::exists( h160 const& _h ) const {
     if ( m_cache.find( _h ) != m_cache.end() )
         return true;
-    return m_db && m_db->exists( toSlice( _h ) );
+    return m_db && m_db->exists( skale::slicing::toSlice( _h ) );
 }
 
 void OverlayDB::kill( h160 const& _h ) {
@@ -325,7 +352,7 @@ void OverlayDB::kill( h160 const& _h ) {
         m_cache.erase( p );
     } else {
         if ( m_db ) {
-            Slice key = toSlice( _h );
+            Slice key = skale::slicing::toSlice( _h );
             if ( m_db->exists( key ) ) {
                 m_db->kill( key );
             } else {
@@ -353,7 +380,8 @@ h256 OverlayDB::lookup( const dev::h160& _address, const dev::h256& _storageAddr
     }
 
     if ( m_db ) {
-        string value = m_db->lookup( toSlice( getStorageKey( _address, _storageAddress ) ) );
+        string value =
+            m_db->lookup( skale::slicing::toSlice( getStorageKey( _address, _storageAddress ) ) );
         return h256( value, h256::ConstructFromStringType::FromBinary );
     } else {
         return h256( 0 );
@@ -377,7 +405,7 @@ void OverlayDB::insert(
 
 dev::s256 OverlayDB::storageUsed() const {
     if ( m_db ) {
-        return dev::s256( m_db->lookup( toSlice( "storageUsed" ) ) );
+        return dev::s256( m_db->lookup( skale::slicing::toSlice( "storageUsed" ) ) );
     }
     return 0;
 }

@@ -284,7 +284,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

@@ -167,7 +167,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts );
+    commit( State::CommitBehaviour::KeepEmptyAccounts, OverlayDB::g_fn_pre_commit_empty );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -303,7 +303,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour ) {
+void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t fn_pre_commit ) {
     if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -348,7 +348,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit();
+        m_db_ptr->commit( fn_pre_commit );
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
     }
@@ -774,8 +774,8 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
-    OnOpFunc const& _onOp ) {
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
+    bool isSaveLastTxHash ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -817,7 +817,19 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
+                                      State::CommitBehaviour::KeepEmptyAccounts,
+            [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
+                std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
+                if ( isSaveLastTxHash ) {
+                    h256 sha =
+                        _t.hasSignature() ? _t.sha3() : _t.sha3( dev::eth::WithoutSignature );
+                    // std::cout << "--- saving safeLastExecutedTransactionHash = " << sha.hex() <<
+                    // "\n";
+                    writeBatch->insert(
+                        skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                        skale::slicing::toSlice( sha ) );
+                }
+            } );
         break;
     case Permanence::Uncommitted:
         resetStorageChanges();
