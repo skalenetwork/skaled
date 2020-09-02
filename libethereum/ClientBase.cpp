@@ -124,45 +124,35 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         // to calculate how many of gas will be used.
         // Then we execute transaction with this gas limit
         // and check if it will be enough.
-        // If not repeat process iteratively.
-        ExecutionResult goodResult;
-        int64_t goodGas = c_maxGasEstimate;
-        bool haveGoodResult = false;
+        // If not run binary search to find optimal gas limit.
 
-        auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
-        if ( step.first ) {
-            haveGoodResult = true;
-            goodResult = step.second;
-            auto gasUsed = goodResult.gasUsed.convert_to< int64_t >();
+        auto estimatedStep =
+            estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
+        if ( estimatedStep.first ) {
+            auto executionResult = estimatedStep.second;
+            auto gasUsed = executionResult.gasUsed.convert_to< int64_t >();
 
-            step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
-            if ( step.first ) {
-                goodGas = gasUsed;
-            } else {
-                while ( lowerBound + 1 < upperBound ) {
-                    int64_t middle = ( lowerBound + upperBound ) / 2;
-                    step = estimateGasStep( middle, bk, _from, _dest, _value, gasPrice, _data );
-                    if ( step.first ) {
-                        upperBound = middle;
-                    } else {
-                        lowerBound = middle;
-                    }
-                    if ( _callback ) {
-                        _callback( GasEstimationProgress{lowerBound, upperBound} );
-                    }
+            estimatedStep = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
+            if ( estimatedStep.first ) {
+                return make_pair( gasUsed, executionResult );
+            }
+            while ( lowerBound + 1 < upperBound ) {
+                int64_t middle = ( lowerBound + upperBound ) / 2;
+                estimatedStep =
+                    estimateGasStep( middle, bk, _from, _dest, _value, gasPrice, _data );
+                if ( estimatedStep.first ) {
+                    upperBound = middle;
+                } else {
+                    lowerBound = middle;
                 }
-                goodGas = upperBound;
-                goodResult =
-                    estimateGasStep( goodGas, bk, _from, _dest, _value, gasPrice, _data ).second;
+                if ( _callback ) {
+                    _callback( GasEstimationProgress{lowerBound, upperBound} );
+                }
             }
         }
 
-        if ( haveGoodResult ) {
-            return make_pair( goodGas, goodResult );
-        } else {
-            return make_pair( upperBound,
-                estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data ).second );
-        }
+        return make_pair( upperBound,
+            estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data ).second );
     } catch ( ... ) {
         // TODO: Some sort of notification of failure.
         return make_pair( u256(), ExecutionResult() );
