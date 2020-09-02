@@ -440,14 +440,9 @@ size_t Client::importTransactionsAsBlock(
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
-            if ( this->last_snapshot_time == -1 ) {
-                this->last_snapshot_time =
-                    ( this->blockInfo( this->hashFromNumber( block_number ) ).timestamp() /
-                        uint64_t( snapshotIntervalMs ) ) *
-                    uint64_t( snapshotIntervalMs );
-            } else {
-                this->last_snapshot_time += snapshotIntervalMs;
-            }
+
+            this->last_snapshot_time =
+                ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
 
             if ( m_snapshotHashComputing != nullptr ) {
                 m_snapshotHashComputing->join();
@@ -1044,12 +1039,12 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::updateHashes() {
-    if ( this->last_snapshot_hashes.first == this->empty_str_hash ) {
-        this->last_snapshot_hashes.first =
+    if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
+        this->last_snapshot_hashes.second =
             this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
         return;
     }
-    if ( this->last_snapshot_hashes.second != this->empty_str_hash ) {
+    if ( this->last_snapshot_hashes.first != this->empty_str_hash ) {
         std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
     }
     this->last_snapshot_hashes.second =
@@ -1058,19 +1053,19 @@ void Client::updateHashes() {
 
 void Client::initHashes() {
     auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-    this->last_snapshoted_block = ( latest_snapshots.first ? latest_snapshots.first : -1 );
+    this->last_snapshoted_block = ( latest_snapshots.second ? latest_snapshots.second : -1 );
 
     this->last_snapshot_time =
-        ( latest_snapshots.first ?
-                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
-                -1 );
-    this->last_snapshot_hashes.first =
         ( latest_snapshots.second ?
-                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
-                this->empty_str_hash );
-    this->last_snapshot_hashes.second =
+                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
+                0 );
+    this->last_snapshot_hashes.first =
         ( latest_snapshots.first ?
                 this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
+                this->empty_str_hash );
+    this->last_snapshot_hashes.second =
+        ( latest_snapshots.second ?
+                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
                 this->empty_str_hash );
 }
 
