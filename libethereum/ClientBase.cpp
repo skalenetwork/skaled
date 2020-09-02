@@ -143,9 +143,9 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     int64_t middle = ( lowerBound + upperBound ) / 2;
                     step = estimateGasStep( middle, bk, _from, _dest, _value, gasPrice, _data );
                     if ( step.first ) {
-                        upperBound = middle - 1;
+                        upperBound = middle;
                     } else {
-                        lowerBound = middle + 1;
+                        lowerBound = middle;
                     }
                     if ( _callback ) {
                         _callback( GasEstimationProgress{lowerBound, upperBound} );

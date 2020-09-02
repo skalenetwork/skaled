@@ -171,7 +171,6 @@ public:
             auto txHash = m_ethereum->importTransaction(tx);
             dev::eth::mineTransaction(*(m_ethereum), 1);
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            cout << "STATUS:" << receipt["status"];
             return receipt["status"] == "1";
         } catch (...) {
             return false;
@@ -466,7 +465,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
                             GasEstimationCallback() )
                         .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 21694 ) );
+    BOOST_CHECK_EQUAL( estimate, u256( 2367016 ) );
 }
 
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
@@ -576,11 +575,11 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     estimateTransaction["to"] = toJS (contractAddress);
     estimateTransaction["data"] = toJS (data);
 
-    estimateTransaction["gas"] = toJS(estimate );
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
-
-    estimateTransaction["gas"] = toJS(estimate - 1 );
+    estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate);
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
@@ -623,15 +622,15 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
             .first;
 
     Json::Value estimateTransaction;
-    estimateTransaction["from"] = toJS(from );
-    estimateTransaction["to"] = toJS (contractAddress);
+    estimateTransaction["from"] = toJS(from);
+    estimateTransaction["to"] = toJS(contractAddress);
     estimateTransaction["data"] = toJS (data);
 
-    estimateTransaction["gas"] = toJS(estimate );
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
-
-    estimateTransaction["gas"] = toJS(estimate - 1 );
+    estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate);
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
@@ -665,7 +664,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
                            GasEstimationCallback() )
             .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 43767 ) );
+    BOOST_CHECK( estimate < u256( maxGas ) );
 
     maxGas = 50000;
     estimate = testClient
