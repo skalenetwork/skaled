@@ -119,11 +119,11 @@ Client::Client( ChainParams const& _params, int _networkID,
 }
 
 Client::~Client() {
-    if ( m_snapshotHashComputing != nullptr )
-        m_snapshotHashComputing->join();
+    stopWorking();
+}
 
-    m_new_block_watch.uninstallAll();
-    m_new_pending_transaction_watch.uninstallAll();
+void Client::stopWorking() {
+    Worker::stopWorking();
 
     if ( m_skaleHost )
         m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
@@ -131,17 +131,43 @@ Client::~Client() {
     else
         cerror << "Instance of SkaleHost was not properly created.";
 
+    if ( m_snapshotHashComputing != nullptr ) {
+        try {
+            if ( m_snapshotHashComputing->joinable() )
+                m_snapshotHashComputing->join();
+        } catch ( ... ) {
+        }
+    }
+
+    m_new_block_watch.uninstallAll();
+    m_new_pending_transaction_watch.uninstallAll();
+
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
-    stopWorking();
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
-    terminate();
+    m_bc.close();
+    LOG( m_logger ) << cc::success( "Blockchain is closed" );
 
-    if ( !m_skaleHost || m_skaleHost->exitedForcefully() == false )
+    bool isForcefulExit =
+        ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
+    if ( !isForcefulExit ) {
         delete_lock_file( m_dbPath );
+        LOG( m_logger ) << cc::success( "Deleted lock file " )
+                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                                  std::string( "/skaled.lock" ) );
+    } else {
+        LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
+                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
+                                  std::string( "/skaled.lock" ) )
+                        << cc::error( " after foreceful exit" );
+    }
+    LOG( m_logger ).flush();
+
+    terminate();
 }
+
 
 void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
     assert( !m_skaleHost );
@@ -224,7 +250,7 @@ ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
 }
 
 tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
-    stopWorking();
+    Worker::stopWorking();
     return bc().sync( m_bq, m_state, _max );
 }
 
@@ -1001,12 +1027,12 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
-        std::cout << "exception in client call(1):"
-                  << boost::current_exception_diagnostic_information() << std::endl;
+        LOG( m_logger ) << "exception in client call(1):"
+                        << boost::current_exception_diagnostic_information() << std::endl;
         throw std::runtime_error( "call with invalid nonce" );
     } catch ( ... ) {
-        std::cout << "exception in client call(2):"
-                  << boost::current_exception_diagnostic_information() << std::endl;
+        LOG( m_logger ) << "exception in client call(2):"
+                        << boost::current_exception_diagnostic_information() << std::endl;
         throw;
     }
     return ret;

@@ -660,7 +660,9 @@ void SkaleHost::stopWorking() {
     // if we could not lock from 1st attempt - then exit forcefully!
     if ( !locked ) {
         m_exitedForcefully = true;
-        clog( VerbosityWarning, "skale-host" ) << "Forcefully shutting down consensus!";
+        clog( VerbosityWarning, "skale-host" )
+            << cc::fatal( "ATTENTION:" ) << " "
+            << cc::error( "Forcefully shutting down consensus!" );
     }
 
 

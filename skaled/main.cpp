@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <boost/algorithm/string.hpp>
@@ -313,6 +314,9 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
     return listIfaceInfos6;
 }
 
+static std::unique_ptr< Client > g_client;
+unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
+
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -325,6 +329,15 @@ int main( int argc, char** argv ) try {
         if ( nSignalNo == SIGPIPE )
             return;
         bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        if ( !stopWasRaisedBefore ) {
+            if ( g_jsonrpcIpcServer.get() ) {
+                g_jsonrpcIpcServer->StopListening();
+                g_jsonrpcIpcServer.reset( nullptr );
+            }
+            if ( g_client ) {
+                g_client->stopWorking();
+            }
+        }
         skutils::signal::g_bStop = true;
         std::string strMessagePrefix = stopWasRaisedBefore ?
                                            cc::error( "\nStop flag was already raised on. " ) +
@@ -593,12 +606,12 @@ int main( int argc, char** argv ) try {
         po::notify( vm );
     } catch ( po::error const& e ) {
         cerr << e.what();
-        return -1;
+        return EX_USAGE;
     }
     for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
         if ( !m.interpretOption( i, unrecognisedOptions ) ) {
             cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
-            return -1;
+            return EX_USAGE;
         }
 
     if ( vm.count( "no-colors" ) )
@@ -638,21 +651,48 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "admin" ) )
         strJsonAdminSessionKey = vm["admin"].as< string >();
 
+    if ( vm.count( "skale" ) ) {
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+        chainConfigIsSet = true;
+    }
+
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
                 throw "Config file probably not found";
+            chainParams = chainParams.loadConfig( configJSON, configPath );
+            chainConfigIsSet = true;
+            // TODO avoid double-parse!!
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
+        } catch ( const char* str ) {
+            cerr << "Error: " << str << ": " << configPath << "\n";
+            return EX_USAGE;
+        } catch ( const json_spirit::Error_position& err ) {
+            cerr << "error in parsing config json:\n";
+            cerr << configJSON << endl;
+            cerr << err.reason_ << " line " << err.line_ << endl;
+            return EX_CONFIG;
+        } catch ( const std::exception& ex ) {
+            cerr << "provided configuration is incorrect\n";
+            cerr << configJSON << endl;
+            cerr << nested_exception_what( ex ) << endl;
+            return EX_CONFIG;
         } catch ( ... ) {
-            cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
-            return -1;
+            cerr << "provided configuration is incorrect\n";
+            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
+            cerr << configJSON << endl;
+            return EX_CONFIG;
         }
     }
+
+    if ( !chainConfigIsSet )
+        // default to skale if not already set with `--config`
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1102,7 +1142,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--format"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
     if ( vm.count( "to" ) )
@@ -1122,7 +1162,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--upnp"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
 #endif
@@ -1133,7 +1173,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--network-id"
                  << " option: " << vm["network-id"].as< string >() << "\n";
-            return -1;
+            return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
         withExisting = WithExisting::Kill;
@@ -1158,36 +1198,6 @@ int main( int argc, char** argv ) try {
         cout << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
-
-    if ( vm.count( "skale" ) ) {
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
-        chainConfigIsSet = true;
-    }
-
-    if ( !configJSON.empty() ) {
-        try {
-            chainParams = chainParams.loadConfig( configJSON, configPath );
-            chainConfigIsSet = true;
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing config json:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << configJSON << endl;
-        } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is incorrect\n";
-            cerr << configJSON << endl;
-            cerr << ex.what() << endl;
-            return 0;
-        } catch ( ... ) {
-            cerr << "provided configuration is incorrect\n";
-            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            cerr << configJSON << endl;
-            return 0;
-        }
-    }
-
-    if ( !chainConfigIsSet )
-        // default to skale if not already set with `--config`
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
@@ -1349,11 +1359,10 @@ int main( int argc, char** argv ) try {
     //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
     //        );
 
-    std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
-    std::shared_ptr< InstanceMonitor > instanceMonitor;
 
-    instanceMonitor.reset( new InstanceMonitor() );
+    auto rotationFlagDirPath = configPath.parent_path();
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1362,12 +1371,12 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
-            client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
+            g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
                 isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
-            client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+            g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
                 isStartedFromSnapshot ) );
@@ -1375,32 +1384,33 @@ int main( int argc, char** argv ) try {
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
-        client->setAuthor( chainParams.sChain.owner );
+        g_client->setAuthor( chainParams.sChain.owner );
 
-        DefaultConsensusFactory cons_fact( *client );
+        DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost =
-            std::make_shared< SkaleHost >( *client, &cons_fact );
+            std::make_shared< SkaleHost >( *g_client, &cons_fact );
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
-        client->setGasPricer( gasPricer );
-        client->injectSkaleHost( skaleHost );
-        client->startWorking();
+        g_client->setGasPricer( gasPricer );
+        g_client->injectSkaleHost( skaleHost );
+        g_client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();
-        client->setExtraData( rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
-                                              string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
-                                              string{buildinfo->build_type}.substr( 0, 1 ) +
-                                              string{buildinfo->system_name}.substr( 0, 5 ) +
-                                              string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+        g_client->setExtraData(
+            rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
+                            string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
+                            string{buildinfo->build_type}.substr( 0, 1 ) +
+                            string{buildinfo->system_name}.substr( 0, 5 ) +
+                            string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
     }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
         if ( s == "latest" )
-            return client->number();
+            return g_client->number();
         if ( s.size() == 64 || ( s.size() == 66 && s.substr( 0, 2 ) == "0x" ) )
-            return client->blockChain().number( h256( s ) );
+            return g_client->blockChain().number( h256( s ) );
         try {
             return static_cast< unsigned int >( stoul( s ) );
         } catch ( ... ) {
@@ -1415,7 +1425,7 @@ int main( int argc, char** argv ) try {
 
         unsigned last = toNumber( exportTo );
         for ( unsigned i = toNumber( exportFrom ); i <= last; ++i ) {
-            bytes block = client->blockChain().block( client->blockChain().numberHash( i ) );
+            bytes block = g_client->blockChain().block( g_client->blockChain().numberHash( i ) );
             switch ( exportFormat ) {
             case Format::Binary:
                 out.write( reinterpret_cast< char const* >( block.data() ),
@@ -1449,12 +1459,12 @@ int main( int argc, char** argv ) try {
             unsigned imported = 0;
 
             unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
+            cout << "Skipping " << g_client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
             while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
                 bytes block( 8 );
                 {
-                    if ( block_no >= client->number() ) {
+                    if ( block_no >= g_client->number() ) {
                         MICROPROFILE_ENTERI( "main", "in.read", -1 );
                     }
                     in.read( reinterpret_cast< char* >( block.data() ),
@@ -1463,7 +1473,7 @@ int main( int argc, char** argv ) try {
                     if ( block.size() >= 8 ) {
                         in.read( reinterpret_cast< char* >( block.data() + 8 ),
                             std::streamsize( block.size() ) - 8 );
-                        if ( block_no >= client->number() ) {
+                        if ( block_no >= g_client->number() ) {
                             MICROPROFILE_LEAVE();
                         }
                     } else {
@@ -1472,10 +1482,10 @@ int main( int argc, char** argv ) try {
                 }
                 block_no++;
 
-                if ( block_no <= client->number() )
+                if ( block_no <= g_client->number() )
                     continue;
 
-                switch ( client->queueBlock( block, safeImport ) ) {
+                switch ( g_client->queueBlock( block, safeImport ) ) {
                 case ImportResult::Success:
                     good++;
                     break;
@@ -1498,7 +1508,7 @@ int main( int argc, char** argv ) try {
                 }
 
                 // sync chain with queue
-                tuple< ImportRoute, bool, unsigned > r = client->syncQueue( 10 );
+                tuple< ImportRoute, bool, unsigned > r = g_client->syncQueue( 10 );
                 imported += get< 2 >( r );
 
                 double e =
@@ -1512,9 +1522,9 @@ int main( int argc, char** argv ) try {
                     cout << i << " more imported at " << i / d << " blocks/s. " << imported
                          << " imported in " << e << " seconds at "
                          << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                         << client->number() << ")"
+                         << g_client->number() << ")"
                          << "\n";
-                    fprintf( client->performance_fd, "%d\t%.2lf\n", client->number(), i / d );
+                    fprintf( g_client->performance_fd, "%d\t%.2lf\n", g_client->number(), i / d );
                     last = static_cast< unsigned >( e );
                     lastImported = imported;
                     MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
@@ -1528,14 +1538,14 @@ int main( int argc, char** argv ) try {
                     MICROPROFILE_SCOPEI( "main", "sleep 1 sec", MP_DIMGREY );
                     this_thread::sleep_for( chrono::seconds( 1 ) );
                 }
-                tie( ignore, moreToImport, ignore ) = client->syncQueue( 100000 );
+                tie( ignore, moreToImport, ignore ) = g_client->syncQueue( 100000 );
             }
             double e =
                 chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
                     .count() /
                 1000.0;
             cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << client->number()
+                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << g_client->number()
                  << ")\n";
         } );  // thread
         th.join();
@@ -1563,7 +1573,7 @@ int main( int argc, char** argv ) try {
     } catch ( ... ) {
         cerr << "Error initializing key manager: "
              << boost::current_exception_diagnostic_information() << "\n";
-        return -1;
+        return 1;
     }
 
     for ( auto const& presale : presaleImports )
@@ -1576,29 +1586,28 @@ int main( int argc, char** argv ) try {
 
     if ( mode == OperationMode::ImportSnapshot ) {
         try {
-            auto stateImporter = client->createStateImporter();
-            auto blockChainImporter = client->createBlockChainImporter();
+            auto stateImporter = g_client->createStateImporter();
+            auto blockChainImporter = g_client->createBlockChainImporter();
             SnapshotImporter importer( *stateImporter, *blockChainImporter );
 
             auto snapshotStorage( createSnapshotStorage( filename ) );
-            importer.import( *snapshotStorage, client->blockChain().genesisHash() );
+            importer.import( *snapshotStorage, g_client->blockChain().genesisHash() );
             // continue with regular sync from the snapshot block
         } catch ( ... ) {
             cerr << "Error during importing the snapshot: "
                  << boost::current_exception_diagnostic_information() << endl;
-            return -1;
+            return EX_DATAERR;
         }
     }
 
     if ( nodeMode == NodeMode::Full ) {
-        client->setSealer( m.minerType() );
+        g_client->setSealer( m.minerType() );
         if ( networkID != NoNetworkID )
-            client->setNetworkId( networkID );
+            g_client->setNetworkId( networkID );
     }
 
-    cout << "Mining Beneficiary: " << client->author() << endl;
+    cout << "Mining Beneficiary: " << g_client->author() << endl;
 
-    unique_ptr< ModularServer<> > jsonrpcIpcServer;
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
 
@@ -1625,7 +1634,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--aa"
                  << " option: " << strAA << "\n";
-            return -1;
+            return EX_USAGE;
         }
         clog( VerbosityInfo, "main" )
             << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
@@ -1647,19 +1656,19 @@ int main( int argc, char** argv ) try {
             if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
                 return true;
 
-            string r =
-                getResponse( _t.userReadable( isProxy,
-                                 [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
-                                     h256 contractCodeHash = client->postState().codeHash( _t.to );
-                                     if ( contractCodeHash == EmptySHA3 )
-                                         return std::make_pair( false, std::string() );
-                                     // TODO: actually figure out the natspec. we'll need the
-                                     // natspec database here though.
-                                     return std::make_pair( true, std::string() );
-                                 },
-                                 [&]( Address const& _a ) { return _a.hex(); } ) +
-                                 "\nEnter yes/no/always (always to this address): ",
-                    {"yes", "n", "N", "no", "NO", "always"} );
+            string r = getResponse(
+                _t.userReadable( isProxy,
+                    [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
+                        h256 contractCodeHash = g_client->postState().codeHash( _t.to );
+                        if ( contractCodeHash == EmptySHA3 )
+                            return std::make_pair( false, std::string() );
+                        // TODO: actually figure out the natspec. we'll need the
+                        // natspec database here though.
+                        return std::make_pair( true, std::string() );
+                    },
+                    [&]( Address const& _a ) { return _a.hex(); } ) +
+                    "\nEnter yes/no/always (always to this address): ",
+                {"yes", "n", "N", "no", "NO", "always"} );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
@@ -1688,13 +1697,13 @@ int main( int argc, char** argv ) try {
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
-            [&]() { return client.get(); }, getAccountPassword, keyManager, authenticator ) );
+            [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( *g_client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client );
+        auto skaleFace = new rpc::Skale( *g_client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
 
         std::string argv_string;
         {
@@ -1704,29 +1713,29 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }
 
-        jsonrpcIpcServer.reset( new FullServer( ethFace,
+        g_jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
-            new rpc::Personal( keyManager, *accountHolder, *client ),
-            new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *client, argv_string ) : nullptr,
+            new rpc::Personal( keyManager, *accountHolder, *g_client ),
+            new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, argv_string ) : nullptr,
             nullptr ) );
 
         if ( is_ipc ) {
             try {
                 auto ipcConnector = new IpcServer( "geth" );
-                jsonrpcIpcServer->addConnector( ipcConnector );
+                g_jsonrpcIpcServer->addConnector( ipcConnector );
                 if ( !ipcConnector->StartListening() ) {
                     clog( VerbosityError, "main" )
                         << "Cannot start listening for RPC requests on ipc port: "
                         << strerror( errno );
-                    return EXIT_FAILURE;
+                    return EX_IOERR;
                 }  // error
             } catch ( const std::exception& ex ) {
                 clog( VerbosityError, "main" )
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }  // catch
         }      // if ( is_ipc )
 
@@ -1734,49 +1743,49 @@ int main( int argc, char** argv ) try {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTP6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
 
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
@@ -2016,7 +2025,7 @@ int main( int argc, char** argv ) try {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
             auto skale_server_connector = new SkaleServerOverride( chainParams,
-                fn_binary_snapshot_download, cntServers, client.get(), chainParams.nodeInfo.ip,
+                fn_binary_snapshot_download, cntServers, g_client.get(), chainParams.nodeInfo.ip,
                 nExplicitPortHTTP4, chainParams.nodeInfo.ip6, nExplicitPortHTTP6,
                 chainParams.nodeInfo.ip, nExplicitPortHTTPS4, chainParams.nodeInfo.ip6,
                 nExplicitPortHTTPS6, chainParams.nodeInfo.ip, nExplicitPortWS4,
@@ -2032,9 +2041,9 @@ int main( int argc, char** argv ) try {
             //
             skale_server_connector->m_bTraceCalls = bTraceJsonRpcCalls;
             skale_server_connector->max_connection_set( maxConnections );
-            jsonrpcIpcServer->addConnector( skale_server_connector );
+            g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }
             int nStatHTTP4 = skale_server_connector->getServerPortStatusHTTP( 4 );
             int nStatHTTP6 = skale_server_connector->getServerPortStatusHTTP( 6 );
@@ -2239,17 +2248,23 @@ int main( int argc, char** argv ) try {
 
     dev::setThreadName( "main" );
 
-    if ( client ) {
-        unsigned int n = client->blockChain().details().number;
+    if ( g_client ) {
+        unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
         while ( !exitHandler.shouldExit() )
-            stopSealingAfterXBlocks( client.get(), n, mining );
-    } else
+            stopSealingAfterXBlocks( g_client.get(), n, mining );
+    } else {
         while ( !exitHandler.shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
-
-    if ( jsonrpcIpcServer.get() )
-        jsonrpcIpcServer->StopListening();
+    }
+    if ( g_jsonrpcIpcServer.get() ) {
+        g_jsonrpcIpcServer->StopListening();
+        g_jsonrpcIpcServer.reset( nullptr );
+    }
+    if ( g_client ) {
+        g_client->stopWorking();
+        g_client.reset( nullptr );
+    }
 
     std::cerr << localeconv()->decimal_point << std::endl;
 
@@ -2266,21 +2281,25 @@ int main( int argc, char** argv ) try {
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const SkaleHost::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 }

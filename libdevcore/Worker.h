@@ -60,9 +60,11 @@ protected:
     /// Starts worker thread; causes startedWorking() to be called.
     void startWorking();
 
+public:
     /// Stop worker thread; causes call to stopWorking().
     void stopWorking();
 
+protected:
     /// Returns if worker thread is present.
     bool isWorking() const {
         Guard l( x_work );
