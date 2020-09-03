@@ -56,6 +56,7 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
+    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
     dev::h256 safeLastExecutedTransactionHash();
 
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
@@ -108,6 +109,9 @@ private:
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
+
+public:
+    std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }
 };
 
 }  // namespace skale

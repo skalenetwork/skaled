@@ -828,13 +828,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
                 std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
                 if ( isSaveLastTxHash ) {
-                    h256 sha = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                           // dev::eth::WithoutSignature );
-                    std::cout << "--- saving safeLastExecutedTransactionHash = " << sha.hex()
-                              << "\n";
+                    h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
+                                                 // dev::eth::WithoutSignature );
+                    // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
+                    // shaLastTx.hex() << "\n";
                     writeBatch->insert(
                         skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
-                        skale::slicing::toSlice( sha ) );
+                        skale::slicing::toSlice( shaLastTx ) );
                 }
             } );
         break;

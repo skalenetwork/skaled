@@ -43,6 +43,46 @@
 
 #include <skutils/console_colors.h>
 
+//
+// The following variable allows to emulate skaled crash after some but not all block transactions
+// were executed and their state data were saved into level DB.
+//
+// Based on https://stackoverflow.com/questions/3649874/how-can-i-get-the-keyboard-state-in-linux
+//
+// #define __DEBUG_EMULATE_CRASH_IN_THE_MIDDLE_OF_BLOCK_TRANSACTIONS_EXECUTION__ 1
+
+#if ( defined __DEBUG_EMULATE_CRASH_IN_THE_MIDDLE_OF_BLOCK_TRANSACTIONS_EXECUTION__ )
+
+#include <linux/input.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+static int g_key_to_crash_if_pressed =
+    KEY_RIGHTALT;  // value examples KEY_LEFTSHIFT KEY_RIGHTSHIFT, KEY_LEFTALT, KEY_RIGHTALT,
+                   // KEY_LEFTCTRL, KEY_RIGHTCTRL
+
+static bool check_if_key_is_pressed( int key ) {
+    FILE* kbd = fopen( "/dev/input/by-path/platform-i8042-serio-0-event-kbd", "r" );
+    char key_map[KEY_MAX / 8 + 1];            // create a byte array the size of the number of keys
+    memset( key_map, 0, sizeof( key_map ) );  // initate the array to zero's
+    ioctl( fileno( kbd ), EVIOCGKEY( sizeof( key_map ) ), key_map );  // fill the keymap with the
+                                                                      // current keyboard state
+    int keyb = key_map[key / 8];  // the key we want (and the seven others arround it)
+    int mask = 1 << ( key % 8 );  // put a one in the same column as out key state will be in;
+    bool bIsPressed = ( !( keyb & mask ) ) ? true : false;
+    return bIsPressed;
+}
+
+static void exit_immedeately_if_key_is_pressed( int key ) {
+    if ( check_if_key_is_pressed( key ) ) {
+        _exit( 66 );
+    }
+}
+
+#endif  /// (defined __DEBUG_EMULATE_CRASH_IN_THE_MIDDLE_OF_BLOCK_TRANSACTIONS_EXECUTION__)
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -474,6 +514,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
                 ++count_bad;
+
+#if ( defined __DEBUG_EMULATE_CRASH_IN_THE_MIDDLE_OF_BLOCK_TRANSACTIONS_EXECUTION__ )
+            exit_immedeately_if_key_is_pressed( g_key_to_crash_if_pressed );
+#endif  /// (defined __DEBUG_EMULATE_CRASH_IN_THE_MIDDLE_OF_BLOCK_TRANSACTIONS_EXECUTION__)
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );

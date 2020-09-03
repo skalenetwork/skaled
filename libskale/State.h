@@ -454,6 +454,14 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+public:
+    std::shared_ptr< dev::db::DatabaseFace > db() {
+        std::shared_ptr< dev::db::DatabaseFace > pDB;
+        if ( m_db_ptr )
+            pDB = m_db_ptr->db();
+        return pDB;
+    }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );
