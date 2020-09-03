@@ -437,7 +437,7 @@ size_t Client::importTransactionsAsBlock(
                 this->updateHashes();
             }
             try {
-                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                LOG( m_logger ) << cc::debug( "DOING SNAPSHOT: " ) << block_number;
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
@@ -446,8 +446,8 @@ size_t Client::importTransactionsAsBlock(
             this->last_snapshot_time =
                 ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
 
-            LOG( m_logger ) << "Block timestamp: " << _timestamp;
-            LOG( m_logger ) << "Last snapshot time: " << this->last_snapshot_time;
+            LOG( m_logger ) << cc::debug( "Block timestamp: " ) << _timestamp;
+            LOG( m_logger ) << cc::debug( "Last snapshot time: " ) << this->last_snapshot_time;
 
             if ( m_snapshotHashComputing != nullptr ) {
                 m_snapshotHashComputing->join();
@@ -457,13 +457,17 @@ size_t Client::importTransactionsAsBlock(
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
                 } catch ( const std::exception& ex ) {
-                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                           << " in computeSnapshotHash() or updateHashes(). Exiting";
+                    cerror << cc::fatal( "CRITICAL" ) << " "
+                           << cc::warn( dev::nested_exception_what( ex ) )
+                           << cc::error(
+                                  " in computeSnapshotHash() or updateHashes(). Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT );
                 } catch ( ... ) {
-                    cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
-                              "updateHashes(). Exiting";
+                    cerror << cc::fatal( "CRITICAL" )
+                           << cc::error(
+                                  " unknown exception in computeSnapshotHash() or updateHashes(). "
+                                  "Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT );
                 }
@@ -472,7 +476,11 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
+        //
+        // begin, detect partially executed block
         bool bIsPartial = false;
+        size_t cntAll = _transactions.size();
+        size_t cntEpected = cntAll;
         Transactions vecPassed, vecMissing;
         dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
         for ( const Transaction& txWalk : _transactions ) {
@@ -483,15 +491,24 @@ size_t Client::importTransactionsAsBlock(
                 if ( shaWalk == shaLastTx ) {
                     bIsPartial = true;
                     vecPassed.push_back( txWalk );
-                    std::cout << "--- found partially executed block\n";
+                    size_t cntPassed = vecPassed.size();
+                    size_t cntMissing = cntAll - cntPassed;
+                    cntEpected = cntMissing;
+                    LOG( m_logger ) << cc::warn( "WARNING: found partially executed block, have " )
+                                    << cc::size10( cntAll ) << cc::error( " transaction(s), " )
+                                    << cc::size10( cntPassed ) << cc::error( "passed, " )
+                                    << cc::size10( cntMissing ) << cc::error( " missing" );
+                    LOG( m_logger ).flush();
                 } else {
                     vecMissing.push_back( txWalk );
                 }
             }
         }
+        // end, detect partially executed block
+        //
 
         bool isSaveLastTxHash = true;
-        size_t n_succeeded = syncTransactions(
+        size_t cntSucceeded = syncTransactions(
             bIsPartial ? vecMissing : _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
         sealUnconditionally( false );
         importWorkingBlock();
@@ -499,9 +516,17 @@ size_t Client::importTransactionsAsBlock(
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
         }
-        if ( bIsPartial )
-            n_succeeded += vecPassed.size();
-        return n_succeeded;
+        if ( bIsPartial ) {
+            size_t cntPassed = vecPassed.size();
+            cntSucceeded += cntPassed;
+        }
+        if ( cntSucceeded != cntEpected ) {
+            LOG( m_logger ) << cc::warn( "WARNING: expected " ) << cc::size10( cntEpected )
+                            << cc::error( " transaction(s) to pass, when " )
+                            << cc::size10( cntSucceeded ) << cc::error( " passed with success" );
+            LOG( m_logger ).flush();
+        }
+        return cntSucceeded;
     }
     assert( false );
     return 0;
