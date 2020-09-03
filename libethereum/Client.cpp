@@ -472,22 +472,35 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
+        bool bIsPartial = false;
+        Transactions vecPassed, vecMissing;
         dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
         for ( const Transaction& txWalk : _transactions ) {
             const h256 shaWalk = txWalk.sha3();
-            if ( shaWalk == shaLastTx )
-                std::cout << "--- found partially executed block\n";
+            if ( !bIsPartial )
+                vecPassed.push_back( txWalk );
+            else {
+                if ( shaWalk == shaLastTx ) {
+                    bIsPartial = true;
+                    vecPassed.push_back( txWalk );
+                    std::cout << "--- found partially executed block\n";
+                } else {
+                    vecMissing.push_back( txWalk );
+                }
+            }
         }
 
         bool isSaveLastTxHash = true;
-        size_t n_succeeded =
-            syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
+        size_t n_succeeded = syncTransactions(
+            bIsPartial ? vecMissing : _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
         sealUnconditionally( false );
         importWorkingBlock();
 
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
         }
+        if ( bIsPartial )
+            n_succeeded += vecPassed.size();
         return n_succeeded;
     }
     assert( false );
