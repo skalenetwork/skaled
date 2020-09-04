@@ -464,7 +464,8 @@ pair< TransactionReceipts, bool > Block::sync(
 }
 
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice, bool isSaveLastTxHash ) {
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
+    bool isSaveLastTxHash ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 

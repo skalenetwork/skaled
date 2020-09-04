@@ -558,7 +558,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
-        //        assert(m_state.m_db_write_lock.has_value());
+        // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, isSaveLastTxHash );
         m_state = m_state.startNew();

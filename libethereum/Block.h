@@ -234,7 +234,7 @@ public:
 
     /// Sync all transactions unconditionally
     std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice,
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
         bool isSaveLastTxHash = false );
 
     /// Execute all transactions within a given block.
