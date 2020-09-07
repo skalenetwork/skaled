@@ -487,12 +487,12 @@ size_t Client::importTransactionsAsBlock(
         dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
         for ( const Transaction& txWalk : _transactions ) {
             const h256 shaWalk = txWalk.sha3();
-            if ( !bIsPartial )
-                vecPassed.push_back( txWalk );
+            if ( bIsPartial )
+                vecMissing.push_back( txWalk );
             else {
+                vecPassed.push_back( txWalk );
                 if ( shaWalk == shaLastTx ) {
                     bIsPartial = true;
-                    vecPassed.push_back( txWalk );
                     size_t cntPassed = vecPassed.size();
                     size_t cntMissing = cntAll - cntPassed;
                     cntEpected = cntMissing;
@@ -501,8 +501,6 @@ size_t Client::importTransactionsAsBlock(
                                     << cc::size10( cntPassed ) << cc::error( "passed, " )
                                     << cc::size10( cntMissing ) << cc::error( " missing" );
                     LOG( m_logger ).flush();
-                } else {
-                    vecMissing.push_back( txWalk );
                 }
             }
         }
