@@ -1406,7 +1406,6 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
-        sleep( rand() % 4 );
     }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
