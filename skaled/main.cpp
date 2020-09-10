@@ -618,6 +618,19 @@ int main( int argc, char** argv ) try {
         cc::_on_ = false;
     if ( vm.count( "colors" ) )
         cc::_on_ = true;
+    if ( vm.count( "version" ) ) {
+        version();
+        return 0;
+    }
+    if ( vm.count( "help" ) ) {
+        cout << "NAME:\n"
+             << "   skaled " << Version << '\n'
+             << "USAGE:\n"
+             << "   skaled [options]\n\n";
+        cout << clientDefaultMode << clientTransacting << clientNetworking;
+        cout << vmOptions << loggingProgramOptions << generalOptions;
+        return 0;
+    }
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
@@ -637,10 +650,6 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "import-snapshot" ) ) {
         mode = OperationMode::ImportSnapshot;
         filename = vm["import-snapshot"].as< string >();
-    }
-    if ( vm.count( "version" ) ) {
-        version();
-        return 0;
     }
 
     bool chainConfigIsSet = false, chainConfigParsed = false;
@@ -1188,15 +1197,6 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "import-session-secret" ) ) {
         Secret s( fromHex( vm["import-session-secret"].as< string >() ) );
         toImport.emplace_back( s );
-    }
-    if ( vm.count( "help" ) ) {
-        cout << "NAME:\n"
-             << "   skaled " << Version << '\n'
-             << "USAGE:\n"
-             << "   skaled [options]\n\n";
-        cout << clientDefaultMode << clientTransacting << clientNetworking;
-        cout << vmOptions << loggingProgramOptions << generalOptions;
-        return 0;
     }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
