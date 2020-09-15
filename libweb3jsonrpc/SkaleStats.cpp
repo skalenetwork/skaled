@@ -110,10 +110,11 @@ Json::Value SkaleStats::skale_stats() {
         if ( c ) {
             nlohmann::json joTrace;
             std::shared_ptr< SkaleHost > h = c->skaleHost();
-            std::istringstream list( h->debugCall( "trace list" ) );
+
+            std::istringstream list( h->getDebugHandler()( "trace list" ) );
             std::string key;
             while ( list >> key ) {
-                std::string count_str = h->debugCall( "trace count " + key );
+                std::string count_str = h->getDebugHandler()( "trace count " + key );
                 joTrace[key] = atoi( count_str.c_str() );
             }  // while
 

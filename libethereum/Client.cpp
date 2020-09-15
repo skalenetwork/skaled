@@ -115,6 +115,11 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_dbPath( _dbPath ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
     create_lock_file_or_fail( m_dbPath );
+
+    m_debugHandler = [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    };
+
     init( _forceAction, _networkID );
 }
 

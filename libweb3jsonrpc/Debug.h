@@ -7,6 +7,7 @@
 #include <boost/program_options.hpp>
 
 class SkaleHost;
+class SkaleDebugInterface;
 
 namespace dev {
 namespace eth {
@@ -20,7 +21,8 @@ class SessionManager;
 
 class Debug : public DebugFace {
 public:
-    explicit Debug( eth::Client const& _eth, const std::string& argv = std::string() );
+    explicit Debug( eth::Client const& _eth, SkaleDebugInterface* _debugInterface = nullptr,
+        const std::string& argv = std::string() );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"debug", "1.0"}};
@@ -46,7 +48,7 @@ public:
     void debug_forceBlock() override;
     void debug_forceBroadcast( const std::string& _transactionHash ) override;
 
-    std::string debug_callSkaleHost( const std::string& _arg ) override;
+    std::string debug_interfaceCall( const std::string& _arg ) override;
 
     virtual std::string debug_getVersion() override;
     virtual std::string debug_getArguments() override;
@@ -55,6 +57,7 @@ public:
 
 private:
     eth::Client const& m_eth;
+    SkaleDebugInterface* m_debugInterface = nullptr;
     std::string argv_options;
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
