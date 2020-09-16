@@ -1385,7 +1385,14 @@ int main( int argc, char** argv ) try {
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
-        debugInterface.add_handler( g_client->getDebugHandler() );
+        // XXX nested lambdas and strlen hacks..
+        auto client_debug_handler = g_client->getDebugHandler();
+        debugInterface.add_handler( [client_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "Client " ) == 0 )
+                return client_debug_handler( arg.substr( 7 ) );
+            else
+                return "";
+        } );
         g_client->setAuthor( chainParams.sChain.owner );
 
         DefaultConsensusFactory cons_fact( *g_client );
@@ -1394,7 +1401,14 @@ int main( int argc, char** argv ) try {
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *g_client, &cons_fact );
 
-        debugInterface.add_handler( skaleHost->getDebugHandler() );
+        // XXX nested lambdas and strlen hacks..
+        auto skaleHost_debug_handler = skaleHost->getDebugHandler();
+        debugInterface.add_handler( [skaleHost_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "SkaleHost " ) == 0 )
+                return skaleHost_debug_handler( arg.substr( 10 ) );
+            else
+                return "";
+        } );
 
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 

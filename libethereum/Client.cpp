@@ -443,6 +443,7 @@ size_t Client::importTransactionsAsBlock(
             }
             try {
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                m_debugTracer.tracepoint( "doing_snapshot" );
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
@@ -458,9 +459,11 @@ size_t Client::importTransactionsAsBlock(
                 m_snapshotHashComputing->join();
             }
             m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
+                m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
+                    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash() or updateHashes(). Exiting";
@@ -1049,6 +1052,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::updateHashes() {
+    m_debugTracer.tracepoint( "update_hashes" );
+
     if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
         this->last_snapshot_hashes.second =
             this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
