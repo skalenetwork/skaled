@@ -152,7 +152,6 @@ void Block::resetCurrent( int64_t _timestamp ) {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     // TODO: check.
-    LOG( m_logger ) << cc::debug( "Trying to reset state" );
 
     m_committedToSeal = false;
 
@@ -325,7 +324,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
     }
 #endif
     // m_state = m_state.startNew();
-    resetCurrent();
+    resetCurrent( m_currentBlock.timestamp() );
     assert( m_state.checkVersion() );
     return ret;
 }
@@ -852,7 +851,8 @@ void Block::updateBlockhashContract() {
     }
 }
 
-void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
+void Block::commitToSeal(
+    BlockChain const& _bc, bytes const& _extraData, dev::h256 const& _stateRootHash ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -867,32 +867,9 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
 
     RLPStream unclesData;
     unsigned unclesCount = 0;
-    if ( m_previousBlock.number() != 0 ) {
-        // Find great-uncles (or second-cousins or whatever they are) - children of
-        // great-grandparents, great-great-grandparents... that were not already uncles in previous
-        // generations.
-        LOG( m_loggerDetailed ) << cc::debug( "Checking " ) << m_previousBlock.hash()
-                                << cc::debug( ", parent = " ) << m_previousBlock.parentHash();
-        h256Hash excluded = _bc.allKinFrom( m_currentBlock.parentHash(), 6 );
-        auto p = m_previousBlock.parentHash();
-        for ( unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2;
-              ++gen, p = _bc.details( p ).parent ) {
-            auto us = _bc.details( p ).children;
-            assert( us.size() >= 1 );  // must be at least 1 child of our grandparent - it's our own
-                                       // parent!
-            for ( auto const& u : us )
-                if ( !excluded.count( u ) )  // ignore any uncles/mainline blocks that we know
-                                             // about.
-                {
-                    uncleBlockHeaders.push_back( _bc.info( u ) );
-                    unclesData.appendRaw( _bc.headerData( u ) );
-                    ++unclesCount;
-                    if ( unclesCount == 2 )
-                        break;
-                    excluded.insert( u );
-                }
-        }
-    }
+
+    // here was code to handle 6 generations of uncles
+    // it was wtiting its results in two variables above
 
     BytesMap transactionsMap;
     BytesMap receiptsMap;
@@ -938,8 +915,8 @@ void Block::commitToSeal( BlockChain const& _bc, bytes const& _extraData ) {
 
     m_currentBlock.setLogBloom( logBloom() );
     m_currentBlock.setGasUsed( gasUsed() );
-    m_currentBlock.setRoots(
-        hash256( transactionsMap ), hash256( receiptsMap ), sha3( m_currentUncles ), EmptyTrie );
+    m_currentBlock.setRoots( hash256( transactionsMap ), hash256( receiptsMap ),
+        sha3( m_currentUncles ), _stateRootHash );
 
     m_currentBlock.setParentHash( m_previousBlock.hash() );
     m_currentBlock.setExtraData( _extraData );

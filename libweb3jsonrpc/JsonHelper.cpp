@@ -111,7 +111,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
-        res["size"] = toJS( _bd.size );
+        res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -128,7 +128,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
-        res["size"] = toJS( _bd.size );
+        res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -168,10 +168,14 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
 
 Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     Json::Value res;
+
+    res["from"] = toJS( _t.from() );
+    res["to"] = toJS( _t.to() );
+
     res["transactionHash"] = toJS( _t.hash() );
-    res["transactionIndex"] = _t.transactionIndex();
+    res["transactionIndex"] = toJS( _t.transactionIndex() );
     res["blockHash"] = toJS( _t.blockHash() );
-    res["blockNumber"] = _t.blockNumber();
+    res["blockNumber"] = toJS( _t.blockNumber() );
     res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["gasUsed"] = toJS( _t.gasUsed() );
     //
@@ -255,11 +259,11 @@ Json::Value toJson( dev::eth::LocalisedLogEntry const& _e ) {
         res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
         if ( _e.mined ) {
             res["type"] = "mined";
-            res["blockNumber"] = _e.blockNumber;
+            res["blockNumber"] = toJS( _e.blockNumber );
             res["blockHash"] = toJS( _e.blockHash );
-            res["logIndex"] = _e.logIndex;
+            res["logIndex"] = toJS( _e.logIndex );
             res["transactionHash"] = toJS( _e.transactionHash );
-            res["transactionIndex"] = _e.transactionIndex;
+            res["transactionIndex"] = toJS( _e.transactionIndex );
         } else {
             res["type"] = "pending";
             res["blockNumber"] = Json::Value( Json::nullValue );
@@ -370,7 +374,7 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
         ret.nonce = jsToU256( _json["nonce"].asString() );
     return ret;
 }
-
+/*
 dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
     dev::eth::LogFilter filter;
     if ( !_json.isObject() || _json.empty() )
@@ -400,10 +404,11 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
         }
     return filter;
 }
+*/
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
-dev::eth::LogFilter toLogFilter( Json::Value const& _json,
-    Interface const& _client )  // commented to avoid warning. Uncomment once in use @ PoC-7.
+dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.
+                                                             // Uncomment once in use @ PoC-7.
 {
     dev::eth::LogFilter filter;
     if ( !_json.isObject() || _json.empty() )
@@ -411,11 +416,9 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json,
 
     // check only !empty. it should throw exceptions if input params are incorrect
     if ( !_json["fromBlock"].empty() )
-        filter.withEarliest(
-            _client.hashFromNumber( jsToBlockNumber( _json["fromBlock"].asString() ) ) );
+        filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].asString() ) );
     if ( !_json["toBlock"].empty() )
-        filter.withLatest(
-            _client.hashFromNumber( jsToBlockNumber( _json["toBlock"].asString() ) ) );
+        filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].asString() ) );
     if ( !_json["address"].empty() ) {
         if ( _json["address"].isArray() )
             for ( auto i : _json["address"] )

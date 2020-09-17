@@ -1,5 +1,6 @@
 #include <skutils/console_colors.h>
 #include <skutils/dispatch.h>
+#include <skutils/task_performance.h>
 #include <skutils/utils.h>
 #include <time.h>
 #include <uv.h>
@@ -8,26 +9,33 @@
 #include <iostream>
 #include <stdexcept>
 
+//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ 1
+//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ 1
+//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ 1
+
 #define LOCAL_DEBUG_TRACE( x )
-// static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty() ) return;
-// std::cout.flush(); std::cerr.flush(); std::cout << x << "\n"; std::cout.flush(); }
+// static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty()
+// ) return; std::cout.flush(); std::cerr.flush(); std::cout << x << "\n";
+// std::cout.flush(); }
 
 namespace skutils {
 namespace dispatch {
 
 skutils::multithreading::recursive_mutex_type& get_dispatch_mtx() {
     // static skutils::multithreading::recursive_mutex_type g_dispatch_mtx(
-    // "skutils::dispatch::g_dispatch_mtx" ); return g_dispatch_mtx;
+    //    "skutils::dispatch::g_dispatch_mtx" );
+    // return g_dispatch_mtx;
     return skutils::get_ref_mtx();
 }
 
 static void stat_sleep( duration_t how_much ) {
     // auto nNanoSeconds = how_much.count();
-    // struct timespec ts{ time_t(nNanoSeconds/1000000000), long(nNanoSeconds%1000000000) };
-    // nanosleep( &ts,nullptr );
+    // struct timespec ts{ time_t(nNanoSeconds/1000000000),
+    // long(nNanoSeconds%1000000000) }; nanosleep( &ts,nullptr );
     std::this_thread::sleep_for( how_much );
 }
-bool sleep_while_true(  // returns false if timeout is reached and fn() never returned false
+bool sleep_while_true(  // returns false if timeout is reached and fn() never
+                        // returned false
     while_true_t fn,
     duration_t timeout,        // = duration_t(0) // zero means no timeout
     duration_t step,           // = duration_t(10*1000*1000)
@@ -204,11 +212,36 @@ bool stop( const job_id_t& jobID ) {  // stops periodical work
 
 loop::one_per_thread_t loop::g_one_per_thread;
 
-loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {}
+loop::loop() : p_uvLoop_( nullptr ), cancelMode_( false ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop ctor %p\n", this );
+    std::cout.flush();
+#endif
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ == nullptr )
+        p_uvAsyncInitForTimers_ = ( void* ) calloc( 1, sizeof( uv_async_t ) );
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
+}
 loop::~loop() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop dtor start %p\n", this );
+    std::cout.flush();
+#endif
     job_remove_all();
     cancel();
     wait();
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ != nullptr ) {
+        free( p_uvAsyncInitForTimers_ );
+        p_uvAsyncInitForTimers_ = nullptr;
+    }
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop dtor finish %p\n", this );
+    std::cout.flush();
+#endif
 }
 loop::mutex_type& loop::loop_mtx() const {
     return loop_mtx_;
@@ -238,9 +271,18 @@ bool loop::wait_until_startup( duration_t timeout,  // = duration_t(0) // zero m
 bool loop::wait( duration_t timeout,  // = duration_t(0) // zero means no timeout
     duration_t step                   // = duration_t(10*1000*1000)
 ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop wait %p\n", this );
+    std::cout.flush();
+#endif
     return sleep_while_true( [this]() -> bool { return is_running(); }, timeout, step );
 }
 void loop::run() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop run start %p\n", this );
+    std::cout.flush();
+#endif
+    pending_timer_remove_all();
     uv_loop_t uvLoop;
     uv_idle_t uvIdler;
     uv_timer_t uvTimerStateCheck;
@@ -275,6 +317,29 @@ void loop::run() {
                 200,  // timeout milliseconds
                 200   // repeat milliseconds
             );
+            //
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+            if ( p_uvAsyncInitForTimers_ != nullptr ) {
+                uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInitForTimers_;
+                p_uvAsyncInit->data = ( void* ) this;
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+                std::cout << skutils::tools::format(
+                    "dispatch loop initiate pending timer init %p\n", this );
+                std::cout.flush();
+#endif
+                uv_async_init( &uvLoop, p_uvAsyncInit, []( uv_async_t* h ) -> void {
+                    loop* pLoop = ( loop* ) ( h->data );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+                    std::cout << skutils::tools::format(
+                        "dispatch loop pending timer callback %p\n", pLoop );
+                    std::cout.flush();
+#endif
+                    if ( pLoop )
+                        pLoop->pending_timer_init();
+                } );
+            }  // if ( p_uvAsyncInitForTimers_ != nullptr )
+#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+               // )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
@@ -295,21 +360,111 @@ void loop::run() {
         throw;
     }
     p_uvLoop_ = nullptr;
+    pending_timer_remove_all();
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop run finish %p\n", this );
+    std::cout.flush();
+#endif
+}
+
+void loop::pending_timer_add( void* p_uvTimer, void* pTimerData,
+    void ( *pFnCb )( void* uv_timer_handle ), uint64_t timeout, uint64_t interval ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop add pending timer %p\n", this );
+    std::cout.flush();
+#endif
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    if ( p_uvAsyncInitForTimers_ == nullptr )
+        return;
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
+    pending_timer_t rpt;
+    rpt.pUvTimer_ = p_uvTimer;
+    rpt.pFnCb_ = pFnCb;
+    rpt.timeout_ = timeout;
+    rpt.interval_ = interval;
+    rpt.pTimerData_ = pTimerData;
+    pending_timer_list_.push_back( rpt );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format(
+        "dispatch loop before async send pending timer %p\n", this );
+    std::cout.flush();
+#endif
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    uv_async_send( ( uv_async_t* ) p_uvAsyncInitForTimers_ );
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format(
+        "dispatch loop after async send pending timer %p\n", this );
+    std::cout.flush();
+#endif
+}
+void loop::pending_timer_remove_all() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop remove all pending timers %p\n", this );
+    std::cout.flush();
+#endif
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+    pending_timer_list_.clear();
+}
+void loop::pending_timer_init() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    std::cout << skutils::tools::format( "dispatch loop init pending timer %p\n", this );
+    std::cout.flush();
+#endif
+    pending_timer_lock_type lock( pending_timer_mtx_ );
+    pending_timer_list_t::iterator itWalk = pending_timer_list_.begin(),
+                                   itEnd = pending_timer_list_.end();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        pending_timer_t& rpt = ( *itWalk );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+        std::cout << skutils::tools::format(
+            "dispatch loop before start pending timer %p\n", this );
+        std::cout.flush();
+#endif
+        //
+        uv_timer_t* p_uvTimer = ( uv_timer_t* ) rpt.pUvTimer_;
+        uv_timer_init( p_uvLoop_, p_uvTimer );
+        p_uvTimer->data = rpt.pTimerData_;
+        //
+        uv_timer_start( ( uv_timer_t* ) rpt.pUvTimer_, ( uv_timer_cb ) rpt.pFnCb_, rpt.timeout_,
+            rpt.interval_ );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+        std::cout << skutils::tools::format( "dispatch loop after start pending timer %p\n", this );
+        std::cout.flush();
+#endif
+    }
+    pending_timer_list_.clear();
 }
 
 void loop::on_idle() {
+    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //    std::cout << skutils::tools::format( "dispatch loop idle %p\n", this );
+    //    std::cout.flush();
+    //#endif
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
+    pending_timer_init();
     on_check_jobs();
 }
 void loop::on_state_check() {
+    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //    std::cout << skutils::tools::format( "dispatch loop state check %p\n",
+    //    this ); std::cout.flush();
+    //#endif
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
     on_check_jobs();
 }
 bool loop::on_check_cancel_mode() {
+    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //    std::cout << skutils::tools::format( "dispatch loop check cancel mode
+    //    %p\n", this ); std::cout.flush();
+    //#endif
     if ( cancelMode_ ) {
         // cancelMode_ = false;
         uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) p_uvLoop_;
@@ -320,24 +475,50 @@ bool loop::on_check_cancel_mode() {
     return false;
 }
 void loop::on_check_jobs() {
+    if ( cancelMode_ )
+        return;
+    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //    std::cout << skutils::tools::format( "dispatch loop check jobs %p\n",
+    //    this ); std::cout.flush();
+    //#endif
     if ( on_check_jobs_ )
         on_check_jobs_();
 }
 
 loop::job_data_t::job_data_t( loop_ptr_t pLoop ) : pLoop_( pLoop ), needsCancel_( false ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job ctor %p\n", this );
+    std::cout.flush();
+#endif
     p_uvTimer_ = calloc( 1, sizeof( uv_timer_t ) );
     if ( !p_uvTimer_ )
         throw std::runtime_error( "loop job timer allocation error" );
 }
 loop::job_data_t::~job_data_t() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job dtor start %p\n", this );
+    std::cout.flush();
+#endif
     if ( p_uvTimer_ ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+        std::cout << skutils::tools::format( "dispatch loop free job timer %p\n", this );
+        std::cout.flush();
+#endif
         cancel();
         free( p_uvTimer_ );
         p_uvTimer_ = nullptr;
     }
     pLoop_ = nullptr;
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job dtor finish %p\n", this );
+    std::cout.flush();
+#endif
 }
 void loop::job_data_t::cancel() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job cancel %p\n", this );
+    std::cout.flush();
+#endif
     if ( needsCancel_ ) {
         needsCancel_ = false;
         uv_timer_t* p_uvTimer = ( uv_timer_t* ) p_uvTimer_;
@@ -349,12 +530,13 @@ void loop::job_data_t::cancel() {
     }
 }
 void loop::job_data_t::init() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job init %p\n", this );
+    std::cout.flush();
+#endif
     if ( !pLoop_ )
         return;
-    uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) pLoop_->p_uvLoop_;
-    uv_timer_t* p_uvTimer = ( uv_timer_t* ) p_uvTimer_;
-    uv_timer_init( p_uvLoop, p_uvTimer );
-    p_uvTimer->data = ( void* ) this;
+    // uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) pLoop_->p_uvLoop_;
     needsCancel_ = true;
     // nanoseconds
     uint64_t ns_timeout = timeout_.count(), ns_interval = interval_.count();
@@ -363,17 +545,33 @@ void loop::job_data_t::init() {
         ( ns_timeout / ( 1000 * 1000 ) ) + ( ( ( ns_timeout % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
     uint64_t ms_interval =
         ( ns_interval / ( 1000 * 1000 ) ) + ( ( ( ns_interval % ( 1000 * 1000 ) ) != 0 ) ? 1 : 0 );
-    uv_timer_start( p_uvTimer,
-        []( uv_timer_t* pTimer ) {
+    //
+    pLoop_->pending_timer_add( p_uvTimer_, ( void* ) this,
+        []( void* h ) -> void {
+            uv_timer_t* pTimer = ( uv_timer_t* ) h;
             loop::job_data_t* pJobData = ( loop::job_data_t* ) ( pTimer->data );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job timer fn call %p\n", pJobData );
+            std::cout.flush();
+#endif
             pJobData->on_timer();
         },
         ms_timeout, ms_interval );
+    //
 }
 void loop::job_data_t::on_timer() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job on_timer %p\n", this );
+    std::cout.flush();
+#endif
     on_invoke();
 }
 void loop::job_data_t::on_invoke() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+    std::cout << skutils::tools::format( "dispatch async job on_invoke begin %p\n", this );
+    std::cout.flush();
+#endif
     job_id_t id( id_ );
     loop_ptr_t pLoop( pLoop_ );
     try {
@@ -383,8 +581,19 @@ void loop::job_data_t::on_invoke() {
         // one_per_thread_t::make_current curr( g_one_per_thread, ptr );
         if ( !pLoop->on_job_will_execute( id ) )
             return;
-        if ( fn_ )
+        if ( fn_ ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job on_invoke will call fn %p\n", this );
+            std::cout.flush();
+#endif
             fn_();
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch async job on_invoke did called fn %p\n", this );
+            std::cout.flush();
+#endif
+        }
         pLoop->on_job_did_executed( id );
     } catch ( std::exception& e ) {
         pLoop->on_job_exception( id, &e );
@@ -423,7 +632,7 @@ void loop::impl_job_add(
     pJobData->interval_ = interval;
     jobs_[id] = pJobData.get();
     pJobData->init();
-    on_job_did_added( id );
+    on_job_was_added( id );
 }
 bool loop::impl_job_remove( const job_id_t& id, bool isForce ) {
     job_id_t cached_id( id );
@@ -498,12 +707,12 @@ void loop::job_add( const job_id_t& id, job_t /*&*/ fn, duration_t timeout, dura
     lock_type lock( loop_mtx() );
     return impl_job_add( id, fn, timeout, interval );
 }
-void loop::job_add_once(
-    const job_id_t& id, job_t /*&*/ fn, duration_t timeout ) {  // like JavaScript setTimeout()
+void loop::job_add_once( const job_id_t& id, job_t /*&*/ fn,
+    duration_t timeout ) {  // like JavaScript setTimeout()
     job_add( id, fn, timeout, duration_t( 0 ) );
 }
-void loop::job_add_periodic(
-    const job_id_t& id, job_t /*&*/ fn, duration_t interval ) {  // like JavaScript setInterval()
+void loop::job_add_periodic( const job_id_t& id, job_t /*&*/ fn,
+    duration_t interval ) {  // like JavaScript setInterval()
     job_add( id, fn, duration_t( 0 ), interval );
 }
 
@@ -514,9 +723,9 @@ bool loop::on_job_will_add( const job_id_t& id ) {
     }
     return true;
 }
-void loop::on_job_did_added( const job_id_t& id ) {
-    if ( on_job_did_added_ )
-        on_job_did_added_( id );
+void loop::on_job_was_added( const job_id_t& id ) {
+    if ( on_job_was_added_ )
+        on_job_was_added_( id );
 }
 bool loop::on_job_will_remove( const job_id_t& id ) {
     if ( on_job_will_remove_ ) {
@@ -582,16 +791,31 @@ queue::queue( domain_ptr_t pDomain, const queue_id_t& id,
       is_removed_( false ),
       is_running_( false ),
       auto_remove_after_first_job_( false ),
-      mtx_jobs_( skutils::tools::format( "skutils::dispatch::queue-%p/mutex/jobs", this ) ),
+      // mtx_jobs_(skutils::tools::format("skutils::dispatch::queue-%p/mutex/jobs",
+      // this)),
       mtx_run_( skutils::tools::format( "skutils::dispatch::queue-%p/mutex/run", this ) ),
       async_job_count_( 0 )  // cached value of jobs_.size()
       ,
-      awaiting_sync_run_( 0 ) {}
+      awaiting_sync_run_( 0 ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format( "dispatch queue %s ctor %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
+}
 queue::~queue() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format( "dispatch queue %s dtor start %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
     job_cancel_all();
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format( "dispatch queue %s dtor end %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
 }
 queue::mutex_type& queue::mtx_jobs() const {
-    return mtx_jobs_;
+    return skutils::get_ref_mtx();
+    // return mtx_jobs_;
 }
 queue::mutex_type& queue::mtx_run() const {
     return mtx_run_;
@@ -642,6 +866,11 @@ bool queue::is_running() const {
 }
 
 size_t queue::impl_job_cancel_all() {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format(
+        "dispatch queue %s cancel all jobs %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
     size_t cnt = 0, async_job_count = 0;
     {  // block
         lock_type lock( mtx_jobs() );
@@ -656,7 +885,12 @@ size_t queue::impl_job_cancel_all() {
     return cnt;
 }
 bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interval,
-    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke once asyncronously
+    job_id_t* pJobID ) {  // if both timeout and interval are zero, then invoke
+                          // once asynchronously
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format( "dispatch queue %s add job %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
     try {
         if ( pJobID )
             pJobID->clear();
@@ -699,7 +933,11 @@ bool queue::impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interva
     }
     return false;
 }
-bool queue::impl_job_run() {  // fetch first asynchronosly stored job and run
+bool queue::impl_job_run() {  // fetch first asynchronously stored job and run
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format( "dispatch queue %s try run job %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
     if ( is_removed() )
         return false;
     if ( awaiting_sync_run_ > 0 )
@@ -725,6 +963,11 @@ bool queue::impl_job_run() {  // fetch first asynchronosly stored job and run
     return true;
 }
 bool queue::impl_job_run_sync( job_t /*&*/ fn ) {
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+    std::cout << skutils::tools::format(
+        "dispatch queue %s try run job sync %p\n", id_.c_str(), this );
+    std::cout.flush();
+#endif
     domain_ptr_t pDomain = pDomain_;
     if ( !pDomain )
         return false;
@@ -743,7 +986,7 @@ bool queue::impl_job_run_sync( job_t /*&*/ fn ) {
         pDomain->fetch_lock_.notify_one();
     return rv;
 }
-bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicity specified job synchronosly
+bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicitly specified job synchronosly
     if ( !fn )
         return false;
     if ( is_removed() )
@@ -759,7 +1002,25 @@ bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicity specified job syn
             is_running_ = true;
             queue_ptr_t ptr( this );
             one_per_thread_t::make_current curr( g_one_per_thread, ptr );
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch queue %s before run job fn %p\n", id_.c_str(), this );
+            std::cout.flush();
+#endif
+            //
+            std::string strPerformanceQueueName =
+                skutils::tools::format( "dispatch/queue/%s", id_.c_str() );
+            std::string strPerformanceActionName =
+                skutils::tools::format( "task %zu", nTaskNumberInQueue_++ );
+            skutils::task::performance::action a(
+                strPerformanceQueueName, strPerformanceActionName );
+            //
             fn();
+#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
+            std::cout << skutils::tools::format(
+                "dispatch queue %s after run job fn %p\n", id_.c_str(), this );
+            std::cout.flush();
+#endif
             is_running_ = false;
         } catch ( ... ) {
             is_running_ = false;
@@ -787,8 +1048,8 @@ size_t queue::async_job_count() const {
     return cntJobs;
 }
 bool queue::job_add( job_t /*&*/ fn,
-    duration_t timeout,   // = duration_t(0) // if both timeout and interval are zero, then invoke
-                          // once asyncronously
+    duration_t timeout,   // = duration_t(0) // if both timeout and interval are
+                          // zero, then invoke once asynchronously
     duration_t interval,  // = 0
     job_id_t* pJobID      // = nullptr // periodical job id
 ) {
@@ -811,7 +1072,8 @@ bool queue::job_add_once( job_t /*&*/ fn, duration_t timeout,
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_jobs() );
-    return impl_job_add( fn, timeout, duration_t( 0 ), pJobID );  // like JavaScript setTimeout()
+    return impl_job_add( fn, timeout, duration_t( 0 ),
+        pJobID );  // like JavaScript setTimeout()
 }
 bool queue::job_add_periodic( job_t /*&*/ fn, duration_t interval,
     job_id_t* pJobID  // = nullptr // periodical job id
@@ -823,7 +1085,8 @@ bool queue::job_add_periodic( job_t /*&*/ fn, duration_t interval,
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_jobs() );
-    return impl_job_add( fn, duration_t( 0 ), interval, pJobID );  // like JavaScript setInterval()
+    return impl_job_add( fn, duration_t( 0 ), interval,
+        pJobID );  // like JavaScript setInterval()
 }
 bool queue::job_run_sync( job_t /*&*/ fn ) {
     if ( !fn )
@@ -833,7 +1096,7 @@ bool queue::job_run_sync( job_t /*&*/ fn ) {
     // lock_type lock( mtx_run() );
     return impl_job_run_sync( fn );
 }
-bool queue::job_run( job_t /*&*/ fn ) {  // run explicity specified job synchronosly
+bool queue::job_run( job_t /*&*/ fn ) {  // run explicitly specified job synchronosly
     if ( !fn )
         return false;
     if ( is_removed() )
@@ -841,7 +1104,7 @@ bool queue::job_run( job_t /*&*/ fn ) {  // run explicity specified job synchron
     // lock_type lock( mtx_run() );
     return impl_job_run( fn );
 }
-bool queue::job_run() {  // fetch first asynchronosly stored job and run
+bool queue::job_run() {  // fetch first asynchronously stored job and run
     if ( is_removed() )
         return false;
     // lock_type lock( mtx_run() );
@@ -851,19 +1114,25 @@ bool queue::job_run() {  // fetch first asynchronosly stored job and run
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+std::atomic_bool domain::g_bVerboseDispatchThreadDetailsLogging = false;
+
 domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
     const size_t nQueueLimit                    // = 0
     )
     : async_job_count_( 0 ),
       accumulator_base_( 0 )
-      //	, domain_mtx_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this )
-      //) 	, mtx_with_jobs_( skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
+      //	, domain_mtx_(
+      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this
+      // )
+      //) 	, mtx_with_jobs_(
+      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
       // this ) )
       ,
       shutdown_flag_( true ),
       thread_pool_(
           ( nNumberOfThreads > 0 ) ? nNumberOfThreads : skutils::tools::cpu_count(), nQueueLimit ),
       cntRunningThreads_( 0 ),
+      cntStartTestedThreads_( 0 ),
       decrease_accumulators_counter_( uint64_t( 0 ) ),
       decrease_accumulators_period_( uint64_t( 1000 ) * uint64_t( 1000 ) )  // rare enough
 {
@@ -896,7 +1165,8 @@ domain_ptr_t domain::get_current() {
 size_t domain::async_job_count() const {
     if ( shutdown_flag_ )
         return 0;
-    size_t cntJobs = async_job_count_;  // sum of all cached values of jobs_.size() from all queues
+    size_t cntJobs = async_job_count_;  // sum of all cached values of jobs_.size()
+                                        // from all queues
     return cntJobs;
 }
 set_queue_ids_t domain::impl_queue_get_all_names() {
@@ -989,46 +1259,130 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
     //			if( ! shutdown_flag_ )
     //				return;
     shutdown_flag_ = false;
-    size_t idxThread, cntThreads = thread_pool_.number_of_threads();
-    if ( cntThreads == 0 )
+    size_t idxThread, cntThreadsInPool = thread_pool_.number_of_threads();
+    if ( cntThreadsInPool == 0 )
         throw std::runtime_error( "dispatch domain failed to initialize thread pool" );
     // init thread pool
-    size_t cntThreadsToStart = cntThreads;
-    for ( size_t cntThreadStartupAttempts = cntThreads * 2; cntThreadStartupAttempts != 0;
+    size_t cntThreadsToStart = cntThreadsInPool;
+    for ( size_t cntThreadStartupAttempts = cntThreadsInPool * 2; cntThreadStartupAttempts != 0;
           --cntThreadStartupAttempts ) {
         std::atomic_size_t cntFailedToStartThreads;
         cntFailedToStartThreads = 0;
         for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
-            try {
-                bool bThreadStartedOK = thread_pool_.safe_submit_without_future( [this]() {
-                    ++cntRunningThreads_;
-                    try {
-                        for ( ; true; ) {
-                            if ( shutdown_flag_ )
-                                break;
-                            {  // block
-                                std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
-                                fetch_lock_.wait( lock );
-                            }  // block
-                            if ( shutdown_flag_ )
-                                break;
-                            //
-                            // run_one();
-                            //
-                            for ( ; run_one(); ) {
-                                if ( shutdown_flag_ )
-                                    break;
-                                // fetch_lock_.notify_one(); // spread the work into other threads
+            std::string strPerformanceQueueName = skutils::tools::format(
+                "dispatch/thread/%zu", idxThread );  // notice - no domain reference
+            std::string strError;
+            static const size_t cntAttempts = 5;
+            for ( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++idxAttempt ) {
+                if ( idxAttempt > 0 ) {
+                    strError.clear();
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+                }
+                try {
+                    thread_pool_.safe_submit_without_future_te(
+                        [this, strPerformanceQueueName, idxThread, cntThreadsToStart]() {
+                            ++cntRunningThreads_;
+                            ++cntStartTestedThreads_;
+                            try {
+                                if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                                    std::string strThreadStartupMessage =
+                                        cc::deep_note( "Dispatch:" ) + " " +
+                                        cc::debug( "Started thread " ) + cc::size10( idxThread ) +
+                                        cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
+                                        cc::debug( ", have " ) +
+                                        cc::size10( size_t( cntRunningThreads_ ) ) +
+                                        cc::debug( " running thread(s)" ) + "\n";
+                                    std::cout << strThreadStartupMessage;
+                                    std::cout.flush();
+                                }
+                                size_t nTaskNumberInThisThread = 0;
+                                for ( ; true; ) {
+                                    if ( shutdown_flag_ )
+                                        break;
+                                    {  // block
+                                        std::unique_lock< fetch_mutex_type > lock( fetch_mutex_ );
+                                        fetch_lock_.wait( lock );
+                                    }  // block
+                                    if ( shutdown_flag_ )
+                                        break;
+                                    for ( ; true; ) {
+                                        //
+                                        std::string strPerformanceActionName =
+                                            skutils::tools::format(
+                                                "task %zu", nTaskNumberInThisThread++ );
+                                        skutils::task::performance::action a(
+                                            strPerformanceQueueName, strPerformanceActionName );
+                                        //
+                                        if ( !run_one() )
+                                            break;
+                                        if ( shutdown_flag_ )
+                                            break;
+                                        // fetch_lock_.notify_one(); // spread the work into other
+                                        // threads
+                                    }
+                                }  /// for( ; true ; )
+                            } catch ( const std::exception& ex ) {
+                                std::string strError( ex.what() );
+                                if ( strError.empty() )
+                                    strError = "Exception without description";
+                                std::string strErrorMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::fatal( "CRITICAL ERROR:" ) +
+                                    cc::error( "Got exception in thread " ) +
+                                    cc::size10( idxThread ) + cc::error( " of " ) +
+                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::error( " running threads, exception info: " ) +
+                                    cc::warn( strError ) + "\n";
+                                std::cout << strErrorMessage;
+                                std::cout.flush();
+                            } catch ( ... ) {
+                                std::string strErrorMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::fatal( "CRITICAL ERROR:" ) +
+                                    cc::error( "Got exception in thread " ) +
+                                    cc::size10( idxThread ) + cc::error( " of " ) +
+                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::error( " running threads, exception info: " ) +
+                                    cc::warn( "Unknown exception" ) + "\n";
+                                std::cout << strErrorMessage;
+                                std::cout.flush();
                             }
-                        }  /// for( ; true ; )
-                    } catch ( ... ) {
-                    }
-                    --cntRunningThreads_;
-                } );
-                if ( !bThreadStartedOK )
-                    throw std::runtime_error( "failed to start thread in dispatch pool" );
-            } catch ( ... ) {
+                            --cntRunningThreads_;
+                            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                                std::string strThreadFinalMessage =
+                                    cc::deep_note( "Dispatch:" ) + " " +
+                                    cc::debug( "Exiting thread " ) + cc::size10( idxThread ) +
+                                    cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
+                                    cc::debug( ", have " ) +
+                                    cc::size10( size_t( cntRunningThreads_ ) ) +
+                                    cc::debug( " running thread(s)" ) + "\n";
+                                std::cout << strThreadFinalMessage;
+                                std::cout.flush();
+                            }
+                        } );
+                } catch ( std::exception& ex ) {
+                    strError = ex.what();
+                    if ( strError.empty() )
+                        strError = "exception without description";
+                } catch ( ... ) {
+                    strError = "unknown description";
+                }
+                if ( strError.empty() )
+                    break;
+                std::string strErrorMessage =
+                    cc::deep_note( "Dispatch:" ) + " " + cc::fatal( "CRITICAL ERROR:" ) +
+                    cc::error( " Failed submit initialization task for the " ) +
+                    cc::info( strPerformanceQueueName ) + cc::error( " queue at attempt " ) +
+                    cc::size10( idxAttempt ) + cc::error( " of " ) + cc::size10( cntAttempts ) +
+                    cc::error( ", error is: " ) + cc::warn( strError ) + "\n";
+                std::cout << strErrorMessage;
+                std::cout.flush();
+            }  // for( size_t idxAttempt = 0; idxAttempt < 3; ++ idxAttempt ) {
+            if ( !strError.empty() ) {
                 ++cntFailedToStartThreads;
+                throw std::runtime_error( strError );
             }
         }  // for ( idxThread = 0; idxThread < cntThreadsToStart; ++idxThread ) {
         cntThreadsToStart = size_t( cntFailedToStartThreads );
@@ -1037,19 +1391,36 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
     }  // for ( size_t cntThreadStartupAttempts = 1; cntThreadStartupAttempts != 0;
     // --cntThreadStartupAttempts )
-    size_t cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
+    thread_pool_.notify_all();  // faster encueued call processing here because we knew we did
+                                // submit first calls above
+    size_t cntStartedAndRunningThreads = size_t( cntStartTestedThreads_ );
     size_t cntWaitAttempts =
-        ( nWaitMilliSeconds == 0 || nWaitMilliSeconds == size_t( -1 ) ) ? 3000 : nWaitMilliSeconds;
+        ( nWaitMilliSeconds == 0 || nWaitMilliSeconds == size_t( -1 ) ) ? 10000 : nWaitMilliSeconds;
     for ( size_t idxWaitAttempt = 0; idxWaitAttempt < cntWaitAttempts; ++idxWaitAttempt ) {
-        if ( cntStartedAndRunningThreads == cntThreads )
+        if ( cntStartedAndRunningThreads == cntThreadsInPool )
             break;
         std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
-        cntStartedAndRunningThreads = size_t( cntRunningThreads_ );
+        cntStartedAndRunningThreads = size_t( cntStartTestedThreads_ );
     }
-    if ( cntStartedAndRunningThreads != cntThreads ) {
-        fetch_lock_.notify_all();  // notrify earlier
-        throw std::runtime_error(
-            "dispatch domain failed to initialize all threads in thread pool" );
+    if ( cntStartedAndRunningThreads != cntThreadsInPool ) {
+        fetch_lock_.notify_all();  // notify earlier
+        // throw std::runtime_error(
+        //     "dispatch domain failed to initialize all threads in thread pool" );
+        std::string strWarningMessage =
+            cc::deep_note( "Dispatch:" ) + " " + cc::warn( "WARNING: expected " ) +
+            cc::size10( size_t( cntThreadsInPool ) ) +
+            cc::warn( " threads in pool to be started at this time but have " ) +
+            cc::size10( size_t( cntStartedAndRunningThreads ) ) + cc::warn( ", startup is slow!" ) +
+            "\n";
+        std::cout << strWarningMessage;
+        std::cout.flush();
+    } else {
+        std::string strSuccessMessage = cc::deep_note( "Dispatch:" ) + " " +
+                                        cc::success( "Have all " ) +
+                                        cc::size10( size_t( cntThreadsInPool ) ) +
+                                        cc::success( " threads in pool started fast" ) + "\n";
+        std::cout << strSuccessMessage;
+        std::cout.flush();
     }
 }
 void domain::impl_shutdown() {
@@ -1065,6 +1436,13 @@ void domain::impl_shutdown() {
     size_t cntThreads = thread_pool_.number_of_threads();
     if ( cntThreads > 0 ) {
         for ( ; true; ) {
+            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                std::string strMessage = cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Have " ) +
+                                         cc::size10( size_t( cntRunningThreads_ ) ) +
+                                         cc::debug( " thread(s) still running..." ) + "\n";
+                std::cout << strMessage;
+                std::cout.flush();
+            }
             shutdown_flag_ = true;
             fetch_lock_.notify_all();
             size_t cntRunningThreads = size_t( cntRunningThreads_ );
@@ -1073,20 +1451,43 @@ void domain::impl_shutdown() {
             std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         }  // for( ; true; )
     }      // if( cntThreads > 0 )
+    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All threads stopped" ) + "\n";
+    std::cout.flush();
     // wait loop to shutdown
     if ( pLoop ) {
+        if ( g_bVerboseDispatchThreadDetailsLogging ) {
+            std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                             cc::debug( "Waiting for dispatch loop" ) + "\n";
+            std::cout.flush();
+        }
         pLoop->wait();
         try {
+            if ( g_bVerboseDispatchThreadDetailsLogging ) {
+                std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                                 cc::debug( "Stopping for dispatch loop" ) + "\n";
+                std::cout.flush();
+            }
             if ( loop_thread_.joinable() )
                 loop_thread_.join();
+            std::cout << cc::deep_note( "Dispatch:" ) + " " +
+                             cc::success( "Dispatch loop stopped" ) + "\n";
+            std::cout.flush();
         } catch ( ... ) {
         }
     }  // if( pLoop )
     // shutdown, remove all queues
+    if ( g_bVerboseDispatchThreadDetailsLogging ) {
+        std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Removing dispatch queues" ) +
+                         "\n";
+        std::cout.flush();
+    }
     queue_remove_all();
+    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All dispatch queues removed" ) +
+                     "\n";
+    std::cout.flush();
 }
-queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and remove it
-                                                // from with_jobs_
+queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and
+                                                // remove it from with_jobs_
     queue_ptr_t pQueueFound;
     if ( shutdown_flag_ )
         return pQueueFound;
@@ -1214,36 +1615,48 @@ loop_ptr_t domain::get_loop() {
         return pLoop_;
     loop* pLoop = new loop;
     pLoop_ = pLoop;
-    pLoop->on_check_jobs_ = [this]() -> void {
+    domain_ptr_t pThisDomain = this;
+    pLoop->on_check_jobs_ = [pThisDomain]() -> void {
+        // if ( pLoop->cancelMode_ )
+        //    return;
+        if ( pThisDomain->shutdown_flag_ )
+            return;
         bool bJobsEmpty = true;
         {  // block
-            lock_type lock_with_jobs( mtx_with_jobs() );
-            bJobsEmpty = with_jobs_.empty();
+            lock_type lock_with_jobs( pThisDomain->mtx_with_jobs() );
+            bJobsEmpty = pThisDomain->with_jobs_.empty();
         }  // block
         if ( !bJobsEmpty ) {
-            fetch_lock_.notify_all();
-            // fetch_lock_.notify_one();
+            pThisDomain.get_unconst()->fetch_lock_.notify_all();
+            // pThisDomain.get_unconst()->fetch_lock_.notify_one();
         }
     };
     // init loop
-    //			pLoop->on_job_will_add_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool {
-    //					return true;
+    //			pLoop->on_job_will_add_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool {
+    // return true;
     //				};
-    //			pLoop->on_job_did_added_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void {
+    //			pLoop->on_job_was_added_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void {
     //				};
-    //			pLoop->on_job_will_remove_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool
+    //			pLoop->on_job_will_remove_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool
     //{ 					return true;
     //				};
-    //			pLoop->on_job_did_removed_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void
+    //			pLoop->on_job_did_removed_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void
     //{
     //				};
-    //			pLoop->on_job_will_execute_ = [&] ( const skutils::dispatch::job_id_t & id ) -> bool
+    //			pLoop->on_job_will_execute_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> bool
     //{ 					return true;
     //				};
-    //			pLoop->on_job_did_executed_ = [&] ( const skutils::dispatch::job_id_t & id ) -> void
+    //			pLoop->on_job_did_executed_ = [&] ( const
+    // skutils::dispatch::job_id_t & id ) -> void
     //{
     //				};
-    //			pLoop->on_job_exception_ = [&] ( const skutils::dispatch::job_id_t & id,
+    //			pLoop->on_job_exception_ = [&] ( const
+    // skutils::dispatch::job_id_t & id,
     // std::exception
     //* pe ) -> void {
     //				};

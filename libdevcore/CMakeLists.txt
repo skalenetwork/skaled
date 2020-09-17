@@ -1,6 +1,9 @@
 file(GLOB sources "*.cpp" "*.c")
 file(GLOB headers "*.h")
 
+set( CMAKE_CXX_STANDARD 17 )
+
+
 if( NOT MICROPROFILE )
     file(GLOB_RECURSE microprofile_files "*microprofile*" "miniz.*")
     foreach(file ${microprofile_files})
@@ -22,4 +25,8 @@ target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::sy
 #target_include_directories(devcore SYSTEM PUBLIC ${LEVELDB_INCLUDE_DIRS})
 #target_link_libraries(devcore PRIVATE ${LEVELDB_LIBRARIES})
 
-target_link_libraries(devcore PRIVATE leveldb::leveldb skutils)
+if( BUILD_LEVELDB )
+    target_link_libraries(devcore PRIVATE leveldb skutils)
+else()
+    target_link_libraries(devcore PRIVATE leveldb::leveldb skutils)
+endif()

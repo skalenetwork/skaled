@@ -32,6 +32,10 @@
 
 #include <stdint.h>
 
+#include <sys/types.h>
+#include <sysexits.h>
+#include <unistd.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -40,6 +44,7 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
@@ -88,6 +93,8 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
+#include <skutils/task_performance.h>
+#include <skutils/utils.h>
 
 using namespace std;
 using namespace dev;
@@ -99,6 +106,12 @@ namespace fs = boost::filesystem;
 #ifndef ETH_MINIUPNPC
 #define ETH_MINIUPNPC 0
 #endif
+
+namespace dev {
+namespace db {
+extern unsigned c_maxOpenLeveldbFiles;
+}
+}  // namespace dev
 
 namespace {
 std::atomic< bool > g_silence = {false};
@@ -219,7 +232,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         try {
             bool isBinaryDownload = true;
             std::string strErrorDescription;
-            saveTo = snapshotManager->getDiffPath( 0, block_number );
+            saveTo = snapshotManager->getDiffPath( block_number );
             bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     std::cout << cc::normal( "... download progress ... " )
@@ -227,7 +240,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                               << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
-                isBinaryDownload, chainParams.nodeInfo.snapshotIntervalMs, &strErrorDescription );
+                isBinaryDownload, &strErrorDescription );
             std::cout << "                                                  \r";  // clear
                                                                                   // progress
                                                                                   // line
@@ -244,7 +257,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
         try {
-            snapshotManager->importDiff( 0, block_number );
+            snapshotManager->importDiff( block_number );
         } catch ( ... ) {
             std::throw_with_nested( std::runtime_error(
                 cc::fatal( "FATAL:" ) + " " +
@@ -252,22 +265,25 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        fs::path price_db_path;
-        for ( auto& f :
-            fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
-            if ( f.path().string().find( "prices_" ) != string::npos ) {
-                price_db_path = f.path();
-                break;
-            }  // if
-        }
-        if ( price_db_path.empty() ) {
-            clog( VerbosityError, "downloadSnapshot" )
-                << cc::fatal( "Snapshot downloaded without prices db" ) << std::endl;
-            return;
-        }
+        vector< string > prefixes{"prices_", "blocks_"};
+        for ( const string& prefix : prefixes ) {
+            fs::path db_path;
+            for ( auto& f :
+                fs::directory_iterator( getDataDir() / "snapshots" / to_string( block_number ) ) ) {
+                if ( f.path().string().find( prefix ) != string::npos ) {
+                    db_path = f.path();
+                    break;
+                }  // if
+            }
+            if ( db_path.empty() ) {
+                clog( VerbosityError, "downloadSnapshot" )
+                    << cc::fatal( "Snapshot downloaded without " + prefix + " db" ) << std::endl;
+                return;
+            }
 
-        fs::rename( price_db_path,
-            price_db_path.parent_path() / ( "prices_" + chainParams.nodeInfo.id.str() + ".db" ) );
+            fs::rename( db_path,
+                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+        }
         //// HACK END ////
 
         snapshotManager->restoreSnapshot( block_number );
@@ -285,6 +301,22 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
 }  // namespace
 
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_4() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos4 =
+        skutils::network::get_machine_ip_addresses( true, false );  // IPv4
+    return listIfaceInfos4;
+}
+static const std::list< std::pair< std::string, std::string > >
+get_machine_ip_addresses_6() {  // first-interface name, second-address
+    static const std::list< std::pair< std::string, std::string > > listIfaceInfos6 =
+        skutils::network::get_machine_ip_addresses( false, true );  // IPv6
+    return listIfaceInfos6;
+}
+
+static std::unique_ptr< Client > g_client;
+unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
+
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -292,6 +324,34 @@ int main( int argc, char** argv ) try {
     BlockHeader::useTimestampHack = false;
 
     setCLocale();
+
+    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
+        if ( nSignalNo == SIGPIPE )
+            return;
+        bool stopWasRaisedBefore = skutils::signal::g_bStop;
+        if ( !stopWasRaisedBefore ) {
+            if ( g_jsonrpcIpcServer.get() ) {
+                g_jsonrpcIpcServer->StopListening();
+                g_jsonrpcIpcServer.reset( nullptr );
+            }
+            if ( g_client ) {
+                g_client->stopWorking();
+            }
+        }
+        skutils::signal::g_bStop = true;
+        std::string strMessagePrefix = stopWasRaisedBefore ?
+                                           cc::error( "\nStop flag was already raised on. " ) +
+                                               cc::fatal( "WILL FORCE TERMINATE." ) +
+                                               cc::error( " Caught (second) signal. " ) :
+                                           cc::error( "\nCaught (first) signal. " );
+        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
+                  << "\n";
+        std::cerr.flush();
+        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        if ( stopWasRaisedBefore )
+            _exit( 13 );
+    } );
+
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -326,6 +386,12 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS4 = -1;
     int nExplicitPortWSS6 = -1;
     bool bTraceJsonRpcCalls = false;
+    bool bEnabledDebugBehaviorAPIs = false;
+
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
+        get_machine_ip_addresses_4();  // IPv4
+    const std::list< std::pair< std::string, std::string > >& listIfaceInfos6 =
+        get_machine_ip_addresses_6();  // IPv6
 
     string strJsonAdminSessionKey;
     ChainParams chainParams;
@@ -351,8 +417,6 @@ int main( int argc, char** argv ) try {
     /// Wallet password stuff
     string masterPassword;
     bool masterSet = false;
-
-    std::string blsJson;
 
     strings passwordsToNote;
     Secrets toImport;
@@ -408,6 +472,24 @@ int main( int argc, char** argv ) try {
         "Run web3 WSS(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
         "1)" );
 
+    std::string strPerformanceWarningDurationOptionDescription =
+        "Specifies time margin in floating point format, in seconds, for displaying performance "
+        "warning messages in log output if JSON RPC call processing exeeds it, default is " +
+        std::to_string(
+            SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceWarning ) +
+        " seconds";
+    addClientOption( "performance-warning-duration",
+        po::value< double >()->value_name( "<seconds>" ),
+        strPerformanceWarningDurationOptionDescription.c_str() );
+
+    addClientOption( "performance-timeline-enable",
+        "Enable performance timeline tracker and corresponding JSON RPC APIs" );
+    addClientOption( "performance-timeline-disable",
+        "Disabled performance timeline tracker and corresponding JSON RPC APIs" );
+    addClientOption( "performance-timeline-max-items",
+        po::value< size_t >()->value_name( "<number>" ),
+        "Specifies max number of items performance timeline tracker can save" );
+
     std::string str_ws_mode_description =
         "Run web3 WS and/or WSS server(s) using specified mode(" +
         skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
@@ -421,6 +503,9 @@ int main( int argc, char** argv ) try {
         "means unlimited)" );
     addClientOption( "max-http-queues", po::value< size_t >()->value_name( "<count>" ),
         "Max number of handler queues for HTTP/S connections per endpoint server" );
+    addClientOption(
+        "async-http-transfer-mode", "Use asynchronous HTTP(S) query handling, default mode" );
+    addClientOption( "sync-http-transfer-mode", "Use synchronous HTTP(S) query handling" );
 
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
@@ -429,6 +514,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
     addClientOption( "enable-debug-behavior-apis",
         "Enables debug set of JSON RPC APIs which are changing app behavior" );
+
+    addClientOption( "max-batch", po::value< size_t >()->value_name( "<count>" ),
+        "Maximum count of requests in JSON RPC batch request array" );
 
     addClientOption( "admin", po::value< string >()->value_name( "<password>" ),
         "Specify admin session key for JSON-RPC (default: auto-generated and printed at "
@@ -470,6 +558,11 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
+    addClientOption( "public-key",
+        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
+        "Collects old common public key from chain to verify snapshot before starts from it" );
+    addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
+        "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -513,12 +606,12 @@ int main( int argc, char** argv ) try {
         po::notify( vm );
     } catch ( po::error const& e ) {
         cerr << e.what();
-        return -1;
+        return EX_USAGE;
     }
     for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
         if ( !m.interpretOption( i, unrecognisedOptions ) ) {
             cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
-            return -1;
+            return EX_USAGE;
         }
 
     if ( vm.count( "no-colors" ) )
@@ -529,6 +622,14 @@ int main( int argc, char** argv ) try {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
     }
+
+    cout << std::endl << "skaled " << Version << std::endl << std::endl;
+
+    pid_t this_process_pid = getpid();
+    std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
+              << cc::size10( size_t( this_process_pid ) ) << std::endl;
+
+    setupLogging( loggingOptions );
 
     skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
     // skutils::dispatch::default_domain( 48 );
@@ -550,27 +651,57 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "admin" ) )
         strJsonAdminSessionKey = vm["admin"].as< string >();
 
+    if ( vm.count( "skale" ) ) {
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+        chainConfigIsSet = true;
+    }
+
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
                 throw "Config file probably not found";
+            chainParams = chainParams.loadConfig( configJSON, configPath );
+            chainConfigIsSet = true;
+            // TODO avoid double-parse!!
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
+            dev::eth::g_configAccesssor.reset(
+                new skutils::json_config_file_accessor( configPath.string() ) );
+        } catch ( const char* str ) {
+            cerr << "Error: " << str << ": " << configPath << "\n";
+            return EX_USAGE;
+        } catch ( const json_spirit::Error_position& err ) {
+            cerr << "error in parsing config json:\n";
+            cerr << configJSON << endl;
+            cerr << err.reason_ << " line " << err.line_ << endl;
+            return EX_CONFIG;
+        } catch ( const std::exception& ex ) {
+            cerr << "provided configuration is incorrect\n";
+            cerr << configJSON << endl;
+            cerr << nested_exception_what( ex ) << endl;
+            return EX_CONFIG;
         } catch ( ... ) {
-            cerr << "Bad --config option: " << vm["config"].as< string >() << "\n";
-            return -1;
+            cerr << "provided configuration is incorrect\n";
+            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
+            cerr << configJSON << endl;
+            return EX_CONFIG;
         }
     }
+
+    if ( !chainConfigIsSet )
+        // default to skale if not already set with `--config`
+        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
 
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
+        is_ipc = false;
         try {
-            is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "ipc" ) )
+                is_ipc = joConfig["skaleConfig"]["nodeInfo"]["ipc"].get< bool >();
         } catch ( ... ) {
-            is_ipc = false;
         }
     }
     if ( vm.count( "ipc" ) )
@@ -583,11 +714,14 @@ int main( int argc, char** argv ) try {
     // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
     // Second, get them from command line parameters (higher priority source)
     if ( chainConfigParsed ) {
+        nExplicitPortHTTP4 = -1;
         try {
-            nExplicitPortHTTP4 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort" ) )
+                nExplicitPortHTTP4 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTP4 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
             nExplicitPortHTTP4 = -1;
         else
@@ -596,11 +730,14 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "HTTP/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTP4 );
         //
+        nExplicitPortHTTP6 = -1;
         try {
-            nExplicitPortHTTP6 = joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort6" ) )
+                nExplicitPortHTTP6 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTP6 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
             nExplicitPortHTTP6 = nExplicitPortHTTP4;
         if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
@@ -612,11 +749,14 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortHTTP6 );
         //
         //
+        nExplicitPortHTTPS4 = -1;
         try {
-            nExplicitPortHTTPS4 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort" ) )
+                nExplicitPortHTTPS4 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTPS4 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
             nExplicitPortHTTPS4 = -1;
         else
@@ -625,11 +765,14 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "HTTPS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTPS4 );
         //
+        nExplicitPortHTTPS6 = -1;
         try {
-            nExplicitPortHTTPS6 = joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort6" ) )
+                nExplicitPortHTTPS6 =
+                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortHTTPS6 = -1;
         }
+
         if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
             nExplicitPortHTTPS6 = nExplicitPortHTTPS4;
         if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
@@ -641,10 +784,11 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortHTTPS6 );
         //
         //
+        nExplicitPortWS4 = -1;
         try {
-            nExplicitPortWS4 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort" ) )
+                nExplicitPortWS4 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWS4 = -1;
         }
         if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
             nExplicitPortWS4 = -1;
@@ -654,10 +798,11 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "WS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWS4 );
         //
+        nExplicitPortWS6 = -1;
         try {
-            nExplicitPortWS6 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort6" ) )
+                nExplicitPortWS6 = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWS6 = -1;
         }
         if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
             nExplicitPortWS6 = nExplicitPortWS4;
@@ -670,10 +815,11 @@ int main( int argc, char** argv ) try {
                 << cc::num10( nExplicitPortWS6 );
         //
         //
+        nExplicitPortWSS4 = -1;
         try {
-            nExplicitPortWSS4 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort" ) )
+                nExplicitPortWSS4 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWSS4 = -1;
         }
         if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
             nExplicitPortWSS4 = -1;
@@ -683,10 +829,11 @@ int main( int argc, char** argv ) try {
                 << cc::notice( "WSS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWSS4 );
         //
+        nExplicitPortWSS6 = -1;
         try {
-            nExplicitPortWSS6 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort6" ) )
+                nExplicitPortWSS6 = joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
         } catch ( ... ) {
-            nExplicitPortWSS6 = -1;
         }
         if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
             nExplicitPortWSS6 = nExplicitPortWSS4;
@@ -807,7 +954,9 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            bTraceJsonRpcCalls = joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "web3-trace" ) )
+                bTraceJsonRpcCalls =
+                    joConfig["skaleConfig"]["nodeInfo"]["web3-trace"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -821,25 +970,26 @@ int main( int argc, char** argv ) try {
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            rpc::Debug::g_bEnabledDebugBehaviorAPIs =
-                joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-debug-behavior-apis" ) )
+                bEnabledDebugBehaviorAPIs =
+                    joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
     }
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        rpc::Debug::g_bEnabledDebugBehaviorAPIs = true;
+        bEnabledDebugBehaviorAPIs = true;
     clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
                                   << cc::info( "enable-debug-behavior-apis" )
                                   << cc::debug( " mode is " )
-                                  << cc::flag_ed( rpc::Debug::g_bEnabledDebugBehaviorAPIs );
+                                  << cc::flag_ed( bEnabledDebugBehaviorAPIs );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
         try {
-            alwaysConfirm =
-                joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >() ? false :
-                                                                                           true;
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "unsafe-transactions" ) )
+                alwaysConfirm =
+                    !joConfig["skaleConfig"]["nodeInfo"]["unsafe-transactions"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -854,8 +1004,9 @@ int main( int argc, char** argv ) try {
     bool bEnabledShutdownViaWeb3 = false;
     if ( chainConfigParsed ) {
         try {
-            bEnabledShutdownViaWeb3 =
-                joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "web3-shutdown" ) )
+                bEnabledShutdownViaWeb3 =
+                    joConfig["skaleConfig"]["nodeInfo"]["web3-shutdown"].get< bool >();
         } catch ( ... ) {
         }
     }
@@ -870,9 +1021,9 @@ int main( int argc, char** argv ) try {
     std::string strPathIPC;
     if ( chainConfigParsed ) {
         try {
-            strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "ipcpath" ) )
+                strPathIPC = joConfig["skaleConfig"]["nodeInfo"]["ipcpath"].get< std::string >();
         } catch ( ... ) {
-            strPathIPC.clear();
         }
     }
     clog( VerbosityInfo, "main" ) << cc::notice( "IPC path" ) + cc::debug( " is: " )
@@ -887,9 +1038,9 @@ int main( int argc, char** argv ) try {
     std::string strPathDB;
     if ( chainConfigParsed ) {
         try {
-            strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "db-path" ) )
+                strPathDB = joConfig["skaleConfig"]["nodeInfo"]["db-path"].get< std::string >();
         } catch ( ... ) {
-            strPathDB.clear();
         }
     }
     if ( vm.count( "db-path" ) )
@@ -899,17 +1050,58 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
-    if ( vm.count( "bls-key-file" ) && vm["bls-key-file"].as< string >() != "NULL" ) {
+    ///////////////// CACHE PARAMS ///////////////
+    extern chrono::system_clock::duration c_collectionDuration;
+    extern unsigned c_collectionQueueSize;
+    extern unsigned c_maxCacheSize;
+    extern unsigned c_minCacheSize;
+
+    unsigned c_transactionQueueSize = 100000;
+
+    if ( chainConfigParsed ) {
         try {
-            fs::path blsFile = vm["bls-key-file"].as< string >();
-            blsJson = contentsString( blsFile.string() );
-            if ( blsJson.empty() )
-                throw "BLS key file probably not found";
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "minCacheSize" ) )
+                c_minCacheSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["minCacheSize"].get< unsigned >();
         } catch ( ... ) {
-            cerr << "Bad --bls-key-file option: " << vm["bls-key-file"].as< string >() << "\n";
-            return -1;
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxCacheSize" ) )
+                c_maxCacheSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["maxCacheSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "collectionQueueSize" ) )
+                c_collectionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["collectionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "collectionDuration" ) )
+                c_collectionDuration = chrono::seconds(
+                    joConfig["skaleConfig"]["nodeInfo"]["collectionDuration"].get< unsigned >() );
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
+                c_transactionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxOpenLeveldbFiles" ) )
+                dev::db::c_maxOpenLeveldbFiles =
+                    joConfig["skaleConfig"]["nodeInfo"]["maxOpenLeveldbFiles"].get< unsigned >();
+        } catch ( ... ) {
         }
     }
+    ////////////// END CACHE PARAMS ////////////
 
     if ( vm.count( "public-ip" ) ) {
         publicIP = vm["public-ip"].as< string >();
@@ -950,7 +1142,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--format"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
     if ( vm.count( "to" ) )
@@ -970,7 +1162,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--upnp"
                  << " option: " << m << "\n";
-            return -1;
+            return EX_USAGE;
         }
     }
 #endif
@@ -981,7 +1173,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--network-id"
                  << " option: " << vm["network-id"].as< string >() << "\n";
-            return -1;
+            return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
         withExisting = WithExisting::Kill;
@@ -1007,138 +1199,105 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
-    if ( vm.count( "skale" ) ) {
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
-        chainConfigIsSet = true;
-    }
-
-    if ( !configJSON.empty() ) {
-        try {
-            chainParams = chainParams.loadConfig( configJSON, configPath );
-            chainConfigIsSet = true;
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing config json:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << configJSON << endl;
-        } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is not well formatted\n";
-            cerr << configJSON << endl;
-            cerr << ex.what() << endl;
-            return 0;
-        } catch ( ... ) {
-            cerr << "provided configuration is not well formatted\n";
-            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            cerr << configJSON << endl;
-            return 0;
-        }
-    }
-
-    string blsPrivateKey;
-    string blsPublicKey1;
-    string blsPublicKey2;
-    string blsPublicKey3;
-    string blsPublicKey4;
-
-    if ( !blsJson.empty() ) {
-        try {
-            using namespace json_spirit;
-
-            mValue val;
-            json_spirit::read_string_or_throw( blsJson, val );
-            mObject obj = val.get_obj();
-
-            string blsPrivateKey = obj["secret_key"].get_str();
-
-            mArray pub = obj["common_public"].get_array();
-
-            string blsPublicKey1 = pub[0].get_str();
-            string blsPublicKey2 = pub[1].get_str();
-            string blsPublicKey3 = pub[2].get_str();
-            string blsPublicKey4 = pub[3].get_str();
-
-        } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing BLS keyfile:\n";
-            cerr << err.reason_ << " line " << err.line_ << endl;
-            cerr << blsJson << endl;
-        } catch ( ... ) {
-            cerr << "BLS keyfile is not well formatted\n";
-            cerr << blsJson << endl;
-            return 0;
-        }
-    }
-
-    setupLogging( loggingOptions );
-
-    if ( !chainConfigIsSet )
-        // default to skale if not already set with `--config`
-        chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
-
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.nodeInfo.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
+    if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
-                              "prices_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+                              "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                              "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
 
+    bool isStartedFromSnapshot = false;
     if ( vm.count( "download-snapshot" ) ) {
+        isStartedFromSnapshot = true;
+        std::string commonPublicKey = "";
+        if ( !vm.count( "public-key" ) ) {
+            throw std::runtime_error(
+                cc::error( "Missing --public-key option - cannot download snapshot" ) );
+        } else {
+            commonPublicKey = vm["public-key"].as< std::string >();
+        }
         std::string strURLWeb3 = vm["download-snapshot"].as< string >();
         unsigned blockNumber;
         try {
             blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
+            clog( VerbosityInfo, "main" )
+                << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
+                << cc::p( std::to_string( blockNumber ) );
         } catch ( std::exception& ex ) {
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
                                     " " + cc::error( ex.what() ) ) );
         }
 
-        SnapshotHashAgent snapshotHashAgent( chainParams );
+        if ( blockNumber > 0 ) {
+            SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
-        libff::init_alt_bn128_params();
-        std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
-        std::vector< std::string > list_urls_to_download;
-        try {
-            list_urls_to_download = snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
-            voted_hash = snapshotHashAgent.getVotedHash();
-        } catch ( std::exception& ex ) {
-            std::throw_with_nested( std::runtime_error(
-                cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while collecting snapshot hash from other skaleds " ) + " " +
-                cc::warn( ex.what() ) ) );
-        }
-
-        bool successfullDownload = false;
-        for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
-            std::string urlToDownloadSnapshot;
-            urlToDownloadSnapshot = list_urls_to_download[i];
-
-            downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
-
+            libff::init_alt_bn128_params();
+            std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
+            std::vector< std::string > list_urls_to_download;
             try {
-                snapshotManager->computeSnapshotHash( blockNumber, true );
+                list_urls_to_download =
+                    snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                clog( VerbosityInfo, "main" )
+                    << cc::notice( "Got urls to download snapshot from " )
+                    << cc::p( std::to_string( list_urls_to_download.size() ) )
+                    << cc::notice( " nodes " );
+                voted_hash = snapshotHashAgent.getVotedHash();
             } catch ( std::exception& ex ) {
-                std::throw_with_nested(
-                    std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                        cc::error( "Exception while computing snapshot hash " ) +
-                                        " " + cc::warn( ex.what() ) ) );
+                std::throw_with_nested( std::runtime_error(
+                    cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
+                    " " + cc::error( ex.what() ) ) );
             }
 
-            dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+            bool successfullDownload = false;
+            for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
+                std::string urlToDownloadSnapshot;
+                urlToDownloadSnapshot = list_urls_to_download[i];
 
-            if ( calculated_hash == voted_hash.first ) {
-                successfullDownload = true;
-                break;
-            } else {
-                snapshotManager->removeSnapshot( blockNumber );
+                downloadSnapshot(
+                    blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+
+                try {
+                    snapshotManager->computeSnapshotHash( blockNumber, true );
+                } catch ( std::exception& ex ) {
+                    std::throw_with_nested( std::runtime_error(
+                        cc::fatal( "FATAL:" ) + " " +
+                        cc::error( "Exception while computing snapshot hash " ) + " " +
+                        cc::warn( ex.what() ) ) );
+                }
+
+                dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                if ( calculated_hash == voted_hash.first ) {
+                    successfullDownload = true;
+                    break;
+                } else {
+                    snapshotManager->removeSnapshot( blockNumber );
+                }
             }
-        }
 
-        if ( !successfullDownload ) {
-            throw std::runtime_error( "FATAL: already tried to download hash from all sources" );
+            if ( !successfullDownload ) {
+                throw std::runtime_error(
+                    "FATAL: already tried to download hash from all sources" );
+            }
         }
     }
 
     // it was needed for snapshot downloading
-    if ( chainParams.nodeInfo.snapshotIntervalMs <= 0 ) {
+    if ( chainParams.sChain.snapshotIntervalMs <= 0 ) {
         snapshotManager = nullptr;
+    }
+
+    time_t startTimestamp = 0;
+    if ( vm.count( "start-timestamp" ) ) {
+        startTimestamp = vm["start-timestamp"].as< time_t >();
+    }
+
+    if ( time( NULL ) < startTimestamp ) {
+        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
+        do
+            sleep( 1 );
+        while ( time( NULL ) < startTimestamp );
     }
 
     if ( loggingOptions.verbosity > 0 )
@@ -1192,7 +1351,6 @@ int main( int argc, char** argv ) try {
 
     ExitHandler exitHandler;
 
-    signal( SIGABRT, &ExitHandler::exitHandler );
     signal( SIGTERM, &ExitHandler::exitHandler );
     signal( SIGINT, &ExitHandler::exitHandler );
 
@@ -1201,8 +1359,10 @@ int main( int argc, char** argv ) try {
     //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
     //        );
 
-    std::unique_ptr< Client > client;
     std::shared_ptr< GasPricer > gasPricer;
+
+    auto rotationFlagDirPath = configPath.parent_path();
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1211,42 +1371,46 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
-            client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+            g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
+                isStartedFromSnapshot ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
-            client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-                shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
-                TransactionQueue::Limits{100000, 1024} ) );
+            g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024},
+                isStartedFromSnapshot ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
-        client->setAuthor( chainParams.sChain.owner );
+        g_client->setAuthor( chainParams.sChain.owner );
 
-        DefaultConsensusFactory cons_fact(
-            *client, blsPrivateKey, blsPublicKey1, blsPublicKey2, blsPublicKey3, blsPublicKey4 );
+        DefaultConsensusFactory cons_fact( *g_client );
+        setenv( "DATA_DIR", getDataDir().c_str(), 0 );
+
         std::shared_ptr< SkaleHost > skaleHost =
-            std::make_shared< SkaleHost >( *client, &cons_fact );
+            std::make_shared< SkaleHost >( *g_client, &cons_fact );
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
-        client->setGasPricer( gasPricer );
-        client->injectSkaleHost( skaleHost );
-        client->startWorking();
+        g_client->setGasPricer( gasPricer );
+        g_client->injectSkaleHost( skaleHost );
+        g_client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();
-        client->setExtraData( rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
-                                              string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
-                                              string{buildinfo->build_type}.substr( 0, 1 ) +
-                                              string{buildinfo->system_name}.substr( 0, 5 ) +
-                                              string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+        g_client->setExtraData(
+            rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
+                            string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
+                            string{buildinfo->build_type}.substr( 0, 1 ) +
+                            string{buildinfo->system_name}.substr( 0, 5 ) +
+                            string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
     }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
         if ( s == "latest" )
-            return client->number();
+            return g_client->number();
         if ( s.size() == 64 || ( s.size() == 66 && s.substr( 0, 2 ) == "0x" ) )
-            return client->blockChain().number( h256( s ) );
+            return g_client->blockChain().number( h256( s ) );
         try {
             return static_cast< unsigned int >( stoul( s ) );
         } catch ( ... ) {
@@ -1261,7 +1425,7 @@ int main( int argc, char** argv ) try {
 
         unsigned last = toNumber( exportTo );
         for ( unsigned i = toNumber( exportFrom ); i <= last; ++i ) {
-            bytes block = client->blockChain().block( client->blockChain().numberHash( i ) );
+            bytes block = g_client->blockChain().block( g_client->blockChain().numberHash( i ) );
             switch ( exportFormat ) {
             case Format::Binary:
                 out.write( reinterpret_cast< char const* >( block.data() ),
@@ -1295,12 +1459,12 @@ int main( int argc, char** argv ) try {
             unsigned imported = 0;
 
             unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
+            cout << "Skipping " << g_client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
             while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
                 bytes block( 8 );
                 {
-                    if ( block_no >= client->number() ) {
+                    if ( block_no >= g_client->number() ) {
                         MICROPROFILE_ENTERI( "main", "in.read", -1 );
                     }
                     in.read( reinterpret_cast< char* >( block.data() ),
@@ -1309,7 +1473,7 @@ int main( int argc, char** argv ) try {
                     if ( block.size() >= 8 ) {
                         in.read( reinterpret_cast< char* >( block.data() + 8 ),
                             std::streamsize( block.size() ) - 8 );
-                        if ( block_no >= client->number() ) {
+                        if ( block_no >= g_client->number() ) {
                             MICROPROFILE_LEAVE();
                         }
                     } else {
@@ -1318,10 +1482,10 @@ int main( int argc, char** argv ) try {
                 }
                 block_no++;
 
-                if ( block_no <= client->number() )
+                if ( block_no <= g_client->number() )
                     continue;
 
-                switch ( client->queueBlock( block, safeImport ) ) {
+                switch ( g_client->queueBlock( block, safeImport ) ) {
                 case ImportResult::Success:
                     good++;
                     break;
@@ -1344,7 +1508,7 @@ int main( int argc, char** argv ) try {
                 }
 
                 // sync chain with queue
-                tuple< ImportRoute, bool, unsigned > r = client->syncQueue( 10 );
+                tuple< ImportRoute, bool, unsigned > r = g_client->syncQueue( 10 );
                 imported += get< 2 >( r );
 
                 double e =
@@ -1358,9 +1522,9 @@ int main( int argc, char** argv ) try {
                     cout << i << " more imported at " << i / d << " blocks/s. " << imported
                          << " imported in " << e << " seconds at "
                          << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                         << client->number() << ")"
+                         << g_client->number() << ")"
                          << "\n";
-                    fprintf( client->performance_fd, "%d\t%.2lf\n", client->number(), i / d );
+                    fprintf( g_client->performance_fd, "%d\t%.2lf\n", g_client->number(), i / d );
                     last = static_cast< unsigned >( e );
                     lastImported = imported;
                     MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
@@ -1374,14 +1538,14 @@ int main( int argc, char** argv ) try {
                     MICROPROFILE_SCOPEI( "main", "sleep 1 sec", MP_DIMGREY );
                     this_thread::sleep_for( chrono::seconds( 1 ) );
                 }
-                tie( ignore, moreToImport, ignore ) = client->syncQueue( 100000 );
+                tie( ignore, moreToImport, ignore ) = g_client->syncQueue( 100000 );
             }
             double e =
                 chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
                     .count() /
                 1000.0;
             cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << client->number()
+                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << g_client->number()
                  << ")\n";
         } );  // thread
         th.join();
@@ -1409,7 +1573,7 @@ int main( int argc, char** argv ) try {
     } catch ( ... ) {
         cerr << "Error initializing key manager: "
              << boost::current_exception_diagnostic_information() << "\n";
-        return -1;
+        return 1;
     }
 
     for ( auto const& presale : presaleImports )
@@ -1420,33 +1584,30 @@ int main( int argc, char** argv ) try {
         keyManager.import( s, "Imported key (UNSAFE)" );
     }
 
-    cout << "skaled " << Version << "\n";
-
     if ( mode == OperationMode::ImportSnapshot ) {
         try {
-            auto stateImporter = client->createStateImporter();
-            auto blockChainImporter = client->createBlockChainImporter();
+            auto stateImporter = g_client->createStateImporter();
+            auto blockChainImporter = g_client->createBlockChainImporter();
             SnapshotImporter importer( *stateImporter, *blockChainImporter );
 
             auto snapshotStorage( createSnapshotStorage( filename ) );
-            importer.import( *snapshotStorage, client->blockChain().genesisHash() );
+            importer.import( *snapshotStorage, g_client->blockChain().genesisHash() );
             // continue with regular sync from the snapshot block
         } catch ( ... ) {
             cerr << "Error during importing the snapshot: "
                  << boost::current_exception_diagnostic_information() << endl;
-            return -1;
+            return EX_DATAERR;
         }
     }
 
     if ( nodeMode == NodeMode::Full ) {
-        client->setSealer( m.minerType() );
+        g_client->setSealer( m.minerType() );
         if ( networkID != NoNetworkID )
-            client->setNetworkId( networkID );
+            g_client->setNetworkId( networkID );
     }
 
-    cout << "Mining Beneficiary: " << client->author() << endl;
+    cout << "Mining Beneficiary: " << g_client->author() << endl;
 
-    unique_ptr< ModularServer<> > jsonrpcIpcServer;
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
 
@@ -1473,7 +1634,7 @@ int main( int argc, char** argv ) try {
             cerr << "Bad "
                  << "--aa"
                  << " option: " << strAA << "\n";
-            return -1;
+            return EX_USAGE;
         }
         clog( VerbosityInfo, "main" )
             << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
@@ -1495,19 +1656,19 @@ int main( int argc, char** argv ) try {
             if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
                 return true;
 
-            string r =
-                getResponse( _t.userReadable( isProxy,
-                                 [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
-                                     h256 contractCodeHash = client->postState().codeHash( _t.to );
-                                     if ( contractCodeHash == EmptySHA3 )
-                                         return std::make_pair( false, std::string() );
-                                     // TODO: actually figure out the natspec. we'll need the
-                                     // natspec database here though.
-                                     return std::make_pair( true, std::string() );
-                                 },
-                                 [&]( Address const& _a ) { return _a.hex(); } ) +
-                                 "\nEnter yes/no/always (always to this address): ",
-                    {"yes", "n", "N", "no", "NO", "always"} );
+            string r = getResponse(
+                _t.userReadable( isProxy,
+                    [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
+                        h256 contractCodeHash = g_client->postState().codeHash( _t.to );
+                        if ( contractCodeHash == EmptySHA3 )
+                            return std::make_pair( false, std::string() );
+                        // TODO: actually figure out the natspec. we'll need the
+                        // natspec database here though.
+                        return std::make_pair( true, std::string() );
+                    },
+                    [&]( Address const& _a ) { return _a.hex(); } ) +
+                    "\nEnter yes/no/always (always to this address): ",
+                {"yes", "n", "N", "no", "NO", "always"} );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
@@ -1536,36 +1697,45 @@ int main( int argc, char** argv ) try {
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
-            [&]() { return client.get(); }, getAccountPassword, keyManager, authenticator ) );
+            [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( *g_client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *client );
+        auto skaleFace = new rpc::Skale( *g_client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( joConfig, *client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
 
-        jsonrpcIpcServer.reset( new FullServer( ethFace,
+        std::string argv_string;
+        {
+            ostringstream ss;
+            for ( int i = 1; i < argc; ++i )
+                ss << argv[i] << " ";
+            argv_string = ss.str();
+        }
+
+        g_jsonrpcIpcServer.reset( new FullServer( ethFace,
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
-            new rpc::Net(), new rpc::Web3( clientVersion() ),
-            new rpc::Personal( keyManager, *accountHolder, *client ),
-            new rpc::AdminEth( *client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            new rpc::Debug( *client ), nullptr ) );
+            new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
+            new rpc::Personal( keyManager, *accountHolder, *g_client ),
+            new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, argv_string ) : nullptr,
+            nullptr ) );
 
         if ( is_ipc ) {
             try {
                 auto ipcConnector = new IpcServer( "geth" );
-                jsonrpcIpcServer->addConnector( ipcConnector );
+                g_jsonrpcIpcServer->addConnector( ipcConnector );
                 if ( !ipcConnector->StartListening() ) {
                     clog( VerbosityError, "main" )
                         << "Cannot start listening for RPC requests on ipc port: "
                         << strerror( errno );
-                    return EXIT_FAILURE;
+                    return EX_IOERR;
                 }  // error
             } catch ( const std::exception& ex ) {
                 clog( VerbosityError, "main" )
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }  // catch
         }      // if ( is_ipc )
 
@@ -1573,49 +1743,49 @@ int main( int argc, char** argv ) try {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTP6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortHTTPS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS4 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
         if ( nExplicitPortWSS6 >= 65536 ) {
             clog( VerbosityError, "main" )
                 << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
                 << cc::warn( "--wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EXIT_FAILURE;
+            return EX_USAGE;
         }
 
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
@@ -1678,6 +1848,32 @@ int main( int argc, char** argv ) try {
                 if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
                     bHaveSSL = true;
             }
+
+            double lfExecutionDurationMaxForPerformanceWarning = SkaleServerOverride::
+                g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds, default 1
+                                                                       // second
+            if ( vm.count( "performance-warning-duration" ) > 0 ) {
+                lfExecutionDurationMaxForPerformanceWarning = vm["ssl-key"].as< double >();
+                if ( lfExecutionDurationMaxForPerformanceWarning < 0.0 )
+                    lfExecutionDurationMaxForPerformanceWarning = 0.0;
+            }
+
+            skutils::task::performance::tracker_ptr pTracker =
+                skutils::task::performance::get_default_tracker();
+            if ( vm.count( "performance-timeline-enable" ) > 0 )
+                pTracker->set_enabled( true );
+            if ( vm.count( "performance-timeline-disable" ) > 0 )
+                pTracker->set_enabled( false );
+            if ( vm.count( "performance-timeline-max-items" ) > 0 ) {
+                size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
+                pTracker->set_safe_max_item_count( maxItemCount );
+            }
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
+                << cc::debug( "............. " )
+                << ( pTracker->is_enabled() ? cc::size10( pTracker->get_safe_max_item_count() ) :
+                                              cc::error( "off" ) );
+
             if ( !bHaveSSL )
                 nExplicitPortHTTPS4 = nExplicitPortWSS4 = nExplicitPortHTTPS6 = nExplicitPortWSS6 =
                     -1;
@@ -1692,8 +1888,9 @@ int main( int argc, char** argv ) try {
             //
             //
             size_t maxConnections = 0,
-                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT,
-                   cntServers = 1;
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+                   cntServers = 1, cntInBatch = 128;
+            bool is_async_http_transfer_mode = true;
 
             // First, get "max-connections" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1715,11 +1912,27 @@ int main( int argc, char** argv ) try {
                     max_http_handler_queues =
                         joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
                 } catch ( ... ) {
-                    maxConnections = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT;
+                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
                 }
             }
             if ( vm.count( "max-http-queues" ) )
-                maxConnections = vm["max-http-queues"].as< size_t >();
+                max_http_handler_queues = vm["max-http-queues"].as< size_t >();
+
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    is_async_http_transfer_mode =
+                        joConfig["skaleConfig"]["nodeInfo"]["async-http-transfer-mode"]
+                            .get< bool >();
+                } catch ( ... ) {
+                    is_async_http_transfer_mode = true;
+                }
+            }
+            if ( vm.count( "async-http-transfer-mode" ) )
+                is_async_http_transfer_mode = true;
+            if ( vm.count( "sync-http-transfer-mode" ) )
+                is_async_http_transfer_mode = false;
 
             // First, get "acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1734,6 +1947,20 @@ int main( int argc, char** argv ) try {
                 cntServers = vm["acceptors"].as< size_t >();
             if ( cntServers < 1 )
                 cntServers = 1;
+
+            // First, get "acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntInBatch = joConfig["skaleConfig"]["nodeInfo"]["max-batch"].get< size_t >();
+                } catch ( ... ) {
+                    cntInBatch = 128;
+                }
+            }
+            if ( vm.count( "max-batch" ) )
+                cntInBatch = vm["max-batch"].as< size_t >();
+            if ( cntInBatch < 1 )
+                cntInBatch = 1;
 
             // First, get "ws-mode" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1783,7 +2010,13 @@ int main( int argc, char** argv ) try {
                 << cc::debug( ".......................... " )
                 << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
                                                        cc::notice( "default" ) );
+            clog( VerbosityInfo, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
+                                          << cc::debug( "........................ " )
+                                          << cc::yn( is_async_http_transfer_mode );
             //
+            clog( VerbosityInfo, "main" )
+                << cc::debug( "...." ) + cc::info( "Max count in batch JSON RPC request" )
+                << cc::debug( "...... " ) << cc::size10( cntInBatch );
             clog( VerbosityInfo, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "........ " ) << cc::size10( cntServers );
@@ -1791,24 +2024,26 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
-            auto skale_server_connector =
-                new SkaleServerOverride( chainParams, fn_binary_snapshot_download, cntServers,
-                    client.get(), chainParams.nodeInfo.ip, nExplicitPortHTTP4,
-                    chainParams.nodeInfo.ip6, nExplicitPortHTTP6, chainParams.nodeInfo.ip,
-                    nExplicitPortHTTPS4, chainParams.nodeInfo.ip6, nExplicitPortHTTPS6,
-                    chainParams.nodeInfo.ip, nExplicitPortWS4, chainParams.nodeInfo.ip6,
-                    nExplicitPortWS6, chainParams.nodeInfo.ip, nExplicitPortWSS4,
-                    chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey, strPathSslCert );
+            auto skale_server_connector = new SkaleServerOverride( chainParams,
+                fn_binary_snapshot_download, cntServers, g_client.get(), chainParams.nodeInfo.ip,
+                nExplicitPortHTTP4, chainParams.nodeInfo.ip6, nExplicitPortHTTP6,
+                chainParams.nodeInfo.ip, nExplicitPortHTTPS4, chainParams.nodeInfo.ip6,
+                nExplicitPortHTTPS6, chainParams.nodeInfo.ip, nExplicitPortWS4,
+                chainParams.nodeInfo.ip6, nExplicitPortWS6, chainParams.nodeInfo.ip,
+                nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
+                strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
+            skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
+            skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );
             //
             skale_server_connector->m_bTraceCalls = bTraceJsonRpcCalls;
             skale_server_connector->max_connection_set( maxConnections );
-            jsonrpcIpcServer->addConnector( skale_server_connector );
+            g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                return EXIT_FAILURE;
+                return EX_IOERR;
             }
             int nStatHTTP4 = skale_server_connector->getServerPortStatusHTTP( 4 );
             int nStatHTTP6 = skale_server_connector->getServerPortStatusHTTP( 6 );
@@ -2001,7 +2236,7 @@ int main( int argc, char** argv ) try {
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
-        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( 0 ); } );
+        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGABRT ); } );
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
@@ -2011,17 +2246,25 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    if ( client ) {
-        unsigned int n = client->blockChain().details().number;
+    dev::setThreadName( "main" );
+
+    if ( g_client ) {
+        unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
         while ( !exitHandler.shouldExit() )
-            stopSealingAfterXBlocks( client.get(), n, mining );
-    } else
+            stopSealingAfterXBlocks( g_client.get(), n, mining );
+    } else {
         while ( !exitHandler.shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
-
-    if ( jsonrpcIpcServer.get() )
-        jsonrpcIpcServer->StopListening();
+    }
+    if ( g_jsonrpcIpcServer.get() ) {
+        g_jsonrpcIpcServer->StopListening();
+        g_jsonrpcIpcServer.reset( nullptr );
+    }
+    if ( g_client ) {
+        g_client->stopWorking();
+        g_client.reset( nullptr );
+    }
 
     std::cerr << localeconv()->decimal_point << std::endl;
 
@@ -2033,19 +2276,30 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
-    return 0;
+    bool returnCode = ExitHandler::getSignal() != SIGINT && ExitHandler::getSignal() != SIGTERM;
+    return returnCode;
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const SkaleHost::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
+    clog( VerbosityError, "main" ) << "\n"
+                                   << skutils::signal::generate_stack_trace() << "\n"
+                                   << std::endl;
+    g_client.reset( nullptr );
     return EXIT_FAILURE;
 }

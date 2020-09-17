@@ -25,6 +25,7 @@
 #ifndef LIBETHEREUM_CONSENSUSSTUB_H_
 #define LIBETHEREUM_CONSENSUSSTUB_H_
 
+using namespace std;
 #include <libconsensus/node/ConsensusInterface.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
@@ -36,13 +37,14 @@ class ConsensusExtFace;
 
 class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:
-    ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID );
+    ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot );
     ~ConsensusStub() override;
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override;
     void startAll() override;
     void bootStrapAll() override;
     void exitGracefully() override;
     u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }
+    consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }  // moch
 
     void stop();
 
@@ -59,6 +61,7 @@ private:
 private:
     ConsensusExtFace& m_extFace;
     int64_t blockCounter = 0;
+    u256 stateRoot = 0;
 };
 
 #endif /* LIBETHEREUM_CONSENSUSSTUB_H_ */

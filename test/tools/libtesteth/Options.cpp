@@ -69,9 +69,11 @@ void printHelp() {
     cout << setw( 30 ) << "--exectimelog" << setw( 25 )
          << "Output execution time for each test suite\n";
     cout << setw( 30 ) << "--statediff" << setw( 25 ) << "Trace state difference for state tests\n";
+    cout << setw( 30 ) << "--list-tests" << setw( 25 ) << "List all test suites/cases and exit\n";
 
     cout << "\nAdditional Tests\n";
     cout << setw( 30 ) << "--all" << setw( 25 ) << "Enable all tests\n";
+    cout << setw( 30 ) << "--express" << setw( 25 ) << "Only 'express' tests\n";
 
     cout << "\nTest Generation\n";
     cout << setw( 30 ) << "--filltests" << setw( 25 ) << "Run test fillers\n";
@@ -210,6 +212,8 @@ Options::Options( int argc, const char** argv ) {
             exectimelog = true;
         else if ( arg == "--all" )
             all = true;
+        else if ( arg == "--express" )
+            this->express = true;
         else if ( arg == "--singletest" ) {
             throwIfNoArgumentFollows();
             singleTest = true;
@@ -246,6 +250,8 @@ Options::Options( int argc, const char** argv ) {
                              "tests/src/randomCodeOptions.json\n";
                 exit( 0 );
             }
+        } else if ( arg == "--list-tests" ) {
+            listTests = true;
         } else if ( arg == "-t" ) {
             throwIfAfterSeparator();
             throwIfNoArgumentFollows();

@@ -242,7 +242,7 @@ Json::Value Eth::eth_signTransaction( Json::Value const& _json ) {
 
 Json::Value Eth::eth_subscribe( Json::Value const& /*_transaction*/ ) {
     try {
-        throw JsonRpcException( "eth_subscribe() API is not supported yet" );
+        throw JsonRpcException( "eth_subscribe() API is not supported yet over HTTP(S)" );
     } catch ( Exception const& ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }
@@ -254,6 +254,15 @@ Json::Value Eth::eth_unsubscribe( Json::Value const& /*_transaction*/ ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }
 }
+
+Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
+    try {
+        throw JsonRpcException( "setSchainExitTime() API is not supported yet over HTTP(S)" );
+    } catch ( Exception const& ) {
+        throw JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
@@ -440,19 +449,19 @@ Json::Value Eth::eth_getUncleByBlockNumberAndIndex(
 
 string Eth::eth_newFilter( Json::Value const& _json ) {
     try {
-        return toJS( client()->installWatch( toLogFilter( _json, *client() ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
-
-string Eth::eth_newFilterEx( Json::Value const& _json ) {
-    try {
         return toJS( client()->installWatch( toLogFilter( _json ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
+
+// string Eth::eth_newFilterEx( Json::Value const& _json ) {
+//    try {
+//        return toJS( client()->installWatch( toLogFilter( _json ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 string Eth::eth_newBlockFilter() {
     h256 filter = dev::eth::ChainChangedFilter;
@@ -504,30 +513,30 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     }
 }
 
-Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
-    try {
-        return toJsonByBlock(
-            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+// Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
+//    try {
+//        return toJsonByBlock(
+//            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
-        return toJson( client()->logs( toLogFilter( _json, *client() ) ) );
+        return toJson( client()->logs( toLogFilter( _json ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
-Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
-    try {
-        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+// Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
+//    try {
+//        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
+//    } catch ( ... ) {
+//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+//    }
+//}
 
 Json::Value Eth::eth_getWork() {
     try {
@@ -637,7 +646,7 @@ string dev::rpc::exceptionToErrorMessage() {
     } catch ( InvalidSignature const& ) {
         ret = "Invalid transaction signature.";
     }
-    // Acount holder exceptions
+    // Account holder exceptions
     catch ( AccountLocked const& ) {
         ret = "Account is locked.";
     } catch ( UnknownAccount const& ) {

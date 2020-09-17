@@ -49,6 +49,7 @@ public:
     void forEach( std::function< bool( Slice, Slice ) > f ) const override;
 
     h256 hashBase() const override;
+    h256 hashBaseWithPrefix( char _prefix ) const;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;

@@ -118,9 +118,11 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_newFilter", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_newFilterI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "eth_newFilterEx", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL ),
-            &dev::rpc::EthFace::eth_newFilterExI );
+        //        this->bindAndAddMethod( jsonrpc::Procedure( "eth_newFilterEx",
+        //        jsonrpc::PARAMS_BY_POSITION,
+        //                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT,
+        //                                    NULL ),
+        //            &dev::rpc::EthFace::eth_newFilterExI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_newBlockFilter",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_newBlockFilterI );
@@ -143,16 +145,18 @@ public:
             jsonrpc::Procedure( "eth_getFilterLogs", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_getFilterLogsI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "eth_getFilterLogsEx", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::EthFace::eth_getFilterLogsExI );
+        //        this->bindAndAddMethod(
+        //            jsonrpc::Procedure( "eth_getFilterLogsEx", jsonrpc::PARAMS_BY_POSITION,
+        //                jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL ),
+        //            &dev::rpc::EthFace::eth_getFilterLogsExI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_getLogs", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_getLogsI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "eth_getLogsEx", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL ),
-            &dev::rpc::EthFace::eth_getLogsExI );
+        //        this->bindAndAddMethod( jsonrpc::Procedure( "eth_getLogsEx",
+        //        jsonrpc::PARAMS_BY_POSITION,
+        //                                    jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT,
+        //                                    NULL ),
+        //            &dev::rpc::EthFace::eth_getLogsExI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_getWork", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_ARRAY, NULL ),
             &dev::rpc::EthFace::eth_getWorkI );
@@ -184,6 +188,12 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_unsubscribe", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_unsubscribeI );
+
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "setSchainExitTime", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::EthFace::setSchainExitTimeI );
+
         this->bindAndAddMethod(
             jsonrpc::Procedure( "eth_inspectTransaction", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
@@ -319,9 +329,10 @@ public:
     inline virtual void eth_newFilterI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_newFilter( request[0u] );
     }
-    inline virtual void eth_newFilterExI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_newFilterEx( request[0u] );
-    }
+    //    inline virtual void eth_newFilterExI( const Json::Value& request, Json::Value& response )
+    //    {
+    //        response = this->eth_newFilterEx( request[0u] );
+    //    }
     inline virtual void eth_newBlockFilterI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->eth_newBlockFilter();
@@ -344,15 +355,16 @@ public:
     inline virtual void eth_getFilterLogsI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_getFilterLogs( request[0u].asString() );
     }
-    inline virtual void eth_getFilterLogsExI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getFilterLogsEx( request[0u].asString() );
-    }
+    //    inline virtual void eth_getFilterLogsExI( const Json::Value& request, Json::Value&
+    //    response ) {
+    //        response = this->eth_getFilterLogsEx( request[0u].asString() );
+    //    }
     inline virtual void eth_getLogsI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_getLogs( request[0u] );
     }
-    inline virtual void eth_getLogsExI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getLogsEx( request[0u] );
-    }
+    //    inline virtual void eth_getLogsExI( const Json::Value& request, Json::Value& response ) {
+    //        response = this->eth_getLogsEx( request[0u] );
+    //    }
     inline virtual void eth_getWorkI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->eth_getWork();
@@ -379,6 +391,9 @@ public:
     }
     inline virtual void eth_unsubscribeI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_unsubscribe( request[0u] );
+    }
+    inline virtual void setSchainExitTimeI( const Json::Value& request, Json::Value& response ) {
+        response = this->setSchainExitTime( request[0u] );
     }
     inline virtual void eth_signTransactionI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_signTransaction( request[0u] );
@@ -441,16 +456,16 @@ public:
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
     virtual std::string eth_newFilter( const Json::Value& param1 ) = 0;
-    virtual std::string eth_newFilterEx( const Json::Value& param1 ) = 0;
+    //    virtual std::string eth_newFilterEx( const Json::Value& param1 ) = 0;
     virtual std::string eth_newBlockFilter() = 0;
     virtual std::string eth_newPendingTransactionFilter() = 0;
     virtual bool eth_uninstallFilter( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChanges( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChangesEx( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterLogs( const std::string& param1 ) = 0;
-    virtual Json::Value eth_getFilterLogsEx( const std::string& param1 ) = 0;
+    //    virtual Json::Value eth_getFilterLogsEx( const std::string& param1 ) = 0;
     virtual Json::Value eth_getLogs( const Json::Value& param1 ) = 0;
-    virtual Json::Value eth_getLogsEx( const Json::Value& param1 ) = 0;
+    //    virtual Json::Value eth_getLogsEx( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_getWork() = 0;
     virtual bool eth_submitWork(
         const std::string& param1, const std::string& param2, const std::string& param3 ) = 0;
@@ -461,6 +476,7 @@ public:
     virtual Json::Value eth_signTransaction( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_subscribe( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_unsubscribe( const Json::Value& param1 ) = 0;
+    virtual Json::Value setSchainExitTime( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_inspectTransaction( const std::string& param1 ) = 0;
     virtual std::string eth_sendRawTransaction( const std::string& param1 ) = 0;
     virtual bool eth_notePassword( const std::string& param1 ) = 0;

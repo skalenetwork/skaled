@@ -1,3 +1,5 @@
+.vscode
+
 # QTCreator project files
 skaled.config
 skaled.creator
@@ -13,10 +15,10 @@ docs-dictionary-*
 *.gcov
 *.gcda
 
-# SkaleDeps specific
-SkaleDeps/*
-!SkaleDeps/build.sh
-!SkaleDeps/clean.sh
+# deps specific
+deps/*
+!deps/build.sh
+!deps/clean.sh
 
 # Compiled Object files
 *.slo
@@ -114,5 +116,9 @@ dependency_graph.svg
 #selective test runner
 test_run/node_modules
 test_run/package-lock.json
+
+#environment files
+saved_environment_on_startup.txt
+qtbuild/
 
 scripts/skale_build/executable/skaled

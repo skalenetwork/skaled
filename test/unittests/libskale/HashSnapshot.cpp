@@ -1,9 +1,16 @@
+#include <libconsensus/libBLS/bls/BLSutils.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcrypto/Hash.h>
 #include <libethcore/KeyManager.h>
-#include <libethereum/ClientTest.h>
 #include <libp2p/Network.h>
-#include <libskale/SnapshotManager.h>
+
+#define private public          // TODO refactor SnapshotManager
+    #include <libskale/SnapshotManager.h>
+#undef private
+
+#include <libethereum/ClientTest.h>
+#include <libskale/SnapshotHashAgent.h>
+
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/Debug.h>
@@ -28,6 +35,117 @@ using namespace dev::test;
 boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
 }
+
+namespace dev {
+namespace test {
+class SnapshotHashAgentTest {
+public:
+    SnapshotHashAgentTest( ChainParams& _chainParams ) {
+        std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
+
+        for ( auto& elem : coeffs ) {
+            elem = libff::alt_bn128_Fr::random_element();
+
+            while ( elem == 0 ) {
+                elem = libff::alt_bn128_Fr::random_element();
+            }
+        }
+
+
+        blsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
+        for ( size_t i = 0; i < _chainParams.sChain.nodes.size(); ++i ) {
+            blsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
+
+            for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
+                blsPrivateKeys_[i] =
+                    blsPrivateKeys_[i] +
+                    coeffs[j] *
+                        libff::power( libff::alt_bn128_Fr( std::to_string( i + 1 ).c_str() ), j );
+            }
+        }
+
+        signatures::Bls obj =
+            signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
+        std::vector< size_t > idx( _chainParams.sChain.t );
+        for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
+            idx[i] = i + 1;
+        }
+        auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
+        auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
+        keys.second.to_affine_coordinates();
+        _chainParams.nodeInfo.commonBLSPublicKeys[0] =
+            BLSutils::ConvertToString( keys.second.X.c0 );
+        _chainParams.nodeInfo.commonBLSPublicKeys[1] =
+            BLSutils::ConvertToString( keys.second.X.c1 );
+        _chainParams.nodeInfo.commonBLSPublicKeys[2] =
+            BLSutils::ConvertToString( keys.second.Y.c0 );
+        _chainParams.nodeInfo.commonBLSPublicKeys[3] =
+            BLSutils::ConvertToString( keys.second.Y.c1 );
+
+        this->secret_as_is = keys.first;
+
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams ) );
+    }
+
+    void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
+        this->hashAgent_->hashes_ = snapshot_hashes;
+
+        for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            this->hashAgent_->public_keys_[i] =
+                this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
+            this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
+                signatures::Bls::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
+                    this->hashAgent_->hashes_[i].asArray() ) ),
+                this->blsPrivateKeys_[i] );
+        }
+    }
+
+    bool verifyAllData() const {
+        bool result = false;
+        this->hashAgent_->verifyAllData( result );
+        return result;
+    }
+
+    std::vector< size_t > getNodesToDownloadSnapshotFrom() {
+        bool res = this->voteForHash();
+
+        if ( !res ) {
+            return {};
+        }
+
+        std::vector< size_t > ret;
+        for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            if ( this->hashAgent_->chain_params_.nodeInfo.id ==
+                 this->hashAgent_->chain_params_.sChain.nodes[i].id ) {
+                continue;
+            }
+
+            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->voted_hash_.first ) {
+                ret.push_back( i );
+            }
+        }
+
+        return ret;
+    }
+
+    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const {
+        return this->hashAgent_->getVotedHash();
+    }
+
+    bool voteForHash() { return this->hashAgent_->voteForHash( this->hashAgent_->voted_hash_ ); }
+
+    void spoilSignature( size_t idx ) {
+        this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
+    }
+
+    libff::alt_bn128_Fr secret_as_is;
+
+    std::shared_ptr< SnapshotHashAgent > hashAgent_;
+
+    std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
+};
+}  // namespace test
+}  // namespace dev
 
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
@@ -115,13 +233,14 @@ struct FixtureCommon {
     }
 };
 
+// TODO Do not copy&paste from JsonRpcFixture
 struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
     SnapshotHashingFixture() {
         check_sudo();
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
+        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
         system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
         system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
@@ -145,11 +264,13 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.byzantiumForkBlock = 0;
         chainParams.externalGasDifficulty = 1;
+        chainParams.sChain.storageLimit = 0x1122334455667788UL;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
+
+        chainParams.sChain.emptyBlockIntervalMs = 1000;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -194,8 +315,10 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         newFileHash << fileHash;
 
+        // TODO creation order with dependencies, gasPricer etc..
+        auto monitor = make_shared< InstanceMonitor >("test");
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, boost::filesystem::path( BTRFS_DIR_PATH ),
+            shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
         //        client.reset(
@@ -221,7 +344,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
 
-        gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
+        gasPricer = make_shared< eth::TrivialGasPricer >( 1000, 1000 );
+        client->setGasPricer(gasPricer);
 
         rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
             new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
@@ -245,6 +369,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
         system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
         system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        system( "rm -rf /tmp/*.db*" );
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -257,7 +382,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         return string();
     }
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -269,11 +396,96 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
 };
-}  // namespace
+} //namespace
+
+BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
+
+BOOST_AUTO_TEST_CASE( PositiveTest ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    SnapshotHashAgentTest test_agent( chainParams );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() );
+    auto res = test_agent.getNodesToDownloadSnapshotFrom();
+    std::vector< size_t > excpected = {0, 1, 2};
+    BOOST_REQUIRE( res == excpected );
+    BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
+    BOOST_REQUIRE( test_agent.getVotedHash().second ==
+                   signatures::Bls::Signing(
+                       signatures::Bls::HashtoG1(
+                           std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
+                       test_agent.secret_as_is ) );
+}
+
+BOOST_AUTO_TEST_CASE( WrongHash ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.t = 5;
+    chainParams.sChain.nodes.resize( 7 );
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 6;
+    SnapshotHashAgentTest test_agent( chainParams );
+    dev::h256 hash = dev::h256::random();  // `correct` hash
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() );
+    auto res = test_agent.getNodesToDownloadSnapshotFrom();
+    std::vector< size_t > excpected = {0, 1, 2, 3, 5};
+    BOOST_REQUIRE( res == excpected );
+}
+
+BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    SnapshotHashAgentTest test_agent( chainParams );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    snapshot_hashes[2] = dev::h256::random();
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE_THROW( test_agent.voteForHash(), NotEnoughVotesException );
+}
+
+BOOST_AUTO_TEST_CASE( WrongSignature ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    SnapshotHashAgentTest test_agent( chainParams );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    test_agent.fillData( snapshot_hashes );
+    test_agent.spoilSignature( 0 );
+    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), IsNotVerified );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -312,14 +524,15 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture ) {
 
     BOOST_REQUIRE( hash2 == hash2_dbl );
 
-    BOOST_REQUIRE_THROW( !mgr->isSnapshotHashPresent( 4 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 4 ), SnapshotManager::SnapshotAbsent );
 
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 4 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
 }
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture ) {
+BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     mgr->doSnapshot( 4 );
 
     mgr->computeSnapshotHash( 4, true );
@@ -336,5 +549,35 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture 
 
     BOOST_REQUIRE( hash4_dbl == hash4 );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE( SnapshotPerformanceSuite, *boost::unit_test::disabled() )
+
+BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture ) {
+//    *boost::unit_test::disabled() ) {
+    // 21s
+    // dev::db::LevelDB db("/home/dimalit/skaled/big_states/1GR_1.4GB/a77d61c4/12041/state");
+    // 150s
+    dev::db::LevelDB db("/home/dimalit/skale-node-tests/big_states/1/da3e7c49/12041/state");
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto hash = db.hashBase();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
+}
+
+BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    // 140s - with 4k and 1b files both
+    mgr->computeFileSystemHash("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx, false);
+    dev::h256 hash;
+    secp256k1_sha256_finalize( &ctx, hash.data() );
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

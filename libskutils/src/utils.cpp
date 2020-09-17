@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <execinfo.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <memory.h>
@@ -15,6 +14,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <iostream>
+
+#include <cxxabi.h>
+#include <execinfo.h>
 
 extern "C" {
 #ifdef WIN32
@@ -1501,12 +1503,15 @@ bool init_common_signal_handling( fn_signal_handler_t fnSignalHander ) {
     // this signal is sent to the process. A reader is a process that reads data at the end of a
     // pipe.
     sigaction( SIGPIPE, &sa, NULL );
-    //
-    // Not handled:
     // SIGSEGV - When an application has a segmentation violation, this signal is sent to the
-    // process. SIGTSTP - This signal is like pressing ctrl-z. This makes a request to the terminal
+    // process.
+    sigaction( SIGSEGV, &sa, NULL );
+    // SIGTSTP - This signal is like pressing ctrl-z. This makes a request to the terminal
     // containing the process to ask the process to stop temporarily. The process can ignore the
-    // request. SIGCONT - To make processes continue executing after being paused by the SIGTSTP or
+    // request.
+    sigaction( SIGTSTP, &sa, NULL );
+    // Not handled:
+    // SIGCONT - To make processes continue executing after being paused by the SIGTSTP or
     // SIGSTOP signal, send the SIGCONT signal to the paused process. This is the CONTinue SIGnal.
     // This signal is beneficial to Unix job control (executing background tasks). SIGALRM - SIGALRM
     // is sent when the real time or clock time timer expires. SIGTRAP - This signal is used for
@@ -1553,24 +1558,150 @@ bool init_common_signal_handling( fn_signal_handler_t fnSignalHander ) {
     return true;
 }
 
-void print_backtrace() {
-    std::cout.flush();
-    std::cerr.flush();
-    void* arrBacktrace[30];
-    int cntBacktrace = ::backtrace(
-        arrBacktrace, sizeof( arrBacktrace ) / sizeof( arrBacktrace[0] ) );  // get void*'s for all
-                                                                             // entries on the stack
-    // print out all the frames to stderr
-    ::fprintf( stderr, "\n\nbacktrace of %d symbol(s):\n", int( cntBacktrace ) );
-    ::fflush( stderr );
-    ::backtrace_symbols_fd( arrBacktrace, cntBacktrace, STDERR_FILENO );
-    ::fflush( stderr );
-    ::fprintf( stderr, "\n" );
-    ::fflush( stderr );
-    std::cout.flush();
-    std::cerr.flush();
+std::string generate_stack_trace( int nSkip, bool isExtended ) {
+    if ( nSkip < 0 )
+        nSkip = 0;
+    void* callstack_data[256];  // 128
+    const int nCountOfStackFramesRequested = sizeof( callstack_data ) / sizeof( callstack_data[0] );
+    int nStackFramesFrameCount = backtrace( callstack_data, nCountOfStackFramesRequested );
+    if ( nStackFramesFrameCount <= 0 )
+        return std::string( "[empty(or corrupt) stack frame]\n" );
+    char** traced_symbols = backtrace_symbols( callstack_data, nStackFramesFrameCount );
+    std::ostringstream ss;
+    for ( int i = nSkip; i < nStackFramesFrameCount; ++i ) {
+        char* walk_sym = traced_symbols[i];
+        bool bLinePassed = false;
+        if ( isExtended ) {
+            char *begin_name = nullptr, *begin_offset = nullptr, *end_offset = nullptr;
+            // find parentheses and +address offset surrounding the mangled name:
+            // ./module(function+0x15c) [0x8048a6d]
+            for ( char* p = walk_sym; *p; ++p ) {
+                if ( *p == '(' )
+                    begin_name = p;
+                else if ( *p == '+' )
+                    begin_offset = p;
+                else if ( *p == ')' && begin_offset ) {
+                    end_offset = p;
+                    break;
+                }
+            }
+            if ( begin_name && begin_offset && end_offset && begin_name < begin_offset ) {
+                *begin_name++ = '\0';
+                *begin_offset++ = '\0';
+                *end_offset = '\0';
+                // mangled name is now in [begin_name, begin_offset) and caller offset in
+                // [begin_offset, end_offset). now apply __cxa_demangle():
+                int status = -1;
+                size_t funcnamesize = 512;  // 256
+                char* funcname = ( char* ) calloc( 1, funcnamesize );
+                char* ret = abi::__cxa_demangle( begin_name, funcname, &funcnamesize, &status );
+                if ( status == 0 ) {
+                    funcname = ret;  // use possibly realloc()-ed string
+                    ss << skutils::tools::format(
+                        "  %s : %s+%s\n", walk_sym, funcname, begin_offset );
+                } else {
+                    // demangling failed, output function name as a C function with no arguments
+                    ss << skutils::tools::format(
+                        "  %s : %s()+%s\n", walk_sym, begin_name, begin_offset );
+                }
+                free( funcname );
+                bLinePassed = true;
+            }
+        }
+        if ( !bLinePassed )
+            ss << walk_sym << "\n";
+    }
+    free( traced_symbols );
+    if ( nStackFramesFrameCount == nCountOfStackFramesRequested )
+        ss << "[truncated]\n";
+    return ss.str();
 }
+
+
 };  // namespace signal
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+json_config_file_accessor::json_config_file_accessor( const std::string& configPath )
+    : configPath_( configPath ),
+      configModificationTime_( 0 ),
+      joConfig_( nlohmann::json::object() ) {}
+json_config_file_accessor::~json_config_file_accessor() {}
+
+void json_config_file_accessor::reloadConfigIfNeeded() {
+    lock_type lock( mtx() );
+    time_t tt = skutils::tools::getFileModificationTime( configPath_ );
+    if ( tt == 0 )  // 0 is error
+        throw std::runtime_error( "Failed to access modified configuration file" );
+    if ( configModificationTime_ == tt )
+        return;
+    std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
+    try {
+        std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
+                  << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+        std::ifstream ifs( configPath_.c_str() );
+        std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
+        nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
+        joConfig_ = joNewConfig;
+        configModificationTime_ = tt;
+        std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
+                  << cc::p( configPath_ ) << "\n";
+    } catch ( std::exception& ex ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( ex.what() ) << "\n";
+        throw std::runtime_error(
+            std::string( "Failed to reload modified configuration file: " ) + ex.what() );
+    } catch ( ... ) {
+        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
+                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( "unknown exception" )
+                  << "\n";
+        throw std::runtime_error(
+            "Failed to reload modified configuration file: unknown exception" );
+    }
+}
+
+nlohmann::json json_config_file_accessor::getConfigJSON() {
+    reloadConfigIfNeeded();
+    return joConfig_;
+}
+
+
+nlohmann::json json_config_file_accessor::stat_extract_at_path(
+    const nlohmann::json& joConfig, const string_list_t& listPath ) {
+    string_list_t::const_iterator itWalk = listPath.cbegin(), itEnd = listPath.cend();
+    nlohmann::json joWalk = joConfig;
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        const std::string& s = ( *itWalk );
+        if ( joWalk.is_array() ) {
+            if ( s == "count" || s == "size" || s == "length" ) {
+                joWalk = joWalk.size();
+                continue;
+            }
+            std::string strIndex = s;
+            skutils::tools::replace_all( strIndex, " ", "" );
+            skutils::tools::replace_all( strIndex, "[", "" );
+            skutils::tools::replace_all( strIndex, "]", "" );
+            skutils::tools::replace_all( strIndex, "\t", "" );
+            char* ep = nullptr;
+            size_t nIndex = size_t(::strtoul( strIndex.c_str(), &ep, 10 ) );
+            if ( nIndex > joWalk.size() )
+                throw std::runtime_error( "JSON array index is out of range" );
+            joWalk = joWalk[nIndex];
+            continue;
+        }
+        if ( joWalk.count( s ) == 0 )
+            throw std::runtime_error( "JSON variable not found at specified path" );
+        joWalk = joWalk[s];
+    }
+    return joWalk;
+}
+nlohmann::json json_config_file_accessor::stat_extract_at_path( const nlohmann::json& joConfig,
+    const std::string& strPath, const char strDelimiter /*= '.'*/ ) {
+    string_list_t listPath = skutils::tools::split( strPath, strDelimiter );
+    return stat_extract_at_path( joConfig, listPath );
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

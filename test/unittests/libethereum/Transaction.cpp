@@ -33,7 +33,8 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( libethereum, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( TransactionGasRequired ) {
+BOOST_AUTO_TEST_CASE( TransactionGasRequired, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Transaction data is 0358ac39584bc98a7c979f984b03, 14 bytes
     Transaction tr(
         fromHex( "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c9"
@@ -58,7 +59,8 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
     BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None ), InvalidTransactionFormat );
 }
 
-BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected ) {
+BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto txRlp = fromHex(
         "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c979f984b03"
         "1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3"
@@ -71,7 +73,8 @@ BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected ) {
     BOOST_REQUIRE( txRlpStream.out() == txRlp );
 }
 
-BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit ) {
+BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // recoveryID = 0, v = 36893488147419103265
     auto txRlp1 = fromHex(
         "0xf86e808698852840a46f82d6d894095e7baea6a6c7c4c2dfeb977efac326af552d8780808902000000000000"
@@ -119,7 +122,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
     BOOST_REQUIRE( txRlpStream.out() == txRlp );
 }
 
-BOOST_AUTO_TEST_CASE( ExecutionResultOutput ) {
+BOOST_AUTO_TEST_CASE( ExecutionResultOutput, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::stringstream buffer;
     ExecutionResult exRes;
 
@@ -208,6 +212,11 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         buffer.str() == "StackUnderflow", "Error output TransactionException::StackUnderflow" );
     buffer.str( std::string() );
 
+    buffer << TransactionException::InvalidDeployOrigin;
+    BOOST_CHECK_MESSAGE( buffer.str() == "InvalidDeployOrigin",
+        "Error output TransactionException::InvalidDeployOrigin" );
+    buffer.str( std::string() );
+
     buffer << TransactionException( -1 );
     BOOST_CHECK_MESSAGE(
         buffer.str() == "Unknown", "Error output TransactionException::StackUnderflow" );
@@ -253,12 +262,17 @@ BOOST_AUTO_TEST_CASE( toTransactionExceptionConvert ) {
     StackUnderflow stackEx;
     BOOST_CHECK_MESSAGE( toTransactionException( stackEx ) == TransactionException::StackUnderflow,
         "StackUnderflow !=> TransactionException" );
+    InvalidDeployOrigin originEx;
+    BOOST_CHECK_MESSAGE(
+        toTransactionException( originEx ) == TransactionException::InvalidDeployOrigin,
+        "InvalidDeployOrigin !=> TransactionException" );
     Exception notEx;
     BOOST_CHECK_MESSAGE( toTransactionException( notEx ) == TransactionException::Unknown,
         "Unexpected should be TransactionException::Unknown" );
 }
 
-BOOST_AUTO_TEST_CASE( GettingSenderForUnsignedTransactionThrows ) {
+BOOST_AUTO_TEST_CASE( GettingSenderForUnsignedTransactionThrows,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Transaction tx(
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
     BOOST_CHECK( !tx.hasSignature() );
@@ -266,7 +280,8 @@ BOOST_AUTO_TEST_CASE( GettingSenderForUnsignedTransactionThrows ) {
     BOOST_REQUIRE_THROW( tx.sender(), TransactionIsUnsigned );
 }
 
-BOOST_AUTO_TEST_CASE( GettingSignatureForUnsignedTransactionThrows ) {
+BOOST_AUTO_TEST_CASE( GettingSignatureForUnsignedTransactionThrows,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Transaction tx(
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
     BOOST_REQUIRE_THROW( tx.signature(), TransactionIsUnsigned );
@@ -280,7 +295,8 @@ BOOST_AUTO_TEST_CASE( StreamRLPWithSignatureForUnsignedTransactionThrows ) {
         tx.streamRLP( s, IncludeSignature::WithSignature, false ), TransactionIsUnsigned );
 }
 
-BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows ) {
+BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Transaction tx(
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
     BOOST_REQUIRE_THROW( tx.checkLowS(), TransactionIsUnsigned );

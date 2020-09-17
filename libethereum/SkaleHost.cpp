@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <future>
 #include <string>
 
 using namespace std;
@@ -51,9 +52,13 @@ using namespace std;
 #include <libdevcore/microprofile.h>
 
 #include <skutils/console_colors.h>
+#include <skutils/task_performance.h>
+#include <skutils/utils.h>
 
 using namespace dev;
 using namespace dev::eth;
+
+const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 20;
 
 #ifndef CONSENSUS
 #define CONSENSUS 1
@@ -64,18 +69,87 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     auto ts = nfo.timestamp();
-    return make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+        this->fillSgxInfo( *consensus_engine_ptr );
+    }
+
+    return consensus_engine_ptr;
 #else
-    return make_unique< ConsensusStub >( _extFace, m_client.number() );
+    unsigned block_number = m_client.number();
+    dev::h256 state_root =
+        m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
+    return make_unique< ConsensusStub >( _extFace, block_number, state_root );
 #endif
 }
+
+#if CONSENSUS
+void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
+    auto sgxServerUrl =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
+
+    const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
+    const std::string sgx_cert_filename = "sgx.crt";
+    const std::string sgx_key_filename = "sgx.key";
+    auto sgxSSLKeyFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_key_filename );
+    auto sgxSSLCertFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_cert_filename );
+
+    auto ecdsaKeyName =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.ecdsaKeyName );
+
+    auto blsKeyName =
+        std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
+
+    std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
+        std::make_shared< std::vector< std::string > >();
+    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
+    }
+
+    std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
+    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        std::vector< std::string > public_key_share( 4 );
+        if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
+            public_key_share[0] = node.blsPublicKey[0];
+            public_key_share[1] = node.blsPublicKey[1];
+            public_key_share[2] = node.blsPublicKey[2];
+            public_key_share[3] = node.blsPublicKey[3];
+        } else {
+            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys[0];
+            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys[1];
+            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys[2];
+            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys[3];
+        }
+
+        blsPublicKeys.push_back(
+            std::make_shared< std::vector< std::string > >( public_key_share ) );
+    }
+
+    auto blsPublicKeysPtr =
+        std::make_shared< std::vector< std::shared_ptr< std::vector< std::string > > > >(
+            blsPublicKeys );
+
+    size_t n = m_client.chainParams().sChain.nodes.size();
+    size_t t = ( 2 * n + 1 ) / 3;
+
+    try {
+        consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+            ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( ex.what() );
+    } catch ( const boost::exception& ex ) {
+        std::throw_with_nested( boost::diagnostic_information( ex ) );
+    }
+}
+#endif
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
-    virtual transactions_vector pendingTransactions( size_t _limit ) override;
+    virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override;
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -85,16 +159,17 @@ private:
 
 ConsensusExtImpl::ConsensusExtImpl( SkaleHost& _host ) : m_host( _host ) {}
 
-ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions( size_t _limit ) {
-    auto ret = m_host.pendingTransactions( _limit );
+ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
+    size_t _limit, u256& _stateRoot ) {
+    auto ret = m_host.pendingTransactions( _limit, _stateRoot );
     return ret;
 }
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice );
+    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -106,6 +181,24 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       total_sent( 0 ),
       total_arrived( 0 ) {
+    m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
+        skutils::task::performance::action action(
+            "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
+
+        // HACK reduce TRACEPOINT log output
+        static uint64_t last_block_when_log = -1;
+        if ( name == "fetch_transactions" || name == "drop_bad_transactions" ) {
+            uint64_t current_block = this->m_client.number();
+            if ( current_block == last_block_when_log )
+                return;
+            if ( name == "drop_bad_transactions" )
+                last_block_when_log = current_block;
+        }
+
+        LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
+                             << m_debugTracer.get_tracepoint_count( name );
+    } );
+
     m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     } );
@@ -130,7 +223,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_debugLogger ) << cc::debug( "sent_to_consensus = " ) << total_sent
+    LOG( m_debugLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
                          << cc::debug( " got_from_consensus = " ) << total_arrived
                          << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
@@ -142,6 +235,14 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
 
     h256 sha = transaction.sha3();
 
+    //
+    static std::atomic_size_t g_nReceiveTransactionsTaskNumber = 0;
+    size_t nReceiveTransactionsTaskNumber = g_nReceiveTransactionsTaskNumber++;
+    std::string strPerformanceQueueName = "bc/receive_transaction";
+    std::string strPerformanceActionName =
+        skutils::tools::format( "receive task %zu", nReceiveTransactionsTaskNumber );
+    skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
+    //
     m_debugTracer.tracepoint( "receive_transaction" );
     {
         std::lock_guard< std::mutex > localGuard( m_receivedMutex );
@@ -163,11 +264,37 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     return sha;
 }
 
-ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _limit ) {
+// keeps mutex unlocked when exists
+template < class M >
+class unlock_guard {
+private:
+    M& mutex_ref;
+    bool m_will_exit = false;
+
+public:
+    explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
+    ~unlock_guard() {
+        if ( !m_will_exit )
+            mutex_ref.lock();
+    }
+    void will_exit() { m_will_exit = true; }
+};
+
+ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
+    size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    // HACK this should be field (or better do it another way)
+    static bool first_run = true;
+    if ( first_run ) {
+        m_consensusWorkingMutex.lock();
+        first_run = false;
+    }
+
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
+    unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -177,10 +304,25 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
     MICROPROFILE_SCOPEI( "SkaleHost", "pendingTransactions", MP_LAWNGREEN );
 
 
+    _stateRoot = dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() );
+
     ConsensusExtFace::transactions_vector out_vector;
 
     h256Hash to_delete;
 
+    //
+    static std::atomic_size_t g_nFetchTransactionsTaskNumber = 0;
+    size_t nFetchTransactionsTaskNumber = g_nFetchTransactionsTaskNumber++;
+    std::string strPerformanceQueueName_fetch_transactions = "bc/fetch_transactions";
+    std::string strPerformanceActionName_fetch_transactions =
+        skutils::tools::format( "fetch task %zu", nFetchTransactionsTaskNumber );
+    skutils::task::performance::json jsn = skutils::task::performance::json::object();
+    jsn["limit"] = toJS( _limit );
+    jsn["stateRoot"] = toJS( _stateRoot );
+    skutils::task::performance::action a_fetch_transactions(
+        strPerformanceQueueName_fetch_transactions, strPerformanceActionName_fetch_transactions,
+        jsn );
+    //
     m_debugTracer.tracepoint( "fetch_transactions" );
 
     int counter = 0;
@@ -211,6 +353,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
             return true;
         } );
 
+
+    //
+    a_fetch_transactions.finish();
+    //
+
     if ( counter++ == 0 )
         m_pending_createMutex.lock();
 
@@ -218,10 +365,36 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
-    for ( auto sha : to_delete ) {
-        m_debugTracer.tracepoint( "drop_bad" );
-        m_tq.drop( sha );
+    {
+        std::lock_guard< std::mutex > localGuard( m_receivedMutex );
+        //
+        static std::atomic_size_t g_nDropBadTransactionsTaskNumber = 0;
+        size_t nDropBadTransactionsTaskNumber = g_nDropBadTransactionsTaskNumber++;
+        std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
+        std::string strPerformanceActionName_drop_bad_transactions =
+            skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
+        skutils::task::performance::json jsn = skutils::task::performance::json::object();
+        skutils::task::performance::json jarrDroppedTransactions =
+            skutils::task::performance::json::array();
+        for ( auto sha : to_delete ) {
+            jarrDroppedTransactions.push_back( toJS( sha ) );
+        }
+        jsn["droppedTransactions"] = jarrDroppedTransactions;
+        skutils::task::performance::action a_drop_bad_transactions(
+            strPerformanceQueueName_drop_bad_transactions,
+            strPerformanceActionName_drop_bad_transactions, jsn );
+        //
+        for ( auto sha : to_delete ) {
+            m_debugTracer.tracepoint( "drop_bad" );
+            m_tq.drop( sha );
+            if ( m_received.count( sha ) != 0 )
+                m_received.erase( sha );
+            LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+        }
     }
+
+    if ( this->m_exitNeeded )
+        unlocker.will_exit();
 
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
@@ -268,11 +441,36 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions( size_t _li
 
     m_debugTracer.tracepoint( "send_to_consensus" );
 
+    if ( this->m_exitNeeded )
+        unlocker.will_exit();
+
     return out_vector;
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice ) try {
+    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
+    //
+    static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
+    size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
+    std::string strPerformanceQueueName_create_block = "bc/create_block";
+    std::string strPerformanceActionName_create_block =
+        skutils::tools::format( "b-create %zu", nCreateBlockTaskNumber );
+    skutils::task::performance::json jsn_create_block = skutils::task::performance::json::object();
+    jsn_create_block["blockID"] = toJS( _blockID );
+    jsn_create_block["timeStamp"] = toJS( _timeStamp );
+    jsn_create_block["gasPrice"] = toJS( _gasPrice );
+    jsn_create_block["stateRoot"] = toJS( _stateRoot );
+    skutils::task::performance::json jarrApprovedTransactions =
+        skutils::task::performance::json::array();
+    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
+        const bytes& data = *it;
+        h256 sha = sha3( data );
+        jarrApprovedTransactions.push_back( toJS( sha ) );
+    }
+    jsn_create_block["approvedTransactions"] = jarrApprovedTransactions;
+    skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
+        strPerformanceActionName_create_block, jsn_create_block );
+
     LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
@@ -282,17 +480,40 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
+    if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
+        LOG( m_traceLogger ) << cc::debug( "STATE ROOT FOR BLOCK: " )
+                             << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
+                             << cc::debug(
+                                    this->m_client
+                                        .blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) )
+                                        .stateRoot()
+                                        .hex() )
+                             << std::endl;
+        // this is need for testing. should add better handling
+        //        if ( dev::h256::Arith( this->m_client.blockInfo( this->m_client.hashFromNumber(
+        //        _blockID ) )
+        //                                   .stateRoot() ) != _stateRoot ) {
+        //            cerror << "StateRoot assertion failed. Clean up /data_dir. Exiting";
+        //            ExitHandler::exitHandler( SIGABRT );
+        //        }
+        assert( dev::h256::Arith(
+                    this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) )
+                        .stateRoot() ) == _stateRoot );
+    }
+
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
     std::atomic_bool have_consensus_born = false;  // means we need to re-verify old txns
 
     m_debugTracer.tracepoint( "drop_good_transactions" );
 
+    skutils::task::performance::json jarrProcessedTxns = skutils::task::performance::json::array();
+
     for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
         const bytes& data = *it;
         h256 sha = sha3( data );
         LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
-
+        jarrProcessedTxns.push_back( toJS( sha ) );
 #ifdef DEBUG_TX_BALANCE
         if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
             std::cerr << cc::error( "createBlock assert" ) << std::endl;
@@ -336,8 +557,21 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     total_arrived += out_txns.size();
 
-    // assert( _blockID == m_client.number() + 1 );
+    assert( _blockID == m_client.number() + 1 );
 
+    //
+    a_create_block.finish();
+    //
+    static std::atomic_size_t g_nImportBlockTaskNumber = 0;
+    size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
+    std::string strPerformanceQueueName_import_block = "bc/import_block";
+    std::string strPerformanceActionName_import_block =
+        skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
+    skutils::task::performance::json jsn_import_block = skutils::task::performance::json::object();
+    jsn_import_block["txns"] = jarrProcessedTxns;
+    skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
+        strPerformanceActionName_import_block, jsn_import_block );
+    //
     m_debugTracer.tracepoint( "import_block" );
 
     size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
@@ -354,8 +588,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     logState();
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception (in createBlock)";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
 void SkaleHost::startWorking() {
@@ -365,6 +601,7 @@ void SkaleHost::startWorking() {
     // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
     // recursively calls this func - so working is still false!)
     working = true;
+    m_exitedForcefully = false;
 
     try {
         m_broadcaster->startService();
@@ -385,6 +622,8 @@ void SkaleHost::startWorking() {
         throw;
     }
 
+    std::promise< void > bootstrap_promise;
+
     auto csus_func = [&]() {
         try {
             dev::setThreadName( "bootStrapAll" );
@@ -396,11 +635,14 @@ void SkaleHost::startWorking() {
             std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
             std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
-    };
-    // std::bind(&ConsensusEngine::bootStrapAll, m_consensus.get());
-    // m_consensus->bootStrapAll();
-    m_consensusThread = std::thread( csus_func );  // TODO Stop function for it??!
+
+        bootstrap_promise.set_value();
+    };  // func
+
+    m_consensusThread = std::thread( csus_func );
+    bootstrap_promise.get_future().wait();
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
@@ -408,18 +650,52 @@ void SkaleHost::stopWorking() {
     if ( !working )
         return;
 
+    bool locked =
+        m_consensusWorkingMutex.try_lock_for( std::chrono::seconds( EXIT_FORCEFULLTY_SECONDS ) );
+    auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
+                             m_consensusWorkingMutex, std::adopt_lock ) :
+                         std::unique_ptr< std::lock_guard< std::timed_mutex > >();
+    ( void ) lock;  // for Codacy
+
+    // if we could not lock from 1st attempt - then exit forcefully!
+    if ( !locked ) {
+        m_exitedForcefully = true;
+        clog( VerbosityWarning, "skale-host" )
+            << cc::fatal( "ATTENTION:" ) << " "
+            << cc::error( "Forcefully shutting down consensus!" );
+    }
+
+
     m_exitNeeded = true;
     pauseConsensus( false );
-    m_consensus->exitGracefully();
-    m_consensusThread.join();
 
-    m_broadcastThread.join();
+    std::cerr << "1 before exitGracefully()" << std::endl;
+
+    m_consensus->exitGracefully();
+
+    std::cerr << "2 after exitGracefully()" << std::endl;
+
+    while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+        timespec ms100{0, 100000000};
+        nanosleep( &ms100, nullptr );
+    }
+
+    std::cerr << "3 after wait loop" << std::endl;
+
+    if ( m_consensusThread.joinable() )
+        m_consensusThread.join();
+
+    if ( m_broadcastThread.joinable() )
+        m_broadcastThread.join();
 
     working = false;
+
+    std::cerr << "4 before dtor" << std::endl;
 }
 
 void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
+    size_t nBroadcastTaskNumber = 0;
     while ( !m_exitNeeded ) {
         try {
             m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
@@ -448,8 +724,21 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
+                        std::string rlp = toJS( txn.rlp() );
+                        std::string h = toJS( txn.sha3() );
+                        //
+                        std::string strPerformanceQueueName = "bc/broadcast";
+                        std::string strPerformanceActionName =
+                            skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
+                        skutils::task::performance::json jsn =
+                            skutils::task::performance::json::object();
+                        jsn["rlp"] = rlp;
+                        jsn["hash"] = h;
+                        skutils::task::performance::action a(
+                            strPerformanceQueueName, strPerformanceActionName, jsn );
+                        //
                         m_debugTracer.tracepoint( "broadcast" );
-                        m_broadcaster->broadcast( toJS( txn.rlp() ) );
+                        m_broadcaster->broadcast( rlp );
                     }
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
@@ -465,9 +754,11 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }
     }  // while

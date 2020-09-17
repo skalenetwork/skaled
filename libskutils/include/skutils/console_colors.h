@@ -18,7 +18,6 @@
 namespace cc {
 
 typedef std::chrono::system_clock default_clock_t;
-// typedef std::chrono::high_resolution_clock default_clock_t;
 
 enum class e_reset_mode_t {
     __ERM_COLORS,
@@ -512,9 +511,9 @@ extern std::string u( const char* strProbablyURL );
 extern bool p( std::string& s, const std::string& strProbablyPath, bool bThrow );
 extern std::string p( const std::string& strProbablyPath );
 extern std::string p( const char* strProbablyPath );
-extern std::string pe( const std::string& strPath );  // path with comment about file existance and
+extern std::string pe( const std::string& strPath );  // path with comment about file existence and
                                                       // size
-extern std::string pe( const char* strPath );  // path with comment about file existance and size
+extern std::string pe( const char* strPath );  // path with comment about file existence and size
 extern bool eml( std::string& s, const std::string& strProbablyeMail, bool bThrow );
 extern std::string eml( const std::string& strProbablyeMail );
 extern std::string eml( const char* strProbablyeMail );

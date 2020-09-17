@@ -30,12 +30,6 @@
 #include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
-namespace fs = boost::filesystem;
-using boost::shared_lock;
-using boost::shared_mutex;
-using boost::upgrade_lock;
-using boost::upgrade_to_unique_lock;
-
 #include <libdevcore/DBImpl.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
@@ -46,6 +40,8 @@ using boost::upgrade_to_unique_lock;
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
+
+namespace fs = boost::filesystem;
 
 using namespace std;
 using namespace dev;
@@ -64,14 +60,17 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State(
-    u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs, u256 _initialFunds )
-    : x_db_ptr( make_shared< shared_mutex >() ),
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
+    u256 _initialFunds, s256 _storageLimit )
+    : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ) {
+      m_initial_funds( _initialFunds ),
+      storageLimit_( _storageLimit ) {
+    auto state = startRead();
+    totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -139,6 +138,8 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    storageLimit_ = _s.storageLimit_;
+    totalStorageUsed_ = _s.storageUsedTotal();
 
     return *this;
 }
@@ -170,7 +171,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
-    shared_lock< shared_mutex > lock( *x_db_ptr );
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
@@ -251,7 +252,7 @@ eth::Account* State::account( Address const& _address ) {
     // Populate basic info.
     bytes stateBack;
     {
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
 
         if ( !checkVersion() ) {
             cerr << "Current state version is " << m_currentVersion << " but stored version is "
@@ -272,12 +273,13 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+    s256 storageUsed = state[3].toInt< s256 >();
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
-            dev::eth::Account::Changedness::Unchanged ) );
+            dev::eth::Account::Changedness::Unchanged, storageUsed ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -309,7 +311,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
         if ( !m_db_write_lock ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
-        upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
+        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
@@ -324,8 +326,9 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream( 3 );
-                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() );
+                    RLPStream rlpStream( 4 );
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
+                              << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
                     m_db_ptr->insert( address, ref( rawValue ) );
@@ -344,6 +347,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                 }
             }
         }
+        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
         m_db_ptr->commit();
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
@@ -460,7 +464,7 @@ void State::kill( Address _addr ) {
 }
 
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
-    shared_lock< shared_mutex > lock( *x_db_ptr );
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerr << "Current state version is " << m_currentVersion << " but stored version is "
              << *m_storedVersion << endl;
@@ -503,7 +507,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             return memoryIterator->second;
 
         // Not in the storage cache - go to the DB.
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -515,8 +519,33 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 }
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
-    m_changeLog.emplace_back( _contract, _key, storage( _contract, _key ) );
+    dev::u256 _currentValue = storage( _contract, _key );
+    dev::u256 _originalValue = originalStorageValue( _contract, _key );
+
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
+
+    int count = 0;
+    if ( _originalValue == _currentValue ) {
+        if ( _currentValue == 0 ) {
+            count = 1;
+        } else if ( _value == 0 ) {
+            count = -1;
+        }
+    }
+    // copied from EXTVMFace.cpp ----- TODO: review it|^
+
+    if ( _value == _currentValue ) {
+        count = 0;
+    }
+
+    storageUsage[_contract] += count * 32;
+    currentStorageUsed_ += count * 32;
+
+    if ( totalStorageUsed_ + currentStorageUsed_ > storageLimit_ ) {
+        BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
+    }
+    // TODO::review it |^
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -526,7 +555,7 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
             return memoryPtr->second;
         }
 
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -546,6 +575,9 @@ void State::clearStorage( Address const& _contract ) {
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
+    dev::s256 accStorageUsed = acc->storageUsed();
+    totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
+    acc->updateStorageUsage( -accStorageUsed );
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -556,7 +588,7 @@ bytes const& State::code( Address const& _addr ) const {
     if ( a->code().empty() ) {
         // Load the code from the backend.
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -648,6 +680,7 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+    resetStorageChanges();
 }
 
 void State::updateToLatestVersion() {
@@ -657,7 +690,7 @@ void State::updateToLatestVersion() {
     m_nonExistingAccountsCache.clear();
 
     {
-        shared_lock< shared_mutex > lock( *x_db_ptr );
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         m_currentVersion = *m_storedVersion;
     }
 }
@@ -678,11 +711,11 @@ State State::startWrite() const {
 
 State State::delegateWrite() {
     if ( m_db_write_lock ) {
-        upgrade_lock< shared_mutex > lock;
+        boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
         m_db_write_lock = boost::none;
         State stateCopy = State( *this );
-        stateCopy.m_db_write_lock = upgrade_lock< shared_mutex >();
+        stateCopy.m_db_write_lock = boost::upgrade_lock< boost::shared_mutex >();
         stateCopy.m_db_write_lock->swap( lock );
         return stateCopy;
     } else {
@@ -711,7 +744,7 @@ void State::clearAll() {
         if ( !m_db_write_lock ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
-        upgrade_to_unique_lock< shared_mutex > lock( *m_db_write_lock );
+        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
@@ -729,7 +762,7 @@ bool State::connected() const {
 bool State::empty() const {
     if ( m_cache.empty() ) {
         if ( m_db_ptr ) {
-            shared_lock< shared_mutex > lock( *x_db_ptr );
+            boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
             if ( m_db_ptr->empty() ) {
                 return true;
             }
@@ -746,7 +779,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
-    Executive e( *this, _envInfo, _sealEngine, 0 );
+    Executive e( *this, _envInfo, _sealEngine, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );
 
@@ -772,14 +805,22 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     switch ( _p ) {
     case Permanence::Reverted:
     case Permanence::CommittedWithoutState:
+        resetStorageChanges();
         m_cache.clear();
         break;
     case Permanence::Committed:
+        if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
+            totalStorageUsed_ += currentStorageUsed_;
+            updateStorageUsage();
+        }
+        // TODO: review logic|^
+
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
                                       State::CommitBehaviour::KeepEmptyAccounts );
         break;
     case Permanence::Uncommitted:
+        resetStorageChanges();
         break;
     }
 
@@ -788,6 +829,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
+
     return make_pair( res, receipt );
 }
 
@@ -808,6 +850,21 @@ bool State::executeTransaction(
     } catch ( Exception const& ) {
         rollback( savept );
         throw;
+    }
+}
+
+void State::updateStorageUsage() {
+    for ( const auto& [_address, _value] : storageUsage ) {
+        account( _address )->updateStorageUsage( _value );
+    }
+    resetStorageChanges();
+}
+
+dev::s256 State::storageUsed( const dev::Address& _addr ) const {
+    if ( auto a = account( _addr ) ) {
+        return a->storageUsed();
+    } else {
+        return 0;
     }
 }
 

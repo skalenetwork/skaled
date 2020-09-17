@@ -43,28 +43,18 @@ ClientTest* dev::eth::asClientTest( Interface* _c ) {
 
 ClientTest::ClientTest( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
-    std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
+    std::shared_ptr< SnapshotManager > _snapshotManager,
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _limits )
-    : Client(
-          _params, _networkID, _gpForAdoption, _snapshotManager, _dbPath, _forceAction, _limits ) {}
+    : Client( _params, _networkID, _gpForAdoption, _snapshotManager, _instanceMonitor, _dbPath,
+          _forceAction, _limits ) {
+    system( "rm -rf /tmp/*.db*" );
+}
 
 ClientTest::~ClientTest() {
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
     terminate();
-}
-
-void ClientTest::setChainParams( string const& _genesis ) {
-    ChainParams params;
-    try {
-        params = params.loadConfig( _genesis );
-        if ( params.sealEngineName != NoProof::name() && params.sealEngineName != Ethash::name() )
-            BOOST_THROW_EXCEPTION(
-                ChainParamsInvalid() << errinfo_comment( "Seal engine is not supported!" ) );
-
-        reopenChain( params, WithExisting::Kill );
-    } catch ( std::exception const& ex ) {
-        BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment( ex.what() ) );
-    }
+    system( "rm -rf /tmp/*.db*" );
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
@@ -94,6 +84,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
 }
 
 bool ClientTest::mineBlocks( unsigned _count ) noexcept {
+    std::cout << "mineBlocks begin " << _count << std::endl;
     if ( wouldSeal() )
         return false;
     try {
@@ -109,6 +100,7 @@ bool ClientTest::mineBlocks( unsigned _count ) noexcept {
         startSealing();
         future_status ret = allBlocksImported.get_future().wait_for(
             std::chrono::seconds( m_singleBlockMaxMiningTimeInSeconds * _count ) );
+        std::cout << "mineBlocks end 0 is OK:" << ( int ) ret << std::endl;
         return ( ret == future_status::ready );
     } catch ( std::exception const& ) {
         LOG( m_logger ) << boost::current_exception_diagnostic_information();

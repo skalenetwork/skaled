@@ -102,7 +102,7 @@ int btrfs_subvolume_create(const char* path){
 }
 
 int btrfs_subvolume_delete(const char* path){
-    char fmt[] = "btrfs subvolume delete %s";
+    char fmt[] = "btrfs subvolume delete -c %s";
 
     int len = 1 + snprintf(NULL, 0, fmt, path);
 
@@ -158,13 +158,29 @@ int btrfs_receive(const char* file, const char* path){
 }
 
 int btrfs_send(const char* parent, const char* file, const char* vol){
-    const char* fmt = "btrfs send -q -p %s -f %s %s";
+    char* tmp_cmd;
+    if ( parent == NULL ) {
+        tmp_cmd = "btrfs send -q -f %s %s";
+    } else {
+        tmp_cmd = "btrfs send -q -p %s -f %s %s";
+    }
 
-    unsigned len = 1 + snprintf(NULL, 0, fmt, parent, file, vol);
+    const char* fmt = tmp_cmd;
+
+    unsigned len;
+    if ( parent == NULL ) {
+        len = 1 + snprintf(NULL, 0, fmt, file, vol);
+    } else {
+        len = 1 + snprintf(NULL, 0, fmt, parent, file, vol);
+    }
 
     char* cmd = (char*) malloc(len);
 
-    snprintf(cmd, len, fmt, parent, file, vol);
+    if ( parent == NULL ) {
+        snprintf(cmd, len, fmt, file, vol);
+    } else {
+        snprintf(cmd, len, fmt, parent, file, vol);
+    }
 
     int res = shell_call(cmd);
     free(cmd);

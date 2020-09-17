@@ -1,5 +1,14 @@
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
+#include <mutex>
+
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 namespace skutils {
 namespace test {
@@ -300,6 +309,7 @@ test_server::~test_server() {}
 void test_server::run_parallel() {
     if ( thread_is_running_ )
         throw std::runtime_error( "server is already runnig " );
+    check_can_listen();
     std::thread( [&]() -> void {
         thread_is_running_ = true;
         test_log_s( cc::info( strScheme_ ) + cc::debug( " network server thread started" ) );
@@ -320,6 +330,38 @@ void test_server::wait_parallel() {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
 }
 
+void test_server::stat_check_port_availability_to_start_listen(
+    int ipVer, const char* strAddr, int nPort, const char* strScheme ) {
+    test_log_s( cc::debug( "Will check port " ) + cc::num10( nPort ) +
+                cc::debug( "/IPv" + std::to_string( ipVer ) ) + cc::debug( " availability for " ) +
+                cc::info( strScheme ) + cc::debug( " server..." ) );
+    skutils::network::sockaddr46 sa46;
+    std::string strError =
+        skutils::network::resolve_address_for_client_connection( ipVer, strAddr, sa46 );
+    if ( !strError.empty() )
+        throw std::runtime_error(
+            std::string( "Failed to check " ) + std::string( strScheme ) +
+            std::string( " server listen IP address availability for address \"" ) + strAddr +
+            std::string( "\" on IPv" ) + std::to_string( ipVer ) +
+            std::string( ", please check network interface with this IP address exist, error "
+                         "details: " ) +
+            strError );
+    if ( is_tcp_port_listening( ipVer, sa46, nPort ) )
+        throw std::runtime_error( std::string( "Cannot start " ) + std::string( strScheme ) +
+                                  std::string( " server on address \"" ) + strAddr +
+                                  std::string( "\", port " ) + std::to_string( nPort ) +
+                                  std::string( ", IPv" ) + std::to_string( ipVer ) +
+                                  std::string( " - port is already listening" ) );
+    test_log_s( cc::notice( "Port " ) + cc::num10( nPort ) +
+                cc::notice( "/IPv" + std::to_string( ipVer ) ) + cc::notice( " is free for " ) +
+                cc::info( strScheme ) + cc::notice( " server to start" ) );
+}
+
+void test_server::check_can_listen() {
+    stat_check_port_availability_to_start_listen(
+        4, "127.0.0.1", nListenPort_, strScheme_.c_str() );
+    stat_check_port_availability_to_start_listen( 6, "::1", nListenPort_, strScheme_.c_str() );
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -426,7 +468,7 @@ void test_server_ws_base::run() {
             strPrivateKeyFile_ = ssl_info.strFilePathKey_;
         }
         BOOST_REQUIRE( open( strScheme_.c_str(), nListenPort_ ) );
-        test_log_s( cc::debug( "Server opened" ) );
+        test_log_s( cc::sunny( "Server opened" ) );
         bServerOpenComplete = true;
         if ( service_mode_supported() ) {
             test_log_s(
@@ -494,14 +536,17 @@ bool test_server_wss::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_http_base::test_server_http_base( const char* strScheme, int nListenPort )
+test_server_http_base::test_server_http_base(
+    const char* strScheme, int nListenPort, bool is_async_http_transfer_mode )
     : test_server( strScheme, nListenPort ) {
     if ( strScheme_ == "https" ) {
         auto& ssl_info = helper_ssl_info();
-        pServer_.reset( new skutils::http::SSL_server(
-            ssl_info.strFilePathCert_.c_str(), ssl_info.strFilePathKey_.c_str() ) );
+        pServer_.reset( new skutils::http::SSL_server( ssl_info.strFilePathCert_.c_str(),
+            ssl_info.strFilePathKey_.c_str(), __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+            is_async_http_transfer_mode ) );
     } else
-        pServer_.reset( new skutils::http::server );
+        pServer_.reset( new skutils::http::server(
+            __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__, is_async_http_transfer_mode ) );
     pServer_->Options(
         "/", [&]( const skutils::http::request& /*req*/, skutils::http::response& res ) {
             test_log_s( cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
@@ -548,8 +593,8 @@ void test_server_http_base::run() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_http::test_server_http( int nListenPort )
-    : test_server_http_base( "http", nListenPort ) {}
+test_server_http::test_server_http( int nListenPort, bool is_async_http_transfer_mode )
+    : test_server_http_base( "http", nListenPort, is_async_http_transfer_mode ) {}
 test_server_http::~test_server_http() {}
 
 bool test_server_http::isSSL() const {
@@ -559,8 +604,8 @@ bool test_server_http::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-test_server_https::test_server_https( int nListenPort )
-    : test_server_http_base( "https", nListenPort ) {}
+test_server_https::test_server_https( int nListenPort, bool is_async_http_transfer_mode )
+    : test_server_http_base( "https", nListenPort, is_async_http_transfer_mode ) {}
 test_server_https::~test_server_https() {}
 
 bool test_server_https::isSSL() const {
@@ -621,8 +666,9 @@ test_client_ws_base::test_client_ws_base( const char* strClientName, int nTarget
     test_log_c( strClientName_, cc::debug( "Will initalize test client " ) +
                                     cc::info( strClientName_ ) + cc::debug( "..." ) );
     enableRestartTimer( false );
-    std::string strServerUrl =
-        skutils::tools::format( "%s://localhost:%d", strScheme_.c_str(), nTargetPort_ );
+    static const char g_strLocalHostName[] = "localhost";  // "127.0.0.1" // "::1" // "localhost"
+    std::string strServerUrl = skutils::tools::format(
+        "%s://%s:%d", strScheme_.c_str(), g_strLocalHostName, nTargetPort_ );
     test_log_c( strClientName_,
         cc::debug( "test wlient will connect to: " ) + cc::u( strServerUrl ) + cc::debug( "..." ) );
     size_t cnt = nConnectAttempts;
@@ -875,23 +921,6 @@ void with_test_environment( fn_with_test_environment_t fn ) {
         //???::g_nPeerStatsLoggingFlags = __???_PEER_STATS_ALL;
         test_log_e(
             cc::debug( "Will initialize " ) + cc::note( "test environment" ) + cc::debug( "..." ) );
-        skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-            if ( nSignalNo == SIGPIPE )
-                return;
-            bool stopWasRaisedBefore = skutils::signal::g_bStop;
-            skutils::signal::g_bStop = true;
-            std::string strMessagePrefix = stopWasRaisedBefore ?
-                                               cc::error( "\nStop flag was already raised on. " ) +
-                                                   cc::fatal( "WILL FORCE TERMINATE." ) +
-                                                   cc::error( " Caught (second) signal. " ) :
-                                               cc::error( "\nCaught (first) signal. " );
-            test_log_ef( strMessagePrefix + cc::error( skutils::signal::signal2str( nSignalNo ) ) );
-            if ( stopWasRaisedBefore )
-                _exit( 13 );
-            // stat_handle_shutdown( &nSignalNo );
-            //_exit( 13 );
-        } );
-        //
         //
         SSL_library_init();
         OpenSSL_add_all_ciphers();
@@ -936,6 +965,132 @@ void with_thread_pool( fn_with_thread_pool_t fn,
     fn( pool );
 }
 
+namespace tcp_helpers {
+
+int close_socket( socket_t sock ) {
+#ifdef _WIN32
+    return closesocket( sock );
+#else
+    return close( sock );
+#endif
+}
+
+template < typename Fn >
+socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket_flags = 0, bool is_reuse_address = true, bool is_reuse_port = false ) {
+#ifdef _WIN32
+#define SO_SYNCHRONOUS_NONALERT 0x20
+#define SO_OPENTYPE 0x7008
+    int opt = SO_SYNCHRONOUS_NONALERT;
+    setsockopt( INVALID_SOCKET, SOL_SOCKET, SO_OPENTYPE, ( char* ) &opt, sizeof( opt ) );
+#endif
+    struct addrinfo hints;
+    struct addrinfo* result;
+    memset( &hints, 0, sizeof( struct addrinfo ) );
+    hints.ai_family = ( ipVer == 4 ) ? AF_INET : AF_INET6;  // AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = socket_flags;
+    hints.ai_protocol = 0;  // ( ipVer == 4 ) ? IPPROTO_IPV4 : IPPROTO_IPV6;  // 0
+    auto service = std::to_string( port );
+    if ( getaddrinfo( host, service.c_str(), &hints, &result ) )
+        return INVALID_SOCKET;
+    for ( auto rp = result; rp; rp = rp->ai_next ) {
+        auto sock = socket( rp->ai_family, rp->ai_socktype, rp->ai_protocol );
+        if ( sock == INVALID_SOCKET ) {
+            continue;
+        }
+        int yes = is_reuse_address ? 1 : 0;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, ( char* ) &yes, sizeof( yes ) );
+        yes = is_reuse_port ? 1 : 0;
+        setsockopt( sock, SOL_SOCKET, SO_REUSEPORT, ( char* ) &yes, sizeof( yes ) );
+        if ( fn( sock, *rp ) ) {
+            freeaddrinfo( result );
+            return sock;
+        }
+        close_socket( sock );
+    }
+    freeaddrinfo( result );
+    return INVALID_SOCKET;
+}
+
+};  // namespace tcp_helpers
+
+void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
+    fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4,
+    bool isIPv6, bool is_reuse_address, bool is_reuse_port ) {
+    socket_t fd4 = INVALID_SOCKET, fd6 = INVALID_SOCKET;
+    try {
+        if ( isIPv4 ) {  // "0.0.0.0"
+            fd4 = tcp_helpers::create_socket( 4, "127.0.0.1", nSocketListenPort,
+                [&]( socket_t sock, struct addrinfo& ai ) -> bool {
+                    int ret = 0;
+                    if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to bind IPv4 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    if (::listen( sock, 5 ) )  // listen through 5 channels
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to start IPv4 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    return true;
+                }, 0, is_reuse_address, is_reuse_port );
+            if ( fd4 == INVALID_SOCKET )
+                throw std::runtime_error( skutils::tools::format(
+                    "Failed to create IPv4 busy test listener on port %d", nSocketListenPort ) );
+        }
+        if ( isIPv6 ) {  // "0:0:0:0:0:0:0:0"
+            fd6 = tcp_helpers::create_socket( 6, "::1", nSocketListenPort,
+                [&]( socket_t sock, struct addrinfo& ai ) -> bool {
+                    int ret = 0;
+                    if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to bind IPv6 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    if (::listen( sock, 5 ) )  // listen through 5 channels
+                        throw std::runtime_error( skutils::tools::format(
+                            "Failed to start IPv6 busy test listener to port %d,error=%d=0x%x",
+                            nSocketListenPort, ret, ret ) );
+                    return true;
+                }, 0, is_reuse_address, is_reuse_port );
+            if ( fd6 == INVALID_SOCKET )
+                throw std::runtime_error( skutils::tools::format(
+                    "Failed to create IPv6 busy test listener on port %d", nSocketListenPort ) );
+        }
+        test_log_e(
+            cc::debug( "Will execute " ) + cc::note( "busy port" ) + cc::debug( " callback..." ) );
+        if ( fnWorker )
+            fnWorker();
+        test_log_e( cc::success( "Success, did executed " ) + cc::note( "busy port" ) +
+                    cc::success( " callback" ) );
+    } catch ( std::exception& ex ) {
+        std::string strErrorDescription = ex.what();
+        bool isIgnoreError = false;
+        if ( fnErrorHandler )
+            isIgnoreError =
+                fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
+        if ( !isIgnoreError ) {
+            test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
+                         cc::note( "busy port" ) + cc::error( " callback: " ) +
+                         cc::warn( strErrorDescription ) );
+            BOOST_REQUIRE( false );
+        }
+    } catch ( ... ) {
+        std::string strErrorDescription = "unknown exception";
+        bool isIgnoreError = false;
+        if ( fnErrorHandler )
+            isIgnoreError =
+                fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
+        if ( !isIgnoreError ) {
+            test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
+                         cc::note( "busy port" ) + cc::error( " callback" ) );
+            BOOST_REQUIRE( false );
+        }
+    }
+    if ( fd4 != INVALID_SOCKET )
+        tcp_helpers::close_socket( fd4 );
+    if ( fd6 != INVALID_SOCKET )
+        tcp_helpers::close_socket( fd6 );
+}
+
 void with_test_server(
     fn_with_test_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort ) {
     skutils::ws::security_args sa;
@@ -947,11 +1102,17 @@ void with_test_server(
     } else if ( sus == "ws" ) {
         pServer.reset( new test_server_ws( nSocketListenPort ) );
         BOOST_REQUIRE( !pServer->isSSL() );
-    } else if ( sus == "https" ) {
-        pServer.reset( new test_server_https( nSocketListenPort ) );
+    } else if ( sus == "https" || sus == "https_async" ) {
+        pServer.reset( new test_server_https( nSocketListenPort, true ) );
         BOOST_REQUIRE( pServer->isSSL() );
-    } else if ( sus == "http" ) {
-        pServer.reset( new test_server_http( nSocketListenPort ) );
+    } else if ( sus == "https_sync" ) {
+        pServer.reset( new test_server_https( nSocketListenPort, false ) );
+        BOOST_REQUIRE( pServer->isSSL() );
+    } else if ( sus == "http" || sus == "http_async" ) {
+        pServer.reset( new test_server_http( nSocketListenPort, true ) );
+        BOOST_REQUIRE( !pServer->isSSL() );
+    } else if ( sus == "http_sync" ) {
+        pServer.reset( new test_server_http( nSocketListenPort, false ) );
         BOOST_REQUIRE( !pServer->isSSL() );
     } else {
         test_log_se( cc::error( "Unknown server type: " ) + cc::warn( strServerUrlScheme ) );
@@ -960,18 +1121,18 @@ void with_test_server(
     pServer->run_parallel();
     try {
         test_log_e( cc::debug( "Will execute " ) + cc::note( "Test server" ) +
-                    cc::debug( " environment callback..." ) );
+                    cc::debug( " callback..." ) );
         fn( *pServer.get() );
         test_log_e( cc::success( "Success, did executed " ) + cc::note( "Test server" ) +
-                    cc::success( " environment callback" ) );
+                    cc::success( " callback" ) );
     } catch ( std::exception& ex ) {
         test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
-                     cc::note( "Test server" ) + cc::error( " environment callback: " ) +
+                     cc::note( "Test server" ) + cc::error( " callback: " ) +
                      cc::warn( ex.what() ) );
         BOOST_REQUIRE( false );
     } catch ( ... ) {
         test_log_ef( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
-                     cc::note( "Test server" ) + cc::error( " environment callback" ) );
+                     cc::note( "Test server" ) + cc::error( " callback" ) );
         BOOST_REQUIRE( false );
     }
     pServer->stop();
@@ -1019,11 +1180,11 @@ void with_test_client( fn_with_test_client_t fn, const std::string& strTestClien
         pClient.reset(
             new test_client_ws( strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( !pClient->isSSL() );
-    } else if ( sus == "https" ) {
+    } else if ( sus == "https" || sus == "https_async" || sus == "https_sync" ) {
         pClient.reset( new test_client_https(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( pClient->isSSL() );
-    } else if ( sus == "http" ) {
+    } else if ( sus == "http" || sus == "http_async" || sus == "http_sync" ) {
         pClient.reset( new test_client_http(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( !pClient->isSSL() );
@@ -1182,38 +1343,75 @@ void test_protocol_single_call( const char* strProto, int nPort ) {
 void test_protocol_serial_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients serial server calls
-    std::atomic_size_t cnt_actions_performed = 0;
+    std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
+                       wait_time_step_ms = 500;
+    skutils::test::test_log_e( cc::debug( "Protocol serial calls test with " ) +
+                               cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
             [&]( skutils::test::test_server & /*refServer*/ ) -> void {
-                for ( size_t i = 0; i < vecClientNames.size(); ++i ) {
+                skutils::test::test_log_e( cc::sunny( "Server startup" ) );
+                for ( size_t i = 0; i < cnt_clients; ++i ) {
+                    std::this_thread::sleep_for(
+                        std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
                     skutils::test::with_test_client(
-                        [&]( skutils::test::test_client& refClient ) -> void {
+                        [&, i]( skutils::test::test_client& refClient ) -> void {
+                            // std::this_thread::sleep_for(
+                            //    std::chrono::milliseconds( size_t( wait_time_step_ms ) * i ) );
+                            skutils::test::test_log_e( cc::bright( "Client " ) + cc::size10( i ) +
+                                                       cc::bright( " begin" ) );
                             std::string strCall( "{ \"method\": \"hello\", \"params\": {} }" );
                             nlohmann::json joCall = skutils::test::ensure_call_id_present_copy(
                                 nlohmann::json::parse( strCall ) );
                             nlohmann::json joResult = refClient.call( joCall );
                             BOOST_REQUIRE( joCall.dump() == joResult.dump() );
-                            //
                             ++cnt_actions_performed;
+                            skutils::test::test_log_e( cc::bright( "Client " ) + cc::size10( i ) +
+                                                       cc::bright( " finish" ) );
                         },
                         vecClientNames[i], strProto, nPort, true );
                 }
+                skutils::test::test_log_e( cc::sunny( "Server finish" ) );
             },
             strProto, nPort );
     } );
-    BOOST_REQUIRE( cnt_actions_performed == vecClientNames.size() );
+    size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
+    for ( idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                              size_t( cnt_actions_performed ) < size_t( cnt_clients );
+          ++idxWaitAttempt ) {
+        skutils::test::test_log_e(
+            cc::debug( "Waiting for test to complete, step " ) +
+            cc::size10( size_t( idxWaitAttempt ) ) + cc::debug( " of " ) +
+            cc::size10( size_t( cntWaitAttempts ) ) + cc::debug( ", performed " ) +
+            cc::size10( size_t( cnt_actions_performed ) ) + cc::debug( " action(s) of " ) +
+            cc::size10( size_t( cnt_clients ) ) + cc::debug( " expeted ..." ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
+    }
+    BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
 }
 
 void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames ) {
     // multiple clients parallel server calls
-    std::atomic_size_t cnt_actions_performed = 0;
+    std::atomic_size_t cnt_actions_performed = 0, cnt_clients = vecClientNames.size(),
+                       wait_time_step_ms = 500, parallel_client_indexer = 0;
+    std::mutex mtxClientIndexer;
+    skutils::test::test_log_e( cc::debug( "Protocol parallel calls test with " ) +
+                               cc::size10( size_t( cnt_clients ) ) + cc::debug( " client(s)" ) );
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
             [&]( skutils::test::test_server & /*refServer*/ ) -> void {
+                skutils::test::test_log_e( cc::sunny( "Server startup" ) );
                 skutils::test::with_test_clients(
                     [&]( skutils::test::test_client& refClient ) -> void {
+                        size_t i = 0;
+                        {  // block
+                            std::lock_guard< std::mutex > lock( mtxClientIndexer );
+                            i = parallel_client_indexer;
+                            ++parallel_client_indexer;
+                        }  // block
+                        skutils::test::test_log_e(
+                            cc::bright( "Client " ) + cc::size10( i ) + cc::bright( " begin" ) );
                         std::string strCall( "{ \"method\": \"hello\", \"params\": {} }" );
                         nlohmann::json joCall = skutils::test::ensure_call_id_present_copy(
                             nlohmann::json::parse( strCall ) );
@@ -1237,12 +1435,107 @@ void test_protocol_parallel_calls(
                         BOOST_REQUIRE( joCall.dump() == joResult.dump() );
                         //
                         ++cnt_actions_performed;
+                        skutils::test::test_log_e(
+                            cc::bright( "Client " ) + cc::size10( i ) + cc::bright( " finish" ) );
                     },
                     vecClientNames, strProto, nPort, true );
             },
             strProto, nPort );
+        skutils::test::test_log_e( cc::sunny( "Server finish" ) );
     } );
-    BOOST_REQUIRE( cnt_actions_performed == vecClientNames.size() );
+    size_t idxWaitAttempt, cntWaitAttempts = size_t( cnt_clients ) + 1;
+    for ( idxWaitAttempt = 0; size_t( idxWaitAttempt ) < size_t( cntWaitAttempts ) &&
+                              size_t( cnt_actions_performed ) < size_t( cnt_clients );
+          ++idxWaitAttempt ) {
+        skutils::test::test_log_e(
+            cc::debug( "Waiting for test to complete, step " ) +
+            cc::size10( size_t( idxWaitAttempt ) ) + cc::debug( " of " ) +
+            cc::size10( size_t( cntWaitAttempts ) ) + cc::debug( ", performed " ) +
+            cc::size10( size_t( cnt_actions_performed ) ) + cc::debug( " action(s) of " ) +
+            cc::size10( size_t( cnt_clients ) ) + cc::debug( " expeted ..." ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( size_t( wait_time_step_ms ) ) );
+    }
+    BOOST_REQUIRE( cnt_actions_performed == cnt_clients );
+}
+
+void test_protocol_busy_port( const char* strProto, int nPort ) {
+    skutils::test::test_log_e( cc::debug( "Protocol busy port test" ) );
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_busy_tcp_port(
+            [&]() -> void {  // fn_with_busy_tcp_port_worker_t
+                skutils::test::test_log_e( cc::sunny( "Busy port allocated" ) );
+                skutils::test::with_test_server(
+                    [&]( skutils::test::test_server & /*refServer*/ ) -> void {
+                        skutils::test::test_log_e( cc::sunny( "Server startup" ) );
+                        skutils::test::test_log_sf(
+                            cc::sunny( "WE SHOULD NOT REACH THIS EXECUTION POINT" ) );
+                        BOOST_REQUIRE( false );
+                    },
+                    strProto, nPort );
+                skutils::test::test_log_e( cc::sunny( "Server finish" ) );
+            },
+            [&](
+                const std::string& strErrorDescription ) -> bool {  // fn_with_busy_tcp_port_error_t
+                skutils::test::test_log_e( cc::success( "Busy port detected with message: " ) +
+                                           cc::bright( strErrorDescription ) );
+                skutils::test::test_log_ss( cc::success( "SUCCESS - busy port handled" ) );
+                BOOST_REQUIRE( true );
+                return true;  // returns true if errror should be ignored
+            },
+            nPort );
+        skutils::test::test_log_e( cc::sunny( "Busy port de-allocated" ) );
+    } );
+}
+
+void test_protocol_rest_call( const char* strProto, int nPort ) {
+    std::atomic_bool end_of_actions_was_reached = false;
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_test_server(
+            [&]( skutils::test::test_server& /*refServer*/ ) -> void {
+                std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
+                nlohmann::json joCall =
+                    skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
+                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort );
+                skutils::url u( strURL );
+                skutils::rest::client restCall( u );
+                skutils::rest::data_t dataOut = restCall.call( strCall );
+                BOOST_REQUIRE( ! dataOut.empty() );
+                nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
+                skutils::test::test_log_e( cc::info( "input" ) + cc::debug( "..........." ) + cc::normal( joCall.dump() ) );
+                skutils::test::test_log_e( cc::info( "output" ) + cc::debug( ".........." ) + cc::normal( joResult.dump() ) );
+                BOOST_REQUIRE( joCall.dump() == joResult.dump() );
+                //
+                end_of_actions_was_reached = true;
+            },
+            strProto, nPort );
+    } );
+    BOOST_REQUIRE( end_of_actions_was_reached );
+}
+
+void test_protocol_rest_fail( const char* strProto, const char* strProtoIncorrect, int nPort ) {
+    std::atomic_bool end_of_actions_was_reached = false;
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_test_server(
+            [&]( skutils::test::test_server& /*refServer*/ ) -> void {
+                std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
+                nlohmann::json joCall =
+                    skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
+                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProtoIncorrect, nPort );
+                skutils::url u( strURL );
+                skutils::rest::client restCall( u );
+                skutils::rest::data_t dataOut = restCall.call( strCall );
+                skutils::test::test_log_e( cc::info( "error type" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.et_ ) ) );
+                skutils::test::test_log_e( cc::info( "error code" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.ec_ ) ) );
+                skutils::test::test_log_e( cc::info( "error text" ) + cc::debug( "......" ) + cc::normal( dataOut.ei_.strError_ ) );
+                BOOST_REQUIRE( dataOut.empty() );
+                BOOST_REQUIRE( dataOut.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error );
+                BOOST_REQUIRE( ! dataOut.ei_.strError_.empty() );
+                //
+                end_of_actions_was_reached = true;
+            },
+            strProto, nPort );
+    } );
+    BOOST_REQUIRE( end_of_actions_was_reached );
 }
 
 };  // namespace test

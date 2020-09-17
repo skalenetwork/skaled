@@ -54,13 +54,13 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 
 ```
 sudo apt-get update
-sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison
+sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs
 ```
 
 ### Build dependencies
 
 ```
-cd SkaleDeps
+cd deps
 ./build.sh
 ```
 

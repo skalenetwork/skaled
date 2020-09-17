@@ -33,6 +33,11 @@
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
+#include <time.h>
+
+#include <skutils/multithreading.h>
+#include <skutils/utils.h>
+
 namespace dev {
 class NetworkFace;
 class KeyPair;
@@ -50,13 +55,19 @@ namespace rpc {
 /**
  * @brief JSON-RPC api implementation
  */
-class SkaleStats : public dev::rpc::SkaleStatsFace, public dev::rpc::SkaleStatsConsumerImpl {
-    const nlohmann::json& joConfig_;
+class SkaleStats : public dev::rpc::SkaleStatsFace,
+                   public dev::rpc::SkaleStatsConsumerImpl,
+                   public skutils::json_config_file_accessor {
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
+    //    typedef skutils::multithreading::recursive_mutex_type mutex_type;
+    //    typedef std::lock_guard< mutex_type > lock_type;
+    //    mutex_type mtx_;
+    //    mutex_type& mtx() { return mtx_; }
+
 public:
-    SkaleStats( const nlohmann::json& joConfig, eth::Interface& _eth );
+    SkaleStats( const std::string& configPath, eth::Interface& _eth );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skaleStats", "1.0"}};
@@ -66,6 +77,10 @@ public:
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
+    virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) override;
+    virtual Json::Value skale_performanceTrackingStart( const Json::Value& request ) override;
+    virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) override;
+    virtual Json::Value skale_performanceTrackingFetch( const Json::Value& request ) override;
 
 protected:
     eth::Interface* client() const { return &m_eth; }

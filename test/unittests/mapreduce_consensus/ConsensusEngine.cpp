@@ -114,15 +114,17 @@ public:
         } );
     }
 
-    virtual transactions_vector pendingTransactions( size_t /*_limit*/ ) override {
+    virtual transactions_vector pendingTransactions(
+        size_t /*_limit*/, u256& _stateRoot ) override {
         auto future = this->transaction_promise.get_future();
         future.wait();
         transactions_vector buffer = future.get();
+        _stateRoot = 1;
         return buffer;
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice ) override {
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -191,7 +193,7 @@ public:
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
 
-        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 )};
+        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
         chainParams.sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
@@ -213,9 +215,10 @@ public:
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
+        auto monitor = make_shared< InstanceMonitor >("test");
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, monitor, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
@@ -242,7 +245,8 @@ public:
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    virtual transactions_vector pendingTransactions( size_t _limit ) override {
+    virtual transactions_vector pendingTransactions(
+        size_t _limit, u256& /*_stateRoot*/ ) override {
         if ( _limit < buffer.size() )
             assert( false );
 
@@ -257,7 +261,8 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */ ) override {
+        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
+        u256 /*_stateRoot*/ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -366,8 +371,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     // block 2
 
     v = transactions_vector( 9000 );
+    size_t i = 0;
     for ( auto& tx : v ) {
-        tx.push_back( 'b' );
+        for(size_t j=0; j<sizeof(i); ++j)
+            tx.push_back( ((unsigned char*)&i)[j] );
+        ++i;
     }  // for
 
     std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
@@ -395,15 +403,21 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( ConsensusTests, *boost::unit_test::disabled() )
 
-BOOST_AUTO_TEST_CASE( OneTransaction ) {}
+BOOST_AUTO_TEST_CASE( OneTransaction, 
+    
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( TwoTransactions ) {}
+BOOST_AUTO_TEST_CASE( TwoTransactions, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( DifferentTransactions ) {}
+BOOST_AUTO_TEST_CASE( DifferentTransactions, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction1 ) {}
+BOOST_AUTO_TEST_CASE( MissingTransaction1, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction2 ) {}
+BOOST_AUTO_TEST_CASE( MissingTransaction2, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 

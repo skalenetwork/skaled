@@ -33,7 +33,7 @@
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/db.h>
+#include <libdevcore/SplitDB.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethcore/SealEngine.h>
@@ -63,6 +63,10 @@ class State;
 
 namespace dev {
 class OverlayDB;
+
+namespace db {
+class ManuallyRotatingLevelDB;
+}
 
 namespace eth {
 static const h256s NullH256s;
@@ -95,8 +99,6 @@ enum {
     ExtraBlocksBlooms
 };
 
-using ProgressCallback = std::function< void( unsigned, unsigned ) >;
-
 class VersionChecker {
 public:
     VersionChecker( boost::filesystem::path const& _dbPath, h256 const& _genesisHash );
@@ -117,16 +119,12 @@ public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
     BlockChain( ChainParams const& _p, boost::filesystem::path const& _path,
-        WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback() );
+        WithExisting _we = WithExisting::Trust );
     ~BlockChain();
 
     /// Reopen everything.
-    void reopen(
-        WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback() ) {
-        reopen( m_params, _we, _pc );
-    }
-    void reopen( ChainParams const& _p, WithExisting _we = WithExisting::Trust,
-        ProgressCallback const& _pc = ProgressCallback() );
+    void reopen( WithExisting _we = WithExisting::Trust ) { reopen( m_params, _we ); }
+    void reopen( ChainParams const& _p, WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.
@@ -351,11 +349,6 @@ public:
     /// including generation + @a _generations togther with all their quoted uncles.
     h256Hash allKinFrom( h256 const& _parent, unsigned _generations ) const;
 
-    /// Run through database and verify all blocks by reevaluating.
-    /// Will call _progress with the progress in this operation first param done, second total.
-    void rebuild( boost::filesystem::path const& _path,
-        ProgressCallback const& _progress = std::function< void( unsigned, unsigned ) >() );
-
     /// Alter the head of the chain to some prior block along it.
     void rewind( unsigned _newHead );
 
@@ -415,6 +408,8 @@ public:
     /// Deallocate unused data.
     void garbageCollect( bool _force = false );
 
+    void clearCaches();
+
     /// Change the function that is called with a bad block.
     void setOnBad( std::function< void( Exception& ) > _t ) { m_onBad = _t; }
 
@@ -455,12 +450,13 @@ private:
     /// Initialise everything and ready for openning the database.
     void init( ChainParams const& _p );
     /// Open the database.
-    unsigned open( boost::filesystem::path const& _path, WithExisting _we );
-    /// Open the database, rebuilding if necessary.
-    void open(
-        boost::filesystem::path const& _path, WithExisting _we, ProgressCallback const& _pc );
+public:
+    void open( boost::filesystem::path const& _path, WithExisting _we );
     /// Finalise everything and close the database.
     void close();
+
+private:
+    void rotateDBIfNeeded();
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
@@ -477,8 +473,7 @@ private:
                 return it->second;
         }
 
-        std::string const s =
-            ( _extrasDB ? _extrasDB : m_extrasDB.get() )->lookup( toSlice( _h, N ) );
+        std::string const s = ( _extrasDB ? _extrasDB : m_extrasDB )->lookup( toSlice( _h, N ) );
         if ( s.empty() )
             return _n;
 
@@ -536,8 +531,10 @@ private:
     mutable Statistics m_lastStats;
 
     /// The disk DBs. Thread-safe, so no need for locks.
-    std::unique_ptr< db::DatabaseFace > m_blocksDB;
-    std::unique_ptr< db::DatabaseFace > m_extrasDB;
+    std::unique_ptr< db::SplitDB > m_split_db;
+    std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;
+    db::DatabaseFace* m_blocksDB;
+    db::DatabaseFace* m_extrasDB;
 
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash;  // should protect both m_lastBlockHash and

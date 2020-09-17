@@ -109,9 +109,138 @@ void validateConfigJson( js::mObject const& _obj ) {
             {c_parentHash, {{js::str_type}, JsonFieldPresence::Optional}},
             {c_stateRoot, {{js::str_type}, JsonFieldPresence::Optional}}} );
 
+
     js::mObject const& accounts = _obj.at( c_accounts ).get_obj();
     for ( auto const& acc : accounts )
         validateAccountObj( acc.second.get_obj() );
+
+    if ( _obj.count( c_skaleConfig ) == 0 )
+        return;
+
+    requireJsonFields( _obj.at( c_skaleConfig ).get_obj(), "ChainParams::loadConfig::skaleConfig",
+        {{"nodeInfo", {{js::obj_type}, JsonFieldPresence::Required}},
+            {"sChain", {{js::obj_type}, JsonFieldPresence::Required}},
+            {"contractSettings", {{js::obj_type}, JsonFieldPresence::Optional}}} );
+
+    const js::mObject& nodeInfo = _obj.at( c_skaleConfig ).get_obj().at( "nodeInfo" ).get_obj();
+    requireJsonFields( nodeInfo, "ChainParams::loadConfig::skaleConfig::nodeInfo",
+        {{"nodeName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"nodeID", {{js::int_type}, JsonFieldPresence::Required}},
+            {"ipc", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"bindIP", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"basePort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"bindIP6", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"basePort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"httpRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"httpRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"httpsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"httpsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"wallets", {{js::obj_type}, JsonFieldPresence::Optional}},
+            {"ecdsaKeyName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"minCacheSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxCacheSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"collectionQueueSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"collectionDuration", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"transactionQueueSize", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxOpenLeveldbFiles", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"logLevel", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"logLevelConfig", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"logLevelProposal", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"aa", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"adminOrigins", {{js::array_type}, JsonFieldPresence::Optional}},
+            {"db-path", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"ipcpath", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"enable-debug-behavior-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"web3-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"web3-shutdown", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"max-connections", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"max-http-queues", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"ws-mode", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"ws-log", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaCallerAddressSChain", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"imaCallerAddressMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"wallets", {{js::obj_type}, JsonFieldPresence::Optional}}} );
+
+    std::string keyShareName = "";
+    try {
+        nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
+    } catch ( ... ) {
+    }
+
+    if ( !keyShareName.empty() ) {
+        requireJsonFields( nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj(),
+            "ChainParams::loadConfig::skaleConfig::nodeInfo::wallets::ima",
+            {{"t", {{js::int_type}, JsonFieldPresence::Required}},
+                {"url", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey0", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey1", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey2", {{js::str_type}, JsonFieldPresence::Required}},
+                {"BLSPublicKey3", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey0", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey1", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey2", {{js::str_type}, JsonFieldPresence::Required}},
+                {"commonBLSPublicKey3", {{js::str_type}, JsonFieldPresence::Required}}} );
+    }  // keyShareName
+
+    const js::mObject& sChain = _obj.at( c_skaleConfig ).get_obj().at( "sChain" ).get_obj();
+    requireJsonFields( sChain, "ChainParams::loadConfig::skaleConfig::sChain",
+        {{"schainName", {{js::str_type}, JsonFieldPresence::Required}},
+            {"schainID", {{js::int_type}, JsonFieldPresence::Required}},
+            {"schainOwner", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"storageLimit", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"nodes", {{js::array_type}, JsonFieldPresence::Required}},
+            {"maxConsensusStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxFileStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxReservedStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"maxSkaledLeveldbStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}}} );
+
+    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+    for ( auto const& obj : nodes ) {
+        const js::mObject node = obj.get_obj();
+
+        requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+            {{"nodeName", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"nodeID", {{js::int_type}, JsonFieldPresence::Required}},
+                {"ip", {{js::str_type}, JsonFieldPresence::Required}},
+                {"publicIP", {{js::str_type}, JsonFieldPresence::Optional}},  // TODO not used
+                {"basePort", {{js::int_type}, JsonFieldPresence::Required}},
+                {"ip6", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"basePort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"httpRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"httpRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"httpsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"httpsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"wsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"wsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"wssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"wssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"schainIndex", {{js::int_type}, JsonFieldPresence::Required}},
+                {"publicKey", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey0", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey1", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey2", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blsPublicKey3", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"owner", {{js::str_type}, JsonFieldPresence::Optional}}} );
+    }
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {

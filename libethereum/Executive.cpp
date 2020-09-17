@@ -160,18 +160,21 @@ string StandardTrace::json( bool _styled ) const {
         []( std::string a, Json::Value b ) { return a + Json::FastWriter().write( b ); } );
 }
 
-Executive::Executive( Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level )
+Executive::Executive(
+    Block& _s, BlockChain const& _bc, const u256& _gasPrice, unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _bc.lastBlockHashes(), 0, _bc.chainID() ),
       m_depth( _level ),
+      m_readOnly( _readOnly ),
       m_sealEngine( *_bc.sealEngine() ),
       m_systemGasPrice( _gasPrice ) {}
 
-Executive::Executive(
-    Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice, unsigned _level )
+Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice,
+    unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID ),
       m_depth( _level ),
+      m_readOnly( _readOnly ),
       m_sealEngine( *_s.sealEngine() ),
       m_systemGasPrice( _gasPrice ) {}
 
@@ -290,7 +293,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     m_savepoint = m_s.savepoint();
 
     if ( m_sealEngine.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
-         m_sealEngine.precompiledExecutionAllowedFrom( _p.codeAddress, _p.senderAddress ) ) {
+         m_sealEngine.precompiledExecutionAllowedFrom(
+             _p.codeAddress, _p.senderAddress, m_readOnly ) ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
         bigint g = m_sealEngine.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
         if ( _p.gas < g ) {
@@ -332,7 +336,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             auto const version = m_s.version( _p.codeAddress );
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall );
+                version, m_depth, false, _p.staticCall, m_readOnly );
         }
     }
 
@@ -383,6 +387,15 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
+    if ( m_sealEngine.chainParams().sChain.owner != Address( 0 ) &&
+         _origin != m_sealEngine.chainParams().sChain.owner &&
+         !m_sealEngine.chainParams().sChain.freeContractDeployment ) {
+        m_gas = 0;
+        m_excepted = TransactionException::InvalidDeployOrigin;
+        revert();
+        m_ext = {};
+        return !m_ext;
+    }
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {

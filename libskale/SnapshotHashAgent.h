@@ -25,25 +25,76 @@
 #ifndef SNAPSHOTHASHAGENT_H
 #define SNAPSHOTHASHAGENT_H
 
+#include <libconsensus/libBLS/bls/bls.h>
 #include <libethereum/ChainParams.h>
+#include <boost/algorithm/string.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 
-namespace signatures {
-class Bls;
+namespace dev {
+namespace test {
+class SnapshotHashAgentTest;
 }
+}  // namespace dev
+
+class SnapshotHashAgentException : public std::exception {
+protected:
+    std::string what_str;
+
+public:
+    SnapshotHashAgentException( const std::string& err_str ) { what_str = err_str; }
+
+    virtual const char* what() const noexcept override { return what_str.c_str(); }
+};
+
+class NotEnoughVotesException : public SnapshotHashAgentException {
+public:
+    NotEnoughVotesException( const std::string& err_str ) : SnapshotHashAgentException( err_str ) {
+        what_str = "NotEnoughVotesException : " + err_str;
+    }
+};
+
+class IsNotVerified : public SnapshotHashAgentException {
+public:
+    IsNotVerified( const std::string& err_str ) : SnapshotHashAgentException( err_str ) {
+        what_str = "IsNotVerified : " + err_str;
+    }
+};
 
 class SnapshotHashAgent {
 public:
-    SnapshotHashAgent( const dev::eth::ChainParams& chain_params )
+    SnapshotHashAgent(
+        const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" )
         : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
         this->public_keys_.resize( n_ );
+        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
+        if ( common_public_key == "" ) {
+            this->common_public_key_.X.c0 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+            this->common_public_key_.X.c1 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+            this->common_public_key_.Y.c0 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+            this->common_public_key_.Y.c1 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+            this->common_public_key_.Z = libff::alt_bn128_Fq2::one();
+        } else {
+            std::vector< std::string > coords;
+            boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
+            common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
+            common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
+            common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
+            common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
+            common_public_key_.Z = libff::alt_bn128_Fq2::one();
+        }
     }
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
+
+    friend class dev::test::SnapshotHashAgentTest;
 
 private:
     dev::eth::ChainParams chain_params_;
@@ -55,11 +106,12 @@ private:
     std::vector< libff::alt_bn128_G2 > public_keys_;
     std::vector< size_t > nodes_to_download_snapshot_from_;
     std::mutex hashes_mutex;
+    libff::alt_bn128_G2 common_public_key_;
 
     bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
-    void verifyAllData();
+    void verifyAllData( bool& fl ) const;
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

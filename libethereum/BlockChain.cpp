@@ -31,7 +31,10 @@
 
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
-#include <libdevcore/DBImpl.h>
+
+//#include <libdevcore/DBImpl.h>
+#include <libdevcore/ManuallyRotatingLevelDB.h>
+
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/RLP.h>
@@ -153,26 +156,26 @@ void addBlockInfo( Exception& io_ex, BlockHeader const& _header, bytes&& _blockD
 
 
 /// Duration between flushes.
-static const chrono::system_clock::duration c_collectionDuration = chrono::seconds( 60 );
+chrono::system_clock::duration c_collectionDuration = chrono::seconds( 60 );
 
 /// Length of death row (total time in cache is multiple of this and collection duration).
-static const unsigned c_collectionQueueSize = 20;
+unsigned c_collectionQueueSize = 20;
 
 /// Max size, above which we start forcing cache reduction.
-static const unsigned c_maxCacheSize = 1024 * 1024 * 4;  // 64;
+unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
-static const unsigned c_minCacheSize = 1024 * 1024 * 2;  // 32;
+unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we,
-    ProgressCallback const& _pc ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-                                        m_dbPath( _dbPath ) {
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we ) try
+    : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+      m_dbPath( _dbPath ) {
     init( _p );
-    open( _dbPath, _we, _pc );
+    open( _dbPath, _we );
 } catch ( ... ) {
     std::throw_with_nested( CreationException() );
 }
@@ -205,7 +208,7 @@ void BlockChain::init( ChainParams const& _p ) {
     genesis();
 }
 
-unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
+void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
     fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
@@ -213,40 +216,32 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     fs::create_directories( extrasPath );
     DEV_IGNORE_EXCEPTIONS( fs::permissions( extrasPath, fs::owner_all ) );
 
-    bytes status = contents( extrasPath / fs::path( "minor" ) );
-    unsigned lastMinor = c_minorProtocolVersion;
-    if ( !status.empty() )
-        DEV_IGNORE_EXCEPTIONS( lastMinor = ( unsigned ) RLP( status ) );
-    if ( c_minorProtocolVersion != lastMinor ) {
-        cnote << "Killing extras database (DB minor version:" << lastMinor
-              << " != our miner version: " << c_minorProtocolVersion << ").";
-        DEV_IGNORE_EXCEPTIONS( fs::remove_all( extrasPath / fs::path( "details.old" ) ) );
-        fs::rename( extrasPath / fs::path( "extras" ), extrasPath / fs::path( "extras.old" ) );
-        fs::remove_all( extrasPath / fs::path( "state" ) );
-        writeFile( extrasPath / fs::path( "minor" ), rlp( c_minorProtocolVersion ) );
-        lastMinor = ( unsigned ) RLP( status );
-    }
     if ( _we == WithExisting::Kill ) {
         cnote << "Killing blockchain & extras database (WithExisting::Kill).";
-        fs::remove_all( chainPath / fs::path( "blocks" ) );
-        fs::remove_all( extrasPath / fs::path( "extras" ) );
+        fs::remove_all( chainPath / fs::path( "blocks_and_extras" ) );
     }
 
     try {
-        m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
-        m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
+        fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >(
+            chainPath / fs::path( "blocks_and_extras" ), 5 );
+        m_split_db = std::make_unique< db::SplitDB >( m_rotating_db );
+        m_blocksDB = m_split_db->newInterface();
+        m_extrasDB = m_split_db->newInterface();
+        // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
+        // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
         // Check the exact reason of errror, in case of IOError we can display user-friendly message
         if ( *boost::get_error_info< db::errinfo_dbStatusCode >( ex ) !=
              db::DatabaseStatus::IOError )
             throw;
 
-        if ( fs::space( chainPath / fs::path( "blocks" ) ).available < 1024 ) {
+        if ( fs::space( chainPath / fs::path( "blocks_and_extras" ) ).available < 1024 ) {
             cwarn << "Not enough available space found on hard drive. Please free some up and then "
                      "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( chainPath / fs::path( "blocks" ) ) << "or "
+            cwarn << "Database " << ( chainPath / fs::path( "blocks_and_extras" ) ) << "or "
                   << ( extrasPath / fs::path( "extras" ) )
                   << "already open. You appear to have another instance of ethereum running. "
                      "Bailing.";
@@ -257,7 +252,8 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
         // Insert details of genesis block.
-        BlockDetails details( 0, gb.difficulty(), h256(), {} );
+        bytes const& genesisBlockBytes = m_params.genesisBlock();
+        BlockDetails details( 0, gb.difficulty(), h256(), {}, genesisBlockBytes.size() );
         auto r = details.rlp();
         details.size = r.size();
         m_details[m_genesisHash] = details;
@@ -275,126 +271,47 @@ unsigned BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash()
-           << ( lastMinor == c_minorProtocolVersion ? cc::success( "(rebuild not needed)" ) :
-                                                      cc::warn( "*** REBUILD NEEDED ***" ) );
-
-    return lastMinor;
+    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
+           << m_lastBlockNumber;
 }
 
-void BlockChain::open( fs::path const& _path, WithExisting _we, ProgressCallback const& _pc ) {
-    if ( open( _path, _we ) != c_minorProtocolVersion || _we == WithExisting::Verify )
-        rebuild( _path, _pc );
-}
-
-void BlockChain::reopen( ChainParams const& _p, WithExisting _we, ProgressCallback const& _pc ) {
+void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
     close();
     init( _p );
-    open( m_dbPath, _we, _pc );
+    open( m_dbPath, _we );
 }
 
 void BlockChain::close() {
     ctrace << "Closing blockchain DB";
     // Not thread safe...
-    m_extrasDB.reset();
-    m_blocksDB.reset();
+    m_extrasDB = nullptr;
+    m_blocksDB = nullptr;
+    m_split_db.reset();
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
     }
-    m_details.clear();
-    m_blocks.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blockHashes.clear();
-    m_blocksBlooms.clear();
-    m_cacheUsage.clear();
-    m_inUse.clear();
+
+    clearCaches();
+
     m_lastBlockHashes->clear();
-}
-
-void BlockChain::rebuild(
-    fs::path const& _path, std::function< void( unsigned, unsigned ) > const& _progress ) {
-    fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
-    fs::path chainPath = path / fs::path( toHex( m_genesisHash.ref().cropped( 0, 4 ) ) );
-    fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
-
-    unsigned originalNumber = m_lastBlockNumber;
-
-    ///////////////////////////////
-    // TODO
-    // - KILL ALL STATE/CHAIN
-    // - REINSERT ALL BLOCKS
-    ///////////////////////////////
-
-    // Keep extras DB around, but under a temp name
-    m_extrasDB.reset();
-    fs::rename( extrasPath / fs::path( "extras" ), extrasPath / fs::path( "extras.old" ) );
-    std::unique_ptr< db::DatabaseFace > oldExtrasDB(
-        new db::DBImpl( extrasPath / fs::path( "extras.old" ) ) );
-    m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
-
-    // Open a fresh state DB
-    Block s = genesisBlock( path.string(), m_genesisHash );
-
-    // Clear all memos ready for replay.
-    m_details.clear();
-    m_logBlooms.clear();
-    m_receipts.clear();
-    m_transactionAddresses.clear();
-    m_blockHashes.clear();
-    m_blocksBlooms.clear();
-    m_lastBlockHashes->clear();
-    m_lastBlockHash = genesisHash();
-    m_lastBlockNumber = 0;
-
-    m_details[m_lastBlockHash].totalDifficulty = s.info().difficulty();
-
-    m_extrasDB->insert( toSlice( m_lastBlockHash, ExtraDetails ),
-        ( db::Slice ) dev::ref( m_details[m_lastBlockHash].rlp() ) );
-
-    h256 lastHash = m_lastBlockHash;
-    Timer t;
-    for ( unsigned d = 1; d <= originalNumber; ++d ) {
-        if ( !( d % 1000 ) ) {
-            cerr << "\n1000 blocks in " << t.elapsed() << "s = " << ( 1000.0 / t.elapsed() )
-                 << "b/s" << endl;
-            t.restart();
-        }
-        try {
-            bytes b = block( queryExtras< BlockHash, uint64_t, ExtraBlockHash >(
-                d, m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB.get() )
-                                 .value );
-
-            BlockHeader bi( &b );
-
-            if ( bi.parentHash() != lastHash ) {
-                cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is"
-                      << bi.parentHash() << "; expected" << lastHash << "#" << ( d - 1 );
-                return;
-            }
-            lastHash = bi.hash();
-            import( b, s.mutableState(), 0 );
-        } catch ( ... ) {
-            // Failed to import - stop here.
-            break;
-        }
-
-        if ( _progress )
-            _progress( d, originalNumber );
-    }
-
-    fs::remove_all( path / fs::path( "extras.old" ) );
 }
 
 string BlockChain::dumpDatabase() const {
     ostringstream oss;
     oss << m_lastBlockHash << '\n';
-    m_extrasDB->forEach( [&oss]( db::Slice key, db::Slice value ) {
-        oss << toHex( key ) << "/" << toHex( value ) << '\n';
+    std::map< string, string > sorted;
+    m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
+        // give priority ti 1-st occurence
+        if ( sorted.count( toHex( key ) ) == 0 )
+            sorted[toHex( key )] = toHex( value );
         return true;
     } );
+
+    for ( const auto& p : sorted ) {
+        oss << p.first << "/" << p.second << '\n';
+    }
+
     return oss.str();
 }
 
@@ -568,7 +485,7 @@ void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool 
         ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
     BlockDetails bd( ( unsigned ) pd.number + 1, pd.totalDifficulty + _block.info.difficulty(),
-        _block.info.parentHash(), {} );
+        _block.info.parentHash(), {}, _block.block.size() );
     bytes bd_rlp = bd.rlp();
     bd.size = bd_rlp.size();
 
@@ -731,10 +648,31 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
+void BlockChain::rotateDBIfNeeded() {
+    auto r = m_params.rotateAfterBlock_;
+    if ( r <= 0 )
+        return;
+    auto n = this->number();
+    if ( ( n % r ) == 0 ) {
+        // remember genesis
+        BlockDetails details = this->details( m_genesisHash );
+
+        clearCaches();
+        this->m_rotating_db->rotate();
+
+        // re-insert genesis
+        auto r = details.rlp();
+        m_details[m_genesisHash] = details;
+        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+    }
+}
+
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    rotateDBIfNeeded();
 
     std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
     std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
@@ -761,8 +699,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-        BlockDetails details(
-            ( unsigned ) _block.info.number(), _totalDifficulty, _block.info.parentHash(), {} );
+        BlockDetails details( ( unsigned ) _block.info.number(), _totalDifficulty,
+            _block.info.parentHash(), {}, _block.block.size() );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
         extrasWriteBatch->insert(
@@ -789,119 +727,108 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // This might be the new best block...
     h256 last = currentHash();
     // we import every block even if it's difficulty is not enough
-    if ( _totalDifficulty > 0 /* in ethereum there is details( last ).totalDifficulty but not 0
-                               */
-         || ( m_sealEngine->chainParams().tieBreakingGas &&
-                _totalDifficulty == details( last ).totalDifficulty &&
-                _block.info.gasUsed() > info( last ).gasUsed() ) ) {
-        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
+    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
 
-        // don't include bi.hash() in treeRoute, since it's not yet in details DB...
-        // just tack it on afterwards.
-        unsigned commonIndex;
-        tie( route, common, commonIndex ) = treeRoute( last, _block.info.parentHash() );
-        route.push_back( _block.info.hash() );
+    // don't include bi.hash() in treeRoute, since it's not yet in details DB...
+    // just tack it on afterwards.
+    unsigned commonIndex;
+    tie( route, common, commonIndex ) = treeRoute( last, _block.info.parentHash() );
+    route.push_back( _block.info.hash() );
 
-        // Most of the time these two will be equal - only when we're doing a chain revert
-        // will they not be
-        if ( common != last )
-            DEV_READ_GUARDED( x_lastBlockHash )
-        clearCachesDuringChainReversion( number( common ) + 1 );
+    // Most of the time these two will be equal - only when we're doing a chain revert
+    // will they not be
+    if ( common != last )
+        DEV_READ_GUARDED( x_lastBlockHash )
+    clearCachesDuringChainReversion( number( common ) + 1 );
 
-        // TODO Understand and remove this trash with "routes"
+    // TODO Understand and remove this trash with "routes"
 
-        // Go through ret backwards (i.e. from new head to common) until hash !=
-        // last.parent and update m_transactionAddresses, m_blockHashes
-        for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
+    // Go through ret backwards (i.e. from new head to common) until hash !=
+    // last.parent and update m_transactionAddresses, m_blockHashes
+    for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
 
-            BlockHeader tbi;
-            if ( *i == _block.info.hash() )
-                tbi = _block.info;
-            else
-                tbi = BlockHeader( block( *i ) );
+        BlockHeader tbi;
+        if ( *i == _block.info.hash() )
+            tbi = _block.info;
+        else
+            tbi = BlockHeader( block( *i ) );
 
-            // Collate logs into blooms.
-            h256s alteredBlooms;
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
+        // Collate logs into blooms.
+        h256s alteredBlooms;
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
 
-                LogBloom blockBloom = tbi.logBloom();
-                blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
+            LogBloom blockBloom = tbi.logBloom();
+            blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
 
-                // Pre-memoize everything we need before locking x_blocksBlooms
-                for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                      level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize )
-                    blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
+            // Pre-memoize everything we need before locking x_blocksBlooms
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize )
+                blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
 
-                WriteGuard l( x_blocksBlooms );
-                for ( unsigned level = 0, index = ( unsigned ) tbi.number();
-                      level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize ) {
-                    unsigned i = index / c_bloomIndexSize;
-                    unsigned o = index % c_bloomIndexSize;
-                    alteredBlooms.push_back( chunkId( level, i ) );
-                    m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
-                }
+            WriteGuard l( x_blocksBlooms );
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize ) {
+                unsigned i = index / c_bloomIndexSize;
+                unsigned o = index % c_bloomIndexSize;
+                alteredBlooms.push_back( chunkId( level, i ) );
+                m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
             }
+        }
+
+        for ( auto const& h : alteredBlooms )
+            noteUsed( h, ExtraBlocksBlooms );
+
+        // Collate transaction hashes and remember who they were.
+        // h256s newTransactionAddresses;
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
+
+            bytes blockBytes;
+            RLP blockRLP( *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
+            TransactionAddress ta;
+            ta.blockHash = tbi.hash();
+            ta.index = 0;
+
+            RLP txns_rlp = blockRLP[1];
+
+            for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
+
+                extrasWriteBatch->insert(
+                    toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+                    ( db::Slice ) dev::ref( ta.rlp() ) );
+                ++ta.index;
+            }
+        }
+
+        // Update database with them.
+        // ReadGuard l1( x_blocksBlooms );
+        WriteGuard l1( x_blocksBlooms );
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
 
             for ( auto const& h : alteredBlooms )
-                noteUsed( h, ExtraBlocksBlooms );
-
-            // Collate transaction hashes and remember who they were.
-            // h256s newTransactionAddresses;
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
-
-                bytes blockBytes;
-                RLP blockRLP(
-                    *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
-                TransactionAddress ta;
-                ta.blockHash = tbi.hash();
-
-                RLP txns_rlp = blockRLP[1];
-
-                for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
-                    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
-
-                    extrasWriteBatch->insert(
-                        toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
-                        ( db::Slice ) dev::ref( ta.rlp() ) );
-                }
-            }
-
-            // Update database with them.
-            // ReadGuard l1( x_blocksBlooms );
-            WriteGuard l1( x_blocksBlooms );
-            {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
-
-                for ( auto const& h : alteredBlooms )
-                    extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
-                        ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-                extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-                    ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
-            }
+                extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
+                    ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+            extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+                ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
         }
-
-        // FINALLY! change our best hash.
-        {
-            newLastBlockHash = _block.info.hash();
-            newLastBlockNumber = ( unsigned ) _block.info.number();
-            isImportedAndBest = true;
-        }
-
-        LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty
-                        << cc::debug( " (" ) << cc::warn( "#" ) << cc::num10( _block.info.number() )
-                        << cc::debug( "). Has " )
-                        << ( details( _block.info.parentHash() ).children.size() - 1 )
-                        << cc::debug( " siblings. Route: " ) << route;
-    } else {
-        LOG( m_loggerDetail ) << cc::debug( "   Imported but not best (oTD: " )
-                              << details( last ).totalDifficulty << cc::debug( " > TD: " )
-                              << _totalDifficulty << cc::debug( "; " )
-                              << cc::num10( details( last ).number ) << cc::debug( ".." )
-                              << _block.info.number() << cc::debug( ")" );
     }
+
+    // FINALLY! change our best hash.
+    {
+        newLastBlockHash = _block.info.hash();
+        newLastBlockNumber = ( unsigned ) _block.info.number();
+        isImportedAndBest = true;
+    }
+
+    LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty << cc::debug( " (" )
+                    << cc::warn( "#" ) << cc::num10( _block.info.number() )
+                    << cc::debug( "). Has " )
+                    << ( details( _block.info.parentHash() ).children.size() - 1 )
+                    << cc::debug( " siblings. Route: " ) << route;
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
@@ -1253,6 +1180,44 @@ void BlockChain::garbageCollect( bool _force ) {
     m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
 }
 
+void BlockChain::clearCaches() {
+    {
+        Guard l( x_cacheUsage );
+        m_inUse.clear();
+
+        int n = m_cacheUsage.size();
+        m_cacheUsage.clear();
+        m_cacheUsage.resize( n );
+    }
+    {
+        WriteGuard l( x_details );
+        m_details.clear();
+    }
+    {
+        WriteGuard l( x_blocks );
+        m_blocks.clear();
+    }
+    {
+        WriteGuard l( x_logBlooms );
+        m_logBlooms.clear();
+    }
+    {
+        WriteGuard l( x_receipts );
+        m_receipts.clear();
+    }
+    {
+        WriteGuard l( x_transactionAddresses );
+        m_transactionAddresses.clear();
+    }
+    {
+        WriteGuard l( x_blocksBlooms );
+        m_blocksBlooms.clear();
+    }
+    {
+        WriteGuard l( x_blockHashes );
+        m_blockHashes.clear();
+    }
+}
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
@@ -1324,7 +1289,8 @@ vector< unsigned > BlockChain::withBlockBloom(
     unsigned u = upow( c_bloomIndexSize, c_bloomIndexLevels );
 
     // run through each of the top-level blockbloom blocks
-    for ( unsigned index = _earliest / u; index <= ceilDiv( _latest, u ); ++index )  // 0
+    // TODO here should be another blockBlooms() filtering!?
+    for ( unsigned index = _earliest / u; index <= _latest / u; ++index )  // 0
         ret += withBlockBloom( _b, _earliest, _latest, c_bloomIndexLevels - 1, index );
 
     return ret;

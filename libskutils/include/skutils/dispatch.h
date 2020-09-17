@@ -12,6 +12,7 @@
 #include <exception>
 #include <functional>
 #include <future>
+#include <list>
 #include <map>
 #include <mutex>
 #include <set>
@@ -21,6 +22,12 @@
 extern "C" {
 struct uv_loop_s;
 };  /// extern "C"
+
+//
+// uncomment line below to enable experimental early timer initialization for
+// async tasks with non-zero start timeout: #define
+// __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ 1
+//
 
 namespace skutils {
 namespace dispatch {
@@ -34,10 +41,12 @@ typedef std::function< void() > fn_invoke_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // if uint64_t max value 18446744073709551615 nanoseconds, then...
-// 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e. approximately 500 years,
-// i.e. acceptable but not too high
-// typedef std::chrono::nanoseconds duration_t; // classic std::chrono::nanoseconds is based on
-// int64_t - not uint64_t
+// ... 18446744073709551615÷1000÷1000÷1000÷60÷60÷24÷360 = 593.06... years, i.e.
+// approximately 500 years,
+// ... i.e. acceptable but not too high
+// ... typedef std::chrono::nanoseconds duration_t; // classic
+// std::chrono::nanoseconds is based on
+// ... int64_t - not uint64_t
 typedef uint64_t duration_base_t;
 typedef std::ratio< 1, 1000000000 > nano_t;
 typedef std::chrono::duration< duration_base_t, nano_t > duration_t;
@@ -46,7 +55,7 @@ duration_t duration_from_nanoseconds( const T& x ) {
     return duration_t( duration_base_t( x ) );
 }
 template < typename T >
-duration_t duration_from_microiseconds( const T& x ) {
+duration_t duration_from_microseconds( const T& x ) {
     return duration_t( duration_base_t( x ) * duration_base_t( 1000 ) );
 }
 template < typename T >
@@ -136,7 +145,8 @@ typedef skutils::retain_release_ptr< domain, dispatch_shared_traits< domain > > 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // set of handy APIs for working with defaults
-extern bool sleep_while_true(  // returns false if timeout is reached and fn() never returned false
+extern bool sleep_while_true(  // returns false if timeout is reached and fn()
+                               // never returned false
     while_true_t fn,
     duration_t timeout = duration_t( 0 ),  // zero means no timeout
     duration_t step = duration_t( 10 * 1000 * 1000 ), size_t* p_nSleepStepsDone = nullptr );
@@ -202,7 +212,8 @@ inline void once( F&& f, duration_t timeout, job_id_t* pJobID, Args&&... args ) 
     once( fn, timeout, pJobID );
 }
 
-// template only: once_with_future() is like once() but returns std::future < specified args >
+// template only: once_with_future() is like once() but returns std::future <
+// specified args >
 template < typename F, typename... Args >
 inline auto once_with_future( const queue_id_t& id, F&& f, duration_t timeout, Args&&... args )
     -> std::future< decltype( f( args... ) ) > {
@@ -224,7 +235,8 @@ inline auto once_with_future( F&& f, duration_t timeout, Args&&... args )
     return task_ptr->get_future();
 }
 
-// template only: async_with_future() is like once_with_future() without duration_t timeout
+// template only: async_with_future() is like once_with_future() without
+// duration_t timeout
 template < typename F, typename... Args >
 inline auto async_with_future( const queue_id_t& id, F&& f, Args&&... args )
     -> std::future< decltype( f( args... ) ) > {
@@ -245,8 +257,8 @@ inline auto async_with_future( F&& f, Args&&... args ) -> std::future< decltype(
     return task_ptr->get_future();
 }
 
-// template only: async_without_future() is like async() without  duration_t timeout, duration_t
-// interval, job_id_t * pJobID and without future
+// template only: async_without_future() is like async() without  duration_t
+// timeout, duration_t interval, job_id_t * pJobID and without future
 template < typename F, typename... Args >
 inline void async_without_future( const queue_id_t& id, F&& f, Args&&... args ) {
     std::function< decltype( f( args... ) )() > fn =
@@ -366,6 +378,10 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class loop : public ref_retain_release {
+#if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
+    void* p_uvAsyncInitForTimers_ = nullptr;
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
     typedef one_per_thread< loop_ptr_t > one_per_thread_t;
     static one_per_thread_t g_one_per_thread;
     //
@@ -453,16 +469,17 @@ public:
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         job_add( id, fn, timeout, interval );
     }
-    void job_add_once( const job_id_t& id, job_t /*&*/ fn, duration_t timeout );  // like JavaScript
-                                                                                  // setTimeout()
+    void job_add_once( const job_id_t& id, job_t /*&*/ fn,
+        duration_t timeout );  // like JavaScript
+                               // setTimeout()
     template < typename F, typename... Args >
     inline void job_add_once( const job_id_t& id, F&& f, duration_t timeout, Args&&... args ) {
         std::function< decltype( f( args... ) )() > fn =
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         job_add_once( id, fn, timeout );
     }  // like JavaScript setTimeout()
-    void job_add_periodic(
-        const job_id_t& id, job_t /*&*/ fn, duration_t interval );  // like JavaScript setInterval()
+    void job_add_periodic( const job_id_t& id, job_t /*&*/ fn,
+        duration_t interval );  // like JavaScript setInterval()
     template < typename F, typename... Args >
     inline void job_add_periodic( const job_id_t& id, F&& f, duration_t interval, Args&&... args ) {
         std::function< decltype( f( args... ) )() > fn =
@@ -482,9 +499,9 @@ public:
     }
     //
     job_state_event_pre_handler_t on_job_will_add_;
-    job_state_event_post_handler_t on_job_did_added_;
+    job_state_event_post_handler_t on_job_was_added_;
     virtual bool on_job_will_add( const job_id_t& id );
-    virtual void on_job_did_added( const job_id_t& id );
+    virtual void on_job_was_added( const job_id_t& id );
     job_state_event_pre_handler_t on_job_will_remove_;
     job_state_event_post_handler_t on_job_did_removed_;
     virtual bool on_job_will_remove( const job_id_t& id );
@@ -497,6 +514,25 @@ public:
     virtual void on_job_exception( const job_id_t& id, std::exception* pe );
     //
     void invoke_in_loop( fn_invoke_t fn );
+    //
+private:
+    typedef std::recursive_mutex pending_timer_mutex_type;
+    typedef std::lock_guard< pending_timer_mutex_type > pending_timer_lock_type;
+    pending_timer_mutex_type pending_timer_mtx_;
+    struct pending_timer_t {
+        void* pUvTimer_ = nullptr;
+        void ( *pFnCb_ )( void* uv_timer_handle ) = nullptr;
+        uint64_t timeout_ = 0, interval_ = 0;
+        void* pTimerData_ = nullptr;
+    };
+    typedef std::list< pending_timer_t > pending_timer_list_t;
+    pending_timer_list_t pending_timer_list_;
+
+public:
+    void pending_timer_add( void* p_uvTimer, void* pTimerData,
+        void ( *pFnCb )( void* uv_timer_handle ), uint64_t timeout_, uint64_t interval );
+    void pending_timer_remove_all();
+    void pending_timer_init();
     //
     friend class domain;
     friend struct job_data_t;
@@ -511,6 +547,7 @@ class queue : public ref_retain_release {
     //
     domain_ptr_t pDomain_;
     const queue_id_t id_;
+    std::atomic_size_t nTaskNumberInQueue_ = 0;
     atomic_priority_t priority_, accumulator_;
     std::atomic_bool is_removed_, is_running_, auto_remove_after_first_job_;
     //
@@ -519,7 +556,7 @@ public:
     typedef std::lock_guard< mutex_type > lock_type;
 
 private:
-    mutable mutex_type mtx_jobs_;
+    // mutable mutex_type mtx_jobs_;
     mutable mutex_type mtx_run_;
     //
     job_queue_t jobs_;
@@ -551,11 +588,11 @@ public:
 private:
     size_t impl_job_cancel_all();
     bool impl_job_add( job_t /*&*/ fn, duration_t timeout, duration_t interval,
-        job_id_t* pJobID );  // if both timeout and interval are zero, then invoke once
-                             // asyncronously
+        job_id_t* pJobID );  // if both timeout and interval are zero,
+                             // then invoke once asynchronously
     bool impl_job_run_sync( job_t /*&*/ fn );
-    bool impl_job_run( job_t /*&*/ fn );  // run explicity specified job synchronosly
-    bool impl_job_run();                  // fetch first asynchronosly stored job and run
+    bool impl_job_run( job_t /*&*/ fn );  // run explicitly specified job synchronosly
+    bool impl_job_run();                  // fetch first asynchronously stored job and run
 public:
     domain_ptr_t get_domain();
     bool is_detached();
@@ -563,8 +600,8 @@ public:
     size_t job_cancel_all();
     size_t async_job_count() const;
     bool job_add( job_t /*&*/ fn,
-        duration_t timeout = duration_t( 0 ),  // if both timeout and interval are zero, then invoke
-                                               // once asyncronously
+        duration_t timeout = duration_t( 0 ),  // if both timeout and interval are zero, then
+                                               // invoke once asynchronously
         duration_t interval = duration_t( 0 ),
         job_id_t* pJobID = nullptr  // periodical job id
     );
@@ -610,14 +647,14 @@ public:
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         return job_run_sync( fn );
     }
-    bool job_run( job_t /*&*/ fn );  // run explicity specified job synchronosly
+    bool job_run( job_t /*&*/ fn );  // run explicitly specified job synchronosly
     template < typename F, typename... Args >
     inline bool job_run( F&& f, Args&&... args ) {
         std::function< decltype( f( args... ) )() > fn =
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         return job_run( fn );
     }
-    bool job_run();  // fetch first asynchronosly stored job and run
+    bool job_run();  // fetch first asynchronously stored job and run
     //
     friend class domain;
 };  /// class queue
@@ -627,12 +664,13 @@ public:
 
 class domain : public ref_retain_release {
 public:
+    static std::atomic_bool g_bVerboseDispatchThreadDetailsLogging;
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
 
 private:
-    std::atomic_size_t async_job_count_;  // sum of all cached values of jobs_.size() from all
-                                          // queues
+    std::atomic_size_t async_job_count_;  // sum of all cached values of
+                                          // jobs_.size() from all queues
     priority_t accumulator_base_;
     // mutable mutex_type domain_mtx_;
     // mutable mutex_type mtx_with_jobs_;
@@ -671,6 +709,7 @@ private:
     //
     skutils::thread_pool thread_pool_;
     std::atomic_size_t cntRunningThreads_;
+    std::atomic_size_t cntStartTestedThreads_;
     //
     std::atomic_uint64_t decrease_accumulators_counter_, decrease_accumulators_period_;
     //
@@ -696,8 +735,8 @@ private:
     size_t impl_queue_remove_all();
     void impl_startup( size_t nWaitMilliSeconds = size_t( -1 ) );
     void impl_shutdown();
-    queue_ptr_t impl_find_queue_to_run();  // find queue with minimal accumulator and remove it from
-                                           // with_jobs_
+    queue_ptr_t impl_find_queue_to_run();  // find queue with minimal accumulator
+                                           // and remove it from with_jobs_
     void impl_decrease_accumulators( priority_t acc_subtract );
 
 public:

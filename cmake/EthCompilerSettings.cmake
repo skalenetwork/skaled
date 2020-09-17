@@ -48,13 +48,16 @@ if( SKALED_HATE_WARNINGS )
     add_compile_options( -Wextra )
     add_compile_options( -Werror )
     add_compile_options( -Wno-error=non-virtual-dtor )
-    #add_compile_options( -Wno-error=sign-compare )
+    add_compile_options( -Werror -Wno-deprecated-declarations)
+    add_compile_options( -Wno-error=sign-compare )
     #add_compile_options( -Wno-error=reorder )
     #add_compile_options( -Wno-error=deprecated )
     #add_compile_options( -Wno-error=unused-variable )
     #add_compile_options( -Wno-error=unused-parameter )
     #add_compile_options( -Wno-error=unused-but-set-variable )
     add_compile_options(-Wno-error=int-in-bool-context)
+    add_compile_options(-Wno-error=address)
+    add_compile_options(-Wno-error=nonnull-compare)
 endif()
 
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang"))
@@ -63,7 +66,12 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     add_compile_options(-Wno-unknown-pragmas)
 
     # Configuration-specific compiler settings.
-    set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG")
+    if ( APPLE )
+        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl")
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+    endif()
+
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
@@ -78,7 +86,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     endif ()
 
     # Hide all symbols by default.
-    add_compile_options(-fvisibility=hidden)
+    #add_compile_options(-fvisibility=hidden)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         # Do not export symbols from dependencies.
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--exclude-libs,ALL")

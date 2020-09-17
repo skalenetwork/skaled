@@ -39,12 +39,12 @@ public:
     ClientTest( ChainParams const& _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     ~ClientTest();
 
-    void setChainParams( std::string const& _genesis );
     bool mineBlocks( unsigned _count ) noexcept;
     void modifyTimestamp( int64_t _timestamp );
     void rewindToBlock( unsigned _number );

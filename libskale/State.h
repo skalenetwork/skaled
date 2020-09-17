@@ -25,6 +25,7 @@
 #pragma once
 
 #include <array>
+#include <queue>
 #include <unordered_map>
 
 #include <boost/optional.hpp>
@@ -177,12 +178,12 @@ public:
     /// than BaseState::PreExisting in order to prepopulate the state.
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0 )
+        dev::u256 _initialFunds = 0, dev::s256 _storageLimit = 32 )
         : State( _accountStartNonce,
               openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
-              _bs, _initialFunds ) {}
+              _bs, _initialFunds, _storageLimit ) {}
 
     State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
 
@@ -367,11 +368,25 @@ public:
     /// Check if state is empty
     bool empty() const;
 
+    void resetStorageChanges() {
+        storageUsage.clear();
+        currentStorageUsed_ = 0;
+    }
+
+    dev::s256 storageUsed( const dev::Address& _addr ) const;
+
+    dev::s256 storageUsedTotal() const { return m_db_ptr->storageUsed(); }
+
+    void setStorageLimit( const dev::s256& _storageLimit ) {
+        storageLimit_ = _storageLimit;
+    };  // only for tests
+
 private:
     void updateToLatestVersion();
 
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
-        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0 );
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
+        dev::s256 _storageLimit = 32 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
@@ -398,6 +413,8 @@ private:
     /// exception occurred.
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
+
+    void updateStorageUsage();
 
 public:
     bool checkVersion() const;
@@ -429,6 +446,11 @@ private:
     ChangeLog m_changeLog;
 
     dev::u256 m_initial_funds = 0;
+
+    dev::s256 storageLimit_ = 0;
+    std::map< dev::Address, dev::s256 > storageUsage;
+    dev::s256 totalStorageUsed_ = 0;
+    dev::s256 currentStorageUsed_ = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

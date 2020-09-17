@@ -23,6 +23,8 @@
 
 #include "ChainParams.h"
 
+#include <secp256k1_sha256.h>
+
 #include <stdint.h>
 
 #include <json_spirit/JsonSpiritHeaders.h>
@@ -58,6 +60,18 @@ ChainParams::ChainParams() {
         PrecompiledContract( 600, 120, PrecompiledRegistrar::executor( "ripemd160" ) ) ) );
     precompiled.insert( make_pair( Address( 4 ),
         PrecompiledContract( 15, 3, PrecompiledRegistrar::executor( "identity" ) ) ) );
+
+    // fill empty stateRoot
+    secp256k1_sha256_t ctx;
+    secp256k1_sha256_initialize( &ctx );
+
+    dev::h256 empty_str = dev::h256( "" );
+    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+
+    dev::h256 empty_state_root_hash;
+    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+
+    stateRoot = empty_state_root_hash;
 }
 
 ChainParams::ChainParams( string const& _json ) {
@@ -96,7 +110,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t n = 0, t = 0;
+        size_t t = 0;
         uint64_t port = 0, port6 = 0;
         try {
             ip = infoObj.at( "bindIP" ).get_str();
@@ -115,32 +129,48 @@ ChainParams ChainParams::loadConfig(
         } catch ( ... ) {
         }
 
-        std::array< std::string, 4 > insecureCommonBLSPublicKeys;
+        try {
+            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+        } catch ( ... ) {
+        }
+        if ( cp.rotateAfterBlock_ < 0 )
+            cp.rotateAfterBlock_ = 0;
+
+        std::string ecdsaKeyName;
+        try {
+            ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        } catch ( ... ) {
+        }
+
+        std::array< std::string, 4 > BLSPublicKeys;
+        std::array< std::string, 4 > commonBLSPublicKeys;
 
         try {
             js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
             keyShareName = ima.at( "keyShareName" ).get_str();
-            n = ima.at( "n" ).get_int();
+
             t = ima.at( "t" ).get_int();
             sgxServerUrl = ima.at( "url" ).get_str();
-            insecureCommonBLSPublicKeys[0] = ima["insecureCommonBLSPublicKey0"].get_str();
-            insecureCommonBLSPublicKeys[1] = ima["insecureCommonBLSPublicKey1"].get_str();
-            insecureCommonBLSPublicKeys[2] = ima["insecureCommonBLSPublicKey2"].get_str();
-            insecureCommonBLSPublicKeys[3] = ima["insecureCommonBLSPublicKey3"].get_str();
+
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+
+            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
         } catch ( ... ) {
             // all or nothing
             if ( !keyShareName.empty() )
                 throw;
         }
 
-        int snapshotIntervalMs = infoObj.count( "snapshotIntervalMs" ) ?
-                                     infoObj.at( "snapshotIntervalMs" ).get_int() :
-                                     0;
-
         cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), snapshotIntervalMs, sgxServerUrl, keyShareName,
-            insecureCommonBLSPublicKeys};
+            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
+            BLSPublicKeys, commonBLSPublicKeys};
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -148,10 +178,23 @@ ChainParams ChainParams::loadConfig(
 
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
-        s.n = n;
         s.t = t;
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+
+        s.snapshotIntervalMs = sChainObj.count( "snapshotIntervalMs" ) ?
+                                   sChainObj.at( "snapshotIntervalMs" ).get_int() :
+                                   0;
+
+        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
+                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
+                                     0;
+
+        s.storageLimit =
+            sChainObj.count( "storageLimit" ) ? sChainObj.at( "storageLimit" ).get_int64() : 0;
+
+        if ( sChainObj.count( "freeContractDeployment" ) )
+            s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
@@ -170,6 +213,23 @@ ChainParams ChainParams::loadConfig(
                 node.port6 = 0;
             }
             node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+            try {
+                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            } catch ( ... ) {
+            }
+            if ( !keyShareName.empty() ) {
+                try {
+                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                } catch ( ... ) {
+                    node.blsPublicKey[0] = "";
+                    node.blsPublicKey[1] = "";
+                    node.blsPublicKey[2] = "";
+                    node.blsPublicKey[3] = "";
+                }
+            }
             s.nodes.push_back( node );
         }
         cp.sChain = s;
@@ -263,7 +323,7 @@ ChainParams ChainParams::loadGenesis( string const& _json ) const {
     cp.extraData = bytes( fromHex( genesis[c_extraData].get_str() ) );
 
     if ( genesis.count( c_stateRoot ) )
-        cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ) );
+        cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ), h256::AlignRight );
 
     // magic code for handling ethash stuff:
     if ( genesis.count( c_mixHash ) && genesis.count( c_nonce ) ) {
@@ -385,7 +445,7 @@ const std::string& ChainParams::getOriginalJson() const {
     infoObj["basePort6"] = ( int64_t ) nodeInfo.port6;  // TODO not so many bits!
     infoObj["logLevel"] = "trace";
     infoObj["logLevelProposal"] = "trace";
-    infoObj["emptyBlockIntervalMs"] = nodeInfo.emptyBlockIntervalMs;
+    infoObj["ecdsaKeyName"] = nodeInfo.ecdsaKeyName;
 
     skaleObj["nodeInfo"] = infoObj;
 
@@ -394,6 +454,10 @@ const std::string& ChainParams::getOriginalJson() const {
 
     sChainObj["schainName"] = sChain.name;
     sChainObj["schainID"] = ( int64_t ) sChain.id;
+    sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
+    sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalMs;
+    sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
+    sChainObj["storageLimit"] = ( int64_t ) sChain.storageLimit;
 
     js::mArray nodes;
 
@@ -405,6 +469,7 @@ const std::string& ChainParams::getOriginalJson() const {
         nodeConfObj["ip6"] = node.ip6;
         nodeConfObj["basePort6"] = ( int64_t ) node.port6;
         nodeConfObj["schainIndex"] = ( int64_t ) node.sChainIndex;
+        nodeConfObj["publicKey"] = node.publicKey;
 
         nodes.push_back( nodeConfObj );
     }

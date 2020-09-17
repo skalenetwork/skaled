@@ -40,9 +40,11 @@ public:
     EthashClient( ChainParams const& _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = {},
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
+        bool isStartedFromSnapshot = false );
     ~EthashClient();
 
     Ethash* ethash() const;

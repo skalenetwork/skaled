@@ -45,7 +45,7 @@ public:
           m_startingBlock( _startingBlock ),
           m_allowed_addresses( _allowedAddresses ) {}
     PrecompiledContract( unsigned _base, unsigned _word, PrecompiledExecutor const& _exec,
-        u256 const& _startingBlock = 0 );
+        u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
 
     bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
         u256 const& _blockNumber ) const {
@@ -55,8 +55,9 @@ public:
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
-    bool executionAllowedFrom( const Address& _from ) const {
-        return m_allowed_addresses.empty() || m_allowed_addresses.count( _from ) != 0;
+    bool executionAllowedFrom( const Address& _from, bool _readOnly ) const {
+        return m_allowed_addresses.empty() ||
+               ( m_allowed_addresses.count( _from ) != 0 && !_readOnly );
     }
 
 private:
@@ -77,26 +78,29 @@ public:
     uint16_t port;
     std::string ip6;
     uint16_t port6;
-    int snapshotIntervalMs;
-    int emptyBlockIntervalMs = -1;
     std::string sgxServerUrl;
     std::string keyShareName;
-    std::array< std::string, 4 > insecureCommonBLSPublicKeys;
+    std::string ecdsaKeyName;
+    std::array< std::string, 4 > BLSPublicKeys;
+    std::array< std::string, 4 > commonBLSPublicKeys;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
-        int _snapshotIntervalMs = 0, std::string _sgxServerUrl = "", std::string _keyShareName = "",
-        const std::array< std::string, 4 >& _insecureCommonBLSPublicKeys = {"0", "1", "0", "1"} ) {
+        std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
+        std::string _keyShareName = "",
+        const std::array< std::string, 4 >& _BLSPublicKeys = {"0", "1", "0", "1"},
+        const std::array< std::string, 4 >& _commonBLSPublicKeys = {"0", "1", "0", "1"} ) {
         name = _name;
         id = _id;
         ip = _ip;
         port = _port;
         ip6 = _ip6;
         port6 = _port6;
-        snapshotIntervalMs = _snapshotIntervalMs;
         sgxServerUrl = _sgxServerUrl;
+        ecdsaKeyName = _ecdsaKeyName;
         keyShareName = _keyShareName;
-        insecureCommonBLSPublicKeys = _insecureCommonBLSPublicKeys;
+        BLSPublicKeys = _BLSPublicKeys;
+        commonBLSPublicKeys = _commonBLSPublicKeys;
     }
 };
 
@@ -109,6 +113,8 @@ public:
     std::string ip6;
     u256 port6;
     u256 sChainIndex;
+    std::string publicKey;
+    std::array< std::string, 4 > blsPublicKey;
 };
 
 /// skale
@@ -118,8 +124,11 @@ public:
     u256 id;
     Address owner;
     std::vector< sChainNode > nodes;
-    size_t n;
-    size_t t;
+    s256 storageLimit;
+    int snapshotIntervalMs = -1;
+    bool freeContractDeployment = false;
+    int emptyBlockIntervalMs = -1;
+    size_t t = 1;
 
     SChain() {
         name = "TestChain";
@@ -127,7 +136,8 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 )};
+        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
+            "0xfa", {"0", "1", "0", "1"}};
         nodes.push_back( me );
     }
 };

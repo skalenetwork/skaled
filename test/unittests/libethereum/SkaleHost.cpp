@@ -32,6 +32,7 @@ class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
     std::vector< u256 > block_gas_prices;
+    bool need_exit = false;
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
@@ -41,15 +42,20 @@ public:
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
-    void exitGracefully() override {}
+    void exitGracefully() override { need_exit = true; }
+    consensus_engine_status getStatus() const override {
+        return need_exit? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
+    }
     void stop() {}
 
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
-        return m_extFace.pendingTransactions( _limit );
+        u256 stateRoot = 0;
+        return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0 ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice );
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0 ) {
+        m_extFace.createBlock(
+            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 
@@ -77,6 +83,7 @@ public:
     mutable ConsensusTestStub* result;
 };
 
+// TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture() {
         dev::p2p::NetworkPreferences nprefs;
@@ -90,15 +97,14 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        TransientDirectory tempDir;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
-
+        auto monitor = make_shared< InstanceMonitor >("test");
         client = make_unique< Client >(
-            chainParams, chainParams.networkID, gasPricer, nullptr, tempDir.path() );
+            chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 
@@ -135,7 +141,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     TransactionQueue* tq;
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -260,6 +268,28 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
     REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
+
+    // check also receipts and locations
+    size_t i = 0;
+    for ( const Transaction& tx : txns ) {
+        Transaction tx2 = client->transaction( tx.sha3() );
+        LocalisedTransaction lt = client->localisedTransaction( tx.sha3() );
+        LocalisedTransactionReceipt lr = client->localisedTransactionReceipt( tx.sha3() );
+
+        BOOST_REQUIRE_EQUAL( tx2, tx );
+
+        BOOST_REQUIRE_EQUAL( lt, tx );
+        BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
+        BOOST_REQUIRE_EQUAL( lt.blockHash(), client->hashFromNumber( 1 ) );
+        BOOST_REQUIRE_EQUAL( lt.transactionIndex(), i );
+
+        BOOST_REQUIRE_EQUAL( lr.hash(), tx.sha3() );
+        BOOST_REQUIRE_EQUAL( lr.blockNumber(), lt.blockNumber() );
+        BOOST_REQUIRE_EQUAL( lr.blockHash(), lt.blockHash() );
+        BOOST_REQUIRE_EQUAL( lr.transactionIndex(), i );
+
+        ++i;
+    }  // for
 }
 
 class VrsHackedTransaction : public Transaction {
@@ -450,7 +480,8 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too big
-BOOST_AUTO_TEST_CASE( transactionNonceBig ) {
+BOOST_AUTO_TEST_CASE( transactionNonceBig, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -540,7 +571,8 @@ BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // not enough cash
-BOOST_AUTO_TEST_CASE( transactionBalanceBad ) {
+BOOST_AUTO_TEST_CASE( transactionBalanceBad, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -682,7 +714,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 1 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionDropQueue ) {
+BOOST_AUTO_TEST_CASE( transactionDropQueue, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -737,7 +770,8 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue ) {
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 

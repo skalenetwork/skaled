@@ -1,5 +1,7 @@
 #include "SkaleDebug.h"
 
+#include <skutils/task_performance.h>
+
 #include <cassert>
 #include <sstream>
 
@@ -21,6 +23,20 @@ std::string SkaleDebugInterface::call( const std::string& arg ) {
             return res;
     }
     return "";
+}
+
+void SkaleDebugTracer::call_on_tracepoint(
+    const std::function< void( const std::string& ) >& callee ) {
+    global_callbacks.push_back( callee );
+}
+
+void SkaleDebugTracer::call_on_tracepoint(
+    const std::string& name, const std::function< void( const std::string& ) >& callee ) {
+    tracepoint_struct& tp_obj = find_by_name( name );
+
+    std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
+
+    tp_obj.callbacks.push_back( callee );
 }
 
 void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count ) {
@@ -53,6 +69,12 @@ void SkaleDebugTracer::tracepoint( const std::string& name ) {
 
     std::unique_lock< std::mutex > lock2( tp_obj.thread_mutex );
     ++tp_obj.pass_count;
+
+    for ( auto f : global_callbacks )
+        f( name );
+    for ( auto f : tp_obj.callbacks )
+        f( name );
+
     if ( tp_obj.need_break ) {
         ++tp_obj.waiting_count;
 
