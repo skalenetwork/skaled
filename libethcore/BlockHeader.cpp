@@ -214,7 +214,7 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
         if ( m_parentHash && _parent.hash() != m_parentHash )
             BOOST_THROW_EXCEPTION( InvalidParentHash() );
 
-        if ( m_timestamp <= _parent.m_timestamp )
+        if ( m_timestamp < _parent.m_timestamp )
             BOOST_THROW_EXCEPTION( InvalidTimestamp() );
 
         if ( m_number != _parent.m_number + 1 )

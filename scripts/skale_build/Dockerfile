@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get -q update && \
     apt-get -qy install \
@@ -21,23 +21,4 @@ COPY ./executable /skaled
 WORKDIR /skaled
 RUN chmod +x skaled
 
-EXPOSE 30303
-
-ENV DATA_DIR $DATA_DIR
-
-ENTRYPOINT /skaled/skaled \
- --config $CONFIG_FILE \
- -d $DATA_DIR \
- --ipcpath $DATA_DIR \
- --http-port $HTTP_RPC_PORT \
- --https-port $HTTPS_RPC_PORT \
- --ws-port $WS_RPC_PORT \
- --wss-port $WSS_RPC_PORT \
- --ssl-key $SSL_KEY_PATH \
- --ssl-cert $SSL_CERT_PATH \
- -v 4  \
- --web3-trace \
- --enable-debug-behavior-apis \
- --aa no $DOWNLOAD_SNAPSHOT_OPTION
-#CMD ["bash"]
-
+ENTRYPOINT ["/skaled/skaled"]

@@ -36,7 +36,7 @@ class SnapshotHashAgentTest;
 }
 }  // namespace dev
 
-class SnapshotHashAgentException : std::exception {
+class SnapshotHashAgentException : public std::exception {
 protected:
     std::string what_str;
 
@@ -68,16 +68,16 @@ public:
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
         this->public_keys_.resize( n_ );
-        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 2 ) / 3, this->n_ ) );
+        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
         if ( common_public_key == "" ) {
-            this->common_public_key_.X.c0 = libff::alt_bn128_Fq(
-                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[0].c_str() );
-            this->common_public_key_.X.c1 = libff::alt_bn128_Fq(
-                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[1].c_str() );
-            this->common_public_key_.Y.c0 = libff::alt_bn128_Fq(
-                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[2].c_str() );
-            this->common_public_key_.Y.c1 = libff::alt_bn128_Fq(
-                chain_params_.nodeInfo.insecureCommonBLSPublicKeys[3].c_str() );
+            this->common_public_key_.X.c0 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+            this->common_public_key_.X.c1 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+            this->common_public_key_.Y.c0 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+            this->common_public_key_.Y.c1 =
+                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
             this->common_public_key_.Z = libff::alt_bn128_Fq2::one();
         } else {
             std::vector< std::string > coords;

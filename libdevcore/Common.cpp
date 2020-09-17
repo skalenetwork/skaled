@@ -23,12 +23,21 @@
 
 #include <skale/buildinfo.h>
 
+#include <thread>
+
 using namespace std;
 
 namespace dev {
 char const* Version = skale_get_buildinfo()->project_version;
 bytes const NullBytes;
 std::string const EmptyString;
+
+void ExitHandler::exitHandler( int s ) {
+    m_signal = s;
+    s_shouldExit = true;
+    // HACK wait for loop in main to send exit call to consensus et al.
+    std::this_thread::sleep_for( chrono::milliseconds( 2000 ) );
+}
 
 void InvariantChecker::checkInvariants(
     HasInvariants const* _this, char const* _fn, char const* _file, int _line, bool _pre ) {
@@ -86,5 +95,6 @@ string inUnits( bigint const& _b, strings const& _units ) {
 }
 
 volatile bool ExitHandler::s_shouldExit = false;
+volatile int ExitHandler::m_signal = -1;
 
 }  // namespace dev

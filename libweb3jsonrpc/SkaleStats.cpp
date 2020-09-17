@@ -350,8 +350,9 @@ Json::Value SkaleStats::skale_imaInfo() {
         //
         // validate wallet description
         static const char* g_arrMustHaveWalletFields[] = {"url", "keyShareName", "t", "n",
-            "insecureCommonBLSPublicKey0", "insecureCommonBLSPublicKey1",
-            "insecureCommonBLSPublicKey2", "insecureCommonBLSPublicKey3"};
+            "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2", "BLSPublicKey3",
+            "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
+            "commonBLSPublicKey3"};
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
         for ( i = 0; i < cnt; ++i ) {
@@ -384,19 +385,23 @@ Json::Value SkaleStats::skale_imaInfo() {
         jo["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         jo["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         //
-        jo["insecureBLSPublicKey0"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey0"];
-        jo["insecureBLSPublicKey1"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey1"];
-        jo["insecureBLSPublicKey2"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey2"];
-        jo["insecureBLSPublicKey3"] = joSkaleConfig_nodeInfo_wallets_ima["insecureBLSPublicKey3"];
+        jo["BLSPublicKey0"] =
+            joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey0"].get< std::string >();
+        jo["BLSPublicKey1"] =
+            joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey1"].get< std::string >();
+        jo["BLSPublicKey2"] =
+            joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey2"].get< std::string >();
+        jo["BLSPublicKey3"] =
+            joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey3"].get< std::string >();
         //
-        jo["insecureCommonBLSPublicKey0"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey0"];
-        jo["insecureCommonBLSPublicKey1"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey1"];
-        jo["insecureCommonBLSPublicKey2"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey2"];
-        jo["insecureCommonBLSPublicKey3"] =
-            joSkaleConfig_nodeInfo_wallets_ima["insecureCommonBLSPublicKey3"];
+        jo["commonBLSPublicKey0"] =
+            joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey0"].get< std::string >();
+        jo["commonBLSPublicKey1"] =
+            joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey1"].get< std::string >();
+        jo["commonBLSPublicKey2"] =
+            joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey2"].get< std::string >();
+        jo["commonBLSPublicKey3"] =
+            joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey3"].get< std::string >();
         //
         std::string s = jo.dump();
         Json::Value ret;
@@ -897,34 +902,54 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 contractPosition =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"contractPosition\" is " << toJS( contractPosition ) << std::endl;
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 addressTo =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"addressTo\" is " << toJS( addressTo ) << std::endl;
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 amount =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"amount\" is " << toJS( amount ) << std::endl;
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfName =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"sizeOfName\" is " << toJS( sizeOfName ) << std::endl;
                 nPos += nFiledSize;
                 nFiledSize = sizeOfName.convert_to< size_t >();
+                // std::cout << "\"nFiledSize\" is " << nFiledSize << std::endl;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
                 strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
                     ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
@@ -932,13 +957,21 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfSymbol =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"sizeOfSymbol\" is " << toJS( sizeOfSymbol ) << std::endl;
                 nPos += 32;
                 nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                // std::cout << "\"nFiledSize\" is " << nFiledSize << std::endl;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
                 strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
                     ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
@@ -946,15 +979,23 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 nFiledSize = 1;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(8), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const uint8_t nDecimals = uint8_t( vecBytes[nPos] );
+                // std::cout << "\"nDecimals\" is " << nDecimals << std::endl;
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC20(9), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 totalSupply =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout << "\"totalSupply\" is " << toJS( totalSupply ) << std::endl;
                 nPos += nFiledSize;
                 //
                 if ( nPos > cntMessageBytes ) {
@@ -1003,34 +1044,49 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 contractPosition =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 addressTo =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 tokenID =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfName =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
                 nFiledSize = sizeOfName.convert_to< size_t >();
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
                 strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
                     ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
@@ -1038,13 +1094,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 //
                 nFiledSize = 32;
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 const dev::u256 sizeOfSymbol =
-                    BMPBN::decode< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += 32;
                 nFiledSize = sizeOfSymbol.convert_to< size_t >();
                 if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                    throw std::runtime_error( "IMA message to short" );
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, ERC721(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
                 strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
                     ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );

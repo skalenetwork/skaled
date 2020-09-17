@@ -125,6 +125,16 @@ inline T decode( const uint8_t* input, size_t length ) {
 }
 
 template < class T >
+inline T decode_inv( const uint8_t* input, size_t length ) {
+    std::vector< uint8_t > vi;
+    if ( input && length ) {
+        for ( size_t i = 0; i < length; ++i )
+            vi.insert( vi.begin(), input[i] );
+    }
+    return decode< T >( vi.data(), vi.size() );
+}
+
+template < class T >
 inline std::string toHexStringWithPadding(
     const T& value, size_t nPadding = std::string::npos, bool bWith0x = true ) {
     std::stringstream ss;

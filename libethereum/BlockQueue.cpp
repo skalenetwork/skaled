@@ -49,11 +49,16 @@ BlockQueue::BlockQueue() {
     // Allow some room for other activity
     unsigned verifierThreads = 1;  // needed for JsonRpcTests (real mining)  // std::max(
                                    // thread::hardware_concurrency(), 3U ) - 2U;
-    for ( unsigned i = 0; i < verifierThreads; ++i )
+    for ( unsigned i = 0; i < verifierThreads; ++i ) {
+        if ( this->m_deleting )
+            return;
         m_verifiers.emplace_back( [=]() {
+            if ( this->m_deleting )
+                return;
             setThreadName( "blockVerifier" + toString( i ) );
             this->verifierBody();
         } );
+    }
 }
 
 BlockQueue::~BlockQueue() {
@@ -152,8 +157,10 @@ void BlockQueue::verifierBody() try {
     }
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what();
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception";
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
 void BlockQueue::drainVerified_WITH_BOTH_LOCKS() {

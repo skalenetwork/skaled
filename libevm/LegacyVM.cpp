@@ -1510,7 +1510,11 @@ void LegacyVM::interpretCases() {
             updateSSGas();
             updateIOGas();
 
-            m_ext->setStore( m_SP[0], m_SP[1] );
+            try {
+                m_ext->setStore( m_SP[0], m_SP[1] );
+            } catch ( dev::StorageOverflow& ex ) {
+                throwStorageOverflow( ex.what() );
+            }
         }
         NEXT
 

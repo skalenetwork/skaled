@@ -83,6 +83,7 @@ SnapshotManager::SnapshotManager(
             if ( fs::exists( _dataDir / vol ) && 0 != btrfs.present( ( _dataDir / vol ).c_str() ) )
                 throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
 
+            // Ignoring exception
             btrfs.subvolume.create( ( _dataDir / vol ).c_str() );
 
         } catch ( const fs::filesystem_error& ex ) {
@@ -249,16 +250,16 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
 
 // exeptions: filesystem
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
-    multimap< time_t, fs::path, std::greater< time_t > > time_map;
+    map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
-            time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
     }  // for
 
-    // delete all efter n first
+    // delete all after n first
     unsigned i = 1;
-    for ( const auto& p : time_map ) {
+    for ( const auto& p : numbers ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
             for ( const string& v : this->volumes ) {
@@ -271,16 +272,41 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     }      // for
 }
 
-// exeptions: filesystem
-void SnapshotManager::leaveNLastDiffs( unsigned n ) {
-    multimap< time_t, fs::path, std::greater< time_t > > time_map;
-    for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
-        time_map.insert( make_pair( fs::last_write_time( f ), f ) );
+std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
+    map< int, fs::path, std::greater< int > > numbers;
+    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+        // HACK We exclude 0 snapshot forcefully
+        if ( fs::basename( f ) != "0" )
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
     }  // for
 
-    // delete all efter n first
+    if ( numbers.empty() ) {
+        return std::make_pair( 0, 0 );
+    }
+
+    auto it = numbers.begin();
+    int snd = std::stoi( fs::basename( ( *it++ ).second ) );
+
+    int fst;
+    if ( numbers.size() == 1 ) {
+        fst = 0;
+    } else {
+        fst = std::stoi( fs::basename( ( *it ).second ) );
+    }
+
+    return std::make_pair( fst, snd );
+}
+
+// exeptions: filesystem
+void SnapshotManager::leaveNLastDiffs( unsigned n ) {
+    map< int, fs::path, std::greater< int > > numbers;
+    for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
+        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+    }  // for
+
+    // delete all after n first
     unsigned i = 1;
-    for ( const auto& p : time_map ) {
+    for ( const auto& p : numbers ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
             fs::remove( path );
@@ -306,11 +332,10 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hash_file ) );
     }
 
-    std::lock_guard< std::mutex > lock( hash_file_mutex );
-
     dev::h256 hash;
 
     try {
+        std::lock_guard< std::mutex > lock( hash_file_mutex );
         std::ifstream in( hash_file );
         in >> hash;
     } catch ( const std::exception& ex ) {
@@ -424,7 +449,10 @@ void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path&
         } else {
             if ( !is_checking ) {
                 if ( !boost::filesystem::exists( fileHashPathStr ) ) {
-                    throw SnapshotManager::CannotRead( fileHashPathStr );
+                    // hash file hasn't been computed
+                    std::ofstream hash_file( fileHashPathStr );
+                    dev::h256 hash = dev::sha256( it->path().string() );
+                    hash_file << hash;
                 }
                 std::ifstream hash_file( fileHashPathStr );
                 dev::h256 hash;
@@ -475,6 +503,10 @@ void SnapshotManager::computeAllVolumesHash(
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
+    if ( this->isSnapshotHashPresent( _blockNumber ) ) {
+        return;
+    }
+
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 

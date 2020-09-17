@@ -304,34 +304,13 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         assert( it != chainParams.sChain.nodes.end() );
         dev::eth::sChainNode schain_node = *it;
 
-        obj["signerIndex"] = schain_node.sChainIndex.convert_to< int >();
         joCall["params"] = obj;
 
         std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
 
         const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
         const std::string sgx_cert_filename = "sgx.crt";
-        const std::string sgx_key_filename = "sgx.pem";
-
-        std::ifstream sgx_cert_file( sgx_cert_path + sgx_cert_filename );
-        std::string sgx_cert;
-
-        sgx_cert_file.seekg( 0, std::ios::end );
-        sgx_cert.reserve( sgx_cert_file.tellg() );
-        sgx_cert_file.seekg( 0, std::ios::beg );
-
-        sgx_cert.assign( ( std::istreambuf_iterator< char >( sgx_cert_file ) ),
-            std::istreambuf_iterator< char >() );
-
-        std::ifstream sgx_key_file( sgx_cert_path + sgx_key_filename );
-        std::string sgx_key;
-
-        sgx_key_file.seekg( 0, std::ios::end );
-        sgx_key.reserve( sgx_key_file.tellg() );
-        sgx_key_file.seekg( 0, std::ios::beg );
-
-        sgx_key.assign( ( std::istreambuf_iterator< char >( sgx_key_file ) ),
-            std::istreambuf_iterator< char >() );
+        const std::string sgx_key_filename = "sgx.key";
 
         skutils::http::SSL_client_options ssl_options;
         ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
@@ -343,20 +322,40 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )
                       << cc::error( " Exception while trying to connect to sgx server: " )
-                      << cc::warn( "connection refused" ) << "\n";
+                      << cc::warn( "connection refused" ) << std::endl;
         }
 
-        std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << "\n";
-        skutils::rest::data_t d = cli.call( joCall );
+        skutils::rest::data_t d;
+        while ( true ) {
+            std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
+            d = cli.call( joCall );
+            if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
+                if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
+                     d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
+                    std::cerr << cc::error( "ERROR:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::error( " error with connection: " )
+                              << cc::info( " retrying... " ) << std::endl;
+                } else {
+                    std::cerr << cc::error( "ERROR:" )
+                              << cc::error( " Exception while trying to connect to sgx server: " )
+                              << cc::error( " error with ssl certificates " )
+                              << cc::error( d.ei_.strError_ ) << std::endl;
+                }
+            } else {
+                break;
+            }
+        }
+
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
             std::cout << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
-                      << "\n";
+                      << std::endl;
             throw std::runtime_error( g_strErrMsg );
         }
 
         nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
-        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << "\n";
+        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
                 "SGX Server call to blsSignMessageHash returned non-zero status" );
@@ -373,7 +372,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joSignature["Y"] = splited_string[1];
         joSignature["helper"] = splited_string[3];
         joSignature["hash"] = snapshot_hash.hex();
-        joSignature["signerIndex"] = obj["signerIndex"];
 
         std::string strSignature = joSignature.dump();
         Json::Value response;

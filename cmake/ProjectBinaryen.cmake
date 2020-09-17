@@ -46,7 +46,7 @@ ExternalProject_Add(binaryen
     URL https://github.com/WebAssembly/binaryen/archive/${BINARYEN_VERSION}.tar.gz
     URL_HASH SHA256=19439e41dc576446eaae0c4a8e07d4cd4c40aea7dfb0a6475b925686852f8006
     CMAKE_ARGS
-    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+    -DCMAKE_INSTALL_PREFIX=${prefix}
     -DCMAKE_INSTALL_LIBDIR=lib
     -DCMAKE_BUILD_TYPE=Release
     -DBUILD_STATIC_LIB=ON

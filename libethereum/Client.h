@@ -49,6 +49,7 @@
 #include "BlockChainImporter.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
+#include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
@@ -81,12 +82,15 @@ class Client : public ClientBase, protected Worker {
 public:
     Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
         bool isStartedFromSnapshot = false );
     /// Destructor.
     virtual ~Client();
+
+    void stopWorking();
 
     void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
 
@@ -239,8 +243,8 @@ public:
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {
         assert( m_skaleHost );
+        Worker::startWorking();  // these two lines are dependent!!
         m_skaleHost->startWorking();
-        Worker::startWorking();
     };
 
     /// Change the function that is called when a new block is imported
@@ -266,6 +270,9 @@ public:
         return path;
     }
 
+    // set exiting time for node rotation
+    void setSchainExitTime( uint64_t _timestamp ) const;
+
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
         return this->m_snapshotManager->getSnapshotHash( _blockNumber );
     }
@@ -288,7 +295,7 @@ protected:
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
-    void init( boost::filesystem::path const& _dbPath, WithExisting _forceAction, u256 _networkId );
+    void init( WithExisting _forceAction, u256 _networkId );
 
     /// InterfaceStub methods
     BlockChain& bc() override { return m_bc; }
@@ -458,11 +465,16 @@ protected:
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
+    fs::path m_dbPath;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
-    void fillLastSnapshotTime();
-    int64_t last_snapshot_time = -1;
+    void initHashes();
+    void updateHashes();
+
+    std::unique_ptr< std::thread > m_snapshotHashComputing;
+    int64_t last_snapshot_time = 0;
     int64_t last_snapshoted_block = -1;
     bool is_started_from_snapshot = true;
     const dev::h256 empty_str_hash =

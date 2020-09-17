@@ -15,6 +15,7 @@
 #include <skutils/url.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
+#include <skutils/rest_call.h>
 
 #include <atomic>
 #include <chrono>
@@ -399,6 +400,9 @@ extern void test_protocol_parallel_calls(
     const char* strProto, int nPort, const std::vector< std::string >& vecClientNames );
 
 extern void test_protocol_busy_port( const char* strProto, int nPort );
+
+extern void test_protocol_rest_call( const char* strProto, int nPort );
+extern void test_protocol_rest_fail( const char* strProto, const char* strProtoIncorrect, int nPort );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

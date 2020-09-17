@@ -921,23 +921,6 @@ void with_test_environment( fn_with_test_environment_t fn ) {
         //???::g_nPeerStatsLoggingFlags = __???_PEER_STATS_ALL;
         test_log_e(
             cc::debug( "Will initialize " ) + cc::note( "test environment" ) + cc::debug( "..." ) );
-        skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-            if ( nSignalNo == SIGPIPE )
-                return;
-            bool stopWasRaisedBefore = skutils::signal::g_bStop;
-            skutils::signal::g_bStop = true;
-            std::string strMessagePrefix = stopWasRaisedBefore ?
-                                               cc::error( "\nStop flag was already raised on. " ) +
-                                                   cc::fatal( "WILL FORCE TERMINATE." ) +
-                                                   cc::error( " Caught (second) signal. " ) :
-                                               cc::error( "\nCaught (first) signal. " );
-            test_log_ef( strMessagePrefix + cc::error( skutils::signal::signal2str( nSignalNo ) ) );
-            if ( stopWasRaisedBefore )
-                _exit( 13 );
-            // stat_handle_shutdown( &nSignalNo );
-            //_exit( 13 );
-        } );
-        //
         //
         SSL_library_init();
         OpenSSL_add_all_ciphers();
@@ -1504,6 +1487,56 @@ void test_protocol_busy_port( const char* strProto, int nPort ) {
     } );
 }
 
+void test_protocol_rest_call( const char* strProto, int nPort ) {
+    std::atomic_bool end_of_actions_was_reached = false;
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_test_server(
+            [&]( skutils::test::test_server& /*refServer*/ ) -> void {
+                std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
+                nlohmann::json joCall =
+                    skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
+                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort );
+                skutils::url u( strURL );
+                skutils::rest::client restCall( u );
+                skutils::rest::data_t dataOut = restCall.call( strCall );
+                BOOST_REQUIRE( ! dataOut.empty() );
+                nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
+                skutils::test::test_log_e( cc::info( "input" ) + cc::debug( "..........." ) + cc::normal( joCall.dump() ) );
+                skutils::test::test_log_e( cc::info( "output" ) + cc::debug( ".........." ) + cc::normal( joResult.dump() ) );
+                BOOST_REQUIRE( joCall.dump() == joResult.dump() );
+                //
+                end_of_actions_was_reached = true;
+            },
+            strProto, nPort );
+    } );
+    BOOST_REQUIRE( end_of_actions_was_reached );
+}
+
+void test_protocol_rest_fail( const char* strProto, const char* strProtoIncorrect, int nPort ) {
+    std::atomic_bool end_of_actions_was_reached = false;
+    skutils::test::with_test_environment( [&]() -> void {
+        skutils::test::with_test_server(
+            [&]( skutils::test::test_server& /*refServer*/ ) -> void {
+                std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
+                nlohmann::json joCall =
+                    skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
+                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProtoIncorrect, nPort );
+                skutils::url u( strURL );
+                skutils::rest::client restCall( u );
+                skutils::rest::data_t dataOut = restCall.call( strCall );
+                skutils::test::test_log_e( cc::info( "error type" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.et_ ) ) );
+                skutils::test::test_log_e( cc::info( "error code" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.ec_ ) ) );
+                skutils::test::test_log_e( cc::info( "error text" ) + cc::debug( "......" ) + cc::normal( dataOut.ei_.strError_ ) );
+                BOOST_REQUIRE( dataOut.empty() );
+                BOOST_REQUIRE( dataOut.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error );
+                BOOST_REQUIRE( ! dataOut.ei_.strError_.empty() );
+                //
+                end_of_actions_was_reached = true;
+            },
+            strProto, nPort );
+    } );
+    BOOST_REQUIRE( end_of_actions_was_reached );
+}
 
 };  // namespace test
 };  // namespace skutils

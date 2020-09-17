@@ -115,7 +115,7 @@ public:
     virtual ~time_holder();
     time_holder& operator=( const time_holder& ) = delete;
     time_holder& operator=( index_holder&& ) = delete;
-    bool is_funished() const;
+    bool is_finished() const;
     virtual bool is_running() const;
     virtual void set_running( bool b = true );
     time_point tp_start() const;

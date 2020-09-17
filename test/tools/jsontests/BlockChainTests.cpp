@@ -537,6 +537,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
     //        blocks!");
 
     State postState = State();  // Compare post states
+    postState.setStorageLimit(1000000000);
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
     ImportTest::compareStates( postState, testChain.topBlock().state() );

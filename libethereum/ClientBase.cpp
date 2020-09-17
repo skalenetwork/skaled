@@ -90,7 +90,8 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     t.forceSender( _from );
     t.checkOutExternalGas( ~u256( 0 ) );
     EnvInfo const env( _latestBlock.info(), bc().lastBlockHashes(), 0, _gas );
-    State& tempState = _latestBlock.mutableState();
+    // Make a copy of state!! It will be deleted after step!
+    State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
     ExecutionResult executionResult =
         tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
@@ -124,52 +125,35 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         // to calculate how many of gas will be used.
         // Then we execute transaction with this gas limit
         // and check if it will be enough.
-        // If not repeat process iteratevly.
-        ExecutionResult goodResult;
-        int64_t goodGas = c_maxGasEstimate;
-        bool haveGoodResult = false;
-        while ( lowerBound + 1 < upperBound ) {
-            auto step = estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
-            if ( step.first ) {
-                if ( !haveGoodResult || goodGas > upperBound ) {
-                    haveGoodResult = true;
-                    goodResult = step.second;
-                    goodGas = upperBound;
-                }
-                int64_t gasUsed = step.second.gasUsed.convert_to< int64_t >();
+        // If not run binary search to find optimal gas limit.
 
-                step = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
-                if ( step.first ) {
-                    if ( !haveGoodResult || goodGas > gasUsed ) {
-                        haveGoodResult = true;
-                        goodResult = step.second;
-                        goodGas = gasUsed;
-                    }
+        auto estimatedStep =
+            estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
+        if ( estimatedStep.first ) {
+            auto executionResult = estimatedStep.second;
+            auto gasUsed = executionResult.gasUsed.convert_to< int64_t >();
 
-                    if ( step.second.gasUsed.convert_to< int64_t >() == gasUsed ) {
-                        upperBound = gasUsed;
-                        lowerBound = upperBound - 1;
-                    } else {
-                        upperBound = min( gasUsed, upperBound - 1 );
-                    }
+            estimatedStep = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
+            if ( estimatedStep.first ) {
+                return make_pair( gasUsed, executionResult );
+            }
+            while ( lowerBound + 1 < upperBound ) {
+                int64_t middle = ( lowerBound + upperBound ) / 2;
+                estimatedStep =
+                    estimateGasStep( middle, bk, _from, _dest, _value, gasPrice, _data );
+                if ( estimatedStep.first ) {
+                    upperBound = middle;
                 } else {
-                    lowerBound = max( gasUsed, lowerBound + 1 );
+                    lowerBound = middle;
                 }
-            } else {
-                lowerBound = upperBound;
-            }
-
-            if ( _callback ) {
-                _callback( GasEstimationProgress{lowerBound, upperBound} );
+                if ( _callback ) {
+                    _callback( GasEstimationProgress{lowerBound, upperBound} );
+                }
             }
         }
 
-        if ( haveGoodResult ) {
-            return make_pair( goodGas, goodResult );
-        } else {
-            return make_pair( upperBound,
-                estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data ).second );
-        }
+        return make_pair( upperBound,
+            estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data ).second );
     } catch ( ... ) {
         // TODO: Some sort of notification of failure.
         return make_pair( u256(), ExecutionResult() );
@@ -399,8 +383,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     if ( tl.second > 0 )
         gasUsed -= bc().transactionReceipt( tl.first, tl.second - 1 ).cumulativeGasUsed();
     //
-    // The "contractAddress" field must be null for all types of trasactions but contract deployment
-    // ones. The contract deployment transaction is special because it's the only type of
+    // The "contractAddress" field must be null for all types of transactions but contract
+    // deployment ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
     //
     dev::Address contractAddress;
@@ -410,8 +394,9 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     }
     //
     //
-    return LocalisedTransactionReceipt(
-        tr, t.sha3(), tl.first, numberFromHash( tl.first ), tl.second, gasUsed, contractAddress );
+    return LocalisedTransactionReceipt( tr, t.sha3(), tl.first, numberFromHash( tl.first ),
+        tl.second, t.isInvalid() ? dev::Address( 0 ) : t.from(),
+        t.isInvalid() ? dev::Address( 0 ) : t.to(), gasUsed, contractAddress );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
@@ -471,8 +456,8 @@ BlockHeader ClientBase::pendingInfo() const {
 BlockDetails ClientBase::pendingDetails() const {
     auto pm = postSeal().info();
     auto li = Interface::blockDetails( LatestBlock );
-    return BlockDetails(
-        ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(), pm.parentHash(), h256s{} );
+    return BlockDetails( ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(),
+        pm.parentHash(), h256s{}, postSeal().blockData().size() );
 }
 
 u256 ClientBase::gasLimitRemaining() const {

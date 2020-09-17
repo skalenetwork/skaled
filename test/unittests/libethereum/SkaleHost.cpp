@@ -102,9 +102,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         accountHolder->setAccounts( {coinbase, account2} );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
-
+        auto monitor = make_shared< InstanceMonitor >("test");
         client = make_unique< Client >(
-            chainParams, chainParams.networkID, gasPricer, nullptr, tempDir.path() );
+            chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 
@@ -141,7 +141,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     TransactionQueue* tq;
 
+    TransientDirectory tempDir; // ! should exist before client!
     unique_ptr< Client > client;
+
     dev::KeyPair coinbase{KeyPair::create()};
     dev::KeyPair account2{KeyPair::create()};
     unique_ptr< FixedAccountHolder > accountHolder;
@@ -149,8 +151,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     shared_ptr< SkaleHost > skaleHost;
     ConsensusTestStub* stub;
-
-    TransientDirectory tempDir;
 };
 
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()

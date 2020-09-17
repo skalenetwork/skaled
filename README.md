@@ -60,7 +60,7 @@ sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinf
 ### Build dependencies
 
 ```
-cd SkaleDeps
+cd deps
 ./build.sh
 ```
 
