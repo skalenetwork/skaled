@@ -427,6 +427,25 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
+static std::string stat_transactions2str(
+    const Transactions& _transactions, const std::string& strPrefix ) {
+    size_t cnt = _transactions.size();
+    std::string s;
+    if ( !strPrefix.empty() )
+        s += strPrefix;
+    s += cc::size10( cnt ) + " " +
+         cc::debug(
+             ( cnt > 1 ) ? "transactions: " : ( ( cnt == 1 ) ? "transaction: " : "transactions" ) );
+    size_t i = 0;
+    for ( const Transactions::value_type& tx : _transactions ) {
+        if ( i > 0 )
+            s += cc::normal( ", " );
+        s += cc::debug( "#" ) + cc::size10( i ) + cc::debug( "/" ) + cc::info( tx.sha3().hex() );
+        ++i;
+    }
+    return s;
+}
+
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
@@ -492,19 +511,30 @@ size_t Client::importTransactionsAsBlock(
                 vecMissing.push_back( txWalk );
             else {
                 vecPassed.push_back( txWalk );
-                if ( shaWalk == shaLastTx ) {
+                if ( ( !bIsPartial ) && shaWalk == shaLastTx ) {
                     bIsPartial = true;
-                    size_t cntPassed = vecPassed.size();
-                    cntMissing = cntAll - cntPassed;
-                    cntExpected = cntMissing;
-                    LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
-                                    << cc::warn( " found partially executed block, have " )
-                                    << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
-                                    << cc::size10( cntPassed ) << cc::warn( " passed, " )
-                                    << cc::size10( cntMissing ) << cc::warn( " missing" );
-                    LOG( m_logger ).flush();
                 }
             }
+        }
+        size_t cntPassed = vecPassed.size();
+        cntMissing = vecMissing.size();
+        cntExpected = cntMissing;
+        if ( bIsPartial ) {
+            LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
+                            << cc::warn( " found partially executed block, have " )
+                            << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
+                            << cc::size10( cntPassed ) << cc::warn( " passed, " )
+                            << cc::size10( cntMissing ) << cc::warn( " missing" );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( _transactions, cc::notice( " All " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
+            LOG( m_logger ).flush();
         }
         // end, detect partially executed block
         //
@@ -518,20 +548,17 @@ size_t Client::importTransactionsAsBlock(
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
         }
-        size_t cntPassed = 0;
-        if ( bIsPartial ) {
-            cntPassed = vecPassed.size();
+        if ( bIsPartial )
             cntSucceeded += cntPassed;
-        }
         if ( cntSucceeded != cntAll ) {
             LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
                             << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
                             << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
-                            << cc::size10( cntExpected ) << cc::warn( " expected to run and wass" );
+                            << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
             LOG( m_logger ).flush();
         }
         if ( bIsPartial ) {
-            LOG( m_logger ) << cc::notice( "PARTIAL CATCHUP SUCCESS:" ) << cc::success( " with " )
+            LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " )
                             << cc::size10( cntAll ) << cc::success( " transaction(s), " )
                             << cc::size10( cntPassed ) << cc::success( " passed, " )
                             << cc::size10( cntMissing ) << cc::success( " missing" );
