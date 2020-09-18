@@ -68,6 +68,11 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    //
+    std::cout << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() )
+              << "\n";
+    std::cout.flush();
+    //
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
 
