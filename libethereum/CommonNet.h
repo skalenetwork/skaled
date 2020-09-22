@@ -32,8 +32,6 @@
 
 namespace dev {
 
-class OverlayDB;
-
 namespace eth {
 
 static const unsigned c_maxHeaders =

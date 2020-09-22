@@ -56,17 +56,7 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
-    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
-    dev::h256 safeLastExecutedTransactionHash();
-
-    typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
-        std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
-        fn_pre_commit_t;
-
-    static const fn_pre_commit_t g_fn_pre_commit_empty;
-
     void commit();
-    void commit( fn_pre_commit_t fn_pre_commit );
     void rollback();
     void clearDB();
     bool connected() const;
@@ -90,7 +80,10 @@ public:
         dev::h160 const& _address, dev::bytesConstRef _value, _byte_ space = 0xFF );
 
     dev::s256 storageUsed() const;
-    void updateStorageUsage( dev::s256 const& _storageUsed );
+    void setStorageUsed( dev::s256 const& _storageUsed );
+
+    dev::h256 lastTransactionHash() const;
+    void setLastTransactionHash( dev::h256 const& _h );
 
     /// @returns the set containing all accounts currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
@@ -103,7 +96,9 @@ private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
-    dev::s256 storageUsed_ = 0;
+
+    dev::s256 m_cachedStorageUsed = -1;                   // -1 means no value
+    dev::h256 m_cachedLastTransactionHash = dev::h256();  // h256() means no value
 
     std::shared_ptr< dev::db::DatabaseFace > m_db;
 

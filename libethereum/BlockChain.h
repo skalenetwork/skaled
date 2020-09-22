@@ -62,7 +62,6 @@ class State;
 }
 
 namespace dev {
-class OverlayDB;
 
 namespace db {
 class ManuallyRotatingLevelDB;

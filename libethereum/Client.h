@@ -245,7 +245,7 @@ public:
         assert( m_skaleHost );
         Worker::startWorking();  // these two lines are dependent!!
         m_skaleHost->startWorking();
-    };
+    }
 
     /// Change the function that is called when a new block is imported
     Handler< BlockHeader const& > setOnBlockImport(
@@ -284,7 +284,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false );
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

@@ -27,7 +27,6 @@
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
-#include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
@@ -210,8 +209,7 @@ public:
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
-        bool isSaveLastTxHash = false );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
     /// we don't.
@@ -234,8 +232,7 @@ public:
 
     /// Sync all transactions unconditionally
     std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-        bool isSaveLastTxHash = false );
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.

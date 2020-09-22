@@ -76,29 +76,7 @@ OverlayDB::OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db )
           delete db;
       } ) {}
 
-const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
-    []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
-        std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
-
-dev::h256 OverlayDB::stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB ) {
-    dev::h256 shaLastTx;
-    if ( pDB ) {
-        const std::string l =
-            pDB->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
-        if ( !l.empty() )
-            shaLastTx = dev::h256( l, dev::h256::FromBinary );
-    }
-    return shaLastTx;
-}
-
-dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
-    return stat_safeLastExecutedTransactionHash( m_db.get() );
-}
-
 void OverlayDB::commit() {
-    commit( g_fn_pre_commit_empty );
-}
-void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
     if ( m_db ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
             auto writeBatch = m_db->createWriteBatch();
@@ -137,25 +115,28 @@ void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
                             skale::slicing::toSlice( value ) );
                     }
                 }
-                writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
-                    skale::slicing::toSlice( storageUsed_.str() ) );
+
+                if ( m_cachedStorageUsed >= 0 )
+                    writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
+                        skale::slicing::toSlice( m_cachedStorageUsed.str() ) );
+
+                if ( m_cachedLastTransactionHash )
+                    writeBatch->insert(
+                        skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                        skale::slicing::toSlice( m_cachedLastTransactionHash ) );
             }
-            bool bIsPreCommitCallbackPassed = false;
+
             try {
-                if ( fn_pre_commit )
-                    fn_pre_commit( m_db, writeBatch );
-                bIsPreCommitCallbackPassed = true;
                 m_db->commit( std::move( writeBatch ) );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(1) writing to state database. Bombing out. "
-                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
-                                                            "(during pre-commit callback)" );
+                          << "(during DB commit)";
                     exit( -1 );
                 }
                 std::cerr << "Error(2) writing to state database (during "
-                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
+                          << "DB commit"
                           << "): " << boost::diagnostic_information( ex ) << std::endl;
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
@@ -163,26 +144,19 @@ void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(2) writing to state database. Bombing out. "
-                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
-                                                            "(during pre-commit callback)" );
+                          << "(during DB commit)";
                     exit( -1 );
                 }
                 std::cerr << "Error(2) writing to state database (during "
-                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
+                          << "DB commit"
                           << "): " << ex.what() << std::endl;
                 cwarn << "Error(2) writing to state database: " << ex.what();
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
-#if DEV_GUARDED_DB
-        DEV_WRITE_GUARDED( x_this )
-#endif
-        {
-            m_cache.clear();
-            m_auxiliaryCache.clear();
-            m_storageCache.clear();
-        }
+
+        rollback();
     }
 }
 
@@ -296,6 +270,8 @@ void OverlayDB::rollback() {
     m_cache.clear();
     m_auxiliaryCache.clear();
     m_storageCache.clear();
+    m_cachedStorageUsed = -1;
+    m_cachedLastTransactionHash = h256();
 }
 
 void OverlayDB::clearDB() {
@@ -418,14 +394,31 @@ void OverlayDB::insert(
 }
 
 dev::s256 OverlayDB::storageUsed() const {
-    if ( m_db ) {
+    if ( m_cachedStorageUsed >= 0 )
+        return m_cachedStorageUsed;
+    if ( m_db )
         return dev::s256( m_db->lookup( skale::slicing::toSlice( "storageUsed" ) ) );
-    }
-    return 0;
+    return -1;
 }
 
-void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
-    storageUsed_ = _storageUsed;
+void OverlayDB::setStorageUsed( dev::s256 const& _storageUsed ) {
+    m_cachedStorageUsed = _storageUsed;
+}
+
+dev::h256 OverlayDB::lastTransactionHash() const {
+    if ( m_cachedLastTransactionHash )
+        return m_cachedLastTransactionHash;
+    if ( m_db ) {
+        std::string res =
+            m_db->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
+        if ( !res.empty() )
+            return dev::h256( res, dev::h256::FromBinary );
+        return h256();
+    }
+    return h256();
+}
+void OverlayDB::setLastTransactionHash( dev::h256 const& _h ) {
+    m_cachedLastTransactionHash = _h;
 }
 
 }  // namespace skale

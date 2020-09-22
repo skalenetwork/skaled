@@ -539,9 +539,9 @@ size_t Client::importTransactionsAsBlock(
         // end, detect partially executed block
         //
 
-        bool isSaveLastTxHash = true;
-        size_t cntSucceeded = syncTransactions(
-            bIsPartial ? vecMissing : _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
+
+        size_t cntSucceeded =
+            syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice, _timestamp );
         sealUnconditionally( false );
         importWorkingBlock();
 
@@ -570,8 +570,8 @@ size_t Client::importTransactionsAsBlock(
     return 0;
 }
 
-size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash ) {
+size_t Client::syncTransactions(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -596,7 +596,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, isSaveLastTxHash );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state = m_state.startNew();
     }
 

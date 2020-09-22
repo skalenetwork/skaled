@@ -177,7 +177,6 @@ void TestBlock::premineUpdate( BlockHeader& _blockInfo ) {
 
 void TestBlock::mine( TestBlockChain const& _bc ) {
     TestBlock const& genesisBlock = _bc.testGenesis();
-    //    OverlayDB const& genesisDB = genesisBlock.state().db();
     State const& genesisState = genesisBlock.state();
 
     BlockChain const& blockchain = _bc.getInterface();

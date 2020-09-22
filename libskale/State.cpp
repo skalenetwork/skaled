@@ -147,7 +147,7 @@ State& State::operator=( const State& _s ) {
 dev::h256 State::safeLastExecutedTransactionHash() {
     dev::h256 shaLastTx;
     if ( m_db_ptr )
-        shaLastTx = m_db_ptr->safeLastExecutedTransactionHash();
+        shaLastTx = m_db_ptr->lastTransactionHash();
     return shaLastTx;
 }
 
@@ -174,7 +174,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts, OverlayDB::g_fn_pre_commit_empty );
+    commit( State::CommitBehaviour::KeepEmptyAccounts );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -310,7 +310,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t fn_pre_commit ) {
+void State::commit( CommitBehaviour _commitBehaviour ) {
     if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -354,8 +354,10 @@ void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t
                 }
             }
         }
-        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit( fn_pre_commit );
+        m_db_ptr->setStorageUsed( totalStorageUsed_ );
+        if ( m_newLastTransactionHash )
+            m_db_ptr->setLastTransactionHash( m_newLastTransactionHash );
+        m_db_ptr->commit();
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
     }
@@ -363,6 +365,7 @@ void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
+    m_newLastTransactionHash = h256();
 }
 
 bool State::addressInUse( Address const& _id ) const {
@@ -695,6 +698,7 @@ void State::updateToLatestVersion() {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
+    m_newLastTransactionHash = h256();
 
     {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
@@ -781,8 +785,8 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    bool isSaveLastTxHash ) {
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
+    OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -816,6 +820,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_cache.clear();
         break;
     case Permanence::Committed:
+
+        m_newLastTransactionHash = _t.sha3();
+
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
@@ -824,19 +831,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts,
-            [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
-                std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
-                if ( isSaveLastTxHash ) {
-                    h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                                 // dev::eth::WithoutSignature );
-                    // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
-                    // shaLastTx.hex() << "\n";
-                    writeBatch->insert(
-                        skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
-                        skale::slicing::toSlice( shaLastTx ) );
-                }
-            } );
+                                      State::CommitBehaviour::KeepEmptyAccounts );
         break;
     case Permanence::Uncommitted:
         resetStorageChanges();
