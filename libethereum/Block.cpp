@@ -478,13 +478,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
             // Debug only, related SKALE-2814 partial catchup testing
 
-//            if ( i == 3 ) {
-//                std::cout << "\n\n"
-//                          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) << cc::num10( i )
-//                          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() ) << "\n\n\n";
-//                std::cout.flush();
-//                _exit( 200 );
-//            }
+            //            if ( i == 3 ) {
+            //                std::cout << "\n\n"
+            //                          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) <<
+            //                          cc::num10( i )
+            //                          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() )
+            //                          << "\n\n\n";
+            //                std::cout.flush();
+            //                _exit( 200 );
+            //            }
 
 
         } catch ( Exception& ex ) {
