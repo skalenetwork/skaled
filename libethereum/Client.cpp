@@ -226,7 +226,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    bc().m_stateDB = m_state.db();
+    // for debug bc().m_stateDB = m_state.db();
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotInterval is: "

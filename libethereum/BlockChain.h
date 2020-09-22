@@ -535,9 +535,11 @@ private:
     db::DatabaseFace* m_blocksDB;
     db::DatabaseFace* m_extrasDB;
 
-public:
-    std::shared_ptr< dev::db::DatabaseFace > m_stateDB;  // initialized in Client class, than
-                                                         // assigned here later in Client::init()
+    // for debug
+    //  public:
+    //      std::shared_ptr< dev::db::DatabaseFace > m_stateDB;  // initialized in Client class,
+    //      than
+    // assigned here later in Client::init()
 private:
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash;  // should protect both m_lastBlockHash and
