@@ -69,6 +69,7 @@ std::string filtersToString( h256Hash const& _fs ) {
     return str.str();
 }
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
 void create_lock_file_or_fail( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
@@ -80,12 +81,12 @@ void create_lock_file_or_fail( const fs::path& dir ) {
             string( "Cannot create lock file " ) + p.string() + ": " + strerror( errno ) );
     fclose( fp );
 }
-
 void delete_lock_file( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
         fs::remove( p );
 }
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
 }  // namespace
 
@@ -114,7 +115,9 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
     init( _forceAction, _networkID );
 }
 
@@ -150,6 +153,7 @@ void Client::stopWorking() {
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
@@ -164,6 +168,7 @@ void Client::stopWorking() {
                         << cc::error( " after foreceful exit" );
     }
     LOG( m_logger ).flush();
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     terminate();
 }
