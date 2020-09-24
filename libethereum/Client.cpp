@@ -438,6 +438,9 @@ size_t Client::importTransactionsAsBlock(
         int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
              block_number != 0 ) {
+            if ( m_snapshotHashComputing != nullptr )
+                m_snapshotHashComputing->join();
+
             if ( this->last_snapshoted_block != -1 ) {
                 this->updateHashes();
             }
@@ -455,9 +458,6 @@ size_t Client::importTransactionsAsBlock(
             LOG( m_logger ) << "Block timestamp: " << _timestamp;
             LOG( m_logger ) << "Last snapshot time: " << this->last_snapshot_time;
 
-            if ( m_snapshotHashComputing != nullptr ) {
-                m_snapshotHashComputing->join();
-            }
             m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
                 m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
@@ -1054,14 +1054,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 void Client::updateHashes() {
     m_debugTracer.tracepoint( "update_hashes" );
 
-    if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
-        this->last_snapshot_hashes.second =
-            this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
-        return;
-    }
-    if ( this->last_snapshot_hashes.first != this->empty_str_hash ) {
-        std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
-    }
+    std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
     this->last_snapshot_hashes.second =
         this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
 }
