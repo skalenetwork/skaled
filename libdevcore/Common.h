@@ -335,9 +335,9 @@ public:
     enum exit_code_t {
         ec_success = 0,
         ec_failure = 1,  // same as EXIT_FAILURE in stdlib.h, generic failure in main()
-        ec_termninated_by_signal,
-        ec_compute_snapshot_error = 196,       // snapshot computation error
-        ec_rotation_complete = 197,            // exit requested after rotation complete
+        ec_termninated_by_signal = 196,
+        ec_compute_snapshot_error = 197,  // snapshot computation error
+        ec_rotation_complete = 0,         // must be zero, exit requested after rotation complete
         ec_consensus_terminate_request = 198,  // exit requested by consensus
         ec_web3_request = 199,                 // programmatic shutdown via Web3 call, when enabled
         ec_state_root_mismatch = 200,  // current state root is not equal to arrived from consensus
