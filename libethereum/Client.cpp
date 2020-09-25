@@ -460,12 +460,12 @@ size_t Client::importTransactionsAsBlock(
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash() or updateHashes(). Exiting";
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
                               "updateHashes(). Exiting";
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
             } ) );
             // TODO Make this number configurable
