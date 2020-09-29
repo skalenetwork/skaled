@@ -181,6 +181,10 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       total_sent( 0 ),
       total_arrived( 0 ) {
+    m_debugHandler = [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    };
+
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
         skutils::task::performance::action action(
             "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
@@ -197,10 +201,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 
         LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
                              << m_debugTracer.get_tracepoint_count( name );
-    } );
-
-    m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
-        return DebugTracer_handler( arg, this->m_debugTracer );
     } );
 
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
@@ -786,10 +786,6 @@ void SkaleHost::forceEmptyBlock() {
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
     m_broadcaster->broadcast( toJS( _txn.rlp() ) );
-}
-
-std::string SkaleHost::debugCall( const std::string& arg ) {
-    return m_debugInterface.call( arg );
 }
 
 void SkaleHost::noteNewTransactions() {}
