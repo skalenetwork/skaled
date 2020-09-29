@@ -135,7 +135,7 @@ public:
 
     void forcedBroadcast( const dev::eth::Transaction& _txn );
 
-    std::string debugCall( const std::string& arg );
+    SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 private:
     std::atomic_bool working = false;
@@ -189,9 +189,8 @@ private:
 
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
-
-    SkaleDebugInterface m_debugInterface;
     SkaleDebugTracer m_debugTracer;
+    SkaleDebugInterface::handler m_debugHandler;
 
 #ifdef DEBUG_TX_BALANCE
     std::map< dev::h256, int > sent;

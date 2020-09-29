@@ -1364,6 +1364,7 @@ int main( int argc, char** argv ) try {
 
     auto rotationFlagDirPath = configPath.parent_path();
     auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1385,6 +1386,14 @@ int main( int argc, char** argv ) try {
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
+        // XXX nested lambdas and strlen hacks..
+        auto client_debug_handler = g_client->getDebugHandler();
+        debugInterface.add_handler( [client_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "Client " ) == 0 )
+                return client_debug_handler( arg.substr( 7 ) );
+            else
+                return "";
+        } );
         g_client->setAuthor( chainParams.sChain.owner );
 
         DefaultConsensusFactory cons_fact( *g_client );
@@ -1392,6 +1401,16 @@ int main( int argc, char** argv ) try {
 
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *g_client, &cons_fact );
+
+        // XXX nested lambdas and strlen hacks..
+        auto skaleHost_debug_handler = skaleHost->getDebugHandler();
+        debugInterface.add_handler( [skaleHost_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "SkaleHost " ) == 0 )
+                return skaleHost_debug_handler( arg.substr( 10 ) );
+            else
+                return "";
+        } );
+
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
         g_client->setGasPricer( gasPricer );
@@ -1722,7 +1741,8 @@ int main( int argc, char** argv ) try {
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *g_client ),
             new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, argv_string ) : nullptr,
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
+                                        nullptr,
             nullptr ) );
 
         if ( is_ipc ) {
