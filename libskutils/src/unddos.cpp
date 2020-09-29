@@ -77,6 +77,17 @@ void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo["maxCallsPerMinute"] = maxCallsPerMinute_;
 }
 
+bool origin_entry_setting::match_origin( const char* origin ) const {
+    if ( origin == nullptr || ( *origin ) == '\0' )
+        return false;
+    if ( !skutils::tools::wildcmp( origin_wildcard_.c_str(), origin ) )
+        return false;
+    return true;
+}
+bool origin_entry_setting::match_origin( const std::string& origin ) const {
+    return match_origin( origin.c_str() );
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -192,6 +203,23 @@ void settings::toJSON( nlohmann::json& jo ) const {
     jo["origins"] = joOrigins;
     jo["maxCallsPerSecond"] = maxCallsPerSecond_;
     jo["maxCallsPerMinute"] = maxCallsPerMinute_;
+}
+
+size_t settings::find_origin_entry_setting_match( const char* origin, size_t idxStart ) const {
+    if ( origin == nullptr || ( *origin ) == '\0' )
+        return std::string::npos;
+    size_t cnt = origins_.size();
+    size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
+    for ( ; i < cnt; ++i ) {
+        const origin_entry_setting& oe = origins_[i];
+        if ( oe.match_origin( origin ) )
+            return i;
+    }
+    return std::string::npos;
+}
+size_t settings::find_origin_entry_setting_match(
+    const std::string& origin, size_t idxStart ) const {
+    return find_origin_entry_setting_match( origin.c_str(), idxStart );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

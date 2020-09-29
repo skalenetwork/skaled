@@ -32,6 +32,8 @@ public:
     origin_entry_setting& merge( const origin_entry_setting& other );
     void fromJSON( const nlohmann::json& jo );
     void toJSON( nlohmann::json& jo ) const;
+    bool match_origin( const char* origin ) const;
+    bool match_origin( const std::string& origin ) const;
 };  /// class origin_entry_setting
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +59,10 @@ public:
     size_t indexOfOrigin( const std::string& origin_wildcard, size_t idxStart = std::string::npos );
     void fromJSON( const nlohmann::json& jo );
     void toJSON( nlohmann::json& jo ) const;
+    size_t find_origin_entry_setting_match(
+        const char* origin, size_t idxStart = std::string::npos ) const;
+    size_t find_origin_entry_setting_match(
+        const std::string& origin, size_t idxStart = std::string::npos ) const;
 };  /// class settings
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
