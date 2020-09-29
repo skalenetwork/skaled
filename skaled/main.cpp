@@ -348,6 +348,7 @@ int main( int argc, char** argv ) try {
                   << "\n";
         std::cerr.flush();
         std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        dev::ExitHandler::exitHandler( nSignalNo );
         if ( stopWasRaisedBefore )
             _exit( 13 );
     } );
@@ -2258,7 +2259,8 @@ int main( int argc, char** argv ) try {
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
-        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGABRT ); } );
+        dev::rpc::Skale::onShutdownInvoke(
+            []() { ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_web3_request ); } );
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
@@ -2298,30 +2300,40 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
-    bool returnCode = ExitHandler::getSignal() != SIGINT && ExitHandler::getSignal() != SIGTERM;
-    return returnCode;
+    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+    if ( ec == ExitHandler::ec_success ) {
+        int sig_no = ExitHandler::getSignal();
+        if ( sig_no != SIGINT && sig_no != SIGTERM )
+            ec = ExitHandler::ec_failure;
+    }
+    if ( ec != ExitHandler::ec_success ) {
+        std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
+                  << cc::error( "...\n" );
+        std::cerr.flush();
+    }
+    return int( ec );
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( const SkaleHost::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 }
