@@ -136,8 +136,7 @@ size_t g_nMaxChunckSize = 1024 * 1024;
 //
 // call example:
 // curl http://127.0.0.1:7000 -X POST --data
-// '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest",  "autoCreate":
-// false },"id":73}'
+// '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest" },"id":73}'
 //
 nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, Client& client ) {
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
@@ -435,7 +434,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         joIn["jsonrpc"] = "2.0";
         joIn["method"] = "skale_getSnapshot";
         nlohmann::json joParams = nlohmann::json::object();
-        joParams["autoCreate"] = false;
         joParams["blockNumber"] = block_number;
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
@@ -479,7 +477,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             joIn["jsonrpc"] = "2.0";
             joIn["method"] = "skale_downloadSnapshotFragment";
             nlohmann::json joParams = nlohmann::json::object();
-            joParams["blockNumber"] = "latest";
             joParams["from"] = idxChunk * maxAllowedChunkSize;
             joParams["size"] = maxAllowedChunkSize;
             joParams["isBinary"] = isBinaryDownload;
