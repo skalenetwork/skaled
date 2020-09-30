@@ -225,6 +225,153 @@ size_t settings::find_origin_entry_setting_match(
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+time_entry::time_entry( time_tick_mark ttm ) : ttm_( ttm ) {}
+
+time_entry::time_entry( const time_entry& other ) {
+    assign( other );
+}
+
+time_entry::time_entry( time_entry&& other ) {
+    assign( other );
+    other.clear();
+}
+
+time_entry::~time_entry() {
+    clear();
+}
+
+time_entry& time_entry::operator=( const time_entry& other ) {
+    return assign( other );
+}
+
+bool time_entry::empty() const {
+    if ( ttm_ != time_tick_mark( 0 ) )
+        return false;
+    return true;
+}
+
+void time_entry::clear() {
+    ttm_ = time_tick_mark( 0 );
+}
+
+time_entry& time_entry::assign( const time_entry& other ) {
+    clear();
+    ttm_ = other.ttm_;
+    return ( *this );
+}
+
+int time_entry::compare( const time_entry& other ) const {
+    if ( ttm_ < other.ttm_ )
+        return -1;
+    if ( ttm_ > other.ttm_ )
+        return 1;
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+tracked_origin::tracked_origin( const char* origin )
+    : origin_( ( origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {}
+
+tracked_origin::tracked_origin( const std::string& origin ) : origin_( origin ) {}
+
+tracked_origin::tracked_origin( const tracked_origin& other ) {
+    assign( other );
+}
+
+tracked_origin::tracked_origin( tracked_origin&& other ) {
+    assign( other );
+    other.clear();
+}
+
+tracked_origin::~tracked_origin() {
+    clear();
+}
+
+tracked_origin& tracked_origin::operator=( const tracked_origin& other ) {
+    return assign( other );
+}
+
+bool tracked_origin::empty() const {
+    if ( !origin_.empty() )
+        return false;
+    if ( !time_entries_.empty() )
+        return false;
+    return true;
+}
+
+void tracked_origin::clear() {
+    origin_.clear();
+    time_entries_.clear();
+}
+
+tracked_origin& tracked_origin::assign( const tracked_origin& other ) {
+    clear();
+    origin_ = other.origin_;
+    time_entries_ = other.time_entries_;
+    return ( *this );
+}
+
+int tracked_origin::compare( const tracked_origin& other ) const {
+    int n = origin_.compare( other.origin_ );
+    return n;
+}
+int tracked_origin::compare( const char* origin ) const {
+    int n = origin_.compare( origin ? origin : "" );
+    return n;
+}
+int tracked_origin::compare( const std::string& origin ) const {
+    int n = origin_.compare( origin );
+    return n;
+}
+
+size_t tracked_origin::unload_old_data_by_time_to_past(
+    time_tick_mark ttmNow, duration durationToPast ) {
+    if ( durationToPast == duration( 0 ) )
+        return 0;
+    adjust_now_tick_mark( ttmNow );
+    time_tick_mark ttmUntil = ttmNow - durationToPast;
+    size_t cntRemoved = 0;
+    adjust_now_tick_mark( ttmNow );
+    while ( !time_entries_.empty() ) {
+        const time_entry& te = time_entries_.front();
+        if ( te.ttm_ < ttmUntil ) {
+            time_entries_.pop_front();
+            ++cntRemoved;
+        }
+    }
+    return cntRemoved;
+}
+
+size_t tracked_origin::unload_old_data_by_count( size_t cntEntriesMax ) {
+    size_t cntRemoved = 0;
+    while ( time_entries_.size() > cntEntriesMax ) {
+        time_entries_.pop_front();
+        ++cntRemoved;
+    }
+    return cntRemoved;
+}
+
+size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationToPast ) const {
+    // if ( durationToPast == duration( 0 ) )
+    //    return 0;
+    adjust_now_tick_mark( ttmNow );
+    time_tick_mark ttmUntil = ttmNow - durationToPast;
+    size_t cnt = 0;
+    time_entries_t::const_reverse_iterator itWalk = time_entries_.crbegin(),
+                                           itEnd = time_entries_.crend();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        const time_entry& te = ( *itWalk );
+        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
+            ++cnt;
+    }
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 algorithm::algorithm() {}
 
 algorithm::algorithm( const settings& st ) {
@@ -238,6 +385,28 @@ algorithm& algorithm::operator=( const settings& st ) {
     settings_ = st;
     return ( *this );
 }
+
+size_t algorithm::unload_old_data_by_time_to_past(
+    time_tick_mark ttmNow, duration durationToPast ) {
+    lock_type lock( mtx_ );
+    if ( durationToPast == duration( 0 ) )
+        return 0;
+    adjust_now_tick_mark( ttmNow );
+    size_t cnt = 0;
+    std::set< std::string > setOriginsTorRemove;
+    tracked_origins_t::iterator itWalk = tracked_origins_.begin(), itEnd = tracked_origins_.end();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        tracked_origin& to = const_cast< tracked_origin& >( *itWalk );
+        size_t cntWalk = to.unload_old_data_by_time_to_past( ttmNow, durationToPast );
+        cnt += cntWalk;
+        if ( to.time_entries_.empty() )
+            setOriginsTorRemove.insert( to.origin_ );
+    }
+    for ( const std::string& origin : setOriginsTorRemove )
+        tracked_origins_.erase( origin );
+    return cnt;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
