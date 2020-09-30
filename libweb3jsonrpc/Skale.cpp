@@ -159,6 +159,9 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    if ( blockNumber == 0 )
+        throw std::runtime_error( "Snapshot for block 0 is absent" );
+
     currentSnapshotPath = client.createSnapshotFile( blockNumber );
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
@@ -203,10 +206,7 @@ std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
     f.open( fp.native(), std::ios::in | std::ios::binary );
     if ( !f.is_open() )
         throw std::runtime_error( "failed to open snapshot file" );
-    size_t i;
-    std::vector< uint8_t > buffer;
-    for ( i = 0; i < sizeOfChunk; ++i )
-        buffer.push_back( ( uint8_t )( 0 ) );
+    std::vector< uint8_t > buffer( sizeOfChunk );
     f.seekg( idxFrom );
     f.read( ( char* ) buffer.data(), sizeOfChunk );
     f.close();
@@ -223,7 +223,7 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     size_t sizeOfFile = fs::file_size( fp );
     if ( idxFrom >= sizeOfFile )
         sizeOfChunk = 0;
-    if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+    else if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
         sizeOfChunk = sizeOfFile - idxFrom;
     if ( sizeOfChunk > g_nMaxChunckSize )
         sizeOfChunk = g_nMaxChunckSize;
@@ -241,7 +241,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     size_t sizeOfFile = fs::file_size( fp );
     if ( idxFrom >= sizeOfFile )
         sizeOfChunk = 0;
-    if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
+    else if ( ( idxFrom + sizeOfChunk ) > sizeOfFile )
         sizeOfChunk = sizeOfFile - idxFrom;
     if ( sizeOfChunk > g_nMaxChunckSize )
         sizeOfChunk = g_nMaxChunckSize;
