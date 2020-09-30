@@ -220,6 +220,13 @@ typedef std::set< tracked_origin > tracked_origins_t;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum class e_high_load_detection_result_t {
+    ehldr_no_error,
+    ehldr_peak,     // ban by too high load per minute
+    ehldr_lengthy,  // ban by too high load per second
+    ehldr_bad_origin
+};
+
 class algorithm {
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
@@ -238,7 +245,7 @@ public:
     algorithm& operator=( const settings& st );
     size_t unload_old_data_by_time_to_past(
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
-    bool register_access_from_origin( const char* origin,
+    e_high_load_detection_result_t register_call_from_origin( const char* origin,
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
 };  /// class algorithm
 

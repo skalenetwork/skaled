@@ -415,10 +415,10 @@ size_t algorithm::unload_old_data_by_time_to_past(
     return cnt;
 }
 
-bool algorithm::register_access_from_origin(
+e_high_load_detection_result_t algorithm::register_call_from_origin(
     const char* origin, time_tick_mark ttmNow, duration durationToPast ) {
     if ( origin == nullptr || origin[0] == '\0' )
-        return false;
+        return e_high_load_detection_result_t::ehldr_bad_origin;
     adjust_now_tick_mark( ttmNow );
     lock_type lock( mtx_ );
     unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
@@ -426,11 +426,16 @@ bool algorithm::register_access_from_origin(
                                 itEnd = tracked_origins_.end();
     if ( itFind == itEnd ) {
         tracked_origin to( origin, ttmNow );
-        return true;
+        return e_high_load_detection_result_t::ehldr_no_error;
     }
+    // return detect_high_load( origin.ttmNow, durationToPast )
     tracked_origin& to = const_cast< tracked_origin& >( *itFind );
     to.time_entries_.push_back( time_entry( ttmNow ) );
-    return true;
+    if ( to.unload_old_data_by_count( settings_.maxCallsPerMinute_ ) > 0 )
+        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
+    if ( to.count_to_past( ttmNow, 1 ) > settings_.maxCallsPerSecond_ )
+        return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
+    return e_high_load_detection_result_t::ehldr_no_error;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
