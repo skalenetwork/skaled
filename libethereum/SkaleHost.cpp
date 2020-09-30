@@ -492,7 +492,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         dev::h256::Arith stCurrent = dev::h256::Arith(
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) ).stateRoot() );
         if ( stCurrent != _stateRoot ) {
-            static const int g_nExitCodeOnStateRootMismatch = 200;
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " ) << cc::warn( stCurrent.str() )
