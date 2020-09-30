@@ -173,7 +173,7 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT );
+    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory ) try
@@ -501,9 +501,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
-                << cc::num10( g_nExitCodeOnStateRootMismatch ) << ( "..." ) << std::endl;
-            ExitHandler::exitHandler( SIGABRT );
-            _exit( g_nExitCodeOnStateRootMismatch );
+                << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << ( "..." ) << std::endl;
+            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
+            _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
     }
 
