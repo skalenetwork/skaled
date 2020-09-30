@@ -493,16 +493,15 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) ).stateRoot() );
         if ( stCurrent != _stateRoot ) {
             static const int g_nExitCodeOnStateRootMismatch = 200;
-            LOG( m_traceLogger ) << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
-                                 << cc::error( " current state root " )
-                                 << cc::warn( stCurrent.str() )
-                                 << cc::error( " is not equal to arrived state root " )
-                                 << cc::warn( _stateRoot.str() ) << cc::error( " with block ID " )
-                                 << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
-                                 << cc::p( "/data_dir" )
-                                 << cc::error( " cleanup is recommended, exiting with code " )
-                                 << cc::num10( g_nExitCodeOnStateRootMismatch ) << ( "..." )
-                                 << std::endl;
+            clog( VerbosityError, "skale-host" )
+                << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
+                << cc::error( " current state root " ) << cc::warn( stCurrent.str() )
+                << cc::error( " is not equal to arrived state root " )
+                << cc::warn( _stateRoot.str() ) << cc::error( " with block ID " )
+                << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
+                << cc::p( "/data_dir" )
+                << cc::error( " cleanup is recommended, exiting with code " )
+                << cc::num10( g_nExitCodeOnStateRootMismatch ) << ( "..." ) << std::endl;
             ExitHandler::exitHandler( SIGABRT );
             _exit( g_nExitCodeOnStateRootMismatch );
         }

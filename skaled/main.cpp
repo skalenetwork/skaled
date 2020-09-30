@@ -1257,6 +1257,9 @@ int main( int argc, char** argv ) try {
 
             try {
                 present = snapshotManager->isSnapshotHashPresent( blockNumber );
+                // if there is snapshot but no hash!
+                if ( !present )
+                    snapshotManager->removeSnapshot( blockNumber );
             } catch ( const std::exception& ex ) {
                 // usually snapshot absent exception
                 clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
