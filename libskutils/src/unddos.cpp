@@ -271,10 +271,17 @@ int time_entry::compare( const time_entry& other ) const {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-tracked_origin::tracked_origin( const char* origin )
-    : origin_( ( origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {}
+tracked_origin::tracked_origin( const char* origin, time_tick_mark ttm )
+    : origin_( ( origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {
+    if ( ttm != time_tick_mark( 0 ) )
+        time_entries_.push_back( time_entry( ttm ) );
+}
 
-tracked_origin::tracked_origin( const std::string& origin ) : origin_( origin ) {}
+tracked_origin::tracked_origin( const std::string& origin, time_tick_mark ttm )
+    : origin_( origin ) {
+    if ( ttm != time_tick_mark( 0 ) )
+        time_entries_.push_back( time_entry( ttm ) );
+}
 
 tracked_origin::tracked_origin( const tracked_origin& other ) {
     assign( other );
@@ -388,10 +395,10 @@ algorithm& algorithm::operator=( const settings& st ) {
 
 size_t algorithm::unload_old_data_by_time_to_past(
     time_tick_mark ttmNow, duration durationToPast ) {
-    lock_type lock( mtx_ );
     if ( durationToPast == duration( 0 ) )
         return 0;
     adjust_now_tick_mark( ttmNow );
+    lock_type lock( mtx_ );
     size_t cnt = 0;
     std::set< std::string > setOriginsTorRemove;
     tracked_origins_t::iterator itWalk = tracked_origins_.begin(), itEnd = tracked_origins_.end();
@@ -399,14 +406,32 @@ size_t algorithm::unload_old_data_by_time_to_past(
         tracked_origin& to = const_cast< tracked_origin& >( *itWalk );
         size_t cntWalk = to.unload_old_data_by_time_to_past( ttmNow, durationToPast );
         cnt += cntWalk;
-        if ( to.time_entries_.empty() )
-            setOriginsTorRemove.insert( to.origin_ );
+        if ( to.time_entries_.empty() ) {
+            setOriginsTorRemove.insert( to.origin_ );  // TO-FIX: do not unload banned
+        }
     }
     for ( const std::string& origin : setOriginsTorRemove )
         tracked_origins_.erase( origin );
     return cnt;
 }
 
+bool algorithm::register_access_from_origin(
+    const char* origin, time_tick_mark ttmNow, duration durationToPast ) {
+    if ( origin == nullptr || origin[0] == '\0' )
+        return false;
+    adjust_now_tick_mark( ttmNow );
+    lock_type lock( mtx_ );
+    unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
+    tracked_origins_t::iterator itFind = tracked_origins_.find( origin ),
+                                itEnd = tracked_origins_.end();
+    if ( itFind == itEnd ) {
+        tracked_origin to( origin, ttmNow );
+        return true;
+    }
+    tracked_origin& to = const_cast< tracked_origin& >( *itFind );
+    to.time_entries_.push_back( time_entry( ttmNow ) );
+    return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

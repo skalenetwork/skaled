@@ -139,8 +139,8 @@ class tracked_origin {
 public:
     std::string origin_;
     time_entries_t time_entries_;
-    tracked_origin( const char* origin = nullptr );
-    tracked_origin( const std::string& origin );
+    tracked_origin( const char* origin = nullptr, time_tick_mark ttm = time_tick_mark( 0 ) );
+    tracked_origin( const std::string& origin, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const tracked_origin& other );
     tracked_origin( tracked_origin&& other );
     virtual ~tracked_origin();
@@ -238,8 +238,8 @@ public:
     algorithm& operator=( const settings& st );
     size_t unload_old_data_by_time_to_past(
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
-    void register_access_from_origin(
-        const char* origin, time_tick_mark ttmNow = time_tick_mark( 0 ) );
+    bool register_access_from_origin( const char* origin,
+        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
 };  /// class algorithm
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
