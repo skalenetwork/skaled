@@ -28,6 +28,15 @@ origin_entry_setting& origin_entry_setting::operator=( const origin_entry_settin
     return ( *this );
 }
 
+void origin_entry_setting::load_defaults_for_any_origin() {
+    clear();
+    origin_wildcard_ = "*";
+    max_calls_per_second_ = 10;
+    max_calls_per_minute_ = 60;
+    ban_peak_ = duration( 15 );
+    ban_lengthy_ = duration( 129 );
+}
+
 bool origin_entry_setting::empty() const {
     if ( !origin_wildcard_.empty() )
         return false;
@@ -36,8 +45,8 @@ bool origin_entry_setting::empty() const {
 
 void origin_entry_setting::clear() {
     origin_wildcard_.clear();
-    maxCallsPerSecond_ = 0;
-    maxCallsPerMinute_ = 0;
+    max_calls_per_second_ = 0;
+    max_calls_per_minute_ = 0;
 }
 
 origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& other ) {
@@ -45,8 +54,10 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
         return ( *this );
     clear();
     origin_wildcard_ = other.origin_wildcard_;
-    maxCallsPerSecond_ = other.maxCallsPerSecond_;
-    maxCallsPerMinute_ = other.maxCallsPerMinute_;
+    max_calls_per_second_ = other.max_calls_per_second_;
+    max_calls_per_minute_ = other.max_calls_per_minute_;
+    ban_peak_ = other.ban_peak_;
+    ban_lengthy_ = other.ban_lengthy_;
     return ( *this );
 }
 
@@ -55,8 +66,10 @@ origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& o
         return ( *this );
     if ( origin_wildcard_ != other.origin_wildcard_ )
         return ( *this );
-    maxCallsPerSecond_ = std::min( maxCallsPerSecond_, other.maxCallsPerSecond_ );
-    maxCallsPerMinute_ = std::min( maxCallsPerMinute_, other.maxCallsPerMinute_ );
+    max_calls_per_second_ = std::min( max_calls_per_second_, other.max_calls_per_second_ );
+    max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
+    ban_peak_ = std::max( ban_peak_, other.ban_peak_ );
+    ban_lengthy_ = std::max( ban_lengthy_, other.ban_lengthy_ );
     return ( *this );
 }
 
@@ -64,17 +77,23 @@ void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
     clear();
     if ( jo.find( "origin" ) != jo.end() )
         origin_wildcard_ = jo["origin"].get< std::string >();
-    if ( jo.find( "maxCallsPerSecond" ) != jo.end() )
-        maxCallsPerSecond_ = jo["maxCallsPerSecond"].get< size_t >();
-    if ( jo.find( "maxCallsPerMinute" ) != jo.end() )
-        maxCallsPerMinute_ = jo["maxCallsPerMinute"].get< size_t >();
+    if ( jo.find( "max_calls_per_second" ) != jo.end() )
+        max_calls_per_second_ = jo["max_calls_per_second"].get< size_t >();
+    if ( jo.find( "max_calls_per_minute" ) != jo.end() )
+        max_calls_per_minute_ = jo["max_calls_per_minute"].get< size_t >();
+    if ( jo.find( "ban_peak" ) != jo.end() )
+        ban_peak_ = jo["ban_peak"].get< size_t >();
+    if ( jo.find( "ban_lengthy" ) != jo.end() )
+        ban_lengthy_ = jo["ban_lengthy"].get< size_t >();
 }
 
 void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo = nlohmann::json::object();
     jo["origin"] = origin_wildcard_;
-    jo["maxCallsPerSecond"] = maxCallsPerSecond_;
-    jo["maxCallsPerMinute"] = maxCallsPerMinute_;
+    jo["max_calls_per_second"] = max_calls_per_second_;
+    jo["max_calls_per_minute"] = max_calls_per_minute_;
+    jo["ban_peak"] = ban_peak_;
+    jo["ban_lengthy"] = ban_lengthy_;
 }
 
 bool origin_entry_setting::match_origin( const char* origin ) const {
@@ -121,8 +140,6 @@ bool settings::empty() const {
 
 void settings::clear() {
     origins_.clear();
-    maxCallsPerSecond_ = 0;
-    maxCallsPerMinute_ = 0;
 }
 
 settings& settings::assign( const settings& other ) {
@@ -130,16 +147,12 @@ settings& settings::assign( const settings& other ) {
         return ( *this );
     clear();
     origins_ = other.origins_;
-    maxCallsPerSecond_ = other.maxCallsPerSecond_;
-    maxCallsPerMinute_ = other.maxCallsPerMinute_;
     return ( *this );
 }
 
 settings& settings::merge( const settings& other ) {
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
-    maxCallsPerSecond_ = std::min( maxCallsPerSecond_, other.maxCallsPerSecond_ );
-    maxCallsPerMinute_ = std::min( maxCallsPerMinute_, other.maxCallsPerMinute_ );
     for ( const origin_entry_setting& oe : other.origins_ )
         merge( oe );
     return ( *this );
@@ -186,10 +199,6 @@ void settings::fromJSON( const nlohmann::json& jo ) {
             }
         }
     }
-    if ( jo.find( "maxCallsPerSecond" ) != jo.end() )
-        maxCallsPerSecond_ = jo["maxCallsPerSecond"].get< size_t >();
-    if ( jo.find( "maxCallsPerMinute" ) != jo.end() )
-        maxCallsPerMinute_ = jo["maxCallsPerMinute"].get< size_t >();
 }
 
 void settings::toJSON( nlohmann::json& jo ) const {
@@ -201,8 +210,6 @@ void settings::toJSON( nlohmann::json& jo ) const {
         joOrigin.push_back( joOrigin );
     }
     jo["origins"] = joOrigins;
-    jo["maxCallsPerSecond"] = maxCallsPerSecond_;
-    jo["maxCallsPerMinute"] = maxCallsPerMinute_;
 }
 
 size_t settings::find_origin_entry_setting_match( const char* origin, size_t idxStart ) const {
@@ -217,9 +224,24 @@ size_t settings::find_origin_entry_setting_match( const char* origin, size_t idx
     }
     return std::string::npos;
 }
-size_t settings::find_origin_entry_setting_match(
-    const std::string& origin, size_t idxStart ) const {
-    return find_origin_entry_setting_match( origin.c_str(), idxStart );
+
+origin_entry_setting& settings::find_origin_entry_setting( const char* origin ) {
+    size_t i = find_origin_entry_setting_match( origin );
+    if ( i != std::string::npos )
+        return origins_[i];
+    return auto_append_any_origin_rule();
+}
+
+origin_entry_setting& settings::auto_append_any_origin_rule() {
+    if ( !origins_.empty() ) {
+        size_t i = find_origin_entry_setting_match( "*" );
+        if ( i != std::string::npos )
+            return origins_[i];
+    }
+    origin_entry_setting oe;
+    oe.load_defaults_for_any_origin();
+    origins_.push_back( oe );
+    return origins_[origins_.size() - 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,12 +333,14 @@ bool tracked_origin::empty() const {
 void tracked_origin::clear() {
     origin_.clear();
     time_entries_.clear();
+    clear_ban();
 }
 
 tracked_origin& tracked_origin::assign( const tracked_origin& other ) {
     clear();
     origin_ = other.origin_;
     time_entries_ = other.time_entries_;
+    ban_until_ = other.ban_until_;
     return ( *this );
 }
 
@@ -376,6 +400,25 @@ size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationTo
     return 0;
 }
 
+
+bool tracked_origin::clear_ban() {
+    if ( ban_until_ == time_tick_mark( 0 ) )
+        return false;
+    ban_until_ = time_tick_mark( 0 );
+    return true;  // was cleared
+}
+
+bool tracked_origin::check_ban( time_tick_mark ttmNow, bool isAutoClear ) {
+    if ( ban_until_ == time_tick_mark( 0 ) )
+        return false;
+    adjust_now_tick_mark( ttmNow );
+    if ( ttmNow <= ban_until_ )
+        return true;
+    if ( isAutoClear )
+        clear_ban();
+    return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -431,10 +474,17 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     // return detect_high_load( origin.ttmNow, durationToPast )
     tracked_origin& to = const_cast< tracked_origin& >( *itFind );
     to.time_entries_.push_back( time_entry( ttmNow ) );
-    if ( to.unload_old_data_by_count( settings_.maxCallsPerMinute_ ) > 0 )
+    if ( to.check_ban( ttmNow ) )
+        return e_high_load_detection_result_t::ehldr_ban;  // still banned
+    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
+    if ( to.unload_old_data_by_count( oe.max_calls_per_minute_ ) > 0 ) {
+        to.ban_until_ = ttmNow + oe.ban_peak_;
         return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
-    if ( to.count_to_past( ttmNow, 1 ) > settings_.maxCallsPerSecond_ )
+    }
+    if ( to.count_to_past( ttmNow, 1 ) > oe.max_calls_per_second_ ) {
+        to.ban_until_ = ttmNow + oe.ban_lengthy_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
+    }
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 

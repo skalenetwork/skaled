@@ -43,13 +43,16 @@ inline void adjust_now_tick_mark( time_tick_mark& ttm ) {
 class origin_entry_setting {
 public:
     std::string origin_wildcard_;
-    size_t maxCallsPerSecond_ = 0;
-    size_t maxCallsPerMinute_ = 0;
+    size_t max_calls_per_second_ = 0;
+    size_t max_calls_per_minute_ = 0;
+    duration ban_peak_ = duration( 0 );
+    duration ban_lengthy_ = duration( 0 );
     origin_entry_setting();
     origin_entry_setting( const origin_entry_setting& other );
     origin_entry_setting( origin_entry_setting&& other );
     virtual ~origin_entry_setting();
     origin_entry_setting& operator=( const origin_entry_setting& other );
+    void load_defaults_for_any_origin();
     bool empty() const;
     operator bool() const { return ( !empty() ); }
     bool operator!() const { return empty(); }
@@ -62,14 +65,14 @@ public:
     bool match_origin( const std::string& origin ) const;
 };  /// class origin_entry_setting
 
+typedef std::vector< origin_entry_setting > origin_entry_settings_t;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class settings {
 public:
-    std::vector< origin_entry_setting > origins_;
-    size_t maxCallsPerSecond_ = 0;
-    size_t maxCallsPerMinute_ = 0;
+    origin_entry_settings_t origins_;
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -90,7 +93,20 @@ public:
     size_t find_origin_entry_setting_match(
         const char* origin, size_t idxStart = std::string::npos ) const;
     size_t find_origin_entry_setting_match(
-        const std::string& origin, size_t idxStart = std::string::npos ) const;
+        const std::string& origin, size_t idxStart = std::string::npos ) const {
+        return find_origin_entry_setting_match( origin.c_str(), idxStart );
+    }
+    origin_entry_setting& find_origin_entry_setting( const char* origin );
+    origin_entry_setting& find_origin_entry_setting( const std::string& origin ) {
+        return find_origin_entry_setting( origin.c_str() );
+    }
+    const origin_entry_setting& find_origin_entry_setting( const char* origin ) const {
+        return ( const_cast< settings* >( this ) )->find_origin_entry_setting( origin );
+    }
+    const origin_entry_setting& find_origin_entry_setting( const std::string& origin ) const {
+        return ( const_cast< settings* >( this ) )->find_origin_entry_setting( origin );
+    }
+    origin_entry_setting& auto_append_any_origin_rule();
 };  /// class settings
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,6 +155,7 @@ class tracked_origin {
 public:
     std::string origin_;
     time_entries_t time_entries_;
+    time_tick_mark ban_until_ = time_tick_mark( 0 );
     tracked_origin( const char* origin = nullptr, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const std::string& origin, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const tracked_origin& other );
@@ -213,6 +230,8 @@ public:
     size_t unload_old_data_by_count( size_t cntEntriesMax );
     size_t count_to_past( time_tick_mark ttmNow = time_tick_mark( 0 ),
         duration durationToPast = duration( 60 ) ) const;
+    bool clear_ban();
+    bool check_ban( time_tick_mark ttmNow = time_tick_mark( 0 ), bool isAutoClear = true );
 };  /// class tracked_origin
 
 typedef std::set< tracked_origin > tracked_origins_t;
@@ -224,7 +243,8 @@ enum class e_high_load_detection_result_t {
     ehldr_no_error,
     ehldr_peak,     // ban by too high load per minute
     ehldr_lengthy,  // ban by too high load per second
-    ehldr_bad_origin
+    ehldr_bad_origin,
+    ehldr_ban  // still banned
 };
 
 class algorithm {
