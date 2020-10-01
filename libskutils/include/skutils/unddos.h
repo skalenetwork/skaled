@@ -267,6 +267,10 @@ public:
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
     e_high_load_detection_result_t register_call_from_origin( const char* origin,
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
+    e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
+        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
+        return register_call_from_origin( origin.c_str(), ttmNow, durationToPast );
+    }
 };  /// class algorithm
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

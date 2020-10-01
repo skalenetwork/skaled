@@ -31,10 +31,10 @@ origin_entry_setting& origin_entry_setting::operator=( const origin_entry_settin
 void origin_entry_setting::load_defaults_for_any_origin() {
     clear();
     origin_wildcard_ = "*";
-    max_calls_per_second_ = 10;
-    max_calls_per_minute_ = 60;
-    ban_peak_ = duration( 15 );
-    ban_lengthy_ = duration( 129 );
+    max_calls_per_second_ = 100;
+    max_calls_per_minute_ = 5000;
+    ban_peak_ = duration( 15 );      // 15
+    ban_lengthy_ = duration( 120 );  // 120
 }
 
 bool origin_entry_setting::empty() const {
@@ -370,7 +370,8 @@ size_t tracked_origin::unload_old_data_by_time_to_past(
         if ( te.ttm_ < ttmUntil ) {
             time_entries_.pop_front();
             ++cntRemoved;
-        }
+        } else
+            break;
     }
     return cntRemoved;
 }
@@ -469,6 +470,7 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
                                 itEnd = tracked_origins_.end();
     if ( itFind == itEnd ) {
         tracked_origin to( origin, ttmNow );
+        tracked_origins_.insert( to );
         return e_high_load_detection_result_t::ehldr_no_error;
     }
     // return detect_high_load( origin.ttmNow, durationToPast )

@@ -784,6 +784,51 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         return;
     }
     //
+    // unddos
+    skutils::url url_unddos_origin( getRemoteIp() );
+    const std::string str_unddos_origin = url_unddos_origin.host();
+    skutils::unddos::e_high_load_detection_result_t ehldr =
+        pSO->unddos_.register_call_from_origin( str_unddos_origin );
+    switch ( ehldr ) {
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:  // ban by too high load per
+                                                                       // minute
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high load
+                                                                          // per second
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
+        if ( strMethod.empty() )
+            strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
+        std::string reason_part =
+            ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin ) ?
+                "bad origin" :
+                "high load";
+        std::string e = "Banned due to " + reason_part + " JSON RPC request: " + msg;
+        clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                       cc::debug( "/" ) +
+                                       cc::num10( pThis->getRelay().serverIndex() ) )
+            << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
+                   pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+        nlohmann::json joErrorResponce;
+        joErrorResponce["id"] = joID;
+        joErrorResponce["result"] = "error";
+        joErrorResponce["error"] = std::string( e );
+        std::string strResponse = joErrorResponce.dump();
+        stats::register_stats_exception(
+            ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
+        stats::register_stats_exception( pThis->getRelay().nfoGetSchemeUC().c_str(), "messages" );
+        // stats::register_stats_exception( "RPC", strMethod.c_str() );
+        pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
+        stats::register_stats_answer(
+            pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
+    }
+        return;
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_no_error:
+    default: {
+        // no error
+    } break;
+    }  // switch( ehldr )
+    //
     // WS-processing-lambda
     auto fnAsyncMessageHandler = [pThis, jarrRequest, pSO,
                                      isBatch]() -> void {  // WS-processing-lambda
@@ -2194,6 +2239,48 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
                 return true;
             }
+            //
+            // unddos
+            skutils::url url_unddos_origin( req.origin_ );
+            const std::string str_unddos_origin = url_unddos_origin.host();
+            skutils::unddos::e_high_load_detection_result_t ehldr =
+                pSO->unddos_.register_call_from_origin( str_unddos_origin );
+            switch ( ehldr ) {
+            case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
+                                                                                  // load per minute
+            case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high
+                                                                                  // load per second
+            case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
+            case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
+                if ( strMethod.empty() )
+                    strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
+                std::string reason_part =
+                    ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin ) ?
+                        "bad origin" :
+                        "high load";
+                std::string e = "Banned due to " + reason_part + " JSON RPC request: " + req.body_;
+                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    pSrv->serverIndex(), req.origin_.c_str(), cc::warn( e ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = joID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( e );
+                std::string strResponse = joErrorResponce.dump();
+                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
+                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
+                stats::register_stats_exception( "RPC", strMethod.c_str() );
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "vary", "Origin" );
+                res.set_content( strResponse.c_str(), "application/json" );
+                stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
+            }
+                return true;
+            case skutils::unddos::e_high_load_detection_result_t::ehldr_no_error:
+            default: {
+                // no error
+            } break;
+            }  // switch( ehldr )
+            //
             //
             nlohmann::json jarrBatchAnswer;
             if ( isBatch )

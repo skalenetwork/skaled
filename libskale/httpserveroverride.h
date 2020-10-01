@@ -54,6 +54,7 @@ typedef intptr_t ssize_t;
 #include <skutils/dispatch.h>
 #include <skutils/http.h>
 #include <skutils/stats.h>
+#include <skutils/unddos.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
 #include <json.hpp>
@@ -291,6 +292,8 @@ public:
                                                                                // default 1 second
 
     size_t maxCountInBatchJsonRpcRequest_ = 128;
+
+    skutils::unddos::algorithm unddos_;
 
     SkaleServerOverride( dev::eth::ChainParams& chainParams,
         fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
