@@ -453,7 +453,7 @@ size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationTo
         if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
             ++cnt;
     }
-    return 0;
+    return cnt;
 }
 
 bool tracked_origin::clear_ban() {
@@ -533,12 +533,19 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     if ( to.check_ban( ttmNow ) )
         return e_high_load_detection_result_t::ehldr_ban;  // still banned
     const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
-    if ( to.unload_old_data_by_count( oe.max_calls_per_minute_ ) > 0 ) {
-        to.ban_until_ = ttmNow + oe.ban_peak_;
-        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
-    }
-    if ( to.count_to_past( ttmNow, 1 ) > oe.max_calls_per_second_ ) {
+    // const size_t cntUnloaded = to.unload_old_data_by_count( oe.max_calls_per_minute_ );
+    // if ( cntUnloaded > oe.max_calls_per_minute_ ) {
+    //    to.ban_until_ = ttmNow + oe.ban_lengthy_;
+    //    return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
+    //}
+    size_t cntPast = to.count_to_past( ttmNow, durationToPast );  // 60
+    if ( cntPast > oe.max_calls_per_minute_ ) {
         to.ban_until_ = ttmNow + oe.ban_lengthy_;
+        return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
+    }
+    cntPast = to.count_to_past( ttmNow, 1 );
+    if ( cntPast > oe.max_calls_per_second_ ) {
+        to.ban_until_ = ttmNow + oe.ban_peak_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
     return e_high_load_detection_result_t::ehldr_no_error;
@@ -590,8 +597,15 @@ bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings 
 
 settings algorithm::get_settings() const {
     lock_type lock( mtx_ );
+    settings_.auto_append_any_origin_rule();
     settings copied = settings_;
     return copied;
+}
+
+void algorithm::set_settings( const settings& new_settings ) const {
+    lock_type lock( mtx_ );
+    settings_ = new_settings;
+    settings_.auto_append_any_origin_rule();
 }
 
 nlohmann::json algorithm::get_settings_json() const {

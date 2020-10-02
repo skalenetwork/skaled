@@ -290,6 +290,7 @@ public:
     }
     bool load_settings_from_json( const nlohmann::json& joUnDdosSettings );
     settings get_settings() const;
+    void set_settings( const settings& new_settings ) const;
     nlohmann::json get_settings_json() const;
 };  /// class algorithm
 
