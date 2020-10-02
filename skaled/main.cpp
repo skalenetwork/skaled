@@ -669,6 +669,8 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
+            if ( !fs::is_regular_file( configPath.string() ) )
+                throw "Bad config file path";
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
                 throw "Config file probably not found";
@@ -1250,8 +1252,33 @@ int main( int argc, char** argv ) try {
                     " " + cc::error( ex.what() ) ) );
             }
 
+            bool present = false;
             bool successfullDownload = false;
-            for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
+            dev::h256 calculated_hash;
+
+            try {
+                present = snapshotManager->isSnapshotHashPresent( blockNumber );
+                // if there is snapshot but no hash!
+                if ( !present )
+                    snapshotManager->removeSnapshot( blockNumber );
+            } catch ( const std::exception& ex ) {
+                // usually snapshot absent exception
+                clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
+            }
+
+            if ( present ) {
+                clog( VerbosityInfo, "main" )
+                    << "Snapshot for block " << blockNumber << " already present locally";
+
+                calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                if ( calculated_hash == voted_hash.first )
+                    successfullDownload = true;
+                else
+                    snapshotManager->removeSnapshot( blockNumber );
+            }
+
+            for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i ) {
                 std::string urlToDownloadSnapshot;
                 urlToDownloadSnapshot = list_urls_to_download[i];
 
@@ -1259,7 +1286,8 @@ int main( int argc, char** argv ) try {
                     blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                 try {
-                    snapshotManager->computeSnapshotHash( blockNumber, true );
+                    if ( !present )
+                        snapshotManager->computeSnapshotHash( blockNumber, true );
                 } catch ( std::exception& ex ) {
                     std::throw_with_nested( std::runtime_error(
                         cc::fatal( "FATAL:" ) + " " +
@@ -1269,12 +1297,10 @@ int main( int argc, char** argv ) try {
 
                 dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
-                if ( calculated_hash == voted_hash.first ) {
+                if ( calculated_hash == voted_hash.first )
                     successfullDownload = true;
-                    break;
-                } else {
+                else
                     snapshotManager->removeSnapshot( blockNumber );
-                }
             }
 
             if ( !successfullDownload ) {

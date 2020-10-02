@@ -464,6 +464,10 @@ size_t Client::importTransactionsAsBlock(
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
                     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
+
+                    // TODO Make this number configurable
+                    m_snapshotManager->leaveNLastSnapshots( 2 );
+
                 } catch ( const std::exception& ex ) {
                     cerror << "CRITICAL " << dev::nested_exception_what( ex )
                            << " in computeSnapshotHash() or updateHashes(). Exiting";
@@ -476,8 +480,6 @@ size_t Client::importTransactionsAsBlock(
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
             } ) );
-            // TODO Make this number configurable
-            m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
         size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
