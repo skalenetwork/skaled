@@ -29,8 +29,12 @@ origin_entry_setting& origin_entry_setting::operator=( const origin_entry_settin
 }
 
 void origin_entry_setting::load_defaults_for_any_origin() {
+    load_reasonable_for_any_origin();
+}
+
+void origin_entry_setting::load_reasonable_for_any_origin() {
     clear();
-    origin_wildcard_ = "*";
+    origin_wildcards_.push_back( "*" );
     max_calls_per_second_ = 100;     // 100
     max_calls_per_minute_ = 5000;    // 2000
     ban_peak_ = duration( 15 );      // 15
@@ -38,14 +42,35 @@ void origin_entry_setting::load_defaults_for_any_origin() {
     max_ws_conn_ = 10;               // 10
 }
 
+void origin_entry_setting::load_unlim_for_any_origin() {
+    clear();
+    origin_wildcards_.push_back( "*" );
+    max_calls_per_second_ = std::numeric_limits< size_t >::max();
+    max_calls_per_minute_ = std::numeric_limits< size_t >::max();
+    ban_peak_ = duration( 0 );
+    ban_lengthy_ = duration( 0 );
+    max_ws_conn_ = std::numeric_limits< size_t >::max();
+}
+
+void origin_entry_setting::load_unlim_for_localhost_only() {
+    clear();
+    origin_wildcards_.push_back( "127.0.0.*" );
+    origin_wildcards_.push_back( "::1" );
+    max_calls_per_second_ = std::numeric_limits< size_t >::max();
+    max_calls_per_minute_ = std::numeric_limits< size_t >::max();
+    ban_peak_ = duration( 0 );
+    ban_lengthy_ = duration( 0 );
+    max_ws_conn_ = std::numeric_limits< size_t >::max();
+}
+
 bool origin_entry_setting::empty() const {
-    if ( !origin_wildcard_.empty() )
+    if ( !origin_wildcards_.empty() )
         return false;
     return true;
 }
 
 void origin_entry_setting::clear() {
-    origin_wildcard_.clear();
+    origin_wildcards_.clear();
     max_calls_per_second_ = 0;
     max_calls_per_minute_ = 0;
     ban_peak_ = duration( 0 );
@@ -57,7 +82,7 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
     clear();
-    origin_wildcard_ = other.origin_wildcard_;
+    origin_wildcards_ = other.origin_wildcards_;
     max_calls_per_second_ = other.max_calls_per_second_;
     max_calls_per_minute_ = other.max_calls_per_minute_;
     ban_peak_ = other.ban_peak_;
@@ -69,7 +94,7 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
 origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& other ) {
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
-    if ( origin_wildcard_ != other.origin_wildcard_ )
+    if ( origin_wildcards_ != other.origin_wildcards_ )
         return ( *this );
     max_calls_per_second_ = std::min( max_calls_per_second_, other.max_calls_per_second_ );
     max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
@@ -81,8 +106,17 @@ origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& o
 
 void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
     clear();
-    if ( jo.find( "origin" ) != jo.end() )
-        origin_wildcard_ = jo["origin"].get< std::string >();
+    if ( jo.find( "origin" ) != jo.end() ) {
+        nlohmann::json jarrWildcards = jo["origin"];
+        if ( jarrWildcards.is_string() )
+            origin_wildcards_.push_back( jarrWildcards.get< std::string >() );
+        else if ( jarrWildcards.is_array() ) {
+            for ( const nlohmann::json& joWildcard : jarrWildcards ) {
+                if ( joWildcard.is_string() )
+                    origin_wildcards_.push_back( joWildcard.get< std::string >() );
+            }
+        }
+    }
     if ( jo.find( "max_calls_per_second" ) != jo.end() )
         max_calls_per_second_ = jo["max_calls_per_second"].get< size_t >();
     if ( jo.find( "max_calls_per_minute" ) != jo.end() )
@@ -97,7 +131,10 @@ void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
 
 void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo = nlohmann::json::object();
-    jo["origin"] = origin_wildcard_;
+    nlohmann::json jarrWildcards = nlohmann::json::array();
+    for ( const std::string& wildcard : origin_wildcards_ )
+        jarrWildcards.push_back( wildcard );
+    jo["origin"] = jarrWildcards;
     jo["max_calls_per_second"] = max_calls_per_second_;
     jo["max_calls_per_minute"] = max_calls_per_minute_;
     jo["ban_peak"] = ban_peak_;
@@ -108,9 +145,11 @@ void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
 bool origin_entry_setting::match_origin( const char* origin ) const {
     if ( origin == nullptr || ( *origin ) == '\0' )
         return false;
-    if ( !skutils::tools::wildcmp( origin_wildcard_.c_str(), origin ) )
-        return false;
-    return true;
+    for ( const std::string& wildcard : origin_wildcards_ ) {
+        if ( skutils::tools::wildcmp( wildcard.c_str(), origin ) )
+            return true;
+    }
+    return false;
 }
 bool origin_entry_setting::match_origin( const std::string& origin ) const {
     return match_origin( origin.c_str() );
@@ -176,7 +215,12 @@ settings& settings::merge( const origin_entry_setting& oe ) {
 }
 
 size_t settings::indexOfOrigin( const origin_entry_setting& oe, size_t idxStart ) {
-    return indexOfOrigin( oe.origin_wildcard_, idxStart );
+    for ( const std::string& wildcard : oe.origin_wildcards_ ) {
+        size_t i = indexOfOrigin( wildcard, idxStart );
+        if ( i != std::string::npos )
+            return i;
+    }
+    return std::string::npos;
 }
 size_t settings::indexOfOrigin( const char* origin_wildcard, size_t idxStart ) {
     if ( origin_wildcard == nullptr || ( *origin_wildcard ) == '\0' )
@@ -185,8 +229,10 @@ size_t settings::indexOfOrigin( const char* origin_wildcard, size_t idxStart ) {
     size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
     for ( ; i < cnt; ++i ) {
         const origin_entry_setting& oe = origins_[i];
-        if ( oe.origin_wildcard_ == origin_wildcard )
-            return i;
+        for ( const std::string& wildcard : oe.origin_wildcards_ ) {
+            if ( wildcard == origin_wildcard )
+                return i;
+        }
     }
     return std::string::npos;
 }

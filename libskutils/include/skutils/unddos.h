@@ -1,11 +1,13 @@
 #if ( !defined __SKUTILS_UN_DDOS_H )
 #define __SKUTILS_UN_DDOS_H 1
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 #include <algorithm>
 #include <chrono>
+#include <limits>
 #include <list>
 #include <set>
 #include <string>
@@ -40,9 +42,11 @@ inline void adjust_now_tick_mark( time_tick_mark& ttm ) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+typedef std::vector< std::string > origin_wildcards_t;
+
 class origin_entry_setting {
 public:
-    std::string origin_wildcard_;
+    origin_wildcards_t origin_wildcards_;
     size_t max_calls_per_second_ = 0;
     size_t max_calls_per_minute_ = 0;
     duration ban_peak_ = duration( 0 );
@@ -54,6 +58,9 @@ public:
     virtual ~origin_entry_setting();
     origin_entry_setting& operator=( const origin_entry_setting& other );
     void load_defaults_for_any_origin();
+    void load_reasonable_for_any_origin();
+    void load_unlim_for_any_origin();
+    void load_unlim_for_localhost_only();
     bool empty() const;
     operator bool() const { return ( !empty() ); }
     bool operator!() const { return empty(); }
