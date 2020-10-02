@@ -47,6 +47,7 @@ public:
     size_t max_calls_per_minute_ = 0;
     duration ban_peak_ = duration( 0 );
     duration ban_lengthy_ = duration( 0 );
+    size_t max_ws_conn_ = 0;
     origin_entry_setting();
     origin_entry_setting( const origin_entry_setting& other );
     origin_entry_setting( origin_entry_setting&& other );
@@ -253,7 +254,8 @@ class algorithm {
     mutex_type mtx_;
     settings settings_;
     tracked_origins_t tracked_origins_;
-    size_t cntCalls_ = 0;  // all registered calls, all origins
+    typedef std::map< std::string, size_t > map_ws_conn_counts_t;
+    map_ws_conn_counts_t map_ws_conn_counts_;
 
 public:
     algorithm();
@@ -270,6 +272,14 @@ public:
     e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
         return register_call_from_origin( origin.c_str(), ttmNow, durationToPast );
+    }
+    e_high_load_detection_result_t register_ws_conn_for_origin( const char* origin );
+    e_high_load_detection_result_t register_ws_conn_for_origin( const std::string& origin ) {
+        return register_ws_conn_for_origin( origin.c_str() );
+    }
+    bool unregister_ws_conn_for_origin( const char* origin );
+    bool unregister_ws_conn_for_origin( const std::string& origin ) {
+        return unregister_ws_conn_for_origin( origin.c_str() );
     }
 };  /// class algorithm
 

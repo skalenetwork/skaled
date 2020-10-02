@@ -680,6 +680,35 @@ SkaleWsPeer::~SkaleWsPeer() {
     skutils::dispatch::remove( m_strPeerQueueID );
 }
 
+void SkaleWsPeer::register_ws_conn_for_origin() {
+    if ( m_strUnDdosOrigin.empty() ) {
+        SkaleServerOverride* pSO = pso();
+        skutils::url url_unddos_origin( getRemoteIp() );
+        m_strUnDdosOrigin = url_unddos_origin.host();
+        skutils::unddos::e_high_load_detection_result_t ehldr =
+            pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
+        if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
+            m_strUnDdosOrigin.clear();
+            clog( dev::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                           cc::num10( getRelay().serverIndex() ) )
+                << ( desc() + " " + cc::fatal( "UN-DDOS:" ) + " " +
+                       cc::error( " cannot accept connection - UnDDOS protection reported "
+                                  "connection count overflow" ) );
+            close( "UnDDOS protection reported connection count overflow" );
+            throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
+                                      " connection from " + url_unddos_origin.str() +
+                                      " - UnDDOS protection reported connection count overflow" );
+        }
+    }
+}
+void SkaleWsPeer::unregister_ws_conn_for_origin() {
+    if ( !m_strUnDdosOrigin.empty() ) {
+        SkaleServerOverride* pSO = pso();
+        pSO->unddos_.unregister_ws_conn_for_origin( m_strUnDdosOrigin );
+        m_strUnDdosOrigin.clear();
+    }
+}
+
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->m_bTraceCalls )
@@ -687,6 +716,9 @@ void SkaleWsPeer::onPeerRegister() {
                                       cc::num10( getRelay().serverIndex() ) )
             << ( desc() + cc::notice( " peer registered" ) );
     skutils::ws::peer::onPeerRegister();
+    //
+    // unddos
+    register_ws_conn_for_origin();
 }
 void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage after call to
                                         // this
@@ -702,6 +734,8 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     skutils::dispatch::async( "ws-queue-remover", [strQueueIdToRemove]() -> void {
         skutils::dispatch::remove( strQueueIdToRemove );  // remove queue earlier
     } );
+    // unddos
+    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
@@ -785,10 +819,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     }
     //
     // unddos
-    skutils::url url_unddos_origin( getRemoteIp() );
-    const std::string str_unddos_origin = url_unddos_origin.host();
     skutils::unddos::e_high_load_detection_result_t ehldr =
-        pSO->unddos_.register_call_from_origin( str_unddos_origin );
+        pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin );
     switch ( ehldr ) {
     case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:  // ban by too high load per
                                                                        // minute
@@ -799,7 +831,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         if ( strMethod.empty() )
             strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
         std::string reason_part =
-            ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin ) ?
+            ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin &&
+                ( !m_strUnDdosOrigin.empty() ) ) ?
                 "bad origin" :
                 "high load";
         std::string e = "Banned due to " + reason_part + " JSON RPC request: " + msg;
@@ -979,6 +1012,8 @@ void SkaleWsPeer::onClose(
                    cc::debug( ", reason=" ) + cc::info( reason ) );
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
     uninstallAllWatches();
+    // unddos
+    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onFail() {
@@ -988,6 +1023,8 @@ void SkaleWsPeer::onFail() {
             << ( desc() + cc::error( " peer fail event" ) );
     skutils::ws::peer::onFail();
     uninstallAllWatches();
+    // unddos
+    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onLogMessage(

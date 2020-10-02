@@ -123,6 +123,7 @@ public:
     std::atomic_size_t nTaskNumberInPeer_ = 0;
     const std::string m_strPeerQueueID;
     std::unique_ptr< SkaleServerConnectionsTrackHelper > m_pSSCTH;
+    std::string m_strUnDdosOrigin;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
     ~SkaleWsPeer() override;
     void onPeerRegister() override;
@@ -174,6 +175,10 @@ protected:
 
 public:
     friend class SkaleRelayWS;
+
+private:
+    void register_ws_conn_for_origin();
+    void unregister_ws_conn_for_origin();
 };  /// class SkaleWsPeer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

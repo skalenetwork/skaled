@@ -31,10 +31,11 @@ origin_entry_setting& origin_entry_setting::operator=( const origin_entry_settin
 void origin_entry_setting::load_defaults_for_any_origin() {
     clear();
     origin_wildcard_ = "*";
-    max_calls_per_second_ = 100;
-    max_calls_per_minute_ = 5000;
+    max_calls_per_second_ = 100;     // 100
+    max_calls_per_minute_ = 5000;    // 2000
     ban_peak_ = duration( 15 );      // 15
     ban_lengthy_ = duration( 120 );  // 120
+    max_ws_conn_ = 10;               // 10
 }
 
 bool origin_entry_setting::empty() const {
@@ -47,6 +48,9 @@ void origin_entry_setting::clear() {
     origin_wildcard_.clear();
     max_calls_per_second_ = 0;
     max_calls_per_minute_ = 0;
+    ban_peak_ = duration( 0 );
+    ban_lengthy_ = duration( 0 );
+    max_ws_conn_ = 0;
 }
 
 origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& other ) {
@@ -58,6 +62,7 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
     max_calls_per_minute_ = other.max_calls_per_minute_;
     ban_peak_ = other.ban_peak_;
     ban_lengthy_ = other.ban_lengthy_;
+    max_ws_conn_ = other.max_ws_conn_;
     return ( *this );
 }
 
@@ -70,6 +75,7 @@ origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& o
     max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
     ban_peak_ = std::max( ban_peak_, other.ban_peak_ );
     ban_lengthy_ = std::max( ban_lengthy_, other.ban_lengthy_ );
+    max_ws_conn_ = std::min( max_ws_conn_, other.max_ws_conn_ );
     return ( *this );
 }
 
@@ -85,6 +91,8 @@ void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
         ban_peak_ = jo["ban_peak"].get< size_t >();
     if ( jo.find( "ban_lengthy" ) != jo.end() )
         ban_lengthy_ = jo["ban_lengthy"].get< size_t >();
+    if ( jo.find( "max_ws_conn" ) != jo.end() )
+        max_ws_conn_ = jo["max_ws_conn"].get< size_t >();
 }
 
 void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
@@ -94,6 +102,7 @@ void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo["max_calls_per_minute"] = max_calls_per_minute_;
     jo["ban_peak"] = ban_peak_;
     jo["ban_lengthy"] = ban_lengthy_;
+    jo["max_ws_conn"] = max_ws_conn_;
 }
 
 bool origin_entry_setting::match_origin( const char* origin ) const {
@@ -488,6 +497,37 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
     return e_high_load_detection_result_t::ehldr_no_error;
+}
+
+e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const char* origin ) {
+    if ( origin == nullptr || origin[0] == '\0' )
+        return e_high_load_detection_result_t::ehldr_bad_origin;
+    lock_type lock( mtx_ );
+    map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
+                                   itEnd = map_ws_conn_counts_.end();
+    if ( itFind == itEnd ) {
+        map_ws_conn_counts_[origin] = 1;
+        itFind = map_ws_conn_counts_.find( origin );
+    } else
+        ++itFind->second;
+    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
+    if ( itFind->second > oe.max_ws_conn_ )
+        return e_high_load_detection_result_t::ehldr_peak;
+    return e_high_load_detection_result_t::ehldr_no_error;
+}
+bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
+    if ( origin == nullptr || origin[0] == '\0' )
+        return false;
+    lock_type lock( mtx_ );
+    map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
+                                   itEnd = map_ws_conn_counts_.end();
+    if ( itFind == itEnd )
+        return false;
+    if ( itFind->second >= 1 )
+        --itFind->second;
+    if ( itFind->second == 0 )
+        map_ws_conn_counts_.erase( itFind );
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
