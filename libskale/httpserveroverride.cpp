@@ -692,12 +692,12 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
             clog( dev::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                                            cc::num10( getRelay().serverIndex() ) )
                 << ( desc() + " " + cc::fatal( "UN-DDOS:" ) + " " +
-                       cc::error( " cannot accept connection - UnDDOS protection reported "
+                       cc::error( " cannot accept connection - UN-DDOS protection reported "
                                   "connection count overflow" ) );
-            close( "UnDDOS protection reported connection count overflow" );
+            close( "UN-DDOS protection reported connection count overflow" );
             throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
                                       " connection from " + url_unddos_origin.str() +
-                                      " - UnDDOS protection reported connection count overflow" );
+                                      " - UN-DDOS protection reported connection count overflow" );
         }
     }
 }

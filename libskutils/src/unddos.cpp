@@ -262,7 +262,7 @@ void settings::toJSON( nlohmann::json& jo ) const {
     for ( const origin_entry_setting& oe : origins_ ) {
         nlohmann::json joOrigin = nlohmann::json::object();
         oe.toJSON( joOrigin );
-        joOrigin.push_back( joOrigin );
+        joOrigins.push_back( joOrigin );
     }
     jo["origins"] = joOrigins;
 }
@@ -456,7 +456,6 @@ size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationTo
     return 0;
 }
 
-
 bool tracked_origin::clear_ban() {
     if ( ban_until_ == time_tick_mark( 0 ) )
         return false;
@@ -574,6 +573,33 @@ bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
     if ( itFind->second == 0 )
         map_ws_conn_counts_.erase( itFind );
     return true;
+}
+
+bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
+    lock_type lock( mtx_ );
+    try {
+        settings new_settings;
+        new_settings.fromJSON( joUnDdosSettings );
+        settings_ = new_settings;
+        settings_.auto_append_any_origin_rule();
+        return true;
+    } catch ( ... ) {
+        return false;
+    }
+}
+
+settings algorithm::get_settings() const {
+    lock_type lock( mtx_ );
+    settings copied = settings_;
+    return copied;
+}
+
+nlohmann::json algorithm::get_settings_json() const {
+    lock_type lock( mtx_ );
+    settings_.auto_append_any_origin_rule();
+    nlohmann::json joUnDdosSettings = nlohmann::json::object();
+    settings_.toJSON( joUnDdosSettings );
+    return joUnDdosSettings;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -2047,6 +2047,7 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
+            //
             auto skale_server_connector = new SkaleServerOverride( chainParams,
                 fn_binary_snapshot_download, cntServers, g_client.get(), chainParams.nodeInfo.ip,
                 nExplicitPortHTTP4, chainParams.nodeInfo.ip6, nExplicitPortHTTP6,
@@ -2055,6 +2056,16 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip6, nExplicitPortWS6, chainParams.nodeInfo.ip,
                 nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
                 strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
+            //
+            // unddos
+            if ( joConfig.count( "unddos" ) > 0 ) {
+                nlohmann::json joUnDdosSettings = joConfig["unddos"];
+                skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
+            }
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
+                << cc::j( skale_server_connector->unddos_.get_settings_json() );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;

@@ -258,8 +258,8 @@ enum class e_high_load_detection_result_t {
 class algorithm {
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
-    mutex_type mtx_;
-    settings settings_;
+    mutable mutex_type mtx_;
+    mutable settings settings_;
     tracked_origins_t tracked_origins_;
     typedef std::map< std::string, size_t > map_ws_conn_counts_t;
     map_ws_conn_counts_t map_ws_conn_counts_;
@@ -288,6 +288,9 @@ public:
     bool unregister_ws_conn_for_origin( const std::string& origin ) {
         return unregister_ws_conn_for_origin( origin.c_str() );
     }
+    bool load_settings_from_json( const nlohmann::json& joUnDdosSettings );
+    settings get_settings() const;
+    nlohmann::json get_settings_json() const;
 };  /// class algorithm
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
