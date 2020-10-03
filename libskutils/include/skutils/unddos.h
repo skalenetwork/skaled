@@ -280,6 +280,10 @@ public:
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
         return register_call_from_origin( origin.c_str(), ttmNow, durationToPast );
     }
+    bool is_ban_ws_conn_for_origin( const char* origin ) const;
+    bool is_ban_ws_conn_for_origin( const std::string& origin ) const {
+        return is_ban_ws_conn_for_origin( origin.c_str() );
+    }
     e_high_load_detection_result_t register_ws_conn_for_origin( const char* origin );
     e_high_load_detection_result_t register_ws_conn_for_origin( const std::string& origin ) {
         return register_ws_conn_for_origin( origin.c_str() );
@@ -292,6 +296,8 @@ public:
     settings get_settings() const;
     void set_settings( const settings& new_settings ) const;
     nlohmann::json get_settings_json() const;
+    nlohmann::json stats( time_tick_mark ttmNow = time_tick_mark( 0 ),
+        duration durationToPast = duration( 60 ) ) const;
 };  /// class algorithm
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

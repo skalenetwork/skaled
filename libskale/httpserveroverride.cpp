@@ -2845,6 +2845,7 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     joStats["system"]["disk_usage"] = lm.last_disk_load();
     double lfMemUsage = skutils::tools::mem_usage();
     joStats["system"]["mem_usage"] = lfMemUsage;
+    joStats["unddos"] = unddos_.stats();
     return joStats;
 }
 

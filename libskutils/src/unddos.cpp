@@ -551,6 +551,20 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
+bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
+    if ( origin == nullptr || origin[0] == '\0' )
+        return true;
+    lock_type lock( mtx_ );
+    map_ws_conn_counts_t::const_iterator itFind = map_ws_conn_counts_.find( origin ),
+                                         itEnd = map_ws_conn_counts_.end();
+    if ( itFind == itEnd )
+        return false;
+    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
+    if ( itFind->second > oe.max_ws_conn_ )
+        return true;
+    return false;
+}
+
 e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const char* origin ) {
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
@@ -567,6 +581,7 @@ e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const cha
         return e_high_load_detection_result_t::ehldr_peak;
     return e_high_load_detection_result_t::ehldr_no_error;
 }
+
 bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
     if ( origin == nullptr || origin[0] == '\0' )
         return false;
@@ -614,6 +629,48 @@ nlohmann::json algorithm::get_settings_json() const {
     nlohmann::json joUnDdosSettings = nlohmann::json::object();
     settings_.toJSON( joUnDdosSettings );
     return joUnDdosSettings;
+}
+
+nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast ) const {
+    lock_type lock( mtx_ );
+    ( const_cast< algorithm* >( this ) )
+        ->unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
+    nlohmann::json joStats = nlohmann::json::object();
+    nlohmann::json joCounts = nlohmann::json::object();
+    nlohmann::json joCalls = nlohmann::json::object();
+    nlohmann::json joWsConns = nlohmann::json::object();
+    size_t cntRpcBan = 0, cntRpcNormal = 0, cntWsBan = 0, cntWsNormal = 0;
+    for ( const tracked_origin& to : tracked_origins_ ) {
+        nlohmann::json joOriginCallInfo = nlohmann::json::object();
+        bool isBan = ( to.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
+        joOriginCallInfo["cps"] = to.count_to_past( ttmNow, 1 );
+        joOriginCallInfo["cpm"] = to.count_to_past( ttmNow, durationToPast );
+        joOriginCallInfo["ban"] = isBan;
+        joCalls[to.origin_] = joOriginCallInfo;
+        if ( isBan )
+            ++cntRpcBan;
+        else
+            ++cntRpcNormal;
+    }
+    for ( const map_ws_conn_counts_t::value_type& pr : map_ws_conn_counts_ ) {
+        nlohmann::json joWsConnInfo = nlohmann::json::object();
+        bool isBan = is_ban_ws_conn_for_origin( pr.first );
+        joWsConnInfo["cnt"] = pr.second;
+        joWsConnInfo["ban"] = isBan;
+        joCalls[pr.first] = joWsConnInfo;
+        if ( isBan )
+            ++cntWsBan;
+        else
+            ++cntWsNormal;
+    }
+    joCounts["rpc_ban"] = cntRpcBan;
+    joCounts["rpc_normal"] = cntRpcNormal;
+    joCounts["ws_ban"] = cntWsBan;
+    joCounts["ws_normal"] = cntWsNormal;
+    joStats["counts"] = joCounts;
+    joStats["calls"] = joCalls;
+    joStats["ws_conns"] = joWsConns;
+    return joStats;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
