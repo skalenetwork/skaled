@@ -657,7 +657,7 @@ nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast 
         bool isBan = is_ban_ws_conn_for_origin( pr.first );
         joWsConnInfo["cnt"] = pr.second;
         joWsConnInfo["ban"] = isBan;
-        joCalls[pr.first] = joWsConnInfo;
+        joWsConns[pr.first] = joWsConnInfo;
         if ( isBan )
             ++cntWsBan;
         else
