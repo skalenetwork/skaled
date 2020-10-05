@@ -2,6 +2,7 @@
 #include "JsonHelper.h"
 
 #include <libethereum/SkaleHost.h>
+#include <libskale/SkaleDebug.h>
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonIO.h>
@@ -16,7 +17,8 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
-Debug::Debug( eth::Client const& _eth, const string& argv ) : m_eth( _eth ), argv_options( argv ) {}
+Debug::Debug( eth::Client const& _eth, SkaleDebugInterface* _debugInterface, const string& argv )
+    : m_eth( _eth ), m_debugInterface( _debugInterface ), argv_options( argv ) {}
 
 StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
     StandardTrace::DebugOptions op;
@@ -269,8 +271,8 @@ void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
     }
 }
 
-std::string Debug::debug_callSkaleHost( const std::string& _arg ) {
-    return m_eth.skaleHost()->debugCall( _arg );
+std::string Debug::debug_interfaceCall( const std::string& _arg ) {
+    return m_debugInterface->call( _arg );
 }
 
 std::string Debug::debug_getVersion() {

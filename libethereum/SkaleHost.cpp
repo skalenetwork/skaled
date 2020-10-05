@@ -178,7 +178,7 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT );
+    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory ) try
@@ -186,6 +186,10 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       total_sent( 0 ),
       total_arrived( 0 ) {
+    m_debugHandler = [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    };
+
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
         skutils::task::performance::action action(
             "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
@@ -202,10 +206,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 
         LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
                              << m_debugTracer.get_tracepoint_count( name );
-    } );
-
-    m_debugInterface.add_handler( [this]( const std::string& arg ) -> std::string {
-        return DebugTracer_handler( arg, this->m_debugTracer );
     } );
 
     // m_broadcaster.reset( new HttpBroadcaster( _client ) );
@@ -497,19 +497,17 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         dev::h256::Arith stCurrent = dev::h256::Arith(
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) ).stateRoot() );
         if ( stCurrent != _stateRoot ) {
-            static const int g_nExitCodeOnStateRootMismatch = 200;
-            LOG( m_traceLogger ) << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
-                                 << cc::error( " current state root " )
-                                 << cc::warn( stCurrent.str() )
-                                 << cc::error( " is not equal to arrived state root " )
-                                 << cc::warn( _stateRoot.str() ) << cc::error( " with block ID " )
-                                 << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
-                                 << cc::p( "/data_dir" )
-                                 << cc::error( " cleanup is recommended, exiting with code " )
-                                 << cc::num10( g_nExitCodeOnStateRootMismatch ) << ( "..." )
-                                 << std::endl;
-            ExitHandler::exitHandler( SIGABRT );
-            _exit( g_nExitCodeOnStateRootMismatch );
+            clog( VerbosityError, "skale-host" )
+                << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
+                << cc::error( " current state root " ) << cc::warn( stCurrent.str() )
+                << cc::error( " is not equal to arrived state root " )
+                << cc::warn( _stateRoot.str() ) << cc::error( " with block ID " )
+                << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
+                << cc::p( "/data_dir" )
+                << cc::error( " cleanup is recommended, exiting with code " )
+                << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
+            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
+            _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
     }
 
@@ -791,10 +789,6 @@ void SkaleHost::forceEmptyBlock() {
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
     m_broadcaster->broadcast( toJS( _txn.rlp() ) );
-}
-
-std::string SkaleHost::debugCall( const std::string& arg ) {
-    return m_debugInterface.call( arg );
 }
 
 void SkaleHost::noteNewTransactions() {}

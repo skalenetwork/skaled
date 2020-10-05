@@ -279,6 +279,8 @@ public:
 
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block; }
 
+    SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -467,6 +469,9 @@ protected:
     std::shared_ptr< SnapshotManager > m_snapshotManager;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
+
+    SkaleDebugTracer m_debugTracer;
+    SkaleDebugInterface::handler m_debugHandler;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;

@@ -118,6 +118,10 @@ Client::Client( ChainParams const& _params, int _networkID,
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
+    m_debugHandler = [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    };
+
     init( _forceAction, _networkID );
 }
 
@@ -459,11 +463,16 @@ size_t Client::importTransactionsAsBlock(
         int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
              block_number != 0 ) {
+            if ( m_snapshotHashComputing != nullptr )
+                m_snapshotHashComputing->join();
+
             if ( this->last_snapshoted_block != -1 ) {
                 this->updateHashes();
             }
             try {
-                LOG( m_logger ) << cc::debug( "DOING SNAPSHOT: " ) << block_number;
+                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                m_debugTracer.tracepoint( "doing_snapshot" );
+
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
@@ -475,31 +484,32 @@ size_t Client::importTransactionsAsBlock(
             LOG( m_logger ) << cc::debug( "Block timestamp: " ) << _timestamp;
             LOG( m_logger ) << cc::debug( "Last snapshot time: " ) << this->last_snapshot_time;
 
-            if ( m_snapshotHashComputing != nullptr ) {
-                m_snapshotHashComputing->join();
-            }
             m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
+                m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
+                    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
+
+                    // TODO Make this number configurable
+                    m_snapshotManager->leaveNLastSnapshots( 2 );
+
                 } catch ( const std::exception& ex ) {
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error(
                                   " in computeSnapshotHash() or updateHashes(). Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
                     cerror << cc::fatal( "CRITICAL" )
                            << cc::error(
                                   " unknown exception in computeSnapshotHash() or updateHashes(). "
                                   "Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
             } ) );
-            // TODO Make this number configurable
-            m_snapshotManager->leaveNLastSnapshots( 2 );
         }  // if snapshot
 
         //
@@ -1134,14 +1144,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::updateHashes() {
-    if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
-        this->last_snapshot_hashes.second =
-            this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
-        return;
-    }
-    if ( this->last_snapshot_hashes.first != this->empty_str_hash ) {
-        std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
-    }
+    m_debugTracer.tracepoint( "update_hashes" );
+
+    std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
     this->last_snapshot_hashes.second =
         this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
 }
