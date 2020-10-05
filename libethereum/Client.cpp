@@ -526,7 +526,7 @@ size_t Client::importTransactionsAsBlock(
                 vecMissing.push_back( txWalk );
             else {
                 vecPassed.push_back( txWalk );
-                if ( ( !bIsPartial ) && shaWalk == shaLastTx ) {
+                if ( shaWalk == shaLastTx ) {
                     bIsPartial = true;
                 }
             }
