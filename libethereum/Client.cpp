@@ -515,6 +515,7 @@ size_t Client::importTransactionsAsBlock(
         //
         // begin, detect partially executed block
         bool bIsPartial = false;
+        TransactionReceipts partialTransactionReceipts;
         size_t cntAll = _transactions.size();
         size_t cntExpected = cntAll;
         size_t cntMissing = 0;
@@ -535,6 +536,7 @@ size_t Client::importTransactionsAsBlock(
         cntMissing = vecMissing.size();
         cntExpected = cntMissing;
         if ( bIsPartial ) {
+            partialTransactionReceipts = m_state.safePartialTransactionReceipts();
             LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
                             << cc::warn( " found partially executed block, have " )
                             << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
@@ -554,11 +556,12 @@ size_t Client::importTransactionsAsBlock(
         // end, detect partially executed block
         //
 
+        TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
         bool isSaveLastTxHash = true;
-        size_t cntSucceeded = syncTransactions(
-            bIsPartial ? vecMissing : _transactions, _gasPrice, _timestamp, isSaveLastTxHash );
+        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
+            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
         sealUnconditionally( false );
-        importWorkingBlock();
+        importWorkingBlock( &partialTransactionReceipts );
 
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
@@ -586,7 +589,8 @@ size_t Client::importTransactionsAsBlock(
 }
 
 size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash ) {
+    uint64_t _timestamp, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -610,8 +614,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         assert( !m_working.isSealed() );
 
         // assert(m_state.m_db_write_lock.has_value());
-        tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, isSaveLastTxHash );
+        tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
+            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts );
         m_state = m_state.startNew();
     }
 
@@ -882,9 +886,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock() {
+void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working );
+    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
     // m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }

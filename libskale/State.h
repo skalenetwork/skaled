@@ -198,6 +198,7 @@ public:
     State& operator=( State&& ) = default;
 
     dev::h256 safeLastExecutedTransactionHash();
+    dev::eth::TransactionReceipts safePartialTransactionReceipts();
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -326,7 +327,8 @@ public:
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool isSaveLastTxHash = false );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool isSaveLastTxHash = false,
+        dev::eth::TransactionReceipts* accumulatedTransactionReceipts = nullptr );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }

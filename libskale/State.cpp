@@ -41,6 +41,8 @@
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
 
+#include <libethereum/BlockDetails.h>
+
 namespace fs = boost::filesystem;
 
 using namespace std;
@@ -149,6 +151,20 @@ dev::h256 State::safeLastExecutedTransactionHash() {
     if ( m_db_ptr )
         shaLastTx = m_db_ptr->safeLastExecutedTransactionHash();
     return shaLastTx;
+}
+
+dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
+    dev::eth::TransactionReceipts partialTransactionReceipts;
+    if ( m_db_ptr ) {
+        dev::bytes rawTransactionReceipts = m_db_ptr->safePartialTransactionReceipts();
+        if ( !rawTransactionReceipts.empty() ) {
+            dev::RLP rlp( rawTransactionReceipts );
+            dev::eth::BlockReceipts blockReceipts( rlp );
+            partialTransactionReceipts.insert( partialTransactionReceipts.end(),
+                blockReceipts.receipts.begin(), blockReceipts.receipts.end() );
+        }
+    }
+    return partialTransactionReceipts;
 }
 
 void State::populateFrom( eth::AccountMap const& _map ) {
@@ -782,7 +798,7 @@ bool State::empty() const {
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
     SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    bool isSaveLastTxHash ) {
+    bool isSaveLastTxHash, dev::eth::TransactionReceipts* accumulatedTransactionReceipts ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -835,6 +851,24 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                     writeBatch->insert(
                         skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                         skale::slicing::toSlice( shaLastTx ) );
+                    if ( accumulatedTransactionReceipts != nullptr ) {
+                        TransactionReceipt receipt =
+                            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+                                TransactionReceipt(
+                                    statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                                TransactionReceipt(
+                                    EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+                        receipt.setRevertReason( strRevertReason );
+                        accumulatedTransactionReceipts->push_back( receipt );
+                        dev::eth::BlockReceipts blockReceipts;
+                        for ( unsigned i = 0; i < accumulatedTransactionReceipts->size(); ++i )
+                            blockReceipts.receipts.push_back(
+                                ( *accumulatedTransactionReceipts )[i] );
+                        bytes const receipts = blockReceipts.rlp();
+                        writeBatch->insert(
+                            skale::slicing::toSlice( "safeLastTransactionReceipts" ),
+                            skale::slicing::toSlice( receipts ) );
+                    }
                 }
             } );
         break;

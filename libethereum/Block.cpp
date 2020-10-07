@@ -424,8 +424,8 @@ pair< TransactionReceipts, bool > Block::sync(
 }
 
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-    bool isSaveLastTxHash ) {
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -469,8 +469,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 continue;
             }
 
-            ExecutionResult res = execute(
-                _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), isSaveLastTxHash );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
+                OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -749,7 +749,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 }
 
 ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-    Permanence _p, OnOpFunc const& _onOp, bool isSaveLastTxHash ) {
+    Permanence _p, OnOpFunc const& _onOp, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -777,8 +778,8 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         if ( _t.isInvalid() )
             throw - 1;  // will catch below
 
-        resultReceipt =
-            stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp, isSaveLastTxHash );
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp,
+            isSaveLastTxHash, accumulatedTransactionReceipts );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {

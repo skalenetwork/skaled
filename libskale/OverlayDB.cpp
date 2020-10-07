@@ -95,6 +95,22 @@ dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
     return stat_safeLastExecutedTransactionHash( m_db.get() );
 }
 
+dev::bytes OverlayDB::stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB ) {
+    dev::bytes partialTransactionReceipts;
+    if ( pDB ) {
+        const std::string l =
+            pDB->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+        if ( !l.empty() )
+            partialTransactionReceipts.insert(
+                partialTransactionReceipts.end(), l.begin(), l.end() );
+    }
+    return partialTransactionReceipts;
+}
+
+dev::bytes OverlayDB::safePartialTransactionReceipts() {
+    return stat_safePartialTransactionReceipts( m_db.get() );
+}
+
 void OverlayDB::commit() {
     commit( g_fn_pre_commit_empty );
 }
