@@ -551,6 +551,10 @@ size_t Client::importTransactionsAsBlock(
             LOG( m_logger ).flush();
             LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
                             << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+                            << cc::size10( partialTransactionReceipts.size() )
+                            << cc::attention( " partial transaction receipt(s) inside " )
+                            << cc::notice( "SAFETY CACHE" );
             LOG( m_logger ).flush();
         }
         // end, detect partially executed block
