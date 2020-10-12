@@ -230,4 +230,26 @@ inline std::string toString< uint8_t >( uint8_t const& _u ) {
     o << static_cast< uint16_t >( _u );
     return o.str();
 }
+
+template < class T >
+inline std::string toString0x( T const& _val ) {
+    std::ostringstream o;
+    o << "0x" << std::uppercase << std::setfill( '0' ) << std::setw( 1 ) << std::hex << _val;
+    return o.str();
+}
+template <>
+inline std::string toString0x< int8_t >( int8_t const& _val ) {
+    std::ostringstream o;
+    o << "0x" << std::uppercase << std::setfill( '0' ) << std::setw( 1 ) << std::hex
+      << static_cast< int16_t >( _val );
+    return o.str();
+}
+template <>
+inline std::string toString0x< uint8_t >( uint8_t const& _val ) {
+    std::ostringstream o;
+    o << "0x" << std::uppercase << std::setfill( '0' ) << std::setw( 1 ) << std::hex
+      << static_cast< uint16_t >( _val );
+    return o.str();
+}
+
 }  // namespace dev

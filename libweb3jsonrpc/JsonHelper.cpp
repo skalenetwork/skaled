@@ -193,7 +193,7 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["logs"] = dev::toJson( _t.localisedLogs() );
     res["logsBloom"] = toJS( _t.bloom() );
     if ( _t.hasStatusCode() )
-        res["status"] = toString( _t.statusCode() );
+        res["status"] = toString0x< uint8_t >( _t.statusCode() );  // toString( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
     //
