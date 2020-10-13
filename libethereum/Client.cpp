@@ -438,6 +438,8 @@ size_t Client::importTransactionsAsBlock(
         int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
         if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
              block_number != 0 ) {
+            LOG( m_logger ) << "Prev last snapshot time: " << this->last_snapshot_time;
+
             if ( m_snapshotHashComputing != nullptr )
                 m_snapshotHashComputing->join();
 
@@ -453,7 +455,7 @@ size_t Client::importTransactionsAsBlock(
             }
 
             this->last_snapshot_time =
-                ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
+                this->blockInfo( this->hashFromNumber( block_number ) ).timestamp();
 
             LOG( m_logger ) << "Block timestamp: " << _timestamp;
             LOG( m_logger ) << "Last snapshot time: " << this->last_snapshot_time;
@@ -1069,6 +1071,11 @@ void Client::initHashes() {
         ( latest_snapshots.second ?
                 this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
                 0 );
+
+    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
+                    << latest_snapshots.second;
+    LOG( m_logger ) << "Last snapshot time: " << last_snapshot_time;
+
     this->last_snapshot_hashes.first =
         ( latest_snapshots.first ?
                 this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
