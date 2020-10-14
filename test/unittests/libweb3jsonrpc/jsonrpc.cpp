@@ -867,7 +867,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
-    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     Json::Value code =
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
@@ -905,7 +905,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0x0" ) );
     Json::Value code =
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
@@ -948,7 +948,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL( receipt["status"], string( "1" ) );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     Json::Value code =
             fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
@@ -992,7 +992,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_false_flag ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_CHECK_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0x0" ) );
     Json::Value code =
             fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
@@ -1124,7 +1124,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
-    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0" ) );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
 }
 

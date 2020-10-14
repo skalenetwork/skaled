@@ -171,7 +171,7 @@ public:
             auto txHash = m_ethereum->importTransaction(tx);
             dev::eth::mineTransaction(*(m_ethereum), 1);
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            return receipt["status"] == "1";
+            return receipt["status"] == "0x1";
         } catch (...) {
             return false;
         }

@@ -1,3 +1,4 @@
+#include <test/tools/libtesteth/TestHelper.h>
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
 #include <test/tools/libtesteth/TestHelper.h>
