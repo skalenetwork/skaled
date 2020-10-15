@@ -461,8 +461,15 @@ size_t Client::importTransactionsAsBlock(
         unsigned block_number = this->number();
 
         int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
-        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
-             block_number != 0 ) {
+
+        // init last block creation time with only robust time source - timestamp of 1st block!
+        if ( block_number == 0 ) {
+            last_snapshot_creation_time = _timestamp;
+            LOG( m_logger ) << "Init last snapshot creation time: "
+                            << this->last_snapshot_creation_time;
+        } else if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+            LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
+
             if ( m_snapshotHashComputing != nullptr )
                 m_snapshotHashComputing->join();
 
@@ -478,17 +485,18 @@ size_t Client::importTransactionsAsBlock(
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
 
-            this->last_snapshot_time =
-                ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
+            this->last_snapshot_creation_time = _timestamp;
 
-            LOG( m_logger ) << cc::debug( "Block timestamp: " ) << _timestamp;
-            LOG( m_logger ) << cc::debug( "Last snapshot time: " ) << this->last_snapshot_time;
+            LOG( m_logger ) << "Block timestamp: " << _timestamp;
+            LOG( m_logger ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
 
             m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
                 m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
                     this->last_snapshoted_block = block_number;
+                    LOG( m_logger ) << "Computed hash for snapshot " << block_number << ": "
+                                    << m_snapshotManager->getSnapshotHash( block_number );
                     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
                     // TODO Make this number configurable
@@ -735,7 +743,7 @@ void Client::resetState() {
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
     return _timestamp / uint64_t( snapshotIntervalMs ) !=
-           this->last_snapshot_time / uint64_t( snapshotIntervalMs );
+           this->last_snapshot_creation_time / uint64_t( snapshotIntervalMs );
 }
 
 void Client::setSchainExitTime( uint64_t _timestamp ) const {
@@ -855,7 +863,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
                               << cc::num10( m_working.info().number() );
-        m_working.commitToSeal( bc(), m_extraData, this->last_snapshot_hashes.first );
+        // latest hash is really updated after NEXT snapshot already started hash computation!
+        m_working.commitToSeal( bc(), m_extraData, this->last_snapshot_hashes.second );
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )
@@ -1161,20 +1170,50 @@ void Client::updateHashes() {
 
 void Client::initHashes() {
     auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-    this->last_snapshoted_block = ( latest_snapshots.second ? latest_snapshots.second : -1 );
 
-    this->last_snapshot_time =
-        ( latest_snapshots.second ?
-                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
-                0 );
-    this->last_snapshot_hashes.first =
-        ( latest_snapshots.first ?
-                this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
-                this->empty_str_hash );
-    this->last_snapshot_hashes.second =
-        ( latest_snapshots.second ?
-                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
-                this->empty_str_hash );
+    // if both - load only one, second will be loaded on next snapshot
+    if ( latest_snapshots.first ) {
+        this->last_snapshoted_block = latest_snapshots.second;  // this one will be loaded
+
+        this->last_snapshot_hashes.first = this->empty_str_hash;
+        this->last_snapshot_hashes.second =
+            this->m_snapshotManager->getSnapshotHash( latest_snapshots.first );
+
+        // a little bit fake time
+        this->last_snapshot_creation_time =
+            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() +
+            chainParams().sChain.snapshotIntervalMs;
+
+        // if just one
+    } else if ( latest_snapshots.second ) {
+        this->last_snapshoted_block = latest_snapshots.second;  // will be loaded
+
+        this->last_snapshot_hashes.first = this->empty_str_hash;
+        this->last_snapshot_hashes.second = this->empty_str_hash;
+
+        // a little bit fake time
+        this->last_snapshot_creation_time =
+            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() +
+            chainParams().sChain.snapshotIntervalMs;
+
+        // no snapshots yet
+    } else {
+        this->last_snapshoted_block = -1;  // will be created
+
+        this->last_snapshot_hashes.first = this->empty_str_hash;
+        this->last_snapshot_hashes.second = this->empty_str_hash;
+
+        // a little bit fake time
+        if ( this->number() >= 1 )
+            this->last_snapshot_creation_time =
+                this->blockInfo( this->hashFromNumber( 1 ) ).timestamp();
+        else
+            this->last_snapshot_creation_time = 0;
+    }
+
+    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
+                    << latest_snapshots.second << " -> " << this->last_snapshoted_block;
+    LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
 }
 
 // new block watch

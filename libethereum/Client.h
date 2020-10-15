@@ -480,7 +480,7 @@ private:
     void updateHashes();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
-    int64_t last_snapshot_time = 0;
+    int64_t last_snapshot_creation_time = 0;
     int64_t last_snapshoted_block = -1;
     bool is_started_from_snapshot = true;
     const dev::h256 empty_str_hash =
