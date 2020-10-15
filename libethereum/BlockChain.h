@@ -460,7 +460,8 @@ private:
     void rotateDBIfNeeded();
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
-        u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
+        LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+        ImportPerformanceLogger& _performanceLogger );
     void checkBlockIsNew( VerifiedBlockRef const& _block ) const;
     void checkBlockTimestamp( BlockHeader const& _header ) const;
 
