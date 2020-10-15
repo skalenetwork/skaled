@@ -148,7 +148,8 @@ public:
     ImportRoute import( bytes const& _block, skale::State& _state, bool _mustBeNew = true );
     ImportRoute import(
         VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
-    ImportRoute import( Block const& _block );
+    ImportRoute import(
+        Block const& _block, TransactionReceipts* partialTransactionReceipts = nullptr );
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the
@@ -459,7 +460,8 @@ private:
     void rotateDBIfNeeded();
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
-        u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
+        LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+        ImportPerformanceLogger& _performanceLogger );
     void checkBlockIsNew( VerifiedBlockRef const& _block ) const;
     void checkBlockTimestamp( BlockHeader const& _header ) const;
 
@@ -536,6 +538,10 @@ private:
     db::DatabaseFace* m_blocksDB;
     db::DatabaseFace* m_extrasDB;
 
+public:
+    std::shared_ptr< dev::db::DatabaseFace > m_stateDB;  // initialized in Client class, than
+                                                         // assigned here later in Client::init()
+private:
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash;  // should protect both m_lastBlockHash and
                                                   // m_lastBlockNumber

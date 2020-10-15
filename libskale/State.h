@@ -197,6 +197,9 @@ public:
 
     State& operator=( State&& ) = default;
 
+    dev::h256 safeLastExecutedTransactionHash();
+    dev::eth::TransactionReceipts safePartialTransactionReceipts();
+
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
 
@@ -316,14 +319,16 @@ public:
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
-    void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts );
+    void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts,
+        OverlayDB::fn_pre_commit_t fn_pre_commit = OverlayDB::g_fn_pre_commit_empty );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool isSaveLastTxHash = false,
+        dev::eth::TransactionReceipts* accumulatedTransactionReceipts = nullptr );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -451,6 +456,14 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+public:
+    std::shared_ptr< dev::db::DatabaseFace > db() {
+        std::shared_ptr< dev::db::DatabaseFace > pDB;
+        if ( m_db_ptr )
+            pDB = m_db_ptr->db();
+        return pDB;
+    }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );
