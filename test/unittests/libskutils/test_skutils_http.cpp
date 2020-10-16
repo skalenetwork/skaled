@@ -1,6 +1,7 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
+#include <test/tools/libtesteth/TestHelper.h>
 
 BOOST_AUTO_TEST_SUITE( SkUtils )
 BOOST_AUTO_TEST_SUITE( http, *boost::unit_test::precondition( dev::test::option_all_tests ) )

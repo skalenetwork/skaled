@@ -592,12 +592,27 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
     MICROPROFILE_LEAVE();
 
+    //
+    // l_sergiy:
+    //
+    // We need to compute log blooms directly here without using Block::logBloom()
+    // method because _receipts may contain extra receipt items corresponding to
+    // partially cought-up transactions
+    //
+    // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
+    //
+    LogBloom blockBloomFull;
+    for ( const TransactionReceipt& trWalk : blockReceipts.receipts )
+        blockBloomFull |= trWalk.bloom();
+
     // All ok - insert into DB
     bytes const receipts = blockReceipts.rlp();
-    return insertBlockAndExtras( _block, ref( receipts ), totalDifficulty, performanceLogger );
+    return insertBlockAndExtras(
+        _block, ref( receipts ), &blockBloomFull, totalDifficulty, performanceLogger );
 }
 
-ImportRoute BlockChain::import( const Block& _block ) {
+ImportRoute BlockChain::import(
+    const Block& _block, TransactionReceipts* partialTransactionReceipts ) {
     assert( _block.isSealed() );
 
     VerifiedBlockRef verifiedBlock;
@@ -607,14 +622,31 @@ ImportRoute BlockChain::import( const Block& _block ) {
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
     BlockReceipts blockReceipts;
+    if ( partialTransactionReceipts ) {
+        for ( unsigned i = 0; i < partialTransactionReceipts->size(); ++i )
+            blockReceipts.receipts.push_back( ( *partialTransactionReceipts )[i] );
+    }
     for ( unsigned i = 0; i < _block.pending().size(); ++i )
         blockReceipts.receipts.push_back( _block.receipt( i ) );
     bytes const receipts = blockReceipts.rlp();
 
+    //
+    // l_sergiy:
+    //
+    // We need to compute log blooms directly here without using Block::logBloom()
+    // method because _receipts may contain extra receipt items corresponding to
+    // partially cought-up transactions
+    //
+    // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
+    //
+    LogBloom blockBloomFull;
+    for ( const TransactionReceipt& trWalk : blockReceipts.receipts )
+        blockBloomFull |= trWalk.bloom();
+
     ImportPerformanceLogger performanceLogger;
 
-    return insertBlockAndExtras(
-        verifiedBlock, ref( receipts ), _block.info().difficulty(), performanceLogger );
+    return insertBlockAndExtras( verifiedBlock, ref( receipts ), &blockBloomFull,
+        _block.info().difficulty(), performanceLogger );
 }
 
 ImportRoute BlockChain::insertWithoutParent(
@@ -628,7 +660,7 @@ ImportRoute BlockChain::insertWithoutParent(
     checkBlockTimestamp( block.info );
 
     ImportPerformanceLogger performanceLogger;
-    return insertBlockAndExtras( block, _receipts, _totalDifficulty, performanceLogger );
+    return insertBlockAndExtras( block, _receipts, nullptr, _totalDifficulty, performanceLogger );
 }
 
 void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
@@ -668,11 +700,16 @@ void BlockChain::rotateDBIfNeeded() {
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
-    bytesConstRef _receipts, u256 const& _totalDifficulty,
+    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
 
     rotateDBIfNeeded();
+
+    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
+    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
+    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
+    // std::cout.flush();
 
     std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
     std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
@@ -759,7 +796,19 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
 
-            LogBloom blockBloom = tbi.logBloom();
+            //
+            // l_sergiy:
+            //
+            // We need to compute log blooms directly here without using Block::logBloom()
+            // method because _receipts may contain extra receipt items corresponding to
+            // partially cought-up transactions
+            //
+            // old code was: // LogBloom blockBloom = tbi.logBloom();
+            //
+            LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : tbi.logBloom();
+            //
+            //
+
             blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
 
             // Pre-memoize everything we need before locking x_blocksBlooms

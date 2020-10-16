@@ -69,6 +69,7 @@ std::string filtersToString( h256Hash const& _fs ) {
     return str.str();
 }
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
 void create_lock_file_or_fail( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
@@ -80,12 +81,12 @@ void create_lock_file_or_fail( const fs::path& dir ) {
             string( "Cannot create lock file " ) + p.string() + ": " + strerror( errno ) );
     fclose( fp );
 }
-
 void delete_lock_file( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
         fs::remove( p );
 }
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
 }  // namespace
 
@@ -114,8 +115,9 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath ),
       is_started_from_snapshot( isStartedFromSnapshot ) {
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
-
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
@@ -155,6 +157,7 @@ void Client::stopWorking() {
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
@@ -169,6 +172,7 @@ void Client::stopWorking() {
                         << cc::error( " after foreceful exit" );
     }
     LOG( m_logger ).flush();
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     terminate();
 }
@@ -230,6 +234,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
+
+    bc().m_stateDB = m_state.db();
 
     if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotInterval is: "
@@ -430,6 +436,25 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
+static std::string stat_transactions2str(
+    const Transactions& _transactions, const std::string& strPrefix ) {
+    size_t cnt = _transactions.size();
+    std::string s;
+    if ( !strPrefix.empty() )
+        s += strPrefix;
+    s += cc::size10( cnt ) + " " +
+         cc::debug(
+             ( cnt > 1 ) ? "transactions: " : ( ( cnt == 1 ) ? "transaction: " : "transactions" ) );
+    size_t i = 0;
+    for ( const Transactions::value_type& tx : _transactions ) {
+        if ( i > 0 )
+            s += cc::normal( ", " );
+        s += cc::debug( "#" ) + cc::size10( i ) + cc::debug( "/" ) + cc::info( tx.sha3().hex() );
+        ++i;
+    }
+    return s;
+}
+
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
@@ -454,6 +479,7 @@ size_t Client::importTransactionsAsBlock(
             try {
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
                 m_debugTracer.tracepoint( "doing_snapshot" );
+
                 m_snapshotManager->doSnapshot( block_number );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
@@ -477,34 +503,106 @@ size_t Client::importTransactionsAsBlock(
                     m_snapshotManager->leaveNLastSnapshots( 2 );
 
                 } catch ( const std::exception& ex ) {
-                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                           << " in computeSnapshotHash() or updateHashes(). Exiting";
+                    cerror << cc::fatal( "CRITICAL" ) << " "
+                           << cc::warn( dev::nested_exception_what( ex ) )
+                           << cc::error(
+                                  " in computeSnapshotHash() or updateHashes(). Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
-                    cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
-                              "updateHashes(). Exiting";
+                    cerror << cc::fatal( "CRITICAL" )
+                           << cc::error(
+                                  " unknown exception in computeSnapshotHash() or updateHashes(). "
+                                  "Exiting..." );
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
             } ) );
         }  // if snapshot
 
-        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+        //
+        // begin, detect partially executed block
+        bool bIsPartial = false;
+        TransactionReceipts partialTransactionReceipts;
+        size_t cntAll = _transactions.size();
+        size_t cntExpected = cntAll;
+        size_t cntMissing = 0;
+        Transactions vecPassed, vecMissing;
+        dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
+        for ( const Transaction& txWalk : _transactions ) {
+            const h256 shaWalk = txWalk.sha3();
+            if ( bIsPartial )
+                vecMissing.push_back( txWalk );
+            else {
+                vecPassed.push_back( txWalk );
+                if ( shaWalk == shaLastTx ) {
+                    bIsPartial = true;
+                }
+            }
+        }
+        size_t cntPassed = vecPassed.size();
+        cntMissing = vecMissing.size();
+        cntExpected = cntMissing;
+        if ( bIsPartial ) {
+            partialTransactionReceipts = m_state.safePartialTransactionReceipts();
+            LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
+                            << cc::warn( " found partially executed block, have " )
+                            << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
+                            << cc::size10( cntPassed ) << cc::warn( " passed, " )
+                            << cc::size10( cntMissing ) << cc::warn( " missing" );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( _transactions, cc::notice( " All " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+                            << cc::size10( partialTransactionReceipts.size() )
+                            << cc::attention( " partial transaction receipt(s) inside " )
+                            << cc::notice( "SAFETY CACHE" );
+            LOG( m_logger ).flush();
+        }
+        // end, detect partially executed block
+        //
+
+        TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
+        bool isSaveLastTxHash = true;
+        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
+            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
         sealUnconditionally( false );
-        importWorkingBlock();
+        importWorkingBlock( &partialTransactionReceipts );
 
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
         }
-        return n_succeeded;
+        if ( bIsPartial )
+            cntSucceeded += cntPassed;
+        if ( cntSucceeded != cntAll ) {
+            LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
+                            << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
+                            << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
+                            << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
+            LOG( m_logger ).flush();
+        }
+        if ( bIsPartial ) {
+            LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " )
+                            << cc::size10( cntAll ) << cc::success( " transaction(s), " )
+                            << cc::size10( cntPassed ) << cc::success( " passed, " )
+                            << cc::size10( cntMissing ) << cc::success( " missing" );
+            LOG( m_logger ).flush();
+        }
+        return cntSucceeded;
     }
     assert( false );
     return 0;
 }
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -527,9 +625,9 @@ size_t Client::syncTransactions(
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
-        //        assert(m_state.m_db_write_lock.has_value());
-        tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+        // assert(m_state.m_db_write_lock.has_value());
+        tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
+            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts );
         m_state = m_state.startNew();
     }
 
@@ -801,9 +899,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock() {
+void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working );
+    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
     // m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
