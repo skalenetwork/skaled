@@ -820,7 +820,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     //
     // unddos
     skutils::unddos::e_high_load_detection_result_t ehldr =
-        pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin );
+        pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin, strMethod );
     switch ( ehldr ) {
     case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:  // ban by too high load per
                                                                        // minute
@@ -2281,7 +2281,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             skutils::url url_unddos_origin( req.origin_ );
             const std::string str_unddos_origin = url_unddos_origin.host();
             skutils::unddos::e_high_load_detection_result_t ehldr =
-                pSO->unddos_.register_call_from_origin( str_unddos_origin );
+                pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
             switch ( ehldr ) {
             case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
                                                                                   // load per minute
