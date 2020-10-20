@@ -42,6 +42,22 @@ inline void adjust_now_tick_mark( time_tick_mark& ttm ) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class custom_method_setting {
+public:
+    size_t max_calls_per_second_ = 0;
+    size_t max_calls_per_minute_ = 0;
+    custom_method_setting& merge( const custom_method_setting& other ) {
+        max_calls_per_second_ = std::min( max_calls_per_second_, other.max_calls_per_second_ );
+        max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
+        return ( *this );
+    }
+};  // class custom_method_setting
+
+typedef std::map< std::string, custom_method_setting > map_custom_method_settings_t;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 typedef std::vector< std::string > origin_wildcards_t;
 
 class origin_entry_setting {
@@ -52,15 +68,20 @@ public:
     duration ban_peak_ = duration( 0 );
     duration ban_lengthy_ = duration( 0 );
     size_t max_ws_conn_ = 0;
+    map_custom_method_settings_t map_custom_method_settings_;
     origin_entry_setting();
     origin_entry_setting( const origin_entry_setting& other );
     origin_entry_setting( origin_entry_setting&& other );
     virtual ~origin_entry_setting();
     origin_entry_setting& operator=( const origin_entry_setting& other );
     void load_defaults_for_any_origin();
+    void load_friendly_for_any_origin();
     void load_reasonable_for_any_origin();
     void load_unlim_for_any_origin();
     void load_unlim_for_localhost_only();
+    void load_custom_method_as_multiplier_of_default(
+        const char* strMethod, double lfMultiplier = 10.0 );
+    void load_recommended_custom_methods_as_multiplier_of_default( double lfMultiplier = 10.0 );
     bool empty() const;
     operator bool() const { return ( !empty() ); }
     bool operator!() const { return empty(); }
@@ -71,6 +92,8 @@ public:
     void toJSON( nlohmann::json& jo ) const;
     bool match_origin( const char* origin ) const;
     bool match_origin( const std::string& origin ) const;
+    size_t max_calls_per_second( const char* strMethod ) const;
+    size_t max_calls_per_minute( const char* strMethod ) const;
 };  /// class origin_entry_setting
 
 typedef std::vector< origin_entry_setting > origin_entry_settings_t;
@@ -275,10 +298,21 @@ public:
     size_t unload_old_data_by_time_to_past(
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
     e_high_load_detection_result_t register_call_from_origin( const char* origin,
-        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
+        const char* strMethod, time_tick_mark ttmNow = time_tick_mark( 0 ),
+        duration durationToPast = duration( 60 ) );
+    e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
+        const std::string& strMethod, time_tick_mark ttmNow = time_tick_mark( 0 ),
+        duration durationToPast = duration( 60 ) ) {
+        return register_call_from_origin(
+            origin.c_str(), strMethod.c_str(), ttmNow, durationToPast );
+    }
+    e_high_load_detection_result_t register_call_from_origin( const char* origin,
+        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
+        return register_call_from_origin( origin, nullptr, ttmNow, durationToPast );
+    }
     e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
-        return register_call_from_origin( origin.c_str(), ttmNow, durationToPast );
+        return register_call_from_origin( origin.c_str(), nullptr, ttmNow, durationToPast );
     }
     bool is_ban_ws_conn_for_origin( const char* origin ) const;
     bool is_ban_ws_conn_for_origin( const std::string& origin ) const {

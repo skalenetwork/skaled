@@ -29,17 +29,30 @@ origin_entry_setting& origin_entry_setting::operator=( const origin_entry_settin
 }
 
 void origin_entry_setting::load_defaults_for_any_origin() {
-    load_reasonable_for_any_origin();
+    load_friendly_for_any_origin();
+    // load_reasonable_for_any_origin();
+}
+
+void origin_entry_setting::load_friendly_for_any_origin() {
+    clear();
+    origin_wildcards_.push_back( "*" );
+    max_calls_per_second_ = 500;
+    max_calls_per_minute_ = 15000;
+    ban_peak_ = duration( 15 );
+    ban_lengthy_ = duration( 120 );
+    max_ws_conn_ = 50;
+    load_recommended_custom_methods_as_multiplier_of_default();
 }
 
 void origin_entry_setting::load_reasonable_for_any_origin() {
     clear();
     origin_wildcards_.push_back( "*" );
-    max_calls_per_second_ = 100;     // 100
-    max_calls_per_minute_ = 5000;    // 2000
-    ban_peak_ = duration( 15 );      // 15
-    ban_lengthy_ = duration( 120 );  // 120
-    max_ws_conn_ = 10;               // 10
+    max_calls_per_second_ = 100;
+    max_calls_per_minute_ = 5000;
+    ban_peak_ = duration( 15 );
+    ban_lengthy_ = duration( 120 );
+    max_ws_conn_ = 10;
+    load_recommended_custom_methods_as_multiplier_of_default();
 }
 
 void origin_entry_setting::load_unlim_for_any_origin() {
@@ -50,6 +63,7 @@ void origin_entry_setting::load_unlim_for_any_origin() {
     ban_peak_ = duration( 0 );
     ban_lengthy_ = duration( 0 );
     max_ws_conn_ = std::numeric_limits< size_t >::max();
+    load_recommended_custom_methods_as_multiplier_of_default();
 }
 
 void origin_entry_setting::load_unlim_for_localhost_only() {
@@ -61,7 +75,30 @@ void origin_entry_setting::load_unlim_for_localhost_only() {
     ban_peak_ = duration( 0 );
     ban_lengthy_ = duration( 0 );
     max_ws_conn_ = std::numeric_limits< size_t >::max();
+    load_recommended_custom_methods_as_multiplier_of_default();
 }
+
+void origin_entry_setting::load_custom_method_as_multiplier_of_default(
+    const char* strMethod, double lfMultiplier ) {
+    if ( strMethod == nullptr || strMethod[0] == '\0' || lfMultiplier <= 0.0 )
+        return;
+    custom_method_setting cme;
+    cme.max_calls_per_second_ = size_t( max_calls_per_second_ * lfMultiplier );
+    cme.max_calls_per_minute_ = size_t( max_calls_per_minute_ * lfMultiplier );
+    map_custom_method_settings_[strMethod] = cme;
+}
+
+void origin_entry_setting::load_recommended_custom_methods_as_multiplier_of_default(
+    double lfMultiplier ) {
+    static const char* g_arr[] = {"web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
+        "eth_protocolVersion", "eth_gasPrice", "eth_blockNumber", "eth_getBalance",
+        "eth_getBlockByHash", "eth_getBlockByNumber", "eth_getTransactionCount",
+        "eth_getTransactionReceipt", "eth_getTransactionByHash",
+        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex"};
+    for ( size_t i = 0; i < sizeof( g_arr ) / sizeof( g_arr[0] ); ++i )
+        load_custom_method_as_multiplier_of_default( g_arr[i], lfMultiplier );
+}
+
 
 bool origin_entry_setting::empty() const {
     if ( !origin_wildcards_.empty() )
@@ -76,6 +113,7 @@ void origin_entry_setting::clear() {
     ban_peak_ = duration( 0 );
     ban_lengthy_ = duration( 0 );
     max_ws_conn_ = 0;
+    map_custom_method_settings_.clear();
 }
 
 origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& other ) {
@@ -88,6 +126,7 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
     ban_peak_ = other.ban_peak_;
     ban_lengthy_ = other.ban_lengthy_;
     max_ws_conn_ = other.max_ws_conn_;
+    map_custom_method_settings_ = other.map_custom_method_settings_;
     return ( *this );
 }
 
@@ -101,6 +140,23 @@ origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& o
     ban_peak_ = std::max( ban_peak_, other.ban_peak_ );
     ban_lengthy_ = std::max( ban_lengthy_, other.ban_lengthy_ );
     max_ws_conn_ = std::min( max_ws_conn_, other.max_ws_conn_ );
+    if ( !other.map_custom_method_settings_.empty() ) {
+        nlohmann::json joCMS = nlohmann::json::object();
+        map_custom_method_settings_t::const_iterator itWalk =
+                                                         other.map_custom_method_settings_.cbegin(),
+                                                     itEnd =
+                                                         other.map_custom_method_settings_.cend();
+        for ( ; itWalk != itEnd; ++itWalk ) {
+            const custom_method_setting& cme = itWalk->second;
+            map_custom_method_settings_t::iterator itFind =
+                map_custom_method_settings_.find( itWalk->first );
+            if ( itFind != map_custom_method_settings_.end() ) {
+                itFind->second.merge( cme );  // merge with existing
+                continue;
+            }
+            map_custom_method_settings_[itWalk->first] = cme;  // add mew
+        }
+    }
     return ( *this );
 }
 
@@ -127,6 +183,18 @@ void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
         ban_lengthy_ = jo["ban_lengthy"].get< size_t >();
     if ( jo.find( "max_ws_conn" ) != jo.end() )
         max_ws_conn_ = jo["max_ws_conn"].get< size_t >();
+    if ( jo.find( "custom_method_settings" ) != jo.end() ) {
+        const nlohmann::json& joCMS = jo["custom_method_settings"];
+        for ( auto it = joCMS.cbegin(); it != joCMS.cend(); ++it ) {
+            const nlohmann::json& joMethod = it.value();
+            custom_method_setting cme;
+            if ( joMethod.find( "max_calls_per_second" ) != jo.end() )
+                cme.max_calls_per_second_ = joMethod["max_calls_per_second"].get< size_t >();
+            if ( joMethod.find( "max_calls_per_minute" ) != jo.end() )
+                cme.max_calls_per_minute_ = joMethod["max_calls_per_minute"].get< size_t >();
+            map_custom_method_settings_[it.key()] = cme;
+        }
+    }
 }
 
 void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
@@ -140,6 +208,19 @@ void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo["ban_peak"] = ban_peak_;
     jo["ban_lengthy"] = ban_lengthy_;
     jo["max_ws_conn"] = max_ws_conn_;
+    if ( !map_custom_method_settings_.empty() ) {
+        nlohmann::json joCMS = nlohmann::json::object();
+        map_custom_method_settings_t::const_iterator itWalk = map_custom_method_settings_.cbegin(),
+                                                     itEnd = map_custom_method_settings_.cend();
+        for ( ; itWalk != itEnd; ++itWalk ) {
+            const custom_method_setting& cme = itWalk->second;
+            nlohmann::json joMethod = nlohmann::json::object();
+            joMethod["max_calls_per_second"] = cme.max_calls_per_second_;
+            joMethod["max_calls_per_minute"] = cme.max_calls_per_minute_;
+            joCMS[itWalk->first] = joMethod;
+        }
+        jo["custom_method_settings"] = joCMS;
+    }
 }
 
 bool origin_entry_setting::match_origin( const char* origin ) const {
@@ -153,6 +234,32 @@ bool origin_entry_setting::match_origin( const char* origin ) const {
 }
 bool origin_entry_setting::match_origin( const std::string& origin ) const {
     return match_origin( origin.c_str() );
+}
+
+size_t origin_entry_setting::max_calls_per_second( const char* strMethod ) const {
+    if ( strMethod == nullptr || strMethod[0] == '\0' )
+        return max_calls_per_second_;
+    map_custom_method_settings_t::const_iterator itFind =
+                                                     map_custom_method_settings_.find( strMethod ),
+                                                 itEnd = map_custom_method_settings_.cend();
+    if ( itFind == itEnd )
+        return max_calls_per_second_;
+    const custom_method_setting& cme = itFind->second;
+    const size_t cnt = std::max( max_calls_per_second_, cme.max_calls_per_second_ );
+    return cnt;
+}
+
+size_t origin_entry_setting::max_calls_per_minute( const char* strMethod ) const {
+    if ( strMethod == nullptr || strMethod[0] == '\0' )
+        return max_calls_per_minute_;
+    map_custom_method_settings_t::const_iterator itFind =
+                                                     map_custom_method_settings_.find( strMethod ),
+                                                 itEnd = map_custom_method_settings_.cend();
+    if ( itFind == itEnd )
+        return max_calls_per_minute_;
+    const custom_method_setting& cme = itFind->second;
+    const size_t cnt = std::max( max_calls_per_minute_, cme.max_calls_per_minute_ );
+    return cnt;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +621,7 @@ size_t algorithm::unload_old_data_by_time_to_past(
 }
 
 e_high_load_detection_result_t algorithm::register_call_from_origin(
-    const char* origin, time_tick_mark ttmNow, duration durationToPast ) {
+    const char* origin, const char* strMethod, time_tick_mark ttmNow, duration durationToPast ) {
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
     adjust_now_tick_mark( ttmNow );
@@ -533,18 +640,18 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     if ( to.check_ban( ttmNow ) )
         return e_high_load_detection_result_t::ehldr_ban;  // still banned
     const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
-    // const size_t cntUnloaded = to.unload_old_data_by_count( oe.max_calls_per_minute_ );
-    // if ( cntUnloaded > oe.max_calls_per_minute_ ) {
+    // const size_t cntUnloaded = to.unload_old_data_by_count( oe.max_calls_per_minute( strMethod )
+    // ); if ( cntUnloaded > oe.max_calls_per_minute_ ) {
     //    to.ban_until_ = ttmNow + oe.ban_lengthy_;
     //    return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
     //}
     size_t cntPast = to.count_to_past( ttmNow, durationToPast );  // 60
-    if ( cntPast > oe.max_calls_per_minute_ ) {
+    if ( cntPast > oe.max_calls_per_minute( strMethod ) ) {
         to.ban_until_ = ttmNow + oe.ban_lengthy_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
     cntPast = to.count_to_past( ttmNow, 1 );
-    if ( cntPast > oe.max_calls_per_second_ ) {
+    if ( cntPast > oe.max_calls_per_second( strMethod ) ) {
         to.ban_until_ = ttmNow + oe.ban_peak_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
