@@ -118,6 +118,13 @@ Client::Client( ChainParams const& _params, int _networkID,
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
+
+    m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
+        clog( VerbosityTrace, "client" )
+            << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
+    } );
+
+
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
