@@ -91,20 +91,17 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
 #if CONSENSUS
 void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
-    auto sgxServerUrl =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.sgxServerUrl );
+    const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
     const std::string sgx_cert_filename = "sgx.crt";
     const std::string sgx_key_filename = "sgx.key";
-    auto sgxSSLKeyFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_key_filename );
-    auto sgxSSLCertFilePath = std::make_shared< std::string >( sgx_cert_path + sgx_cert_filename );
+    std::string sgxSSLKeyFilePath = sgx_cert_path + sgx_key_filename;
+    std::string sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
 
-    auto ecdsaKeyName =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.ecdsaKeyName );
+    std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
 
-    auto blsKeyName =
-        std::make_shared< std::string >( m_client.chainParams().nodeInfo.keyShareName );
+    std::string blsKeyName = m_client.chainParams().nodeInfo.keyShareName;
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
