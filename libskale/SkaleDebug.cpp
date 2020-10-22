@@ -46,6 +46,7 @@ void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count )
 
     assert( !tp_obj.need_break );
     tp_obj.need_break = true;
+    tp_obj.waiting_count = 0;
     tp_obj.needed_waiting_count = count;
 }
 
