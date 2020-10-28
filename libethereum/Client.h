@@ -487,16 +487,12 @@ protected:
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void initHashes();
-    void updateHashes();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
     int64_t last_snapshot_creation_time = 0;
     int64_t last_snapshoted_block_with_hash = -1;
     bool is_started_from_snapshot = true;
-    const dev::h256 empty_str_hash =
-        dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );
-    std::pair< dev::h256, dev::h256 > last_snapshot_hashes = {
-        empty_str_hash, empty_str_hash};  // empty string hash
+    const static dev::h256 empty_str_hash;
 
 public:
     FILE* performance_fd;
