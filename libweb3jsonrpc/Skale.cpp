@@ -285,6 +285,9 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
+        if ( !snapshot_hash )
+            throw std::runtime_error(
+                "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";

@@ -274,10 +274,20 @@ public:
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        return this->m_snapshotManager->getSnapshotHash( _blockNumber );
+        if ( _blockNumber > this->last_snapshoted_block_with_hash )
+            return dev::h256();
+
+        try {
+            dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber );
+            return res;
+        } catch ( const SnapshotManager::SnapshotAbsent& ) {
+            return dev::h256();
+        }
+
+        // fall through other exceptions
     }
 
-    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block; }
+    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
@@ -481,7 +491,7 @@ private:
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
     int64_t last_snapshot_creation_time = 0;
-    int64_t last_snapshoted_block = -1;
+    int64_t last_snapshoted_block_with_hash = -1;
     bool is_started_from_snapshot = true;
     const dev::h256 empty_str_hash =
         dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

@@ -477,12 +477,16 @@ size_t Client::importTransactionsAsBlock(
         } else if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
             LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
-            if ( m_snapshotHashComputing != nullptr )
+            if ( m_snapshotHashComputing != nullptr ) {
                 m_snapshotHashComputing->join();
 
-            if ( this->last_snapshoted_block != -1 ) {
+                // TODO Make this number configurable
+                this->last_snapshoted_block_with_hash =
+                    m_snapshotManager->getLatestSnasphots().second;
                 this->updateHashes();
+                m_snapshotManager->leaveNLastSnapshots( 2 );
             }
+
             try {
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
                 m_debugTracer.tracepoint( "doing_snapshot" );
@@ -501,13 +505,9 @@ size_t Client::importTransactionsAsBlock(
                 m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
                     this->m_snapshotManager->computeSnapshotHash( block_number );
-                    this->last_snapshoted_block = block_number;
                     LOG( m_logger ) << "Computed hash for snapshot " << block_number << ": "
                                     << m_snapshotManager->getSnapshotHash( block_number );
                     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
-
-                    // TODO Make this number configurable
-                    m_snapshotManager->leaveNLastSnapshots( 2 );
 
                 } catch ( const std::exception& ex ) {
                     cerror << cc::fatal( "CRITICAL" ) << " "
@@ -812,7 +812,7 @@ void Client::rejigSealing() {
 
                 // TODO Deduplicate code!
                 dev::h256 stateRootToSet;
-                if ( this->last_snapshoted_block == -1 ) {
+                if ( this->last_snapshoted_block_with_hash == -1 ) {
                     secp256k1_sha256_t ctx;
                     secp256k1_sha256_initialize( &ctx );
 
@@ -824,9 +824,8 @@ void Client::rejigSealing() {
 
                     stateRootToSet = empty_state_root_hash;
                 } else {
-                    unsigned latest_snapshot = this->last_snapshoted_block;
                     dev::h256 state_root_hash =
-                        this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                        this->m_snapshotManager->getSnapshotHash( last_snapshoted_block_with_hash );
                     stateRootToSet = state_root_hash;
                 }
 
@@ -1172,7 +1171,7 @@ void Client::updateHashes() {
 
     std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
     this->last_snapshot_hashes.second =
-        this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
+        this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block_with_hash );
 }
 
 void Client::initHashes() {
@@ -1180,7 +1179,7 @@ void Client::initHashes() {
 
     // if both - load only one, second will be loaded on next snapshot
     if ( latest_snapshots.first ) {
-        this->last_snapshoted_block = latest_snapshots.second;  // this one will be loaded
+        this->last_snapshoted_block_with_hash = latest_snapshots.second;  // this one will be loaded
 
         this->last_snapshot_hashes.first = this->empty_str_hash;
         this->last_snapshot_hashes.second =
@@ -1188,24 +1187,26 @@ void Client::initHashes() {
 
         // a little bit fake time
         this->last_snapshot_creation_time =
-            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() +
+            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block_with_hash ) )
+                .timestamp() +
             chainParams().sChain.snapshotIntervalMs;
 
         // if just one
     } else if ( latest_snapshots.second ) {
-        this->last_snapshoted_block = latest_snapshots.second;  // will be loaded
+        this->last_snapshoted_block_with_hash = latest_snapshots.second;  // will be loaded
 
         this->last_snapshot_hashes.first = this->empty_str_hash;
         this->last_snapshot_hashes.second = this->empty_str_hash;
 
         // a little bit fake time
         this->last_snapshot_creation_time =
-            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() +
+            this->blockInfo( this->hashFromNumber( this->last_snapshoted_block_with_hash ) )
+                .timestamp() +
             chainParams().sChain.snapshotIntervalMs;
 
         // no snapshots yet
     } else {
-        this->last_snapshoted_block = -1;  // will be created
+        this->last_snapshoted_block_with_hash = -1;  // will be created
 
         this->last_snapshot_hashes.first = this->empty_str_hash;
         this->last_snapshot_hashes.second = this->empty_str_hash;
@@ -1219,7 +1220,7 @@ void Client::initHashes() {
     }
 
     LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
-                    << latest_snapshots.second << " -> " << this->last_snapshoted_block;
+                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
     LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
 }
 
