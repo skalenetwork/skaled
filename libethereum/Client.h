@@ -489,7 +489,9 @@ private:
     void initHashes();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
+    // time of last physical snapshot
     int64_t last_snapshot_creation_time = 0;
+    // usually this is snapshot before last!
     int64_t last_snapshoted_block_with_hash = -1;
     bool is_started_from_snapshot = true;
     const static dev::h256 empty_str_hash;
