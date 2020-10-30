@@ -475,12 +475,17 @@ size_t Client::importTransactionsAsBlock(
         } else if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
             LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
-            if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() ) {
+            if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
                 m_snapshotHashComputing->join();
 
-                // TODO Make this number configurable
-                this->last_snapshoted_block_with_hash =
-                    m_snapshotManager->getLatestSnasphots().second;
+            // TODO Make this number configurable
+            // thread can be absent - if hash was already there
+            // snapshot can be absent too
+            // but hash cannot be absent
+            auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+            if ( latest_snapshots.second ) {
+                assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
+                this->last_snapshoted_block_with_hash = latest_snapshots.second;
                 m_snapshotManager->leaveNLastSnapshots( 2 );
             }
 
@@ -1221,7 +1226,7 @@ void Client::initHashes() {
 
         // ignore second as it was "in hash computation"
         last_snapshot_creation_time =
-            blockInfo( this->hashFromNumber( latest_snapshots.first ) ).timestamp();
+            blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
