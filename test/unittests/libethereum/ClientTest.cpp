@@ -824,7 +824,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
