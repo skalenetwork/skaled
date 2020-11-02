@@ -51,9 +51,10 @@ size_t SnapshotHashAgent::verifyAllData() const {
 
         verified += is_verified;
         if ( !is_verified ) {
-            cerror << "WARNING " << " Signature from " + std::to_string( i ) +
-                                 "-th node was not verified during "
-                                 "getNodesToDownloadSnapshotFrom ";
+            cerror << "WARNING "
+                   << " Signature from " + std::to_string( i ) +
+                          "-th node was not verified during "
+                          "getNodesToDownloadSnapshotFrom ";
         }
     }
 
