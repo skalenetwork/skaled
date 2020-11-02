@@ -100,10 +100,8 @@ public:
         }
     }
 
-    bool verifyAllData() const {
-        bool result = false;
-        this->hashAgent_->verifyAllData( result );
-        return result;
+    size_t verifyAllData() const {
+        return this->hashAgent_->verifyAllData();
     }
 
     std::vector< size_t > getNodesToDownloadSnapshotFrom() {
@@ -413,7 +411,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
     std::vector< size_t > excpected = {0, 1, 2};
     BOOST_REQUIRE( res == excpected );
@@ -439,7 +437,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
     std::vector< size_t > excpected = {0, 1, 2, 3, 5};
     BOOST_REQUIRE( res == excpected );
@@ -459,7 +457,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3);
     BOOST_REQUIRE_THROW( test_agent.voteForHash(), NotEnoughVotesException );
 }
 
@@ -477,7 +475,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
-    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), IsNotVerified );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 2 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

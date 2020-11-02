@@ -32,7 +32,8 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
-void SnapshotHashAgent::verifyAllData( bool& fl ) const {
+size_t SnapshotHashAgent::verifyAllData() const {
+    size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
@@ -40,39 +41,29 @@ void SnapshotHashAgent::verifyAllData( bool& fl ) const {
 
         bool is_verified = false;
         libff::inhibit_profiling_info = true;
-        is_verified = this->bls_->Verification(
-            std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
-            this->signatures_[i], this->public_keys_[i] );
+        try {
+            is_verified = this->bls_->Verification(
+                std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
+                this->signatures_[i], this->public_keys_[i] );
+        } catch ( std::exception& ex ) {
+            cerror << ex.what();
+        }
+
+        verified += is_verified;
         if ( !is_verified ) {
-            fl = false;
-            throw IsNotVerified( " Signature from " + std::to_string( i ) +
+            cerror << "WARNING " << " Signature from " + std::to_string( i ) +
                                  "-th node was not verified during "
-                                 "getNodesToDownloadSnapshotFrom " );
+                                 "getNodesToDownloadSnapshotFrom ";
         }
     }
 
-    fl = true;
+    return verified;
 }
 
 bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
     std::map< dev::h256, size_t > map_hash;
 
-    bool verified = false;
-    try {
-        this->verifyAllData( verified );
-    } catch ( IsNotVerified& ex ) {
-        throw IsNotVerified(
-            cc::fatal( "FATAL:" ) + " " +
-            cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
-            cc::warn( ex.what() ) );
-    } catch ( std::exception& ex ) {
-        std::throw_with_nested(
-            cc::fatal( "FATAL:" ) + " " +
-            cc::error( "Exception while verifying signatures from other skaleds: " ) + " " +
-            cc::warn( ex.what() ) );
-    }
-
-    if ( !verified ) {
+    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 ) {
         return false;
     }
 
