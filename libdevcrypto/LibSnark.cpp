@@ -19,11 +19,11 @@
 
 #include <libdevcrypto/LibSnark.h>
 
-#include <libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp>
-#include <libff/algebra/curves/alt_bn128/alt_bn128_g2.hpp>
-#include <libff/algebra/curves/alt_bn128/alt_bn128_pairing.hpp>
-#include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
-#include <libff/common/profiling.hpp>
+#include <algebra/curves/alt_bn128/alt_bn128_g1.hpp>
+#include <algebra/curves/alt_bn128/alt_bn128_g2.hpp>
+#include <algebra/curves/alt_bn128/alt_bn128_pairing.hpp>
+#include <algebra/curves/alt_bn128/alt_bn128_pp.hpp>
+#include <common/profiling.hpp>
 
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
