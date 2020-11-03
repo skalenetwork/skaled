@@ -111,7 +111,7 @@ private:
     bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
-    void verifyAllData( bool& fl ) const;
+    size_t verifyAllData() const;
 };
 
 #endif  // SNAPSHOTHASHAGENT_H
