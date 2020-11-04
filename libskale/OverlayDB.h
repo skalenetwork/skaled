@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include <libdevcore/Common.h>
@@ -32,6 +33,16 @@
 
 
 namespace skale {
+
+namespace slicing {
+
+dev::db::Slice toSlice( dev::h256 const& _h );
+dev::db::Slice toSlice( dev::bytes const& _b );
+dev::db::Slice toSlice( dev::h160 const& _h );
+dev::db::Slice toSlice( std::string const& _s );
+
+};  // namespace slicing
+
 class OverlayDB {
 public:
     explicit OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db = nullptr );
@@ -45,7 +56,19 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
+    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
+    dev::h256 safeLastExecutedTransactionHash();
+    static dev::bytes stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB );
+    dev::bytes safePartialTransactionReceipts();
+
+    typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
+        std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
+        fn_pre_commit_t;
+
+    static const fn_pre_commit_t g_fn_pre_commit_empty;
+
     void commit();
+    void commit( fn_pre_commit_t fn_pre_commit );
     void rollback();
     void clearDB();
     bool connected() const;
@@ -88,6 +111,9 @@ private:
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
+
+public:
+    std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }
 };
 
 }  // namespace skale

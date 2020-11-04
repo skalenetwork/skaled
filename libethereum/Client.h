@@ -264,6 +264,8 @@ public:
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
+        if ( _blockNumber > this->getLatestSnapshotBlockNumer() )
+            throw std::invalid_argument( "Too new snapshot requested" );
         boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
         // TODO Make constant 2 configurable
         m_snapshotManager->leaveNLastDiffs( 2 );
@@ -274,24 +276,37 @@ public:
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        return this->m_snapshotManager->getSnapshotHash( _blockNumber );
+        if ( _blockNumber > this->last_snapshoted_block_with_hash )
+            return dev::h256();
+
+        try {
+            dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber );
+            return res;
+        } catch ( const SnapshotManager::SnapshotAbsent& ) {
+            return dev::h256();
+        }
+
+        // fall through other exceptions
     }
 
-    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block; }
+    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
+
+    SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false,
+        TransactionReceipts* accumulatedTransactionReceipts = nullptr );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!
     void sealUnconditionally( bool submitToBlockChain = true );
 
     /// thread unsafe!!
-    void importWorkingBlock();
+    void importWorkingBlock( TransactionReceipts* partialTransactionReceipts = nullptr );
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
@@ -468,19 +483,20 @@ protected:
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
 
+    SkaleDebugTracer m_debugTracer;
+    SkaleDebugInterface::handler m_debugHandler;
+
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void initHashes();
-    void updateHashes();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
-    int64_t last_snapshot_time = 0;
-    int64_t last_snapshoted_block = -1;
+    // time of last physical snapshot
+    int64_t last_snapshot_creation_time = 0;
+    // usually this is snapshot before last!
+    int64_t last_snapshoted_block_with_hash = -1;
     bool is_started_from_snapshot = true;
-    const dev::h256 empty_str_hash =
-        dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );
-    std::pair< dev::h256, dev::h256 > last_snapshot_hashes = {
-        empty_str_hash, empty_str_hash};  // empty string hash
+    const static dev::h256 empty_str_hash;
 
 public:
     FILE* performance_fd;

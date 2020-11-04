@@ -63,9 +63,9 @@ public:
             &dev::rpc::DebugFace::debug_forceBroadcastI );
 
         this->bindAndAddMethod(
-            jsonrpc::Procedure( "debug_callSkaleHost", jsonrpc::PARAMS_BY_POSITION,
+            jsonrpc::Procedure( "debug_interfaceCall", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::DebugFace::debug_callSkaleHostI );
+            &dev::rpc::DebugFace::debug_interfaceCallI );
 
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getVersion", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
@@ -126,8 +126,8 @@ public:
         this->debug_forceBroadcast( request[0u].asString() );
         response = true;  // TODO make void
     }
-    virtual void debug_callSkaleHostI( const Json::Value& request, Json::Value& response ) {
-        response = this->debug_callSkaleHost( request[0u].asString() );
+    virtual void debug_interfaceCallI( const Json::Value& request, Json::Value& response ) {
+        response = this->debug_interfaceCall( request[0u].asString() );
     }
 
     virtual void debug_getVersionI( const Json::Value&, Json::Value& response ) {
@@ -162,7 +162,7 @@ public:
     virtual void debug_pauseConsensus( bool pause ) = 0;
     virtual void debug_forceBlock() = 0;
     virtual void debug_forceBroadcast( const std::string& _transactionHash ) = 0;
-    virtual std::string debug_callSkaleHost( const std::string& _arg ) = 0;
+    virtual std::string debug_interfaceCall( const std::string& _arg ) = 0;
 
     virtual std::string debug_getVersion() = 0;
     virtual std::string debug_getArguments() = 0;

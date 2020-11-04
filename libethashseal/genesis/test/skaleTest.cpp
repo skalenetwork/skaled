@@ -70,6 +70,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
+        "emptyBlockIntervalMs": -1,
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1}
         ]

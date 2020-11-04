@@ -3685,15 +3685,19 @@ peer_ptr_t server::detachPeer( hdl_t hdl ) {
     return api_.detachPeer( hdl );
 }
 bool server::onPeerRegister( peer_ptr_t pPeer ) {
-    if ( !pPeer )
+    try {
+        if ( !pPeer )
+            return false;
+        pPeer->opened_ = true;
+        // hdl_t hdl = pPeer->hdl();
+        if ( onPeerRegister_ )
+            onPeerRegister_( pPeer );
+        pPeer->onPeerRegister();
+        pPeer->ref_retain();
+        traffic_stats::event_add( g_strEventNameWebSocketPeerConnect );
+    } catch ( ... ) {
         return false;
-    pPeer->opened_ = true;
-    // hdl_t hdl = pPeer->hdl();
-    if ( onPeerRegister_ )
-        onPeerRegister_( pPeer );
-    pPeer->onPeerRegister();
-    pPeer->ref_retain();
-    traffic_stats::event_add( g_strEventNameWebSocketPeerConnect );
+    }
     return true;
 }
 bool server::onPeerUnregister( peer_ptr_t pPeer ) {

@@ -348,6 +348,7 @@ int main( int argc, char** argv ) try {
                   << "\n";
         std::cerr.flush();
         std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
+        dev::ExitHandler::exitHandler( nSignalNo );
         if ( stopWasRaisedBefore )
             _exit( 13 );
     } );
@@ -618,6 +619,19 @@ int main( int argc, char** argv ) try {
         cc::_on_ = false;
     if ( vm.count( "colors" ) )
         cc::_on_ = true;
+    if ( vm.count( "version" ) ) {
+        version();
+        return 0;
+    }
+    if ( vm.count( "help" ) ) {
+        cout << "NAME:\n"
+             << "   skaled " << Version << '\n'
+             << "USAGE:\n"
+             << "   skaled [options]\n\n";
+        cout << clientDefaultMode << clientTransacting << clientNetworking;
+        cout << vmOptions << loggingProgramOptions << generalOptions;
+        return 0;
+    }
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
@@ -638,10 +652,6 @@ int main( int argc, char** argv ) try {
         mode = OperationMode::ImportSnapshot;
         filename = vm["import-snapshot"].as< string >();
     }
-    if ( vm.count( "version" ) ) {
-        version();
-        return 0;
-    }
 
     bool chainConfigIsSet = false, chainConfigParsed = false;
     static nlohmann::json joConfig;
@@ -659,6 +669,8 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
+            if ( !fs::is_regular_file( configPath.string() ) )
+                throw "Bad config file path";
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
                 throw "Config file probably not found";
@@ -1189,15 +1201,6 @@ int main( int argc, char** argv ) try {
         Secret s( fromHex( vm["import-session-secret"].as< string >() ) );
         toImport.emplace_back( s );
     }
-    if ( vm.count( "help" ) ) {
-        cout << "NAME:\n"
-             << "   skaled " << Version << '\n'
-             << "USAGE:\n"
-             << "   skaled [options]\n\n";
-        cout << clientDefaultMode << clientTransacting << clientNetworking;
-        cout << vmOptions << loggingProgramOptions << generalOptions;
-        return 0;
-    }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
@@ -1249,8 +1252,33 @@ int main( int argc, char** argv ) try {
                     " " + cc::error( ex.what() ) ) );
             }
 
+            bool present = false;
             bool successfullDownload = false;
-            for ( size_t i = 0; i < list_urls_to_download.size(); ++i ) {
+            dev::h256 calculated_hash;
+
+            try {
+                present = snapshotManager->isSnapshotHashPresent( blockNumber );
+                // if there is snapshot but no hash!
+                if ( !present )
+                    snapshotManager->removeSnapshot( blockNumber );
+            } catch ( const std::exception& ex ) {
+                // usually snapshot absent exception
+                clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
+            }
+
+            if ( present ) {
+                clog( VerbosityInfo, "main" )
+                    << "Snapshot for block " << blockNumber << " already present locally";
+
+                calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                if ( calculated_hash == voted_hash.first )
+                    successfullDownload = true;
+                else
+                    snapshotManager->removeSnapshot( blockNumber );
+            }
+
+            for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i ) {
                 std::string urlToDownloadSnapshot;
                 urlToDownloadSnapshot = list_urls_to_download[i];
 
@@ -1258,7 +1286,8 @@ int main( int argc, char** argv ) try {
                     blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                 try {
-                    snapshotManager->computeSnapshotHash( blockNumber, true );
+                    if ( !present )
+                        snapshotManager->computeSnapshotHash( blockNumber, true );
                 } catch ( std::exception& ex ) {
                     std::throw_with_nested( std::runtime_error(
                         cc::fatal( "FATAL:" ) + " " +
@@ -1268,12 +1297,10 @@ int main( int argc, char** argv ) try {
 
                 dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
-                if ( calculated_hash == voted_hash.first ) {
+                if ( calculated_hash == voted_hash.first )
                     successfullDownload = true;
-                    break;
-                } else {
+                else
                     snapshotManager->removeSnapshot( blockNumber );
-                }
             }
 
             if ( !successfullDownload ) {
@@ -1363,6 +1390,7 @@ int main( int argc, char** argv ) try {
 
     auto rotationFlagDirPath = configPath.parent_path();
     auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
@@ -1384,6 +1412,14 @@ int main( int argc, char** argv ) try {
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
+        // XXX nested lambdas and strlen hacks..
+        auto client_debug_handler = g_client->getDebugHandler();
+        debugInterface.add_handler( [client_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "Client " ) == 0 )
+                return client_debug_handler( arg.substr( 7 ) );
+            else
+                return "";
+        } );
         g_client->setAuthor( chainParams.sChain.owner );
 
         DefaultConsensusFactory cons_fact( *g_client );
@@ -1391,11 +1427,20 @@ int main( int argc, char** argv ) try {
 
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *g_client, &cons_fact );
+
+        // XXX nested lambdas and strlen hacks..
+        auto skaleHost_debug_handler = skaleHost->getDebugHandler();
+        debugInterface.add_handler( [skaleHost_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "SkaleHost " ) == 0 )
+                return skaleHost_debug_handler( arg.substr( 10 ) );
+            else
+                return "";
+        } );
+
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
         g_client->setGasPricer( gasPricer );
         g_client->injectSkaleHost( skaleHost );
-        g_client->startWorking();
 
         const auto* buildinfo = skale_get_buildinfo();
         g_client->setExtraData(
@@ -1404,6 +1449,9 @@ int main( int argc, char** argv ) try {
                             string{buildinfo->build_type}.substr( 0, 1 ) +
                             string{buildinfo->system_name}.substr( 0, 5 ) +
                             string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+
+        // this must be last! (or client will be mining blocks before this!)
+        g_client->startWorking();
     }
 
     auto toNumber = [&]( string const& s ) -> unsigned {
@@ -1719,7 +1767,8 @@ int main( int argc, char** argv ) try {
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
             new rpc::Personal( keyManager, *accountHolder, *g_client ),
             new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
-            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, argv_string ) : nullptr,
+            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
+                                        nullptr,
             nullptr ) );
 
         if ( is_ipc ) {
@@ -2024,6 +2073,7 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
+            //
             auto skale_server_connector = new SkaleServerOverride( chainParams,
                 fn_binary_snapshot_download, cntServers, g_client.get(), chainParams.nodeInfo.ip,
                 nExplicitPortHTTP4, chainParams.nodeInfo.ip6, nExplicitPortHTTP6,
@@ -2032,6 +2082,17 @@ int main( int argc, char** argv ) try {
                 chainParams.nodeInfo.ip6, nExplicitPortWS6, chainParams.nodeInfo.ip,
                 nExplicitPortWSS4, chainParams.nodeInfo.ip6, nExplicitPortWSS6, strPathSslKey,
                 strPathSslCert, lfExecutionDurationMaxForPerformanceWarning );
+            //
+            // unddos
+            if ( joConfig.count( "unddos" ) > 0 ) {
+                nlohmann::json joUnDdosSettings = joConfig["unddos"];
+                skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
+            } else
+                skale_server_connector->unddos_.get_settings();  // auto-init
+            //
+            clog( VerbosityInfo, "main" )
+                << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
+                << cc::j( skale_server_connector->unddos_.get_settings_json() );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
@@ -2236,7 +2297,8 @@ int main( int argc, char** argv ) try {
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
-        dev::rpc::Skale::onShutdownInvoke( []() { ExitHandler::exitHandler( SIGABRT ); } );
+        dev::rpc::Skale::onShutdownInvoke(
+            []() { ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_web3_request ); } );
         clog( VerbosityInfo, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
@@ -2276,30 +2338,40 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
-    bool returnCode = ExitHandler::getSignal() != SIGINT && ExitHandler::getSignal() != SIGTERM;
-    return returnCode;
+    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+    if ( ec == ExitHandler::ec_success ) {
+        int sig_no = ExitHandler::getSignal();
+        if ( sig_no != SIGINT && sig_no != SIGTERM )
+            ec = ExitHandler::ec_failure;
+    }
+    if ( ec != ExitHandler::ec_success ) {
+        std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
+                  << cc::error( "...\n" );
+        std::cerr.flush();
+    }
+    return int( ec );
 } catch ( const Client::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( const SkaleHost::CreationException& ex ) {
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
     clog( VerbosityError, "main" ) << "\n"
                                    << skutils::signal::generate_stack_trace() << "\n"
                                    << std::endl;
     g_client.reset( nullptr );
-    return EXIT_FAILURE;
+    return int( ExitHandler::ec_failure );
 }

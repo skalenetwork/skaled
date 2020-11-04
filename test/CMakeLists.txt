@@ -77,6 +77,7 @@ target_link_libraries(testeth PRIVATE
     ${DEPS_INSTALL_ROOT}/lib/libssl.a
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
     ${DEPS_INSTALL_ROOT}/lib/libz.a
+    idn2
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)

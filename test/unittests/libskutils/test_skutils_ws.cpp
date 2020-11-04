@@ -1,8 +1,10 @@
+#include <test/tools/libtesteth/TestHelper.h>
 #include "test_skutils_helper.h"
 #include <boost/test/unit_test.hpp>
+#include <test/tools/libtesteth/TestHelper.h>
 
 BOOST_AUTO_TEST_SUITE( SkUtils )
-BOOST_AUTO_TEST_SUITE( ws )
+BOOST_AUTO_TEST_SUITE( ws, *boost::unit_test::precondition( dev::test::option_all_tests ) )
 
 BOOST_AUTO_TEST_CASE( ws_server_startup ) {
     skutils::test::test_print_header_name( "SkUtils/ws/ws_server_startup" );

@@ -18,7 +18,7 @@ endif()
 
 target_link_libraries(
     ${EXECUTABLE_NAME}
-    PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options pthread
+    PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options pthread idn2
 )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)

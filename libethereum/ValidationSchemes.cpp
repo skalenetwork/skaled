@@ -28,6 +28,7 @@ namespace eth {
 namespace validation {
 string const c_sealEngine = "sealEngine";
 string const c_params = "params";
+string const c_unddos = "unddos";
 string const c_genesis = "genesis";
 string const c_accounts = "accounts";
 string const c_balance = "balance";
@@ -94,6 +95,7 @@ void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",
         {{c_sealEngine, {{js::str_type}, JsonFieldPresence::Required}},
             {c_params, {{js::obj_type}, JsonFieldPresence::Required}},
+            {c_unddos, {{js::obj_type}, JsonFieldPresence::Optional}},
             {c_genesis, {{js::obj_type}, JsonFieldPresence::Required}},
             {c_skaleConfig, {{js::obj_type}, JsonFieldPresence::Optional}},
             {c_accounts, {{js::obj_type}, JsonFieldPresence::Required}}} );
