@@ -159,154 +159,178 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
         //
         nlohmann::json joThisNode = nlohmann::json::object();
         joThisNode["thisNodeIndex"] = nThisNodeIndex_;  // 1-based "schainIndex"
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "nodeID" ) > 0 &&
+             joSkaleConfig_nodeInfo["nodeID"].is_number() )
             joThisNode["nodeID"] = joSkaleConfig_nodeInfo["nodeID"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["nodeID"] = -1;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "bindIP" ) > 0 &&
+             joSkaleConfig_nodeInfo["bindIP"].is_string() )
             joThisNode["bindIP"] = joSkaleConfig_nodeInfo["bindIP"].get< std::string >();
-        } catch ( ... ) {
+        else
             joThisNode["bindIP"] = "";
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "bindIP6" ) > 0 &&
+             joSkaleConfig_nodeInfo["bindIP6"].is_string() )
             joThisNode["bindIP6"] = joSkaleConfig_nodeInfo["bindIP6"].get< std::string >();
-        } catch ( ... ) {
+        else
             joThisNode["bindIP6"] = "";
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "httpRpcPort" ) > 0 &&
+             joSkaleConfig_nodeInfo["httpRpcPort"].is_number() )
             joThisNode["httpRpcPort"] = joSkaleConfig_nodeInfo["httpRpcPort"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["httpRpcPort"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort" ) > 0 &&
+             joSkaleConfig_nodeInfo["httpsRpcPort"].is_number() )
             joThisNode["httpsRpcPort"] = joSkaleConfig_nodeInfo["httpsRpcPort"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["httpsRpcPort"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "wsRpcPort" ) > 0 &&
+             joSkaleConfig_nodeInfo["wsRpcPort"].is_number() )
             joThisNode["wsRpcPort"] = joSkaleConfig_nodeInfo["wsRpcPort"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["wsRpcPort"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "wssRpcPort" ) > 0 &&
+             joSkaleConfig_nodeInfo["wssRpcPort"].is_number() )
             joThisNode["wssRpcPort"] = joSkaleConfig_nodeInfo["wssRpcPort"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["wssRpcPort"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "httpRpcPort6" ) > 0 &&
+             joSkaleConfig_nodeInfo["httpRpcPort6"].is_number() )
             joThisNode["httpRpcPort6"] = joSkaleConfig_nodeInfo["httpRpcPort6"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["httpRpcPort6"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort6" ) > 0 &&
+             joSkaleConfig_nodeInfo["httpsRpcPort6"].is_number() )
             joThisNode["httpsRpcPort6"] = joSkaleConfig_nodeInfo["httpsRpcPort6"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["httpsRpcPort6"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "wsRpcPort6" ) > 0 &&
+             joSkaleConfig_nodeInfo["wsRpcPort6"].is_number() )
             joThisNode["wsRpcPort6"] = joSkaleConfig_nodeInfo["wsRpcPort6"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["wsRpcPort6"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "wssRpcPort6" ) > 0 &&
+             joSkaleConfig_nodeInfo["wssRpcPort6"].is_number() )
             joThisNode["wssRpcPort6"] = joSkaleConfig_nodeInfo["wssRpcPort6"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["wssRpcPort6"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "acceptors" ) > 0 &&
+             joSkaleConfig_nodeInfo["acceptors"].is_number() )
             joThisNode["acceptors"] = joSkaleConfig_nodeInfo["acceptors"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["acceptors"] = 0;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "enable-debug-behavior-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].is_boolean() )
             joThisNode["enable-debug-behavior-apis"] =
                 joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].get< bool >();
-        } catch ( ... ) {
+        else
             joThisNode["enable-debug-behavior-apis"] = false;
-        }
-        try {
+        //
+        if ( joSkaleConfig_nodeInfo.count( "unsafe-transactions" ) > 0 &&
+             joSkaleConfig_nodeInfo["unsafe-transactions"].is_boolean() )
             joThisNode["unsafe-transactions"] =
                 joSkaleConfig_nodeInfo["unsafe-transactions"].get< bool >();
-        } catch ( ... ) {
+        else
             joThisNode["unsafe-transactions"] = false;
-        }
         //
-        try {
+        if ( joSkaleConfig_sChain.count( "schainID" ) > 0 &&
+             joSkaleConfig_sChain["schainID"].is_number() )
             jo["schainID"] = joSkaleConfig_sChain["schainID"].get< int >();
-        } catch ( ... ) {
+        else
             joThisNode["schainID"] = -1;
-        }
-        try {
+        //
+        if ( joSkaleConfig_sChain.count( "schainName" ) > 0 &&
+             joSkaleConfig_sChain["schainName"].is_number() )
             jo["schainName"] = joSkaleConfig_sChain["schainName"].get< std::string >();
-        } catch ( ... ) {
+        else
             joThisNode["schainName"] = "";
-        }
+        //
         nlohmann::json jarrNetwork = nlohmann::json::array();
         size_t i, cnt = joSkaleConfig_sChain_nodes.size();
         for ( i = 0; i < cnt; ++i ) {
             const nlohmann::json& joNC = joSkaleConfig_sChain_nodes[i];
             nlohmann::json joNode = nlohmann::json::object();
-            try {
+            //
+            if ( joNC.count( "nodeID" ) > 0 && joNC["nodeID"].is_number() )
                 joNode["nodeID"] = joNC["nodeID"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["nodeID"] = 1;
+            //
+            if ( joNC.count( "publicIP" ) > 0 && joNC["publicIP"].is_string() )
+                joNode["ip"] = joNC["publicIP"].get< std::string >();
+            else {
+                if ( joNC.count( "ip" ) > 0 && joNC["ip"].is_string() )
+                    joNode["ip"] = joNC["ip"].get< std::string >();
+                else
+                    joNode["ip"] = "";
             }
-            try {
-                joNode["ip"] = joNC["ip"].get< std::string >();
-            } catch ( ... ) {
-                joNode["ip"] = "";
+            //
+            if ( joNC.count( "publicIP6" ) > 0 && joNC["publicIP6"].is_string() )
+                joNode["ip6"] = joNC["publicIP6"].get< std::string >();
+            else {
+                if ( joNC.count( "ip6" ) > 0 && joNC["ip6"].is_string() )
+                    joNode["ip6"] = joNC["ip6"].get< std::string >();
+                else
+                    joNode["ip6"] = "";
             }
-            try {
-                joNode["ip6"] = joNC["ip6"].get< std::string >();
-            } catch ( ... ) {
-                joNode["ip6"] = "";
-            }
-            try {
+            //
+            if ( joNC.count( "schainIndex" ) > 0 && joNC["schainIndex"].is_number() )
                 joNode["schainIndex"] = joNC["schainIndex"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["schainIndex"] = -1;
-            }
-            try {
+            //
+            if ( joNC.count( "httpRpcPort" ) > 0 && joNC["httpRpcPort"].is_number() )
                 joNode["httpRpcPort"] = joNC["httpRpcPort"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["httpRpcPort"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "httpsRpcPort" ) > 0 && joNC["httpsRpcPort"].is_number() )
                 joNode["httpsRpcPort"] = joNC["httpsRpcPort"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["httpsRpcPort"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "wsRpcPort" ) > 0 && joNC["wsRpcPort"].is_number() )
                 joNode["wsRpcPort"] = joNC["wsRpcPort"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["wsRpcPort"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "wssRpcPort" ) > 0 && joNC["wssRpcPort"].is_number() )
                 joNode["wssRpcPort"] = joNC["wssRpcPort"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["wssRpcPort"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "httpRpcPort6" ) > 0 && joNC["httpRpcPort6"].is_number() )
                 joNode["httpRpcPort6"] = joNC["httpRpcPort6"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["httpRpcPort6"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "httpsRpcPort6" ) > 0 && joNC["httpsRpcPort6"].is_number() )
                 joNode["httpsRpcPort6"] = joNC["httpsRpcPort6"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["httpsRpcPort6"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "wsRpcPort6" ) > 0 && joNC["wsRpcPort6"].is_number() )
                 joNode["wsRpcPort6"] = joNC["wsRpcPort6"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["wsRpcPort6"] = 0;
-            }
-            try {
+            //
+            if ( joNC.count( "wssRpcPort6" ) > 0 && joNC["wssRpcPort6"].is_number() )
                 joNode["wssRpcPort6"] = joNC["wssRpcPort6"].get< int >();
-            } catch ( ... ) {
+            else
                 joNode["wssRpcPort6"] = 0;
-            }
             //
             jarrNetwork.push_back( joNode );
         }
