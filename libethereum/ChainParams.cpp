@@ -183,8 +183,8 @@ ChainParams ChainParams::loadConfig(
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
         s.snapshotInterval = sChainObj.count( "snapshotInterval" ) ?
-                                   sChainObj.at( "snapshotInterval" ).get_int() :
-                                   0;
+                                 sChainObj.at( "snapshotInterval" ).get_int() :
+                                 0;
 
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
