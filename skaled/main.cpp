@@ -1203,7 +1203,7 @@ int main( int argc, char** argv ) try {
     }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.sChain.snapshotIntervalMs > 0 || vm.count( "download-snapshot" ) )
+    if ( chainParams.sChain.snapshotInterval > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
             getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
                               "prices_" + chainParams.nodeInfo.id.str() + ".db",
@@ -1311,7 +1311,7 @@ int main( int argc, char** argv ) try {
     }
 
     // it was needed for snapshot downloading
-    if ( chainParams.sChain.snapshotIntervalMs <= 0 ) {
+    if ( chainParams.sChain.snapshotInterval <= 0 ) {
         snapshotManager = nullptr;
     }
 

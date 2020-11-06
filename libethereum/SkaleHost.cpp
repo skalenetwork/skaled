@@ -482,7 +482,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
-    if ( this->m_client.chainParams().sChain.snapshotIntervalMs > 0 ) {
+    if ( this->m_client.chainParams().sChain.snapshotInterval > 0 ) {
         LOG( m_traceLogger ) << cc::debug( "STATE ROOT FOR BLOCK: " )
                              << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
                              << cc::debug(
