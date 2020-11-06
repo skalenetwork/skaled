@@ -571,47 +571,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             skutils::tools::to_lower( strAddressImaMessageProxyMainNet );
         //
         //
-        if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressSChain" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
-        const nlohmann::json& joAddressimaCallerAddressSChain =
-            joSkaleConfig_nodeInfo["imaCallerAddressSChain"];
-        if ( !joAddressimaCallerAddressSChain.is_string() )
-            throw std::runtime_error(
-                "error config.json file, bad type of value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
-        std::string strImaCallerAddressSChain =
-            joAddressimaCallerAddressSChain.get< std::string >();
-        if ( strImaCallerAddressSChain.empty() )
-            throw std::runtime_error(
-                "error config.json file, bad empty value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
-        std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
-                  << cc::debug( " address is " ) << cc::info( strImaCallerAddressSChain ) << "\n";
-        const std::string strImaCallerAddressSChainLC =
-            skutils::tools::to_lower( strImaCallerAddressSChain );
+        // if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressSChain" ) == 0 )
+        //    throw std::runtime_error(
+        //        "error config.json file, cannot find "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        // const nlohmann::json& joAddressimaCallerAddressSChain =
+        //    joSkaleConfig_nodeInfo["imaCallerAddressSChain"];
+        // if ( !joAddressimaCallerAddressSChain.is_string() )
+        //    throw std::runtime_error(
+        //        "error config.json file, bad type of value in "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        // std::string strImaCallerAddressSChain =
+        //    joAddressimaCallerAddressSChain.get< std::string >();
+        // if ( strImaCallerAddressSChain.empty() )
+        //    throw std::runtime_error(
+        //        "error config.json file, bad empty value in "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
+        // std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
+        //          << cc::debug( " address is " ) << cc::info( strImaCallerAddressSChain ) << "\n";
+        // const std::string strImaCallerAddressSChainLC =
+        //    skutils::tools::to_lower( strImaCallerAddressSChain );
         //
-        if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressMainNet" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
-        const nlohmann::json& joAddressimaCallerAddressMainNet =
-            joSkaleConfig_nodeInfo["imaCallerAddressMainNet"];
-        if ( !joAddressimaCallerAddressMainNet.is_string() )
-            throw std::runtime_error(
-                "error config.json file, bad type of value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
-        std::string strImaCallerAddressMainNet =
-            joAddressimaCallerAddressMainNet.get< std::string >();
-        if ( strImaCallerAddressMainNet.empty() )
-            throw std::runtime_error(
-                "error config.json file, bad empty value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
-        std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
-                  << cc::debug( " address is " ) << cc::info( strImaCallerAddressMainNet ) << "\n";
-        const std::string strImaCallerAddressMainNetLC =
-            skutils::tools::to_lower( strImaCallerAddressMainNet );
+        // if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressMainNet" ) == 0 )
+        //    throw std::runtime_error(
+        //        "error config.json file, cannot find "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        // const nlohmann::json& joAddressimaCallerAddressMainNet =
+        //    joSkaleConfig_nodeInfo["imaCallerAddressMainNet"];
+        // if ( !joAddressimaCallerAddressMainNet.is_string() )
+        //    throw std::runtime_error(
+        //        "error config.json file, bad type of value in "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        // std::string strImaCallerAddressMainNet =
+        //    joAddressimaCallerAddressMainNet.get< std::string >();
+        // if ( strImaCallerAddressMainNet.empty() )
+        //    throw std::runtime_error(
+        //        "error config.json file, bad empty value in "
+        //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
+        // std::cout << strLogPrefix << cc::notice( "IMA S-Chain caller" )
+        //          << cc::debug( " address is " ) << cc::info( strImaCallerAddressMainNet ) <<
+        //          "\n";
+        // const std::string strImaCallerAddressMainNetLC =
+        //    skutils::tools::to_lower( strImaCallerAddressMainNet );
         //
         //
         std::string strAddressImaMessageProxy = ( strDirection == "M2S" ) ?
@@ -1640,9 +1641,23 @@ uint256 amount
                 //
                 nlohmann::json joCallItem = nlohmann::json::object();
                 joCallItem["data"] = strCallData;  // call data
-                joCallItem["from"] = ( strDirection == "M2S" ) ?
-                                         strImaCallerAddressMainNetLC :
-                                         strImaCallerAddressSChainLC;  // caller address
+                //
+                //
+                //
+                //
+                //
+                // joCallItem["from"] = ( strDirection == "M2S" ) ?
+                //                         strImaCallerAddressMainNetLC :
+                //                         strImaCallerAddressSChainLC;  // caller address
+                joCallItem["from"] =
+                    ( strDirection == "M2S" ) ?
+                        strAddressImaMessageProxyMainNetLC :
+                        strAddressImaMessageProxySChainLC;  // message proxy address
+                //
+                //
+                //
+                //
+                //
                 joCallItem["to"] = ( strDirection == "M2S" ) ?
                                        strAddressImaMessageProxyMainNetLC :
                                        strAddressImaMessageProxySChainLC;  // message proxy address
