@@ -1,4 +1,4 @@
-name: Custom Docker Image
+name: Custom Docker and Binary
 
 on:
   workflow_dispatch:
@@ -144,15 +144,15 @@ jobs:
       - name: Build and publish container
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
+          export BRANCH=${{ github.event.inputs.branch_name }}
           export VERSION=${{ github.event.inputs.image_version }}
-          echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
-          echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
           
       - name: Upload skaled binary as artifact 
         uses: actions/upload-artifact@v2
+        if: ${{ always() }}
         with:
           name: skaled
           path: ./build/skaled/skaled
