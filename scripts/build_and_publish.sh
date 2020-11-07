@@ -8,7 +8,16 @@ set -e
 NAME=schain
 REPO_NAME=skalenetwork/$NAME
 IMAGE_NAME=$REPO_NAME:$VERSION
-LATEST_IMAGE_NAME=$REPO_NAME:$BRANCH-latest
+
+LABEL="develop"
+if [ $BRANCH = "stable" ]
+then
+    LABEL="stable"
+elif [ $BRANCH = "beta" ]
+then
+    LABEL="beta"
+fi
+LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
