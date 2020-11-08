@@ -39,4 +39,8 @@ echo "Built $IMAGE_NAME"
 echo "$DOCKER_PASSWORD" | docker login --username $DOCKER_USERNAME --password-stdin
 
 docker push $IMAGE_NAME || exit $?
-docker push $LATEST_IMAGE_NAME || exit $?
+
+if [ $BRANCH = $LABEL ]
+then
+    docker push $LATEST_IMAGE_NAME || exit $?
+fi
