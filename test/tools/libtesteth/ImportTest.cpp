@@ -237,6 +237,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
                 m_statePre = State( 0 );
+                m_statePre.setStorageLimit(1000000000);
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
 
