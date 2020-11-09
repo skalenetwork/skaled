@@ -182,8 +182,8 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "schainOwner" ) )
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
 
-        s.snapshotInterval = sChainObj.count( "snapshotInterval" ) ?
-                                 sChainObj.at( "snapshotInterval" ).get_int() :
+        s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
+                                 sChainObj.at( "snapshotIntervalSec" ).get_int() :
                                  0;
 
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
@@ -455,7 +455,7 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["schainName"] = sChain.name;
     sChainObj["schainID"] = ( int64_t ) sChain.id;
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
-    sChainObj["snpshotIntervalMs"] = sChain.snapshotInterval;
+    sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
     sChainObj["storageLimit"] = ( int64_t ) sChain.storageLimit;
 

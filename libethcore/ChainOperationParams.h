@@ -125,7 +125,7 @@ public:
     Address owner;
     std::vector< sChainNode > nodes;
     s256 storageLimit;
-    int snapshotInterval = -1;
+    int snapshotIntervalSec = -1;
     bool freeContractDeployment = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
