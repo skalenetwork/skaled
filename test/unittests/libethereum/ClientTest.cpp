@@ -788,7 +788,7 @@ static std::string const c_skaleConfigString = R"(
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
-            "snapshotIntervalMs": 10,
+            "snapshotIntervalSec": 10,
             "emptyBlockIntervalMs": -1,
             "nodes": [
               { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
