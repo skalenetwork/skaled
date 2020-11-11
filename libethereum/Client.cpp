@@ -244,9 +244,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     bc().m_stateDB = m_state.db();
 
-    if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
-        LOG( m_logger ) << "Snapshots enabled, snapshotInterval is: "
-                        << chainParams().sChain.snapshotIntervalMs;
+    if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
+        LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
+                        << chainParams().sChain.snapshotIntervalSec;
         if ( this->number() == 0 ) {
             LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
             try {
@@ -465,14 +465,14 @@ static std::string stat_transactions2str(
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
+        int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
         // init last block creation time with only robust time source - timestamp of 1st block!
         if ( number() == 0 ) {
             last_snapshot_creation_time = _timestamp;
             LOG( m_logger ) << "Init last snapshot creation time: "
                             << this->last_snapshot_creation_time;
-        } else if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+        } else if ( snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
             LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
             if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
@@ -574,7 +574,7 @@ size_t Client::importTransactionsAsBlock(
             LOG( m_logger ).flush();
         }
 
-        if ( snapshotIntervalMs > 0 ) {
+        if ( snapshotIntervalSec > 0 ) {
             unsigned block_number = this->number();
 
             if ( this->isTimeToDoSnapshot( _timestamp ) ) {
@@ -784,9 +784,9 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
-    return _timestamp / uint64_t( snapshotIntervalMs ) !=
-           this->last_snapshot_creation_time / uint64_t( snapshotIntervalMs );
+    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
+    return _timestamp / uint64_t( snapshotIntervalSec ) !=
+           this->last_snapshot_creation_time / uint64_t( snapshotIntervalSec );
 }
 
 void Client::setSchainExitTime( uint64_t _timestamp ) const {
@@ -1213,8 +1213,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 }
 
 void Client::initHashes() {
-    int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
-    assert( snapshotIntervalMs > 0 );
+    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
+    assert( snapshotIntervalSec > 0 );
 
     auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
 
