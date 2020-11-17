@@ -251,8 +251,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             }
         } catch ( ... ) {
             std::throw_with_nested(
-                std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                    cc::error( "Exception while downloading snapshot" ) ) );
+                std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
@@ -1278,30 +1277,34 @@ int main( int argc, char** argv ) try {
                     snapshotManager->removeSnapshot( blockNumber );
             }
 
-            for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i ) {
-                std::string urlToDownloadSnapshot;
-                urlToDownloadSnapshot = list_urls_to_download[i];
-
-                downloadSnapshot(
-                    blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
-
+            for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i )
                 try {
-                    if ( !present )
-                        snapshotManager->computeSnapshotHash( blockNumber, true );
-                } catch ( std::exception& ex ) {
-                    std::throw_with_nested( std::runtime_error(
-                        cc::fatal( "FATAL:" ) + " " +
-                        cc::error( "Exception while computing snapshot hash " ) + " " +
-                        cc::warn( ex.what() ) ) );
+                    std::string urlToDownloadSnapshot;
+                    urlToDownloadSnapshot = list_urls_to_download[i];
+
+                    downloadSnapshot(
+                        blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+
+                    try {
+                        if ( !present )
+                            snapshotManager->computeSnapshotHash( blockNumber, true );
+                    } catch ( std::exception& ex ) {
+                        std::throw_with_nested( std::runtime_error(
+                            cc::fatal( "FATAL:" ) + " " +
+                            cc::error( "Exception while computing snapshot hash " ) + " " +
+                            cc::warn( ex.what() ) ) );
+                    }
+
+                    dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                    if ( calculated_hash == voted_hash.first )
+                        successfullDownload = true;
+                    else
+                        snapshotManager->removeSnapshot( blockNumber );
+                } catch ( const std::exception& ex ) {
+                    // just retry
+                    clog( VerbosityWarning, "main" ) << dev::nested_exception_what( ex );
                 }
-
-                dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
-
-                if ( calculated_hash == voted_hash.first )
-                    successfullDownload = true;
-                else
-                    snapshotManager->removeSnapshot( blockNumber );
-            }
 
             if ( !successfullDownload ) {
                 throw std::runtime_error(
