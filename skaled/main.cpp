@@ -1218,100 +1218,108 @@ int main( int argc, char** argv ) try {
         } else {
             commonPublicKey = vm["public-key"].as< std::string >();
         }
-        std::string strURLWeb3 = vm["download-snapshot"].as< string >();
-        unsigned blockNumber;
-        try {
-            blockNumber = getLatestSnapshotBlockNumber( strURLWeb3 );
-            clog( VerbosityInfo, "main" )
-                << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
-                << cc::p( std::to_string( blockNumber ) );
-        } catch ( std::exception& ex ) {
-            std::throw_with_nested(
-                std::runtime_error( cc::error( "Exception while getLatestSnapshotBlockNumber " ) +
-                                    " " + cc::error( ex.what() ) ) );
-        }
 
-        if ( blockNumber > 0 ) {
-            SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
+        bool successfullDownload = false;
 
-            libff::init_alt_bn128_params();
-            std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
-            std::vector< std::string > list_urls_to_download;
+        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size(); ++idx )
             try {
-                list_urls_to_download =
-                    snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
+                    continue;
+
+                std::string blockNumber_url =
+                    std::string( "http://" ) + std::string( chainParams.sChain.nodes[idx].ip ) +
+                    std::string( ":" ) +
+                    ( chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+
+                unsigned blockNumber = getLatestSnapshotBlockNumber( blockNumber_url );
                 clog( VerbosityInfo, "main" )
-                    << cc::notice( "Got urls to download snapshot from " )
-                    << cc::p( std::to_string( list_urls_to_download.size() ) )
-                    << cc::notice( " nodes " );
-                voted_hash = snapshotHashAgent.getVotedHash();
-            } catch ( std::exception& ex ) {
-                std::throw_with_nested( std::runtime_error(
-                    cc::error( "Exception while collecting snapshot hash from other skaleds " ) +
-                    " " + cc::error( ex.what() ) ) );
-            }
+                    << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
+                    << cc::p( std::to_string( blockNumber ) );
 
-            bool present = false;
-            bool successfullDownload = false;
-            dev::h256 calculated_hash;
+                SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
-            try {
-                present = snapshotManager->isSnapshotHashPresent( blockNumber );
-                // if there is snapshot but no hash!
-                if ( !present )
-                    snapshotManager->removeSnapshot( blockNumber );
-            } catch ( const std::exception& ex ) {
-                // usually snapshot absent exception
-                clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
-            }
-
-            if ( present ) {
-                clog( VerbosityInfo, "main" )
-                    << "Snapshot for block " << blockNumber << " already present locally";
-
-                calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
-
-                if ( calculated_hash == voted_hash.first )
-                    successfullDownload = true;
-                else
-                    snapshotManager->removeSnapshot( blockNumber );
-            }
-
-            for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i )
+                libff::init_alt_bn128_params();
+                std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
+                std::vector< std::string > list_urls_to_download;
                 try {
-                    std::string urlToDownloadSnapshot;
-                    urlToDownloadSnapshot = list_urls_to_download[i];
+                    list_urls_to_download =
+                        snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                    clog( VerbosityInfo, "main" )
+                        << cc::notice( "Got urls to download snapshot from " )
+                        << cc::p( std::to_string( list_urls_to_download.size() ) )
+                        << cc::notice( " nodes " );
+                    voted_hash = snapshotHashAgent.getVotedHash();
+                } catch ( std::exception& ex ) {
+                    std::throw_with_nested( std::runtime_error( cc::error(
+                        "Exception while collecting snapshot hash from other skaleds " ) ) );
+                }
 
-                    downloadSnapshot(
-                        blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+                bool present = false;
+                dev::h256 calculated_hash;
 
-                    try {
-                        if ( !present )
-                            snapshotManager->computeSnapshotHash( blockNumber, true );
-                    } catch ( std::exception& ex ) {
-                        std::throw_with_nested( std::runtime_error(
-                            cc::fatal( "FATAL:" ) + " " +
-                            cc::error( "Exception while computing snapshot hash " ) + " " +
-                            cc::warn( ex.what() ) ) );
-                    }
+                try {
+                    present = snapshotManager->isSnapshotHashPresent( blockNumber );
+                    // if there is snapshot but no hash!
+                    if ( !present )
+                        snapshotManager->removeSnapshot( blockNumber );
+                } catch ( const std::exception& ex ) {
+                    // usually snapshot absent exception
+                    clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
+                }
 
-                    dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+                if ( present ) {
+                    clog( VerbosityInfo, "main" )
+                        << "Snapshot for block " << blockNumber << " already present locally";
+
+                    calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
                     if ( calculated_hash == voted_hash.first )
                         successfullDownload = true;
                     else
                         snapshotManager->removeSnapshot( blockNumber );
-                } catch ( const std::exception& ex ) {
-                    // just retry
-                    clog( VerbosityWarning, "main" ) << dev::nested_exception_what( ex );
                 }
 
-            if ( !successfullDownload ) {
-                throw std::runtime_error(
-                    "FATAL: already tried to download hash from all sources" );
-            }
+                for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i )
+                    try {
+                        std::string urlToDownloadSnapshot;
+                        urlToDownloadSnapshot = list_urls_to_download[i];
+
+                        downloadSnapshot(
+                            blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
+
+                        try {
+                            if ( !present )
+                                snapshotManager->computeSnapshotHash( blockNumber, true );
+                        } catch ( const std::exception& ) {
+                            std::throw_with_nested( std::runtime_error(
+                                cc::fatal( "FATAL:" ) + " " +
+                                cc::error( "Exception while computing snapshot hash " ) ) );
+                        }
+
+                        dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                        if ( calculated_hash == voted_hash.first )
+                            successfullDownload = true;
+                        else
+                            snapshotManager->removeSnapshot( blockNumber );
+                    } catch ( const std::exception& ex ) {
+                        // just retry
+                        clog( VerbosityWarning, "main" ) << dev::nested_exception_what( ex );
+                    }
+
+                if ( successfullDownload )
+                    break;
+
+            } catch ( std::exception& ex ) {
+                clog( VerbosityWarning, "main" )
+                    << cc::warn( "Exception while getLatestSnapshotBlockNumber: " )
+                    << cc::warn( dev::nested_exception_what( ex ) );
+            }  // for blockNumber_url
+
+        if ( !successfullDownload ) {
+            throw std::runtime_error( "FATAL: tried to download snapshot from everywhere!" );
         }
-    }
+    }  // if --download-snapshot
 
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
