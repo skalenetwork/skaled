@@ -322,6 +322,8 @@ int main( int argc, char** argv ) try {
     MicroProfileSetEnableAllGroups( true );
     BlockHeader::useTimestampHack = false;
 
+    srand( time( nullptr ) );
+
     setCLocale();
 
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
@@ -1234,7 +1236,8 @@ int main( int argc, char** argv ) try {
                 unsigned blockNumber = getLatestSnapshotBlockNumber( blockNumber_url );
                 clog( VerbosityInfo, "main" )
                     << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
-                    << cc::p( std::to_string( blockNumber ) );
+                    << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url
+                    << ")";
 
                 SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
 
@@ -1279,8 +1282,16 @@ int main( int argc, char** argv ) try {
                         snapshotManager->removeSnapshot( blockNumber );
                 }
 
-                for ( size_t i = 0; i < list_urls_to_download.size() && !successfullDownload; ++i )
+                size_t n_found = list_urls_to_download.size();
+
+                if ( n_found == 0 )
+                    continue;
+                size_t shift = rand() % n_found;
+
+                for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
                     try {
+                        size_t i = ( shift + cnt ) % n_found;
+
                         std::string urlToDownloadSnapshot;
                         urlToDownloadSnapshot = list_urls_to_download[i];
 
