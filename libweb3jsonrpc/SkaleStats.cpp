@@ -1817,7 +1817,8 @@ uint256 amount
                     vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
                 //
                 v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
-                fnInvert( v.data(), v.size() );
+                // fnInvert( v.data(), v.size() ); // do not invert byte order data field (see
+                // SKALE-3554 for details)
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             }  // if( !bOnlyVerify )
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
