@@ -77,10 +77,6 @@ public:
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
-    virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) override;
-    virtual Json::Value skale_performanceTrackingStart( const Json::Value& request ) override;
-    virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) override;
-    virtual Json::Value skale_performanceTrackingFetch( const Json::Value& request ) override;
 
 protected:
     eth::Interface* client() const { return &m_eth; }

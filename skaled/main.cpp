@@ -68,6 +68,7 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
+#include <libweb3jsonrpc/SkaleDebug.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
@@ -1763,7 +1764,7 @@ int main( int argc, char** argv ) try {
             rpc::SkaleStats,  /// skaleStats
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
             rpc::AdminEthFace,  // SKALE rpc::AdminNetFace,
-            rpc::DebugFace, rpc::TestFace >;
+            rpc::DebugFace, rpc::SkaleDebug, rpc::TestFace >;
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
@@ -1791,6 +1792,7 @@ int main( int argc, char** argv ) try {
             new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                                         nullptr,
+            bEnabledDebugBehaviorAPIs ? new rpc::SkaleDebug( configPath.string() ) : nullptr,
             nullptr ) );
 
         if ( is_ipc ) {

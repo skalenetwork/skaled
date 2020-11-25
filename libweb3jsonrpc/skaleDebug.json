@@ -1,0 +1,6 @@
+[
+{ "name": "skale_performanceTrackingStatus", "params": [], "order": [], "returns": {}},
+{ "name": "skale_performanceTrackingStart", "params": [], "order": [], "returns": {}},
+{ "name": "skale_performanceTrackingStop", "params": [], "order": [], "returns": {}},
+{ "name": "skale_performanceTrackingFetch", "params": [], "order": [], "returns": {}}
+]
