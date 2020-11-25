@@ -29,7 +29,8 @@ static int shell_call(const char* cmd){
     }
 
     errbuf[0] = (char) 0;
-    fgets(errbuf, sizeof(errbuf), fp);
+    char * rs = fgets(errbuf, sizeof(errbuf), fp);
+    (void)rs;
 
     // read everything else
     while(getc(fp) != EOF);

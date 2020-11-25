@@ -138,7 +138,8 @@ public:
         transaction_promise.set_value( transactions_vector() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
-        system( "rm -rf /tmp/*.db*" );
+        int rv = system( "rm -rf /tmp/*.db*" );
+        ( void ) rv;
     }
 
     std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
