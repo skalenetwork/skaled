@@ -546,7 +546,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
                 if ( getSSO().m_bTraceCalls )
-                    clog( dev::VerbosityInfo,
+                    clog( dev::VerbosityDebug,
                         cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv( " <<< " +
                                             subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
@@ -712,8 +712,8 @@ void SkaleWsPeer::unregister_ws_conn_for_origin() {
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->m_bTraceCalls )
-        clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                      cc::num10( getRelay().serverIndex() ) )
+        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                       cc::num10( getRelay().serverIndex() ) )
             << ( desc() + cc::notice( " peer registered" ) );
     skutils::ws::peer::onPeerRegister();
     //
@@ -725,8 +725,8 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     m_pSSCTH.reset();
     SkaleServerOverride* pSO = pso();
     if ( pSO->m_bTraceCalls )
-        clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                      cc::num10( getRelay().serverIndex() ) )
+        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                       cc::num10( getRelay().serverIndex() ) )
             << ( desc() + cc::notice( " peer unregistered" ) );
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
@@ -891,9 +891,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             bool bSkipMethodTrafficTrace =
                 skale::server::helper::isSkipMethodTrafficTrace( strMethod );
             if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                              cc::debug( "/" ) +
-                                              cc::num10( pThis->getRelay().serverIndex() ) )
+                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                               cc::debug( "/" ) +
+                                               cc::num10( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/RX >>> " ) +
@@ -971,9 +971,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 a.set_json_err( joErrorResponce );
             }
             if ( pSO->m_bTraceCalls && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                              cc::debug( "/" ) +
-                                              cc::num10( pThis->getRelay().serverIndex() ) )
+                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                               cc::debug( "/" ) +
+                                               cc::num10( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
@@ -1006,8 +1006,8 @@ void SkaleWsPeer::onClose(
     const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->m_bTraceCalls )
-        clog( dev::VerbosityInfo, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                      cc::num10( getRelay().serverIndex() ) )
+        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                                       cc::num10( getRelay().serverIndex() ) )
             << ( desc() + cc::warn( " peer close event with code=" ) + cc::c( local_close_code ) +
                    cc::debug( ", reason=" ) + cc::info( reason ) );
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
@@ -1229,7 +1229,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                         std::string strNotification = joNotification.dump();
                                         const SkaleServerOverride* pSO = pThis->pso();
                                         if ( pSO->m_bTraceCalls )
-                                            clog( dev::VerbosityInfo,
+                                            clog( dev::VerbosityDebug,
                                                 cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
                                                     cc::ws_tx_inv(
                                                         " <<< " +
@@ -1360,7 +1360,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
                 if ( pSO->m_bTraceCalls )
-                    clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
+                    clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
                                pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
@@ -1485,7 +1485,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
                 if ( pSO->m_bTraceCalls )
-                    clog( dev::VerbosityInfo, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
+                    clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
                                pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
@@ -1860,7 +1860,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     stop();
     m_pSO = pSO;
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
-    clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
+    clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will start server on port " ) + cc::c( m_nPort ) );
     if ( !open( m_strScheme_, m_nPort,
              ( !strInterfaceName_.empty() ) ? strInterfaceName_.c_str() : nullptr ) ) {
@@ -1885,14 +1885,14 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
         // pThis->m_isRunning = false;
     } )
         .detach();
-    clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
+    clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::success( "OK, server started on port " ) + cc::c( m_nPort ) );
     return true;
 }
 void SkaleRelayWS::stop() {
     if ( !isRunning() )
         return;
-    clog( dev::VerbosityInfo, cc::info( m_strSchemeUC ) )
+    clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::notice( "Will stop on port " ) + cc::c( m_nPort ) + cc::notice( "..." ) );
     m_isRunning = false;
     waitWhileInLoop();
@@ -2099,7 +2099,7 @@ void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const ch
     if ( isError )
         clog( dev::VerbosityError, strProtocolDescription ) << strMessage;
     else
-        clog( dev::VerbosityInfo, strProtocolDescription ) << strMessage;
+        clog( dev::VerbosityDebug, strProtocolDescription ) << strMessage;
 }
 
 void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ipVer,
@@ -2135,7 +2135,7 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
         clog( dev::VerbosityError, strProtocolDescription )
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
     else
-        clog( dev::VerbosityInfo, strProtocolDescription )
+        clog( dev::VerbosityDebug, strProtocolDescription )
             << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
@@ -2939,7 +2939,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         bool isLocalAddress = skutils::is_local_private_network_address(
             strIP );  // NOTICE: supports both IPv4 and IPv6
         // print info about this method call into log output
-        clog( dev::VerbosityInfo, cc::warn( "ADMIN-CALL" ) )
+        clog( dev::VerbosityDebug, cc::warn( "ADMIN-CALL" ) )
             << ( cc::debug( "Got " ) + cc::info( "setSchainExitTime" ) +
                    cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
                    cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "origin" ) +
