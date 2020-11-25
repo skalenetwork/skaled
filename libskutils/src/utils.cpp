@@ -1666,13 +1666,16 @@ nlohmann::json json_config_file_accessor::getConfigJSON() {
     return joConfig_;
 }
 
-
 nlohmann::json json_config_file_accessor::stat_extract_at_path(
     const nlohmann::json& joConfig, const string_list_t& listPath ) {
     string_list_t::const_iterator itWalk = listPath.cbegin(), itEnd = listPath.cend();
     nlohmann::json joWalk = joConfig;
+    std::string strPassedPath;
     for ( ; itWalk != itEnd; ++itWalk ) {
         const std::string& s = ( *itWalk );
+        if ( !strPassedPath.empty() )
+            strPassedPath += ".";
+        strPassedPath += s;
         if ( joWalk.is_array() ) {
             if ( s == "count" || s == "size" || s == "length" ) {
                 joWalk = joWalk.size();
@@ -1691,7 +1694,7 @@ nlohmann::json json_config_file_accessor::stat_extract_at_path(
             continue;
         }
         if ( joWalk.count( s ) == 0 )
-            throw std::runtime_error( "JSON variable not found at specified path" );
+            throw std::runtime_error( "JSON variable not found at \"" + strPassedPath + "\" path" );
         joWalk = joWalk[s];
     }
     return joWalk;
