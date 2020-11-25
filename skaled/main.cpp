@@ -578,10 +578,10 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
+    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
-    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -722,8 +722,8 @@ int main( int argc, char** argv ) try {
         is_ipc = true;
     if ( vm.count( "no-ipc" ) )
         is_ipc = false;
-    clog( VerbosityInfo, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
-                                  << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
+    clog( VerbosityDebug, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
+                                   << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
 
     // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
     // Second, get them from command line parameters (higher priority source)
@@ -739,7 +739,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
             nExplicitPortHTTP4 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "HTTP/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTP4 );
@@ -757,7 +757,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
             nExplicitPortHTTP6 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "HTTP/6 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTP6 );
@@ -774,7 +774,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
             nExplicitPortHTTPS4 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "HTTPS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTPS4 );
@@ -792,7 +792,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
             nExplicitPortHTTPS6 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "HTTPS/6 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortHTTPS6 );
@@ -807,7 +807,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
             nExplicitPortWS4 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "WS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWS4 );
@@ -823,7 +823,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
             nExplicitPortWS6 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "WS/6 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWS6 );
@@ -838,7 +838,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
             nExplicitPortWSS4 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "WSS/4 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWSS4 );
@@ -854,7 +854,7 @@ int main( int argc, char** argv ) try {
         if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
             nExplicitPortWSS6 = -1;
         else
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "Got " )
                 << cc::notice( "WSS/6 port" ) + cc::debug( " from configuration JSON: " )
                 << cc::num10( nExplicitPortWSS6 );
@@ -866,7 +866,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortHTTP4 && nExplicitPortHTTP4 <= 65535 ) )
                 nExplicitPortHTTP4 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "HTTP/4 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortHTTP4 );
@@ -879,7 +879,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortHTTP6 && nExplicitPortHTTP6 <= 65535 ) )
                 nExplicitPortHTTP6 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "HTTP/6 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortHTTP6 );
@@ -892,7 +892,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortHTTPS4 && nExplicitPortHTTPS4 <= 65535 ) )
                 nExplicitPortHTTPS4 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "HTTPS/4 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortHTTPS4 );
@@ -905,7 +905,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortHTTPS6 && nExplicitPortHTTPS6 <= 65535 ) )
                 nExplicitPortHTTPS6 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "HTTPS/6 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortHTTPS6 );
@@ -918,7 +918,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortWS4 && nExplicitPortWS4 <= 65535 ) )
                 nExplicitPortWS4 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "WS/4 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortWS4 );
@@ -931,7 +931,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortWS6 && nExplicitPortWS6 <= 65535 ) )
                 nExplicitPortWS6 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "WS/6 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortWS6 );
@@ -944,7 +944,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortWSS4 && nExplicitPortWSS4 <= 65535 ) )
                 nExplicitPortWSS4 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "WSS/4 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortWSS4 );
@@ -957,7 +957,7 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nExplicitPortWSS6 && nExplicitPortWSS6 <= 65535 ) )
                 nExplicitPortWSS6 = -1;
             else
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "Got " )
                     << cc::notice( "WSS/6 port" ) + cc::debug( " from command line: " )
                     << cc::num10( nExplicitPortWSS6 );
@@ -976,9 +976,9 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "web3-trace" ) )
         bTraceJsonRpcCalls = true;
-    clog( VerbosityInfo, "main" ) << cc::info( "JSON RPC" )
-                                  << cc::debug( " trace logging mode is " )
-                                  << cc::flag_ed( bTraceJsonRpcCalls );
+    clog( VerbosityDebug, "main" )
+        << cc::info( "JSON RPC" ) << cc::debug( " trace logging mode is " )
+        << cc::flag_ed( bTraceJsonRpcCalls );
 
     // First, get "enable-debug-behavior-apis" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -992,10 +992,10 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "enable-debug-behavior-apis" ) )
         bEnabledDebugBehaviorAPIs = true;
-    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
-                                  << cc::info( "enable-debug-behavior-apis" )
-                                  << cc::debug( " mode is " )
-                                  << cc::flag_ed( bEnabledDebugBehaviorAPIs );
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
+        << cc::flag_ed( bEnabledDebugBehaviorAPIs );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1009,9 +1009,10 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
-    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
-                                  << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
-                                  << cc::flag_ed( !alwaysConfirm );
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
+        << cc::flag_ed( !alwaysConfirm );
 
     // First, get "web3-shutdown" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1026,9 +1027,10 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "web3-shutdown" ) )
         bEnabledShutdownViaWeb3 = true;
-    clog( VerbosityInfo, "main" ) << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
-                                  << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
-                                  << cc::flag_ed( bEnabledShutdownViaWeb3 );
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
+        << cc::flag_ed( bEnabledShutdownViaWeb3 );
 
     // First, get "ipcpath" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1040,8 +1042,8 @@ int main( int argc, char** argv ) try {
         } catch ( ... ) {
         }
     }
-    clog( VerbosityInfo, "main" ) << cc::notice( "IPC path" ) + cc::debug( " is: " )
-                                  << cc::p( strPathIPC );
+    clog( VerbosityDebug, "main" )
+        << cc::notice( "IPC path" ) + cc::debug( " is: " ) << cc::p( strPathIPC );
     if ( vm.count( "ipcpath" ) )
         strPathIPC = vm["ipcpath"].as< std::string >();
     if ( !strPathIPC.empty() )
@@ -1707,7 +1709,7 @@ int main( int argc, char** argv ) try {
                  << " option: " << strAA << "\n";
             return EX_USAGE;
         }
-        clog( VerbosityInfo, "main" )
+        clog( VerbosityDebug, "main" )
             << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
     }
 
@@ -1864,48 +1866,48 @@ int main( int argc, char** argv ) try {
         if ( nExplicitPortHTTP4 > 0 || nExplicitPortHTTPS4 > 0 || nExplicitPortWS4 > 0 ||
              nExplicitPortWSS4 > 0 || nExplicitPortHTTP6 > 0 || nExplicitPortHTTPS6 > 0 ||
              nExplicitPortWS6 > 0 || nExplicitPortWSS6 > 0 ) {
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTP/4 port" )
                 << cc::debug( ".............................. " )
                 << ( ( nExplicitPortHTTP4 >= 0 ) ? cc::num10( nExplicitPortHTTP4 ) :
                                                    cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTP/6 port" )
                 << cc::debug( ".............................. " )
                 << ( ( nExplicitPortHTTP6 >= 0 ) ? cc::num10( nExplicitPortHTTP6 ) :
                                                    cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTPS/4 port" )
                 << cc::debug( "............................. " )
                 << ( ( nExplicitPortHTTPS4 >= 0 ) ? cc::num10( nExplicitPortHTTPS4 ) :
                                                     cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTPS/6 port" )
                 << cc::debug( "............................. " )
                 << ( ( nExplicitPortHTTPS6 >= 0 ) ? cc::num10( nExplicitPortHTTPS6 ) :
                                                     cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WS/4 port" )
                 << cc::debug( "................................ " )
                 << ( ( nExplicitPortWS4 >= 0 ) ? cc::num10( nExplicitPortWS4 ) :
                                                  cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WS/6 port" )
                 << cc::debug( "................................ " )
                 << ( ( nExplicitPortWS6 >= 0 ) ? cc::num10( nExplicitPortWS6 ) :
                                                  cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WSS/4 port" )
                 << cc::debug( "............................... " )
                 << ( ( nExplicitPortWSS4 >= 0 ) ? cc::num10( nExplicitPortWSS4 ) :
                                                   cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WSS/6 port" )
                 << cc::debug( "............................... " )
                 << ( ( nExplicitPortWSS6 >= 0 ) ? cc::num10( nExplicitPortWSS6 ) :
@@ -1941,7 +1943,7 @@ int main( int argc, char** argv ) try {
                 size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
                 pTracker->set_safe_max_item_count( maxItemCount );
             }
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
                 << cc::debug( "............. " )
                 << ( pTracker->is_enabled() ? cc::size10( pTracker->get_safe_max_item_count() ) :
@@ -1951,10 +1953,10 @@ int main( int argc, char** argv ) try {
                 nExplicitPortHTTPS4 = nExplicitPortWSS4 = nExplicitPortHTTPS6 = nExplicitPortWSS6 =
                     -1;
             if ( bHaveSSL ) {
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "...." ) << cc::info( "SSL key is" )
                     << cc::debug( "............................... " ) << cc::p( strPathSslKey );
-                clog( VerbosityInfo, "main" )
+                clog( VerbosityDebug, "main" )
                     << cc::debug( "...." ) + cc::info( "SSL certificate is" )
                     << cc::debug( "....................... " ) << cc::p( strPathSslCert );
             }
@@ -2065,32 +2067,32 @@ int main( int argc, char** argv ) try {
                 skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
             }
 
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "WS mode" )
                 << cc::debug( ".................................. " )
                 << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "WS logging" )
                 << cc::debug( "............................... " )
                 << cc::info( skutils::ws::wsll2str( skutils::ws::g_eWSLL ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "Max RPC connections" )
                 << cc::debug( "...................... " )
                 << ( ( maxConnections > 0 ) ? cc::size10( maxConnections ) :
                                               cc::error( "disabled" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "Max HTTP queues" )
                 << cc::debug( ".......................... " )
                 << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
                                                        cc::notice( "default" ) );
-            clog( VerbosityInfo, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
-                                          << cc::debug( "........................ " )
-                                          << cc::yn( is_async_http_transfer_mode );
+            clog( VerbosityDebug, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
+                                           << cc::debug( "........................ " )
+                                           << cc::yn( is_async_http_transfer_mode );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "Max count in batch JSON RPC request" )
                 << cc::debug( "...... " ) << cc::size10( cntInBatch );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
                 << cc::debug( "........ " ) << cc::size10( cntServers );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
@@ -2114,7 +2116,7 @@ int main( int argc, char** argv ) try {
             } else
                 skale_server_connector->unddos_.get_settings();  // auto-init
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
                 << cc::j( skale_server_connector->unddos_.get_settings_json() );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
@@ -2146,7 +2148,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "HTTP/4" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2159,7 +2161,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "HTTP/6" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2172,7 +2174,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2185,7 +2187,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2198,7 +2200,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "WS/4" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2211,7 +2213,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "WS/6" )
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
@@ -2224,7 +2226,7 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/4" )
                             << cc::debug( " start... " );
                     nStatWSS4 = skale_server_connector->getServerPortStatusWSS( 4 );
@@ -2236,22 +2238,22 @@ int main( int argc, char** argv ) try {
                       ( !exitHandler.shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityInfo, "main" )
+                        clog( VerbosityDebug, "main" )
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/6" )
                             << cc::debug( " start... " );
                     nStatWSS6 = skale_server_connector->getServerPortStatusWSS( 6 );
                 }
             }
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTP/4" )
                 << cc::debug( "................................. " )
                 << ( ( nStatHTTP4 >= 0 ) ?
                            ( ( nExplicitPortHTTP4 > 0 ) ? cc::num10( nStatHTTP4 ) :
                                                           cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTP/6" )
                 << cc::debug( "................................. " )
                 << ( ( nStatHTTP6 >= 0 ) ?
@@ -2259,14 +2261,14 @@ int main( int argc, char** argv ) try {
                                                           cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTPS/4" )
                 << cc::debug( "................................ " )
                 << ( ( nStatHTTPS4 >= 0 ) ?
                            ( ( nExplicitPortHTTPS4 > 0 ) ? cc::num10( nStatHTTPS4 ) :
                                                            cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "HTTPS/6" )
                 << cc::debug( "................................ " )
                 << ( ( nStatHTTPS6 >= 0 ) ?
@@ -2274,14 +2276,14 @@ int main( int argc, char** argv ) try {
                                                            cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WS/4" )
                 << cc::debug( "................................... " )
                 << ( ( nStatWS4 >= 0 ) ?
                            ( ( nExplicitPortWS4 > 0 ) ? cc::num10( nStatWS4 ) :
                                                         cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WS/6" )
                 << cc::debug( "................................... " )
                 << ( ( nStatWS6 >= 0 ) ?
@@ -2289,14 +2291,14 @@ int main( int argc, char** argv ) try {
                                                         cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
             //
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WSS/4" )
                 << cc::debug( ".................................. " )
                 << ( ( nStatWSS4 >= 0 ) ?
                            ( ( nExplicitPortWSS4 > 0 ) ? cc::num10( nStatWSS4 ) :
                                                          cc::warn( "still starting..." ) ) :
                            cc::error( "off" ) );
-            clog( VerbosityInfo, "main" )
+            clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::info( "WSS/6" )
                 << cc::debug( ".................................. " )
                 << ( ( nStatWSS6 >= 0 ) ?
@@ -2319,16 +2321,18 @@ int main( int argc, char** argv ) try {
        // nExplicitPortWSS > 0 )
 
     if ( bEnabledShutdownViaWeb3 ) {
-        clog( VerbosityInfo, "main" ) << cc::debug( "Enabling programmatic shutdown via Web3..." );
+        clog( VerbosityWarning, "main" )
+            << cc::warn( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
         dev::rpc::Skale::onShutdownInvoke(
             []() { ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_web3_request ); } );
-        clog( VerbosityInfo, "main" )
-            << cc::debug( "Done, programmatic shutdown via Web3 is enabled" );
+        clog( VerbosityWarning, "main" )
+            << cc::warn( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
-        clog( VerbosityInfo, "main" ) << cc::debug( "Disabling programmatic shutdown via Web3..." );
+        clog( VerbosityDebug, "main" )
+            << cc::debug( "Disabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( false );
-        clog( VerbosityInfo, "main" )
+        clog( VerbosityDebug, "main" )
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
@@ -2359,9 +2363,9 @@ int main( int argc, char** argv ) try {
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
 
-    //    clog( VerbosityInfo, "main" ) << cc::debug( "Stopping task dispatcher..." );
+    //    clog( VerbosityDebug, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
-    //    clog( VerbosityInfo, "main" ) << cc::debug( "Done, task dispatcher stopped" );
+    //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec == ExitHandler::ec_success ) {
         int sig_no = ExitHandler::getSignal();
