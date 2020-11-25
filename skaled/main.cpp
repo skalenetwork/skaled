@@ -577,10 +577,10 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
+    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
-    addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 

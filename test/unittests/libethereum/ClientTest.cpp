@@ -92,7 +92,7 @@ struct FixtureCommon {
             cerr << strerror( errno ) << endl;
             assert( false );
         }
-        setresgid( 0, 0, 0 );
+        res = setresgid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
             assert( false );
@@ -197,14 +197,15 @@ public:
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
-        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
+        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
-        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
                     .c_str() );
-        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        ( void )rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -274,9 +275,10 @@ public:
         if ( NC )
             return;
         gainRoot();
-        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        ( void ) rv;
     }
 
 private:
