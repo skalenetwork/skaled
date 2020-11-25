@@ -113,7 +113,7 @@ dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT 
         dv = dev::Verbosity::VerbosityDebug;
         break;
     case skutils::ws::e_ws_log_message_type_t::eWSLMT_info:
-        dv = dev::Verbosity::VerbosityDebug; // VerbosityInfo
+        dv = dev::Verbosity::VerbosityDebug;  // VerbosityInfo
         break;
     case skutils::ws::e_ws_log_message_type_t::eWSLMT_warning:
         dv = dev::Verbosity::VerbosityWarning;
