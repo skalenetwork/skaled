@@ -48,7 +48,8 @@
 namespace dev {
 namespace rpc {
 
-SkaleDebug::SkaleDebug( const std::string& configPath ) : skutils::json_config_file_accessor( configPath ) {}
+SkaleDebug::SkaleDebug( const std::string& configPath )
+    : skutils::json_config_file_accessor( configPath ) {}
 
 Json::Value SkaleDebug::skale_performanceTrackingStatus( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "Performance tracking status" );
@@ -220,4 +221,3 @@ Json::Value SkaleDebug::skale_performanceTrackingFetch( const Json::Value& reque
 
 };  // namespace rpc
 };  // namespace dev
-

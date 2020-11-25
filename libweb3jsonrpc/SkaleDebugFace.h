@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file SkaleDebugFace.h
-* @authors:
-*   Oleh Nikolaiev <oleg@skalelabs.com>
-* @date 2020
-*/
+ * @authors:
+ *   Oleh Nikolaiev <oleg@skalelabs.com>
+ * @date 2020
+ */
 
 #ifndef SKALEDEBUGFACE_H
 #define SKALEDEBUGFACE_H

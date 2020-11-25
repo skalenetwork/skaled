@@ -47,7 +47,6 @@ namespace rpc {
 class SkaleDebug : public dev::rpc::SkaleDebugFace,
                    public dev::rpc::SkaleStatsConsumerImpl,
                    public skutils::json_config_file_accessor {
-
 public:
     SkaleDebug( const std::string& configPath );
 
@@ -60,4 +59,4 @@ public:
 };  // namespace rpc
 };  // namespace dev
 
-#endif // SKALEDEBUG_H
+#endif  // SKALEDEBUG_H

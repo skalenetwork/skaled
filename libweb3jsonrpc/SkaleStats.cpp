@@ -1905,6 +1905,5 @@ uint256 amount
 }  // skale_imaVerifyAndSign()
 
 
-
 };  // namespace rpc
 };  // namespace dev
