@@ -22,8 +22,8 @@
  * @date 2020
  */
 
-#ifndef SKALEDEBUG_H
-#define SKALEDEBUG_H
+#ifndef SKALEDEBUGPERFORMANCE_H
+#define SKALEDEBUGPERFORMANCE_H
 
 #include "SkaleDebugFace.h"
 #include "SkaleStatsSite.h"
@@ -50,6 +50,10 @@ class SkaleDebug : public dev::rpc::SkaleDebugFace,
 public:
     SkaleDebug( const std::string& configPath );
 
+    virtual RPCModules implementedModules() const override {
+        return RPCModules{RPCModule{"skaleDebug", "1.0"}};
+    }
+
     virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) override;
     virtual Json::Value skale_performanceTrackingStart( const Json::Value& request ) override;
     virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) override;
@@ -59,4 +63,4 @@ public:
 };  // namespace rpc
 };  // namespace dev
 
-#endif  // SKALEDEBUG_H
+#endif  // SKALEDEBUGPERFORMANCE_H
