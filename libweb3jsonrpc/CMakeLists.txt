@@ -36,14 +36,18 @@ set(sources
     Web3Face.h
     WhisperFace.h
 
+    SkaleDebug.h
+    SkaleDebug.cpp
+    SkaleDebugFace.h
+
     Skale.h
     Skale.cpp
     SkaleFace.h
 	
-	SkaleStats.h
-	SkaleStats.cpp
-	SkaleStatsFace.h
-	SkaleStatsSite.h
+    SkaleStats.h
+    SkaleStats.cpp
+    SkaleStatsFace.h
+    SkaleStatsSite.h
 )
 
 if(WIN32)
@@ -107,6 +111,11 @@ jsonrpcstub_create(web3jsonrpc skale.jsonweb3jsonrpc
 jsonrpcstub_create(web3jsonrpc skaleStats.json
 	dev::rpc::SkaleStatsFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleStatsFace
 	SkaleStatsClient ${CMAKE_CURRENT_BINARY_DIR} SkaleStatsClient
+)
+
+jsonrpcstub_create(web3jsonrpc skaleDebug.json
+        dev::rpc::SkaleDebugFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleDebugFace
+        SkaleDebugClient ${CMAKE_CURRENT_BINARY_DIR} SkaleDebugClient
 )
 
 link_directories(${BLS_WITH_FF_LIBRARY_DIR})
