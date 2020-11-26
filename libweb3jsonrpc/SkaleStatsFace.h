@@ -25,18 +25,6 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaVerifyAndSign",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_imaVerifyAndSignI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStatus",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleStatsFace::skale_performanceTrackingStatusI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStart",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleStatsFace::skale_performanceTrackingStartI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStop",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleStatsFace::skale_performanceTrackingStopI );
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingFetch",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleStatsFace::skale_performanceTrackingFetchI );
     }
 
     inline virtual void skale_statsI( const Json::Value& request, Json::Value& response ) {
@@ -55,31 +43,11 @@ public:
         const Json::Value& request, Json::Value& response ) {
         response = this->skale_imaVerifyAndSign( request );
     }
-    inline virtual void skale_performanceTrackingStatusI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->skale_performanceTrackingStatus( request );
-    }
-    inline virtual void skale_performanceTrackingStartI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->skale_performanceTrackingStart( request );
-    }
-    inline virtual void skale_performanceTrackingStopI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->skale_performanceTrackingStop( request );
-    }
-    inline virtual void skale_performanceTrackingFetchI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->skale_performanceTrackingFetch( request );
-    }
 
     virtual Json::Value skale_stats() = 0;
     virtual Json::Value skale_nodesRpcInfo() = 0;
     virtual Json::Value skale_imaInfo() = 0;
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) = 0;
-    virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) = 0;
-    virtual Json::Value skale_performanceTrackingStart( const Json::Value& request ) = 0;
-    virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) = 0;
-    virtual Json::Value skale_performanceTrackingFetch( const Json::Value& request ) = 0;
 
 };  /// class SkaleStatsFace
 
