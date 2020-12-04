@@ -119,7 +119,40 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
             if ( !this->bls_->Verification(
                      std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                      common_signature, this->common_public_key_ ) ) {
-                return false;
+                std::cerr << cc::error(
+                                 "Common BLS signature wasn't verified, probably using incorrect "
+                                 "common public key specified in command line. Trying again with "
+                                 "common public key from config" )
+                          << std::endl;
+
+                libff::alt_bn128_G2 common_public_key_from_config;
+                common_public_key_from_config.X.c0 = libff::alt_bn128_Fq(
+                    this->chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+                common_public_key_from_config.X.c1 = libff::alt_bn128_Fq(
+                    this->chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+                common_public_key_from_config.Y.c0 = libff::alt_bn128_Fq(
+                    this->chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+                common_public_key_from_config.Y.c1 = libff::alt_bn128_Fq(
+                    this->chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+                common_public_key_from_config.Z = libff::alt_bn128_Fq2::one();
+                std::cout << "NEW BLS COMMON PUBLIC KEY:\n";
+                common_public_key_from_config.print_coordinates();
+                if ( !this->bls_->Verification(
+                         std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
+                         common_signature, common_public_key_from_config ) ) {
+                    std::cerr
+                        << cc::error(
+                               "Common BLS signature wasn't verified, snapshot will not be "
+                               "downloaded. Try to backup node manually using skale-node-cli." )
+                        << std::endl;
+                    return false;
+                } else {
+                    std::cout << cc::info(
+                                     "Common BLS signature was verified with common public key "
+                                     "from config." )
+                              << std::endl;
+                    this->common_public_key_ = common_public_key_from_config;
+                }
             }
         } catch ( signatures::Bls::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
