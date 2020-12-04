@@ -1285,7 +1285,7 @@ int main( int argc, char** argv ) try {
                         snapshotManager->removeSnapshot( blockNumber );
                 }
 
-                if( blockNumber ==0 )
+                if( blockNumber == 0 )
                     successfullDownload = true;
 
                 size_t n_found = list_urls_to_download.size();
