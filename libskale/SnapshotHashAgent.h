@@ -68,6 +68,11 @@ public:
         this->hashes_.resize( n_ );
         this->signatures_.resize( n_ );
         this->public_keys_.resize( n_ );
+        this->is_received_.resize( n_ );
+        for ( size_t i = 0; i < n_; ++i ) {
+            this->is_received_[i] = false;
+        }
+
         this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
         if ( common_public_key == "" ) {
             this->common_public_key_.X.c0 =
@@ -105,6 +110,7 @@ private:
     std::vector< libff::alt_bn128_G1 > signatures_;
     std::vector< libff::alt_bn128_G2 > public_keys_;
     std::vector< size_t > nodes_to_download_snapshot_from_;
+    std::vector< bool > is_received_;
     std::mutex hashes_mutex;
     libff::alt_bn128_G2 common_public_key_;
 
