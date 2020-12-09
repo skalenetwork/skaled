@@ -251,6 +251,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
             LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
             try {
                 m_snapshotManager->doSnapshot( 0 );
+                m_snapshotManager->computeSnapshotHash( 0 );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
