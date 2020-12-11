@@ -91,6 +91,7 @@ public:
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            this->hashAgent_->is_received_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
