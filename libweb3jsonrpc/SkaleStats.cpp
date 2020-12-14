@@ -664,11 +664,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
-        if ( joConfig.count( "sChain" ) == 0 )
+        if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"sChain\"" );
-        const nlohmann::json& joSkaleConfig_sChain = joConfig["sChain"];
+        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         if ( joSkaleConfig_sChain.count( "schainName" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find "
