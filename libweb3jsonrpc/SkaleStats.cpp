@@ -1651,7 +1651,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // uint256 amount
                 //) public view returns ( bool isValidMessage ) { ... ... ...
                 //--------------------------------------------------------------------------------
-                // 0xa3c47860                                                       // signature
+                // 0xb29cc575                                                       // signature
                 // 00000000000000000000000000000000000000000000000000000000000000c0 // position for
                 // chainName string data
                 // 0000000000000000000000000000000000000000000000000000000000000004 // idxMessage
@@ -1663,11 +1663,26 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // 1000000000000000000
                 // 0000000000000000000000000000000000000000000000000000000000000000 // length of
                 // chainName string 0000000000000000000000000000000000000000000000000000000000000000
-                // data of chainName string
+                // // data of chainName string
                 // 0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
                 // 01234567890123456789012345678901234567890123456789012345678901234567890123456789
+                // 0000000000000000000000000000000000000000000000000000000000000000
+
+                // 0xb29cc575                                                       // signature
+                // 00000000000000000000000000000000000000000000000000000000000000c0 // position for
+                // chainName string data
+                // 0000000000000000000000000000000000000000000000000000000000000000 // idxMessage
+                // 00000000000000000000000057aD607C6e90Df7D7F158985c3e436007a15d744 // sender
+                // 0000000000000000000000001F0eBCf6B0393d7759cd2F9014fc67ef8AF4d702 //
+                // destinationContract
+                // 0000000000000000000000007aa5E36AA15E93D10F4F26357C30F052DacDde5F // to
+                // 0000000000000000000000000000000000000000000000000de0b6b3a7640000 // amount
+                // 0000000000000000000000000000000000000000000000000000000000000003 // length of
+                // chainName string 426f620000000000000000000000000000000000000000000000000000000000
+                // // data of chainName string
+
                 std::string strCallData =
-                    "0xb29cc575";  // signature as first 8 symbos of keccak256 from
+                    "0xb29cc575";  // signature as first 8 symbols of keccak256 from
                                    // "verifyOutgoingMessageData(string,uint256,address,address,address,uint256)"
                 // enode position for chainName string data
                 strCallData += stat_encode_eth_call_data_chunck_size_t( 0xC0 );
@@ -1677,8 +1692,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // encode value of joMessageToSign.sender as "sender" call argument
                 strCallData += stat_encode_eth_call_data_chunck_address(
                     joMessageToSign["sender"].get< std::string >() );
-                // encode value of joMessageToSign.destinationContract as "destinationContract"
-                // call argument
+                // encode value of joMessageToSign.destinationContract as "destinationContract" call
+                // argument
                 strCallData += stat_encode_eth_call_data_chunck_address(
                     joMessageToSign["destinationContract"].get< std::string >() );
                 // encode value of joMessageToSign.to as "to" call argument
