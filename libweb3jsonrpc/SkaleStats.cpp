@@ -1703,14 +1703,17 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 strCallData += stat_encode_eth_call_data_chunck_size_t(
                     joMessageToSign["amount"].get< std::string >() );
                 // encode length of chainName string
-                size_t nLenSChainName = strSChainName.size();
-                strCallData += stat_encode_eth_call_data_chunck_size_t( nLenSChainName );
+                std::string strTargetChainName =
+                    ( strDirection == "M2S" ) ? strSChainName : "Mainnet";
+                size_t nLenTargetName = strTargetChainName.size();
+                strCallData += stat_encode_eth_call_data_chunck_size_t( nLenTargetName );
                 // encode data of chainName string
-                for ( size_t idxChar = 0; idxChar < nLenSChainName; ++idxChar ) {
-                    std::string strByte = skutils::tools::format( "%02x", strSChainName[idxChar] );
+                for ( size_t idxChar = 0; idxChar < nLenTargetName; ++idxChar ) {
+                    std::string strByte =
+                        skutils::tools::format( "%02x", strTargetChainName[idxChar] );
                     strCallData += strByte;
                 }
-                size_t nLastPart = nLenSChainName % 32;
+                size_t nLastPart = nLenTargetName % 32;
                 if ( nLastPart != 0 ) {
                     size_t nNeededToAdd = 32 - nLastPart;
                     for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
