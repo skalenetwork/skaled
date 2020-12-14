@@ -664,6 +664,17 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
+        if ( joConfig.count( "sChain" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"sChain\"" );
+        const nlohmann::json& joSkaleConfig_sChain = joConfig["sChain"];
+        if ( joSkaleConfig_sChain.count( "schainName" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"sChain\"/\"schainName\"" );
+        std::string strSChainName = joSkaleConfig_sChain["schainName"].get< std::string >();
+        //
         //
         // Extract needed request arguments, ensure they are all present and valid
         //
@@ -1630,27 +1641,36 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                "Skipped contract event based verification of IMA message(s)" ) );
                 bool bTransactionWasVerifed = false;
 
-                /*
-function verifyOutgoingMessageData(
-uint256 idxMessage,
-address sender,
-address destinationContract,
-address to,
-uint256 amount
-) public view returns ( bool isValidMessage ) { ... ... ...
---------------------------------------------------------------------------------
-0xa3c47860                                                       // signature
-0000000000000000000000000000000000000000000000000000000000000004 // idxMessage
-000000000000000000000000977c8115e8c2ab8bc9b6ed76d058c75055f915f9 // sender
-000000000000000000000000e410b2469709e878bff2de4b155bf9df5a16f0ea // destinationContract
-0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f // to
-0000000000000000000000000000000000000000000000000de0b6b3a7640000 // amount 1000000000000000000
-0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
-01234567890123456789012345678901234567890123456789012345678901234567890123456789
-                */
+
+                // function verifyOutgoingMessageData(
+                // string memory chainName,
+                // uint256 idxMessage,
+                // address sender,
+                // address destinationContract,
+                // address to,
+                // uint256 amount
+                //) public view returns ( bool isValidMessage ) { ... ... ...
+                //--------------------------------------------------------------------------------
+                // 0xa3c47860                                                       // signature
+                // 00000000000000000000000000000000000000000000000000000000000000c0 // position for
+                // chainName string data
+                // 0000000000000000000000000000000000000000000000000000000000000004 // idxMessage
+                // 000000000000000000000000977c8115e8c2ab8bc9b6ed76d058c75055f915f9 // sender
+                // 000000000000000000000000e410b2469709e878bff2de4b155bf9df5a16f0ea //
+                // destinationContract
+                // 0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f // to
+                // 0000000000000000000000000000000000000000000000000de0b6b3a7640000 // amount
+                // 1000000000000000000
+                // 0000000000000000000000000000000000000000000000000000000000000000 // length of
+                // chainName string 0000000000000000000000000000000000000000000000000000000000000000
+                // data of chainName string
+                // 0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
+                // 01234567890123456789012345678901234567890123456789012345678901234567890123456789
                 std::string strCallData =
-                    "0xa3c47860";  // signature as first 8 symbos of keccak256 from
-                                   // "verifyOutgoingMessageData(uint256,address,address,address,uint256)"
+                    "0xb29cc575";  // signature as first 8 symbos of keccak256 from
+                                   // "verifyOutgoingMessageData(string,uint256,address,address,address,uint256)"
+                // enode position for chainName string data
+                strCallData += stat_encode_eth_call_data_chunck_size_t( 0xC0 );
                 // encode value of ( nStartMessageIdx + idxMessage ) as "idxMessage" call argument
                 strCallData +=
                     stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
@@ -1667,6 +1687,21 @@ uint256 amount
                 // encode value of joMessageToSign.amount as "amount" call argument
                 strCallData += stat_encode_eth_call_data_chunck_size_t(
                     joMessageToSign["amount"].get< std::string >() );
+                // encode length of chainName string
+                size_t nLenSChainName = strSChainName.size();
+                strCallData += stat_encode_eth_call_data_chunck_size_t( nLenSChainName );
+                // encode data of chainName string
+                for ( size_t idxChar = 0; idxChar < nLenSChainName; ++idxChar ) {
+                    std::string strByte = skutils::tools::format( "%02x", strSChainName[idxChar] );
+                    strCallData += strByte;
+                }
+                size_t nLastPart = nLenSChainName % 32;
+                if ( nLastPart != 0 ) {
+                    size_t nNeededToAdd = 32 - nLastPart;
+                    for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
+                        strCallData += "00";
+                    }
+                }
                 //
                 nlohmann::json joCallItem = nlohmann::json::object();
                 joCallItem["data"] = strCallData;  // call data
