@@ -288,11 +288,6 @@ public:
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
 
-private:
-    fn_binary_snapshot_download_t fn_binary_snapshot_download_;
-
-public:
-    const double lfExecutionDurationMaxForPerformanceWarning_;                 // in seconds
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
                                                                                // default 1 second
 
@@ -300,17 +295,96 @@ public:
 
     skutils::unddos::algorithm unddos_;
 
-    SkaleServerOverride( dev::eth::ChainParams& chainParams,
-        fn_binary_snapshot_download_t fn_binary_snapshot_download, size_t cntServers,
-        dev::eth::Interface* pEth, const std::string& strAddrHTTP4, int nBasePortHTTP4,
-        const std::string& strAddrHTTP6, int nBasePortHTTP6, const std::string& strAddrHTTPS4,
-        int nBasePortHTTPS4, const std::string& strAddrHTTPS6, int nBasePortHTTPS6,
-        const std::string& strAddrWS4, int nBasePortWS4, const std::string& strAddrWS6,
-        int nBasePortWS6, const std::string& strAddrWSS4, int nBasePortWSS4,
-        const std::string& strAddrWSS6, int nBasePortWSS6, const std::string& strPathSslKey,
-        const std::string& strPathSslCert,
-        double lfExecutionDurationMaxForPerformanceWarning  // in seconds
-    );
+    enum class e_server_mode_t {
+        esm_standard,
+        esm_informational
+    };
+
+    struct net_bind_opts_t {
+        size_t cntServers_ = 1;
+        std::string strAddrHTTP4_;
+        int nBasePortHTTP4_ = 0;
+        std::string strAddrHTTP6_;
+        int nBasePortHTTP6_ = 0;
+        std::string strAddrHTTPS4_;
+        int nBasePortHTTPS4_ = 0;
+        std::string strAddrHTTPS6_;
+        int nBasePortHTTPS6_ = 0;
+        std::string strAddrWS4_;
+        int nBasePortWS4_ = 0;
+        std::string strAddrWS6_;
+        int nBasePortWS6_ = 0;
+        std::string strAddrWSS4_;
+        int nBasePortWSS4_ = 0;
+        std::string strAddrWSS6_;
+        int nBasePortWSS6_ = 0;
+        net_bind_opts_t() { }
+        net_bind_opts_t( const net_bind_opts_t & other ) { assign( other ); }
+        net_bind_opts_t & operator=( const net_bind_opts_t & other ) { return assign( other ); }
+        net_bind_opts_t & assign( const net_bind_opts_t & other ) {
+            cntServers_ = other.cntServers_;
+            strAddrHTTP4_ = other.strAddrHTTP4_;
+            nBasePortHTTP4_ = other.nBasePortHTTP4_;
+            strAddrHTTP6_ = other.strAddrHTTP6_;
+            nBasePortHTTP6_ = other.nBasePortHTTP6_;
+            strAddrHTTPS4_ = other.strAddrHTTPS4_;
+            nBasePortHTTPS4_ = other.nBasePortHTTPS4_;
+            strAddrHTTPS6_ = other.strAddrHTTPS6_;
+            nBasePortHTTPS6_ = other.nBasePortHTTPS6_;
+            strAddrWS4_ = other.strAddrWS4_;
+            nBasePortWS4_ = other.nBasePortWS4_;
+            strAddrWS6_ = other.strAddrWS6_;
+            nBasePortWS6_ = other.nBasePortWS6_;
+            strAddrWSS4_ = other.strAddrWSS4_;
+            nBasePortWSS4_ = other.nBasePortWSS4_;
+            strAddrWSS6_ = other.strAddrWSS6_;
+            nBasePortWSS6_ = other.nBasePortWSS6_;
+            return (*this);
+        }
+    };
+    struct net_opts_t {
+        net_bind_opts_t bindOptsStandard_;
+        net_bind_opts_t bindOptsInformational_;
+        std::string strPathSslKey_;
+        std::string strPathSslCert_;
+        std::atomic_size_t cntConnections_ = 0;
+        std::atomic_size_t cntConnectionsMax_ = 0;  // 0 is unlimited
+        net_opts_t() { }
+        net_opts_t( const net_opts_t & other ) { assign( other ); }
+        net_opts_t & operator=( const net_opts_t & other ) { return assign( other ); }
+        net_opts_t & assign( const net_opts_t & other ) {
+            bindOptsStandard_ = other.bindOptsStandard_;
+            bindOptsInformational_ = other.bindOptsInformational_;
+            strPathSslKey_ = other.strPathSslKey_;
+            strPathSslCert_ = other.strPathSslCert_;
+            cntConnections_ = size_t( other.cntConnections_ );
+            cntConnectionsMax_ = size_t( other.cntConnectionsMax_ );
+            return (*this);
+        }
+    };
+    struct opts_t {
+        net_opts_t netOpts_;
+        fn_binary_snapshot_download_t fn_binary_snapshot_download_;
+        double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
+        bool isTraceCalls_ = false;
+        opts_t() { }
+        opts_t( const opts_t & other ) { assign( other ); }
+        opts_t & operator=( const opts_t & other ) { return assign( other ); }
+        opts_t & assign( const opts_t & other ) {
+            netOpts_ = other.netOpts_;
+            fn_binary_snapshot_download_ = other.fn_binary_snapshot_download_;
+            lfExecutionDurationMaxForPerformanceWarning_ = other.lfExecutionDurationMaxForPerformanceWarning_;
+            isTraceCalls_ = other.isTraceCalls_;
+            return (*this);
+        }
+    };
+    opts_t opts_;
+
+    SkaleServerOverride(
+        dev::eth::ChainParams& chainParams,
+        dev::eth::Interface* pEth,
+        const opts_t & opts
+        );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
@@ -321,19 +395,21 @@ public:
 private:
     bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-        const std::string& strPathSslCert, int nServerIndex,
+        const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
         size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
         bool is_async_http_transfer_mode = true );
     bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-        const std::string& strPathSslCert, int nServerIndex );
-    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL );
-    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL );
+        const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm );
+    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
 
 public:
     size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
     bool is_async_http_transfer_mode_ = true;
+    virtual bool StartListening( e_server_mode_t esm );
     virtual bool StartListening() override;
+    virtual bool StopListening( e_server_mode_t esm );
     virtual bool StopListening() override;
 
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
@@ -346,46 +422,27 @@ public:
         int nServerIndex, const char* strOrigin, const std::string& strPayload );
 
 private:
-    const std::string m_strAddrHTTP4;
-    const int m_nBasePortHTTP4;
-    const std::string m_strAddrHTTP6;
-    const int m_nBasePortHTTP6;
-    const std::string m_strAddrHTTPS4;
-    const int m_nBasePortHTTPS4;
-    const std::string m_strAddrHTTPS6;
-    const int m_nBasePortHTTPS6;
-    const std::string m_strAddrWS4;
-    const int m_nBasePortWS4;
-    const std::string m_strAddrWS6;
-    const int m_nBasePortWS6;
-    const std::string m_strAddrWSS4;
-    const int m_nBasePortWSS4;
-    const std::string m_strAddrWSS6;
-    const int m_nBasePortWSS6;
 
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
 
 public:
-    bool m_bTraceCalls;
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-    std::list< std::shared_ptr< SkaleRelayHTTP > > m_serversHTTP4, m_serversHTTP6, m_serversHTTPS4,
-        m_serversHTTPS6;
-    std::string m_strPathSslKey, m_strPathSslCert;
-    std::list< std::shared_ptr< SkaleRelayWS > > m_serversWS4, m_serversWS6, m_serversWSS4,
-        m_serversWSS6;
-
-    std::atomic_size_t m_cntConnections;
-    std::atomic_size_t m_cntConnectionsMax;  // 0 is unlimited
+    std::list< std::shared_ptr< SkaleRelayHTTP > >
+        serversHTTP4std_, serversHTTP6std_, serversHTTPS4std_, serversHTTPS6std_,
+        serversHTTP4nfo_, serversHTTP6nfo_, serversHTTPS4nfo_, serversHTTPS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayWS > >
+        serversWS4std_, serversWS6std_, serversWSS4std_, serversWSS6std_,
+        serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
 
 public:
     // status API, returns running server port or -1 if server is not started
-    int getServerPortStatusHTTP( int ipVer ) const;
-    int getServerPortStatusHTTPS( int ipVer ) const;
-    int getServerPortStatusWS( int ipVer ) const;
-    int getServerPortStatusWSS( int ipVer ) const;
+    int getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const;
+    int getServerPortStatusHTTPS( int ipVer, e_server_mode_t esm ) const;
+    int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;
+    int getServerPortStatusWSS( int ipVer, e_server_mode_t esm ) const;
 
     bool is_connection_limit_overflow() const;
     void connection_counter_inc();
