@@ -295,10 +295,7 @@ public:
 
     skutils::unddos::algorithm unddos_;
 
-    enum class e_server_mode_t {
-        esm_standard,
-        esm_informational
-    };
+    enum class e_server_mode_t { esm_standard, esm_informational };
 
     struct net_bind_opts_t {
         size_t cntServers_ = 1;
@@ -318,10 +315,10 @@ public:
         int nBasePortWSS4_ = 0;
         std::string strAddrWSS6_;
         int nBasePortWSS6_ = 0;
-        net_bind_opts_t() { }
-        net_bind_opts_t( const net_bind_opts_t & other ) { assign( other ); }
-        net_bind_opts_t & operator=( const net_bind_opts_t & other ) { return assign( other ); }
-        net_bind_opts_t & assign( const net_bind_opts_t & other ) {
+        net_bind_opts_t() {}
+        net_bind_opts_t( const net_bind_opts_t& other ) { assign( other ); }
+        net_bind_opts_t& operator=( const net_bind_opts_t& other ) { return assign( other ); }
+        net_bind_opts_t& assign( const net_bind_opts_t& other ) {
             cntServers_ = other.cntServers_;
             strAddrHTTP4_ = other.strAddrHTTP4_;
             nBasePortHTTP4_ = other.nBasePortHTTP4_;
@@ -339,7 +336,7 @@ public:
             nBasePortWSS4_ = other.nBasePortWSS4_;
             strAddrWSS6_ = other.strAddrWSS6_;
             nBasePortWSS6_ = other.nBasePortWSS6_;
-            return (*this);
+            return ( *this );
         }
     };
     struct net_opts_t {
@@ -349,17 +346,17 @@ public:
         std::string strPathSslCert_;
         std::atomic_size_t cntConnections_ = 0;
         std::atomic_size_t cntConnectionsMax_ = 0;  // 0 is unlimited
-        net_opts_t() { }
-        net_opts_t( const net_opts_t & other ) { assign( other ); }
-        net_opts_t & operator=( const net_opts_t & other ) { return assign( other ); }
-        net_opts_t & assign( const net_opts_t & other ) {
+        net_opts_t() {}
+        net_opts_t( const net_opts_t& other ) { assign( other ); }
+        net_opts_t& operator=( const net_opts_t& other ) { return assign( other ); }
+        net_opts_t& assign( const net_opts_t& other ) {
             bindOptsStandard_ = other.bindOptsStandard_;
             bindOptsInformational_ = other.bindOptsInformational_;
             strPathSslKey_ = other.strPathSslKey_;
             strPathSslCert_ = other.strPathSslCert_;
             cntConnections_ = size_t( other.cntConnections_ );
             cntConnectionsMax_ = size_t( other.cntConnectionsMax_ );
-            return (*this);
+            return ( *this );
         }
     };
     struct opts_t {
@@ -367,24 +364,22 @@ public:
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
-        opts_t() { }
-        opts_t( const opts_t & other ) { assign( other ); }
-        opts_t & operator=( const opts_t & other ) { return assign( other ); }
-        opts_t & assign( const opts_t & other ) {
+        opts_t() {}
+        opts_t( const opts_t& other ) { assign( other ); }
+        opts_t& operator=( const opts_t& other ) { return assign( other ); }
+        opts_t& assign( const opts_t& other ) {
             netOpts_ = other.netOpts_;
             fn_binary_snapshot_download_ = other.fn_binary_snapshot_download_;
-            lfExecutionDurationMaxForPerformanceWarning_ = other.lfExecutionDurationMaxForPerformanceWarning_;
+            lfExecutionDurationMaxForPerformanceWarning_ =
+                other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
-            return (*this);
+            return ( *this );
         }
     };
     opts_t opts_;
 
     SkaleServerOverride(
-        dev::eth::ChainParams& chainParams,
-        dev::eth::Interface* pEth,
-        const opts_t & opts
-        );
+        dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;
@@ -401,8 +396,10 @@ private:
     bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm );
-    bool implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
-    bool implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    bool implStopListening(
+        std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    bool implStopListening(
+        std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
 
 public:
     size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
@@ -422,7 +419,6 @@ public:
         int nServerIndex, const char* strOrigin, const std::string& strPayload );
 
 private:
-
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
     jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
 
@@ -430,12 +426,11 @@ public:
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-    std::list< std::shared_ptr< SkaleRelayHTTP > >
-        serversHTTP4std_, serversHTTP6std_, serversHTTPS4std_, serversHTTPS6std_,
-        serversHTTP4nfo_, serversHTTP6nfo_, serversHTTPS4nfo_, serversHTTPS6nfo_;
-    std::list< std::shared_ptr< SkaleRelayWS > >
-        serversWS4std_, serversWS6std_, serversWSS4std_, serversWSS6std_,
-        serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayHTTP > > serversHTTP4std_, serversHTTP6std_,
+        serversHTTPS4std_, serversHTTPS6std_, serversHTTP4nfo_, serversHTTP6nfo_, serversHTTPS4nfo_,
+        serversHTTPS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayWS > > serversWS4std_, serversWS6std_, serversWSS4std_,
+        serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
 
 public:
     // status API, returns running server port or -1 if server is not started
