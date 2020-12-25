@@ -486,35 +486,29 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "info-http-port", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 HTTP(IPv4) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
     addClientOption( "info-ttps-port", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 HTTPS(IPv4) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
     addClientOption( "info-ws-port", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WS(IPv4) server on specified port(and next set of ports if "
-        "--acceptors > 1)" );
+        "--info-acceptors > 1)" );
     addClientOption( "info-wss-port", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WSS(IPv4) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
 
     addClientOption( "info-http-port6", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 HTTP(IPv6) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
     addClientOption( "info-https-port6", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 HTTPS(IPv6) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
     addClientOption( "info-ws-port6", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WS(IPv6) server on specified port(and next set of ports if "
-        "--acceptors > 1)" );
+        "--info-info-acceptors > 1)" );
     addClientOption( "info-wss-port6", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WSS(IPv6) server(s) on specified port(and next set of ports if "
-        "--acceptors > "
-        "1)" );
+        "--info-acceptors > 1)" );
 
     std::string strPerformanceWarningDurationOptionDescription =
         "Specifies time margin in floating point format, in seconds, for displaying performance "
