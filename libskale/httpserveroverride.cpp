@@ -2129,7 +2129,7 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
 
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex, SkaleServerOverride::e_server_mode_t esm,
+    const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
     size_t a_max_http_handler_queues, bool is_async_http_transfer_mode ) {
     bool bIsSSL = false;
     SkaleServerOverride* pSO = this;
@@ -2452,8 +2452,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
 
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex,
-    SkaleServerOverride::e_server_mode_t esm ) {
+    const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -2500,8 +2499,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
     return false;
 }
 
-bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
-    bool bIsSSL, SkaleServerOverride::e_server_mode_t esm ) {
+bool SkaleServerOverride::implStopListening(
+    std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
     try {
         if ( !pSrv )
             return true;
@@ -2532,8 +2531,8 @@ bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayHTTP >& 
     return true;
 }
 
-bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
-    bool bIsSSL, SkaleServerOverride::e_server_mode_t esm ) {
+bool SkaleServerOverride::implStopListening(
+    std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
     try {
         if ( !pSrv )
             return true;
@@ -2562,7 +2561,7 @@ bool SkaleServerOverride::implStopListening( std::shared_ptr< SkaleRelayWS >& pS
     return true;
 }
 
-bool SkaleServerOverride::StartListening( SkaleServerOverride::e_server_mode_t esm ) {
+bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     m_bShutdownMode = false;
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
@@ -2690,8 +2689,10 @@ bool SkaleServerOverride::StartListening( SkaleServerOverride::e_server_mode_t e
 }
 
 bool SkaleServerOverride::StartListening() {
-    StartListening( SkaleServerOverride::e_server_mode_t::esm_standard );
-    StartListening( SkaleServerOverride::e_server_mode_t::esm_informational );
+    if ( StartListening( e_server_mode_t::esm_standard ) &&
+         StartListening( e_server_mode_t::esm_informational ) )
+        return true;
+    return false;
 }
 
 bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
@@ -2759,12 +2760,11 @@ bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
 }
 bool SkaleServerOverride::StopListening() {
     m_bShutdownMode = true;
-    StopListening( SkaleServerOverride::e_server_mode_t::esm_standard );
-    StopListening( SkaleServerOverride::e_server_mode_t::esm_informational );
+    StopListening( e_server_mode_t::esm_standard );
+    StopListening( e_server_mode_t::esm_informational );
 }
 
-int SkaleServerOverride::getServerPortStatusHTTP(
-    int ipVer, SkaleServerOverride::e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
@@ -2779,8 +2779,7 @@ int SkaleServerOverride::getServerPortStatusHTTP(
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusHTTPS(
-    int ipVer, SkaleServerOverride::e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusHTTPS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
@@ -2795,8 +2794,7 @@ int SkaleServerOverride::getServerPortStatusHTTPS(
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusWS(
-    int ipVer, SkaleServerOverride::e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
@@ -2811,8 +2809,7 @@ int SkaleServerOverride::getServerPortStatusWS(
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusWSS(
-    int ipVer, SkaleServerOverride::e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusWSS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;

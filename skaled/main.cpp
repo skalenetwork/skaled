@@ -2403,8 +2403,6 @@ int main( int argc, char** argv ) try {
                 cntServersStd = 1;
             if ( vm.count( "info-acceptors" ) )
                 cntServersNfo = vm["info-acceptors"].as< size_t >();
-            if ( cntServersNfo < 1 )
-                cntServersNfo = 1;
 
             // First, get "acceptors"/"info-acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -2552,38 +2550,38 @@ int main( int argc, char** argv ) try {
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
                 return EX_IOERR;
             }
-            int nStatHTTP4std = skale_server_connector->getServerPortStatusHTTP(
-                4, SkaleServerOverride::e_server_mode_t::esm_standard );
+            int nStatHTTP4std =
+                skale_server_connector->getServerPortStatusHTTP( 4, e_server_mode_t::esm_standard );
             int nStatHTTP4nfo = skale_server_connector->getServerPortStatusHTTP(
-                4, SkaleServerOverride::e_server_mode_t::esm_informational );
-            int nStatHTTP6std = skale_server_connector->getServerPortStatusHTTP(
-                6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                4, e_server_mode_t::esm_informational );
+            int nStatHTTP6std =
+                skale_server_connector->getServerPortStatusHTTP( 6, e_server_mode_t::esm_standard );
             int nStatHTTP6nfo = skale_server_connector->getServerPortStatusHTTP(
-                6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                6, e_server_mode_t::esm_informational );
             int nStatHTTPS4std = skale_server_connector->getServerPortStatusHTTPS(
-                4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                4, e_server_mode_t::esm_standard );
             int nStatHTTPS4nfo = skale_server_connector->getServerPortStatusHTTPS(
-                4, SkaleServerOverride::e_server_mode_t::esm_informational );
+                4, e_server_mode_t::esm_informational );
             int nStatHTTPS6std = skale_server_connector->getServerPortStatusHTTPS(
-                6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                6, e_server_mode_t::esm_standard );
             int nStatHTTPS6nfo = skale_server_connector->getServerPortStatusHTTPS(
-                6, SkaleServerOverride::e_server_mode_t::esm_informational );
-            int nStatWS4std = skale_server_connector->getServerPortStatusWS(
-                4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                6, e_server_mode_t::esm_informational );
+            int nStatWS4std =
+                skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_standard );
             int nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
-                4, SkaleServerOverride::e_server_mode_t::esm_informational );
-            int nStatWS6std = skale_server_connector->getServerPortStatusWS(
-                6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                4, e_server_mode_t::esm_informational );
+            int nStatWS6std =
+                skale_server_connector->getServerPortStatusWS( 6, e_server_mode_t::esm_standard );
             int nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
-                6, SkaleServerOverride::e_server_mode_t::esm_informational );
-            int nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
-                4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                6, e_server_mode_t::esm_informational );
+            int nStatWSS4std =
+                skale_server_connector->getServerPortStatusWSS( 4, e_server_mode_t::esm_standard );
             int nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
-                4, SkaleServerOverride::e_server_mode_t::esm_informational );
-            int nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
-                6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                4, e_server_mode_t::esm_informational );
+            int nStatWSS6std =
+                skale_server_connector->getServerPortStatusWSS( 6, e_server_mode_t::esm_standard );
             int nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
-                6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                6, e_server_mode_t::esm_informational );
             static const size_t g_cntWaitAttempts = 30;
             static const std::chrono::milliseconds g_waitAttempt = std::chrono::milliseconds( 100 );
             if ( nExplicitPortHTTP4std > 0 ) {
@@ -2597,7 +2595,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP4std = skale_server_connector->getServerPortStatusHTTP(
-                        4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        4, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortHTTP4nfo > 0 ) {
@@ -2611,7 +2609,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP4nfo = skale_server_connector->getServerPortStatusHTTP(
-                        4, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        4, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortHTTP6std > 0 ) {
@@ -2625,7 +2623,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP6std = skale_server_connector->getServerPortStatusHTTP(
-                        6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        6, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortHTTP6nfo > 0 ) {
@@ -2639,7 +2637,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP6nfo = skale_server_connector->getServerPortStatusHTTP(
-                        6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        6, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortHTTPS4std > 0 ) {
@@ -2653,7 +2651,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS4std = skale_server_connector->getServerPortStatusHTTPS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        4, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortHTTPS4nfo > 0 ) {
@@ -2667,7 +2665,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS4nfo = skale_server_connector->getServerPortStatusHTTPS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        4, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortHTTPS6std > 0 ) {
@@ -2681,7 +2679,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS6std = skale_server_connector->getServerPortStatusHTTPS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        6, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortHTTPS6nfo > 0 ) {
@@ -2695,7 +2693,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS6nfo = skale_server_connector->getServerPortStatusHTTPS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        6, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortWS4std > 0 ) {
@@ -2709,7 +2707,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS4std = skale_server_connector->getServerPortStatusWS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        4, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortWS4nfo > 0 ) {
@@ -2723,7 +2721,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        4, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortWS6std > 0 ) {
@@ -2737,7 +2735,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS6std = skale_server_connector->getServerPortStatusWS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        6, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortWS6nfo > 0 ) {
@@ -2751,7 +2749,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        6, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortWSS4std > 0 ) {
@@ -2764,7 +2762,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/4/std" )
                             << cc::debug( " start... " );
                     nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        4, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortWSS4nfo > 0 ) {
@@ -2777,7 +2775,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/4/nfo" )
                             << cc::debug( " start... " );
                     nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
-                        4, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        4, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortWSS6std > 0 ) {
@@ -2790,7 +2788,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/6/std" )
                             << cc::debug( " start... " );
                     nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_standard );
+                        6, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortWSS6nfo > 0 ) {
@@ -2803,7 +2801,7 @@ int main( int argc, char** argv ) try {
                             << cc::debug( "Waiting for " ) + cc::info( "WSS/6/nfo" )
                             << cc::debug( " start... " );
                     nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
-                        6, SkaleServerOverride::e_server_mode_t::esm_informational );
+                        6, e_server_mode_t::esm_informational );
                 }
             }
             clog( VerbosityDebug, "main" )

@@ -72,6 +72,8 @@ class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
 
+enum class e_server_mode_t { esm_standard, esm_informational };
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -279,10 +281,10 @@ protected:
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public SkaleStatsSubscriptionManager,
                             public dev::rpc::SkaleStatsProviderImpl {
-    std::atomic_size_t nTaskNumberCall_ = 9;
-    size_t m_cntServers;
-    mutable dev::eth::Interface* pEth_;
+    std::atomic_size_t nTaskNumberCall_ = 0;
+    size_t m_cntServers = 0;
     dev::eth::ChainParams& chainParams_;
+    mutable dev::eth::Interface* pEth_;
 
 public:
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
@@ -294,8 +296,6 @@ public:
     size_t maxCountInBatchJsonRpcRequest_ = 128;
 
     skutils::unddos::algorithm unddos_;
-
-    enum class e_server_mode_t { esm_standard, esm_informational };
 
     struct net_bind_opts_t {
         size_t cntServers_ = 1;
