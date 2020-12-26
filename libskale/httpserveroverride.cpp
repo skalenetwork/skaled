@@ -2780,8 +2780,10 @@ bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
 }
 bool SkaleServerOverride::StopListening() {
     m_bShutdownMode = true;
-    StopListening( e_server_mode_t::esm_standard );
-    StopListening( e_server_mode_t::esm_informational );
+    bool b1 = StopListening( e_server_mode_t::esm_standard );
+    bool b2 = StopListening( e_server_mode_t::esm_informational );
+    bool b = ( b1 && b2 ) ? true : false;
+    return true;
 }
 
 int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const {
