@@ -72,7 +72,12 @@ class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 enum class e_server_mode_t { esm_standard, esm_informational };
+
+extern const char* esm2str( e_server_mode_t esm );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,6 +214,7 @@ protected:
     std::string m_strSchemeUC;
     int m_nPort = -1;
     SkaleServerOverride* m_pSO = nullptr;
+    e_server_mode_t esm_;
 
 public:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
@@ -223,7 +229,7 @@ protected:
 
 public:
     SkaleRelayWS( int ipVer, const char* strBindAddr, const char* strScheme,  // "ws" or "wss"
-        int nPort, int nServerIndex = -1 );
+        int nPort, e_server_mode_t esm, int nServerIndex = -1 );
     ~SkaleRelayWS() override;
     void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
     bool isRunning() const { return m_isRunning; }
@@ -411,11 +417,13 @@ public:
     void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
 
     void logPerformanceWarning( double lfExecutionDuration, int ipVer, const char* strProtocol,
-        int nServerIndex, const char* strOrigin, const char* strMethod, nlohmann::json joID );
+        int nServerIndex, e_server_mode_t esm, const char* strOrigin, const char* strMethod,
+        nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
-        const std::string& strMessage );
+        e_server_mode_t esm, const std::string& strMessage );
     void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
-        int nServerIndex, const char* strOrigin, const std::string& strPayload );
+        int nServerIndex, e_server_mode_t esm, const char* strOrigin,
+        const std::string& strPayload );
 
 private:
     std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
@@ -444,7 +452,7 @@ public:
     size_t max_connection_get() const;
     void max_connection_set( size_t cntConnectionsMax );
     virtual void on_connection_overflow_peer_closed(
-        int ipVer, const char* strProtocol, int nServerIndex, int nPort );
+        int ipVer, const char* strProtocol, int nServerIndex, int nPort, e_server_mode_t esm );
 
     SkaleServerOverride& getSSO() override;       // abstract in SkaleStatsSubscriptionManager
     nlohmann::json provideSkaleStats() override;  // abstract from dev::rpc::SkaleStatsProviderImpl
