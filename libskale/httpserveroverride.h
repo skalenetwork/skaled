@@ -282,7 +282,6 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public SkaleStatsSubscriptionManager,
                             public dev::rpc::SkaleStatsProviderImpl {
     std::atomic_size_t nTaskNumberCall_ = 0;
-    size_t m_cntServers = 0;
     dev::eth::ChainParams& chainParams_;
     mutable dev::eth::Interface* pEth_;
 

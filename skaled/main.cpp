@@ -2548,6 +2548,9 @@ int main( int argc, char** argv ) try {
             skale_server_connector->max_connection_set( maxConnections );
             g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
+                clog( VerbosityError, "main" )
+                    << ( cc::fatal( "FATAL:" ) + " " +
+                           cc::error( "Failed to start JSON RPC, will exit..." ) );
                 return EX_IOERR;
             }
             int nStatHTTP4std =
