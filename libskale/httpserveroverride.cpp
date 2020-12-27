@@ -921,7 +921,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     joRequest );
                 stats::register_stats_message( "RPC", joRequest );
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
-                         joRequest, strResponse ) ) {
+                         pThis->getRelay().esm_, joRequest, strResponse ) ) {
                     jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
                     if ( handler == nullptr )
                         throw std::runtime_error( "No client connection handler found" );
@@ -1095,10 +1095,11 @@ void SkaleWsPeer::uninstallAllWatches() {
     }
 }
 
-bool SkaleWsPeer::handleRequestWithBinaryAnswer( const nlohmann::json& joRequest ) {
+bool SkaleWsPeer::handleRequestWithBinaryAnswer(
+    e_server_mode_t esm, const nlohmann::json& joRequest ) {
     SkaleServerOverride* pSO = pso();
     std::vector< uint8_t > buffer;
-    if ( pSO->handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+    if ( pSO->handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
         std::string strMethodName =
             skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
         std::string s( buffer.begin(), buffer.end() );
@@ -1110,7 +1111,7 @@ bool SkaleWsPeer::handleRequestWithBinaryAnswer( const nlohmann::json& joRequest
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
-    const nlohmann::json& joRequest, std::string& strResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, std::string& strResponse ) {
     strResponse.clear();
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["jsonrpc"] = "2.0";
@@ -1119,7 +1120,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     joResponse["result"] = nullptr;
     if ( !pso()->handleProtocolSpecificRequest(
              getRelay(), getRemoteIp(), joRequest, joResponse ) ) {
-        if ( !handleWebSocketSpecificRequest( joRequest, joResponse ) )
+        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) )
             return false;
     }
     strResponse = joResponse.dump();
@@ -1127,12 +1128,15 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( esm == e_server_mode_t::esm_informational &&
+         pso()->handleInformationalRequest( joRequest, joResponse ) )
+        return true;
     std::string strMethod = joRequest["method"].get< std::string >();
     ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
     if ( itFind == g_ws_rpc_map.end() )
         return false;
-    ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
+    ( ( *this ).*( itFind->second ) )( esm, joRequest, joResponse );
     return true;
 }
 
@@ -1141,7 +1145,8 @@ const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
     {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
 };
 
-void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+void SkaleWsPeer::eth_subscribe(
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !skale::server::helper::checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
     const nlohmann::json& jarrParams = joRequest["params"];
@@ -1155,20 +1160,20 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
         break;
     }
     if ( strSubscriptionType == "logs" ) {
-        eth_subscribe_logs( joRequest, joResponse );
+        eth_subscribe_logs( esm, joRequest, joResponse );
         return;
     }
     if ( strSubscriptionType == "newPendingTransactions" ||
          strSubscriptionType == "pendingTransactions" ) {
-        eth_subscribe_newPendingTransactions( joRequest, joResponse );
+        eth_subscribe_newPendingTransactions( esm, joRequest, joResponse );
         return;
     }
     if ( strSubscriptionType == "newHeads" || strSubscriptionType == "newBlockHeaders" ) {
-        eth_subscribe_newHeads( joRequest, joResponse, false );
+        eth_subscribe_newHeads( esm, joRequest, joResponse, false );
         return;
     }
     if ( strSubscriptionType == "skaleStats" ) {
-        eth_subscribe_skaleStats( joRequest, joResponse );
+        eth_subscribe_skaleStats( esm, joRequest, joResponse );
         return;
     }
     if ( strSubscriptionType.empty() )
@@ -1192,7 +1197,7 @@ void SkaleWsPeer::eth_subscribe( const nlohmann::json& joRequest, nlohmann::json
 }
 
 void SkaleWsPeer::eth_subscribe_logs(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         const nlohmann::json& jarrParams = joRequest["params"];
@@ -1352,7 +1357,7 @@ void SkaleWsPeer::eth_subscribe_logs(
 }
 
 void SkaleWsPeer::eth_subscribe_newPendingTransactions(
-    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
+    e_server_mode_t esm, const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1464,8 +1469,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
     }
 }
 
-void SkaleWsPeer::eth_subscribe_newHeads(
-    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse, bool bIncludeTransactions ) {
+void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t esm, const nlohmann::json& /*joRequest*/,
+    nlohmann::json& joResponse, bool bIncludeTransactions ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1588,7 +1593,7 @@ void SkaleWsPeer::eth_subscribe_newHeads(
 }
 
 void SkaleWsPeer::eth_subscribe_skaleStats(
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1639,7 +1644,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
     }
 }
 
-void SkaleWsPeer::eth_unsubscribe( const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+void SkaleWsPeer::eth_unsubscribe(
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !skale::server::helper::checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
         return;
     SkaleServerOverride* pSO = pso();
@@ -1947,8 +1953,8 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
     m_pServer.reset();
 }
 
-bool SkaleRelayHTTP::handleHttpSpecificRequest(
-    const std::string& strOrigin, const std::string& strRequest, std::string& strResponse ) {
+bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
+    const std::string& strRequest, std::string& strResponse ) {
     strResponse.clear();
     nlohmann::json joRequest;
     try {
@@ -1962,20 +1968,23 @@ bool SkaleRelayHTTP::handleHttpSpecificRequest(
         joResponse["id"] = joRequest["id"];
     joResponse["result"] = nullptr;
     if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
-        if ( !handleHttpSpecificRequest( strOrigin, joRequest, joResponse ) )
+        if ( !handleHttpSpecificRequest( strOrigin, esm, joRequest, joResponse ) )
             return false;
     }
     strResponse = joResponse.dump();
     return true;
 }
 
-bool SkaleRelayHTTP::handleHttpSpecificRequest(
-    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( esm == e_server_mode_t::esm_informational &&
+         pso()->handleInformationalRequest( joRequest, joResponse ) )
+        return true;
     std::string strMethod = joRequest["method"].get< std::string >();
     http_rpc_map_t::const_iterator itFind = g_http_rpc_map.find( strMethod );
     if ( itFind == g_http_rpc_map.end() )
         return false;
-    ( ( *this ).*( itFind->second ) )( strOrigin, joRequest, joResponse );
+    ( ( *this ).*( itFind->second ) )( strOrigin, esm, joRequest, joResponse );
     return true;
 }
 
@@ -2347,7 +2356,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     stats::register_stats_message( "RPC", joRequest );
                     //
                     std::vector< uint8_t > buffer;
-                    if ( handleRequestWithBinaryAnswer( joRequest, buffer ) ) {
+                    if ( handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
                         res.set_header( "access-control-allow-origin", "*" );
                         res.set_header( "vary", "Origin" );
                         res.set_content(
@@ -2357,7 +2366,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         rttElement->stop();
                         return true;
                     }
-                    if ( !pSrv->handleHttpSpecificRequest( req.origin_, strBody, strResponse ) ) {
+                    if ( !pSrv->handleHttpSpecificRequest(
+                             req.origin_, esm, strBody, strResponse ) ) {
                         handler->HandleRequest( strBody.c_str(), strResponse );
                     }
                     //
@@ -2929,8 +2939,53 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     return joStats;
 }
 
+bool SkaleServerOverride::handleInformationalRequest(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::string strMethod = joRequest["method"].get< std::string >();
+    informational_rpc_map_t::const_iterator itFind = g_informational_rpc_map.find( strMethod );
+    if ( itFind == g_informational_rpc_map.end() )
+        return false;
+    ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
+    return true;
+}
+
+const SkaleServerOverride::informational_rpc_map_t SkaleServerOverride::g_informational_rpc_map = {
+    {"eth_getBalance", &SkaleServerOverride::informational_eth_getBalance},
+};
+
+void SkaleServerOverride::informational_eth_getBalance(
+    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    auto pEthereum = ethereum();
+    if ( !pEthereum )
+        throw std::runtime_error( "internal error, no Ethereum interface found" );
+    dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
+    if ( !pClient )
+        throw std::runtime_error( "internal error, no client interface found" );
+    const nlohmann::json& joParams = joRequest["params"];
+    if ( !joParams.is_array() )
+        throw std::runtime_error( "\"params\" must be array for \"eth_getBalance\"" );
+    size_t cntParams = joParams.size();
+    if ( cntParams < 1 )
+        throw std::runtime_error( "\"params\" must be non-empty array for \"eth_getBalance\"" );
+    const nlohmann::json& joAddress = joParams[0];
+    if ( !joAddress.is_string() )
+        throw std::runtime_error( "\"params[0]\" must be address string for \"eth_getBalance\"" );
+    std::string strAddress = joAddress.get< std::string >();
+    try {
+        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
+        // Remove this temporary fix.
+        string blockNumber = "latest";
+        std::string strBallance = dev::toJS( pClient->balanceAt( dev::jsToAddress( strAddress ) ) );
+        joResponse["result"] = strBallance;
+    } catch ( const std::exception& ex ) {
+        throw ex;
+    } catch ( ... ) {
+        throw std::runtime_error( "Unknown error in \"informational_eth_getBalance\"" );
+    }
+}
+
 bool SkaleServerOverride::handleRequestWithBinaryAnswer(
-    const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
     buffer.clear();
     std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
     if ( strMethodName == "skale_downloadSnapshotFragment" && opts_.fn_binary_snapshot_download_ ) {
