@@ -12,11 +12,11 @@ void thread_pool::worker::invoke() {
     skutils::multithreading::threadNamer tn( skutils::tools::format( "p%zu", id_ ) );
     std::function< void() > func;
     bool was_dequeued = false;
-    for(;;) {
+    for ( ;; ) {
         {  // block
             std::unique_lock< mutex_type > lock( pool_->conditional_mutex_ );
 
-            if( pool_->shutdown_flag_ )
+            if ( pool_->shutdown_flag_ )
                 break;
 
             if ( pool_->queue_.empty() ) {
