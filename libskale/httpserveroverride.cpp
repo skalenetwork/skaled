@@ -1362,7 +1362,7 @@ void SkaleWsPeer::eth_subscribe_logs(
 }
 
 void SkaleWsPeer::eth_subscribe_newPendingTransactions(
-    e_server_mode_t esm, const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1474,7 +1474,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
     }
 }
 
-void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t esm, const nlohmann::json& /*joRequest*/,
+void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/, const nlohmann::json& /*joRequest*/,
     nlohmann::json& joResponse, bool bIncludeTransactions ) {
     SkaleServerOverride* pSO = pso();
     try {
@@ -1598,7 +1598,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t esm, const nlohmann::j
 }
 
 void SkaleWsPeer::eth_subscribe_skaleStats(
-    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1650,7 +1650,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
 }
 
 void SkaleWsPeer::eth_unsubscribe(
-    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !skale::server::helper::checkParamsIsArray( "eth_unsubscribe", joRequest, joResponse ) )
         return;
     SkaleServerOverride* pSO = pso();
@@ -2798,7 +2798,7 @@ bool SkaleServerOverride::StopListening() {
     bool b1 = StopListening( e_server_mode_t::esm_standard );
     bool b2 = StopListening( e_server_mode_t::esm_informational );
     bool b = ( b1 && b2 ) ? true : false;
-    return true;
+    return b;
 }
 
 int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const {
@@ -3050,7 +3050,7 @@ void SkaleServerOverride::informational_eth_getBalance(
 }
 
 bool SkaleServerOverride::handleRequestWithBinaryAnswer(
-    e_server_mode_t esm, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer ) {
     buffer.clear();
     std::string strMethodName = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
     if ( strMethodName == "skale_downloadSnapshotFragment" && opts_.fn_binary_snapshot_download_ ) {
