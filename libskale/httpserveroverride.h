@@ -383,6 +383,7 @@ public:
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
+            strEthErc20Address_ = other.strEthErc20Address_;
             return ( *this );
         }
     };
