@@ -48,7 +48,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <libdevcore/CommonData.h>
+#include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
+#include <libethereum/Client.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 
 #if ( defined MSIZE )
 #undef MSIZE
@@ -59,6 +63,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/Skale.h>
 
+#include <skutils/eth_utils.h>
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
 #include <skutils/task_performance.h>
@@ -2953,6 +2958,22 @@ const SkaleServerOverride::informational_rpc_map_t SkaleServerOverride::g_inform
     {"eth_getBalance", &SkaleServerOverride::informational_eth_getBalance},
 };
 
+static std::string stat_prefix_align( const std::string& strSrc, size_t n, char ch ) {
+    std::string strDst = strSrc;
+    while ( strDst.length() < n )
+        strDst.insert( 0, 1, ch );
+    return strDst;
+}
+
+static std::string stat_encode_eth_call_data_chunck_address(
+    const std::string& strSrc, size_t alignWithZerosTo = 64 ) {
+    std::string strDst = strSrc;
+    strDst = skutils::tools::replace_all_copy( strDst, "0x", "" );
+    strDst = skutils::tools::replace_all_copy( strDst, "0X", "" );
+    strDst = stat_prefix_align( strDst, alignWithZerosTo, '0' );
+    return strDst;
+}
+
 void SkaleServerOverride::informational_eth_getBalance(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     auto pEthereum = ethereum();
@@ -2972,10 +2993,54 @@ void SkaleServerOverride::informational_eth_getBalance(
         throw std::runtime_error( "\"params[0]\" must be address string for \"eth_getBalance\"" );
     std::string strAddress = joAddress.get< std::string >();
     try {
+        /*
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
         std::string strBallance = dev::toJS( pClient->balanceAt( dev::jsToAddress( strAddress ) ) );
+        joResponse["result"] = strBallance;
+        */
+
+        skutils::tools::replace_all( strAddress, "0x", "" );
+        skutils::tools::replace_all( strAddress, "0X", "" );
+        strAddress = skutils::tools::trim_copy( strAddress );
+        // keccak256( "balanceOf(address)" ) =
+        // "0x70a08231b98ef4ca268c9cc3f6b4590e4bfec28280db06bb5d45e689f2a360be", so function
+        // signature is "0x70a08231"
+        std::string strCallData = "0x70a08231";
+        strCallData += stat_encode_eth_call_data_chunck_address( strAddress );
+        nlohmann::json joCallArgs = nlohmann::json::object();
+        joCallArgs["data"] = strCallData;
+        joCallArgs["to"] = opts_.strEthErc20Address_;
+        std::string strCallArgs = joCallArgs.dump();
+        Json::Value _jsonCallArgs;
+        Json::Reader().parse( strCallArgs, _jsonCallArgs );
+
+        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
+        // Remove this temporary fix.
+        string blockNumber = "latest";
+        dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _jsonCallArgs );
+        // setTransactionDefaults( t );
+        dev::eth::ExecutionResult er = pClient->call(
+            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+
+        std::string strRevertReason;
+        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            Json::FastWriter fastWriter;
+            std::string strJSON = fastWriter.write( _jsonCallArgs );
+            std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                                 cc::warn( strRevertReason ) +
+                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
+                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
+                                 cc::error( "=" ) + cc::bright( blockNumber );
+            cerror << strOut;
+            throw std::runtime_error( strRevertReason );
+        }
+
+        std::string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
         joResponse["result"] = strBallance;
     } catch ( const std::exception& ex ) {
         throw ex;

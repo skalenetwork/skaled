@@ -2524,6 +2524,24 @@ int main( int argc, char** argv ) try {
             serverOpts.netOpts_.strPathSslCert_ = strPathSslCert;
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
                 lfExecutionDurationMaxForPerformanceWarning;
+            try {
+                serverOpts.strEthErc20Address_ =
+                    joConfig["skaleConfig"]["contractSettings"]["IMA"]["ethERC20Address"]
+                        .get< std::string >();
+                serverOpts.strEthErc20Address_ =
+                    skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                if ( serverOpts.strEthErc20Address_.empty() )
+                    throw std::runtime_error( "\"ethERC20Address\" was not found in config JSON" );
+                clog( VerbosityDebug, "main" ) << ( cc::debug( "\"ethERC20Address\" is" ) + " " +
+                                                    cc::info( serverOpts.strEthErc20Address_ ) );
+            } catch ( ... ) {
+                serverOpts.strEthErc20Address_ = "0xd3cdbc1b727b2ed91b8ad21333841d2e96f255af";
+                clog( VerbosityError, "main" )
+                    << ( cc::error( "WARNING:" ) + " " +
+                           cc::warn(
+                               "\"ethERC20Address\" was not found in config JSON, assuming" ) +
+                           " " + cc::info( serverOpts.strEthErc20Address_ ) );
+            }
             auto skale_server_connector =
                 new SkaleServerOverride( chainParams, g_client.get(), serverOpts );
             //

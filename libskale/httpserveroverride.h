@@ -373,6 +373,7 @@ public:
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
+        std::string strEthErc20Address_;
         opts_t() {}
         opts_t( const opts_t& other ) { assign( other ); }
         opts_t& operator=( const opts_t& other ) { return assign( other ); }
