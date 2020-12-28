@@ -1474,8 +1474,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
     }
 }
 
-void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/, const nlohmann::json& /*joRequest*/,
-    nlohmann::json& joResponse, bool bIncludeTransactions ) {
+void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
+    const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse, bool bIncludeTransactions ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
