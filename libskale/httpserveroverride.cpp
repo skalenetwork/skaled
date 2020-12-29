@@ -1202,7 +1202,7 @@ void SkaleWsPeer::eth_subscribe(
 }
 
 void SkaleWsPeer::eth_subscribe_logs(
-    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         const nlohmann::json& jarrParams = joRequest["params"];
