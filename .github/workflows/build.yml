@@ -149,9 +149,9 @@ jobs:
         if : ${{ steps.extract_branch.outputs.branch }} != 'develop' && ${{ steps.extract_branch.outputs.branch }} != 'beta' && ${{ steps.extract_branch.outputs.branch }} != 'master' && ${{ steps.extract_branch.outputs.branch }} != 'stable'
         run : |
           cd build/test
-          #./testeth -- --express --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all
-          sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all
+          ./testeth -- --express --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           # Create lcov report
