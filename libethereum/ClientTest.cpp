@@ -48,13 +48,15 @@ ClientTest::ClientTest( ChainParams const& _params, int _networkID,
     WithExisting _forceAction, TransactionQueue::Limits const& _limits )
     : Client( _params, _networkID, _gpForAdoption, _snapshotManager, _instanceMonitor, _dbPath,
           _forceAction, _limits ) {
-    system( "rm -rf /tmp/*.db*" );
+    int rv = system( "rm -rf /tmp/*.db*" );
+    ( void ) rv;
 }
 
 ClientTest::~ClientTest() {
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
     terminate();
-    system( "rm -rf /tmp/*.db*" );
+    int rv = system( "rm -rf /tmp/*.db*" );
+    ( void ) rv;
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {

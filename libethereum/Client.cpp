@@ -251,6 +251,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
             LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
             try {
                 m_snapshotManager->doSnapshot( 0 );
+                m_snapshotManager->computeSnapshotHash( 0 );
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
@@ -496,7 +497,7 @@ size_t Client::importTransactionsAsBlock(
                 if ( latest_snapshots.second ) {
                     uint64_t time_of_second =
                         blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
-                    if ( time_of_second == last_snapshot_creation_time )
+                    if ( time_of_second == ( ( uint64_t ) last_snapshot_creation_time ) )
                         this->last_snapshoted_block_with_hash = latest_snapshots.second;
                 }  // if second
             }      // if == 0
@@ -1215,6 +1216,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 void Client::initHashes() {
     int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
     assert( snapshotIntervalSec > 0 );
+    ( void ) snapshotIntervalSec;
 
     auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
 

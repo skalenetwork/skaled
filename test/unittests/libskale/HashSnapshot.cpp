@@ -91,6 +91,7 @@ public:
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            this->hashAgent_->is_received_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
@@ -222,7 +223,7 @@ struct FixtureCommon {
             cerr << strerror( errno ) << endl;
             assert( false );
         }
-        setresgid( 0, 0, 0 );
+        res = setresgid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
             assert( false );
@@ -238,14 +239,15 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
-        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
+        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
-        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
                     .c_str() );
-        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        ( void )rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -364,10 +366,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         if ( NC )
             return;
         gainRoot();
-        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        system( "rm -rf /tmp/*.db*" );
+        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( "rm -rf /tmp/*.db*" );
+        ( void ) rv;
     }
 
     string sendingRawShouldFail( string const& _t ) {

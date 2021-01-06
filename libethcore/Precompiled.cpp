@@ -880,25 +880,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     return {false, response};  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( concatenateStrings )( bytesConstRef _in ) {
-    try {
-        size_t lenA, lenB;
-        std::string strA, strB, strC;
-        convertBytesToString( _in, 0, strA, lenA );
-        convertBytesToString( _in, stat_calc_string_bytes_count_in_pages_32( lenA ), strB, lenB );
-        strC = strA + strB;
-        bytes response = stat_string_to_bytes_with_length( strC );
-        return {true, response};
-    } catch ( std::exception& ex ) {
-        std::string strError = ex.what();
-        if ( strError.empty() )
-            strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
-            << "Exception in precompiled/concatenateStrings(): " << strError << "\n";
-    } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
-            << "Unknown exception in precompiled/concatenateStrings()\n";
-    }
+ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/ ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
     return {false, response};  // 1st false - means bad error occur
