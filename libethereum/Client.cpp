@@ -247,15 +247,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
                         << chainParams().sChain.snapshotIntervalSec;
-        if ( this->number() == 0 ) {
-            LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
-            try {
-                m_snapshotManager->doSnapshot( 0 );
-                m_snapshotManager->computeSnapshotHash( 0 );
-            } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                cerror << "WARNING " << dev::nested_exception_what( ex );
-            }
-        }
         this->initHashes();
     }
 
@@ -578,6 +569,8 @@ size_t Client::importTransactionsAsBlock(
         if ( snapshotIntervalSec > 0 ) {
             unsigned block_number = this->number();
 
+            LOG( m_logger ) << "Block timestamp: " << _timestamp;
+
             if ( this->isTimeToDoSnapshot( _timestamp ) ) {
                 try {
                     LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
@@ -590,7 +583,6 @@ size_t Client::importTransactionsAsBlock(
 
                 this->last_snapshot_creation_time = _timestamp;
 
-                LOG( m_logger ) << "Block timestamp: " << _timestamp;
                 LOG( m_logger ) << "New snapshot creation time: "
                                 << this->last_snapshot_creation_time;
             }
