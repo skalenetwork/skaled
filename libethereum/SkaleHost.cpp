@@ -678,6 +678,16 @@ void SkaleHost::stopWorking() {
 
     std::cerr << "1 before exitGracefully()" << std::endl;
 
+    if ( ExitHandler::shouldExit() ) {
+        // requested exit
+        int signal = ExitHandler::getSignal();
+        int exitCode = ExitHandler::requestedExitCode();
+        clog( VerbosityInfo, "skale-host" )
+            << cc::info( "Exit requested with signal " ) << signal << " and exit code " << exitCode;
+    } else {
+        clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
+    }
+
     m_consensus->exitGracefully();
 
     std::cerr << "2 after exitGracefully()" << std::endl;

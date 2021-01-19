@@ -1,5 +1,4 @@
 // note: based on https://github.com/mtrebi/thread-pool
-
 #include <skutils/thread_pool.h>
 #include <skutils/utils.h>
 
@@ -13,12 +12,17 @@ void thread_pool::worker::invoke() {
     skutils::multithreading::threadNamer tn( skutils::tools::format( "p%zu", id_ ) );
     std::function< void() > func;
     bool was_dequeued = false;
-    while ( !pool_->shutdown_flag_ ) {
+    for ( ;; ) {
         {  // block
             std::unique_lock< mutex_type > lock( pool_->conditional_mutex_ );
+
+            if ( pool_->shutdown_flag_ )
+                break;
+
             if ( pool_->queue_.empty() ) {
                 pool_->conditional_lock_.wait( lock );
             }
+
             if ( !pool_->shutdown_flag_ )
                 was_dequeued = pool_->queue_.dequeue( func );
         }  // block
@@ -56,8 +60,12 @@ void thread_pool::init() {
 }
 
 void thread_pool::shutdown() {
-    shutdown_flag_ = true;
-    conditional_lock_.notify_all();
+    {
+        std::unique_lock< mutex_type > lock( conditional_mutex_ );
+        shutdown_flag_ = true;
+        conditional_lock_.notify_all();
+    }
+
     size_t i, cnt = threads_.size();
     for ( i = 0; i < cnt; ++i ) {
         try {
