@@ -1232,12 +1232,12 @@ void Client::initHashes() {
         uint64_t time_of_second =
             blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
 
-        this->last_snapshoted_block_with_hash = 0;
+        this->last_snapshoted_block_with_hash = -1;
         last_snapshot_creation_time = time_of_second;
 
         // no snapshots yet
     } else {
-        this->last_snapshoted_block_with_hash = 0;
+        this->last_snapshoted_block_with_hash = -1;
 
         if ( this->number() >= 1 )
             last_snapshot_creation_time = blockInfo( this->hashFromNumber( 1 ) ).timestamp();
