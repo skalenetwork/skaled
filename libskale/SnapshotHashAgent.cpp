@@ -174,6 +174,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned block_number ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
+
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
@@ -186,6 +187,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
+                // just ask block number in this special case
+                if ( block_number == 0 ) {
+                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
+                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+                    this->nodes_to_download_snapshot_from_.push_back( i );
+                    return;
+                }
+
                 Json::Value joSignatureResponse =
                     skaleClient.skale_getSnapshotSignature( block_number );
 
@@ -197,6 +206,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                   "getNodesToDownloadSnapshotFrom ";
                     delete jsonRpcClient;
                 } else {
+                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
                     this->is_received_[i] = true;
 
                     std::string str_hash = joSignatureResponse["hash"].asString();
@@ -219,8 +230,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                         libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
                     public_key.Z = libff::alt_bn128_Fq2::one();
 
-                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-
                     this->hashes_[i] = dev::h256( str_hash );
                     this->signatures_[i] = signature;
                     this->public_keys_[i] = public_key;
@@ -241,15 +250,21 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     }
 
     bool result = false;
-    try {
-        result = this->voteForHash( this->voted_hash_ );
-    } catch ( SnapshotHashAgentException& ex ) {
-        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                  << cc::warn( ex.what() ) << std::endl;
-    } catch ( std::exception& ex ) {
-        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                  << cc::warn( ex.what() ) << std::endl;
-    }
+
+    if ( block_number == 0 )
+        result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
+    else
+        try {
+            result = this->voteForHash( this->voted_hash_ );
+        } catch ( SnapshotHashAgentException& ex ) {
+            std::cerr << cc::error(
+                             "Exception while voting for snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << std::endl;
+        } catch ( std::exception& ex ) {
+            std::cerr << cc::error(
+                             "Exception while voting for snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << std::endl;
+        }  // catch
 
     if ( !result ) {
         return {};
