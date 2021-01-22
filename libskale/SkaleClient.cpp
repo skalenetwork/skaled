@@ -22,6 +22,8 @@
  * @date 2019
  */
 
+#include <libethcore/CommonJS.h>
+
 #include "SkaleClient.h"
 
 SkaleClient::SkaleClient( jsonrpc::IClientConnector& conn, jsonrpc::clientVersion_t type )
@@ -87,6 +89,21 @@ Json::Value SkaleClient::skale_imaInfo() {
 
     if ( result.isObject() ) {
         return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
+}
+
+unsigned SkaleClient::skale_getLatestSnapshotBlockNumber() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result;
+
+    result = this->CallMethod( "skale_getLatestSnapshotBlockNumber", p );
+
+    if ( result.isString() ) {
+        return dev::eth::jsToBlockNumber( result.asString() );
     } else {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );

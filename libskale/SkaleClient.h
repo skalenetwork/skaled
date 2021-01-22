@@ -42,6 +42,8 @@ public:
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) noexcept( false );
 
     Json::Value skale_imaInfo() noexcept( false );
+
+    unsigned skale_getLatestSnapshotBlockNumber() noexcept( false );
 };
 
 #endif  // CPP_ETHEREUM_SKALECLIENT_H

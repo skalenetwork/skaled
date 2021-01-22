@@ -1522,7 +1522,13 @@ int main( int argc, char** argv ) try {
                         << cc::notice( "Got urls to download snapshot from " )
                         << cc::p( std::to_string( list_urls_to_download.size() ) )
                         << cc::notice( " nodes " );
-                    voted_hash = snapshotHashAgent.getVotedHash();
+
+                    if ( blockNumber == 0 && list_urls_to_download.size() > 0 ) {
+                        successfullDownload = true;
+                        break;
+                    } else
+                        voted_hash = snapshotHashAgent.getVotedHash();
+
                 } catch ( std::exception& ex ) {
                     std::throw_with_nested( std::runtime_error( cc::error(
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
@@ -1552,9 +1558,6 @@ int main( int argc, char** argv ) try {
                     else
                         snapshotManager->removeSnapshot( blockNumber );
                 }
-
-                if ( blockNumber == 0 )
-                    successfullDownload = true;
 
                 size_t n_found = list_urls_to_download.size();
 

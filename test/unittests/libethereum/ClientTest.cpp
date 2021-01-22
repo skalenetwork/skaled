@@ -817,11 +817,9 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    BOOST_REQUIRE( testClient->getLatestSnapshotBlockNumer() == 0 );
+    BOOST_REQUIRE( testClient->getLatestSnapshotBlockNumer() == -1 );
 
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
-
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
 
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
