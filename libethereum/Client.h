@@ -548,9 +548,7 @@ protected:
             lock_type lock( mtx() );
             map_.clear();
         }
-        virtual void invoke( const parameter_type& /*p*/ ) {
-            return;
-            /*
+        virtual void invoke( const parameter_type& p ) {
             map_type map2;
             {  // block
                 lock_type lock( mtx() );
@@ -563,7 +561,6 @@ protected:
                 } catch ( ... ) {
                 }
             }
-            */
         }
     };
     // new block watch

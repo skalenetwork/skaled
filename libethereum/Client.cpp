@@ -947,7 +947,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
-    // m_new_block_watch.invoke( m_working );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
