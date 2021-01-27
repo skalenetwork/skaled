@@ -378,6 +378,16 @@ void SnapshotManager::computeDatabaseHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
+void SnapshotManager::computeRotatingDatabaseHash(
+    const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const {
+    boost::filesystem::directory_iterator it( _dbDir ), end;
+
+    while ( it != end ) {
+        this->computeDatabaseHash( it->path(), ctx );
+        ++it;
+    }
+}
+
 void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
     secp256k1_sha256_t* ctx, bool is_checking ) const {
     boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
@@ -492,17 +502,11 @@ void SnapshotManager::computeAllVolumesHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
 
-    // few dbs
     boost::filesystem::path blocks_extras_path = this->snapshots_dir /
                                                  std::to_string( _blockNumber ) / this->volumes[0] /
                                                  "blocks_and_extras";
 
-    boost::filesystem::directory_iterator it( blocks_extras_path ), end;
-
-    while ( it != end ) {
-        this->computeDatabaseHash( it->path(), ctx );
-        ++it;
-    }
+    this->computeRotatingDatabaseHash( blocks_extras_path, ctx );
 
     // filestorage
     this->computeFileSystemHash(
@@ -510,7 +514,7 @@ void SnapshotManager::computeAllVolumesHash(
 
     // may not exist
     for ( size_t i = 2; i < this->volumes.size(); ++i ) {
-        this->computeDatabaseHash(
+        this->computeRotatingDatabaseHash(
             this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
     }
 
