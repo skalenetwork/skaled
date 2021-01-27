@@ -493,7 +493,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << std::endl;
         dev::h256::Arith stCurrent = dev::h256::Arith(
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) ).stateRoot() );
-        if ( stCurrent != _stateRoot ) {
+        if ( _approvedTransactions.size() > 0 && stCurrent != _stateRoot ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " ) << cc::warn( stCurrent.str() )
@@ -506,6 +506,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
             _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
+
+        if ( _approvedTransactions.size() == 0 && _stateRoot != u256() )
+            clog( VerbosityWarning, "skale-host" )
+                << cc::warn( "WARNING: STATE ROOT MISMATCH!" )
+                << cc::warn( " Current block is empty BUT arrived state root is " )
+                << cc::warn( _stateRoot.str() ) << cc::warn( " with block ID " )
+                << cc::notice( "#" ) << cc::num10( _blockID );
     }
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
