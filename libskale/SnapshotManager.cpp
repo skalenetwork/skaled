@@ -492,12 +492,27 @@ void SnapshotManager::computeAllVolumesHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[0] / "12041" / "state",
         ctx );
 
-    this->computeDatabaseHash( this->snapshots_dir / std::to_string( _blockNumber ) /
-                                   this->volumes[0] / "blocks_and_extras",
-        ctx );
+    // few dbs
+    boost::filesystem::path blocks_extras_path = this->snapshots_dir /
+                                                 std::to_string( _blockNumber ) / this->volumes[0] /
+                                                 "blocks_and_extras";
 
+    boost::filesystem::directory_iterator it( blocks_extras_path ), end;
+
+    while ( it != end ) {
+        this->computeDatabaseHash( it->path(), ctx );
+        ++it;
+    }
+
+    // filestorage
     this->computeFileSystemHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
+
+    // may not exist
+    for ( size_t i = 2; i < this->volumes.size(); ++i ) {
+        this->computeDatabaseHash(
+            this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
+    }
 
     // TODO Add last price to hash computation!!
 }
