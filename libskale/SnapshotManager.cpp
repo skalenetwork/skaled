@@ -378,14 +378,33 @@ void SnapshotManager::computeDatabaseHash(
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
-void SnapshotManager::computeRotatingDatabaseHash(
-    const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const {
-    boost::filesystem::directory_iterator it( _dbDir ), end;
-
-    while ( it != end ) {
-        this->computeDatabaseHash( it->path(), ctx );
-        ++it;
+void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const
+    try {
+    boost::filesystem::path prices_path =
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[2];
+    if ( !boost::filesystem::exists( prices_path ) ) {
+        BOOST_THROW_EXCEPTION( InvalidPath( prices_path ) );
     }
+
+    boost::filesystem::directory_iterator it( prices_path ), end;
+    std::string last_price;
+    std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
+    while ( it != end ) {
+        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string() ) );
+        if ( m_db->exists( last_price_key ) ) {
+            last_price = m_db->lookup( last_price_key );
+            break;
+        }
+    }
+
+    if ( !last_price.size() ) {
+        BOOST_THROW_EXCEPTION( CannotRead( prices_path.string() + last_price_key ) );
+    }
+
+    dev::h256 last_price_hash = dev::sha256( last_price );
+    secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
+} catch ( const fs::filesystem_error& ex ) {
+    std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
 void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
@@ -506,19 +525,22 @@ void SnapshotManager::computeAllVolumesHash(
                                                  std::to_string( _blockNumber ) / this->volumes[0] /
                                                  "blocks_and_extras";
 
-    this->computeRotatingDatabaseHash( blocks_extras_path, ctx );
+    // few dbs
+    boost::filesystem::directory_iterator it( blocks_extras_path ), end;
+
+    while ( it != end ) {
+        this->computeDatabaseHash( it->path(), ctx );
+        ++it;
+    }
 
     // filestorage
     this->computeFileSystemHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
-    // may not exist
-    for ( size_t i = 2; i < this->volumes.size(); ++i ) {
-        this->computeRotatingDatabaseHash(
-            this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[i], ctx );
+    // if have prices and blocks
+    if ( this->volumes.size() > 2 ) {
+        this->addLastPriceToHash( _blockNumber, ctx );
     }
-
-    // TODO Add last price to hash computation!!
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
