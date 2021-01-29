@@ -395,6 +395,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
             last_price = m_db->lookup( last_price_key );
             break;
         }
+        ++it;
     }
 
     if ( !last_price.size() ) {
