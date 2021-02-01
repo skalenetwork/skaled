@@ -654,7 +654,6 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 
     Timer timer;
 
-    h256Hash changeds;
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
 
@@ -671,15 +670,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
 
-    DEV_READ_GUARDED( x_postSeal )
-    for ( size_t i = 0; i < newPendingReceipts.size(); i++ )
-        appendFromNewPending( newPendingReceipts[i], changeds, m_postSeal.pending()[i].sha3() );
-
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();
-
-    // Tell watches about the new transactions.
-    noteChanged( changeds );
 
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();

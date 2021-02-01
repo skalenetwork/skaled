@@ -1225,7 +1225,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
             skutils::dispatch::async( "logs-rethread", [=]() -> void {
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
-                    dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
+                    dev::eth::LocalisedLogEntries le = pThis->ethereum()->checkWatch( iw );
                     nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
                     if ( joResult.is_array() ) {
                         for ( const auto& joRW : joResult ) {
