@@ -2609,7 +2609,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
         jo["success"] = wasInserted;
         std::string s = jo.dump();
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix +
+            << ( strLogPrefix + " " +
                    ( wasInserted ? cc::success( "Inserted new" ) : cc::warn( "Skipped new" ) ) +
                    " " + cc::notice( "broadcasted" ) + cc::debug( " IMA TXN " ) +
                    cc::info( dev::toJS( txe.hash_ ) ) );
@@ -2658,7 +2658,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
         jo["success"] = wasErased;
         std::string s = jo.dump();
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix +
+            << ( strLogPrefix + " " +
                    ( wasErased ? cc::success( "Erased existing" ) :
                                  cc::warn( "Skipped erasing" ) ) +
                    " " + cc::notice( "broadcasted" ) + cc::debug( " IMA TXN " ) +
@@ -2708,7 +2708,7 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
         jo["success"] = wasInserted;
         std::string s = jo.dump();
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix +
+            << ( strLogPrefix + " " +
                    ( wasInserted ? cc::success( "Inserted new" ) : cc::warn( "Skipped new" ) ) +
                    " " + cc::notice( "reported" ) + cc::debug( " IMA TXN " ) +
                    cc::info( dev::toJS( txe.hash_ ) ) );
@@ -2754,7 +2754,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
         jo["success"] = wasErased;
         std::string s = jo.dump();
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix +
+            << ( strLogPrefix + " " +
                    ( wasErased ? cc::success( "Erased existing" ) :
                                  cc::warn( "Skipped erasing" ) ) +
                    " " + cc::notice( "reported" ) + cc::debug( " IMA TXN " ) +
@@ -2791,7 +2791,7 @@ Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
         std::string s = jo.dump();
-        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::success( "Cleared all" ) + " " +
+        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::success( "Cleared all" ) + " " +
                                            cc::notice( "reported" ) + cc::debug( " IMA TXNs" ) );
         Json::Value ret;
         Json::Reader().parse( s, ret );
@@ -2835,7 +2835,8 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
         jo["success"] = wasFound;
         std::string s = jo.dump();
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + ( wasFound ? cc::success( "Found" ) : cc::warn( "Not found" ) ) +
+            << ( strLogPrefix + " " +
+                   ( wasFound ? cc::success( "Found" ) : cc::warn( "Not found" ) ) +
                    cc::debug( " IMA TXN " ) + cc::info( dev::toJS( txe.hash_ ) ) );
         Json::Value ret;
         Json::Reader().parse( s, ret );
@@ -2875,7 +2876,7 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
         jo["success"] = true;
         jo["allTrackedTXNs"] = jarr;
         std::string s = jo.dump();
-        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( "Listed " ) +
+        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::debug( "Listed " ) +
                                            cc::size10( lst.size() ) + cc::debug( " IMA TXN(s)" ) );
         Json::Value ret;
         Json::Reader().parse( s, ret );
