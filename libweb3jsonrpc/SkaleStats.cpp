@@ -179,11 +179,16 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
     if ( !jo.is_object() )
         return false;
     try {
-        std::string strHash = jo["hash"].get< std::string >();
+        std::string strHash;
+        if ( jo.count( "hash" ) > 0 && jo["hash"].is_string() )
+            strHash = jo["hash"].get< std::string >();
+        else
+            throw std::runtime_error( "\"hash\" is must-have field of tracked TXN" );
         dev::u256 h = stat_s2a( strHash );
         int ts = 0;
         try {
-            ts = jo["timestamp"].get< int >();
+            if ( jo.count( "timestamp" ) > 0 && jo["timestamp"].is_number() )
+                ts = jo["timestamp"].get< int >();
         } catch ( ... ) {
             ts = 0;
         }
