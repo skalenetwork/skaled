@@ -25,6 +25,27 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaVerifyAndSign",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_imaVerifyAndSignI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaBroadcastTxnInsert",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaBroadcastTxnInsertI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaBroadcastTxnErase",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaBroadcastTxnEraseI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnInsert",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaTxnInsertI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnErase",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaTxnEraseI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnClear",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaTxnClearI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnFind", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaTxnFindI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnListAll",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_imaTxnListAllI );
     }
 
     inline virtual void skale_statsI( const Json::Value& request, Json::Value& response ) {
@@ -43,12 +64,41 @@ public:
         const Json::Value& request, Json::Value& response ) {
         response = this->skale_imaVerifyAndSign( request );
     }
+    inline virtual void skale_imaBroadcastTxnInsertI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaBroadcastTxnInsert( request );
+    }
+    inline virtual void skale_imaBroadcastTxnEraseI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaBroadcastTxnErase( request );
+    }
+    inline virtual void skale_imaTxnInsertI( const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaTxnInsert( request );
+    }
+    inline virtual void skale_imaTxnEraseI( const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaTxnErase( request );
+    }
+    inline virtual void skale_imaTxnClearI( const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaTxnClear( request );
+    }
+    inline virtual void skale_imaTxnFindI( const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaTxnFind( request );
+    }
+    inline virtual void skale_imaTxnListAllI( const Json::Value& request, Json::Value& response ) {
+        response = this->skale_imaTxnListAll( request );
+    }
 
     virtual Json::Value skale_stats() = 0;
     virtual Json::Value skale_nodesRpcInfo() = 0;
     virtual Json::Value skale_imaInfo() = 0;
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) = 0;
-
+    virtual Json::Value skale_imaBroadcastTxnInsert( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaBroadcastTxnErase( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaTxnInsert( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaTxnErase( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaTxnClear( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaTxnFind( const Json::Value& request ) = 0;
+    virtual Json::Value skale_imaTxnListAll( const Json::Value& request ) = 0;
 };  /// class SkaleStatsFace
 
 }  // namespace rpc

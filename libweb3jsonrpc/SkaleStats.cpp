@@ -37,6 +37,7 @@
 #include <skutils/rest_call.h>
 #include <skutils/task_performance.h>
 
+#include <algorithm>
 #include <array>
 #include <csignal>
 #include <exception>
@@ -53,10 +54,490 @@
 #include <skutils/utils.h>
 
 namespace dev {
+
+namespace tracking {
+
+txn_entry::txn_entry() {
+    clear();
+}
+
+txn_entry::txn_entry( dev::u256 hash ) {
+    clear();
+    hash_ = hash;
+    setNowTimeStamp();
+}
+
+txn_entry::txn_entry( const txn_entry& other ) {
+    assign( other );
+}
+
+txn_entry::txn_entry( txn_entry&& other ) {
+    assign( other );
+    other.clear();
+}
+txn_entry::~txn_entry() {
+    clear();
+}
+
+bool txn_entry::operator!() const {
+    return empty() ? false : true;
+}
+
+txn_entry& txn_entry::operator=( const txn_entry& other ) {
+    return assign( other );
+}
+
+bool txn_entry::operator==( const txn_entry& other ) const {
+    return ( compare( other ) == 0 ) ? true : false;
+}
+bool txn_entry::operator!=( const txn_entry& other ) const {
+    return ( compare( other ) != 0 ) ? true : false;
+}
+bool txn_entry::operator<( const txn_entry& other ) const {
+    return ( compare( other ) < 0 ) ? true : false;
+}
+bool txn_entry::operator<=( const txn_entry& other ) const {
+    return ( compare( other ) <= 0 ) ? true : false;
+}
+bool txn_entry::operator>( const txn_entry& other ) const {
+    return ( compare( other ) > 0 ) ? true : false;
+}
+bool txn_entry::operator>=( const txn_entry& other ) const {
+    return ( compare( other ) >= 0 ) ? true : false;
+}
+
+bool txn_entry::operator==( dev::u256 hash ) const {
+    return ( compare( hash ) == 0 ) ? true : false;
+}
+bool txn_entry::operator!=( dev::u256 hash ) const {
+    return ( compare( hash ) != 0 ) ? true : false;
+}
+bool txn_entry::operator<( dev::u256 hash ) const {
+    return ( compare( hash ) < 0 ) ? true : false;
+}
+bool txn_entry::operator<=( dev::u256 hash ) const {
+    return ( compare( hash ) <= 0 ) ? true : false;
+}
+bool txn_entry::operator>( dev::u256 hash ) const {
+    return ( compare( hash ) > 0 ) ? true : false;
+}
+bool txn_entry::operator>=( dev::u256 hash ) const {
+    return ( compare( hash ) >= 0 ) ? true : false;
+}
+
+bool txn_entry::empty() const {
+    if ( hash_ == 0 )
+        return true;
+    return false;
+}
+
+void txn_entry::clear() {
+    hash_ = 0;
+    ts_ = 0;
+}
+
+txn_entry& txn_entry::assign( const txn_entry& other ) {
+    hash_ = other.hash_;
+    ts_ = other.ts_;
+    return ( *this );
+}
+
+int txn_entry::compare( dev::u256 hash ) const {
+    if ( hash_ < hash )
+        return -1;
+    if ( hash_ > hash )
+        return 0;
+    return 0;
+}
+
+int txn_entry::compare( const txn_entry& other ) const {
+    return compare( other.hash_ );
+}
+
+void txn_entry::setNowTimeStamp() {
+    ts_ = ::time( nullptr );
+}
+
+static dev::u256 stat_s2a( const std::string& saIn ) {
+    std::string sa;
+    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
+        sa = "0x" + saIn;
+    else
+        sa = saIn;
+    dev::u256 u( sa.c_str() );
+    return u;
+}
+
+nlohmann::json txn_entry::toJSON() const {
+    nlohmann::json jo = nlohmann::json::object();
+    jo["hash"] = dev::toJS( hash_ );
+    jo["timestamp"] = ts_;
+    return jo;
+}
+
+bool txn_entry::fromJSON( const nlohmann::json& jo ) {
+    if ( !jo.is_object() )
+        return false;
+    try {
+        std::string strHash;
+        if ( jo.count( "hash" ) > 0 && jo["hash"].is_string() )
+            strHash = jo["hash"].get< std::string >();
+        else
+            throw std::runtime_error( "\"hash\" is must-have field of tracked TXN" );
+        dev::u256 h = stat_s2a( strHash );
+        int ts = 0;
+        try {
+            if ( jo.count( "timestamp" ) > 0 && jo["timestamp"].is_number() )
+                ts = jo["timestamp"].get< int >();
+        } catch ( ... ) {
+            ts = 0;
+        }
+        hash_ = h;
+        ts_ = ts;
+        return true;
+    } catch ( ... ) {
+        return false;
+    }
+}
+
+std::atomic_size_t pending_ima_txns::g_nMaxPendingTxns = 512;
+std::string pending_ima_txns::g_strDispatchQueueID = "IMA-txn-tracker";
+
+pending_ima_txns::pending_ima_txns( const std::string& configPath )
+    : skutils::json_config_file_accessor( configPath ) {}
+
+pending_ima_txns::~pending_ima_txns() {
+    tracking_stop();
+    clear();
+}
+
+bool pending_ima_txns::empty() const {
+    lock_type lock( mtx() );
+    if ( !set_txns_.empty() )
+        return false;
+    return true;
+}
+void pending_ima_txns::clear() {
+    lock_type lock( mtx() );
+    set_txns_.clear();
+    list_txns_.clear();
+    tracking_auto_start_stop();
+}
+
+size_t pending_ima_txns::max_txns() const {
+    return size_t( g_nMaxPendingTxns );
+}
+
+void pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
+    const size_t nMax = max_txns();
+    if ( nMax < 1 )
+        return;  // no limits
+    size_t cnt = list_txns_.size();
+    while ( cnt > nMax ) {
+        txn_entry txe = list_txns_.front();
+        if ( !erase( txe.hash_, isEnableBroadcast ) )
+            break;
+        cnt = list_txns_.size();
+    }
+    tracking_auto_start_stop();
+}
+void pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
+    lock_type lock( mtx() );
+    adjust_limits_impl( isEnableBroadcast );
+}
+
+bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
+    lock_type lock( mtx() );
+    set_txns_t::iterator itFindS = set_txns_.find( txe ), itEndS = set_txns_.end();
+    if ( itFindS != itEndS )
+        return false;
+    set_txns_.insert( txe );
+    list_txns_.push_back( txe );
+    on_txn_insert( txe, isEnableBroadcast );
+    adjust_limits_impl( isEnableBroadcast );
+    return true;
+}
+bool pending_ima_txns::insert( dev::u256 hash, bool isEnableBroadcast ) {
+    txn_entry txe( hash );
+    return insert( txe, isEnableBroadcast );
+}
+
+bool pending_ima_txns::erase( txn_entry& txe, bool isEnableBroadcast ) {
+    return erase( txe.hash_, isEnableBroadcast );
+}
+bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
+    lock_type lock( mtx() );
+    set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
+    if ( itFindS == itEndS )
+        return false;
+    txn_entry txe = ( *itFindS );
+    set_txns_.erase( itFindS );
+    list_txns_t::iterator ifFindL = std::find( list_txns_.begin(), list_txns_.end(), hash );
+    list_txns_.erase( ifFindL );
+    on_txn_erase( txe, isEnableBroadcast );
+    return true;
+}
+
+bool pending_ima_txns::find( txn_entry& txe ) const {
+    return find( txe.hash_ );
+}
+bool pending_ima_txns::find( dev::u256 hash ) const {
+    lock_type lock( mtx() );
+    set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
+    if ( itFindS == itEndS )
+        return false;
+    return true;
+}
+
+void pending_ima_txns::list_all( list_txns_t& lst ) const {
+    lst.clear();
+    lock_type lock( mtx() );
+    lst = list_txns_;
+}
+
+void pending_ima_txns::on_txn_insert( const txn_entry& txe, bool isEnableBroadcast ) {
+    tracking_auto_start_stop();
+    if ( isEnableBroadcast )
+        broadcast_txn_insert( txe );
+}
+void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
+    tracking_auto_start_stop();
+    if ( isEnableBroadcast )
+        broadcast_txn_erase( txe );
+}
+
+void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
+    std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
+    try {
+        size_t nOwnIndex = std::string::npos;
+        std::vector< std::string > vecURLs;
+        if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
+            throw std::runtime_error(
+                "failed to extract S-Chain node information from config JSON" );
+        size_t i, cnt = vecURLs.size();
+        for ( i = 0; i < cnt; ++i ) {
+            if ( i == nOwnIndex )
+                continue;
+            std::string strURL = vecURLs[i];
+            nlohmann::json joParams = txe.toJSON();
+            skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
+                nlohmann::json joCall = nlohmann::json::object();
+                joCall["jsonrpc"] = "2.0";
+                joCall["method"] = "skale_imaBroadcastTxnInsert";
+                joCall["params"] = joParams;
+                skutils::rest::client cli( strURL );
+                skutils::rest::data_t d = cli.call( joCall );
+                try {
+                    if ( d.empty() )
+                        throw std::runtime_error( "empty broadcast answer" );
+                    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                    if ( !joAnswer.is_object() )
+                        throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
+                } catch ( const std::exception& ex ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " to node " ) + cc::u( strURL ) +
+                               cc::error( " broadcast failed: " ) + cc::warn( ex.what() ) );
+                } catch ( ... ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " broadcast to node " ) + cc::u( strURL ) +
+                               cc::error( " failed: " ) + cc::warn( "unknown exception" ) );
+                }
+            } );
+        }
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::warn( "unknown exception" ) );
+    }
+}
+void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
+    std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
+    try {
+        size_t nOwnIndex = std::string::npos;
+        std::vector< std::string > vecURLs;
+        if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
+            throw std::runtime_error(
+                "failed to extract S-Chain node information from config JSON" );
+        size_t i, cnt = vecURLs.size();
+        for ( i = 0; i < cnt; ++i ) {
+            if ( i == nOwnIndex )
+                continue;
+            std::string strURL = vecURLs[i];
+            nlohmann::json joParams = txe.toJSON();
+            skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
+                nlohmann::json joCall = nlohmann::json::object();
+                joCall["jsonrpc"] = "2.0";
+                joCall["method"] = "skale_imaBroadcastTxnErase";
+                joCall["params"] = joParams;
+                skutils::rest::client cli( strURL );
+                skutils::rest::data_t d = cli.call( joCall );
+                try {
+                    if ( d.empty() )
+                        throw std::runtime_error( "empty broadcast answer" );
+                    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                    if ( !joAnswer.is_object() )
+                        throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
+                } catch ( const std::exception& ex ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " broadcast to node " ) + cc::u( strURL ) +
+                               cc::error( " failed: " ) + cc::warn( ex.what() ) );
+                } catch ( ... ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " to node " ) + cc::u( strURL ) +
+                               cc::error( " broadcast failed: " ) +
+                               cc::warn( "unknown exception" ) );
+                }
+            } );
+        }
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::warn( "unknown exception" ) );
+    }
+}
+
+std::atomic_size_t pending_ima_txns::g_nTrackingIntervalInSeconds = 90;
+
+size_t pending_ima_txns::tracking_interval_in_seconds() const {
+    return size_t( g_nTrackingIntervalInSeconds );
+}
+
+bool pending_ima_txns::is_tracking() const {
+    return bool( isTracking_ );
+}
+
+void pending_ima_txns::tracking_auto_start_stop() {
+    lock_type lock( mtx() );
+    if ( list_txns_.size() == 0 ) {
+        tracking_stop();
+    } else {
+        tracking_start();
+    }
+}
+
+void pending_ima_txns::tracking_start() {
+    lock_type lock( mtx() );
+    if ( is_tracking() )
+        return;
+    skutils::dispatch::repeat( g_strDispatchQueueID,
+        [=]() -> void {
+            list_txns_t lst, lstMined;
+            list_all( lst );
+            for ( const dev::tracking::txn_entry& txe : lst ) {
+                if ( !check_txn_is_mined( txe ) )
+                    break;
+                lstMined.push_back( txe );
+            }
+            for ( const dev::tracking::txn_entry& txe : lstMined ) {
+                erase( txe.hash_, true );
+            }
+        },
+        skutils::dispatch::duration_from_seconds( tracking_interval_in_seconds() ),
+        &tracking_job_id_ );
+    isTracking_ = true;
+}
+
+void pending_ima_txns::tracking_stop() {
+    lock_type lock( mtx() );
+    if ( !is_tracking() )
+        return;
+    skutils::dispatch::stop( tracking_job_id_ );
+    tracking_job_id_.clear();
+    isTracking_ = false;
+}
+
+bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
+    return check_txn_is_mined( txe.hash_ );
+}
+
+bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        //
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        if ( joSkaleConfig_nodeInfo.count( "imaMainNet" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
+        const nlohmann::json& joImaMainNetURL = joSkaleConfig_nodeInfo["imaMainNet"];
+        if ( !joImaMainNetURL.is_string() )
+            throw std::runtime_error(
+                "error config.json file, bad type of value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
+        std::string strImaMainNetURL = joImaMainNetURL.get< std::string >();
+        if ( strImaMainNetURL.empty() )
+            throw std::runtime_error(
+                "error config.json file, bad empty value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
+        // clog( VerbosityDebug, "IMA" )
+        //    << ( cc::debug( " Using " ) + cc::notice( "Main Net URL" ) +
+        //           cc::debug( " " ) + cc::info( strImaMainNetURL ) );
+        skutils::url urlMainNet;
+        try {
+            urlMainNet = skutils::url( strImaMainNetURL );
+            if ( urlMainNet.scheme().empty() || urlMainNet.host().empty() )
+                throw std::runtime_error( "bad IMA Main Net url" );
+        } catch ( ... ) {
+            throw std::runtime_error(
+                "error config.json file, bad URL value in "
+                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
+        }
+        //
+        nlohmann::json jarr = nlohmann::json::array();
+        jarr.push_back( dev::toJS( hash ) );
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "eth_getTransactionReceipt";
+        joCall["params"] = jarr;
+        skutils::rest::client cli( urlMainNet );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( d.empty() )
+            throw std::runtime_error( "Main Net call to eth_getLogs failed" );
+        nlohmann::json joReceipt = nlohmann::json::parse( d.s_ )["result"];
+        if ( joReceipt.is_object() && joReceipt.count( "transactionHash" ) > 0 &&
+             joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
+            return true;
+        return false;
+    } catch ( ... ) {
+        return false;
+    }
+}
+
+
+};  // namespace tracking
+
+
 namespace rpc {
 
 SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth )
-    : skutils::json_config_file_accessor( configPath ), m_eth( _eth ) {
+    : pending_ima_txns( configPath ), m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
 }
 
@@ -2093,22 +2574,333 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
-                   cc::error( " request: " ) + cc::warn( ex.what() ) );
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
-                   cc::error( " request: " ) + cc::warn( ex.what() ) );
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
-                   cc::error( " request: " ) + cc::warn( "unknown exception" ) );
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }  // skale_imaVerifyAndSign()
+
+Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        dev::tracking::txn_entry txe;
+        if ( !txe.fromJSON( joRequest ) )
+            throw std::runtime_error(
+                std::string( "failed to construct tracked IMA TXN entry from " ) +
+                joRequest.dump() );
+        bool wasInserted = insert( txe, false );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = wasInserted;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " +
+                   ( wasInserted ? cc::success( "Inserted new" ) : cc::warn( "Skipped new" ) ) +
+                   " " + cc::notice( "broadcasted" ) + cc::debug( " IMA TXN " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        dev::tracking::txn_entry txe;
+        if ( !txe.fromJSON( joRequest ) )
+            throw std::runtime_error(
+                std::string( "failed to construct tracked IMA TXN entry from " ) +
+                joRequest.dump() );
+        bool wasErased = erase( txe, false );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = wasErased;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " +
+                   ( wasErased ? cc::success( "Erased existing" ) :
+                                 cc::warn( "Skipped erasing" ) ) +
+                   " " + cc::notice( "broadcasted" ) + cc::debug( " IMA TXN " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "IMA broadcast TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA TXN insert" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        dev::tracking::txn_entry txe;
+        if ( !txe.fromJSON( joRequest ) )
+            throw std::runtime_error(
+                std::string( "failed to construct tracked IMA TXN entry from " ) +
+                joRequest.dump() );
+        bool wasInserted = insert( txe, true );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = wasInserted;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " +
+                   ( wasInserted ? cc::success( "Inserted new" ) : cc::warn( "Skipped new" ) ) +
+                   " " + cc::notice( "reported" ) + cc::debug( " IMA TXN " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA TXN erase" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        dev::tracking::txn_entry txe;
+        if ( !txe.fromJSON( joRequest ) )
+            throw std::runtime_error(
+                std::string( "failed to construct tracked IMA TXN entry from " ) +
+                joRequest.dump() );
+        bool wasErased = erase( txe, true );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = wasErased;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " +
+                   ( wasErased ? cc::success( "Erased existing" ) :
+                                 cc::warn( "Skipped erasing" ) ) +
+                   " " + cc::notice( "reported" ) + cc::debug( " IMA TXN " ) +
+                   cc::info( dev::toJS( txe.hash_ ) ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "IMA TXN clear" );
+    try {
+        clear();
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = true;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::success( "Cleared all" ) + " " +
+                                           cc::notice( "reported" ) + cc::debug( " IMA TXNs" ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA TXN find" );
+    try {
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        //
+        dev::tracking::txn_entry txe;
+        if ( !txe.fromJSON( joRequest ) )
+            throw std::runtime_error(
+                std::string( "failed to construct tracked IMA TXN entry from " ) +
+                joRequest.dump() );
+        bool wasFound = find( txe );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = wasFound;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " +
+                   ( wasFound ? cc::success( "Found" ) : cc::warn( "Not found" ) ) +
+                   cc::debug( " IMA TXN " ) + cc::info( dev::toJS( txe.hash_ ) ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "IMA TXN list-all" );
+    try {
+        dev::tracking::pending_ima_txns::list_txns_t lst;
+        list_all( lst );
+        nlohmann::json jarr = nlohmann::json::array();
+        for ( const dev::tracking::txn_entry& txe : lst ) {
+            jarr.push_back( txe.toJSON() );
+        }
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        jo["success"] = true;
+        jo["allTrackedTXNs"] = jarr;
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::debug( "Listed " ) +
+                                           cc::size10( lst.size() ) + cc::debug( " IMA TXN(s)" ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
 
 };  // namespace rpc
 };  // namespace dev

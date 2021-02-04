@@ -614,6 +614,21 @@ public:
         const nlohmann::json& joConfig, const string_list_t& listPath );
     static nlohmann::json stat_extract_at_path(
         const nlohmann::json& joConfig, const std::string& strPath, const char strDelimiter = '.' );
+    //
+    static bool stat_extract_s_chain_node_infos( const nlohmann::json& joConfig,
+        size_t& nOwnNodeIndex, nlohmann::json& joThisNodeInfo,
+        std::vector< nlohmann::json >& vecNodeJSONs );
+    bool extract_s_chain_node_infos( size_t& nOwnNodeIndex, nlohmann::json& joThisNodeInfo,
+        std::vector< nlohmann::json >& vecNodeJSONs ) const {
+        return stat_extract_s_chain_node_infos(
+            getConfigJSON(), nOwnNodeIndex, joThisNodeInfo, vecNodeJSONs );
+    }
+    static std::string stat_extract_node_URL( const nlohmann::json& joNodeEntry );
+    static bool stat_extract_s_chain_URL_infos( const nlohmann::json& joConfig,
+        size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs );
+    bool extract_s_chain_URL_infos( size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs ) {
+        return stat_extract_s_chain_URL_infos( getConfigJSON(), nOwnNodeIndex, vecURLs );
+    }
 };  /// class json_config_file_accessor
 
 
