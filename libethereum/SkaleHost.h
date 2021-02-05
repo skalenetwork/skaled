@@ -147,7 +147,8 @@ private:
     virtual ConsensusExtFace::transactions_vector pendingTransactions(
         size_t _limit, u256& _stateRoot );
     virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot );
+        uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
+        uint64_t _winningNodeIndex );
 
     std::thread m_broadcastThread;
     void broadcastFunc();

@@ -151,7 +151,8 @@ public:
     ConsensusExtImpl( SkaleHost& _host );
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) override;
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
+        uint64_t _winningNodeIndex ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -169,9 +170,11 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) {
+    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
+    uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot );
+    m_host.createBlock(
+        _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -450,7 +453,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot ) try {
+    uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
+    uint64_t /*_winningNodeIndex*/ ) try {
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
@@ -483,20 +487,18 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalSec > 0 ) {
+        dev::h256 stCurrent =
+            this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) ).stateRoot();
+
         LOG( m_traceLogger ) << cc::debug( "STATE ROOT FOR BLOCK: " )
                              << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
-                             << cc::debug(
-                                    this->m_client
-                                        .blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) )
-                                        .stateRoot()
-                                        .hex() )
-                             << std::endl;
-        dev::h256::Arith stCurrent = dev::h256::Arith(
-            this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID ) ).stateRoot() );
-        if ( _approvedTransactions.size() > 0 && stCurrent != _stateRoot ) {
+                             << cc::debug( stCurrent.hex() ) << std::endl;
+
+        if ( _approvedTransactions.size() > 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
-                << cc::error( " current state root " ) << cc::warn( stCurrent.str() )
+                << cc::error( " current state root " )
+                << cc::warn( dev::h256::Arith( stCurrent ).str() )
                 << cc::error( " is not equal to arrived state root " )
                 << cc::warn( _stateRoot.str() ) << cc::error( " with block ID " )
                 << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )

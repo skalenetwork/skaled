@@ -108,7 +108,7 @@ void ConsensusStub::doWork() {
     try {
         ++blockCounter;
         m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
-            getPriceForBlockId( blockCounter ), stateRoot );
+            getPriceForBlockId( blockCounter ), stateRoot, -1 );
         std::cout << cc::debug( "createBlock" ) << std::endl;
     } catch ( const dev::Exception& x ) {
         std::cout << x.what() << std::endl;
