@@ -2071,8 +2071,11 @@ int main( int argc, char** argv ) try {
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
-            new rpc::Personal( keyManager, *accountHolder, *g_client ),
-            new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            bEnabledDebugBehaviorAPIs ? new rpc::Personal( keyManager, *accountHolder, *g_client ) :
+                                        nullptr,
+            bEnabledDebugBehaviorAPIs ? new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager,
+                                            *sessionManager.get() ) :
+                                        nullptr,
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                                         nullptr,
             bEnabledDebugBehaviorAPIs ? new rpc::SkaleDebug( configPath.string() ) : nullptr,
