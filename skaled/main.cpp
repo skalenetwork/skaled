@@ -1350,6 +1350,7 @@ int main( int argc, char** argv ) try {
         strPathDB = vm["db-path"].as< std::string >();
     clog( VerbosityInfo, "main" ) << cc::notice( "DB path" ) + cc::debug( " is: " )
                                   << cc::p( strPathDB );
+
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
@@ -1972,7 +1973,7 @@ int main( int argc, char** argv ) try {
             g_client->setNetworkId( networkID );
     }
 
-    cout << "Mining Beneficiary: " << g_client->author() << endl;
+    clog( VerbosityInfo, "main" ) << "Mining Beneficiary: " << g_client->author();
 
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
