@@ -139,7 +139,7 @@ jobs:
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd build
-          make -j$(nproc)
+          make skaled -j$(nproc)
           cd ..
 
       - name: Build and publish container
