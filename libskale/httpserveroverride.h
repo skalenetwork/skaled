@@ -373,6 +373,7 @@ public:
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
+        bool isTraceSpecialCalls_ = false;
         std::string strEthErc20Address_;
         opts_t() {}
         opts_t( const opts_t& other ) { assign( other ); }
@@ -396,6 +397,7 @@ public:
     dev::eth::Interface* ethereum() const;
     dev::eth::ChainParams& chainParams();
     const dev::eth::ChainParams& chainParams() const;
+    dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 private:
@@ -427,8 +429,8 @@ public:
         nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
         e_server_mode_t esm, const std::string& strMessage );
-    void logTraceServerTraffic( bool isRX, bool isError, int ipVer, const char* strProtocol,
-        int nServerIndex, e_server_mode_t esm, const char* strOrigin,
+    void logTraceServerTraffic( bool isRX, dev::Verbosity verbosity, int ipVer,
+        const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
         const std::string& strPayload );
 
 private:

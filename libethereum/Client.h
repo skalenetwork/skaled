@@ -474,7 +474,7 @@ protected:
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
     Logger m_logger{createLogger( VerbosityInfo, "client" )};
-    Logger m_loggerDetail{createLogger( VerbosityDebug, "client" )};
+    Logger m_loggerDetail{createLogger( VerbosityTrace, "client" )};
 
 
     /// skale

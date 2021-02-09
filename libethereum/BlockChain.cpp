@@ -271,7 +271,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    ctrace << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
+    cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 }
 
@@ -873,11 +873,11 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         isImportedAndBest = true;
     }
 
-    LOG( m_logger ) << cc::debug( "   Imported and best " ) << _totalDifficulty << cc::debug( " (" )
-                    << cc::warn( "#" ) << cc::num10( _block.info.number() )
-                    << cc::debug( "). Has " )
-                    << ( details( _block.info.parentHash() ).children.size() - 1 )
-                    << cc::debug( " siblings. Route: " ) << route;
+    LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
+                          << cc::debug( " (" ) << cc::warn( "#" )
+                          << cc::num10( _block.info.number() ) << cc::debug( "). Has " )
+                          << ( details( _block.info.parentHash() ).children.size() - 1 )
+                          << cc::debug( " siblings. Route: " ) << route;
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
