@@ -398,6 +398,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS6std = -1;
     int nExplicitPortWSS6nfo = -1;
     bool bTraceJsonRpcCalls = false;
+    bool bTraceJsonRpcSpecialCalls = false;
     bool bEnabledDebugBehaviorAPIs = false;
 
     const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
@@ -552,6 +553,8 @@ int main( int argc, char** argv ) try {
         "Number of informational parallel RPC connection(such as web3) acceptor threads per "
         "protocol(1 is default and minimal)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
+    addClientOption(
+        "special-rpc-trace", "Log admin, miner, personal, and debug requests and responses" );
     addClientOption( "enable-debug-behavior-apis",
         "Enables debug set of JSON RPC APIs which are changing app behavior" );
 
@@ -1247,6 +1250,22 @@ int main( int argc, char** argv ) try {
     clog( VerbosityDebug, "main" )
         << cc::info( "JSON RPC" ) << cc::debug( " trace logging mode is " )
         << cc::flag_ed( bTraceJsonRpcCalls );
+
+    // First, get "special-rpc-trace" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "special-rpc-trace" ) )
+                bTraceJsonRpcSpecialCalls =
+                    joConfig["skaleConfig"]["nodeInfo"]["special-rpc-trace"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
+    if ( vm.count( "special-rpc-trace" ) )
+        bTraceJsonRpcSpecialCalls = true;
+    clog( VerbosityDebug, "main" )
+        << cc::info( "Special JSON RPC" ) << cc::debug( " trace logging mode is " )
+        << cc::flag_ed( bTraceJsonRpcSpecialCalls );
 
     // First, get "enable-debug-behavior-apis" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -2569,6 +2588,8 @@ int main( int argc, char** argv ) try {
             skale_server_connector->setConsumer( skaleStatsFace );
             //
             skale_server_connector->opts_.isTraceCalls_ = bTraceJsonRpcCalls;
+            skale_server_connector->opts_.isTraceSpecialCalls_ = bTraceJsonRpcSpecialCalls;
+
             skale_server_connector->max_connection_set( maxConnections );
             g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?

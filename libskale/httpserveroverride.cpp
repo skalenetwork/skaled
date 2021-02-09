@@ -102,15 +102,6 @@ namespace skale {
 namespace server {
 namespace helper {
 
-bool isSkipMethodTrafficTrace( const std::string& strMethod ) {
-    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
-         strMethod == "skale_performanceTrackingStart" ||
-         strMethod == "skale_performanceTrackingStop" ||
-         strMethod == "skale_performanceTrackingFetch" )
-        return true;
-    return false;
-}
-
 dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT ) {
     dev::Verbosity dv = dev::Verbosity::VerbosityTrace;
     switch ( eWSLMT ) {
@@ -906,16 +897,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             //
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName, joRequest );
-            bool bSkipMethodTrafficTrace =
-                skale::server::helper::isSkipMethodTrafficTrace( strMethod );
-            if ( pSO->opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/RX >>> " ) +
-                           pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
+            clog( pSO->methodTraceVerbosity( strMethod ),
+                cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                    cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/RX >>> " ) +
+                       pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
             std::string strResponse;
             bool bPassed = false;
             try {
@@ -988,14 +976,13 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 }
                 a.set_json_err( joErrorResponce );
             }
-            if ( pSO->opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               cc::num10( pThis->getRelay().serverIndex() ) )
-                    << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+            clog( pSO->methodTraceVerbosity( strMethod ),
+                cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                    cc::num10( pThis->getRelay().serverIndex() ) )
+                << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) +
+                                    "/TX <<< " ) +
+                       pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
             if ( isBatch ) {
                 nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
@@ -2025,6 +2012,31 @@ dev::eth::ChainParams& SkaleServerOverride::chainParams() {
 const dev::eth::ChainParams& SkaleServerOverride::chainParams() const {
     return chainParams_;
 }
+
+dev::Verbosity SkaleServerOverride::methodTraceVerbosity( const std::string& strMethod ) const {
+    // skip if disabled completely
+    if ( !this->opts_.isTraceCalls_ && !this->opts_.isTraceSpecialCalls_ )
+        return dev::VerbositySilent;
+
+    // skip these in any case
+    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
+         strMethod == "skale_performanceTrackingStart" ||
+         strMethod == "skale_performanceTrackingStop" ||
+         strMethod == "skale_performanceTrackingFetch" )
+        return dev::VerbositySilent;
+
+    // print special
+    if ( strMethod.find( "admin_" ) == 0 || strMethod.find( "miner_" ) == 0 ||
+         strMethod.find( "personal_" ) == 0 || strMethod.find( "debug_" ) ) {
+        return dev::VerbosityDebug;
+    }
+
+    if ( this->opts_.isTraceCalls_ )
+        return dev::VerbosityTrace;
+
+    return dev::VerbositySilent;
+}
+
 bool SkaleServerOverride::checkAdminOriginAllowed( const std::string& origin ) const {
     return chainParams().checkAdminOriginAllowed( origin );
 }
@@ -2091,9 +2103,11 @@ void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const ch
         clog( dev::VerbosityDebug, strProtocolDescription ) << strMessage;
 }
 
-void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ipVer,
+void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Verbosity verbosity, int ipVer,
     const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
     const std::string& strPayload ) {
+    bool isError = verbosity == dev::VerbosityError;
+
     std::stringstream ssProtocol;
     std::string strProto =
         ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
@@ -2122,12 +2136,9 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
     if ( isError )
         strErrorSuffix = cc::fatal( " ERROR " );
     std::string strProtocolDescription = ssProtocol.str();
-    if ( isError )
-        clog( dev::VerbosityError, strProtocolDescription )
-            << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
-    else
-        clog( dev::VerbosityDebug, strProtocolDescription )
-            << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
+
+    clog( verbosity, strProtocolDescription )
+        << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
 static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
@@ -2192,8 +2203,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_message(
                     bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
                 if ( opts_.isTraceCalls_ )
-                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(),
+                    logTraceServerTraffic( true, dev::VerbosityTrace, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
                         cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
                 res.set_header( "access-control-allow-headers", "Content-Type" );
                 res.set_header( "access-control-allow-methods", "POST" );
@@ -2256,7 +2267,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         strMethod = "unknown_json_rpc_method";
                 }
                 std::string e = "Bad JSON RPC request: " + req.body_;
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
@@ -2292,7 +2303,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         "bad origin" :
                         "high load";
                 std::string e = "Banned due to " + reason_part + " JSON RPC request: " + req.body_;
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
@@ -2331,12 +2342,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 rttElement.emplace( "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(),
                     pSrv->serverIndex(), ipVer );
                 //
-                bool bSkipMethodTrafficTrace =
-                    skale::server::helper::isSkipMethodTrafficTrace( strMethod );
                 SkaleServerConnectionsTrackHelper sscth( *this );
-                if ( opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::j( strBody ) );
+                logTraceServerTraffic( true, pSO->methodTraceVerbosity( strMethod ), ipVer,
+                    bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                    cc::j( strBody ) );
                 std::string strResponse;
                 bool bPassed = false;
                 try {
@@ -2388,8 +2397,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     bPassed = true;
                 } catch ( const std::exception& ex ) {
                     rttElement->setError();
-                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( ex.what() ) );
+                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::warn( ex.what() ) );
                     nlohmann::json joErrorResponce;
                     joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
@@ -2405,8 +2415,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 } catch ( ... ) {
                     rttElement->setError();
                     const char* e = "unknown exception in SkaleServerOverride";
-                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
+                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::warn( e ) );
                     nlohmann::json joErrorResponce;
                     joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
@@ -2420,9 +2431,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     }
                     a.set_json_err( joErrorResponce );
                 }
-                if ( opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                    logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::j( strResponse ) );
+                logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
+                    bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                    cc::j( strResponse ) );
                 if ( isBatch ) {
                     nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                     jarrBatchAnswer.push_back( joAnswerPart );
