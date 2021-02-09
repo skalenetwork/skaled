@@ -897,13 +897,14 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             //
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName, joRequest );
-            clog( pSO->methodTraceVerbosity( strMethod ),
-                cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                    cc::num10( pThis->getRelay().serverIndex() ) )
-                << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                    std::to_string( pThis->getRelay().serverIndex() ) +
-                                    "/RX >>> " ) +
-                       pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
+            if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                clog( pSO->methodTraceVerbosity( strMethod ),
+                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                        cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/RX >>> " ) +
+                           pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
             std::string strResponse;
             bool bPassed = false;
             try {
@@ -976,13 +977,14 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 }
                 a.set_json_err( joErrorResponce );
             }
-            clog( pSO->methodTraceVerbosity( strMethod ),
-                cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                    cc::num10( pThis->getRelay().serverIndex() ) )
-                << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                    std::to_string( pThis->getRelay().serverIndex() ) +
-                                    "/TX <<< " ) +
-                       pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+            if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                clog( pSO->methodTraceVerbosity( strMethod ),
+                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                        cc::num10( pThis->getRelay().serverIndex() ) )
+                    << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                        std::to_string( pThis->getRelay().serverIndex() ) +
+                                        "/TX <<< " ) +
+                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
             if ( isBatch ) {
                 nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
@@ -2343,9 +2345,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     pSrv->serverIndex(), ipVer );
                 //
                 SkaleServerConnectionsTrackHelper sscth( *this );
-                logTraceServerTraffic( true, pSO->methodTraceVerbosity( strMethod ), ipVer,
-                    bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                    cc::j( strBody ) );
+                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                    logTraceServerTraffic( true, pSO->methodTraceVerbosity( strMethod ), ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::j( strBody ) );
                 std::string strResponse;
                 bool bPassed = false;
                 try {
@@ -2431,9 +2434,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     }
                     a.set_json_err( joErrorResponce );
                 }
-                logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
-                    bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                    cc::j( strResponse ) );
+                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                    logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::j( strResponse ) );
                 if ( isBatch ) {
                     nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                     jarrBatchAnswer.push_back( joAnswerPart );
