@@ -329,31 +329,68 @@ int main( int argc, char** argv ) try {
     setCLocale();
 
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        if ( nSignalNo == SIGPIPE )
+        switch ( nSignalNo ) {
+        case SIGINT:
+        case SIGTERM:
+        case SIGHUP:
+            // exit normally
+            // just fall through
+            break;
+
+        case SIGSTOP:
+        case SIGTSTP:
+        case SIGPIPE:
+            // ignore
             return;
-        bool stopWasRaisedBefore = skutils::signal::g_bStop;
-        if ( !stopWasRaisedBefore ) {
-            if ( g_jsonrpcIpcServer.get() ) {
-                g_jsonrpcIpcServer->StopListening();
-                g_jsonrpcIpcServer.reset( nullptr );
-            }
-            if ( g_client ) {
-                g_client->stopWorking();
-            }
-        }
-        skutils::signal::g_bStop = true;
-        std::string strMessagePrefix = stopWasRaisedBefore ?
+            break;
+
+        case SIGQUIT:
+            // exit immediately
+            _exit( ExitHandler::ec_termninated_by_signal );
+            break;
+
+        default:
+            // abort signals
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            std::cout.flush();
+
+            break;
+        }  // switch
+
+        // try to exit nicely - then abort
+        thread( []() {
+            sleep( ExitHandler::KILL_TIMEOUT );
+            std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
+                      << std::endl;
+            _exit( 14 );
+        } )
+            .detach();
+
+        // nice exit here:
+
+        std::string strMessagePrefix = skutils::signal::g_bStop ?
                                            cc::error( "\nStop flag was already raised on. " ) +
                                                cc::fatal( "WILL FORCE TERMINATE." ) +
                                                cc::error( " Caught (second) signal. " ) :
                                            cc::error( "\nCaught (first) signal. " );
         std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n";
+                  << "\n\n";
         std::cerr.flush();
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
-        dev::ExitHandler::exitHandler( nSignalNo );
-        if ( stopWasRaisedBefore )
+
+        if ( skutils::signal::g_bStop )
             _exit( 13 );
+
+        skutils::signal::g_bStop = true;
+
+        if ( g_jsonrpcIpcServer.get() ) {
+            g_jsonrpcIpcServer->StopListening();
+            g_jsonrpcIpcServer.reset( nullptr );
+        }
+        if ( g_client ) {
+            g_client->stopWorking();
+        }
+
+        dev::ExitHandler::exitHandler( nSignalNo );
     } );
 
 
