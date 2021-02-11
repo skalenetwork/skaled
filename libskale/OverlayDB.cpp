@@ -237,9 +237,9 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
     }
     if ( !cache_hit ) {
         if ( m_db ) {
-            Slice key = skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) );
-            if ( m_db->exists( key ) ) {
-                m_db->kill( key );
+            bytes key = getAuxiliaryKey( _address, _space );
+            if ( m_db->exists( skale::slicing::toSlice( key ) ) ) {
+                m_db->kill( skale::slicing::toSlice( key ) );
             } else {
                 cnote << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
@@ -382,9 +382,8 @@ void OverlayDB::kill( h160 const& _h ) {
         m_cache.erase( p );
     } else {
         if ( m_db ) {
-            Slice key = skale::slicing::toSlice( _h );
-            if ( m_db->exists( key ) ) {
-                m_db->kill( key );
+            if ( m_db->exists( skale::slicing::toSlice( _h ) ) ) {
+                m_db->kill( skale::slicing::toSlice( _h ) );
             } else {
                 cnote << "Try to delete non existing key " << _h;
             }
