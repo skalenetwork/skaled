@@ -358,13 +358,15 @@ int main( int argc, char** argv ) try {
         }  // switch
 
         // try to exit nicely - then abort
-        thread( []() {
-            sleep( ExitHandler::KILL_TIMEOUT );
-            std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
-                      << std::endl;
-            _exit( 14 );
-        } )
-            .detach();
+        if ( !skutils::signal::g_bStop ) {
+            thread( []() {
+                sleep( ExitHandler::KILL_TIMEOUT );
+                std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
+                          << std::endl;
+                _exit( 14 );
+            } )
+                .detach();
+        }
 
         // nice exit here:
 
