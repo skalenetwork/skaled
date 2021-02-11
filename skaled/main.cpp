@@ -329,31 +329,70 @@ int main( int argc, char** argv ) try {
     setCLocale();
 
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        if ( nSignalNo == SIGPIPE )
+        switch ( nSignalNo ) {
+        case SIGINT:
+        case SIGTERM:
+        case SIGHUP:
+            // exit normally
+            // just fall through
+            break;
+
+        case SIGSTOP:
+        case SIGTSTP:
+        case SIGPIPE:
+            // ignore
             return;
-        bool stopWasRaisedBefore = skutils::signal::g_bStop;
-        if ( !stopWasRaisedBefore ) {
-            if ( g_jsonrpcIpcServer.get() ) {
-                g_jsonrpcIpcServer->StopListening();
-                g_jsonrpcIpcServer.reset( nullptr );
-            }
-            if ( g_client ) {
-                g_client->stopWorking();
-            }
+            break;
+
+        case SIGQUIT:
+            // exit immediately
+            _exit( ExitHandler::ec_termninated_by_signal );
+            break;
+
+        default:
+            // abort signals
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            std::cout.flush();
+
+            break;
+        }  // switch
+
+        // try to exit nicely - then abort
+        if ( !skutils::signal::g_bStop ) {
+            thread( []() {
+                sleep( ExitHandler::KILL_TIMEOUT );
+                std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
+                          << std::endl;
+                _exit( 14 );
+            } )
+                .detach();
         }
-        skutils::signal::g_bStop = true;
-        std::string strMessagePrefix = stopWasRaisedBefore ?
+
+        // nice exit here:
+
+        std::string strMessagePrefix = skutils::signal::g_bStop ?
                                            cc::error( "\nStop flag was already raised on. " ) +
                                                cc::fatal( "WILL FORCE TERMINATE." ) +
                                                cc::error( " Caught (second) signal. " ) :
                                            cc::error( "\nCaught (first) signal. " );
         std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n";
+                  << "\n\n";
         std::cerr.flush();
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
-        dev::ExitHandler::exitHandler( nSignalNo );
-        if ( stopWasRaisedBefore )
+
+        if ( skutils::signal::g_bStop )
             _exit( 13 );
+
+        skutils::signal::g_bStop = true;
+
+        if ( g_jsonrpcIpcServer.get() ) {
+            g_jsonrpcIpcServer->StopListening();
+            g_jsonrpcIpcServer.reset( nullptr );
+        }
+        if ( g_client ) {
+            g_client->stopWorking();
+        }
+
+        dev::ExitHandler::exitHandler( nSignalNo );
     } );
 
 
@@ -1695,11 +1734,6 @@ int main( int argc, char** argv ) try {
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
     auto caps = set< string >{"eth"};
 
-    ExitHandler exitHandler;
-
-    signal( SIGTERM, &ExitHandler::exitHandler );
-    signal( SIGINT, &ExitHandler::exitHandler );
-
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
     //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(), false
@@ -1828,7 +1862,7 @@ int main( int argc, char** argv ) try {
             unsigned block_no = static_cast< unsigned int >( -1 );
             cout << "Skipping " << g_client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-            while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
+            while ( in.peek() != -1 && ( !ExitHandler::shouldExit() ) ) {
                 bytes block( 8 );
                 {
                     if ( block_no >= g_client->number() ) {
@@ -2636,7 +2670,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2650,7 +2684,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2664,7 +2698,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2678,7 +2712,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2692,7 +2726,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2706,7 +2740,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2720,7 +2754,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2734,7 +2768,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2748,7 +2782,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2762,7 +2796,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2776,7 +2810,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2790,7 +2824,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2804,7 +2838,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2817,7 +2851,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2830,7 +2864,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2843,7 +2877,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -3006,10 +3040,10 @@ int main( int argc, char** argv ) try {
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
-        while ( !exitHandler.shouldExit() )
+        while ( !ExitHandler::shouldExit() )
             stopSealingAfterXBlocks( g_client.get(), n, mining );
     } else {
-        while ( !exitHandler.shouldExit() )
+        while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
     if ( g_jsonrpcIpcServer.get() ) {
