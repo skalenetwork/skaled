@@ -130,7 +130,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE  ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DSANITIZE=address  ..
           cd ..
       - name: Build all
         run: |
