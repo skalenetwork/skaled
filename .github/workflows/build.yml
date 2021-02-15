@@ -26,12 +26,12 @@ jobs:
         run: git submodule update --init --recursive
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
-      # - name: Cleanup
-      #   run: |
-      #     sudo apt-get autoremove -y >/dev/null 2>&1 && \
-      #     sudo apt-get autoclean -y >/dev/null 2>&1  && \
-      #     sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
-      #     docker rmi $(docker image ls -aq) >/dev/null 2>&1
+      - name: Cleanup
+        run: |
+          sudo apt-get autoremove -y >/dev/null 2>&1 && \
+          sudo apt-get autoclean -y >/dev/null 2>&1  && \
+          sudo rm -rf /usr/local/lib/android >/dev/null 2>&1 && \
+          docker rmi $(docker image ls -aq) >/dev/null 2>&1
 
       - name: Install packages
         run: |
@@ -106,10 +106,10 @@ jobs:
       - name: Testeth
         run : |
           cd build/test
-          ./testeth -- --express --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          NO_NTP_CHECK=1 ./testeth -- --express --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           # Create lcov report
           lcov --capture --directory . --output-file coverage.info
