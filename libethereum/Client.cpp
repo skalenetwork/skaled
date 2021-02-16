@@ -908,8 +908,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     RLPStream headerRlp;
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
-    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
-                    << cc::num10( BlockHeader( header, HeaderData ).number() );
+    BlockHeader header_struct( header, HeaderData );
+    LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
+                    << " (" << header_struct.hash() << ")";
+
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
