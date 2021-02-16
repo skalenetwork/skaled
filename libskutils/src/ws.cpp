@@ -3703,12 +3703,23 @@ bool server::onPeerRegister( peer_ptr_t pPeer ) {
 bool server::onPeerUnregister( peer_ptr_t pPeer ) {
     if ( !pPeer )
         return false;
-    traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnect );
-    if ( onPeerUnregister_ )
-        onPeerUnregister_( pPeer );
-    pPeer->onPeerUnregister();
+    pPeer->ref_retain();  // exrra ref, to protect onPeerUnregister_ specific implementatoion, such
+                          // as un-ddos accept
+    try {
+        traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnect );
+        if ( onPeerUnregister_ )
+            onPeerUnregister_( pPeer );
+    } catch ( ... ) {
+    }
+    try {
+        pPeer->onPeerUnregister();
+    } catch ( ... ) {
+    }
     pPeer->opened_ = false;
-    pPeer->ref_release();
+    if ( pPeer->ref_release() > 0 )  // exrra ref, to protect onPeerUnregister_ specific
+                                     // implementatoion, such as un-ddos accept
+        pPeer->ref_release();  // mormal, typically last ref, dependant on onPeerUnregister_ functor
+                               // implementation
     return true;
 }
 int64_t server::delayed_adjustment_pong_timeout(
