@@ -102,7 +102,7 @@ jobs:
       - name: Testeth
         run : |
           cd build/test
-          NO_NTP_CHECK=1 ./testeth -- --express --verbosity 4
+          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
