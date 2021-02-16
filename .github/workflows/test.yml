@@ -16,6 +16,7 @@ jobs:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        NO_ULIMIT_CHECK: 1
     steps:
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
