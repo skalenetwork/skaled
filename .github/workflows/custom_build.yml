@@ -11,6 +11,10 @@ on:
         description: 'Image version for docker hub'
         default: ''
         required: true
+      cmake_options:
+        description: 'Additional cmake options'
+        default: ''
+        required: false
 
 jobs:
   main_job:
@@ -68,7 +72,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DSANITIZE=address  ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
           cd ..
       - name: Build all
         run: |
