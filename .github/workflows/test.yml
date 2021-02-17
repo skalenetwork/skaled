@@ -30,22 +30,6 @@ jobs:
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
-      - name: Install packages
-        run: |
-          sudo apt-get update; sudo apt-get install -yq build-essential gcc-7 g++-7 \
-          make ccache libtool pkg-config autoconf autogen automake autopoint \
-          python python-pip sed shtool texinfo gperf gawk wget git flex bison yasm \
-          clang-format-6.0 btrfs-progs doxygen vim nettle-dev gnutls-dev \
-          libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
-
-      - name: Install cmake 3.10
-        run: |
-          sudo apt-get remove cmake || true
-          wget --no-check-certificate https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.sh && \
-          chmod +x cmake-3.10.0-Linux-x86_64.sh && \
-          ./cmake-3.10.0-Linux-x86_64.sh --skip-license --include-subdir && \
-          sudo ln -sf `pwd`/cmake-3.10.0-Linux-x86_64/bin/* /usr/local/bin
-
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
         shell: cmake -P {0}
@@ -119,3 +103,5 @@ jobs:
 
           # Uploading report to CodeCov
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+          
+      - run: sudo umount build/test/btrfs
