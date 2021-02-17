@@ -31,6 +31,8 @@ jobs:
         id: extract_branch
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch_name }}
       - name: Submodule update
         run: git submodule update --init --recursive
       - name: update apt
