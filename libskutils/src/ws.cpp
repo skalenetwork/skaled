@@ -3685,15 +3685,15 @@ peer_ptr_t server::detachPeer( hdl_t hdl ) {
     return api_.detachPeer( hdl );
 }
 bool server::onPeerRegister( peer_ptr_t pPeer ) {
+    if ( !pPeer )
+        return false;
     try {
-        if ( !pPeer )
-            return false;
         pPeer->opened_ = true;
         // hdl_t hdl = pPeer->hdl();
+        pPeer->ref_retain();  // mormal, typically first/last ref
         if ( onPeerRegister_ )
             onPeerRegister_( pPeer );
         pPeer->onPeerRegister();
-        pPeer->ref_retain();
         traffic_stats::event_add( g_strEventNameWebSocketPeerConnect );
     } catch ( ... ) {
         return false;
@@ -3718,8 +3718,8 @@ bool server::onPeerUnregister( peer_ptr_t pPeer ) {
     pPeer->opened_ = false;
     if ( pPeer->ref_release() > 0 )  // exrra ref, to protect onPeerUnregister_ specific
                                      // implementatoion, such as un-ddos accept
-        pPeer->ref_release();  // mormal, typically last ref, dependant on onPeerUnregister_ functor
-                               // implementation
+        pPeer->ref_release();  // mormal, typically first/last ref, dependant on onPeerUnregister_
+                               // functor implementation
     return true;
 }
 int64_t server::delayed_adjustment_pong_timeout(
