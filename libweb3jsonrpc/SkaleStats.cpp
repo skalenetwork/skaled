@@ -308,6 +308,8 @@ void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcas
 
 void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
+    dev::u256 tx_hash = txe.hash_;
+    nlohmann::json jo_tx = txe.toJSON();
     try {
         size_t nOwnIndex = std::string::npos;
         std::vector< std::string > vecURLs;
@@ -319,7 +321,7 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = txe.toJSON();
+            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -336,13 +338,13 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                 } catch ( const std::exception& ex ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
-                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) + cc::warn( ex.what() ) );
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
-                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( "unknown exception" ) );
                 }
@@ -351,17 +353,19 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
-                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
-                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
     }
 }
 void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
+    dev::u256 tx_hash = txe.hash_;
+    nlohmann::json jo_tx = txe.toJSON();
     try {
         size_t nOwnIndex = std::string::npos;
         std::vector< std::string > vecURLs;
@@ -373,7 +377,7 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = txe.toJSON();
+            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -390,13 +394,13 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                 } catch ( const std::exception& ex ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
-                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( ex.what() ) );
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
-                               cc::error( " Transaction " ) + cc::info( dev::toJS( txe.hash_ ) ) +
+                               cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) +
                                cc::warn( "unknown exception" ) );
@@ -406,12 +410,12 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
-                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
-                   cc::info( dev::toJS( txe.hash_ ) ) + cc::error( " broadcast failed: " ) +
+                   cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
     }
 }

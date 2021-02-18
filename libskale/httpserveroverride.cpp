@@ -693,7 +693,12 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
     if ( m_strUnDdosOrigin.empty() ) {
         SkaleServerOverride* pSO = pso();
         skutils::url url_unddos_origin( getRemoteIp() );
-        m_strUnDdosOrigin = url_unddos_origin.host();
+        try {
+            m_strUnDdosOrigin = url_unddos_origin.host();
+        } catch ( ... ) {
+        }
+        if ( m_strUnDdosOrigin.empty() )
+            m_strUnDdosOrigin = "N/A";
         skutils::unddos::e_high_load_detection_result_t ehldr =
             pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
