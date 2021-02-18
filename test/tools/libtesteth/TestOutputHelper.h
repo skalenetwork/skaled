@@ -67,8 +67,8 @@ private:
 
 class TestOutputHelperFixture {
 public:
-    TestOutputHelperFixture() { TestOutputHelper::get().initTest(); }
-    virtual ~TestOutputHelperFixture() { TestOutputHelper::get().finishTest(); }
+    TestOutputHelperFixture();
+    virtual ~TestOutputHelperFixture();
 };
 
 }  // namespace test

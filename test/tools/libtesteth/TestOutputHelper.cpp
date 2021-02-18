@@ -24,9 +24,13 @@
 #include <libethcore/BasicAuthority.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
+
 #include <boost/io/ios_state.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include <numeric>
+
+#include <cstdlib>
 
 using namespace std;
 using namespace dev;
@@ -95,4 +99,13 @@ void TestOutputHelper::printTestExecStats() {
                       << "\n";
         saver.restore();
     }
+}
+TestOutputHelperFixture::TestOutputHelperFixture() {
+    TestOutputHelper::get().initTest();
+}
+
+TestOutputHelperFixture::~TestOutputHelperFixture() {
+    TestOutputHelper::get().finishTest();
+    // XXX used in Personal test. do it more nicely!
+    unsetenv("DATA_DIR");
 }
