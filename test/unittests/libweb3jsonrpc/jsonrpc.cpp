@@ -45,6 +45,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstdlib>
+
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
 
@@ -183,6 +185,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     JsonRpcFixture( const std::string& _config = "", bool _owner = true ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
+
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
