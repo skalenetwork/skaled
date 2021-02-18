@@ -15,9 +15,9 @@ BOOST_AUTO_TEST_CASE( hash ) {
         BOOST_REQUIRE( db );
 
         for ( size_t i = 0; i < 1234567; ++i ) {
-            dev::db::Slice key = std::to_string( 43 + i );
-            dev::db::Slice value = std::to_string( i );
-            db->insert( key, value );
+            std::string key = std::to_string( 43 + i );
+            std::string value = std::to_string( i );
+            db->insert( dev::db::Slice(key), dev::db::Slice(value) );
         }
 
         hash = db->hashBase();
@@ -29,9 +29,9 @@ BOOST_AUTO_TEST_CASE( hash ) {
         BOOST_REQUIRE( db_copy );
 
         for ( size_t i = 0; i < 1234567; ++i ) {
-            dev::db::Slice key = std::to_string( 43 + i );
-            dev::db::Slice value = std::to_string( i );
-            db_copy->insert( key, value );
+            std::string key = std::to_string( 43 + i );
+            std::string value = std::to_string( i );
+            db_copy->insert( dev::db::Slice(key), dev::db::Slice(value) );
         }
 
         hash_same = db_copy->hashBase();
@@ -45,9 +45,9 @@ BOOST_AUTO_TEST_CASE( hash ) {
         BOOST_REQUIRE( db_diff );
 
         for ( size_t i = 0; i < 1234567; ++i ) {
-            dev::db::Slice key = std::to_string( 42 + i );
-            dev::db::Slice value = std::to_string( i );
-            db_diff->insert( key, value );
+            std::string key = std::to_string( 42 + i );
+            std::string value = std::to_string( i );
+            db_diff->insert( dev::db::Slice(key), dev::db::Slice(value) );
         }
 
         hash_diff = db_diff->hashBase();
