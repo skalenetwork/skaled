@@ -34,9 +34,13 @@
 #include <libweb3jsonrpc/Personal.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include <thread>
+
+#include <cstdlib>
 
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
@@ -57,6 +61,9 @@ BOOST_AUTO_TEST_CASE( Personal ) {
 
     KeyManager keyManager( tempDir.path(), tempDir.path() + "/keys" );
     setDataDir( tempDir.path() );
+
+    // pass DATA_DIR to consensus
+    setenv("DATA_DIR", tempDir.path().c_str(), 1);
 
     // 'allowFutureBlocks = true' is required to mine multiple blocks,
     // otherwise mining will hang after the first block
