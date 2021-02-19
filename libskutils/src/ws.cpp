@@ -665,9 +665,8 @@ void guarded_traffic_stats::unlock() {
 }
 
 basic_network_settings::basic_network_settings()
-    : interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
-      ,
-      timeout_pong_( 300 )  // seconds, default value in wspp is 5000, 0 means not use
+    // interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
+    : timeout_pong_( 300 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
       timeout_handshake_open_( 60 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
@@ -2306,8 +2305,8 @@ bool server_api::init( bool isSSL, int nPort, security_args* pSA, const char* st
 
     ctx_info_.iface =
         ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
-    if ( interval_ping_ > 0 )
-        ctx_info_.ws_ping_pong_interval = interval_ping_;
+    //    if ( interval_ping_ > 0 )
+    //        ctx_info_.ws_ping_pong_interval = interval_ping_;
     ctx_info_.max_http_header_pool = 256;
 
     ctx_info_.user = this;

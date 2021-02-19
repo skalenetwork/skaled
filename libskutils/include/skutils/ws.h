@@ -210,7 +210,7 @@ public:
 
 class basic_network_settings {
 public:
-    uint64_t interval_ping_;                                       // seconds
+    // uint64_t interval_ping_;                                    // seconds
     uint64_t timeout_pong_;                                        // seconds
     uint64_t timeout_handshake_open_, timeout_handshake_close_;    // seconds
     size_t max_message_size_, max_body_size_;                      // bytes
