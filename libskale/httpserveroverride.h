@@ -497,6 +497,10 @@ protected:
     void setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
+    unsigned iwBlockStats_ = unsigned( -1 );
+    skutils::stats::named_event_stats statsBlocks_, statsTransactions_;
+    nlohmann::json generateBlocksStats();
+
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride

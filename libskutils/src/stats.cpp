@@ -191,7 +191,7 @@ double named_event_stats::compute_eps( t_NamedEventsIt& itEvent, const time_poin
     return epsResult;
 }
 
-size_t named_event_stats::g_nUnitsPerSecondHistoryMaxSize = 120;
+size_t named_event_stats::g_nUnitsPerSecondHistoryMaxSize = 30;
 
 double named_event_stats::compute_eps_smooth( const std::string& eventName, const time_point& tpNow,
     size_t* p_nSummary, size_t* p_nSummary1 ) const {

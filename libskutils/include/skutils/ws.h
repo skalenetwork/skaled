@@ -152,7 +152,7 @@ public:
     std::string getTrafficStatsDescription( bool isColored = false ) const;
     nlohmann::json toJSON( time_point tpNow, bool bSkipEmptyStats = true ) const;
     nlohmann::json toJSON( bool bSkipEmptyStats = true ) const;
-    static size_t g_nDefaultEventQueueSizeForWebSocket;
+    static size_t g_nSizeDefaultOnQueueAdd;
     static const char g_strEventNameWebSocketFail[];
     static const char g_strEventNameWebSocketMessagesRecvText[];
     static const char g_strEventNameWebSocketMessagesRecvBinary[];

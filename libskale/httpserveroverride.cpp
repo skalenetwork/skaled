@@ -293,7 +293,7 @@ map_method_call_stats_t g_map_method_error_stats;
 map_method_call_stats_t g_map_method_exception_stats;
 map_method_call_stats_t g_map_method_traffic_stats_in;
 map_method_call_stats_t g_map_method_traffic_stats_out;
-static size_t g_nDefaultQueueSize = 10;
+static size_t g_nSizeDefaultOnQueueAdd = 10;
 
 static skutils::stats::named_event_stats& stat_subsystem_call_queue( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
@@ -381,33 +381,33 @@ void register_stats_message(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
-    cq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    cq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     cq.event_add( strMethodName );
     skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_in( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_answer(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
-    aq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    aq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     aq.event_add( strMethodName );
 
     skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_out( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_error( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& eq = stat_subsystem_error_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     eq.event_add( strMethodName );
 }
 void register_stats_exception( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& eq = stat_subsystem_exception_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     eq.event_add( strMethodName );
 }
 
@@ -480,10 +480,10 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
         double lfBytesPerSecondSent =
             tq_out.compute_eps_smooth( strMethodName, tpNow, &nBytesSent );
         nlohmann::json joMethod = nlohmann::json::object();
-        joMethod["cps"] = lfCallsPerSecond;
-        joMethod["aps"] = lfAnswersPerSecond;
-        joMethod["erps"] = lfErrorsPerSecond;
-        joMethod["exps"] = lfExceptionsPerSecond;
+        joMethod["cps"] = lfCallsPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["aps"] = lfAnswersPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["erps"] = lfErrorsPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["exps"] = lfExceptionsPerSecond / g_nSizeDefaultOnQueueAdd;
         joMethod["bps_recv"] = lfBytesPerSecondRecv;
         joMethod["bps_sent"] = lfBytesPerSecondSent;
         joMethod["calls"] = nCalls;
@@ -2000,11 +2000,57 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
-    : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {}
+    : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
+    std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
+        fnOnSunscriptionEvent = [this](
+                                    const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
+        dev::h256 h = block.info().hash();
+        dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
+        size_t cntTXs = arrTxHashes.size();
+        statsBlocks_.event_add( "blocks", 1 );
+        statsTransactions_.event_add( "transactions", cntTXs );
+    };
+    statsBlocks_.event_queue_add( "blocks",
+        0  // stats::g_nSizeDefaultOnQueueAdd
+    );
+    statsTransactions_.event_queue_add( "transactions",
+        0  // stats::g_nSizeDefaultOnQueueAdd
+    );
+    iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+}
 
 
 SkaleServerOverride::~SkaleServerOverride() {
+    if ( iwBlockStats_ != unsigned( -1 ) ) {
+        ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
+        iwBlockStats_ = unsigned( -1 );
+    }
     StopListening();
+}
+
+nlohmann::json SkaleServerOverride::generateBlocksStats() {
+    nlohmann::json joStats = nlohmann::json::object();
+    skutils::stats::time_point tpNow = skutils::stats::clock::now();
+    const double lfBlocksPerSecond = statsBlocks_.compute_eps_smooth( "blocks", tpNow );
+    double lfTransactionsPerSecond = statsTransactions_.compute_eps_smooth( "transactions", tpNow );
+    if ( lfTransactionsPerSecond >= 1.0 )
+        lfTransactionsPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfTransactionsPerSecond <= 1.0 )
+        lfTransactionsPerSecond = 0.0;
+    double lfTransactionsPerBlock =
+        ( lfBlocksPerSecond > 0.0 ) ? ( lfTransactionsPerSecond / lfBlocksPerSecond ) : 0.0;
+    if ( lfTransactionsPerBlock >= 1.0 )
+        lfTransactionsPerBlock -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfTransactionsPerBlock <= 1.0 )
+        lfTransactionsPerBlock = 0.0;
+    if ( lfTransactionsPerBlock == 0.0 )
+        lfTransactionsPerSecond = 0.0;
+    if ( lfTransactionsPerSecond == 0.0 )
+        lfTransactionsPerBlock = 0.0;
+    joStats["blocksPerSecond"] = lfBlocksPerSecond;
+    joStats["transactionsPerSecond"] = lfTransactionsPerSecond;
+    joStats["transactionsPerBlock"] = lfTransactionsPerBlock;
+    return joStats;
 }
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
@@ -2929,6 +2975,9 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
+    //
+    joStats["blocks"] = generateBlocksStats();
+    //
     nlohmann::json joExecutionPerformance = nlohmann::json::object();
     joExecutionPerformance["RPC"] =
         skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();

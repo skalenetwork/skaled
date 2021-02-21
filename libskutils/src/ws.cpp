@@ -379,7 +379,7 @@ void traffic_stats::log_close() {
     time_stamp_closed_ = clock::now();
 }
 
-size_t traffic_stats::g_nDefaultEventQueueSizeForWebSocket = 10;
+size_t traffic_stats::g_nSizeDefaultOnQueueAdd = 10;
 const char traffic_stats::g_strEventNameWebSocketFail[] = "fail";
 const char traffic_stats::g_strEventNameWebSocketMessagesRecvText[] = "rx-txt";
 const char traffic_stats::g_strEventNameWebSocketMessagesRecvBinary[] = "rx-bin";
@@ -388,40 +388,34 @@ const char traffic_stats::g_strEventNameWebSocketMessagesSentText[] = "tx-txt";
 const char traffic_stats::g_strEventNameWebSocketMessagesSentBinary[] = "tx-bin";
 const char traffic_stats::g_strEventNameWebSocketMessagesSent[] = "tx";
 void traffic_stats::register_default_event_queues_for_web_socket() {
-    event_queue_add( g_strEventNameWebSocketFail, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketMessagesRecvText, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketMessagesRecvBinary, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketMessagesRecv, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketMessagesSentText, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketMessagesSentBinary, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketMessagesSent, g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( g_strEventNameWebSocketFail, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesRecvText, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesRecvBinary, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesRecv, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesSentText, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesSentBinary, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketMessagesSent, g_nSizeDefaultOnQueueAdd );
 }
 const char traffic_stats::g_strEventNameWebSocketPeerConnect[] = "peer connect";
 const char traffic_stats::g_strEventNameWebSocketPeerDisconnect[] = "peer disconnect";
 const char traffic_stats::g_strEventNameWebSocketPeerDisconnectFail[] = "peer disconnect fail";
 void traffic_stats::register_default_event_queues_for_web_socket_peer() {
     register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketPeerDisconnectFail, g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketPeerDisconnectFail, g_nSizeDefaultOnQueueAdd );
 }
 const char traffic_stats::g_strEventNameWebSocketServerStart[] = "server start";
 const char traffic_stats::g_strEventNameWebSocketServerStartFail[] = "server start fail";
 const char traffic_stats::g_strEventNameWebSocketServerStop[] = "server stop";
 void traffic_stats::register_default_event_queues_for_web_socket_server() {
     register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketPeerDisconnectFail, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketServerStart, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketServerStartFail, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketServerStop, g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketPeerDisconnectFail, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketServerStart, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketServerStartFail, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketServerStop, g_nSizeDefaultOnQueueAdd );
 }
 const char traffic_stats::g_strEventNameWebSocketClientConnect[] = "connect";
 const char traffic_stats::g_strEventNameWebSocketClientConnectFail[] = "fail connect";
@@ -429,12 +423,10 @@ const char traffic_stats::g_strEventNameWebSocketClientDisconnect[] = "disconnec
 const char traffic_stats::g_strEventNameWebSocketClientReconnect[] = "reconnect attempt";
 void traffic_stats::register_default_event_queues_for_web_socket_client() {
     register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketClientConnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketClientConnectFail, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add(
-        g_strEventNameWebSocketClientDisconnect, g_nDefaultEventQueueSizeForWebSocket );
-    event_queue_add( g_strEventNameWebSocketClientReconnect, g_nDefaultEventQueueSizeForWebSocket );
+    event_queue_add( g_strEventNameWebSocketClientConnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketClientConnectFail, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketClientDisconnect, g_nSizeDefaultOnQueueAdd );
+    event_queue_add( g_strEventNameWebSocketClientReconnect, g_nSizeDefaultOnQueueAdd );
 }
 
 bool traffic_stats::empty() const {
