@@ -86,6 +86,9 @@ struct UnitsPerSecond {
     size_t m_total;
     size_t m_total1;
     double m_prevUnitsPerSecond;
+    typedef std::pair< time_point, double > history_item_t;
+    typedef std::list< history_item_t > history_item_list_t;
+    history_item_list_t m_history_per_second;
 };
 
 using t_NamedEvents = std::map< std::string, UnitsPerSecond >;
@@ -125,11 +128,18 @@ public:
     size_t event_queue_remove_all();                                             //+
     bool event_add( const std::string& strQueueName );
     bool event_add( const std::string& strQueueName, size_t size );
+    //
     double compute_eps_from_start( const std::string& name, const time_point& tpNow ) const;
     double compute_eps( const std::string& name, const time_point& tpNow,
         size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
     double compute_eps( t_NamedEventsIt& currentIt, const time_point& tpNow,
         size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
+    static size_t g_nUnitsPerSecondHistoryMaxSize;
+    double compute_eps_smooth( const std::string& name, const time_point& tpNow,
+        size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
+    double compute_eps_smooth( t_NamedEventsIt& currentIt, const time_point& tpNow,
+        size_t* p_nSummary = nullptr, size_t* p_nSummary1 = nullptr ) const;
+    //
     virtual std::string getEventStatsDescription( time_point tpNow, bool isColored = false,
         bool bSkipEmptyStats = true, bool bWithSummaryAsSuffix = false ) const;
     std::string getEventStatsDescription( bool isColored = false, bool bSkipEmptyStats = true,

@@ -469,13 +469,16 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
         size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptions = 0;
         skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
         skutils::stats::time_point tpNow = skutils::stats::clock::now();
-        double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, nullptr, &nCalls );
-        double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, nullptr, &nAnswers );
-        double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, nullptr, &nErrors );
+        double lfCallsPerSecond = cq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nCalls );
+        double lfAnswersPerSecond =
+            aq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nAnswers );
+        double lfErrorsPerSecond =
+            erq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nErrors );
         double lfExceptionsPerSecond =
-            exq.compute_eps( strMethodName, tpNow, nullptr, &nExceptions );
-        double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv );
-        double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow, &nBytesSent );
+            exq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nExceptions );
+        double lfBytesPerSecondRecv = tq_in.compute_eps_smooth( strMethodName, tpNow, &nBytesRecv );
+        double lfBytesPerSecondSent =
+            tq_out.compute_eps_smooth( strMethodName, tpNow, &nBytesSent );
         nlohmann::json joMethod = nlohmann::json::object();
         joMethod["cps"] = lfCallsPerSecond;
         joMethod["aps"] = lfAnswersPerSecond;
