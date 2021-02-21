@@ -211,7 +211,8 @@ double named_event_stats::compute_eps_smooth( t_NamedEventsIt& itEvent, const ti
         itEnd = itEvent->second.m_history_per_second.cend();
     time_point tpStart = tpNow, tpEnd = tpNow;
     double cpsSummary = 0.0;
-    for ( size_t i = 0; itWalk != itEnd; ++itWalk, ++i ) {
+    size_t i = 0;
+    for ( ; itWalk != itEnd; ++itWalk, ++i ) {
         if ( i == 0 )
             tpStart = itWalk->first;
         tpEnd = itWalk->first;
@@ -221,13 +222,9 @@ double named_event_stats::compute_eps_smooth( t_NamedEventsIt& itEvent, const ti
     const auto duration_milliseconds =
         std::chrono::duration_cast< std::chrono::milliseconds >( tpEnd - tpStart );
     const double lfSecondsPassed = static_cast< double >( duration_milliseconds.count() ) / 1000.0;
-    if ( lfSecondsPassed == 0.0 )
+    if ( lfSecondsPassed == 0.0 || i <= 1 )
         return epsResult;
-    const double epsResultSummary = cpsSummary / lfSecondsPassed;
-    //    const double epsResultMin = std::min( epsResult, epsResultSummary );
-    //    const double epsResultMax = std::max( epsResult, epsResultSummary );
-    //    epsResult = epsResultMin + ( epsResultMax - epsResultMin ) * 0.25;
-    epsResult = epsResultSummary;
+    epsResult = cpsSummary / i;
     return epsResult;
 }
 
