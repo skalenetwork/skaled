@@ -2001,22 +2001,36 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
     : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
-    std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
-        fnOnSunscriptionEvent = [this](
-                                    const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
-        dev::h256 h = block.info().hash();
-        dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
-        size_t cntTXs = arrTxHashes.size();
-        statsBlocks_.event_add( "blocks", 1 );
-        statsTransactions_.event_add( "transactions", cntTXs );
-    };
-    statsBlocks_.event_queue_add( "blocks",
-        0  // stats::g_nSizeDefaultOnQueueAdd
-    );
-    statsTransactions_.event_queue_add( "transactions",
-        0  // stats::g_nSizeDefaultOnQueueAdd
-    );
-    iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+    {  // block
+        std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
+            fnOnSunscriptionEvent =
+                [this]( const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
+            dev::h256 h = block.info().hash();
+            dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
+            size_t cntTXs = arrTxHashes.size();
+            statsBlocks_.event_add( "blocks", 1 );
+            statsTransactions_.event_add( "transactions", cntTXs );
+        };
+        statsBlocks_.event_queue_add( "blocks",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        statsTransactions_.event_queue_add( "transactions",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+    }  // block
+    {  // block
+        std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
+            fnOnSunscriptionEvent =
+                [this]( const unsigned& /*iw*/, const dev::eth::Transaction & /*tx*/ ) -> void {
+            statsPendingTx_.event_add( "transactionsPending", 1 );
+        };
+        statsPendingTx_.event_queue_add( "transactionsPending",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        iwPendingTransactionStats_ =
+            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+    }  // block
 }
 
 
@@ -2024,6 +2038,10 @@ SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
         ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
         iwBlockStats_ = unsigned( -1 );
+    }
+    if ( iwPendingTransactionStats_ != unsigned( -1 ) ) {
+        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_ );
+        iwPendingTransactionStats_ = unsigned( -1 );
     }
     StopListening();
 }
@@ -2047,9 +2065,16 @@ nlohmann::json SkaleServerOverride::generateBlocksStats() {
         lfTransactionsPerSecond = 0.0;
     if ( lfTransactionsPerSecond == 0.0 )
         lfTransactionsPerBlock = 0.0;
+    double lfPendingTxPerSecond =
+        statsPendingTx_.compute_eps_smooth( "transactionsPending", tpNow );
+    if ( lfPendingTxPerSecond >= 1.0 )
+        lfPendingTxPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfPendingTxPerSecond <= 1.0 )
+        lfPendingTxPerSecond = 0.0;
     joStats["blocksPerSecond"] = lfBlocksPerSecond;
     joStats["transactionsPerSecond"] = lfTransactionsPerSecond;
     joStats["transactionsPerBlock"] = lfTransactionsPerBlock;
+    joStats["pendingTxPerSecond"] = lfPendingTxPerSecond;
     return joStats;
 }
 
