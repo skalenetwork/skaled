@@ -109,10 +109,9 @@ void named_event_stats::event_queue_add( const std::string& strQueueName, size_t
             ++itEvent->second.m_total;
         } else {
             itEvent->second.m_prevPerSec += nSize;
-            itEvent->second.m_total += itEvent->second.m_prevPerSec;
+            itEvent->second.m_total += nSize;  // itEvent->second.m_prevPerSec;
             ++itEvent->second.m_total1;
         }
-
         itEvent->second.m_lastTime = clock::now();
     }
 }
@@ -173,17 +172,59 @@ double named_event_stats::compute_eps( t_NamedEventsIt& itEvent, const time_poin
     lock_type lock( const_cast< named_event_stats& >( *this ) );
     const auto duration_milliseconds = std::chrono::duration_cast< std::chrono::milliseconds >(
         tpNow - itEvent->second.m_prevTime );
-    const double seconds = static_cast< double >( duration_milliseconds.count() ) / 1000.0;
-    const double epsResult = static_cast< double >( itEvent->second.m_prevPerSec ) / seconds;
-
-    itEvent->second.m_prevTime = clock::now();
-    itEvent->second.m_lastTime = clock::now();
+    const double lfSecondsPassed = static_cast< double >( duration_milliseconds.count() ) / 1000.0;
+    const double epsResult =
+        static_cast< double >( itEvent->second.m_prevPerSec ) / lfSecondsPassed;
+    itEvent->second.m_prevTime = itEvent->second.m_lastTime = tpNow;  // clock::now();
     itEvent->second.m_prevPerSec = 0;
     itEvent->second.m_prevUnitsPerSecond = epsResult;
+    itEvent->second.m_history_per_second.push_back(
+        UnitsPerSecond::history_item_t( itEvent->second.m_prevTime, epsResult ) );
+    while ( ( !itEvent->second.m_history_per_second.empty() ) &&
+            itEvent->second.m_history_per_second.size() >
+                named_event_stats::g_nUnitsPerSecondHistoryMaxSize )
+        itEvent->second.m_history_per_second.pop_front();
     if ( p_nSummary )
-        *p_nSummary = itEvent->second.m_total;
+        ( *p_nSummary ) = itEvent->second.m_total;
     if ( p_nSummary1 )
-        *p_nSummary1 = itEvent->second.m_total1;
+        ( *p_nSummary1 ) = itEvent->second.m_total1;
+    return epsResult;
+}
+
+size_t named_event_stats::g_nUnitsPerSecondHistoryMaxSize = 30;
+
+double named_event_stats::compute_eps_smooth( const std::string& eventName, const time_point& tpNow,
+    size_t* p_nSummary, size_t* p_nSummary1 ) const {
+    auto itEvent = m_Events.find( eventName );
+    if ( itEvent == std::end( m_Events ) )
+        return 0.0;
+    return compute_eps_smooth( itEvent, tpNow, p_nSummary, p_nSummary1 );
+}
+
+double named_event_stats::compute_eps_smooth( t_NamedEventsIt& itEvent, const time_point& tpNow,
+    size_t* p_nSummary, size_t* p_nSummary1 ) const {
+    double epsResult = compute_eps( itEvent, tpNow, p_nSummary, p_nSummary1 );
+    if ( named_event_stats::g_nUnitsPerSecondHistoryMaxSize < 2 )
+        return epsResult;
+    UnitsPerSecond::history_item_list_t::const_iterator
+        itWalk = itEvent->second.m_history_per_second.cbegin(),
+        itEnd = itEvent->second.m_history_per_second.cend();
+    time_point tpStart = tpNow, tpEnd = tpNow;
+    double cpsSummary = 0.0;
+    size_t i = 0;
+    for ( ; itWalk != itEnd; ++itWalk, ++i ) {
+        if ( i == 0 )
+            tpStart = itWalk->first;
+        tpEnd = itWalk->first;
+        double cpsWalk = itWalk->second;
+        cpsSummary += cpsWalk;
+    }
+    const auto duration_milliseconds =
+        std::chrono::duration_cast< std::chrono::milliseconds >( tpEnd - tpStart );
+    const double lfSecondsPassed = static_cast< double >( duration_milliseconds.count() ) / 1000.0;
+    if ( lfSecondsPassed == 0.0 || i <= 1 )
+        return epsResult;
+    epsResult = cpsSummary / i;
     return epsResult;
 }
 

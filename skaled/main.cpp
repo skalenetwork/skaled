@@ -661,6 +661,8 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
+    addGeneralOption( "dispatch-threads", po::value< size_t >()->value_name( "<count>" ),
+        "Number of threads to run task dispatcher, default is CPU count * 2" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -726,7 +728,18 @@ int main( int argc, char** argv ) try {
 
     setupLogging( loggingOptions );
 
-    skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
+    const size_t nCpuCount = skutils::tools::cpu_count();
+    size_t nDispatchThreads = nCpuCount * 2;
+    if ( vm.count( "dispatch-threads" ) ) {
+        size_t n = vm["dispatch-threads"].as< size_t >();
+        const size_t nMin = 4;
+        if ( n < nMin )
+            n = nMin;
+        nDispatchThreads = n;
+    }
+    std::cout << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
+              << cc::debug( " threads in task dispatcher" ) << std::endl;
+    skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
     if ( vm.count( "import-snapshot" ) ) {
