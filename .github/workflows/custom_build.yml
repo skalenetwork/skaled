@@ -62,6 +62,8 @@ jobs:
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd deps
+          ./clean.sh
+          rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all

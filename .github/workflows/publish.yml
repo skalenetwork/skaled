@@ -55,6 +55,8 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd deps
+          ./clean.sh
+          rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
