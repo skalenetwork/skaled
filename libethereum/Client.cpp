@@ -764,7 +764,7 @@ void Client::resetState() {
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
-    return _timestamp / uint64_t( snapshotIntervalSec ) !=
+    return _timestamp / uint64_t( snapshotIntervalSec ) >
            this->last_snapshot_creation_time / uint64_t( snapshotIntervalSec );
 }
 
@@ -1207,8 +1207,10 @@ void Client::initHashes() {
         this->last_snapshoted_block_with_hash = latest_snapshots.first;
 
         // ignore second as it was "in hash computation"
-        last_snapshot_creation_time =
-            blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+        // check that both are imported!!
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        assert( h2 != h256() );
+        last_snapshot_creation_time = blockInfo( h2 ).timestamp();
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
@@ -1217,8 +1219,8 @@ void Client::initHashes() {
 
         // whether it is local or downloaded - we shall ignore it's hash but use it's time
         // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        uint64_t time_of_second =
-            blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        uint64_t time_of_second = blockInfo( h2 ).timestamp();
 
         this->last_snapshoted_block_with_hash = -1;
         last_snapshot_creation_time = time_of_second;

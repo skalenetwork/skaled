@@ -459,7 +459,7 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     mgr.removeSnapshot( 1 );
     mgr.removeSnapshot( 2 );
 
-    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::SnapshotAbsent );
     BOOST_REQUIRE_THROW( mgr.removeSnapshot( 3 ), SnapshotManager::SnapshotAbsent );
 }
 

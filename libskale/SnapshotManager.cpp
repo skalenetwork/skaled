@@ -246,6 +246,8 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
     }
+
+    fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
 }
 
 // exeptions: filesystem

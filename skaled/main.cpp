@@ -1627,14 +1627,35 @@ int main( int argc, char** argv ) try {
 
                     if ( calculated_hash == voted_hash.first )
                         successfullDownload = true;
-                    else
+                    else {
                         snapshotManager->removeSnapshot( blockNumber );
+                        present = false;
+                        clog( VerbosityWarning, "main" )
+                            << "Removing local snapshot " << blockNumber << " because of bad hash";
+                    }
                 }
 
                 size_t n_found = list_urls_to_download.size();
 
                 if ( n_found == 0 )
                     continue;
+
+                // remove all unneeded snapshots
+                for ( ;; ) {
+                    auto last2 = snapshotManager->getLatestSnasphots();
+
+                    int to_remove = 0;
+                    if ( last2.second && last2.second != blockNumber )
+                        to_remove = last2.second;
+                    else if ( last2.first && last2.first != blockNumber )
+                        to_remove = last2.first;
+                    if ( to_remove == 0 )
+                        break;
+
+                    clog( VerbosityWarning, "main" ) << "Removing unused snapshot " << to_remove;
+                    snapshotManager->removeSnapshot( to_remove );
+                }  // for
+
                 size_t shift = rand() % n_found;
 
                 for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
