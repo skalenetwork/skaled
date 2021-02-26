@@ -152,7 +152,7 @@ public:
     std::string getTrafficStatsDescription( bool isColored = false ) const;
     nlohmann::json toJSON( time_point tpNow, bool bSkipEmptyStats = true ) const;
     nlohmann::json toJSON( bool bSkipEmptyStats = true ) const;
-    static size_t g_nDefaultEventQueueSizeForWebSocket;
+    static size_t g_nSizeDefaultOnQueueAdd;
     static const char g_strEventNameWebSocketFail[];
     static const char g_strEventNameWebSocketMessagesRecvText[];
     static const char g_strEventNameWebSocketMessagesRecvBinary[];
@@ -210,7 +210,7 @@ public:
 
 class basic_network_settings {
 public:
-    uint64_t interval_ping_;                                       // seconds
+    // uint64_t interval_ping_;                                    // seconds
     uint64_t timeout_pong_;                                        // seconds
     uint64_t timeout_handshake_open_, timeout_handshake_close_;    // seconds
     size_t max_message_size_, max_body_size_;                      // bytes

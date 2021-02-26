@@ -484,11 +484,27 @@ bool read_headers( stream& strm, map_headers& headers ) {
             return false;
         if ( !strcmp( reader.ptr(), g_strCrLf ) )
             break;
-        std::cmatch m;
-        if ( std::regex_match( reader.ptr(), m, re ) ) {
-            auto key = std::string( m[1] );
-            auto val = std::string( m[2] );
-            headers.emplace( key, val );
+        try {
+            std::cmatch m;
+            if ( std::regex_match( reader.ptr(), m, re ) ) {
+                auto key = std::string( m[1] );
+                auto val = std::string( m[2] );
+                headers.emplace( key, val );
+            }
+        } catch ( const std::exception& ex ) {
+            std::string sw = ex.what();
+            if ( sw.empty() )
+                sw = "unknown error";
+            std::cerr.flush();
+            std::cerr << "HTTP server got \"" << sw
+                      << "\" exception and failed to parse headers line: " << reader.ptr() << "\n";
+            std::cerr.flush();
+            return false;
+        } catch ( ... ) {
+            std::cerr.flush();
+            std::cerr << "HTTP server failed to parse headers line: " << reader.ptr() << "\n";
+            std::cerr.flush();
+            return false;
         }
     }
     return true;
@@ -802,12 +818,28 @@ bool parse_multipart_formdata(
         auto header = body.substr( pos, ( next_pos - pos ) );
 
         while ( pos != next_pos ) {
-            std::smatch m;
-            if ( std::regex_match( header, m, re_content_type ) ) {
-                file.content_type_ = m[1];
-            } else if ( std::regex_match( header, m, re_content_disposition ) ) {
-                name = m[1];
-                file.filename_ = m[2];
+            try {
+                std::smatch m;
+                if ( std::regex_match( header, m, re_content_type ) ) {
+                    file.content_type_ = m[1];
+                } else if ( std::regex_match( header, m, re_content_disposition ) ) {
+                    name = m[1];
+                    file.filename_ = m[2];
+                }
+            } catch ( const std::exception& ex ) {
+                std::string sw = ex.what();
+                if ( sw.empty() )
+                    sw = "unknown error";
+                std::cerr.flush();
+                std::cerr << "HTTP server got \"" << sw
+                          << "\" exception and failed to parse multipart line: " << header << "\n";
+                std::cerr.flush();
+                return false;
+            } catch ( ... ) {
+                std::cerr.flush();
+                std::cerr << "HTTP server failed to parse multipart line: " << header << "\n";
+                std::cerr.flush();
+                return false;
             }
 
             pos = next_pos + g_nSizeOfCrLf;
@@ -1711,21 +1743,35 @@ void server::stop() {
 }
 
 bool server::parse_request_line( const char* s, request& req ) {
-    static std::regex re(
-        "(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) "
-        "(([^?]+)(?:\\?(.+?))?) (HTTP/1\\.[01])\r\n" );
-    std::cmatch m;
-    if ( std::regex_match( s, m, re ) ) {
-        req.version_ = std::string( m[5] );
-        req.method_ = std::string( m[1] );
-        req.target_ = std::string( m[2] );
-        req.path_ = detail::decode_url( m[3] );
-        // parse query text
-        auto len = std::distance( m[4].first, m[4].second );
-        if ( len > 0 ) {
-            detail::parse_query_text( m[4], req.params_ );
+    try {
+        static std::regex re(
+            "(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) "
+            "(([^?]+)(?:\\?(.+?))?) (HTTP/1\\.[01])\r\n" );
+        std::cmatch m;
+        if ( std::regex_match( s, m, re ) ) {
+            req.version_ = std::string( m[5] );
+            req.method_ = std::string( m[1] );
+            req.target_ = std::string( m[2] );
+            req.path_ = detail::decode_url( m[3] );
+            // parse query text
+            auto len = std::distance( m[4].first, m[4].second );
+            if ( len > 0 ) {
+                detail::parse_query_text( m[4], req.params_ );
+            }
+            return true;
         }
-        return true;
+    } catch ( const std::exception& ex ) {
+        std::string sw = ex.what();
+        if ( sw.empty() )
+            sw = "unknown error";
+        std::cerr.flush();
+        std::cerr << "HTTP server got \"" << sw << "\" exception and failed to parse line: " << s
+                  << "\n";
+        std::cerr.flush();
+    } catch ( ... ) {
+        std::cerr.flush();
+        std::cerr << "HTTP server failed to parse line: " << s << "\n";
+        std::cerr.flush();
     }
     return false;
 }
@@ -1976,9 +2022,23 @@ bool server::dispatch_request( request& req, response& res, Handlers& handlers )
     for ( const auto& x : handlers ) {
         const auto& pattern = x.first;
         const auto& handler = x.second;
-        if ( std::regex_match( req.path_, req.matches_, pattern ) ) {
-            handler( req, res );
-            return true;
+        try {
+            if ( std::regex_match( req.path_, req.matches_, pattern ) ) {
+                handler( req, res );
+                return true;
+            }
+        } catch ( const std::exception& ex ) {
+            std::string sw = ex.what();
+            if ( sw.empty() )
+                sw = "unknown error";
+            std::cerr.flush();
+            std::cerr << "HTTP server got \"" << sw
+                      << "\" exception and failed to parse request: " << req.path_ << "\n";
+            std::cerr.flush();
+        } catch ( ... ) {
+            std::cerr.flush();
+            std::cerr << "HTTP server failed to parse request: " << req.path_ << "\n";
+            std::cerr.flush();
         }
     }
     return false;
@@ -2207,11 +2267,27 @@ bool client::read_response_line( stream& strm, response& res ) {
     if ( !reader.getline() ) {
         return false;
     }
-    const static std::regex re( "(HTTP/1\\.[01]) (\\d+?) .*\r\n" );
-    std::cmatch m;
-    if ( std::regex_match( reader.ptr(), m, re ) ) {
-        res.version_ = std::string( m[1] );
-        res.status_ = std::stoi( std::string( m[2] ) );
+    try {
+        const static std::regex re( "(HTTP/1\\.[01]) (\\d+?) .*\r\n" );
+        std::cmatch m;
+        if ( std::regex_match( reader.ptr(), m, re ) ) {
+            res.version_ = std::string( m[1] );
+            res.status_ = std::stoi( std::string( m[2] ) );
+        }
+    } catch ( const std::exception& ex ) {
+        std::string sw = ex.what();
+        if ( sw.empty() )
+            sw = "unknown error";
+        std::cerr.flush();
+        std::cerr << "HTTP server got \"" << sw
+                  << "\" exception and failed to parse response line: " << reader.ptr() << "\n";
+        std::cerr.flush();
+        return false;
+    } catch ( ... ) {
+        std::cerr.flush();
+        std::cerr << "HTTP server failed to parse response line: " << reader.ptr() << "\n";
+        std::cerr.flush();
+        return false;
     }
     return true;
 }

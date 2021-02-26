@@ -332,6 +332,8 @@ int64_t utcTime();
 
 class ExitHandler {
 public:
+    enum { KILL_TIMEOUT = 40 };
+
     enum exit_code_t {
         ec_success = 0,
         ec_failure = 1,  // same as EXIT_FAILURE in stdlib.h, generic failure in main()
@@ -353,6 +355,8 @@ private:
     static volatile bool s_shouldExit;
     static volatile int m_signal;
     static volatile exit_code_t g_ec;
+
+    ExitHandler() = delete;
 };
 
 }  // namespace dev

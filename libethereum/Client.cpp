@@ -648,8 +648,6 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         usleep( 1000 );
     }
 
-    cout << "isSealed: " << m_working.isSealed() << endl;
-
     resyncStateFromChain();
 
     Timer timer;
@@ -702,10 +700,6 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     assert( m_skaleHost );
-
-    // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-    for ( auto const& h : _blocks )
-        LOG( m_loggerDetail ) << cc::debug( "Live block: " ) << h;
 
     m_skaleHost->noteNewBlocks();
 
@@ -808,7 +802,7 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_logger ) << cc::notice( "Mining Beneficiary: " ) << author();
+    LOG( m_logger ) << cc::notice( "Client::startSealing: " ) << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
@@ -914,8 +908,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     RLPStream headerRlp;
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
-    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
-                    << cc::num10( BlockHeader( header, HeaderData ).number() );
+    BlockHeader header_struct( header, HeaderData );
+    LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
+                    << " (" << header_struct.hash() << ")";
+
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );

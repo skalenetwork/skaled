@@ -63,37 +63,7 @@ public:
 class SnapshotHashAgent {
 public:
     SnapshotHashAgent(
-        const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" )
-        : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
-        this->hashes_.resize( n_ );
-        this->signatures_.resize( n_ );
-        this->public_keys_.resize( n_ );
-        this->is_received_.resize( n_ );
-        for ( size_t i = 0; i < n_; ++i ) {
-            this->is_received_[i] = false;
-        }
-
-        this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
-        if ( common_public_key == "" ) {
-            this->common_public_key_.X.c0 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-            this->common_public_key_.X.c1 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-            this->common_public_key_.Y.c0 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-            this->common_public_key_.Y.c1 =
-                libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
-            this->common_public_key_.Z = libff::alt_bn128_Fq2::one();
-        } else {
-            std::vector< std::string > coords;
-            boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
-            common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
-            common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
-            common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
-            common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
-            common_public_key_.Z = libff::alt_bn128_Fq2::one();
-        }
-    }
+        const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" );
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
@@ -115,6 +85,7 @@ private:
     libff::alt_bn128_G2 common_public_key_;
 
     bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
+    void readPublicKeyFromConfig();
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
     size_t verifyAllData() const;

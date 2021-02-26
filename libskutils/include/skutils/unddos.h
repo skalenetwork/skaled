@@ -103,6 +103,7 @@ typedef std::vector< origin_entry_setting > origin_entry_settings_t;
 
 class settings {
 public:
+    bool enabled_ = true;
     origin_entry_settings_t origins_;
     settings();
     settings( const settings& other );

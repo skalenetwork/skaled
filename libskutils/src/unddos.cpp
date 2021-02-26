@@ -288,12 +288,15 @@ settings& settings::operator=( const settings& other ) {
 }
 
 bool settings::empty() const {
+    if ( !enabled_ )
+        return true;
     if ( !origins_.empty() )
         return false;
     return true;
 }
 
 void settings::clear() {
+    enabled_ = true;
     origins_.clear();
 }
 
@@ -301,6 +304,7 @@ settings& settings::assign( const settings& other ) {
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
     clear();
+    enabled_ = other.enabled_;
     origins_ = other.origins_;
     return ( *this );
 }
@@ -361,6 +365,13 @@ void settings::fromJSON( const nlohmann::json& jo ) {
             }
         }
     }
+    bool isEnabled = true;
+    if ( jo.find( "enabled" ) != jo.end() ) {
+        const nlohmann::json& joEnabled = jo["enabled"];
+        if ( joEnabled.is_boolean() )
+            isEnabled = joEnabled.get< bool >();
+    }
+    enabled_ = isEnabled;
 }
 
 void settings::toJSON( nlohmann::json& jo ) const {
@@ -371,6 +382,7 @@ void settings::toJSON( nlohmann::json& jo ) const {
         oe.toJSON( joOrigin );
         joOrigins.push_back( joOrigin );
     }
+    jo["enabled"] = enabled_;
     jo["origins"] = joOrigins;
 }
 
@@ -600,6 +612,8 @@ algorithm& algorithm::operator=( const settings& st ) {
 
 size_t algorithm::unload_old_data_by_time_to_past(
     time_tick_mark ttmNow, duration durationToPast ) {
+    if ( !settings_.enabled_ )
+        return 0;
     if ( durationToPast == duration( 0 ) )
         return 0;
     adjust_now_tick_mark( ttmNow );
@@ -622,6 +636,8 @@ size_t algorithm::unload_old_data_by_time_to_past(
 
 e_high_load_detection_result_t algorithm::register_call_from_origin(
     const char* origin, const char* strMethod, time_tick_mark ttmNow, duration durationToPast ) {
+    if ( !settings_.enabled_ )
+        return e_high_load_detection_result_t::ehldr_no_error;
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
     adjust_now_tick_mark( ttmNow );
@@ -659,6 +675,8 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
 }
 
 bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
+    if ( !settings_.enabled_ )
+        return false;
     if ( origin == nullptr || origin[0] == '\0' )
         return true;
     lock_type lock( mtx_ );
@@ -673,6 +691,8 @@ bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
 }
 
 e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const char* origin ) {
+    if ( !settings_.enabled_ )
+        return e_high_load_detection_result_t::ehldr_no_error;
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
     lock_type lock( mtx_ );
@@ -690,13 +710,19 @@ e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const cha
 }
 
 bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
-    if ( origin == nullptr || origin[0] == '\0' )
+    if ( origin == nullptr || origin[0] == '\0' ) {
+        if ( !settings_.enabled_ )
+            return true;
         return false;
+    }
     lock_type lock( mtx_ );
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
-    if ( itFind == itEnd )
+    if ( itFind == itEnd ) {
+        if ( !settings_.enabled_ )
+            return true;
         return false;
+    }
     if ( itFind->second >= 1 )
         --itFind->second;
     if ( itFind->second == 0 )

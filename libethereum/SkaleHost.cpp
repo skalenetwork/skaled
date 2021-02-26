@@ -74,7 +74,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     std::cout.flush();
     //
     auto ts = nfo.timestamp();
-    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts );
+    auto consensus_engine_ptr =
+        make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0 );
 
     if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
         this->fillSgxInfo( *consensus_engine_ptr );
@@ -228,7 +229,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_debugLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
+    LOG( m_traceLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
                          << cc::debug( " got_from_consensus = " ) << total_arrived
                          << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
@@ -454,7 +455,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-    uint64_t /*_winningNodeIndex*/ ) try {
+    uint64_t _winningNodeIndex ) try {
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
@@ -477,7 +478,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
 
-    LOG( m_traceLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
+    LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
 
@@ -494,6 +495,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
+        // FATAL if mismatch on non-empty block
         if ( _approvedTransactions.size() > 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
@@ -509,10 +511,22 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
 
-        if ( _approvedTransactions.size() == 0 && _stateRoot != u256() )
+        // WARN if mismatch in non-default
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot )
+            clog( VerbosityError, "skale-host" )
+                << cc::error( "ERROR: STATE ROOT MISMATCH in empty but non-default block!" )
+                << cc::error( " Current state root " )
+                << cc::warn( dev::h256::Arith( stCurrent ).str() )
+                << cc::error( " is not equal to arrived state root " )
+                << cc::warn( _stateRoot.str() ) << cc::warn( " with block ID " )
+                << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
+                << cc::error( " is other node outdated?" );
+
+        // WARN if default but non-zero
+        if ( _winningNodeIndex == 0 && _stateRoot != u256() )
             clog( VerbosityWarning, "skale-host" )
                 << cc::warn( "WARNING: STATE ROOT MISMATCH!" )
-                << cc::warn( " Current block is empty BUT arrived state root is " )
+                << cc::warn( " Current block is DEFAULT BUT arrived state root is " )
                 << cc::warn( _stateRoot.str() ) << cc::warn( " with block ID " )
                 << cc::notice( "#" ) << cc::num10( _blockID );
     }
@@ -594,7 +608,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
-    LOG( m_traceLogger ) << cc::success( "Successfully imported " ) << n_succeeded
+    LOG( m_debugLogger ) << cc::success( "Successfully imported " ) << n_succeeded
                          << cc::success( " of " ) << out_txns.size()
                          << cc::success( " transactions" ) << std::endl;
 
