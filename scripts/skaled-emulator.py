@@ -9,12 +9,7 @@ import signal
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 
-error_download = 0
-error_working = 0
-error_terminating = 0
-corrupted_db = False
-download_duration = 0
-work_duration = 0
+import random
 
 def check_dir(path):
     print(f"Checking {path}:")
@@ -32,7 +27,7 @@ def handler(signum, dummy):
     print(f"Got signal {signum}")
     if error_terminating > 0:
         print(f"Hanging for 40s and exit {error_terminating}")
-        time.sleep(40)
+        time.sleep(4)
         sys.exit(error_terminating)
     else:
         print("Finishing successfully")
@@ -83,6 +78,52 @@ else:
 
 listen_port = args.http_port
 
+########################## start work #########################################
+
+# randomly select failure type
+
+error_download = 0
+error_working = 0
+error_terminating = 0
+
+corrupted_db = False
+
+download_duration = 0
+work_duration = 0
+
+if args.download_snapshot:
+    r = random.randint(1, 5)
+else:
+    r = random.randint(2, 4)
+
+if   r == 1:
+    error_download = 1
+elif r == 2:
+    error_working = 1
+elif r == 3:
+    error_working = 200
+    corrupted_db = True
+#elif r == 4:
+#    error_workig = 1
+#    corrupted_db = True
+else:
+    pass
+
+r = random.randint(0, 2)
+if r == 0:
+    error_terminating = 14
+
+print("\nFailure configuration:")
+print(f"error_download = {error_download}")
+print(f"error_working = {error_working}")
+print(f"corrupted_db = {corrupted_db}")
+print(f"error_terminating = {error_terminating}")
+print(f"download_duration = {download_duration}")
+print(f"work_duration = {work_duration}")
+
+##############################
+
+
 print("\nEmulating work")
 
 if args.download_snapshot:
@@ -90,9 +131,11 @@ if args.download_snapshot:
     
     if not os.path.isdir(data_dir):
         fail(f"{data_dir} absent")
-    if len(os.listdir(data_dir)) != 0:
-        fail(f"{data_dir} not empty")
-        
+    if len(os.listdir(data_dir)) > 0:
+        print(f"WARNING unclean data_dir {data_dir}")
+        if os.path.isfile(f"{data_dir}/corrupted_snapshot.txt"):
+            os.unlink(f"{data_dir}/corrupted_snapshot.txt")
+
     if len(glob.glob(f"{DATA_DIR}/*.db")) > 0:
         fail(f"found existing {DATA_DIR}/*.db")
 
@@ -119,8 +162,10 @@ if not os.path.isdir(data_dir):
 if os.path.isfile(f"{data_dir}/corrupted_snapshot.txt"):
     fail(f"started with corrupted downloaded snapshot in data_dir: {data_dir}")
 if os.path.isfile(f"{data_dir}/corrupted_db.txt"):
-    print(f"Started with corrupted data_dir: {data_dir}, exiting 1")
-    sys.exit(1)
+    with open(f"{data_dir}/corrupted_db.txt", "r") as f:
+        r = int(f.readline())
+    print(f"Started with corrupted data_dir: {data_dir}, exiting {r}")
+    sys.exit(r)
 
 ############################## check config ################################### 
 
@@ -132,14 +177,20 @@ except Exception as e:
 
 ########################## simulate short work ################################
 
+with open(data_dir+"/working.txt", "w") as f:
+    f.write(str("working ok"))
+
 if work_duration > 0:
     print("Emulating long process")
     time.sleep(work_duration)
 
 if corrupted_db:
-    print(f"Emulating data_dir corruption {data_dir}")
+    print(f"Emulating data_dir corruption")
     with open(data_dir+"/corrupted_db.txt", "w") as f:
-        f.write("I'm a corrupted db")
+        if error_working != 0:
+            f.write(str(error_working))
+        else:
+            f.write("1")
 
 if error_working > 0:
     print(f"Emulating failure {error_working}")
@@ -159,7 +210,7 @@ class RpcHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         request_length = int(self.headers['Content-Length'])
         request_content = self.rfile.read(request_length)
-        print(request_content)
+        #print(request_content)
         
         try:
             req_json = json.loads(request_content)
