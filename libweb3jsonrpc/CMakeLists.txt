@@ -134,6 +134,7 @@ target_include_directories( web3jsonrpc PRIVATE
 	)
 
 target_link_libraries( web3jsonrpc
+                consensus
 #    bls
 		ethashseal
 		skutils

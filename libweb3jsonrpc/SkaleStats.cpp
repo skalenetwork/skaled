@@ -53,6 +53,9 @@
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
 
+#include <libconsensus/SkaleCommon.h>
+#include <libconsensus/crypto/OpenSSLECDSAKey.h>
+
 namespace dev {
 
 namespace tracking {
@@ -306,6 +309,236 @@ void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcas
         broadcast_txn_erase( txe );
 }
 
+bool pending_ima_txns::broadcast_txn_sign_is_enabled() {
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            return false;
+        if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        const std::string strWalletURL =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+                "";
+        if ( strWalletURL.empty() )
+            return false;
+        return true;
+    } catch ( ... ) {
+    }
+    return false;
+}
+
+std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign ) {
+    std::string strBroadcastSignature;
+    try {
+        //
+        // Check wallet URL and keyShareName for future use,
+        // fetch SSL options for SGX
+        //
+        skutils::url u;
+        skutils::http::SSL_client_options optsSSL;
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_ecdsaKeyName =
+            joSkaleConfig_nodeInfo["ecdsaKeyName"];
+        std::string strEcdsaKeyName = joSkaleConfig_nodeInfo_ecdsaKeyName.get< std::string >();
+        if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        const std::string strWalletURL =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+                "";
+        if ( strWalletURL.empty() )
+            throw std::runtime_error( "empty wallet url" );
+        u = skutils::url( strWalletURL );
+        if ( u.scheme().empty() || u.host().empty() )
+            throw std::runtime_error( "bad wallet url" );
+        //
+        //
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "caFile" ) > 0 )
+                optsSSL.ca_file = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.ca_file.clear();
+        }
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
+                optsSSL.client_cert = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_cert.clear();
+        }
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
+                optsSSL.client_key = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_key.clear();
+        }
+        //
+        //
+        //
+        dev::u256 hashToSign =
+            dev::sha3( bytesConstRef( ( unsigned char* ) ( strToSign ? strToSign : "" ),
+                strToSign ? strlen( strToSign ) : 0 ) );
+        std::string strHashToSign = dev::toJS( hashToSign );
+        //
+        //
+        //
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "ecdsaSignMessageHash";
+        joCall["params"] = nlohmann::json::object();
+        joCall["params"]["base"] = 16;
+        joCall["params"]["keyName"] = strEcdsaKeyName;
+        joCall["params"]["messageHash"] = strHashToSign;
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( " Contacting " ) + cc::notice( "SGX Wallet" ) +
+                   cc::debug( " server at " ) + cc::u( u ) );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( " Will send " ) + cc::notice( "ECDSA sign query" ) +
+                   cc::debug( " to wallet: " ) + cc::j( joCall ) );
+        skutils::rest::client cli;
+        cli.optsSSL = optsSSL;
+        cli.open( u );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( d.empty() )
+            throw std::runtime_error( "failed to sign message(s) with wallet" );
+        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        std::string r = joSignResult["signature_r"].get< std::string >();
+        std::string v = joSignResult["signature_v"].get< std::string >();
+        std::string s = joSignResult["signature_s"].get< std::string >();
+        strBroadcastSignature = v + ":" + r.substr( 2 ) + ":" + s.substr( 2 );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::fatal( "BROADCAST SIGN ERROR:" ) + " " + cc::warn( ex.what() ) );
+        strBroadcastSignature = "";
+    } catch ( ... ) {
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::fatal( "BROADCAST SIGN ERROR:" ) + " " + cc::warn( "unknown exception" ) );
+        strBroadcastSignature = "";
+    }
+    return strBroadcastSignature;
+}
+
+std::string pending_ima_txns::broadcast_txn_compose_string(
+    const char* strActionName, const dev::u256& tx_hash ) {
+    std::string strToSign;
+    strToSign += strActionName ? strActionName : "N/A";
+    strToSign += ":";
+    strToSign += dev::toJS( tx_hash );
+    return strToSign;
+}
+
+std::string pending_ima_txns::broadcast_txn_sign(
+    const char* strActionName, const dev::u256& tx_hash ) {
+    std::string strToSign = broadcast_txn_compose_string( strActionName, tx_hash );
+    std::string strBroadcastSignature = broadcast_txn_sign_string( strToSign.c_str() );
+    return strBroadcastSignature;
+}
+
+std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) {
+    std::string strEcdsaPublicKey;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig.count( "sChain" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
+        if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+        const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
+        for ( auto& joNode : joSkaleConfig_sChain_nodes ) {
+            if ( !joNode.is_object() )
+                continue;
+            if ( joNode.count( "nodeID" ) == 0 )
+                continue;
+            int walk_id = joNode["nodeID"].get< int >();
+            if ( walk_id != node_id )
+                continue;
+            if ( joNode.count( "publicKey" ) == 0 )
+                continue;
+            strEcdsaPublicKey = joNode["publicKey"].get< std::string >();
+            break;
+        }
+    } catch ( ... ) {
+        strEcdsaPublicKey = "";
+    }
+    return strEcdsaPublicKey;
+}
+
+int pending_ima_txns::broadcast_txn_get_node_id() {
+    int node_id = 0;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "nodeID" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"nodeID\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_nodeID = joSkaleConfig_nodeInfo["nodeID"];
+        node_id = joSkaleConfig_nodeInfo_nodeID.get< int >();
+    } catch ( ... ) {
+        node_id = 0;
+    }
+    return node_id;
+}
+
+bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
+    const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
+    std::string strEcdsaPublicKey = broadcast_txn_get_ecdsa_public_key( node_id );
+    auto key = OpenSSLECDSAKey::importSGXPubKey( strEcdsaPublicKey );
+    bytes v = dev::BMPBN::encode2vec< dev::u256 >( tx_hash, true );
+    return key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+}
+
 void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     dev::u256 tx_hash = txe.hash_;
@@ -316,12 +549,21 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
         if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
             throw std::runtime_error(
                 "failed to extract S-Chain node information from config JSON" );
+        nlohmann::json joParams = jo_tx;  // copy
+        std::string strBroadcastSignature = broadcast_txn_sign( "insert", tx_hash );
+        if ( !strBroadcastSignature.empty() ) {
+            joParams["broadcastSignature"] = strBroadcastSignature;
+            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
+        }
+        clog( VerbosityTrace, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
+                   cc::info( "inserted TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                   cc::debug( ": " ) + cc::j( joParams ) );
         size_t i, cnt = vecURLs.size();
         for ( i = 0; i < cnt; ++i ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -372,12 +614,21 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
         if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
             throw std::runtime_error(
                 "failed to extract S-Chain node information from config JSON" );
+        nlohmann::json joParams = jo_tx;  // copy
+        std::string strBroadcastSignature = broadcast_txn_sign( "erase", tx_hash );
+        if ( !strBroadcastSignature.empty() ) {
+            joParams["broadcastSignature"] = strBroadcastSignature;
+            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
+        }
+        clog( VerbosityTrace, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
+                   cc::info( "erased TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                   cc::debug( ": " ) + cc::j( joParams ) );
         size_t i, cnt = vecURLs.size();
         for ( i = 0; i < cnt; ++i ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -2607,6 +2858,20 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
+        if ( broadcast_txn_sign_is_enabled() ) {
+            if ( joRequest.count( "broadcastSignature" ) > 0 &&
+                 joRequest.count( "broadcastFromNode" ) > 0 ) {
+                std::string strBroadcastSignature =
+                    joRequest["broadcastSignature"].get< std::string >();
+                int node_id = joRequest["broadcastFromNode"].get< int >();
+                if ( !broadcast_txn_verify_signature(
+                         "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+                    throw std::runtime_error(
+                        "IMA broadcast/insert call without broadcast/signature fields detected" );
+            } else
+                throw std::runtime_error(
+                    "IMA broadcast/insert call without broadcast/signature fields detected" );
+        }
         bool wasInserted = insert( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
@@ -2656,6 +2921,20 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
+        if ( broadcast_txn_sign_is_enabled() ) {
+            if ( joRequest.count( "broadcastSignature" ) > 0 &&
+                 joRequest.count( "broadcastFromNode" ) > 0 ) {
+                std::string strBroadcastSignature =
+                    joRequest["broadcastSignature"].get< std::string >();
+                int node_id = joRequest["broadcastFromNode"].get< int >();
+                if ( !broadcast_txn_verify_signature(
+                         "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+                    throw std::runtime_error(
+                        "IMA broadcast/erase call without broadcast/signature fields detected" );
+            } else
+                throw std::runtime_error(
+                    "IMA broadcast/erase call without broadcast/signature fields detected" );
+        }
         bool wasErased = erase( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
