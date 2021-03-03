@@ -363,7 +363,7 @@ int main( int argc, char** argv ) try {
                 sleep( ExitHandler::KILL_TIMEOUT );
                 std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
                           << std::endl;
-                _exit( 14 );
+                _exit( ExitHandler::requestedExitCode() );
             } )
                 .detach();
         }
