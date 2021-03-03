@@ -479,7 +479,7 @@ std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) 
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        // const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
@@ -531,7 +531,7 @@ int pending_ima_txns::broadcast_txn_get_node_id() {
     return node_id;
 }
 
-bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
+bool pending_ima_txns::broadcast_txn_verify_signature( const char* /*strActionName*/,
     const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
     std::string strEcdsaPublicKey = broadcast_txn_get_ecdsa_public_key( node_id );
     auto key = OpenSSLECDSAKey::importSGXPubKey( strEcdsaPublicKey );
