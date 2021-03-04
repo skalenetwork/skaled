@@ -498,6 +498,7 @@ protected:
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
+    mutex_type mtxStats_;
     skutils::stats::named_event_stats statsBlocks_, statsTransactions_, statsPendingTx_;
     nlohmann::json generateBlocksStats();
 
