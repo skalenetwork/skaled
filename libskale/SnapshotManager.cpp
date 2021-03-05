@@ -25,6 +25,7 @@
 #include "SnapshotManager.h"
 
 #include <libdevcore/LevelDB.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
 #include <skutils/btrfs.h>
 
@@ -248,6 +249,54 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
     }
 
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
+}
+
+void SnapshotManager::cleanup() {
+    this->cleanupDirectory( this->snapshots_dir );
+    this->cleanupDirectory( this->data_dir );
+    try {
+        fs::create_directory( snapshots_dir );
+        fs::remove_all( diffs_dir );
+        fs::create_directory( diffs_dir );
+    } catch ( const fs::filesystem_error& ex ) {
+        std::throw_with_nested( CannotWrite( ex.path1() ) );
+    }  // catch
+
+    for ( const auto& vol : this->volumes )
+        try {
+            // throw if it is present but is NOT btrfs
+            if ( fs::exists( this->data_dir / vol ) &&
+                 0 != btrfs.present( ( this->data_dir / vol ).c_str() ) )
+                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+
+            // Ignoring exception
+            btrfs.subvolume.create( ( this->data_dir / vol ).c_str() );
+
+        } catch ( const fs::filesystem_error& ex ) {
+            throw_with_nested( CannotRead( ex.path1() ) );
+        }
+}
+
+void SnapshotManager::cleanupDirectory( const boost::filesystem::path& p ) {
+    // remove all
+    boost::filesystem::directory_iterator it( p ), end;
+
+    while ( it != end ) {
+        if ( !boost::filesystem::is_regular_file( it->path() ) ) {
+            try {
+                // not a btrfs - delete
+                boost::filesystem::remove_all( it->path() );
+            } catch ( const boost::filesystem::filesystem_error& ) {
+                int res = btrfs.subvolume._delete( it->path().c_str() );
+
+                if ( res != 0 ) {
+                    ++it;
+                    std::throw_with_nested( CannotDelete( it->path() ) );
+                }
+            }
+        }
+        ++it;
+    }
 }
 
 // exeptions: filesystem

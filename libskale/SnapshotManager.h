@@ -146,6 +146,7 @@ public:
     void importDiff( unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _toBlock );
     void removeSnapshot( unsigned _blockNumber );
+    void cleanup();
 
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
@@ -163,6 +164,8 @@ private:
 
     static const std::string snapshot_hash_file_name;
     mutable std::mutex hash_file_mutex;
+
+    void cleanupDirectory( const boost::filesystem::path& p );
 
     void computeFileSystemHash( const boost::filesystem::path& _fileSystemDir,
         secp256k1_sha256_t* ctx, bool is_checking ) const;

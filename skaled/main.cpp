@@ -1606,6 +1606,14 @@ int main( int argc, char** argv ) try {
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
                 }
 
+                try {
+                    clog( VerbosityInfo, "main" )
+                        << cc::notice( "Will cleanup data dir and snasphots dir" );
+                    snapshotManager->cleanup();
+                } catch ( const std::exception& ex ) {
+                    clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
+                }
+
                 bool present = false;
                 dev::h256 calculated_hash;
 
@@ -1639,22 +1647,6 @@ int main( int argc, char** argv ) try {
 
                 if ( n_found == 0 )
                     continue;
-
-                // remove all unneeded snapshots
-                for ( ;; ) {
-                    auto last2 = snapshotManager->getLatestSnasphots();
-
-                    int to_remove = 0;
-                    if ( last2.second && last2.second != blockNumber )
-                        to_remove = last2.second;
-                    else if ( last2.first && last2.first != blockNumber )
-                        to_remove = last2.first;
-                    if ( to_remove == 0 )
-                        break;
-
-                    clog( VerbosityWarning, "main" ) << "Removing unused snapshot " << to_remove;
-                    snapshotManager->removeSnapshot( to_remove );
-                }  // for
 
                 size_t shift = rand() % n_found;
 
