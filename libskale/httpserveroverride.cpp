@@ -2008,6 +2008,7 @@ SkaleServerOverride::SkaleServerOverride(
             dev::h256 h = block.info().hash();
             dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
             size_t cntTXs = arrTxHashes.size();
+            lock_type lock( mtxStats_ );
             statsBlocks_.event_add( "blocks", 1 );
             statsTransactions_.event_add( "transactions", cntTXs );
         };
@@ -2023,6 +2024,7 @@ SkaleServerOverride::SkaleServerOverride(
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
             fnOnSunscriptionEvent =
                 [this]( const unsigned& /*iw*/, const dev::eth::Transaction & /*tx*/ ) -> void {
+            lock_type lock( mtxStats_ );
             statsPendingTx_.event_add( "transactionsPending", 1 );
         };
         statsPendingTx_.event_queue_add( "transactionsPending",
@@ -2047,6 +2049,7 @@ SkaleServerOverride::~SkaleServerOverride() {
 }
 
 nlohmann::json SkaleServerOverride::generateBlocksStats() {
+    lock_type lock( mtxStats_ );
     nlohmann::json joStats = nlohmann::json::object();
     skutils::stats::time_point tpNow = skutils::stats::clock::now();
     const double lfBlocksPerSecond = statsBlocks_.compute_eps_smooth( "blocks", tpNow );
