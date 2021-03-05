@@ -85,8 +85,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
-        bool isStartedFromSnapshot = false );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
     virtual ~Client();
 
@@ -495,7 +494,6 @@ private:
     int64_t last_snapshot_creation_time = 0;
     // usually this is snapshot before last!
     int64_t last_snapshoted_block_with_hash = -1;
-    bool is_started_from_snapshot = true;
     const static dev::h256 empty_str_hash;
 
 public:
