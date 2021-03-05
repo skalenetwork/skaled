@@ -6,12 +6,12 @@ BOOST_AUTO_TEST_SUITE( rest )
 
 BOOST_AUTO_TEST_CASE( http ) {
     skutils::test::test_print_header_name( "SkUtils/rest/call/http" );
-    skutils::test::test_protocol_rest_call( "http", skutils::test::g_nDefaultPort, true, true );
+    skutils::test::test_protocol_rest_call( "http", skutils::test::g_nDefaultPort, true, false );
 }
 
 BOOST_AUTO_TEST_CASE( https ) {
     skutils::test::test_print_header_name( "SkUtils/rest/call/https" );
-    skutils::test::test_protocol_rest_call( "https", skutils::test::g_nDefaultPort, true, true );
+    skutils::test::test_protocol_rest_call( "https", skutils::test::g_nDefaultPort, true, false );
 }
 
 BOOST_AUTO_TEST_CASE( ws ) {
