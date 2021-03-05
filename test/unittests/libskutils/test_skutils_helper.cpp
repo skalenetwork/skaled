@@ -1487,55 +1487,48 @@ void test_protocol_busy_port( const char* strProto, int nPort ) {
     } );
 }
 
-void test_protocol_rest_call( const char* strProto, int nPort ) {
-    std::atomic_bool end_of_actions_was_reached = false;
+void test_protocol_rest_call( const char* strProto, int nPort, bool tt, bool ft ) {
+    std::atomic_bool end_1_reached = false, end_2_reached = false;
     skutils::test::with_test_environment( [&]() -> void {
         skutils::test::with_test_server(
             [&]( skutils::test::test_server& /*refServer*/ ) -> void {
                 std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
                 nlohmann::json joCall =
                     skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
-                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort );
-                skutils::url u( strURL );
-                skutils::rest::client restCall( u );
-                skutils::rest::data_t dataOut = restCall.call( strCall );
-                BOOST_REQUIRE( ! dataOut.empty() );
-                nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
-                skutils::test::test_log_e( cc::info( "input" ) + cc::debug( "..........." ) + cc::normal( joCall.dump() ) );
-                skutils::test::test_log_e( cc::info( "output" ) + cc::debug( ".........." ) + cc::normal( joResult.dump() ) );
-                BOOST_REQUIRE( joCall.dump() == joResult.dump() );
-                //
-                end_of_actions_was_reached = true;
+                if( tt ) {
+                    skutils::test::test_log_e( cc::normal( "\"True test\" part startup" ) );
+                    std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort );
+                    skutils::url u( strURL );
+                    skutils::rest::client restCall( u );
+                    skutils::rest::data_t dataOut = restCall.call( strCall );
+                    BOOST_REQUIRE( ! dataOut.empty() );
+                    nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
+                    skutils::test::test_log_e( cc::info( "input" ) + cc::debug( "..........." ) + cc::normal( joCall.dump() ) );
+                    skutils::test::test_log_e( cc::info( "output" ) + cc::debug( ".........." ) + cc::normal( joResult.dump() ) );
+                    BOOST_REQUIRE( joCall.dump() == joResult.dump() );
+                    end_1_reached = true;
+                    skutils::test::test_log_e( cc::success( "\"True test\" part finish" ) );
+                }
+                if( ft ) {
+                    skutils::test::test_log_e( cc::normal( "\"False test\" part startup" ) );
+                    std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort + 123 ); // incorrect port
+                    skutils::url u( strURL );
+                    skutils::rest::client restCall( u );
+                    skutils::rest::data_t dataOut = restCall.call( strCall );
+                    skutils::test::test_log_e( cc::info( "error type" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.et_ ) ) );
+                    skutils::test::test_log_e( cc::info( "error code" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.ec_ ) ) );
+                    skutils::test::test_log_e( cc::info( "error text" ) + cc::debug( "......" ) + cc::normal( dataOut.ei_.strError_ ) );
+                    BOOST_REQUIRE( dataOut.empty() );
+                    BOOST_REQUIRE( dataOut.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error );
+                    BOOST_REQUIRE( ! dataOut.ei_.strError_.empty() );
+                    end_2_reached = true;
+                    skutils::test::test_log_e( cc::success( "\"False test\" part finish" ) );
+                }
             },
             strProto, nPort );
     } );
-    BOOST_REQUIRE( end_of_actions_was_reached );
-}
-
-void test_protocol_rest_fail( const char* strProto, const char* strProtoIncorrect, int nPort ) {
-    std::atomic_bool end_of_actions_was_reached = false;
-    skutils::test::with_test_environment( [&]() -> void {
-        skutils::test::with_test_server(
-            [&]( skutils::test::test_server& /*refServer*/ ) -> void {
-                std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
-                nlohmann::json joCall =
-                    skutils::test::ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
-                std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProtoIncorrect, nPort );
-                skutils::url u( strURL );
-                skutils::rest::client restCall( u );
-                skutils::rest::data_t dataOut = restCall.call( strCall );
-                skutils::test::test_log_e( cc::info( "error type" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.et_ ) ) );
-                skutils::test::test_log_e( cc::info( "error code" ) + cc::debug( "......" ) + cc::num10( int( dataOut.ei_.ec_ ) ) );
-                skutils::test::test_log_e( cc::info( "error text" ) + cc::debug( "......" ) + cc::normal( dataOut.ei_.strError_ ) );
-                BOOST_REQUIRE( dataOut.empty() );
-                BOOST_REQUIRE( dataOut.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error );
-                BOOST_REQUIRE( ! dataOut.ei_.strError_.empty() );
-                //
-                end_of_actions_was_reached = true;
-            },
-            strProto, nPort );
-    } );
-    BOOST_REQUIRE( end_of_actions_was_reached );
+    BOOST_REQUIRE( end_1_reached || (!tt) );
+    BOOST_REQUIRE( end_2_reached || (!ft) );
 }
 
 };  // namespace test
