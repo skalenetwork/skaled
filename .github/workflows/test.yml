@@ -106,4 +106,4 @@ jobs:
           # Uploading report to CodeCov
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
           
-      - run: sudo umount build/test/btrfs
+      - run: sudo umount build/test/btrfs || true
