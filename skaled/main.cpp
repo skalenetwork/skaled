@@ -1612,34 +1612,7 @@ int main( int argc, char** argv ) try {
                     clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
                 }
 
-                bool present = false;
                 dev::h256 calculated_hash;
-
-                try {
-                    present = snapshotManager->isSnapshotHashPresent( blockNumber );
-                    // if there is snapshot but no hash!
-                    if ( !present )
-                        snapshotManager->removeSnapshot( blockNumber );
-                } catch ( const std::exception& ex ) {
-                    // usually snapshot absent exception
-                    clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
-                }
-
-                if ( present ) {
-                    clog( VerbosityInfo, "main" )
-                        << "Snapshot for block " << blockNumber << " already present locally";
-
-                    calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
-
-                    if ( calculated_hash == voted_hash.first )
-                        successfullDownload = true;
-                    else {
-                        snapshotManager->removeSnapshot( blockNumber );
-                        present = false;
-                        clog( VerbosityWarning, "main" )
-                            << "Removing local snapshot " << blockNumber << " because of bad hash";
-                    }
-                }
 
                 size_t n_found = list_urls_to_download.size();
 
@@ -1659,8 +1632,7 @@ int main( int argc, char** argv ) try {
                             blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                         try {
-                            if ( !present )
-                                snapshotManager->computeSnapshotHash( blockNumber, true );
+                            snapshotManager->computeSnapshotHash( blockNumber, true );
                         } catch ( const std::exception& ) {
                             std::throw_with_nested( std::runtime_error(
                                 cc::fatal( "FATAL:" ) + " " +
