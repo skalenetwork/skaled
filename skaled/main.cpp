@@ -1683,7 +1683,7 @@ int main( int argc, char** argv ) try {
 
             } catch ( std::exception& ex ) {
                 clog( VerbosityWarning, "main" )
-                    << cc::warn( "Exception while getLatestSnapshotBlockNumber: " )
+                    << cc::warn( "Exception while trying to set up snapshot: " )
                     << cc::warn( dev::nested_exception_what( ex ) );
             }  // for blockNumber_url
 
