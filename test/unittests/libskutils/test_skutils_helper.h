@@ -402,8 +402,7 @@ extern void test_protocol_parallel_calls(
 
 extern void test_protocol_busy_port( const char* strProto, int nPort );
 
-extern void test_protocol_rest_call( const char* strProto, int nPort );
-extern void test_protocol_rest_fail( const char* strProto, const char* strProtoIncorrect, int nPort );
+extern void test_protocol_rest_call( const char* strProto, int nPort, bool tt, bool ft );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
