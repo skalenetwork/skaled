@@ -251,7 +251,12 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
 }
 
-void SnapshotManager::cleanup() {
+void SnapshotManager::cleanup( unsigned _keepSnapshot ) {
+    if ( _keepSnapshot != unsigned( -1 ) ) {
+        boost::filesystem::path toKeep = this->snapshots_dir / std::to_string( _keepSnapshot );
+        this->cleanupDirectory( this->snapshots_dir, toKeep );
+        return;
+    }
     this->cleanupDirectory( this->snapshots_dir );
     this->cleanupDirectory( this->data_dir );
     try {
@@ -277,12 +282,13 @@ void SnapshotManager::cleanup() {
         }
 }
 
-void SnapshotManager::cleanupDirectory( const boost::filesystem::path& p ) {
+void SnapshotManager::cleanupDirectory(
+    const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory ) {
     // remove all
     boost::filesystem::directory_iterator it( p ), end;
 
     while ( it != end ) {
-        if ( !boost::filesystem::is_regular_file( it->path() ) ) {
+        if ( !boost::filesystem::is_regular_file( it->path() ) && it->path() != _keepDirectory ) {
             try {
                 // not a btrfs - delete
                 boost::filesystem::remove_all( it->path() );

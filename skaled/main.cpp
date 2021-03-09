@@ -1604,15 +1604,42 @@ int main( int argc, char** argv ) try {
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
                 }
 
+                bool present = false;
                 try {
-                    clog( VerbosityInfo, "main" )
-                        << cc::notice( "Will cleanup data dir and snasphots dir" );
-                    snapshotManager->cleanup();
+                    present = snapshotManager->isSnapshotHashPresent( blockNumber );
+                    if ( !present ) {
+                        clog( VerbosityInfo, "main" )
+                            << cc::notice( "Will cleanup data dir and snasphots dir" );
+                        snapshotManager->cleanup();
+                    }
                 } catch ( const std::exception& ex ) {
+                    // usually snapshot absent exception
                     clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
                 }
 
                 dev::h256 calculated_hash;
+                if ( present ) {
+                    clog( VerbosityInfo, "main" )
+                        << "Snapshot for block " << blockNumber << " already present locally";
+
+                    calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                    if ( calculated_hash == voted_hash.first ) {
+                        successfullDownload = true;
+                        clog( VerbosityInfo, "main" ) << cc::notice(
+                            "Will delete all snapshots except" + std::to_string( blockNumber ) );
+                        snapshotManager->cleanup( blockNumber );
+                    } else {
+                        clog( VerbosityInfo, "main" )
+                            << cc::notice( "Will cleanup data dir and snasphots dir" );
+                        snapshotManager->cleanup();
+                        present = false;
+                    }
+                } else {
+                    clog( VerbosityInfo, "main" )
+                        << cc::notice( "Will cleanup data dir and snasphots dir" );
+                    snapshotManager->cleanup();
+                }
 
                 size_t n_found = list_urls_to_download.size();
 
@@ -1632,7 +1659,8 @@ int main( int argc, char** argv ) try {
                             blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                         try {
-                            snapshotManager->computeSnapshotHash( blockNumber, true );
+                            if ( !present )
+                                snapshotManager->computeSnapshotHash( blockNumber, true );
                         } catch ( const std::exception& ) {
                             std::throw_with_nested( std::runtime_error(
                                 cc::fatal( "FATAL:" ) + " " +
