@@ -295,15 +295,10 @@ void SnapshotManager::cleanupDirectory(
             } catch ( const boost::filesystem::filesystem_error& ) {
                 int res = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
                 if ( res != 0 ) {
-                    ++it;
                     std::throw_with_nested( CannotDelete( it->path() ) );
                 }
 
-                res = btrfs.subvolume._delete( ( it->path() ).c_str() );
-                if ( res != 0 ) {
-                    ++it;
-                    std::throw_with_nested( CannotDelete( it->path() ) );
-                }
+                boost::filesystem::remove_all( it->path() );
             }
         }
         ++it;

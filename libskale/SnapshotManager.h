@@ -146,7 +146,7 @@ public:
     void importDiff( unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _toBlock );
     void removeSnapshot( unsigned _blockNumber );
-    void cleanup( unsigned _keepSnapshot = -1 );
+    void cleanup( unsigned _keepSnapshot = unsigned( -1 ) );
 
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
