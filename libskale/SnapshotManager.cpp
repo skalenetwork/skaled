@@ -289,16 +289,17 @@ void SnapshotManager::cleanupDirectory(
 
     while ( it != end ) {
         if ( !boost::filesystem::is_regular_file( it->path() ) && it->path() != _keepDirectory ) {
+            int res = 0;
             try {
-                // not a btrfs - delete
-                boost::filesystem::remove_all( it->path() );
-            } catch ( const boost::filesystem::filesystem_error& ) {
-                int res = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
-                if ( res != 0 ) {
-                    std::throw_with_nested( CannotDelete( it->path() ) );
-                }
+                res = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
 
                 boost::filesystem::remove_all( it->path() );
+            } catch ( boost::filesystem::filesystem_error& ) {
+                if ( res != 0 ) {
+                    std::throw_with_nested(
+                        CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() ) );
+                }
+                std::throw_with_nested( CannotDelete( it->path() ) );
             }
         }
         ++it;
