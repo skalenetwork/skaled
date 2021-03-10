@@ -1608,8 +1608,8 @@ int main( int argc, char** argv ) try {
                 try {
                     present = snapshotManager->isSnapshotHashPresent( blockNumber );
                     if ( !present ) {
-                        clog( VerbosityInfo, "main" )
-                            << cc::notice( "Will cleanup data dir and snasphots dir" );
+                        clog( VerbosityInfo, "main" ) << cc::notice(
+                            "Snapshot hash is absent. Will cleanup data dir and snasphots dir" );
                         snapshotManager->cleanup();
                     }
                 } catch ( const std::exception& ex ) {
@@ -1630,15 +1630,12 @@ int main( int argc, char** argv ) try {
                             "Will delete all snapshots except" + std::to_string( blockNumber ) );
                         snapshotManager->cleanup( blockNumber );
                     } else {
-                        clog( VerbosityInfo, "main" )
-                            << cc::notice( "Will cleanup data dir and snasphots dir" );
+                        clog( VerbosityInfo, "main" ) << cc::notice(
+                            "Snapshot is present locally but its hash is different. Will cleanup "
+                            "data dir and snasphots dir" );
                         snapshotManager->cleanup();
                         present = false;
                     }
-                } else {
-                    clog( VerbosityInfo, "main" )
-                        << cc::notice( "Will cleanup data dir and snasphots dir" );
-                    snapshotManager->cleanup();
                 }
 
                 size_t n_found = list_urls_to_download.size();
