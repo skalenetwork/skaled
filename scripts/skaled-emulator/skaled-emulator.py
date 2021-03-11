@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 import os
 import sys
 import glob
@@ -27,7 +27,7 @@ def handler(signum, dummy):
     print(f"Got signal {signum}")
     if error_terminating > 0:
         print(f"Hanging for 40s and exit {error_terminating}")
-        time.sleep(4)
+        time.sleep(40)
         sys.exit(error_terminating)
     else:
         print("Finishing successfully")
@@ -89,7 +89,12 @@ error_terminating = 0
 corrupted_db = False
 
 download_duration = 0
+if random.randint(0, 1) > 0:
+    download_duration = 15    
+
 work_duration = 0
+if random.randint(0, 1) > 0:
+    work_duration = 15
 
 if args.download_snapshot:
     r = random.randint(1, 5)
@@ -111,7 +116,7 @@ else:
 
 r = random.randint(0, 2)
 if r == 0:
-    error_terminating = 14
+    error_terminating = error_working
 
 print("\nFailure configuration:")
 print(f"error_download = {error_download}")
@@ -134,6 +139,7 @@ if args.download_snapshot:
     if len(os.listdir(data_dir)) > 0:
         print(f"WARNING unclean data_dir {data_dir}")
         if os.path.isfile(f"{data_dir}/corrupted_snapshot.txt"):
+            print(f"Fixing corrupted snapshot")
             os.unlink(f"{data_dir}/corrupted_snapshot.txt")
 
     if len(glob.glob(f"{DATA_DIR}/*.db")) > 0:
@@ -247,7 +253,11 @@ class RpcHandler(BaseHTTPRequestHandler):
             }
         
         elif method == "eth_getBlockByNumber":
-            number = int(req_json["params"][0], 16)
+            number = req_json["params"][0]
+            if number == "latest":
+                number = int(time.time()) - start_time
+            else:
+                number = int(number, 16)
             resp = {
                 'id': id,
                 'jsonrpc': "2.0",
@@ -257,7 +267,7 @@ class RpcHandler(BaseHTTPRequestHandler):
                       'gasUsed': 0,
                       'number': number,
                       'size': 0,
-                      'timestamp': number+start_time,
+                      'timestamp': hex(number+start_time),
                       'totalDifficulty': 0
                 }
             }
