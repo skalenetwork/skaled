@@ -1593,7 +1593,13 @@ int main( int argc, char** argv ) try {
                         << cc::p( std::to_string( list_urls_to_download.size() ) )
                         << cc::notice( " nodes " );
 
-                    if ( blockNumber == 0 && list_urls_to_download.size() > 0 ) {
+                    if ( list_urls_to_download.size() == 0 ) {
+                        clog( VerbosityWarning, "main" ) << cc::warn(
+                            "No nodes to download from - will skip " + blockNumber_url );
+                        continue;
+                    }
+
+                    if ( blockNumber == 0 ) {
                         successfullDownload = true;
                         break;
                     } else
@@ -1604,44 +1610,49 @@ int main( int argc, char** argv ) try {
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
                 }
 
-                bool present = false;
+                //                bool present = false;
+                //                try {
+                //                    present = ;
+                //                } catch ( const std::exception& ex ) {
+                //                    // usually snapshot absent exception
+                //                    clog( VerbosityInfo, "main" ) << dev::nested_exception_what(
+                //                    ex );
+                //                }
+
                 try {
-                    present = snapshotManager->isSnapshotHashPresent( blockNumber );
-                    if ( !present ) {
-                        clog( VerbosityInfo, "main" ) << cc::notice(
-                            "Snapshot hash is absent. Will cleanup data dir and snasphots dir" );
-                        snapshotManager->cleanup();
-                    }
+                    if ( snapshotManager->isSnapshotHashPresent( blockNumber ) ) {
+                        clog( VerbosityInfo, "main" )
+                            << "Snapshot for block " << blockNumber << " already present locally";
+
+                        dev::h256 calculated_hash;
+                        calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
+
+                        if ( calculated_hash == voted_hash.first ) {
+                            clog( VerbosityInfo, "main" )
+                                << cc::notice( "Will delete all snapshots except" +
+                                               std::to_string( blockNumber ) );
+                            snapshotManager->cleanupButKeepSnapshot( blockNumber );
+                            clog( VerbosityInfo, "main" )
+                                << cc::notice( "Will delete all snapshots except" +
+                                               std::to_string( blockNumber ) );
+                            snapshotManager->restoreSnapshot( blockNumber );
+                            successfullDownload = true;
+                            break;
+                        } else {
+                            clog( VerbosityWarning, "main" ) << cc::warn(
+                                "Snapshot is present locally but its hash is different" );
+                        }
+                    }  // if present
                 } catch ( const std::exception& ex ) {
                     // usually snapshot absent exception
                     clog( VerbosityInfo, "main" ) << dev::nested_exception_what( ex );
                 }
 
-                dev::h256 calculated_hash;
-                if ( present ) {
-                    clog( VerbosityInfo, "main" )
-                        << "Snapshot for block " << blockNumber << " already present locally";
-
-                    calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
-
-                    if ( calculated_hash == voted_hash.first ) {
-                        successfullDownload = true;
-                        clog( VerbosityInfo, "main" ) << cc::notice(
-                            "Will delete all snapshots except" + std::to_string( blockNumber ) );
-                        snapshotManager->cleanup( blockNumber );
-                    } else {
-                        clog( VerbosityInfo, "main" ) << cc::notice(
-                            "Snapshot is present locally but its hash is different. Will cleanup "
-                            "data dir and snasphots dir" );
-                        snapshotManager->cleanup();
-                        present = false;
-                    }
-                }
+                clog( VerbosityInfo, "main" )
+                    << cc::notice( "Will cleanup data dir and snasphots dir" );
+                snapshotManager->cleanup();
 
                 size_t n_found = list_urls_to_download.size();
-
-                if ( n_found == 0 )
-                    continue;
 
                 size_t shift = rand() % n_found;
 
@@ -1656,8 +1667,7 @@ int main( int argc, char** argv ) try {
                             blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
                         try {
-                            if ( !present )
-                                snapshotManager->computeSnapshotHash( blockNumber, true );
+                            snapshotManager->computeSnapshotHash( blockNumber, true );
                         } catch ( const std::exception& ) {
                             std::throw_with_nested( std::runtime_error(
                                 cc::fatal( "FATAL:" ) + " " +
@@ -1668,15 +1678,15 @@ int main( int argc, char** argv ) try {
 
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
-                        else
-                            snapshotManager->removeSnapshot( blockNumber );
+                        else {
+                            clog( VerbosityWarning, "main" ) << cc::notice(
+                                "Downloaded snapshot with incorrect hash! Will try again" );
+                            snapshotManager->cleanup();
+                        }
                     } catch ( const std::exception& ex ) {
                         // just retry
                         clog( VerbosityWarning, "main" ) << dev::nested_exception_what( ex );
-                    }
-
-                if ( successfullDownload )
-                    break;
+                    }  // for download url
 
             } catch ( std::exception& ex ) {
                 clog( VerbosityWarning, "main" )

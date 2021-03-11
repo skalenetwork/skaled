@@ -251,35 +251,14 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
 }
 
-void SnapshotManager::cleanup( unsigned _keepSnapshot ) {
-    if ( _keepSnapshot != unsigned( -1 ) ) {
-        boost::filesystem::path toKeep = this->snapshots_dir / std::to_string( _keepSnapshot );
-        this->cleanupDirectory( this->snapshots_dir, toKeep );
-        return;
-    }
-    this->cleanupDirectory( this->snapshots_dir );
-    this->cleanupDirectory( this->data_dir );
-    try {
-        fs::create_directory( snapshots_dir );
-        fs::remove_all( diffs_dir );
-        fs::create_directory( diffs_dir );
-    } catch ( const fs::filesystem_error& ex ) {
-        std::throw_with_nested( CannotWrite( ex.path1() ) );
-    }  // catch
+void SnapshotManager::cleanupButKeepSnapshot( unsigned _keepSnapshot ) {
+    this->cleanupDirectory( snapshots_dir, snapshots_dir / std::to_string( _keepSnapshot ) );
+    this->cleanupDirectory( data_dir, snapshots_dir );
+}
 
-    for ( const auto& vol : this->volumes )
-        try {
-            // throw if it is present but is NOT btrfs
-            if ( fs::exists( this->data_dir / vol ) &&
-                 0 != btrfs.present( ( this->data_dir / vol ).c_str() ) )
-                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-
-            // Ignoring exception
-            btrfs.subvolume.create( ( this->data_dir / vol ).c_str() );
-
-        } catch ( const fs::filesystem_error& ex ) {
-            throw_with_nested( CannotRead( ex.path1() ) );
-        }
+void SnapshotManager::cleanup() {
+    this->cleanupDirectory( snapshots_dir );
+    this->cleanupDirectory( data_dir );
 }
 
 void SnapshotManager::cleanupDirectory(
@@ -288,14 +267,15 @@ void SnapshotManager::cleanupDirectory(
     boost::filesystem::directory_iterator it( p ), end;
 
     while ( it != end ) {
-        if ( !boost::filesystem::is_regular_file( it->path() ) && it->path() != _keepDirectory ) {
-            int res = 0;
+        if ( boost::filesystem::is_directory( it->path() ) && it->path() != _keepDirectory ) {
+            int res1 = 0, res2 = 0;
             try {
-                res = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
+                res1 = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
+                res2 = btrfs.subvolume._delete( ( it->path() ).c_str() );
 
                 boost::filesystem::remove_all( it->path() );
             } catch ( boost::filesystem::filesystem_error& ) {
-                if ( res != 0 ) {
+                if ( res1 != 0 || res2 != 0 ) {
                     std::throw_with_nested(
                         CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() ) );
                 }

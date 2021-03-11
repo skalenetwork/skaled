@@ -465,15 +465,7 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
 
-    mgr.cleanup();
-
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" ) );
-
-    mgr.doSnapshot( 1 );
-    mgr.doSnapshot( 2 );
-
-    mgr.cleanup( 1 );
+    mgr.cleanupButKeepSnapshot( 1 );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
