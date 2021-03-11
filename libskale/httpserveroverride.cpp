@@ -102,15 +102,6 @@ namespace skale {
 namespace server {
 namespace helper {
 
-bool isSkipMethodTrafficTrace( const std::string& strMethod ) {
-    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
-         strMethod == "skale_performanceTrackingStart" ||
-         strMethod == "skale_performanceTrackingStop" ||
-         strMethod == "skale_performanceTrackingFetch" )
-        return true;
-    return false;
-}
-
 dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT ) {
     dev::Verbosity dv = dev::Verbosity::VerbosityTrace;
     switch ( eWSLMT ) {
@@ -302,7 +293,7 @@ map_method_call_stats_t g_map_method_error_stats;
 map_method_call_stats_t g_map_method_exception_stats;
 map_method_call_stats_t g_map_method_traffic_stats_in;
 map_method_call_stats_t g_map_method_traffic_stats_out;
-static size_t g_nDefaultQueueSize = 10;
+static size_t g_nSizeDefaultOnQueueAdd = 10;
 
 static skutils::stats::named_event_stats& stat_subsystem_call_queue( const char* strSubSystem ) {
     lock_type_stats lock( g_mtx_stats );
@@ -390,33 +381,33 @@ void register_stats_message(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
-    cq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    cq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     cq.event_add( strMethodName );
     skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_in( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_answer(
     const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
-    aq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    aq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     aq.event_add( strMethodName );
 
     skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_out( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     tq.event_add( strMethodName, nJsonSize );
 }
 void register_stats_error( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& eq = stat_subsystem_error_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     eq.event_add( strMethodName );
 }
 void register_stats_exception( const char* strSubSystem, const char* strMethodName ) {
     lock_type_stats lock( g_mtx_stats );
     skutils::stats::named_event_stats& eq = stat_subsystem_exception_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nDefaultQueueSize );
+    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
     eq.event_add( strMethodName );
 }
 
@@ -478,18 +469,21 @@ static nlohmann::json generate_subsystem_stats( const char* strSubSystem ) {
         size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptions = 0;
         skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
         skutils::stats::time_point tpNow = skutils::stats::clock::now();
-        double lfCallsPerSecond = cq.compute_eps( strMethodName, tpNow, nullptr, &nCalls );
-        double lfAnswersPerSecond = aq.compute_eps( strMethodName, tpNow, nullptr, &nAnswers );
-        double lfErrorsPerSecond = erq.compute_eps( strMethodName, tpNow, nullptr, &nErrors );
+        double lfCallsPerSecond = cq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nCalls );
+        double lfAnswersPerSecond =
+            aq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nAnswers );
+        double lfErrorsPerSecond =
+            erq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nErrors );
         double lfExceptionsPerSecond =
-            exq.compute_eps( strMethodName, tpNow, nullptr, &nExceptions );
-        double lfBytesPerSecondRecv = tq_in.compute_eps( strMethodName, tpNow, &nBytesRecv );
-        double lfBytesPerSecondSent = tq_out.compute_eps( strMethodName, tpNow, &nBytesSent );
+            exq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nExceptions );
+        double lfBytesPerSecondRecv = tq_in.compute_eps_smooth( strMethodName, tpNow, &nBytesRecv );
+        double lfBytesPerSecondSent =
+            tq_out.compute_eps_smooth( strMethodName, tpNow, &nBytesSent );
         nlohmann::json joMethod = nlohmann::json::object();
-        joMethod["cps"] = lfCallsPerSecond;
-        joMethod["aps"] = lfAnswersPerSecond;
-        joMethod["erps"] = lfErrorsPerSecond;
-        joMethod["exps"] = lfExceptionsPerSecond;
+        joMethod["cps"] = lfCallsPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["aps"] = lfAnswersPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["erps"] = lfErrorsPerSecond / g_nSizeDefaultOnQueueAdd;
+        joMethod["exps"] = lfExceptionsPerSecond / g_nSizeDefaultOnQueueAdd;
         joMethod["bps_recv"] = lfBytesPerSecondRecv;
         joMethod["bps_sent"] = lfBytesPerSecondSent;
         joMethod["calls"] = nCalls;
@@ -702,7 +696,12 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
     if ( m_strUnDdosOrigin.empty() ) {
         SkaleServerOverride* pSO = pso();
         skutils::url url_unddos_origin( getRemoteIp() );
-        m_strUnDdosOrigin = url_unddos_origin.host();
+        try {
+            m_strUnDdosOrigin = url_unddos_origin.host();
+        } catch ( ... ) {
+        }
+        if ( m_strUnDdosOrigin.empty() )
+            m_strUnDdosOrigin = "N/A";
         skutils::unddos::e_high_load_detection_result_t ehldr =
             pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
@@ -906,12 +905,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             //
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName, joRequest );
-            bool bSkipMethodTrafficTrace =
-                skale::server::helper::isSkipMethodTrafficTrace( strMethod );
-            if ( pSO->opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               cc::num10( pThis->getRelay().serverIndex() ) )
+            if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                clog( pSO->methodTraceVerbosity( strMethod ),
+                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                        cc::num10( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/RX >>> " ) +
@@ -988,10 +985,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 }
                 a.set_json_err( joErrorResponce );
             }
-            if ( pSO->opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               cc::num10( pThis->getRelay().serverIndex() ) )
+            if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                clog( pSO->methodTraceVerbosity( strMethod ),
+                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                        cc::num10( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
@@ -1225,7 +1222,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
             skutils::dispatch::async( "logs-rethread", [=]() -> void {
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
-                    dev::eth::LocalisedLogEntries le = pThis->ethereum()->logs( iw );
+                    dev::eth::LocalisedLogEntries le = pThis->ethereum()->checkWatch( iw );
                     nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
                     if ( joResult.is_array() ) {
                         for ( const auto& joRW : joResult ) {
@@ -2003,11 +2000,85 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
-    : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {}
+    : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
+    {  // block
+        std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
+            fnOnSunscriptionEvent =
+                [this]( const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
+            dev::h256 h = block.info().hash();
+            dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
+            size_t cntTXs = arrTxHashes.size();
+            lock_type lock( mtxStats_ );
+            statsBlocks_.event_add( "blocks", 1 );
+            statsTransactions_.event_add( "transactions", cntTXs );
+        };
+        statsBlocks_.event_queue_add( "blocks",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        statsTransactions_.event_queue_add( "transactions",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+    }  // block
+    {  // block
+        std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
+            fnOnSunscriptionEvent =
+                [this]( const unsigned& /*iw*/, const dev::eth::Transaction & /*tx*/ ) -> void {
+            lock_type lock( mtxStats_ );
+            statsPendingTx_.event_add( "transactionsPending", 1 );
+        };
+        statsPendingTx_.event_queue_add( "transactionsPending",
+            0  // stats::g_nSizeDefaultOnQueueAdd
+        );
+        iwPendingTransactionStats_ =
+            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+    }  // block
+}
 
 
 SkaleServerOverride::~SkaleServerOverride() {
+    if ( iwBlockStats_ != unsigned( -1 ) ) {
+        ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
+        iwBlockStats_ = unsigned( -1 );
+    }
+    if ( iwPendingTransactionStats_ != unsigned( -1 ) ) {
+        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_ );
+        iwPendingTransactionStats_ = unsigned( -1 );
+    }
     StopListening();
+}
+
+nlohmann::json SkaleServerOverride::generateBlocksStats() {
+    lock_type lock( mtxStats_ );
+    nlohmann::json joStats = nlohmann::json::object();
+    skutils::stats::time_point tpNow = skutils::stats::clock::now();
+    const double lfBlocksPerSecond = statsBlocks_.compute_eps_smooth( "blocks", tpNow );
+    double lfTransactionsPerSecond = statsTransactions_.compute_eps_smooth( "transactions", tpNow );
+    if ( lfTransactionsPerSecond >= 1.0 )
+        lfTransactionsPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfTransactionsPerSecond <= 1.0 )
+        lfTransactionsPerSecond = 0.0;
+    double lfTransactionsPerBlock =
+        ( lfBlocksPerSecond > 0.0 ) ? ( lfTransactionsPerSecond / lfBlocksPerSecond ) : 0.0;
+    if ( lfTransactionsPerBlock >= 1.0 )
+        lfTransactionsPerBlock -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfTransactionsPerBlock <= 1.0 )
+        lfTransactionsPerBlock = 0.0;
+    if ( lfTransactionsPerBlock == 0.0 )
+        lfTransactionsPerSecond = 0.0;
+    if ( lfTransactionsPerSecond == 0.0 )
+        lfTransactionsPerBlock = 0.0;
+    double lfPendingTxPerSecond =
+        statsPendingTx_.compute_eps_smooth( "transactionsPending", tpNow );
+    if ( lfPendingTxPerSecond >= 1.0 )
+        lfPendingTxPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
+    if ( lfPendingTxPerSecond <= 1.0 )
+        lfPendingTxPerSecond = 0.0;
+    joStats["blocksPerSecond"] = lfBlocksPerSecond;
+    joStats["transactionsPerSecond"] = lfTransactionsPerSecond;
+    joStats["transactionsPerBlock"] = lfTransactionsPerBlock;
+    joStats["pendingTxPerSecond"] = lfPendingTxPerSecond;
+    return joStats;
 }
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
@@ -2025,6 +2096,31 @@ dev::eth::ChainParams& SkaleServerOverride::chainParams() {
 const dev::eth::ChainParams& SkaleServerOverride::chainParams() const {
     return chainParams_;
 }
+
+dev::Verbosity SkaleServerOverride::methodTraceVerbosity( const std::string& strMethod ) const {
+    // skip if disabled completely
+    if ( !this->opts_.isTraceCalls_ && !this->opts_.isTraceSpecialCalls_ )
+        return dev::VerbositySilent;
+
+    // skip these in any case
+    if ( strMethod == "skale_stats" || strMethod == "skale_performanceTrackingStatus" ||
+         strMethod == "skale_performanceTrackingStart" ||
+         strMethod == "skale_performanceTrackingStop" ||
+         strMethod == "skale_performanceTrackingFetch" )
+        return dev::VerbositySilent;
+
+    // print special
+    if ( strMethod.find( "admin_" ) == 0 || strMethod.find( "miner_" ) == 0 ||
+         strMethod.find( "personal_" ) == 0 || strMethod.find( "debug_" ) ) {
+        return dev::VerbosityDebug;
+    }
+
+    if ( this->opts_.isTraceCalls_ )
+        return dev::VerbosityTrace;
+
+    return dev::VerbositySilent;
+}
+
 bool SkaleServerOverride::checkAdminOriginAllowed( const std::string& origin ) const {
     return chainParams().checkAdminOriginAllowed( origin );
 }
@@ -2091,9 +2187,11 @@ void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const ch
         clog( dev::VerbosityDebug, strProtocolDescription ) << strMessage;
 }
 
-void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ipVer,
+void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Verbosity verbosity, int ipVer,
     const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
     const std::string& strPayload ) {
+    bool isError = verbosity == dev::VerbosityError;
+
     std::stringstream ssProtocol;
     std::string strProto =
         ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
@@ -2122,12 +2220,9 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, bool isError, int ip
     if ( isError )
         strErrorSuffix = cc::fatal( " ERROR " );
     std::string strProtocolDescription = ssProtocol.str();
-    if ( isError )
-        clog( dev::VerbosityError, strProtocolDescription )
-            << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
-    else
-        clog( dev::VerbosityDebug, strProtocolDescription )
-            << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
+
+    clog( verbosity, strProtocolDescription )
+        << ( strErrorSuffix + strOriginSuffix + strDirect + strPayload );
 }
 
 static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
@@ -2192,8 +2287,8 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_message(
                     bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
                 if ( opts_.isTraceCalls_ )
-                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(),
+                    logTraceServerTraffic( true, dev::VerbosityTrace, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
                         cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
                 res.set_header( "access-control-allow-headers", "Content-Type" );
                 res.set_header( "access-control-allow-methods", "POST" );
@@ -2256,7 +2351,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         strMethod = "unknown_json_rpc_method";
                 }
                 std::string e = "Bad JSON RPC request: " + req.body_;
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
@@ -2292,7 +2387,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         "bad origin" :
                         "high load";
                 std::string e = "Banned due to " + reason_part + " JSON RPC request: " + req.body_;
-                logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
                     pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
@@ -2331,12 +2426,11 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 rttElement.emplace( "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(),
                     pSrv->serverIndex(), ipVer );
                 //
-                bool bSkipMethodTrafficTrace =
-                    skale::server::helper::isSkipMethodTrafficTrace( strMethod );
                 SkaleServerConnectionsTrackHelper sscth( *this );
-                if ( opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                    logTraceServerTraffic( true, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::j( strBody ) );
+                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                    logTraceServerTraffic( true, pSO->methodTraceVerbosity( strMethod ), ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::j( strBody ) );
                 std::string strResponse;
                 bool bPassed = false;
                 try {
@@ -2388,8 +2482,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     bPassed = true;
                 } catch ( const std::exception& ex ) {
                     rttElement->setError();
-                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( ex.what() ) );
+                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::warn( ex.what() ) );
                     nlohmann::json joErrorResponce;
                     joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
@@ -2405,8 +2500,9 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 } catch ( ... ) {
                     rttElement->setError();
                     const char* e = "unknown exception in SkaleServerOverride";
-                    logTraceServerTraffic( false, true, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
+                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::warn( e ) );
                     nlohmann::json joErrorResponce;
                     joErrorResponce["id"] = joID;
                     joErrorResponce["result"] = "error";
@@ -2420,9 +2516,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                     }
                     a.set_json_err( joErrorResponce );
                 }
-                if ( opts_.isTraceCalls_ && ( !bSkipMethodTrafficTrace ) )
-                    logTraceServerTraffic( false, false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                        pSrv->serverIndex(), esm, req.origin_.c_str(), cc::j( strResponse ) );
+                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+                    logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
+                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        cc::j( strResponse ) );
                 if ( isBatch ) {
                     nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                     jarrBatchAnswer.push_back( joAnswerPart );
@@ -2906,6 +3003,9 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                            // dev::rpc::SkaleStatsProviderImpl
     nlohmann::json joStats = nlohmann::json::object();
+    //
+    joStats["blocks"] = generateBlocksStats();
+    //
     nlohmann::json joExecutionPerformance = nlohmann::json::object();
     joExecutionPerformance["RPC"] =
         skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();

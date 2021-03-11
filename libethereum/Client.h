@@ -474,7 +474,7 @@ protected:
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
     Logger m_logger{createLogger( VerbosityInfo, "client" )};
-    Logger m_loggerDetail{createLogger( VerbosityDebug, "client" )};
+    Logger m_loggerDetail{createLogger( VerbosityTrace, "client" )};
 
 
     /// skale
@@ -548,9 +548,7 @@ protected:
             lock_type lock( mtx() );
             map_.clear();
         }
-        virtual void invoke( const parameter_type& /*p*/ ) {
-            return;
-            /*
+        virtual void invoke( const parameter_type& p ) {
             map_type map2;
             {  // block
                 lock_type lock( mtx() );
@@ -563,7 +561,6 @@ protected:
                 } catch ( ... ) {
                 }
             }
-            */
         }
     };
     // new block watch

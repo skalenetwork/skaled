@@ -32,6 +32,49 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
+SnapshotHashAgent::SnapshotHashAgent(
+    const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
+    : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
+    this->hashes_.resize( n_ );
+    this->signatures_.resize( n_ );
+    this->public_keys_.resize( n_ );
+    this->is_received_.resize( n_ );
+    for ( size_t i = 0; i < n_; ++i ) {
+        this->is_received_[i] = false;
+    }
+
+    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
+    if ( common_public_key == "" ) {
+        this->readPublicKeyFromConfig();
+    } else {
+        std::vector< std::string > coords;
+        boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
+        common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
+        common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
+        common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
+        common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
+        common_public_key_.Z = libff::alt_bn128_Fq2::one();
+        if ( ( common_public_key_.X == libff::alt_bn128_Fq2::zero() &&
+                 common_public_key_.Y == libff::alt_bn128_Fq2::one() ) ||
+             !common_public_key_.is_well_formed() ) {
+            // zero or corrupted public key was provided in command line
+            this->readPublicKeyFromConfig();
+        }
+    }
+}
+
+void SnapshotHashAgent::readPublicKeyFromConfig() {
+    this->common_public_key_.X.c0 =
+        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+    this->common_public_key_.X.c1 =
+        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+    this->common_public_key_.Y.c0 =
+        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+    this->common_public_key_.Y.c1 =
+        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+    this->common_public_key_.Z = libff::alt_bn128_Fq2::one();
+}
+
 size_t SnapshotHashAgent::verifyAllData() const {
     size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
@@ -116,51 +159,61 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
                       << cc::warn( ex.what() ) << std::endl;
         }
 
+        bool is_verified = false;
+
         try {
             libff::inhibit_profiling_info = true;
-            if ( !this->bls_->Verification(
-                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                     common_signature, this->common_public_key_ ) ) {
-                std::cerr << cc::error(
-                                 "Common BLS signature wasn't verified, probably using incorrect "
-                                 "common public key specified in command line. Trying again with "
-                                 "common public key from config" )
-                          << std::endl;
-
-                libff::alt_bn128_G2 common_public_key_from_config;
-                common_public_key_from_config.X.c0 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-                common_public_key_from_config.X.c1 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-                common_public_key_from_config.Y.c0 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-                common_public_key_from_config.Y.c1 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
-                common_public_key_from_config.Z = libff::alt_bn128_Fq2::one();
-                std::cout << "NEW BLS COMMON PUBLIC KEY:\n";
-                common_public_key_from_config.print_coordinates();
-                if ( !this->bls_->Verification(
-                         std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                         common_signature, common_public_key_from_config ) ) {
-                    std::cerr
-                        << cc::error(
-                               "Common BLS signature wasn't verified, snapshot will not be "
-                               "downloaded. Try to backup node manually using skale-node-cli." )
-                        << std::endl;
-                    return false;
-                } else {
-                    std::cout << cc::info(
-                                     "Common BLS signature was verified with common public key "
-                                     "from config." )
-                              << std::endl;
-                    this->common_public_key_ = common_public_key_from_config;
-                }
-            }
+            is_verified = this->bls_->Verification(
+                std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
+                common_signature, this->common_public_key_ );
         } catch ( signatures::Bls::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << std::endl;
-            return false;
+        }
+
+        if ( !is_verified ) {
+            std::cerr << cc::error(
+                             "Common BLS signature wasn't verified, probably using incorrect "
+                             "common public key specified in command line. Trying again with "
+                             "common public key from config" )
+                      << std::endl;
+
+            libff::alt_bn128_G2 common_public_key_from_config;
+            common_public_key_from_config.X.c0 =
+                libff::alt_bn128_Fq( this->chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+            common_public_key_from_config.X.c1 =
+                libff::alt_bn128_Fq( this->chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+            common_public_key_from_config.Y.c0 =
+                libff::alt_bn128_Fq( this->chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+            common_public_key_from_config.Y.c1 =
+                libff::alt_bn128_Fq( this->chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+            common_public_key_from_config.Z = libff::alt_bn128_Fq2::one();
+            std::cout << "NEW BLS COMMON PUBLIC KEY:\n";
+            common_public_key_from_config.print_coordinates();
+            try {
+                is_verified = this->bls_->Verification(
+                    std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
+                    common_signature, this->common_public_key_ );
+            } catch ( signatures::Bls::IsNotWellFormed& ex ) {
+                std::cerr << cc::error(
+                                 "Exception while verifying common signature from other skaleds: " )
+                          << cc::warn( ex.what() ) << std::endl;
+            }
+
+            if ( !is_verified ) {
+                std::cerr << cc::error(
+                                 "Common BLS signature wasn't verified, snapshot will not be "
+                                 "downloaded. Try to backup node manually using skale-node-cli." )
+                          << std::endl;
+                return false;
+            } else {
+                std::cout << cc::info(
+                                 "Common BLS signature was verified with common public key "
+                                 "from config." )
+                          << std::endl;
+                this->common_public_key_ = common_public_key_from_config;
+            }
         }
 
         to_vote.first = ( *it ).first;
@@ -174,6 +227,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned block_number ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
+
     for ( size_t i = 0; i < this->n_; ++i ) {
         if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
             continue;
@@ -186,6 +240,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
+                // just ask block number in this special case
+                if ( block_number == 0 ) {
+                    skaleClient.skale_getLatestSnapshotBlockNumber();
+                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+                    this->nodes_to_download_snapshot_from_.push_back( i );
+                    return;
+                }
+
                 Json::Value joSignatureResponse =
                     skaleClient.skale_getSnapshotSignature( block_number );
 
@@ -197,6 +259,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                   "getNodesToDownloadSnapshotFrom ";
                     delete jsonRpcClient;
                 } else {
+                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+
                     this->is_received_[i] = true;
 
                     std::string str_hash = joSignatureResponse["hash"].asString();
@@ -219,8 +283,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                         libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
                     public_key.Z = libff::alt_bn128_Fq2::one();
 
-                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-
                     this->hashes_[i] = dev::h256( str_hash );
                     this->signatures_[i] = signature;
                     this->public_keys_[i] = public_key;
@@ -241,15 +303,21 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     }
 
     bool result = false;
-    try {
-        result = this->voteForHash( this->voted_hash_ );
-    } catch ( SnapshotHashAgentException& ex ) {
-        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                  << cc::warn( ex.what() ) << std::endl;
-    } catch ( std::exception& ex ) {
-        std::cerr << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                  << cc::warn( ex.what() ) << std::endl;
-    }
+
+    if ( block_number == 0 )
+        result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
+    else
+        try {
+            result = this->voteForHash( this->voted_hash_ );
+        } catch ( SnapshotHashAgentException& ex ) {
+            std::cerr << cc::error(
+                             "Exception while voting for snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << std::endl;
+        } catch ( std::exception& ex ) {
+            std::cerr << cc::error(
+                             "Exception while voting for snapshot hash from other skaleds: " )
+                      << cc::warn( ex.what() ) << std::endl;
+        }  // catch
 
     if ( !result ) {
         return {};

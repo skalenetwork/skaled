@@ -329,31 +329,70 @@ int main( int argc, char** argv ) try {
     setCLocale();
 
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        if ( nSignalNo == SIGPIPE )
+        switch ( nSignalNo ) {
+        case SIGINT:
+        case SIGTERM:
+        case SIGHUP:
+            // exit normally
+            // just fall through
+            break;
+
+        case SIGSTOP:
+        case SIGTSTP:
+        case SIGPIPE:
+            // ignore
             return;
-        bool stopWasRaisedBefore = skutils::signal::g_bStop;
-        if ( !stopWasRaisedBefore ) {
-            if ( g_jsonrpcIpcServer.get() ) {
-                g_jsonrpcIpcServer->StopListening();
-                g_jsonrpcIpcServer.reset( nullptr );
-            }
-            if ( g_client ) {
-                g_client->stopWorking();
-            }
+            break;
+
+        case SIGQUIT:
+            // exit immediately
+            _exit( ExitHandler::ec_termninated_by_signal );
+            break;
+
+        default:
+            // abort signals
+            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            std::cout.flush();
+
+            break;
+        }  // switch
+
+        // try to exit nicely - then abort
+        if ( !skutils::signal::g_bStop ) {
+            thread( []() {
+                sleep( ExitHandler::KILL_TIMEOUT );
+                std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
+                          << std::endl;
+                _exit( ExitHandler::requestedExitCode() );
+            } )
+                .detach();
         }
-        skutils::signal::g_bStop = true;
-        std::string strMessagePrefix = stopWasRaisedBefore ?
+
+        // nice exit here:
+
+        std::string strMessagePrefix = skutils::signal::g_bStop ?
                                            cc::error( "\nStop flag was already raised on. " ) +
                                                cc::fatal( "WILL FORCE TERMINATE." ) +
                                                cc::error( " Caught (second) signal. " ) :
                                            cc::error( "\nCaught (first) signal. " );
         std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n";
+                  << "\n\n";
         std::cerr.flush();
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n\n";
-        dev::ExitHandler::exitHandler( nSignalNo );
-        if ( stopWasRaisedBefore )
+
+        if ( skutils::signal::g_bStop )
             _exit( 13 );
+
+        skutils::signal::g_bStop = true;
+
+        if ( g_jsonrpcIpcServer.get() ) {
+            g_jsonrpcIpcServer->StopListening();
+            g_jsonrpcIpcServer.reset( nullptr );
+        }
+        if ( g_client ) {
+            g_client->stopWorking();
+        }
+
+        dev::ExitHandler::exitHandler( nSignalNo );
     } );
 
 
@@ -398,6 +437,7 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS6std = -1;
     int nExplicitPortWSS6nfo = -1;
     bool bTraceJsonRpcCalls = false;
+    bool bTraceJsonRpcSpecialCalls = false;
     bool bEnabledDebugBehaviorAPIs = false;
 
     const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
@@ -552,6 +592,8 @@ int main( int argc, char** argv ) try {
         "Number of informational parallel RPC connection(such as web3) acceptor threads per "
         "protocol(1 is default and minimal)" );
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
+    addClientOption(
+        "special-rpc-trace", "Log admin, miner, personal, and debug requests and responses" );
     addClientOption( "enable-debug-behavior-apis",
         "Enables debug set of JSON RPC APIs which are changing app behavior" );
 
@@ -619,6 +661,8 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
+    addGeneralOption( "dispatch-threads", po::value< size_t >()->value_name( "<count>" ),
+        "Number of threads to run task dispatcher, default is CPU count * 2" );
     addGeneralOption( "version,V", "Show the version and exit" );
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
@@ -684,7 +728,18 @@ int main( int argc, char** argv ) try {
 
     setupLogging( loggingOptions );
 
-    skutils::dispatch::default_domain( skutils::tools::cpu_count() * 2 );
+    const size_t nCpuCount = skutils::tools::cpu_count();
+    size_t nDispatchThreads = nCpuCount * 2;
+    if ( vm.count( "dispatch-threads" ) ) {
+        size_t n = vm["dispatch-threads"].as< size_t >();
+        const size_t nMin = 4;
+        if ( n < nMin )
+            n = nMin;
+        nDispatchThreads = n;
+    }
+    std::cout << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
+              << cc::debug( " threads in task dispatcher" ) << std::endl;
+    skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
     if ( vm.count( "import-snapshot" ) ) {
@@ -1248,6 +1303,22 @@ int main( int argc, char** argv ) try {
         << cc::info( "JSON RPC" ) << cc::debug( " trace logging mode is " )
         << cc::flag_ed( bTraceJsonRpcCalls );
 
+    // First, get "special-rpc-trace" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    if ( chainConfigParsed ) {
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "special-rpc-trace" ) )
+                bTraceJsonRpcSpecialCalls =
+                    joConfig["skaleConfig"]["nodeInfo"]["special-rpc-trace"].get< bool >();
+        } catch ( ... ) {
+        }
+    }
+    if ( vm.count( "special-rpc-trace" ) )
+        bTraceJsonRpcSpecialCalls = true;
+    clog( VerbosityDebug, "main" )
+        << cc::info( "Special JSON RPC" ) << cc::debug( " trace logging mode is " )
+        << cc::flag_ed( bTraceJsonRpcSpecialCalls );
+
     // First, get "enable-debug-behavior-apis" from config.json
     // Second, get it from command line parameter (higher priority source)
     if ( chainConfigParsed ) {
@@ -1331,6 +1402,7 @@ int main( int argc, char** argv ) try {
         strPathDB = vm["db-path"].as< std::string >();
     clog( VerbosityInfo, "main" ) << cc::notice( "DB path" ) + cc::debug( " is: " )
                                   << cc::p( strPathDB );
+
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
@@ -1522,7 +1594,13 @@ int main( int argc, char** argv ) try {
                         << cc::notice( "Got urls to download snapshot from " )
                         << cc::p( std::to_string( list_urls_to_download.size() ) )
                         << cc::notice( " nodes " );
-                    voted_hash = snapshotHashAgent.getVotedHash();
+
+                    if ( blockNumber == 0 && list_urls_to_download.size() > 0 ) {
+                        successfullDownload = true;
+                        break;
+                    } else
+                        voted_hash = snapshotHashAgent.getVotedHash();
+
                 } catch ( std::exception& ex ) {
                     std::throw_with_nested( std::runtime_error( cc::error(
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
@@ -1549,17 +1627,35 @@ int main( int argc, char** argv ) try {
 
                     if ( calculated_hash == voted_hash.first )
                         successfullDownload = true;
-                    else
+                    else {
                         snapshotManager->removeSnapshot( blockNumber );
+                        present = false;
+                        clog( VerbosityWarning, "main" )
+                            << "Removing local snapshot " << blockNumber << " because of bad hash";
+                    }
                 }
-
-                if ( blockNumber == 0 )
-                    successfullDownload = true;
 
                 size_t n_found = list_urls_to_download.size();
 
                 if ( n_found == 0 )
                     continue;
+
+                // remove all unneeded snapshots
+                for ( ;; ) {
+                    auto last2 = snapshotManager->getLatestSnasphots();
+
+                    int to_remove = 0;
+                    if ( last2.second && last2.second != blockNumber )
+                        to_remove = last2.second;
+                    else if ( last2.first && last2.first != blockNumber )
+                        to_remove = last2.first;
+                    if ( to_remove == 0 )
+                        break;
+
+                    clog( VerbosityWarning, "main" ) << "Removing unused snapshot " << to_remove;
+                    snapshotManager->removeSnapshot( to_remove );
+                }  // for
+
                 size_t shift = rand() % n_found;
 
                 for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
@@ -1671,11 +1767,6 @@ int main( int argc, char** argv ) try {
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
     auto caps = set< string >{"eth"};
-
-    ExitHandler exitHandler;
-
-    signal( SIGTERM, &ExitHandler::exitHandler );
-    signal( SIGINT, &ExitHandler::exitHandler );
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1805,7 +1896,7 @@ int main( int argc, char** argv ) try {
             unsigned block_no = static_cast< unsigned int >( -1 );
             cout << "Skipping " << g_client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
             MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-            while ( in.peek() != -1 && ( !exitHandler.shouldExit() ) ) {
+            while ( in.peek() != -1 && ( !ExitHandler::shouldExit() ) ) {
                 bytes block( 8 );
                 {
                     if ( block_no >= g_client->number() ) {
@@ -1950,7 +2041,7 @@ int main( int argc, char** argv ) try {
             g_client->setNetworkId( networkID );
     }
 
-    cout << "Mining Beneficiary: " << g_client->author() << endl;
+    clog( VerbosityInfo, "main" ) << "Mining Beneficiary: " << g_client->author();
 
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
@@ -2068,8 +2159,11 @@ int main( int argc, char** argv ) try {
             skaleFace,       /// skale
             skaleStatsFace,  /// skaleStats
             new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
-            new rpc::Personal( keyManager, *accountHolder, *g_client ),
-            new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager, *sessionManager.get() ),
+            bEnabledDebugBehaviorAPIs ? new rpc::Personal( keyManager, *accountHolder, *g_client ) :
+                                        nullptr,
+            bEnabledDebugBehaviorAPIs ? new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager,
+                                            *sessionManager.get() ) :
+                                        nullptr,
             bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                                         nullptr,
             bEnabledDebugBehaviorAPIs ? new rpc::SkaleDebug( configPath.string() ) : nullptr,
@@ -2563,6 +2657,8 @@ int main( int argc, char** argv ) try {
             skale_server_connector->setConsumer( skaleStatsFace );
             //
             skale_server_connector->opts_.isTraceCalls_ = bTraceJsonRpcCalls;
+            skale_server_connector->opts_.isTraceSpecialCalls_ = bTraceJsonRpcSpecialCalls;
+
             skale_server_connector->max_connection_set( maxConnections );
             g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
@@ -2608,7 +2704,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2622,7 +2718,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2636,7 +2732,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2650,7 +2746,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTP6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2664,7 +2760,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2678,7 +2774,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2692,7 +2788,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2706,7 +2802,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortHTTPS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2720,7 +2816,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2734,7 +2830,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2748,7 +2844,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2762,7 +2858,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2776,7 +2872,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS4std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2789,7 +2885,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2802,7 +2898,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS6std > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2815,7 +2911,7 @@ int main( int argc, char** argv ) try {
             if ( nExplicitPortWSS6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
                       nStatWSS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !exitHandler.shouldExit() );
+                      ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
                         clog( VerbosityDebug, "main" )
@@ -2978,10 +3074,10 @@ int main( int argc, char** argv ) try {
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
-        while ( !exitHandler.shouldExit() )
+        while ( !ExitHandler::shouldExit() )
             stopSealingAfterXBlocks( g_client.get(), n, mining );
     } else {
-        while ( !exitHandler.shouldExit() )
+        while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
     if ( g_jsonrpcIpcServer.get() ) {

@@ -1705,6 +1705,150 @@ nlohmann::json json_config_file_accessor::stat_extract_at_path( const nlohmann::
     return stat_extract_at_path( joConfig, listPath );
 }
 
+bool json_config_file_accessor::stat_extract_s_chain_node_infos( const nlohmann::json& joConfig,
+    size_t& nOwnNodeIndex, nlohmann::json& joThisNodeInfo,
+    std::vector< nlohmann::json >& vecNodeJSONs ) {
+    try {
+        nOwnNodeIndex = std::string::npos;
+        joThisNodeInfo = nlohmann::json::object();
+        vecNodeJSONs.clear();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        //
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        if ( joSkaleConfig.count( "sChain" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
+        //
+        if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+        const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
+        //
+        int nOwnNodeID = joSkaleConfig_nodeInfo["nodeID"].get< int >();
+        joThisNodeInfo = joSkaleConfig_nodeInfo;
+        //
+        const nlohmann::json& jarrNodes = joSkaleConfig_sChain_nodes;
+        size_t i, cnt = jarrNodes.size();
+        for ( i = 0; i < cnt; ++i ) {
+            const nlohmann::json& joNodeEntry = jarrNodes[i];
+            vecNodeJSONs.push_back( joNodeEntry );
+            int nWalkNodeID = joNodeEntry["nodeID"].get< int >();
+            if ( nOwnNodeID == nWalkNodeID )
+                nOwnNodeIndex = i;
+        }
+        //
+        return true;
+    } catch ( ... ) {
+        nOwnNodeIndex = std::string::npos;
+        joThisNodeInfo = nlohmann::json::object();
+        vecNodeJSONs.clear();
+        return false;
+    }
+}
+
+std::string json_config_file_accessor::stat_extract_node_URL( const nlohmann::json& joNodeEntry ) {
+    std::string strURL;
+    if ( joNodeEntry.count( "ip" ) > 0 ) {
+        try {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joNodeEntry["ip"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joNodeEntry.count( "httpRpcPort" ) > 0 ) {
+                    int nPort = joNodeEntry["httpRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "wsRpcPort" ) > 0 ) {
+                    int nPort = joNodeEntry["wsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "httpsRpcPort" ) > 0 ) {
+                    int nPort = joNodeEntry["httpsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "wssRpcPort" ) > 0 ) {
+                    int nPort = joNodeEntry["wssRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+            }
+        } catch ( ... ) {
+            strURL.clear();
+        }
+    }
+    if ( joNodeEntry.count( "ip6" ) > 0 ) {
+        try {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joNodeEntry["ip6"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joNodeEntry.count( "httpRpcPort6" ) > 0 ) {
+                    int nPort = joNodeEntry["httpRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "wsRpcPort6" ) > 0 ) {
+                    int nPort = joNodeEntry["wsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "httpsRpcPort6" ) > 0 ) {
+                    int nPort = joNodeEntry["httpsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joNodeEntry.count( "wssRpcPort6" ) > 0 ) {
+                    int nPort = joNodeEntry["wssRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+            }
+        } catch ( ... ) {
+            strURL.clear();
+        }
+    }
+    return strURL;  // NOTICE: URL can be empty in case of malformed "config.json" file
+}
+
+bool json_config_file_accessor::stat_extract_s_chain_URL_infos(
+    const nlohmann::json& joConfig, size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs ) {
+    try {
+        nOwnNodeIndex = std::string::npos;
+        vecURLs.clear();
+        nlohmann::json joThisNodeInfo = nlohmann::json::object();
+        std::vector< nlohmann::json > vecNodeJSONs;
+        if ( !json_config_file_accessor::stat_extract_s_chain_node_infos(
+                 joConfig, nOwnNodeIndex, joThisNodeInfo, vecNodeJSONs ) )
+            return false;
+        for ( const nlohmann::json& joNodeEntry : vecNodeJSONs ) {
+            std::string strURL = stat_extract_node_URL(
+                joNodeEntry );  // NOTICE: URL can be empty in case of malformed "config.json" file
+            vecURLs.push_back( strURL );
+        }
+        return true;
+    } catch ( ... ) {
+        nOwnNodeIndex = std::string::npos;
+        vecURLs.clear();
+        return false;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

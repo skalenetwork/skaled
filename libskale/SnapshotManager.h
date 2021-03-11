@@ -172,6 +172,7 @@ private:
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
+    void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
 };
 
 #endif  // SNAPSHOTAGENT_H

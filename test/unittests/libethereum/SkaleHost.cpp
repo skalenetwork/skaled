@@ -53,9 +53,9 @@ public:
         return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0 ) {
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0, uint64_t _winningNodeIndex = -1 ) {
         m_extFace.createBlock(
-            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot );
+            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 

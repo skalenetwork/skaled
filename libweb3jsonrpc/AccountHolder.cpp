@@ -47,7 +47,7 @@ vector< Address > AccountHolder::allAccounts() const {
     return accounts;
 }
 
-Address const& AccountHolder::defaultTransactAccount() const {
+Address AccountHolder::defaultTransactAccount() const {
     auto accounts = realAccounts();
     if ( accounts.empty() )
         return ZeroAddress;

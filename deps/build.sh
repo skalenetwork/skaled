@@ -1256,11 +1256,12 @@ then
 			if [ ! -f "libwebsockets-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-                git clone https://github.com/warmcat/libwebsockets.git
+                                git clone https://github.com/warmcat/libwebsockets.git
 				cd libwebsockets
-				git checkout v3.1-stable
-				# git checkout v4.0-stable
-				git pull
+                                # git checkout v3.1-stable
+                                # git checkout v4.0-stable
+                                git checkout v4.1-stable
+                                git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf libwebsockets-from-git.tar.gz ./libwebsockets

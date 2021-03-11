@@ -515,19 +515,9 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     BOOST_REQUIRE( hash1 != hash2 );
 
-    mgr->doSnapshot( 3 );
+    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 3 ), SnapshotManager::SnapshotAbsent );
 
-    mgr->computeSnapshotHash( 3 );
-
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
-
-    auto hash2_dbl = mgr->getSnapshotHash( 3 );
-
-    BOOST_REQUIRE( hash2 == hash2_dbl );
-
-    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 4 ), SnapshotManager::SnapshotAbsent );
-
-    BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 4 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
 }

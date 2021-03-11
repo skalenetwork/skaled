@@ -1,23 +1,17 @@
-name: Custom Docker and Binary
-
+name: Build and publish skaled container
 on:
-  workflow_dispatch:
-    inputs:
-      branch_name:
-        description: 'Branch name'
-        default: ''
-        required: true
-      image_version:
-        description: 'Image version for docker hub'
-        default: ''
-        required: true
-      cmake_options:
-        description: 'Additional cmake options'
-        default: ''
-        required: false
-
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+      - develop
+      - beta
+      - stable
+defaults:
+  run:
+    shell: bash
 jobs:
-  main_job:
+  build:
     runs-on: self-hosted
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -35,8 +29,6 @@ jobs:
         id: extract_branch
       - name: checkout
         uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.branch_name }}
       - name: Submodule update
         run: git submodule update --init --recursive
       - name: update apt
@@ -72,9 +64,20 @@ jobs:
           export CXX=g++-7
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_FLAGS=-O3 -DCMAKE_C_FLAGS=-O3 ..
+          cd ..
+      - name: Format-check source code
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make format-check
           cd ..
       - name: Build all
         run: |
@@ -82,22 +85,41 @@ jobs:
           export CXX=g++-7
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
           cd build
-          make skaled -j$(nproc)
+          make -j$(nproc)
           cd ..
-
       - name: Build and publish container
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
-          export BRANCH=${{ github.event.inputs.branch_name }}
-          export VERSION=${{ github.event.inputs.image_version }}
+          export BRANCH=${GITHUB_REF##*/}
+          echo "Branch $BRANCH"
+          export VERSION=$(cat VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
+          echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
+          echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
-          
-      - name: Upload skaled binary as artifact 
-        uses: actions/upload-artifact@v2
-        if: ${{ always() }}
+      - name: Create Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          name: skaled
-          path: ./build/skaled/skaled
+          tag_name: ${{ env.VERSION }}
+          release_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: true
+      - name: Upload skaled binary to Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream

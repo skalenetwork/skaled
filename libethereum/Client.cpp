@@ -247,15 +247,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
                         << chainParams().sChain.snapshotIntervalSec;
-        if ( this->number() == 0 ) {
-            LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
-            try {
-                m_snapshotManager->doSnapshot( 0 );
-                m_snapshotManager->computeSnapshotHash( 0 );
-            } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                cerror << "WARNING " << dev::nested_exception_what( ex );
-            }
-        }
         this->initHashes();
     }
 
@@ -578,6 +569,8 @@ size_t Client::importTransactionsAsBlock(
         if ( snapshotIntervalSec > 0 ) {
             unsigned block_number = this->number();
 
+            LOG( m_logger ) << "Block timestamp: " << _timestamp;
+
             if ( this->isTimeToDoSnapshot( _timestamp ) ) {
                 try {
                     LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
@@ -590,7 +583,6 @@ size_t Client::importTransactionsAsBlock(
 
                 this->last_snapshot_creation_time = _timestamp;
 
-                LOG( m_logger ) << "Block timestamp: " << _timestamp;
                 LOG( m_logger ) << "New snapshot creation time: "
                                 << this->last_snapshot_creation_time;
             }
@@ -656,13 +648,10 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         usleep( 1000 );
     }
 
-    cout << "isSealed: " << m_working.isSealed() << endl;
-
     resyncStateFromChain();
 
     Timer timer;
 
-    h256Hash changeds;
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
 
@@ -679,15 +668,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
 
-    DEV_READ_GUARDED( x_postSeal )
-    for ( size_t i = 0; i < newPendingReceipts.size(); i++ )
-        appendFromNewPending( newPendingReceipts[i], changeds, m_postSeal.pending()[i].sha3() );
-
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();
-
-    // Tell watches about the new transactions.
-    noteChanged( changeds );
 
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
@@ -718,10 +700,6 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     assert( m_skaleHost );
-
-    // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-    for ( auto const& h : _blocks )
-        LOG( m_loggerDetail ) << cc::debug( "Live block: " ) << h;
 
     m_skaleHost->noteNewBlocks();
 
@@ -786,7 +764,7 @@ void Client::resetState() {
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
-    return _timestamp / uint64_t( snapshotIntervalSec ) !=
+    return _timestamp / uint64_t( snapshotIntervalSec ) >
            this->last_snapshot_creation_time / uint64_t( snapshotIntervalSec );
 }
 
@@ -824,7 +802,7 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_logger ) << cc::notice( "Mining Beneficiary: " ) << author();
+    LOG( m_logger ) << cc::notice( "Client::startSealing: " ) << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
@@ -930,8 +908,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     RLPStream headerRlp;
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
-    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
-                    << cc::num10( BlockHeader( header, HeaderData ).number() );
+    BlockHeader header_struct( header, HeaderData );
+    LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
+                    << " (" << header_struct.hash() << ")";
+
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
@@ -955,7 +935,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
 void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
     DEV_READ_GUARDED( x_working );
     ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
-    // m_new_block_watch.invoke( m_working );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -1227,8 +1207,10 @@ void Client::initHashes() {
         this->last_snapshoted_block_with_hash = latest_snapshots.first;
 
         // ignore second as it was "in hash computation"
-        last_snapshot_creation_time =
-            blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+        // check that both are imported!!
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        assert( h2 != h256() );
+        last_snapshot_creation_time = blockInfo( h2 ).timestamp();
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
@@ -1237,15 +1219,15 @@ void Client::initHashes() {
 
         // whether it is local or downloaded - we shall ignore it's hash but use it's time
         // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        uint64_t time_of_second =
-            blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        uint64_t time_of_second = blockInfo( h2 ).timestamp();
 
-        this->last_snapshoted_block_with_hash = 0;
+        this->last_snapshoted_block_with_hash = -1;
         last_snapshot_creation_time = time_of_second;
 
         // no snapshots yet
     } else {
-        this->last_snapshoted_block_with_hash = 0;
+        this->last_snapshoted_block_with_hash = -1;
 
         if ( this->number() >= 1 )
             last_snapshot_creation_time = blockInfo( this->hashFromNumber( 1 ) ).timestamp();

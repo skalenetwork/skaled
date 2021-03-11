@@ -192,6 +192,7 @@ public:
         T* pRawOther = const_cast< T* >( refOther.get() );
         if ( ( ( void* ) pRawThis ) == ( ( void* ) pRawOther ) )
             return;
+        ref_release();
         stored_ = pRawOther;
         ref_retain();
     }
