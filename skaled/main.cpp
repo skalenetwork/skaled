@@ -287,7 +287,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
         //// HACK END ////
 
-        snapshotManager->restoreSnapshot( block_number );
+        snapshotManager->restoreSnapshotAfterCleanup( block_number );
         std::cout << cc::success( "Snapshot restore success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
 
@@ -1564,7 +1564,7 @@ int main( int argc, char** argv ) try {
 
         bool successfullDownload = false;
 
-        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size(); ++idx )
+        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
             try {
                 if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
                     continue;

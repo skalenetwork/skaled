@@ -140,6 +140,23 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 }
 
 // exceptions:
+// - not found/cannot read
+void SnapshotManager::restoreSnapshotAfterCleanup( unsigned int _blockNumber ) {
+    try {
+        if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) )
+            throw SnapshotAbsent( _blockNumber );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
+    }
+
+    for ( const string& vol : volumes ) {
+        if ( btrfs.subvolume.snapshot(
+                 ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
+            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+}
+
+// exceptions:
 // - no such snapshots
 // - cannot read
 // - cannot create tmp file
@@ -231,10 +248,9 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
 }
 
 boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
-    boost::filesystem::path p = diffs_dir / ( std::to_string( _toBlock ) );
     // check existance
-    assert( boost::filesystem::exists( p ) );
-    return p;
+    assert( boost::filesystem::exists( diffs_dir ) );
+    return diffs_dir / ( std::to_string( _toBlock ) );
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
