@@ -142,7 +142,6 @@ public:
         const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
-    void restoreSnapshotAfterCleanup( unsigned _blockNumber );
     boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
     void importDiff( unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _toBlock );

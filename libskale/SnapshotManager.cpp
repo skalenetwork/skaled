@@ -130,26 +130,10 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
     }
 
     for ( const string& vol : volumes ) {
-        if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-
-        if ( btrfs.subvolume.snapshot(
-                 ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    }
-}
-
-// exceptions:
-// - not found/cannot read
-void SnapshotManager::restoreSnapshotAfterCleanup( unsigned int _blockNumber ) {
-    try {
-        if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) )
-            throw SnapshotAbsent( _blockNumber );
-    } catch ( const fs::filesystem_error& ) {
-        std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
-    }
-
-    for ( const string& vol : volumes ) {
+        if ( fs::exists( data_dir / vol ) ) {
+            if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
+                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );

@@ -287,7 +287,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
         //// HACK END ////
 
-        snapshotManager->restoreSnapshotAfterCleanup( block_number );
+        snapshotManager->restoreSnapshot( block_number );
         std::cout << cc::success( "Snapshot restore success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
 
