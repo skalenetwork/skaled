@@ -456,19 +456,30 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
 
-    mgr.removeSnapshot( 1 );
-    mgr.removeSnapshot( 2 );
-
-    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 2 ), SnapshotManager::SnapshotAbsent );
-    BOOST_REQUIRE_THROW( mgr.removeSnapshot( 3 ), SnapshotManager::SnapshotAbsent );
-
-    mgr.doSnapshot( 1 );
-    mgr.doSnapshot( 2 );
-
     mgr.cleanupButKeepSnapshot( 1 );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
+}
+
+BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
+
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+
+    mgr.doSnapshot( 1 );
+    mgr.doSnapshot( 2 );
+
+    mgr.cleanup();
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots") );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1") );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2") );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" ) );
+
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -231,7 +231,10 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
 }
 
 boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
-    return diffs_dir / ( std::to_string( _toBlock ) );
+    boost::filesystem::path p = diffs_dir / ( std::to_string( _toBlock ) );
+    // check existance
+    assert( boost::filesystem::exists( p ) );
+    return p;
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
@@ -259,6 +262,13 @@ void SnapshotManager::cleanupButKeepSnapshot( unsigned _keepSnapshot ) {
 void SnapshotManager::cleanup() {
     this->cleanupDirectory( snapshots_dir );
     this->cleanupDirectory( data_dir );
+
+    try {
+        boost::filesystem::create_directory( snapshots_dir );
+        boost::filesystem::create_directory( diffs_dir );
+    } catch ( const fs::filesystem_error& ex ) {
+        std::throw_with_nested( CannotWrite( ex.path1() ) );
+    }  // catch
 }
 
 void SnapshotManager::cleanupDirectory(
