@@ -1610,15 +1610,6 @@ int main( int argc, char** argv ) try {
                         "Exception while collecting snapshot hash from other skaleds " ) ) );
                 }
 
-                //                bool present = false;
-                //                try {
-                //                    present = ;
-                //                } catch ( const std::exception& ex ) {
-                //                    // usually snapshot absent exception
-                //                    clog( VerbosityInfo, "main" ) << dev::nested_exception_what(
-                //                    ex );
-                //                }
-
                 try {
                     if ( snapshotManager->isSnapshotHashPresent( blockNumber ) ) {
                         clog( VerbosityInfo, "main" )
