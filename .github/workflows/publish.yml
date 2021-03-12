@@ -34,6 +34,8 @@ jobs:
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
+      - name: Cleanup containers
+        run: docker system prune -a
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
         shell: cmake -P {0}
