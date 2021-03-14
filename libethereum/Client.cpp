@@ -103,7 +103,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool isStartedFromSnapshot )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -113,8 +113,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ),
-      is_started_from_snapshot( isStartedFromSnapshot ) {
+      m_dbPath( _dbPath ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
