@@ -42,6 +42,8 @@ typedef intptr_t ssize_t;
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
 #include <atomic>
 #include <functional>
 #include <map>
@@ -298,6 +300,9 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
 public:
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
+    typedef std::function< std::string( const std::string& request ) > fn_eth_sendRawTransaction_t;
+    typedef std::function< dev::eth::LocalisedTransactionReceipt( const std::string& request ) >
+        fn_eth_getTransactionReceipt_t;
 
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
                                                                                // default 1 second
@@ -371,6 +376,8 @@ public:
     struct opts_t {
         net_opts_t netOpts_;
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
+        fn_eth_sendRawTransaction_t fn_eth_sendRawTransaction_;
+        fn_eth_getTransactionReceipt_t fn_eth_getTransactionReceipt_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -381,6 +388,8 @@ public:
         opts_t& assign( const opts_t& other ) {
             netOpts_ = other.netOpts_;
             fn_binary_snapshot_download_ = other.fn_binary_snapshot_download_;
+            fn_eth_sendRawTransaction_ = other.fn_eth_sendRawTransaction_;
+            fn_eth_getTransactionReceipt_ = other.fn_eth_getTransactionReceipt_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -486,16 +495,23 @@ public:
     bool isShutdownMode() const { return m_bShutdownMode; }
 
     bool handleProtocolSpecificRequest( SkaleServerHelper& sse, const std::string& strOrigin,
-        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
 protected:
     typedef void ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
-        const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse );
+        const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
     typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
     void setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
-        const nlohmann::json& joRequest, nlohmann::json& joResponse );
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;

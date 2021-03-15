@@ -103,7 +103,8 @@ public:
         std::string const& _blockHash, std::string const& _transactionIndex ) override;
     virtual Json::Value eth_getTransactionByBlockNumberAndIndex(
         std::string const& _blockNumber, std::string const& _transactionIndex ) override;
-    virtual Json::Value eth_getTransactionReceipt( std::string const& _transactionHash ) override;
+    virtual eth::LocalisedTransactionReceipt eth_getTransactionReceipt(
+        std::string const& _transactionHash ) override;
     virtual Json::Value eth_getUncleByBlockHashAndIndex(
         std::string const& _blockHash, std::string const& _uncleIndex ) override;
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(

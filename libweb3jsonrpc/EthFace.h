@@ -7,6 +7,9 @@
 
 #include "ModularServer.h"
 
+#include <libethereum/TransactionReceipt.h>
+#include <libweb3jsonrpc/JsonHelper.h>
+
 namespace dev {
 namespace rpc {
 class EthFace : public ServerInterface< EthFace > {
@@ -314,7 +317,9 @@ public:
     }
     inline virtual void eth_getTransactionReceiptI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getTransactionReceipt( request[0u].asString() );
+        eth::LocalisedTransactionReceipt receipt =
+            this->eth_getTransactionReceipt( request[0u].asString() );
+        response = toJson( receipt );
     }
     inline virtual void eth_getUncleByBlockHashAndIndexI(
         const Json::Value& request, Json::Value& response ) {
@@ -450,7 +455,8 @@ public:
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_getTransactionByBlockNumberAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
-    virtual Json::Value eth_getTransactionReceipt( const std::string& param1 ) = 0;
+    virtual dev::eth::LocalisedTransactionReceipt eth_getTransactionReceipt(
+        const std::string& param1 ) = 0;
     virtual Json::Value eth_getUncleByBlockHashAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(

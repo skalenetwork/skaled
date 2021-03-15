@@ -413,15 +413,15 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
     }
 }
 
-Json::Value Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
+LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !client()->isKnownTransaction( h ) )
-            return Json::Value( Json::nullValue );
+            return LocalisedTransactionReceipt( TransactionReceipt( bytesConstRef() ), h256(),
+                h256(), BlockNumber(), 0, Address(), Address(), u256() );
         auto cli = client();
         auto rcp = cli->localisedTransactionReceipt( h );
-        auto jo = toJson( rcp );
-        return jo;
+        return rcp;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

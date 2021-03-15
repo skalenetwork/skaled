@@ -2563,9 +2563,19 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
+            SkaleServerOverride::fn_eth_sendRawTransaction_t fn_eth_sendRawTransaction =
+                [=]( const std::string& request ) -> std::string {
+                return ethFace->eth_sendRawTransaction( request );
+            };
+            SkaleServerOverride::fn_eth_getTransactionReceipt_t fn_eth_getTransactionReceipt =
+                [=]( const std::string& request ) -> dev::eth::LocalisedTransactionReceipt {
+                return ethFace->eth_getTransactionReceipt( request );
+            };
             //
             SkaleServerOverride::opts_t serverOpts;
             serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
+            serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
+            serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
             serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
             serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
