@@ -249,19 +249,27 @@ bool checkParamsIsObject( const char* strMethodName, const rapidjson::Document& 
     nlohmann::json objResponse;
     if ( !checkParamsPresent( strMethodName, objRequest, objResponse ) ) {
         std::string strResponse = objResponse.dump();
-        rapidjson::Value v( rapidjson::StringRef( strResponse.c_str() ) );
-        joResponse.CopyFrom( v, joResponse.GetAllocator() );
+        joResponse.Parse( strResponse.data() );
         return false;
     }
     if ( joRequest["params"].IsObject() )
         return true;
     rapidjson::Value joError;
-    joError["code"] = -32602;
-    joError["message"] =
+    joError.SetObject();
+    //    joError["code"] = -32602;
+    joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+    //    joError["message"] =
+    //        rapidjson::StringRef( std::string( std::string( "error in \"" ) + strMethodName +
+    //                                           "\" rpc method, json entry \"params\" must be
+    //                                           object" )
+    //                                  .c_str() );
+    joError.AddMember( "message",
         rapidjson::StringRef( std::string( std::string( "error in \"" ) + strMethodName +
                                            "\" rpc method, json entry \"params\" must be object" )
-                                  .c_str() );
-    joResponse["error"] = joError;
+                                  .c_str() ),
+        joResponse.GetAllocator() );
+    //    joResponse["error"] = joError;
+    joError.AddMember( "error", joError, joResponse.GetAllocator() );
     return false;
 }
 
@@ -1134,15 +1142,14 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     joResponse["result"] = nullptr;
 
     rapidjson::Document joRequestObj;
-    rapidjson::Document joResponseObj;
-
+    joRequestObj.SetObject();
     std::string strRequest = joRequest.dump();
-    rapidjson::Value vRequest( rapidjson::StringRef( strRequest.c_str() ) );
-    joRequestObj.CopyFrom( vRequest, joRequestObj.GetAllocator() );
+    joRequestObj.Parse( strRequest.data() );
 
+    rapidjson::Document joResponseObj;
+    joResponseObj.SetObject();
     std::string strResponseCopy = joResponse.dump();
-    rapidjson::Value vResponse( rapidjson::StringRef( strResponseCopy.c_str() ) );
-    joResponseObj.CopyFrom( vResponse, joResponseObj.GetAllocator() );
+    joResponseObj.Parse( strResponseCopy.data() );
 
     if ( !pso()->handleProtocolSpecificRequest(
              getRelay(), getRemoteIp(), joRequestObj, joResponseObj ) ) {
@@ -1990,18 +1997,23 @@ bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_
     const std::string& strRequest, std::string& strResponse ) {
     strResponse.clear();
     rapidjson::Document joRequest;
+    joRequest.SetObject();
     try {
-        joRequest.Parse( strRequest.c_str() );
+        joRequest.Parse( strRequest.data() );
     } catch ( ... ) {
         return false;
     }
     rapidjson::Document joResponse;
-    joResponse["jsonrpc"] = "2.0";
+    joResponse.SetObject();
+    //    joResponse["jsonrpc"] = "2.0";
+    joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
     if ( joRequest.HasMember( "id" ) )
-        joResponse["id"] = joRequest["id"];
+        //        joResponse["id"] = joRequest["id"];
+        joResponse.AddMember( "id", joRequest["id"].GetInt(), joResponse.GetAllocator() );
     rapidjson::Value d;
     d.SetObject();
-    joResponse["result"] = d;
+    //    joResponse["result"] = d;
+    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
     if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
@@ -3271,25 +3283,31 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     try {
         if ( !joRequest.HasMember( "params" ) ) {
             rapidjson::Value joError;
-            joError["code"] = -32602;
+            joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+            //            joError["code"] = -32602;
             rapidjson::Value v( rapidjson::StringRef(
                 std::string( std::string( "error in \"" ) + "setSchainExitTime" +
                              "\" rpc method, json entry \"params\" must be object" )
                     .c_str() ) );
-            joError["message"] = v;
-            joResponse["error"] = joError;
+            //            joError["message"] = v;
+            joError.AddMember( "message", v, joResponse.GetAllocator() );
+            //            joResponse["error"] = joError;
+            joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
             return;
         } else {
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
                 rapidjson::Value joError;
-                joError["code"] = -32602;
+                //                joError["code"] = -32602;
+                joError.AddMember( "code", -32602, joResponse.GetAllocator() );
                 rapidjson::Value v( rapidjson::StringRef(
                     std::string( std::string( "error in \"" ) + "setSchainExitTime" +
                                  "\" rpc method, json entry \"params\" must be object" )
                         .c_str() ) );
-                joError["message"] = v;
-                joResponse["error"] = joError;
+                //                joError["message"] = v;
+                joError.AddMember( "message", v, joResponse.GetAllocator() );
+                //                joResponse["error"] = joError;
+                joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
                 return;
             }
         }
@@ -3354,8 +3372,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
-        rapidjson::Value v( rapidjson::StringRef( strResponse.c_str() ) );
-        joResponse.CopyFrom( v, joResponse.GetAllocator() );
+        joResponse.Parse( strResponse.data() );
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3363,11 +3380,21 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
         rapidjson::Value joError;
-        joError["code"] = -32602;
-        joError["message"] = rapidjson::StringRef( std::string(
-            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) + ex.what() )
-                                                       .c_str() );
-        joResponse["error"] = joError;
+        joError.SetObject();
+        //        joError["code"] = -32602;
+        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+        //        joError["message"] = rapidjson::StringRef( std::string(
+        //            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) +
+        //            ex.what() )
+        //                                                       .c_str() );
+        joError.AddMember( "message",
+            rapidjson::StringRef( std::string(
+                std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) +
+                ex.what() )
+                                      .c_str() ),
+            joResponse.GetAllocator() );
+        //        joResponse["error"] = joError;
+        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
@@ -3376,9 +3403,16 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, unknown exception " ) );
         rapidjson::Value joError;
-        joError["code"] = -32602;
-        joError["message"] = "error in \"setSchainExitTime\" rpc method, unknown exception";
-        joResponse["error"] = joError;
+        joError.SetObject();
+        //        joError["code"] = -32602;
+        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+        //        joError["message"] = "error in \"setSchainExitTime\" rpc method, unknown
+        //        exception";
+        joError.AddMember( "message",
+            "error in \"setSchainExitTime\" rpc method, unknown exception",
+            joResponse.GetAllocator() );
+        //        joResponse["error"] = joError;
+        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
         return;
     }
 }
@@ -3386,8 +3420,9 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
 void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    std::string strResponse = opts_.fn_eth_sendRawTransaction_( joRequest["param1"].GetString() );
-    joResponse.Parse( strResponse.c_str() );
+    std::string strResponse =
+        opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
+    joResponse.Parse( strResponse.data() );
 }
 
 void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
@@ -3395,38 +3430,11 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     rapidjson::Document& joResponse ) {
     dev::eth::LocalisedTransactionReceipt _t =
         opts_.fn_eth_getTransactionReceipt_( joRequest["param1"].GetString() );
+    Json::Value joValue = dev::eth::toJson( _t );
 
-    joResponse["from"] = rapidjson::StringRef( dev::toJS( _t.from() ).c_str() );
-    joResponse["to"] = rapidjson::StringRef( dev::toJS( _t.to() ).c_str() );
-
-    joResponse["transactionHash"] = rapidjson::StringRef( dev::toJS( _t.hash() ).c_str() );
-    joResponse["transactionIndex"] =
-        rapidjson::StringRef( dev::toJS( _t.transactionIndex() ).c_str() );
-    joResponse["blockHash"] = rapidjson::StringRef( dev::toJS( _t.blockHash() ).c_str() );
-    joResponse["blockNumber"] = rapidjson::StringRef( dev::toJS( _t.blockNumber() ).c_str() );
-    joResponse["cumulativeGasUsed"] =
-        rapidjson::StringRef( dev::toJS( _t.cumulativeGasUsed() ).c_str() );
-    joResponse["gasUsed"] = rapidjson::StringRef( dev::toJS( _t.gasUsed() ).c_str() );
-
-    dev::Address contractAddress = _t.contractAddress();
-    if ( contractAddress == dev::Address( 0 ) ) {
-        rapidjson::Document d;
-        joResponse["contractAddress"] = d.Null();
-    } else
-        joResponse["contractAddress"] =
-            rapidjson::StringRef( dev::toJS( contractAddress ).c_str() );
-
-    //    joResponse["logs"] = dev::toJson( _t.localisedLogs() );
-    joResponse["logsBloom"] = rapidjson::StringRef( dev::toJS( _t.bloom() ).c_str() );
-    if ( _t.hasStatusCode() )
-        joResponse["status"] =
-            rapidjson::StringRef( dev::toString0x< uint8_t >( _t.statusCode() ).c_str() );
-    else
-        joResponse["stateRoot"] = rapidjson::StringRef( dev::toJS( _t.stateRoot() ).c_str() );
-
-    std::string strRevertReason = _t.getRevertReason();
-    if ( !strRevertReason.empty() )
-        joResponse["revertReason"] = rapidjson::StringRef( strRevertReason.c_str() );
+    Json::FastWriter fastWriter;
+    std::string output = fastWriter.write( joValue );
+    joResponse.Parse( output.data() );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
