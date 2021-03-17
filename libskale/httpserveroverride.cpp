@@ -3396,7 +3396,8 @@ void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     rapidjson::Document& joResponse ) {
     std::string strResponse =
         opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
-    joResponse.Parse( strResponse.data() );
+    rapidjson::Value& v = joResponse["result"];
+    v.SetString( rapidjson::StringRef( strResponse.c_str() ) );
 }
 
 void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
@@ -3408,7 +3409,9 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
 
     Json::FastWriter fastWriter;
     std::string output = fastWriter.write( joValue );
-    joResponse.Parse( output.data() );
+
+    rapidjson::Value& v = joResponse["result"];
+    v.SetString( rapidjson::StringRef( output.c_str() ) );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
