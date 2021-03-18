@@ -3396,31 +3396,11 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
 void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    const std::string strResponse =
+    std::string strResponse =
         opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
+
     rapidjson::Value& v = joResponse["result"];
-    v.SetString( rapidjson::StringRef( strResponse.c_str() ) );
-
-//    rapidjson::Document d( &joResponse.GetAllocator() );
-
-//    rapidjson::StringStream bis(strResponse.c_str());
-
-//    rapidjson::EncodedInputStream<rapidjson::ASCII<>, rapidjson::StringStream> eis(bis);  // wraps bis into eis
-//    d.ParseStream<0, rapidjson::ASCII<>>(eis);
-
-//    rapidjson::StringBuffer buffer;
-//    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-//    d.Accept( writer );
-//    std::string strResponse1 = buffer.GetString();
-//    std::cerr << "RESPONSE1: " << strResponse1 << std::endl;
-
-//    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-
-//    rapidjson::Value& v = joResponse["result"];
-//    v.SetString( strResponse.c_str(), strResponse.size() );
-
-//    joResponse["result"] = "0x3e1fefa9a4c9f689f515d93b47946523badac40fd322ba9eccc748e8050075b3";
-//    joResponse["result"] = strResponse.c_str();
+    v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
 }
 
 void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
