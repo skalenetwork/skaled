@@ -222,6 +222,10 @@ public:
     bool server_skip_canonical_name_;  // use LWS_SERVER_OPTION_SKIP_SERVER_CANONICAL_NAME option
     bool ssl_perform_global_init_;     // both client and server, use
                                        // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+                                       // (inclompatible with ssl_perform_local_init_)
+    bool ssl_perform_local_init_;      // both client and server, use
+                                       // explicit OpenSSL init locally
+                                       // (inclompatible with ssl_perform_global_init_)
     bool
         ssl_server_require_valid_certificate_;  // use
                                                 // LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT

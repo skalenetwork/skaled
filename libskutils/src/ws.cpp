@@ -688,8 +688,13 @@ basic_network_settings::basic_network_settings()
       server_skip_canonical_name_( false )  // use LWS_SERVER_OPTION_SKIP_SERVER_CANONICAL_NAME
                                             // option
       ,
-      ssl_perform_global_init_( true )  // both client and server, use
-                                        // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+      ssl_perform_global_init_( false )  // both client and server, use
+                                         // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+                                         // (inclompatible with ssl_perform_local_init_)
+      ,
+      ssl_perform_local_init_( true )  // both client and server, use
+                                       // explicit OpenSSL init locally
+                                       // (inclompatible with ssl_perform_global_init_)
       ,
       ssl_server_require_valid_certificate_(
           false )  // use LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT option
@@ -1602,9 +1607,16 @@ int basic_api::stat_callback_server(
 
 client_api::client_api() {
     clear_fields();
+    if ( ssl_perform_local_init_ ) {
+        SSL_load_error_strings();
+        SSL_library_init();
+    }
 }
 client_api::~client_api() {
     deinit();
+    if ( ssl_perform_local_init_ ) {
+        ERR_free_strings();
+    }
 }
 
 void client_api::clear_fields() {
@@ -1650,10 +1662,10 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     // clear_fields();
     deinit();
     interface_name_ = ( strInterfaceName && strInterfaceName[0] ) ? strInterfaceName : "";
-    bool bDoInitSSL = false;
+    bool bDoGlobalInitSSL = false;
     if ( isSSL && pSA != nullptr ) {
         if ( ssl_perform_global_init_ )
-            bDoInitSSL = true;
+            bDoGlobalInitSSL = true;
         cert_path_ = pSA->strCertificateFile_;
         key_path_ = pSA->strPrivateKeyFile_.c_str();
         ca_path_ = pSA->strCertificationChainFile_.c_str();  // ???
@@ -1681,8 +1693,8 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     }  // i( isSSL && pSA != nullptr )
 
 #if ( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
-    if ( bDoInitSSL )  // ssl_perform_global_init_
-#endif                 /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
+    if ( bDoGlobalInitSSL )  // ssl_perform_global_init_
+#endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
         ctx_info_.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
     //				ctx_info_.ssl_options_set = // compatibility with old implementation based on
@@ -2134,9 +2146,16 @@ std::string server_api::connection_data::description( bool isColored /*= false*/
 
 server_api::server_api() {
     clear_fields();
+    if ( ssl_perform_local_init_ ) {
+        SSL_load_error_strings();
+        SSL_library_init();
+    }
 }
 server_api::~server_api() {
     deinit();
+    if ( ssl_perform_local_init_ ) {
+        ERR_free_strings();
+    }
 }
 
 void server_api::clear_fields() {
