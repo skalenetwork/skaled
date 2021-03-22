@@ -1033,7 +1033,8 @@ volatile size_t basic_api::g_nDefaultBufferSizeTX =
 
 
 basic_api::basic_api( basic_network_settings* pBNS )
-//: mtx_api_( "RMTX-NLWS-BASIC-API" )
+    : basic_network_settings( pBNS )
+//, mtx_api_( "RMTX-NLWS-BASIC-API" )
 {
     clear_fields();
 }

@@ -2603,7 +2603,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
                 cc::debug( " server on address " ) + cc::info( strAddr ) +
                 cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
         pSrv.reset( new SkaleRelayWS(
-            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex ) );
+            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex, &bns4ws_ ) );
         if ( bIsSSL ) {
             pSrv->strCertificateFile_ = strPathSslCert;
             pSrv->strPrivateKeyFile_ = strPathSslKey;
