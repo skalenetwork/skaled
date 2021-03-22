@@ -57,7 +57,8 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: Build dependencies
         run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-get -y install libgcrypt20-dev
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get --yes install libgcrypt20-dev
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
