@@ -656,7 +656,7 @@ void guarded_traffic_stats::unlock() {
     skutils::get_ref_mtx().unlock();
 }
 
-basic_network_settings::basic_network_settings()
+basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
     // interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
     : timeout_pong_( 300 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
@@ -717,6 +717,8 @@ basic_network_settings::basic_network_settings()
       cntMaxPortionBytesToSend_( 0 )
 #endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
 {
+    if ( pBNS != nullptr )
+        ( *this ) = ( *pBNS );
 }
 basic_network_settings& basic_network_settings::default_instance() {
     static basic_network_settings g_inst;
@@ -1030,7 +1032,7 @@ volatile size_t basic_api::g_nDefaultBufferSizeTX =
     1024 * 16;  // 0 - same as g_nDefaultBufferSizeRX
 
 
-basic_api::basic_api()
+basic_api::basic_api( basic_network_settings* pBNS )
 //: mtx_api_( "RMTX-NLWS-BASIC-API" )
 {
     clear_fields();
@@ -1605,7 +1607,7 @@ int basic_api::stat_callback_server(
     return 0;
 }
 
-client_api::client_api() {
+client_api::client_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
     clear_fields();
     if ( ssl_perform_local_init_ ) {
         SSL_load_error_strings();
@@ -2144,7 +2146,7 @@ std::string server_api::connection_data::description( bool isColored /*= false*/
 }
 
 
-server_api::server_api() {
+server_api::server_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
     clear_fields();
     if ( ssl_perform_local_init_ ) {
         SSL_load_error_strings();
@@ -3543,7 +3545,8 @@ std::string peer::getCidString() const {
 }
 
 
-server::server() : server_serial_number_( 0 ), listen_backlog_( 0 ) {
+server::server( basic_network_settings* pBNS )
+    : api_( pBNS ), server_serial_number_( 0 ), listen_backlog_( 0 ) {
     traffic_stats::register_default_event_queues_for_web_socket_server();
     api_.onConnect_ = [this]( connection_identifier_t cid, struct lws* /*wsi*/,
                           const char* /*strPeerClientAddressName*/,
@@ -3823,7 +3826,7 @@ const security_args& server::onGetSecurityArgs() const {
 }
 
 
-client::client() {
+client::client( basic_network_settings* pBNS ) : api_( pBNS ) {
     traffic_stats::register_default_event_queues_for_web_socket_client();
     api_.onConnect_ = [this]() {
         onOpen( api_.cid_ );

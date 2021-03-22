@@ -1778,8 +1778,9 @@ void SkaleWsPeer::eth_unsubscribe(
 
 SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
     const char* strScheme,  // "ws" or "wss"
-    int nPort, e_server_mode_t esm, int nServerIndex )
-    : SkaleServerHelper( nServerIndex ),
+    int nPort, e_server_mode_t esm, int nServerIndex, skutils::ws::basic_network_settings* pBNS )
+    : skutils::ws::server( pBNS ),
+      SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
