@@ -1778,8 +1778,9 @@ void SkaleWsPeer::eth_unsubscribe(
 
 SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
     const char* strScheme,  // "ws" or "wss"
-    int nPort, e_server_mode_t esm, int nServerIndex )
-    : SkaleServerHelper( nServerIndex ),
+    int nPort, e_server_mode_t esm, int nServerIndex, skutils::ws::basic_network_settings* pBNS )
+    : skutils::ws::server( pBNS ),
+      SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
@@ -2602,7 +2603,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
                 cc::debug( " server on address " ) + cc::info( strAddr ) +
                 cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
         pSrv.reset( new SkaleRelayWS(
-            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex ) );
+            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex, &bns4ws_ ) );
         if ( bIsSSL ) {
             pSrv->strCertificateFile_ = strPathSslCert;
             pSrv->strPrivateKeyFile_ = strPathSslKey;
