@@ -29,7 +29,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 
-#include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/common/specificationparser.h>
 
 #include <cassert>
@@ -60,6 +59,7 @@
 
 #include <libethereum/Block.h>
 #include <libethereum/Transaction.h>
+#include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/Skale.h>
 
@@ -3268,6 +3268,49 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool SkaleServerOverride::ValidateJsonRpcRequestFields( const rapidjson::Document& joRequest ) {
+    if ( !joRequest.IsObject() ) {
+        return false;
+    }
+    return true;
+}
+
+int SkaleServerOverride::ValidateJsonRpcRequest( const rapidjson::Document& joRequest ) {
+    int error = 0;
+    if ( !this->ValidateJsonRpcRequestFields( joRequest ) ) {
+        error = jsonrpc::Errors::ERROR_RPC_INVALID_REQUEST;
+    } else {
+    }
+
+    return error;
+}
+
+void SkaleServerOverride::wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
+    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse ) {
+    if ( joResponse.HasMember( "result" ) ) {
+        joResponse.RemoveMember( "result" );
+    }
+
+    rapidjson::Value joError;
+    joError.SetObject();
+
+    joError.AddMember( "code", exception.GetCode(), joResponse.GetAllocator() );
+
+    std::string message = exception.GetMessage();
+    joError.AddMember( "message", rapidjson::Value(), joResponse.GetAllocator() );
+    joError["message"].SetString( message.c_str(), message.size(), joResponse.GetAllocator() );
+
+    Json::Value joData = exception.GetData();
+    joError.AddMember( "data", rapidjson::Value(), joResponse.GetAllocator() );
+    if ( joData != Json::nullValue ) {
+        Json::FastWriter fastWriter;
+        std::string data = fastWriter.write( joData );
+        joError["data"].SetString( data.c_str(), data.size(), joResponse.GetAllocator() );
+    }
+
+    joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
+}
+
 void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     const std::string& strOrigin, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
@@ -3275,6 +3318,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     try {
         if ( !joRequest.HasMember( "params" ) ) {
             rapidjson::Value joError;
+            joError.SetObject();
             joError.AddMember( "code", -32602, joResponse.GetAllocator() );
             rapidjson::Value v( rapidjson::StringRef(
                 std::string( std::string( "error in \"" ) + "setSchainExitTime" +
@@ -3287,6 +3331,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
                 rapidjson::Value joError;
+                joError.SetObject();
                 joError.AddMember( "code", -32602, joResponse.GetAllocator() );
                 rapidjson::Value v( rapidjson::StringRef(
                     std::string( std::string( "error in \"" ) + "setSchainExitTime" +
@@ -3396,27 +3441,46 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
 void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    std::string strResponse =
-        opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
+    try {
+        //        this->ValidateJsonRpcRequest( joRequest );
+        try {
+            std::string strResponse =
+                opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
 
-    rapidjson::Value& v = joResponse["result"];
-    v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( dev::Exception const& ) {
+            throw jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() );
+        }
+    } catch ( const jsonrpc::JsonRpcException& ex ) {
+        this->wrapJsonRpcException( joRequest, ex, joResponse );
+    }
 }
 
 void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    dev::eth::LocalisedTransactionReceipt _t =
-        opts_.fn_eth_getTransactionReceipt_( joRequest["params"].GetArray()[0].GetString() );
-    Json::Value joValue = dev::eth::toJson( _t );
+    try {
+        //        this->ValidateJsonRpcRequest( joRequest );
+        try {
+            dev::eth::LocalisedTransactionReceipt _t = opts_.fn_eth_getTransactionReceipt_(
+                joRequest["params"].GetArray()[0].GetString() );
+            Json::Value joValue = dev::eth::toJson( _t );
 
-    Json::FastWriter fastWriter;
-    std::string output = fastWriter.write( joValue );
+            Json::FastWriter fastWriter;
+            std::string output = fastWriter.write( joValue );
 
-    rapidjson::Document d( &joResponse.GetAllocator() );
-    d.Parse( output.data() );
+            rapidjson::Document d( &joResponse.GetAllocator() );
+            d.Parse( output.data() );
 
-    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+            joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+        } catch ( ... ) {
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+        }
+    } catch ( const jsonrpc::JsonRpcException& ex ) {
+        this->wrapJsonRpcException( joRequest, ex, joResponse );
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

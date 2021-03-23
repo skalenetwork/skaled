@@ -40,6 +40,7 @@ typedef intptr_t ssize_t;
 #include <unistd.h>
 #endif
 
+#include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <microhttpd.h>
 #include <rapidjson/document.h>
@@ -512,6 +513,13 @@ protected:
 
     void eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool ValidateJsonRpcRequestFields( const rapidjson::Document& joRequest );
+
+    int ValidateJsonRpcRequest( const rapidjson::Document& joRequest );
+
+    void wrapJsonRpcException( const rapidjson::Document& joRequest,
+        const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;
