@@ -1413,7 +1413,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             switch ( nMessageTypeCode ) {
             case 1: {
-                // ETH transfer, see
+                // ETH M->S/S->M transfer, see
                 // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/DepositBox.sol
                 // Data is:
                 // --------------------------------------------------------------
@@ -1421,56 +1421,26 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // --------------------------------------------------------------
                 // 0      | 1        | Value 1
                 // --------------------------------------------------------------
-                static const char strImaMessageTypeName[] = "ETH";
+                static const char strImaMessageTypeName[] = "ETH(1)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
                 //
             } break;
-            case 2:
-            case 3:
-            case 4: {
+            case 2: {
+                // ERC20 S->M transfer
                 // ERC20 transfer, see source code of encodeData() function here:
                 // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
                 // Data is:
-                // -------- For message type code 4:
                 // --------------------------------------------------------------
                 // Offset | Size     | Description
                 // --------------------------------------------------------------
-                // 0      | 1        | Value 3
-                // 1      | 32       | contractPosition, address
-                // 33     | 32       | to, address
-                // 65     | 32       | amount, number
-                // 97     | 32       | totalSupply, uint
-                // 129    | 32       | size of name (next field)
-                // 161    | variable | name, string memory
-                //        | 32       | size of symbol (next field)
-                //        | variable | symbol, string memory
-                //        | 1        | decimals, uint8
-                // --------------------------------------------------------------
-                // Or:
-                // -------- For message type code 3:
-                // --------------------------------------------------------------
-                // Offset | Size     | Description
-                // --------------------------------------------------------------
-                // 0      | 1        | Value 3
-                // 1      | 32       | contractPosition, address
-                // 33     | 32       | to, address
-                // 65     | 32       | amount, number
-                // 97     | 32       | totalSupply, uint
-                // --------------------------------------------------------------
-                // Or:
-                // -------- For message type code 2:
-                // --------------------------------------------------------------
-                // Offset | Size     | Description
-                // --------------------------------------------------------------
-                // 0      | 1        | Value 3
+                // 0      | 1        | Value 2
                 // 1      | 32       | contractPosition, address
                 // 33     | 32       | to, address
                 // 65     | 32       | amount, number
                 // --------------------------------------------------------------
-
-                static const char strImaMessageTypeName[] = "ERC20";
+                static const char strImaMessageTypeName[] = "ERC20(2)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
@@ -1508,82 +1478,88 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // std::cout + "\"amount\" is " + toJS( amount ) + std::endl;
                 nPos += nFiledSize;
                 //
-                dev::u256 totalSupply;
-                bool isSmallEnvelope = true;
-                std::string strName( "" );
-                std::string strSymbol( "" );
-                uint8_t nDecimals = 0;
-                if ( nMessageTypeCode > 2 ) {
-                    // totalSupply, uint
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    totalSupply =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    // std::cout + "\"totalSupply\" is " + toJS( totalSupply ) + std::endl;
-                    nPos += nFiledSize;
-                    // next fields are in first message version only
-                    if ( nPos < cntMessageBytes ) {
-                        isSmallEnvelope = false;
-                        // name
-                        nFiledSize = 32;
-                        if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                            throw std::runtime_error(
-                                skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
-                                                        "nFiledSize=%zu, cntMessageBytes=%zu",
-                                    strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                        const dev::u256 sizeOfName =
-                            BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                        // std::cout + "\"sizeOfName\" is " + toJS( sizeOfName ) + std::endl;
-                        nPos += nFiledSize;
-                        nFiledSize = sizeOfName.convert_to< size_t >();
-                        // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
-                        if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                            throw std::runtime_error(
-                                skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
-                                                        "nFiledSize=%zu, cntMessageBytes=%zu",
-                                    strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                        strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                            ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                        nPos += nFiledSize;
-                        // symbol
-                        nFiledSize = 32;
-                        if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                            throw std::runtime_error(
-                                skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
-                                                        "nFiledSize=%zu, cntMessageBytes=%zu",
-                                    strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                        const dev::u256 sizeOfSymbol =
-                            BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                        // std::cout + "\"sizeOfSymbol\" is " + toJS( sizeOfSymbol ) + std::endl;
-                        nPos += 32;
-                        nFiledSize = sizeOfSymbol.convert_to< size_t >();
-                        // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
-                        if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                            throw std::runtime_error(
-                                skutils::tools::format( "IMA message too short, %s(8), nPos=%zu, "
-                                                        "nFiledSize=%zu, cntMessageBytes=%zu",
-                                    strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                        strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                            ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                        nPos += nFiledSize;
-                        // decimals
-                        nFiledSize = 1;
-                        if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                            throw std::runtime_error(
-                                skutils::tools::format( "IMA message too short, %s(9), nPos=%zu, "
-                                                        "nFiledSize=%zu, cntMessageBytes=%zu",
-                                    strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                        nDecimals = uint8_t( vecBytes[nPos] );
-                        // std::cout + "\"nDecimals\" is " + nDecimals + std::endl;
-                        nPos += nFiledSize;
-                        //
-
-                    }  // next fields are in first message version only
-                }      // if( nMessageTypeCode > 2 )
+                if ( nPos > cntMessageBytes ) {
+                    const size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "amount" ) + cc::debug( "................." ) +
+                           cc::info( amount.str() ) );
+            } break;
+            case 3: {
+                // ERC20 M->S transfer + totalSupply
+                // ERC20 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 3
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | amount, number
+                // 97     | 32       | totalSupply, uint
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ERC20(3)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"contractPosition\" is " + toJS( contractPosition ) + std::endl;
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"addressTo\" is " + toJS( addressTo ) + std::endl;
+                nPos += nFiledSize;
+                // amount, number
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 amount =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"amount\" is " + toJS( amount ) + std::endl;
+                nPos += nFiledSize;
+                // totalSupply, uint
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 totalSupply =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"totalSupply\" is " + toJS( totalSupply ) + std::endl;
+                nPos += nFiledSize;
                 //
                 if ( nPos > cntMessageBytes ) {
                     const size_t nExtra = cntMessageBytes - nPos;
@@ -1604,46 +1580,169 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 clog( VerbosityDebug, "IMA" )
                     << ( "    " + cc::info( "amount" ) + cc::debug( "................." ) +
                            cc::info( amount.str() ) );
-                if ( nMessageTypeCode > 2 ) {
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "totalSupply" ) + cc::debug( "............" ) +
-                               cc::info( totalSupply.str() ) );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "Envelope" ) + cc::debug( "..............." ) +
-                               ( isSmallEnvelope ? cc::warn( "yes" ) : cc::info( "no" ) ) );
-                    if ( !isSmallEnvelope ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
-                                   cc::info( strName ) );
-                        clog( VerbosityDebug, "IMA" )
-                            << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
-                                   cc::info( strSymbol ) );
-                        clog( VerbosityDebug, "IMA" )
-                            << ( "    " + cc::info( "decimals" ) + cc::debug( "..............." ) +
-                                   cc::num10( nDecimals ) );
-                    }  // if( ! isSmallEnvelope )
-                }      // if( nMessageTypeCode > 2 )
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "totalSupply" ) + cc::debug( "............" ) +
+                           cc::info( totalSupply.str() ) );
+                break;
             } break;
-            case 5:
-            case 6: {
-                // ERC 721 transfer, see source code of encodeData() function here:
-                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+            case 4: {
+                // ERC20 M->S transfer + tokenInfo
+                // ERC20 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
                 // Data is:
-                // -------- For message type code 6:
                 // --------------------------------------------------------------
                 // Offset | Size     | Description
                 // --------------------------------------------------------------
-                // 0      | 1        | Value 5
+                // 0      | 1        | Value 4
                 // 1      | 32       | contractPosition, address
                 // 33     | 32       | to, address
-                // 65     | 32       | tokenId
-                // 97     | 32       | size of name (next field)
-                // 129    | variable | name, string memory
+                // 65     | 32       | amount, number
+                // 97     | 32       | totalSupply, uint
+                // 129    | 32       | size of name (next field)
+                // 161    | variable | name, string memory
                 //        | 32       | size of symbol (next field)
+                //        | 1        | decimals, uint8
                 //        | variable | symbol, string memory
                 // --------------------------------------------------------------
-                // Or:
-                // -------- For message type code 5:
+                static const char strImaMessageTypeName[] = "ERC20(4)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"contractPosition\" is " + toJS( contractPosition ) + std::endl;
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"addressTo\" is " + toJS( addressTo ) + std::endl;
+                nPos += nFiledSize;
+                // amount, number
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 amount =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"amount\" is " + toJS( amount ) + std::endl;
+                nPos += nFiledSize;
+                // totalSupply, uint
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 totalSupply =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"totalSupply\" is " + toJS( totalSupply ) + std::endl;
+                nPos += nFiledSize;
+                // name
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfName =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"sizeOfName\" is " + toJS( sizeOfName ) + std::endl;
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                // decimals
+                nFiledSize = 1;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(9), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const uint8_t nDecimals = uint8_t( vecBytes[nPos] );
+                // std::cout + "\"nDecimals\" is " + nDecimals + std::endl;
+                nPos += nFiledSize;
+                // symbol
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfSymbol =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"sizeOfSymbol\" is " + toJS( sizeOfSymbol ) + std::endl;
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(8), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                std::string strSymbol( "" );
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    const size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "amount" ) + cc::debug( "................." ) +
+                           cc::info( amount.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "totalSupply" ) + cc::debug( "............" ) +
+                           cc::info( totalSupply.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
+                           cc::info( strName ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "decimals" ) + cc::debug( "..............." ) +
+                           cc::num10( nDecimals ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
+                           cc::info( strSymbol ) );
+            } break;
+            case 5: {
+                // ERC721 M->S/S->M transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+                // Data is:
                 // --------------------------------------------------------------
                 // Offset | Size     | Description
                 // --------------------------------------------------------------
@@ -1652,8 +1751,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // 33     | 32       | to, address
                 // 65     | 32       | tokenId
                 // --------------------------------------------------------------
-
-                static const char strImaMessageTypeName[] = "ERC721";
+                static const char strImaMessageTypeName[] = "ERC721(5)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
@@ -1687,52 +1785,119 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 const dev::u256 tokenID =
                     BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
-                // next fields are in first message version only
-                bool isSmallEnvelope = true;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
+                           cc::info( tokenID.str() ) );
+            } break;
+            case 6: {
+                // ERC721 M->S transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 5
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | tokenId
+                // 97     | 32       | size of name (next field)
+                // 129    | variable | name, string memory
+                //        | 32       | size of symbol (next field)
+                //        | variable | symbol, string memory
+                // --------------------------------------------------------------
+
+                static const char strImaMessageTypeName[] = "ERC721(6)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // tokenId
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 tokenID =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // name
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfName =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                // symbol
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfSymbol =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
-                if ( nPos < cntMessageBytes ) {
-                    isSmallEnvelope = false;
-                    // name
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfName =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    nPos += nFiledSize;
-                    nFiledSize = sizeOfName.convert_to< size_t >();
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    // symbol
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfSymbol =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    nPos += 32;
-                    nFiledSize = sizeOfSymbol.convert_to< size_t >();
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    //
-                }  // next fields are in first message version only
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
                 if ( nPos > cntMessageBytes ) {
                     size_t nExtra = cntMessageBytes - nPos;
                     clog( VerbosityDebug, "IMA" )
@@ -1753,17 +1918,13 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
                            cc::info( tokenID.str() ) );
                 clog( VerbosityDebug, "IMA" )
-                    << ( "    " + cc::info( "Envelope" ) + cc::debug( "..............." ) +
-                           ( isSmallEnvelope ? cc::warn( "yes" ) : cc::info( "no" ) ) );
-                if ( !isSmallEnvelope ) {
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
-                               cc::info( strName ) );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
-                               cc::info( strSymbol ) );
-                }  // if( ! isSmallEnvelope )
+                    << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
+                           cc::info( strName ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
+                           cc::info( strSymbol ) );
             } break;
+            /*
             case 0x13: {
                 // Raw ERC20 transfer
                 // --------------------------------------------------------------
@@ -1877,6 +2038,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
                            cc::info( tokenID.str() ) );
             } break;
+            */
             default: {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " + cc::fatal( " UNKNOWN IMA MESSAGE: " ) +
@@ -1909,8 +2071,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             if ( bIsVerifyImaMessagesViaLogsSearch ) {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
-                           cc::debug(
-                               "Will use contract event based verification of IMA message(s)" ) );
+                           cc::debug( "Will use contract event based verification of IMA "
+                                      "message(s)" ) );
                 //
                 //
                 //
@@ -2064,8 +2226,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + cc::debug( " Reviewing transaction:" ) +
                                cc::j( joTransaction ) + cc::debug( "..." ) );
-                    // extract "to" address from transaction, then compare it with "sender" from IMA
-                    // message
+                    // extract "to" address from transaction, then compare it with "sender" from
+                    // IMA message
                     const std::string strTransactionTo = skutils::tools::trim_copy(
                         ( joTransaction.count( "to" ) > 0 && joTransaction["to"].is_string() ) ?
                             joTransaction["to"].get< std::string >() :
@@ -2087,7 +2249,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     }
                     //
                     //
-                    // Find more transaction details, simlar to call tp eth_getTransactionReceipt
+                    // Find more transaction details, simlar to call tp
+                    // eth_getTransactionReceipt
                     //
                     /* Receipt should look like:
                         {
@@ -2327,12 +2490,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             if ( bIsImaMessagesViaContractCall ) {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
-                           cc::debug(
-                               "Will use contract call based verification of IMA message(s)" ) );
+                           cc::debug( "Will use contract call based verification of IMA "
+                                      "message(s)" ) );
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
-                           cc::warn(
-                               "Skipped contract event based verification of IMA message(s)" ) );
+                           cc::warn( "Skipped contract event based verification of IMA "
+                                     "message(s)" ) );
                 bool bTransactionWasVerifed = false;
 
 
@@ -2347,14 +2510,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     bytes data;
                 }
 
-                function verifyOutgoingMessageData( OutgoingMessageData memory message ) public view
-                returns (bool isValidMessage)
+                function verifyOutgoingMessageData( OutgoingMessageData memory message ) public
+                view returns (bool isValidMessage)
                 */
                 /*
 0x12bf6f2b                                                    Global/In-Struct // 1) signature
 0000000000000000000000000000000000000000000000000000000000000020 000     //  2) position after
-structure 00000000000000000000000000000000000000000000000000000000000000e0 020 000 //  3) position
-for OutgoingMessageData.dstChain
+structure 00000000000000000000000000000000000000000000000000000000000000e0 020 000 //  3)
+position for OutgoingMessageData.dstChain
 ???????????????????????????????????????????????????????????????? 040 020 //  4)
 OutgoingMessageData.msgCounter
 ???????????????????????????????????????????????????????????????? 060 040 //  5)
@@ -2364,7 +2527,8 @@ OutgoingMessageData.dstContract
 ???????????????????????????????????????????????????????????????? 0A0 080 //  7)
 OutgoingMessageData.to
 ???????????????????????????????????????????????????????????????? 0C0 0A0 //  8)
-OutgoingMessageData.amount 0000000000000000000000000000000000000000000000000000000000000120 0E0 0C0
+OutgoingMessageData.amount 0000000000000000000000000000000000000000000000000000000000000120 0E0
+0C0
 //  9) postion for OutgoingMessageData.data
 ???????????????????????????????????????????????????????????????? 100 0E0 // 10) length of
 OutgoingMessageData.dstChain
@@ -2490,12 +2654,10 @@ OutgoingMessageData.data
                             std::string strResult = joResult.get< std::string >();
                             clog( VerbosityDebug, "IMA" )
                                 << ( strLogPrefix + " " +
-                                       cc::debug( "Transaction verification got (raw) result: " ) +
-                                       cc::info( strResult ) );
-                            if ( !strResult.empty() ) {
-                                dev::u256 uResult( strResult ), uZero( "0" );
-                                if ( uResult != uZero )
-                                    bTransactionWasVerifed = true;
+                                       cc::debug( "Transaction verification got (raw) result: "
+                    ) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256 uResult(
+                    strResult ), uZero( "0" ); if ( uResult != uZero ) bTransactionWasVerifed =
+                    true;
                             }
                         }
                         if ( !bTransactionWasVerifed )
@@ -2523,7 +2685,8 @@ OutgoingMessageData.data
                         // (SKALE-430). Remove this temporary fix.
                         std::string blockNumber = "latest";
                         dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _json );
-                        // setTransactionDefaults( t ); // l_sergiy: we don't need this here for now
+                        // setTransactionDefaults( t ); // l_sergiy: we don't need this here for
+                        // now
                         dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
                             t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
                         std::string strRevertReason;
@@ -2568,8 +2731,8 @@ OutgoingMessageData.data
                 if ( !bTransactionWasVerifed ) {
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + " " +
-                               cc::error(
-                                   "Transaction verification was not passed for IMA message " ) +
+                               cc::error( "Transaction verification was not passed for IMA "
+                                          "message " ) +
                                cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
                     throw std::runtime_error(
                         "Transaction verification was not passed for IMA message " +
