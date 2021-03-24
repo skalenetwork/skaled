@@ -1150,6 +1150,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
             strResponse = joResponse.dump();
             return false;
         }
+        strResponse = joResponse.dump();
     } else {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
@@ -2518,12 +2519,10 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         rttElement->stop();
                         return true;
                     }
-                    std::cerr << "REQUEST: " << strBody << std::endl;
                     if ( !pSrv->handleHttpSpecificRequest(
                              req.origin_, esm, strBody, strResponse ) ) {
                         handler->HandleRequest( strBody.c_str(), strResponse );
                     }
-                    std::cerr << "RESPONSE: " << strResponse << std::endl;
                     //
                     stats::register_stats_answer(
                         bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
@@ -3443,17 +3442,14 @@ void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     rapidjson::Document& joResponse ) {
     try {
         //        this->ValidateJsonRpcRequest( joRequest );
-        try {
-            std::string strResponse =
-                opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
+        std::string strResponse =
+            opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
 
-            rapidjson::Value& v = joResponse["result"];
-            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-        } catch ( dev::Exception const& ) {
-            throw jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() );
-        }
-    } catch ( const jsonrpc::JsonRpcException& ex ) {
-        this->wrapJsonRpcException( joRequest, ex, joResponse );
+        rapidjson::Value& v = joResponse["result"];
+        v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+    } catch ( const dev::Exception& ) {
+        this->wrapJsonRpcException( joRequest,
+            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
     }
 }
 
@@ -3462,24 +3458,24 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     rapidjson::Document& joResponse ) {
     try {
         //        this->ValidateJsonRpcRequest( joRequest );
-        try {
-            dev::eth::LocalisedTransactionReceipt _t = opts_.fn_eth_getTransactionReceipt_(
-                joRequest["params"].GetArray()[0].GetString() );
-            Json::Value joValue = dev::eth::toJson( _t );
+        dev::eth::LocalisedTransactionReceipt _t =
+            opts_.fn_eth_getTransactionReceipt_( joRequest["params"].GetArray()[0].GetString() );
 
-            Json::FastWriter fastWriter;
-            std::string output = fastWriter.write( joValue );
+        Json::Value joValue = dev::eth::toJson( _t );
 
-            rapidjson::Document d( &joResponse.GetAllocator() );
-            d.Parse( output.data() );
+        Json::FastWriter fastWriter;
+        std::string output = fastWriter.write( joValue );
 
-            joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-        } catch ( ... ) {
-            BOOST_THROW_EXCEPTION(
-                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-        }
-    } catch ( const jsonrpc::JsonRpcException& ex ) {
-        this->wrapJsonRpcException( joRequest, ex, joResponse );
+        rapidjson::Document d( &joResponse.GetAllocator() );
+        d.Parse( output.data() );
+
+        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+    } catch ( std::invalid_argument& ex ) {
+        // not known transaction - skip exception
+        joResponse.AddMember( "result", rapidjson::Value(), joResponse.GetAllocator() );
+    } catch ( ... ) {
+        this->wrapJsonRpcException( joRequest,
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ), joResponse );
     }
 }
 

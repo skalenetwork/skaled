@@ -275,14 +275,17 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    try {
-        // Don't need to check the transaction signature (CheckTransaction::None) since it will
-        // be checked as a part of transaction import
-        Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-        return toJS( client()->importTransaction( t ) );
-    } catch ( Exception const& ) {
-        throw JsonRpcException( exceptionToErrorMessage() );
-    }
+    //    try {
+    //        // Don't need to check the transaction signature (CheckTransaction::None) since it
+    //        will
+    //        // be checked as a part of transaction import
+    //        Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+    //        return toJS( client()->importTransaction( t ) );
+    //    } catch ( Exception const& ) {
+    //        throw JsonRpcException( exceptionToErrorMessage() );
+    //    }
+    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+    return toJS( client()->importTransaction( t ) );
 }
 
 string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */ ) {
@@ -414,17 +417,18 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
 }
 
 LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
-    try {
-        h256 h = jsToFixed< 32 >( _transactionHash );
-        if ( !client()->isKnownTransaction( h ) )
-            return LocalisedTransactionReceipt( TransactionReceipt( bytesConstRef() ), h256(),
-                h256(), BlockNumber(), 0, Address(), Address(), u256() );
-        auto cli = client();
-        auto rcp = cli->localisedTransactionReceipt( h );
-        return rcp;
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    //    try {
+
+    //    } catch ( ... ) {
+    //        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    //    }
+    h256 h = jsToFixed< 32 >( _transactionHash );
+    if ( !client()->isKnownTransaction( h ) ) {
+        throw std::invalid_argument( "Not known transaction" );
     }
+    auto cli = client();
+    auto rcp = cli->localisedTransactionReceipt( h );
+    return rcp;
 }
 
 Json::Value Eth::eth_getUncleByBlockHashAndIndex(
