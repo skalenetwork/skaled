@@ -999,7 +999,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
-        bool bIsVerifyImaMessagesViaLogsSearch = false;  // default is false
+        bool bIsVerifyImaMessagesViaLogsSearch = ( strDirection == "M2S" ) ? true : false;
         if ( joSkaleConfig_nodeInfo.count( "verifyImaMessagesViaLogsSearch" ) > 0 )
             bIsVerifyImaMessagesViaLogsSearch =
                 joSkaleConfig_nodeInfo["verifyImaMessagesViaLogsSearch"].get< bool >();
@@ -2051,9 +2051,20 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             }  // switch( switch ( nMessageTypeCode ) )
             //
             //
+            // event OutgoingMessage(
+            //    bytes32 indexed dstChainHash,
+            //    uint256 indexed msgCounter,
+            //    address indexed srcContract,
+            //    address dstContract,
+            //    address to,
+            //    uint256 amount,
+            //    bytes data
+            //);
             static const std::string strSignature_event_OutgoingMessage(
-                "OutgoingMessage(string,bytes32,uint256,address,address,address,uint256,bytes,"
-                "uint256)" );
+                "OutgoingMessage(bytes32,uint256,address,address,address,uint256,bytes)" );
+            //            static const std::string strSignature_event_OutgoingMessage(
+            //                "OutgoingMessage(string,bytes32,uint256,address,address,address,uint256,bytes,"
+            //                "uint256)" );
             static const std::string strTopic_event_OutgoingMessage =
                 dev::toJS( dev::sha3( strSignature_event_OutgoingMessage ) );
             static const dev::u256 uTopic_event_OutgoingMessage( strTopic_event_OutgoingMessage );
@@ -2363,22 +2374,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                           ++idxReceiptLogRecord ) {
                         const nlohmann::json& joReceiptLogRecord =
                             jarrLogsReceipt[idxReceiptLogRecord];
+                        clog( VerbosityDebug, "IMA" )
+                            << ( strLogPrefix + cc::debug( " Reviewing TX receipt record:" ) +
+                                   cc::j( joReceiptLogRecord ) + cc::debug( "..." ) );
                         if ( joReceiptLogRecord.count( "address" ) == 0 ||
-                             ( !joReceiptLogRecord["address"].is_string() ) )
+                             ( !joReceiptLogRecord["address"].is_string() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) + cc::warn( " field is not found" ) );
                             continue;
+                        }
                         const std::string strReceiptLogRecord =
                             joReceiptLogRecord["address"].get< std::string >();
-                        if ( strReceiptLogRecord.empty() )
+                        if ( strReceiptLogRecord.empty() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) + cc::warn( " field is empty" ) );
                             continue;
+                        }
                         const std::string strReceiptLogRecordLC =
                             skutils::tools::to_lower( strReceiptLogRecord );
-                        if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC )
+                        if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) +
+                                       cc::warn( " field is not equal to " ) +
+                                       cc::notice( strAddressImaMessageProxyLC ) );
                             continue;
+                        }
                         //
                         // find needed entries in "topics"
                         if ( joReceiptLogRecord.count( "topics" ) == 0 ||
-                             ( !joReceiptLogRecord["topics"].is_array() ) )
+                             ( !joReceiptLogRecord["topics"].is_array() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field is not found" ) );
                             continue;
+                        }
                         bool bTopicSignatureFound = false, bTopicMsgCounterFound = false,
                              bTopicDstChainHashFound = false;
                         const nlohmann::json& jarrReceiptTopics = joReceiptLogRecord["topics"];
@@ -2397,24 +2434,63 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             if ( uTopic == uTopic_dstChainHash )
                                 bTopicDstChainHashFound = true;
                         }
-                        if ( !( bTopicSignatureFound && bTopicMsgCounterFound &&
-                                 bTopicDstChainHashFound ) )
+                        if ( !bTopicSignatureFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field does not contain signature" ) );
                             continue;
+                        }
+                        if ( !bTopicMsgCounterFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn(
+                                           " array field does not contain message counter" ) );
+                            continue;
+                        }
+                        if ( !bTopicDstChainHashFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field does not contain destination chain "
+                                                 "hash" ) );
+                            continue;
+                        }
                         //
                         // analyze "data"
                         if ( joReceiptLogRecord.count( "data" ) == 0 ||
-                             ( !joReceiptLogRecord["data"].is_string() ) )
+                             ( !joReceiptLogRecord["data"].is_string() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is not found" ) );
                             continue;
+                        }
                         const std::string strData = joReceiptLogRecord["data"].get< std::string >();
-                        if ( strData.empty() )
+                        if ( strData.empty() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is empty" ) );
                             continue;
+                        }
                         const std::string strDataLC_linear = skutils::tools::trim_copy(
                             skutils::tools::replace_all_copy( skutils::tools::to_lower( strData ),
                                 std::string( "0x" ), std::string( "" ) ) );
                         const size_t nDataLength = strDataLC_linear.size();
                         if ( strDataLC_linear.find( strMessageData_linear_LC ) ==
-                             std::string::npos )
+                             std::string::npos ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is not equal to " ) +
+                                       cc::notice( strMessageData_linear_LC ) );
                             continue;  // no IMA messahe data
+                        }
                         // std::set< std::string > setChunksLC;
                         std::set< dev::u256 > setChunksU256;
                         static const size_t nChunkSize = 64;
@@ -2441,24 +2517,52 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 continue;
                             }
                         }
-                        if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() )
+                        if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) +
+                                       cc::warn( " chunks does not contain destination contract "
+                                                 "address" ) );
                             continue;
-                        if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
+                        }
+                        if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() ) {
                             continue;
-                        if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() )
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) +
+                                       cc::warn( " chunks does not contain destination receiver "
+                                                 "address" ) );
+                        }
+                        if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) +
+                                       cc::warn( " chunks does not contain amount" ) );
                             continue;
-                        if ( setChunksU256.find( uDestinationChainID_32_max ) ==
-                             setChunksU256.end() )
-                            continue;
+                        }
+                        // if ( setChunksU256.find( uDestinationChainID_32_max ) ==
+                        //     setChunksU256.end() ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn(
+                        //                   " chunks does not contain destination chain ID" ) );
+                        //    continue;
+                        //}
                         //
                         bReceiptVerified = true;
                         break;
-                    }
+                    }  // for ( idxReceiptLogRecord = 0; idxReceiptLogRecord < cntReceiptLogRecords;
+                       // ++idxReceiptLogRecord )
                     if ( !bReceiptVerified ) {
                         clog( VerbosityDebug, "IMA" )
                             << ( strLogPrefix + cc::debug( " Skipping transaction " ) +
                                    cc::notice( strTransactionHash ) +
-                                   cc::debug( " because no appropriate receipt was found" ) );
+                                   cc::warn( " because no appropriate receipt was found" ) );
                         continue;
                     }
                     //
@@ -2488,261 +2592,270 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             //
             if ( bIsImaMessagesViaContractCall ) {
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + " " +
-                           cc::debug( "Will use contract call based verification of IMA "
-                                      "message(s)" ) );
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + " " +
-                           cc::warn( "Skipped contract event based verification of IMA "
-                                     "message(s)" ) );
-                bool bTransactionWasVerifed = false;
-
-
-                /*
-                struct OutgoingMessageData {
-                    string dstChain;
-                    uint256 msgCounter;
-                    address srcContract;
-                    address dstContract;
-                    address to;
-                    uint256 amount;
-                    bytes data;
-                }
-
-                function verifyOutgoingMessageData( OutgoingMessageData memory message ) public
-                view returns (bool isValidMessage)
-                */
-                /*
-0x12bf6f2b                                                    Global/In-Struct // 1) signature
-0000000000000000000000000000000000000000000000000000000000000020 000     //  2) position after
-structure 00000000000000000000000000000000000000000000000000000000000000e0 020 000 //  3)
-position for OutgoingMessageData.dstChain
-???????????????????????????????????????????????????????????????? 040 020 //  4)
-OutgoingMessageData.msgCounter
-???????????????????????????????????????????????????????????????? 060 040 //  5)
-OutgoingMessageData.srcContract
-???????????????????????????????????????????????????????????????? 080 060 //  6)
-OutgoingMessageData.dstContract
-???????????????????????????????????????????????????????????????? 0A0 080 //  7)
-OutgoingMessageData.to
-???????????????????????????????????????????????????????????????? 0C0 0A0 //  8)
-OutgoingMessageData.amount 0000000000000000000000000000000000000000000000000000000000000120 0E0
-0C0
-//  9) postion for OutgoingMessageData.data
-???????????????????????????????????????????????????????????????? 100 0E0 // 10) length of
-OutgoingMessageData.dstChain
-???????????????????????????????????????????????????????????????? 120 100 // 11) string dara of
-OutgoingMessageData.dstChain
-???????????????????????????????????????????????????????????????? 140 120 // 12) length of
-OutgoingMessageData.data
-???????????????????????????????????????????????????????????????? 160 140 // 13) string dara of
-OutgoingMessageData.data
-0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
-01234567890123456789012345678901234567890123456789012345678901234567890123456789
-0000000000000000000000000000000000000000000000000000000000000000
-                */
-                // 10) and 11) pre-encode OutgoingMessageData.dstChain(without 0x prefix)
-                std::string encoded_dstChain;
-                std::string strTargetChainName =
-                    ( strDirection == "M2S" ) ? strSChainName : "Mainnet";
-                size_t nLenTargetName = strTargetChainName.length();
-                encoded_dstChain += stat_encode_eth_call_data_chunck_size_t( nLenTargetName );
-                for ( size_t idxChar = 0; idxChar < nLenTargetName; ++idxChar ) {
-                    std::string strByte =
-                        skutils::tools::format( "%02x", strTargetChainName[idxChar] );
-                    encoded_dstChain += strByte;
-                }
-                size_t nLastPart = nLenTargetName % 32;
-                if ( nLastPart != 0 ) {
-                    size_t nNeededToAdd = 32 - nLastPart;
-                    for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
-                        encoded_dstChain += "00";
-                    }
-                }
-                // 12) and 13) pre-encode OutgoingMessageData.data(without 0x prefix)
-                std::string encoded_data;
-                size_t nDataLedth = strMessageData_linear_LC.length() / 2;
-                encoded_data += stat_encode_eth_call_data_chunck_size_t( nDataLedth );
-                encoded_data += strMessageData_linear_LC;
-                nLastPart = nDataLedth % 32;
-                if ( nLastPart != 0 ) {
-                    size_t nNeededToAdd = 32 - nLastPart;
-                    for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
-                        encoded_data += "00";
-                    }
-                }
-                //
-                std::string strCallData =
-                    "12bf6f2b";  // 1) signature as first 8 symbols of keccak256 from
-                                 // "verifyOutgoingMessageData((string,uint256,address,address,address,uint256,bytes))",
-                                 // not "verifyOutgoingMessageData(OutgoingMessageData)"
-                // 2) position after structure
-                strCallData += stat_encode_eth_call_data_chunck_size_t( 0x20 );
-                // 3) position for OutgoingMessageData.dstChain
-                strCallData += stat_encode_eth_call_data_chunck_size_t( 0xe0 );
-                // 4) OutgoingMessageData.msgCounter
-                strCallData +=
-                    stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
-                // 5) OutgoingMessageData.srcContract
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["sender"].get< std::string >() );
-                // 6) OutgoingMessageData.dstContract
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["destinationContract"].get< std::string >() );
-                // 7) OutgoingMessageData.to
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["to"].get< std::string >() );
-                // 8) OutgoingMessageData.amount
-                strCallData += stat_encode_eth_call_data_chunck_size_t(
-                    joMessageToSign["amount"].get< std::string >() );
-                // 9) postion for OutgoingMessageData.data
-                strCallData +=
-                    stat_encode_eth_call_data_chunck_size_t( 0xe0 + encoded_dstChain.length() / 2 );
-                // 10) and 11)
-                strCallData += encoded_dstChain;
-                // 12) and 13)
-                strCallData += encoded_data;
-                //
-                nlohmann::json joCallItem = nlohmann::json::object();
-                joCallItem["data"] = "0x" + strCallData;  // call data
-                //
-                //
-                //
-                //
-                //
-                // joCallItem["from"] = ( strDirection == "M2S" ) ?
-                //                         strImaCallerAddressMainNetLC :
-                //                         strImaCallerAddressSChainLC;  // caller address
-                joCallItem["from"] =
-                    ( strDirection == "M2S" ) ?
-                        strAddressImaMessageProxyMainNetLC :
-                        strAddressImaMessageProxySChainLC;  // message proxy address
-                //
-                //
-                //
-                //
-                //
-                joCallItem["to"] = ( strDirection == "M2S" ) ?
-                                       strAddressImaMessageProxyMainNetLC :
-                                       strAddressImaMessageProxySChainLC;  // message proxy address
-                nlohmann::json jarrParams = nlohmann::json::array();
-                jarrParams.push_back( joCallItem );
-                jarrParams.push_back( std::string( "latest" ) );
-                nlohmann::json joCall = nlohmann::json::object();
-                joCall["jsonrpc"] = "2.0";
-                joCall["method"] = "eth_call";
-                joCall["params"] = jarrParams;
-                //
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Will send " ) +
-                           cc::notice( "message verification query" ) + cc::debug( " to " ) +
-                           cc::notice( "message proxy" ) + cc::debug( " smart contract for " ) +
-                           cc::info( strDirection ) + cc::debug( " message: " ) + cc::j( joCall ) );
                 if ( strDirection == "M2S" ) {
-                    /*
-                    skutils::rest::client cli( urlMainNet );
-                    skutils::rest::data_t d = cli.call( joCall );
-                    if ( d.empty() )
-                        throw std::runtime_error(
-                            strDirection +
-                            " eth_call to MessageProxy failed, empty data returned" );
-                    nlohmann::json joResult;
-                    try {
-                        joResult = nlohmann::json::parse( d.s_ )["result"];
-                        if ( joResult.is_string() ) {
-                            std::string strResult = joResult.get< std::string >();
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix + " " +
-                                       cc::debug( "Transaction verification got (raw) result: "
-                    ) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256 uResult(
-                    strResult ), uZero( "0" ); if ( uResult != uZero ) bTransactionWasVerifed =
-                    true;
-                            }
-                        }
-                        if ( !bTransactionWasVerifed )
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with returned data answer: " ) +
-                                       cc::j( joResult ) );
-                    } catch ( ... ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with non-parse-able data answer: " ) +
-                                   cc::warn( d.s_ ) );
-                    }
-                    */
-                    bTransactionWasVerifed = true;
-                }  // if ( strDirection == "M2S" )
-                else {
-                    try {
-                        std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
-                        Json::Value _json;
-                        Json::Reader().parse( strCallToConvert, _json );
-                        // TODO: We ignore block number in order to be compatible with Metamask
-                        // (SKALE-430). Remove this temporary fix.
-                        std::string blockNumber = "latest";
-                        dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _json );
-                        // setTransactionDefaults( t ); // l_sergiy: we don't need this here for
-                        // now
-                        dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
-                            t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
-                        std::string strRevertReason;
-                        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
-                            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
-                            if ( strRevertReason.empty() )
-                                strRevertReason =
-                                    "EVM revert instruction without description message";
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with revert reason: " ) +
-                                       cc::warn( strRevertReason ) + cc::error( ", " ) +
-                                       cc::info( "blockNumber" ) + cc::error( "=" ) +
-                                       cc::bright( blockNumber ) );
-                        } else {
-                            std::string strResult = toJS( er.output );
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix + " " +
-                                       cc::debug( "Transaction verification got (raw) result: " ) +
-                                       cc::info( strResult ) );
-                            if ( !strResult.empty() ) {
-                                dev::u256 uResult( strResult ), uZero( "0" );
-                                if ( uResult != uZero )
-                                    bTransactionWasVerifed = true;
-                            }
-                        }
-                    } catch ( std::exception const& ex ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with exception: " ) +
-                                   cc::warn( ex.what() ) );
-                    } catch ( ... ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with exception: " ) +
-                                   cc::warn( "unknown exception" ) );
-                    }
-                }  // else from if( strDirection == "M2S" )
-                if ( !bTransactionWasVerifed ) {
+                    //
+                    // Do nothing here becase "eth_getLogs" analysis for OutgoingMessage event is
+                    // already done above for M->S transfer
+                    //
+                } else {  // ( strDirection == "M2S" )
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + " " +
-                               cc::error( "Transaction verification was not passed for IMA "
-                                          "message " ) +
-                               cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
-                    throw std::runtime_error(
-                        "Transaction verification was not passed for IMA message " +
-                        std::to_string( nStartMessageIdx + idxMessage ) );
-                }  // if ( !bTransactionWasVerifed )
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::success( " Success, IMA message " ) +
-                           cc::size10( nStartMessageIdx + idxMessage ) +
-                           cc::success( " was verified via call to MessageProxy." ) );
-            }  // if( bIsImaMessagesViaContractCall )
+                               cc::debug( "Will use contract call based verification of S->M IMA "
+                                          "message(s)" ) );
+                    bool bTransactionWasVerifed = false;
+
+
+                    /*
+                    struct OutgoingMessageData {
+                        string dstChain;
+                        uint256 msgCounter;
+                        address srcContract;
+                        address dstContract;
+                        address to;
+                        uint256 amount;
+                        bytes data;
+                    }
+
+                    function verifyOutgoingMessageData( OutgoingMessageData memory message ) public
+                    view returns (bool isValidMessage)
+                    */
+                    /*
+    0x12bf6f2b                                                    Global/In-Struct // 1) signature
+    0000000000000000000000000000000000000000000000000000000000000020 000     //  2) position after
+    structure 00000000000000000000000000000000000000000000000000000000000000e0 020 000 //  3)
+    position for OutgoingMessageData.dstChain
+    ???????????????????????????????????????????????????????????????? 040 020 //  4)
+    OutgoingMessageData.msgCounter
+    ???????????????????????????????????????????????????????????????? 060 040 //  5)
+    OutgoingMessageData.srcContract
+    ???????????????????????????????????????????????????????????????? 080 060 //  6)
+    OutgoingMessageData.dstContract
+    ???????????????????????????????????????????????????????????????? 0A0 080 //  7)
+    OutgoingMessageData.to
+    ???????????????????????????????????????????????????????????????? 0C0 0A0 //  8)
+    OutgoingMessageData.amount 0000000000000000000000000000000000000000000000000000000000000120 0E0
+    0C0
+    //  9) postion for OutgoingMessageData.data
+    ???????????????????????????????????????????????????????????????? 100 0E0 // 10) length of
+    OutgoingMessageData.dstChain
+    ???????????????????????????????????????????????????????????????? 120 100 // 11) string dara of
+    OutgoingMessageData.dstChain
+    ???????????????????????????????????????????????????????????????? 140 120 // 12) length of
+    OutgoingMessageData.data
+    ???????????????????????????????????????????????????????????????? 160 140 // 13) string dara of
+    OutgoingMessageData.data
+    0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
+    01234567890123456789012345678901234567890123456789012345678901234567890123456789
+    0000000000000000000000000000000000000000000000000000000000000000
+                    */
+                    // 10) and 11) pre-encode OutgoingMessageData.dstChain(without 0x prefix)
+                    std::string encoded_dstChain;
+                    std::string strTargetChainName =
+                        ( strDirection == "M2S" ) ? strSChainName : "Mainnet";
+                    size_t nLenTargetName = strTargetChainName.length();
+                    encoded_dstChain += stat_encode_eth_call_data_chunck_size_t( nLenTargetName );
+                    for ( size_t idxChar = 0; idxChar < nLenTargetName; ++idxChar ) {
+                        std::string strByte =
+                            skutils::tools::format( "%02x", strTargetChainName[idxChar] );
+                        encoded_dstChain += strByte;
+                    }
+                    size_t nLastPart = nLenTargetName % 32;
+                    if ( nLastPart != 0 ) {
+                        size_t nNeededToAdd = 32 - nLastPart;
+                        for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
+                            encoded_dstChain += "00";
+                        }
+                    }
+                    // 12) and 13) pre-encode OutgoingMessageData.data(without 0x prefix)
+                    std::string encoded_data;
+                    size_t nDataLedth = strMessageData_linear_LC.length() / 2;
+                    encoded_data += stat_encode_eth_call_data_chunck_size_t( nDataLedth );
+                    encoded_data += strMessageData_linear_LC;
+                    nLastPart = nDataLedth % 32;
+                    if ( nLastPart != 0 ) {
+                        size_t nNeededToAdd = 32 - nLastPart;
+                        for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
+                            encoded_data += "00";
+                        }
+                    }
+                    //
+                    std::string strCallData =
+                        "12bf6f2b";  // 1) signature as first 8 symbols of keccak256 from
+                                     // "verifyOutgoingMessageData((string,uint256,address,address,address,uint256,bytes))",
+                                     // not "verifyOutgoingMessageData(OutgoingMessageData)"
+                    // 2) position after structure
+                    strCallData += stat_encode_eth_call_data_chunck_size_t( 0x20 );
+                    // 3) position for OutgoingMessageData.dstChain
+                    strCallData += stat_encode_eth_call_data_chunck_size_t( 0xe0 );
+                    // 4) OutgoingMessageData.msgCounter
+                    strCallData +=
+                        stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
+                    // 5) OutgoingMessageData.srcContract
+                    strCallData += stat_encode_eth_call_data_chunck_address(
+                        joMessageToSign["sender"].get< std::string >() );
+                    // 6) OutgoingMessageData.dstContract
+                    strCallData += stat_encode_eth_call_data_chunck_address(
+                        joMessageToSign["destinationContract"].get< std::string >() );
+                    // 7) OutgoingMessageData.to
+                    strCallData += stat_encode_eth_call_data_chunck_address(
+                        joMessageToSign["to"].get< std::string >() );
+                    // 8) OutgoingMessageData.amount
+                    strCallData += stat_encode_eth_call_data_chunck_size_t(
+                        joMessageToSign["amount"].get< std::string >() );
+                    // 9) postion for OutgoingMessageData.data
+                    strCallData += stat_encode_eth_call_data_chunck_size_t(
+                        0xe0 + encoded_dstChain.length() / 2 );
+                    // 10) and 11)
+                    strCallData += encoded_dstChain;
+                    // 12) and 13)
+                    strCallData += encoded_data;
+                    //
+                    nlohmann::json joCallItem = nlohmann::json::object();
+                    joCallItem["data"] = "0x" + strCallData;  // call data
+                    //
+                    //
+                    //
+                    //
+                    //
+                    // joCallItem["from"] = ( strDirection == "M2S" ) ?
+                    //                         strImaCallerAddressMainNetLC :
+                    //                         strImaCallerAddressSChainLC;  // caller address
+                    joCallItem["from"] =
+                        ( strDirection == "M2S" ) ?
+                            strAddressImaMessageProxyMainNetLC :
+                            strAddressImaMessageProxySChainLC;  // message proxy address
+                    //
+                    //
+                    //
+                    //
+                    //
+                    joCallItem["to"] =
+                        ( strDirection == "M2S" ) ?
+                            strAddressImaMessageProxyMainNetLC :
+                            strAddressImaMessageProxySChainLC;  // message proxy address
+                    nlohmann::json jarrParams = nlohmann::json::array();
+                    jarrParams.push_back( joCallItem );
+                    jarrParams.push_back( std::string( "latest" ) );
+                    nlohmann::json joCall = nlohmann::json::object();
+                    joCall["jsonrpc"] = "2.0";
+                    joCall["method"] = "eth_call";
+                    joCall["params"] = jarrParams;
+                    //
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Will send " ) +
+                               cc::notice( "message verification query" ) + cc::debug( " to " ) +
+                               cc::notice( "message proxy" ) + cc::debug( " smart contract for " ) +
+                               cc::info( strDirection ) + cc::debug( " message: " ) +
+                               cc::j( joCall ) );
+                    if ( strDirection == "M2S" ) {
+                        /*
+                        skutils::rest::client cli( urlMainNet );
+                        skutils::rest::data_t d = cli.call( joCall );
+                        if ( d.empty() )
+                            throw std::runtime_error(
+                                strDirection +
+                                " eth_call to MessageProxy failed, empty data returned" );
+                        nlohmann::json joResult;
+                        try {
+                            joResult = nlohmann::json::parse( d.s_ )["result"];
+                            if ( joResult.is_string() ) {
+                                std::string strResult = joResult.get< std::string >();
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( strLogPrefix + " " +
+                                           cc::debug( "Transaction verification got (raw) result: "
+                        ) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256 uResult(
+                        strResult ), uZero( "0" ); if ( uResult != uZero ) bTransactionWasVerifed =
+                        true;
+                                }
+                            }
+                            if ( !bTransactionWasVerifed )
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                           cc::info( "MessageProxy" ) +
+                                           cc::error( " failed with returned data answer: " ) +
+                                           cc::j( joResult ) );
+                        } catch ( ... ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with non-parse-able data answer: " ) +
+                                       cc::warn( d.s_ ) );
+                        }
+                        */
+                        bTransactionWasVerifed = true;
+                    }  // if ( strDirection == "M2S" )
+                    else {
+                        try {
+                            std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
+                            Json::Value _json;
+                            Json::Reader().parse( strCallToConvert, _json );
+                            // TODO: We ignore block number in order to be compatible with Metamask
+                            // (SKALE-430). Remove this temporary fix.
+                            std::string blockNumber = "latest";
+                            dev::eth::TransactionSkeleton t =
+                                dev::eth::toTransactionSkeleton( _json );
+                            // setTransactionDefaults( t ); // l_sergiy: we don't need this here for
+                            // now
+                            dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
+                                t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+                            std::string strRevertReason;
+                            if ( er.excepted ==
+                                 dev::eth::TransactionException::RevertInstruction ) {
+                                strRevertReason =
+                                    skutils::eth::call_error_message_2_str( er.output );
+                                if ( strRevertReason.empty() )
+                                    strRevertReason =
+                                        "EVM revert instruction without description message";
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                           cc::info( "MessageProxy" ) +
+                                           cc::error( " failed with revert reason: " ) +
+                                           cc::warn( strRevertReason ) + cc::error( ", " ) +
+                                           cc::info( "blockNumber" ) + cc::error( "=" ) +
+                                           cc::bright( blockNumber ) );
+                            } else {
+                                std::string strResult = toJS( er.output );
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( strLogPrefix + " " +
+                                           cc::debug(
+                                               "Transaction verification got (raw) result: " ) +
+                                           cc::info( strResult ) );
+                                if ( !strResult.empty() ) {
+                                    dev::u256 uResult( strResult ), uZero( "0" );
+                                    if ( uResult != uZero )
+                                        bTransactionWasVerifed = true;
+                                }
+                            }
+                        } catch ( std::exception const& ex ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with exception: " ) +
+                                       cc::warn( ex.what() ) );
+                        } catch ( ... ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with exception: " ) +
+                                       cc::warn( "unknown exception" ) );
+                        }
+                    }  // else from if( strDirection == "M2S" )
+                    if ( !bTransactionWasVerifed ) {
+                        clog( VerbosityDebug, "IMA" )
+                            << ( strLogPrefix + " " +
+                                   cc::error( "Transaction verification was not passed for IMA "
+                                              "message " ) +
+                                   cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
+                        throw std::runtime_error(
+                            "Transaction verification was not passed for IMA message " +
+                            std::to_string( nStartMessageIdx + idxMessage ) );
+                    }  // if ( !bTransactionWasVerifed )
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::success( " Success, IMA message " ) +
+                               cc::size10( nStartMessageIdx + idxMessage ) +
+                               cc::success( " was verified via call to MessageProxy." ) );
+                }  // else from ( strDirection == "M2S" )
+            }      // if( bIsImaMessagesViaContractCall )
             else {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
