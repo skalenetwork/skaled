@@ -478,14 +478,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
 
+    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
     LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
-
-    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalSec > 0 ) {
         dev::h256 stCurrent =

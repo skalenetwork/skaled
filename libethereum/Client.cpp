@@ -543,8 +543,8 @@ size_t Client::importTransactionsAsBlock(
 
         TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
         bool isSaveLastTxHash = true;
-        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
-            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
+        size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp,
+            isSaveLastTxHash, &accumulatedTransactionReceipts );
         sealUnconditionally( false );
         importWorkingBlock( &partialTransactionReceipts );
 
