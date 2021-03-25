@@ -22,6 +22,7 @@
 #include "WebThreeStubClient.h"
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -30,6 +31,7 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
+#include <libskale/httpserveroverride.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -260,11 +262,27 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
             new rpc::Test( *client ) ) );
-        auto ipcServer = new TestIpcServer;
-        rpcServer->addConnector( ipcServer );
-        ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
+        SkaleServerOverride::opts_t serverOpts;
+        SkaleServerOverride::fn_eth_sendRawTransaction_t fn_eth_sendRawTransaction =
+            [=]( const std::string& request ) -> std::string {
+            return ethFace->eth_sendRawTransaction( request );
+        };
+        SkaleServerOverride::fn_eth_getTransactionReceipt_t fn_eth_getTransactionReceipt =
+            [=]( const std::string& request ) -> dev::eth::LocalisedTransactionReceipt {
+            return ethFace->eth_getTransactionReceipt( request );
+        };
+        serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
+        serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+        serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
+        auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+        rpcServer->addConnector( skale_server_connector );
+        assert (skale_server_connector->StartListening());
+
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
+
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
@@ -1471,8 +1489,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     t["nonce"] = "1";
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
     auto signedTx2 = fixture.rpcClient->eth_signTransaction( t );
-
-    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ),
+    std::string x = fixture.sendingRawShouldFail( signedTx2["raw"].asString() );
+    std::cout << "ERROR: " << x << std::endl;
+    BOOST_CHECK_EQUAL( x,
         "Transaction gas price lower than current eth_gasPrice." );
 }
 

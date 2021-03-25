@@ -275,15 +275,8 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    //    try {
-    //        // Don't need to check the transaction signature (CheckTransaction::None) since it
-    //        will
-    //        // be checked as a part of transaction import
-    //        Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-    //        return toJS( client()->importTransaction( t ) );
-    //    } catch ( Exception const& ) {
-    //        throw JsonRpcException( exceptionToErrorMessage() );
-    //    }
+    // Don't need to check the transaction signature (CheckTransaction::None) since it
+    // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
     return toJS( client()->importTransaction( t ) );
 }
@@ -417,11 +410,6 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
 }
 
 LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
-    //    try {
-
-    //    } catch ( ... ) {
-    //        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    //    }
     h256 h = jsToFixed< 32 >( _transactionHash );
     if ( !client()->isKnownTransaction( h ) ) {
         throw std::invalid_argument( "Not known transaction" );
