@@ -3319,10 +3319,10 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             rapidjson::Value joError;
             joError.SetObject();
             joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-            rapidjson::Value v( rapidjson::StringRef(
-                std::string( std::string( "error in \"" ) + "setSchainExitTime" +
-                             "\" rpc method, json entry \"params\" must be object" )
-                    .c_str() ) );
+            std::string errorMessage = std::string( "error in \"" ) + "setSchainExitTime" +
+                                       "\" rpc method, json entry \"params\" must be object";
+            rapidjson::Value v;
+            v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
             joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
             return;
@@ -3332,10 +3332,10 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 rapidjson::Value joError;
                 joError.SetObject();
                 joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-                rapidjson::Value v( rapidjson::StringRef(
-                    std::string( std::string( "error in \"" ) + "setSchainExitTime" +
-                                 "\" rpc method, json entry \"params\" must be object" )
-                        .c_str() ) );
+                std::string errorMessage = std::string( "error in \"" ) + "setSchainExitTime" +
+                                           "\" rpc method, json entry \"params\" must be object";
+                rapidjson::Value v;
+                v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
                 joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
                 return;
@@ -3412,12 +3412,11 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-        joError.AddMember( "message",
-            rapidjson::StringRef( std::string(
-                std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) +
-                ex.what() )
-                                      .c_str() ),
-            joResponse.GetAllocator() );
+        std::string errorMessage =
+            std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) + ex.what();
+        rapidjson::Value v;
+        v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
+        joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
         return;
     } catch ( ... ) {
