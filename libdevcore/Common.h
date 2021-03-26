@@ -332,7 +332,7 @@ int64_t utcTime();
 
 class ExitHandler {
 public:
-    enum { KILL_TIMEOUT = 60 };
+    enum { KILL_TIMEOUT = 57 };
 
     enum exit_code_t {
         ec_success = 0,
