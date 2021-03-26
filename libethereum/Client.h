@@ -298,7 +298,9 @@ protected:
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr );
+        TransactionReceipts* accumulatedTransactionReceipts = nullptr,
+        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
+    );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!

@@ -423,9 +423,11 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, bool isSaveLastTxHash,
-    TransactionReceipts* accumulatedTransactionReceipts ) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone(
+    BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
+    bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+    Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
+) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -469,6 +471,18 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 continue;
             }
 
+            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
+                bool foundMissing = false;
+                for ( const Transaction& trMissing : ( *vecMissing ) ) {
+                    if ( trMissing.sha3() == tr.sha3() ) {
+                        foundMissing = true;
+                        break;
+                    }
+                }
+                if ( !foundMissing )
+                    continue;  // skip this transaction, it was already executed before PARTIAL
+                               // CATCHUP
+            }
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
                 OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
             receipts.push_back( m_receipts.back() );
