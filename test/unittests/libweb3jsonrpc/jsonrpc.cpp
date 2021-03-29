@@ -279,7 +279,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
         auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
-        assert (skale_server_connector->StartListening());
 
         auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
 
@@ -1489,10 +1488,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     t["nonce"] = "1";
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
     auto signedTx2 = fixture.rpcClient->eth_signTransaction( t );
-    std::string x = fixture.sendingRawShouldFail( signedTx2["raw"].asString() );
-    std::cout << "ERROR: " << x << std::endl;
-    BOOST_CHECK_EQUAL( x,
-        "Transaction gas price lower than current eth_gasPrice." );
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ), "Transaction gas price lower than current eth_gasPrice." );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
