@@ -479,7 +479,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                         break;
                     }
                 }
-                if ( !foundMissing )
+                if ( foundMissing )
                     continue;  // skip this transaction, it was already executed before PARTIAL
                                // CATCHUP
             }
