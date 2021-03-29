@@ -359,11 +359,19 @@ int main( int argc, char** argv ) try {
 
         // try to exit nicely - then abort
         if ( !skutils::signal::g_bStop ) {
-            thread( []() {
+            thread( [nSignalNo]() {
                 sleep( ExitHandler::KILL_TIMEOUT );
                 std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
                           << std::endl;
-                _exit( ExitHandler::requestedExitCode() );
+
+                // TODO deduplicate this with main() before return
+                ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+                if ( ec == ExitHandler::ec_success ) {
+                    if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
+                        ec = ExitHandler::ec_failure;
+                }
+
+                _exit( ec );
             } )
                 .detach();
         }
