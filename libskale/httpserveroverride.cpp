@@ -2519,10 +2519,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         rttElement->stop();
                         return true;
                     }
+                    std::cerr << "REQUEST: " << strBody << std::endl;
                     if ( !pSrv->handleHttpSpecificRequest(
                              req.origin_, esm, strBody, strResponse ) ) {
                         handler->HandleRequest( strBody.c_str(), strResponse );
                     }
+                    std::cerr << "RESPONSE: " << strResponse << std::endl;
                     //
                     stats::register_stats_answer(
                         bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
@@ -3460,14 +3462,22 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
         dev::eth::LocalisedTransactionReceipt _t =
             opts_.fn_eth_getTransactionReceipt_( joRequest["params"].GetArray()[0].GetString() );
 
-        Json::Value joValue = dev::eth::toJson( _t );
+        //        Json::Value joValue = dev::eth::toJson( _t );
 
-        Json::FastWriter fastWriter;
-        std::string output = fastWriter.write( joValue );
+        //        Json::FastWriter fastWriter;
+        //        std::string output = fastWriter.write( joValue );
 
-        rapidjson::Document d( &joResponse.GetAllocator() );
-        d.Parse( output.data() );
+        //        rapidjson::Document d( &joResponse.GetAllocator() );
+        //        d.Parse( output.data() );
 
+        //        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+        rapidjson::Document d = dev::eth::toRapidJson( _t );
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        d.Accept( writer );
+        std::string strResponse = buffer.GetString();
+
+        std::cerr << "RESPONSE FROM PARSE: " << strResponse << std::endl;
         joResponse.AddMember( "result", d, joResponse.GetAllocator() );
     } catch ( std::invalid_argument& ex ) {
         // not known transaction - skip exception

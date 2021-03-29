@@ -24,6 +24,8 @@
 
 #include "JsonHelper.h"
 
+#include <rapidjson/prettywriter.h>
+
 #include <jsonrpccpp/common/exception.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
@@ -200,6 +202,140 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
+    return res;
+}
+
+#define ADD_FIELD_TO_RAPIDJSON( res, field, value )                      \
+    {                                                                    \
+        rapidjson::Value vv;                                             \
+        vv.SetString( value.c_str(), value.size(), res.GetAllocator() ); \
+        res.AddMember( field, vv, res.GetAllocator() );                  \
+    }
+
+rapidjson::Document toRapidJson( dev::eth::LogEntry const& _e ) {
+    rapidjson::Document res;
+    res.SetObject();
+
+    //    res["data"] = toJS( _e.data );
+    ADD_FIELD_TO_RAPIDJSON( res, "data", toJS( _e.data ) );
+    //    res["address"] = toJS( _e.address );
+    ADD_FIELD_TO_RAPIDJSON( res, "address", toJS( _e.address ) );
+    //    res["topics"] = Json::Value( Json::arrayValue );
+    rapidjson::Document jsonArray;
+    jsonArray.SetArray();
+    for ( auto const& t : _e.topics ) {
+        rapidjson::Document d;
+        rapidjson::Value v;
+        std::string topic = toJS( t );
+        v.SetString( topic.c_str(), topic.size(), d.GetAllocator() );
+        d.CopyFrom( v, d.GetAllocator() );
+        jsonArray.PushBack( d, jsonArray.GetAllocator() );
+    }
+    res.AddMember( "topics", jsonArray, res.GetAllocator() );
+    return res;
+}
+
+rapidjson::Document toRapidJson( dev::eth::LocalisedLogEntry const& _e ) {
+    rapidjson::Document res;
+    res.SetObject();
+
+    if ( _e.isSpecial ) {
+        //        res = toJS( _e.special );
+        rapidjson::Value v;
+        std::string topic = toJS( _e.special );
+        v.SetString( topic.c_str(), topic.size(), res.GetAllocator() );
+        res.CopyFrom( v, res.GetAllocator() );
+    } else {
+        //        res = toJson( static_cast< dev::eth::LogEntry const& >( _e ) );
+        res = toRapidJson( static_cast< dev::eth::LogEntry const& >( _e ) );
+        //        res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
+        res.AddMember(
+            "polarity", _e.polarity == BlockPolarity::Live ? true : false, res.GetAllocator() );
+        if ( _e.mined ) {
+            //            res["type"] = "mined";
+            res.AddMember( "type", "mined", res.GetAllocator() );
+            //            res["blockNumber"] = toJS( _e.blockNumber );
+            ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _e.blockNumber ) );
+            //            res["blockHash"] = toJS( _e.blockHash );
+            ADD_FIELD_TO_RAPIDJSON( res, "blockHash", toJS( _e.blockHash ) );
+            //            res["logIndex"] = toJS( _e.logIndex );
+            ADD_FIELD_TO_RAPIDJSON( res, "logIndex", toJS( _e.logIndex ) );
+            //            res["transactionHash"] = toJS( _e.transactionHash );
+            ADD_FIELD_TO_RAPIDJSON( res, "transactionHash", toJS( _e.transactionHash ) );
+            //            res["transactionIndex"] = toJS( _e.transactionIndex );
+            ADD_FIELD_TO_RAPIDJSON( res, "transactionIndex", toJS( _e.transactionIndex ) );
+        } else {
+            res["type"] = "pending";
+            res.AddMember( "type", "pending", res.GetAllocator() );
+            //            res["blockNumber"] = Json::Value( Json::nullValue );
+            res.AddMember( "blockNumber", rapidjson::Value(), res.GetAllocator() );
+            //            res["blockHash"] = Json::Value( Json::nullValue );
+            res.AddMember( "blockHash", rapidjson::Value(), res.GetAllocator() );
+            //            res["logIndex"] = Json::Value( Json::nullValue );
+            res.AddMember( "logIndex", rapidjson::Value(), res.GetAllocator() );
+            //            res["transactionHash"] = Json::Value( Json::nullValue );
+            res.AddMember( "transactionHash", rapidjson::Value(), res.GetAllocator() );
+            //            res["transactionIndex"] = Json::Value( Json::nullValue );
+            res.AddMember( "transactionIndex", rapidjson::Value(), res.GetAllocator() );
+        }
+    }
+    return res;
+}
+
+rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
+    rapidjson::Document res;
+    res.SetObject();
+
+    //    res["from"] = toJS( _t.from() );
+    ADD_FIELD_TO_RAPIDJSON( res, "from", toJS( _t.from() ) );
+    //    res["to"] = toJS( _t.to() );
+    ADD_FIELD_TO_RAPIDJSON( res, "to", toJS( _t.to() ) );
+
+    //    res["transactionHash"] = toJS( _t.hash() );
+    ADD_FIELD_TO_RAPIDJSON( res, "transactionHash", toJS( _t.hash() ) );
+    //    res["transactionIndex"] = toJS( _t.transactionIndex() );
+    ADD_FIELD_TO_RAPIDJSON( res, "transactionIndex", toJS( _t.transactionIndex() ) );
+    //    res["blockHash"] = toJS( _t.blockHash() );
+    ADD_FIELD_TO_RAPIDJSON( res, "blockHash", toJS( _t.blockHash() ) );
+    //    res["blockNumber"] = toJS( _t.blockNumber() );
+    ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _t.blockNumber() ) );
+    //    res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
+    ADD_FIELD_TO_RAPIDJSON( res, "cumulativeGasUsed", toJS( _t.cumulativeGasUsed() ) );
+    //    res["gasUsed"] = toJS( _t.gasUsed() );
+    ADD_FIELD_TO_RAPIDJSON( res, "gasUsed", toJS( _t.gasUsed() ) );
+    //
+    // The "contractAddress" field must be null for all types of trasactions but contract deployment
+    // ones. The contract deployment transaction is special because it's the only type of
+    // transaction with "to" filed set to null.
+    //
+    dev::Address contractAddress = _t.contractAddress();
+    if ( contractAddress == dev::Address( 0 ) )
+        //        res["contractAddress"] = Json::Value::nullRef;
+        res.AddMember( "contractAddress", rapidjson::Value(), res.GetAllocator() );
+    else
+        //        res["contractAddress"] = toJS( contractAddress );
+        ADD_FIELD_TO_RAPIDJSON( res, "contractAddress", toJS( contractAddress ) );
+    //
+    //
+    //    res["logs"] = dev::toJson( _t.localisedLogs() );
+    res.AddMember( "logs", dev::toRapidJson( _t.localisedLogs() ), res.GetAllocator() );
+    //    res["logsBloom"] = toJS( _t.bloom() );
+    ADD_FIELD_TO_RAPIDJSON( res, "logsBloom", toJS( _t.bloom() ) );
+    if ( _t.hasStatusCode() ) {
+        //        res["status"] = toString0x< uint8_t >( _t.statusCode() );
+        ADD_FIELD_TO_RAPIDJSON( res, "status", toString0x< uint8_t >( _t.statusCode() ) );
+    } else {
+        //        res["stateRoot"] = toJS( _t.stateRoot() );
+        ADD_FIELD_TO_RAPIDJSON( res, "stateRoot", toJS( _t.stateRoot() ) );
+    }
+    //
+
+    std::string strRevertReason = _t.getRevertReason();
+    if ( !strRevertReason.empty() ) {
+        //        res["revertReason"] = strRevertReason;
+        ADD_FIELD_TO_RAPIDJSON( res, "revertReason", strRevertReason );
+    }
+
     return res;
 }
 
