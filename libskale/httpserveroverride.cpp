@@ -2519,12 +2519,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                         rttElement->stop();
                         return true;
                     }
-                    std::cerr << "REQUEST: " << strBody << std::endl;
+//                    std::cerr << "REQUEST: " << strBody << std::endl;
                     if ( !pSrv->handleHttpSpecificRequest(
                              req.origin_, esm, strBody, strResponse ) ) {
                         handler->HandleRequest( strBody.c_str(), strResponse );
                     }
-                    std::cerr << "RESPONSE: " << strResponse << std::endl;
+//                    std::cerr << "RESPONSE: " << strResponse << std::endl;
                     //
                     stats::register_stats_answer(
                         bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
@@ -3471,13 +3471,14 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
         //        d.Parse( output.data() );
 
         //        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-        rapidjson::Document d = dev::eth::toRapidJson( _t );
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        d.Accept( writer );
-        std::string strResponse = buffer.GetString();
+        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+//        rapidjson::StringBuffer buffer;
+//        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+//        d.Accept( writer );
+//        std::string strResponse = buffer.GetString();
 
-        std::cerr << "RESPONSE FROM PARSE: " << strResponse << std::endl;
+//        std::cerr << "RESPONSE FROM PARSE: " << strResponse << std::endl;
         joResponse.AddMember( "result", d, joResponse.GetAllocator() );
     } catch ( std::invalid_argument& ex ) {
         // not known transaction - skip exception

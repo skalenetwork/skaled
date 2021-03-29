@@ -65,9 +65,12 @@ Json::Value toJson( LogEntry const& _e );
 Json::Value toJson( std::unordered_map< h256, LocalisedLogEntries > const& _entriesByBlock );
 Json::Value toJsonByBlock( LocalisedLogEntries const& _entries );
 
-rapidjson::Document toRapidJson( LogEntry const& _e );
-rapidjson::Document toRapidJson( LocalisedLogEntry const& _entry );
-rapidjson::Document toRapidJson( LocalisedTransactionReceipt const& _t );
+rapidjson::Document toRapidJson(
+    LogEntry const& _e, rapidjson::Document::AllocatorType& allocator );
+rapidjson::Document toRapidJson(
+    LocalisedLogEntry const& _entry, rapidjson::Document::AllocatorType& allocator );
+rapidjson::Document toRapidJson(
+    LocalisedTransactionReceipt const& _t, rapidjson::Document::AllocatorType& allocator );
 
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
@@ -94,12 +97,13 @@ Json::Value toJson( std::vector< T > const& _es ) {
 }
 
 template < class T >
-rapidjson::Document toRapidJson( std::vector< T > const& _es ) {
+rapidjson::Document toRapidJson(
+    std::vector< T > const& _es, rapidjson::Document::AllocatorType& allocator ) {
     rapidjson::Document res;
     res.SetArray();
 
     for ( const auto& e : _es ) {
-        res.PushBack( toRapidJson( e ), res.GetAllocator() );
+        res.PushBack( toRapidJson( e, allocator ), allocator );
     }
 
     return res;
