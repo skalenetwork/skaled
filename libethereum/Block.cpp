@@ -443,9 +443,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
     m_state = m_state.delegateWrite();  // mainly for debugging
 
-    unsigned i = 0;
     unsigned count_bad = 0;
-    for ( Transaction const& tr : _transactions ) {
+    for ( unsigned i = 0; i < _transactions.size(); ++i ) {
+        Transaction const& tr = _transactions[i];
         try {
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
@@ -479,9 +479,16 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                         break;
                     }
                 }
-                if ( foundMissing )
+                if ( !foundMissing ) {
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
+                    // HACK TODO We assume but don't check that accumulated receipts contain
+                    // exactly receipts of first n txns!
+                    m_receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+                    receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
                     continue;  // skip this transaction, it was already executed before PARTIAL
                                // CATCHUP
+                }              // if
             }
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
                 OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
@@ -508,7 +515,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
-        ++i;
     }
     m_state.stopWrite();
     return make_tuple( receipts, receipts.size() - count_bad );

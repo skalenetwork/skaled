@@ -546,7 +546,7 @@ size_t Client::importTransactionsAsBlock(
         size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp,
             isSaveLastTxHash, &accumulatedTransactionReceipts, bIsPartial ? &vecMissing : nullptr );
         sealUnconditionally( false );
-        importWorkingBlock( &partialTransactionReceipts );
+        importWorkingBlock();
 
         if ( bIsPartial )
             cntSucceeded += cntPassed;
@@ -932,9 +932,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
+void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
+    ImportRoute importRoute = bc().import( m_working );
     m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }

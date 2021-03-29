@@ -148,8 +148,7 @@ public:
     ImportRoute import( bytes const& _block, skale::State& _state, bool _mustBeNew = true );
     ImportRoute import(
         VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
-    ImportRoute import(
-        Block const& _block, TransactionReceipts* partialTransactionReceipts = nullptr );
+    ImportRoute import( Block const& _block );
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the

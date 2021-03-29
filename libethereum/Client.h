@@ -307,7 +307,7 @@ protected:
     void sealUnconditionally( bool submitToBlockChain = true );
 
     /// thread unsafe!!
-    void importWorkingBlock( TransactionReceipts* partialTransactionReceipts = nullptr );
+    void importWorkingBlock();
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
