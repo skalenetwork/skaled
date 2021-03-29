@@ -217,11 +217,8 @@ rapidjson::Document toRapidJson(
     rapidjson::Document res;
     res.SetObject();
 
-    //    res["data"] = toJS( _e.data );
     ADD_FIELD_TO_RAPIDJSON( res, "data", toJS( _e.data ), allocator );
-    //    res["address"] = toJS( _e.address );
     ADD_FIELD_TO_RAPIDJSON( res, "address", toJS( _e.address ), allocator );
-    //    res["topics"] = Json::Value( Json::arrayValue );
     rapidjson::Document jsonArray;
     jsonArray.SetArray();
     for ( auto const& t : _e.topics ) {
@@ -248,36 +245,23 @@ rapidjson::Document toRapidJson(
         v.SetString( topic.c_str(), topic.size(), allocator );
         res.CopyFrom( v, allocator );
     } else {
-        //        res = toJson( static_cast< dev::eth::LogEntry const& >( _e ) );
         res = toRapidJson( static_cast< dev::eth::LogEntry const& >( _e ), allocator );
-        //        res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
         res.AddMember( "polarity", _e.polarity == BlockPolarity::Live ? true : false, allocator );
         if ( _e.mined ) {
-            //            res["type"] = "mined";
             res.AddMember( "type", "mined", allocator );
-            //            res["blockNumber"] = toJS( _e.blockNumber );
             ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _e.blockNumber ), allocator );
-            //            res["blockHash"] = toJS( _e.blockHash );
             ADD_FIELD_TO_RAPIDJSON( res, "blockHash", toJS( _e.blockHash ), allocator );
-            //            res["logIndex"] = toJS( _e.logIndex );
             ADD_FIELD_TO_RAPIDJSON( res, "logIndex", toJS( _e.logIndex ), allocator );
-            //            res["transactionHash"] = toJS( _e.transactionHash );
             ADD_FIELD_TO_RAPIDJSON( res, "transactionHash", toJS( _e.transactionHash ), allocator );
-            //            res["transactionIndex"] = toJS( _e.transactionIndex );
             ADD_FIELD_TO_RAPIDJSON(
                 res, "transactionIndex", toJS( _e.transactionIndex ), allocator );
         } else {
             res["type"] = "pending";
             res.AddMember( "type", "pending", allocator );
-            //            res["blockNumber"] = Json::Value( Json::nullValue );
             res.AddMember( "blockNumber", rapidjson::Value(), allocator );
-            //            res["blockHash"] = Json::Value( Json::nullValue );
             res.AddMember( "blockHash", rapidjson::Value(), allocator );
-            //            res["logIndex"] = Json::Value( Json::nullValue );
             res.AddMember( "logIndex", rapidjson::Value(), allocator );
-            //            res["transactionHash"] = Json::Value( Json::nullValue );
             res.AddMember( "transactionHash", rapidjson::Value(), allocator );
-            //            res["transactionIndex"] = Json::Value( Json::nullValue );
             res.AddMember( "transactionIndex", rapidjson::Value(), allocator );
         }
     }
@@ -289,22 +273,14 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     rapidjson::Document res;
     res.SetObject();
 
-    //    res["from"] = toJS( _t.from() );
     ADD_FIELD_TO_RAPIDJSON( res, "from", toJS( _t.from() ), allocator );
-    //    res["to"] = toJS( _t.to() );
     ADD_FIELD_TO_RAPIDJSON( res, "to", toJS( _t.to() ), allocator );
 
-    //    res["transactionHash"] = toJS( _t.hash() );
     ADD_FIELD_TO_RAPIDJSON( res, "transactionHash", toJS( _t.hash() ), allocator );
-    //    res["transactionIndex"] = toJS( _t.transactionIndex() );
     ADD_FIELD_TO_RAPIDJSON( res, "transactionIndex", toJS( _t.transactionIndex() ), allocator );
-    //    res["blockHash"] = toJS( _t.blockHash() );
     ADD_FIELD_TO_RAPIDJSON( res, "blockHash", toJS( _t.blockHash() ), allocator );
-    //    res["blockNumber"] = toJS( _t.blockNumber() );
     ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _t.blockNumber() ), allocator );
-    //    res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     ADD_FIELD_TO_RAPIDJSON( res, "cumulativeGasUsed", toJS( _t.cumulativeGasUsed() ), allocator );
-    //    res["gasUsed"] = toJS( _t.gasUsed() );
     ADD_FIELD_TO_RAPIDJSON( res, "gasUsed", toJS( _t.gasUsed() ), allocator );
     //
     // The "contractAddress" field must be null for all types of trasactions but contract deployment
@@ -313,30 +289,23 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     //
     dev::Address contractAddress = _t.contractAddress();
     if ( contractAddress == dev::Address( 0 ) )
-        //        res["contractAddress"] = Json::Value::nullRef;
         res.AddMember( "contractAddress", rapidjson::Value(), allocator );
     else
-        //        res["contractAddress"] = toJS( contractAddress );
         ADD_FIELD_TO_RAPIDJSON( res, "contractAddress", toJS( contractAddress ), allocator );
     //
     //
-    //    res["logs"] = dev::toJson( _t.localisedLogs() );
     res.AddMember( "logs", dev::toRapidJson( _t.localisedLogs(), allocator ), allocator );
-    //    res["logsBloom"] = toJS( _t.bloom() );
     ADD_FIELD_TO_RAPIDJSON( res, "logsBloom", toJS( _t.bloom() ), allocator );
     if ( _t.hasStatusCode() ) {
-        //        res["status"] = toString0x< uint8_t >( _t.statusCode() );
         ADD_FIELD_TO_RAPIDJSON(
             res, "status", toString0x< uint8_t >( _t.statusCode() ), allocator );
     } else {
-        //        res["stateRoot"] = toJS( _t.stateRoot() );
         ADD_FIELD_TO_RAPIDJSON( res, "stateRoot", toJS( _t.stateRoot() ), allocator );
     }
     //
 
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() ) {
-        //        res["revertReason"] = strRevertReason;
         ADD_FIELD_TO_RAPIDJSON( res, "revertReason", strRevertReason, allocator );
     }
 
