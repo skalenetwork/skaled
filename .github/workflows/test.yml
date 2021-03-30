@@ -84,7 +84,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
-          make -j$(nproc)
+          make -j64
           cd ..
       - name: Testeth
         run : |
