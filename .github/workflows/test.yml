@@ -53,7 +53,7 @@ jobs:
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc)
+          ./build.sh PARALLEL_COUNT=64
           cd ..
       - name: Configure all
         run: |

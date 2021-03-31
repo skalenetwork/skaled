@@ -423,9 +423,11 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, bool isSaveLastTxHash,
-    TransactionReceipts* accumulatedTransactionReceipts ) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone(
+    BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
+    bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+    Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
+) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -441,9 +443,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     m_state = m_state.delegateWrite();  // mainly for debugging
 
-    unsigned i = 0;
     unsigned count_bad = 0;
-    for ( Transaction const& tr : _transactions ) {
+    for ( unsigned i = 0; i < _transactions.size(); ++i ) {
+        Transaction const& tr = _transactions[i];
         try {
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
@@ -469,6 +471,25 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 continue;
             }
 
+            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
+                bool foundMissing = false;
+                for ( const Transaction& trMissing : ( *vecMissing ) ) {
+                    if ( trMissing.sha3() == tr.sha3() ) {
+                        foundMissing = true;
+                        break;
+                    }
+                }
+                if ( !foundMissing ) {
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
+                    // HACK TODO We assume but don't check that accumulated receipts contain
+                    // exactly receipts of first n txns!
+                    m_receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+                    receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+                    continue;  // skip this transaction, it was already executed before PARTIAL
+                               // CATCHUP
+                }              // if
+            }
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
                 OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
             receipts.push_back( m_receipts.back() );
@@ -494,7 +515,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
-        ++i;
     }
     m_state.stopWrite();
     return make_tuple( receipts, receipts.size() - count_bad );
