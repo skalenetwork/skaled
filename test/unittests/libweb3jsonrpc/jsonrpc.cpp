@@ -277,9 +277,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
-        skaleServerConnector = std::make_unique<SkaleServerOverride>( new SkaleServerOverride( chainParams, client.get(), serverOpts ) );
-        rpcServer->addConnector( skaleServerConnector.get() );
-        skaleServerConnector->StartListening();
+        auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+        rpcServer->addConnector( skale_server_connector );
+        skale_server_connector->StartListening();
 
         auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
 
@@ -287,7 +287,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     ~JsonRpcFixture() {
-        skaleServerConnector->StopListening();
+
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -311,7 +311,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     KeyManager keyManager{KeyManager::defaultPath(), SecretStore::defaultPath()};
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
-    unique_ptr<SkaleServerOverride> skaleServerConnector;
     std::string adminSession;
 };
 
