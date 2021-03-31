@@ -279,13 +279,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
         auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
+        skale_server_connector->StartListening();
 
         auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    ~JsonRpcFixture() {}
+    ~JsonRpcFixture() {
+
+    }
 
     string sendingRawShouldFail( string const& _t ) {
         try {
