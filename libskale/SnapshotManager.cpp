@@ -25,6 +25,7 @@
 #include "SnapshotManager.h"
 
 #include <libdevcore/LevelDB.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
 #include <skutils/btrfs.h>
 
@@ -129,9 +130,10 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
     }
 
     for ( const string& vol : volumes ) {
-        if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-
+        if ( fs::exists( data_dir / vol ) ) {
+            if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
+                throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        }
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
@@ -230,6 +232,8 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
 }
 
 boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
+    // check existance
+    assert( boost::filesystem::exists( diffs_dir ) );
     return diffs_dir / ( std::to_string( _toBlock ) );
 }
 
@@ -248,6 +252,48 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
     }
 
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
+}
+
+void SnapshotManager::cleanupButKeepSnapshot( unsigned _keepSnapshot ) {
+    this->cleanupDirectory( snapshots_dir, snapshots_dir / std::to_string( _keepSnapshot ) );
+    this->cleanupDirectory( data_dir, snapshots_dir );
+}
+
+void SnapshotManager::cleanup() {
+    this->cleanupDirectory( snapshots_dir );
+    this->cleanupDirectory( data_dir );
+
+    try {
+        boost::filesystem::create_directory( snapshots_dir );
+        boost::filesystem::create_directory( diffs_dir );
+    } catch ( const fs::filesystem_error& ex ) {
+        std::throw_with_nested( CannotWrite( ex.path1() ) );
+    }  // catch
+}
+
+void SnapshotManager::cleanupDirectory(
+    const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory ) {
+    // remove all
+    boost::filesystem::directory_iterator it( p ), end;
+
+    while ( it != end ) {
+        if ( boost::filesystem::is_directory( it->path() ) && it->path() != _keepDirectory ) {
+            int res1 = 0, res2 = 0;
+            try {
+                res1 = btrfs.subvolume._delete( ( it->path() / "*" ).c_str() );
+                res2 = btrfs.subvolume._delete( ( it->path() ).c_str() );
+
+                boost::filesystem::remove_all( it->path() );
+            } catch ( boost::filesystem::filesystem_error& ) {
+                if ( res1 != 0 || res2 != 0 ) {
+                    std::throw_with_nested(
+                        CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() ) );
+                }
+                std::throw_with_nested( CannotDelete( it->path() ) );
+            }
+        }
+        ++it;
+    }
 }
 
 // exeptions: filesystem
@@ -541,7 +587,7 @@ void SnapshotManager::computeAllVolumesHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
     // if have prices and blocks
-    if ( this->volumes.size() > 2 ) {
+    if ( this->volumes.size() > 3 ) {
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 }

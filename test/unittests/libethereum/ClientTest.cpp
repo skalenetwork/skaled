@@ -836,6 +836,8 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
+    std::this_thread::sleep_for( 2000ms );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
