@@ -1253,9 +1253,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //     "sender": joValues.srcContract,
             //     "to": joValues.to
             // }
-            if ( joMessageToSign.count( "amount" ) == 0 )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"amount\"" );
+            // if ( joMessageToSign.count( "amount" ) == 0 )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"amount\"" );
             if ( joMessageToSign.count( "data" ) == 0 || ( !joMessageToSign["data"].is_string() ) ||
                  joMessageToSign["data"].get< std::string >().empty() )
                 throw std::runtime_error(
@@ -1271,20 +1271,20 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                  joMessageToSign["sender"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"sender\"" );
-            if ( joMessageToSign.count( "to" ) == 0 || ( !joMessageToSign["to"].is_string() ) ||
-                 joMessageToSign["to"].get< std::string >().empty() )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"to\"" );
+            // if ( joMessageToSign.count( "to" ) == 0 || ( !joMessageToSign["to"].is_string() ) ||
+            //     joMessageToSign["to"].get< std::string >().empty() )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"to\"" );
             const std::string strData = joMessageToSign["data"].get< std::string >();
             if ( strData.empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object with empty field "
                     "\"data\"" );
-            if ( joMessageToSign.count( "amount" ) == 0 ||
-                 ( !joMessageToSign["amount"].is_string() ) ||
-                 joMessageToSign["amount"].get< std::string >().empty() )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"amount\"" );
+            // if ( joMessageToSign.count( "amount" ) == 0 ||
+            //     ( !joMessageToSign["amount"].is_string() ) ||
+            //     joMessageToSign["amount"].get< std::string >().empty() )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"amount\"" );
         }
         //
         // Check wallet URL and keyShareName for future use,
@@ -1366,11 +1366,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strDestinationContract = skutils::tools::trim_copy(
                 joMessageToSign["destinationContract"].get< std::string >() );
             const dev::u256 uDestinationContract( strDestinationContract );
-            const std::string strDestinationAddressTo =
-                skutils::tools::trim_copy( joMessageToSign["to"].get< std::string >() );
-            const dev::u256 uDestinationAddressTo( strDestinationAddressTo );
-            const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
-            const dev::u256 uMessageAmount( strMessageAmount );
+            // const std::string strDestinationAddressTo =
+            //    skutils::tools::trim_copy( joMessageToSign["to"].get< std::string >() );
+            // const dev::u256 uDestinationAddressTo( strDestinationAddressTo );
+            // const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
+            // const dev::u256 uMessageAmount( strMessageAmount );
             //
             // here strMessageData must be disassembled and validated
             // it must be valid transfer reference
@@ -2052,19 +2052,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             //
             // event OutgoingMessage(
-            //    bytes32 indexed dstChainHash,
-            //    uint256 indexed msgCounter,
-            //    address indexed srcContract,
-            //    address dstContract,
-            //    address to,
-            //    uint256 amount,
-            //    bytes data
-            //);
+            //     bytes32 indexed dstChainHash,
+            //     uint256 indexed msgCounter,
+            //     address indexed srcContract,
+            //     address dstContract,
+            //     bytes data
+            // );
             static const std::string strSignature_event_OutgoingMessage(
-                "OutgoingMessage(bytes32,uint256,address,address,address,uint256,bytes)" );
-            //            static const std::string strSignature_event_OutgoingMessage(
-            //                "OutgoingMessage(string,bytes32,uint256,address,address,address,uint256,bytes,"
-            //                "uint256)" );
+                "OutgoingMessage(bytes32,uint256,address,address,bytes)" );
             static const std::string strTopic_event_OutgoingMessage =
                 dev::toJS( dev::sha3( strSignature_event_OutgoingMessage ) );
             static const dev::u256 uTopic_event_OutgoingMessage( strTopic_event_OutgoingMessage );
@@ -2526,23 +2521,24 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                  "address" ) );
                             continue;
                         }
-                        if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() ) {
-                            continue;
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix +
-                                       cc::warn( " TX receipt record is skipped because " ) +
-                                       cc::info( "data" ) +
-                                       cc::warn( " chunks does not contain destination receiver "
-                                                 "address" ) );
-                        }
-                        if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() ) {
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix +
-                                       cc::warn( " TX receipt record is skipped because " ) +
-                                       cc::info( "data" ) +
-                                       cc::warn( " chunks does not contain amount" ) );
-                            continue;
-                        }
+                        // if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
+                        // {
+                        //    continue;
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn( " chunks does not contain destination receiver "
+                        //                         "address" ) );
+                        //}
+                        // if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn( " chunks does not contain amount" ) );
+                        //    continue;
+                        //}
                         // if ( setChunksU256.find( uDestinationChainID_32_max ) ==
                         //     setChunksU256.end() ) {
                         //    clog( VerbosityDebug, "IMA" )
@@ -2894,14 +2890,15 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 fnAlignRight( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
-                v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
-                fnAlignRight( v, 32 );
-                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+                // v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
+                // fnAlignRight( v, 32 );
+                // vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end()
+                // );
                 //
-                dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
-                fnInvert( arr, cntArr );
-                vecAllTogetherMessages.insert(
-                    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
+                // dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
+                // fnInvert( arr, cntArr );
+                // vecAllTogetherMessages.insert(
+                //    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
                 //
                 v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
                 // fnInvert( v.data(), v.size() ); // do not invert byte order data field (see
