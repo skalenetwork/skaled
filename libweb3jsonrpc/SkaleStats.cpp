@@ -2692,12 +2692,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     // 6) OutgoingMessageData.dstContract
                     strCallData += stat_encode_eth_call_data_chunck_address(
                         joMessageToSign["destinationContract"].get< std::string >() );
-                    // 7) OutgoingMessageData.to
-                    strCallData += stat_encode_eth_call_data_chunck_address(
-                        joMessageToSign["to"].get< std::string >() );
-                    // 8) OutgoingMessageData.amount
-                    strCallData += stat_encode_eth_call_data_chunck_size_t(
-                        joMessageToSign["amount"].get< std::string >() );
+                    //// 7) OutgoingMessageData.to
+                    // strCallData += stat_encode_eth_call_data_chunck_address(
+                    //    joMessageToSign["to"].get< std::string >() );
+                    //// 8) OutgoingMessageData.amount
+                    // strCallData += stat_encode_eth_call_data_chunck_size_t(
+                    //    joMessageToSign["amount"].get< std::string >() );
                     // 9) postion for OutgoingMessageData.data
                     strCallData += stat_encode_eth_call_data_chunck_size_t(
                         0xe0 + encoded_dstChain.length() / 2 );
