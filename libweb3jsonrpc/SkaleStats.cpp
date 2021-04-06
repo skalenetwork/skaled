@@ -1849,8 +1849,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
             const dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
             static const size_t nPaddoingZeroesForUint256 = 64;
-            const std::string strTopic_msgCounter = dev::BMPBN::toHexStringWithPadding< dev::u256 >(
-                dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 );
+            const std::string strTopic_msgCounter =
+                skutils::tools::to_lower( dev::BMPBN::toHexStringWithPadding< dev::u256 >(
+                    dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 ) );
             const dev::u256 uTopic_msgCounter( strTopic_msgCounter );
             nlohmann::json jarrTopic_dstChainHash = nlohmann::json::array();
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
