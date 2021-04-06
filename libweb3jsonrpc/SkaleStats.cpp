@@ -2067,8 +2067,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
             const dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
             static const size_t nPaddoingZeroesForUint256 = 64;
-            const std::string strTopic_msgCounter = dev::BMPBN::toHexStringWithPadding< dev::u256 >(
-                dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 );
+            const std::string strTopic_msgCounter =
+                skutils::tools::to_lower( dev::BMPBN::toHexStringWithPadding< dev::u256 >(
+                    dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 ) );
             const dev::u256 uTopic_msgCounter( strTopic_msgCounter );
             nlohmann::json jarrTopic_dstChainHash = nlohmann::json::array();
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
@@ -2897,22 +2898,22 @@ OutgoingMessageData.data
             if ( !bOnlyVerify ) {
                 // One more message is valid, concatenate it for further in-wallet signing
                 // Compose message to sign
-                static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
-                    size_t n = cnt / 2;
-                    for ( size_t i = 0; i < n; ++i ) {
-                        uint8_t b1 = arr[i];
-                        uint8_t b2 = arr[cnt - i - 1];
-                        arr[i] = b2;
-                        arr[cnt - i - 1] = b1;
-                    }
-                };
+                //    static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
+                //        size_t n = cnt / 2;
+                //        for ( size_t i = 0; i < n; ++i ) {
+                //            uint8_t b1 = arr[i];
+                //            uint8_t b2 = arr[cnt - i - 1];
+                //            arr[i] = b2;
+                //            arr[cnt - i - 1] = b1;
+                //        }
+                //    };
                 static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
                     while ( v.size() < cnt )
                         v.push_back( 0 );
                 };
                 uint8_t arr[32];
                 bytes v;
-                const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
+                // const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
                 fnAlignRight( v, 32 );
