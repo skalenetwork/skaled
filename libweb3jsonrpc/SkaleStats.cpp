@@ -2911,7 +2911,7 @@ OutgoingMessageData.data
                     while ( v.size() < cnt )
                         v.push_back( 0 );
                 };
-                uint8_t arr[32];
+                // uint8_t arr[32];
                 bytes v;
                 // const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
                 //
