@@ -41,6 +41,8 @@
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
 
+#include <libethereum/BlockDetails.h>
+
 namespace fs = boost::filesystem;
 
 using namespace std;
@@ -99,7 +101,7 @@ skale::OverlayDB State::openDB(
     fs::path state_path = path / fs::path( "state" );
     try {
         std::unique_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
-        clog( VerbosityTrace, "statedb" ) << cc::success( "Opened state DB." );
+        clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         cwarn << boost::diagnostic_information( ex ) << '\n';
@@ -144,6 +146,27 @@ State& State::operator=( const State& _s ) {
     return *this;
 }
 
+dev::h256 State::safeLastExecutedTransactionHash() {
+    dev::h256 shaLastTx;
+    if ( m_db_ptr )
+        shaLastTx = m_db_ptr->safeLastExecutedTransactionHash();
+    return shaLastTx;
+}
+
+dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
+    dev::eth::TransactionReceipts partialTransactionReceipts;
+    if ( m_db_ptr ) {
+        dev::bytes rawTransactionReceipts = m_db_ptr->safePartialTransactionReceipts();
+        if ( !rawTransactionReceipts.empty() ) {
+            dev::RLP rlp( rawTransactionReceipts );
+            dev::eth::BlockReceipts blockReceipts( rlp );
+            partialTransactionReceipts.insert( partialTransactionReceipts.end(),
+                blockReceipts.receipts.begin(), blockReceipts.receipts.end() );
+        }
+    }
+    return partialTransactionReceipts;
+}
+
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
@@ -167,7 +190,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts );
+    commit( State::CommitBehaviour::KeepEmptyAccounts, OverlayDB::g_fn_pre_commit_empty );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -303,7 +326,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour ) {
+void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t fn_pre_commit ) {
     if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -348,7 +371,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit();
+        m_db_ptr->commit( fn_pre_commit );
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
     }
@@ -774,8 +797,8 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
-    OnOpFunc const& _onOp ) {
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
+    bool isSaveLastTxHash, dev::eth::TransactionReceipts* accumulatedTransactionReceipts ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -817,7 +840,37 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
+                                      State::CommitBehaviour::KeepEmptyAccounts,
+            [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
+                std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
+                if ( isSaveLastTxHash ) {
+                    h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
+                                                 // dev::eth::WithoutSignature );
+                    // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
+                    // shaLastTx.hex() << "\n";
+                    writeBatch->insert(
+                        skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                        skale::slicing::toSlice( shaLastTx ) );
+                    if ( accumulatedTransactionReceipts != nullptr ) {
+                        TransactionReceipt receipt =
+                            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+                                TransactionReceipt(
+                                    statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                                TransactionReceipt(
+                                    EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+                        receipt.setRevertReason( strRevertReason );
+                        accumulatedTransactionReceipts->push_back( receipt );
+                        dev::eth::BlockReceipts blockReceipts;
+                        for ( unsigned i = 0; i < accumulatedTransactionReceipts->size(); ++i )
+                            blockReceipts.receipts.push_back(
+                                ( *accumulatedTransactionReceipts )[i] );
+                        bytes const receipts = blockReceipts.rlp();
+                        writeBatch->insert(
+                            skale::slicing::toSlice( "safeLastTransactionReceipts" ),
+                            skale::slicing::toSlice( receipts ) );
+                    }
+                }
+            } );
         break;
     case Permanence::Uncommitted:
         resetStorageChanges();

@@ -16,6 +16,7 @@ add_library( skutils STATIC
     ./src/stats.cpp                 ./include/skutils/stats.h
     ./src/task_performance.cpp      ./include/skutils/task_performance.h
     ./src/thread_pool.cpp           ./include/skutils/thread_pool.h
+    ./src/unddos.cpp                ./include/skutils/unddos.h
     ./src/url.cpp                   ./include/skutils/url.h
     ./src/utils.cpp                 ./include/skutils/utils.h
     ./src/ws.cpp                    ./include/skutils/ws.h

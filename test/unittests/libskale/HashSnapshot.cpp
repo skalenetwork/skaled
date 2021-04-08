@@ -91,6 +91,7 @@ public:
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
+            this->hashAgent_->is_received_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
@@ -100,10 +101,8 @@ public:
         }
     }
 
-    bool verifyAllData() const {
-        bool result = false;
-        this->hashAgent_->verifyAllData( result );
-        return result;
+    size_t verifyAllData() const {
+        return this->hashAgent_->verifyAllData();
     }
 
     std::vector< size_t > getNodesToDownloadSnapshotFrom() {
@@ -224,7 +223,7 @@ struct FixtureCommon {
             cerr << strerror( errno ) << endl;
             assert( false );
         }
-        setresgid( 0, 0, 0 );
+        res = setresgid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
             assert( false );
@@ -240,14 +239,15 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
-        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
+        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
-        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
                     .c_str() );
-        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        ( void )rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -366,10 +366,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         if ( NC )
             return;
         gainRoot();
-        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        system( "rm -rf /tmp/*.db*" );
+        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( "rm -rf /tmp/*.db*" );
+        ( void ) rv;
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -413,7 +414,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
     std::vector< size_t > excpected = {0, 1, 2};
     BOOST_REQUIRE( res == excpected );
@@ -439,7 +440,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
     std::vector< size_t > excpected = {0, 1, 2, 3, 5};
     BOOST_REQUIRE( res == excpected );
@@ -459,7 +460,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3);
     BOOST_REQUIRE_THROW( test_agent.voteForHash(), NotEnoughVotesException );
 }
 
@@ -477,7 +478,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
-    BOOST_REQUIRE_THROW( test_agent.verifyAllData(), IsNotVerified );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 2 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -514,19 +515,9 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     BOOST_REQUIRE( hash1 != hash2 );
 
-    mgr->doSnapshot( 3 );
+    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 3 ), SnapshotManager::SnapshotAbsent );
 
-    mgr->computeSnapshotHash( 3 );
-
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
-
-    auto hash2_dbl = mgr->getSnapshotHash( 3 );
-
-    BOOST_REQUIRE( hash2 == hash2_dbl );
-
-    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 4 ), SnapshotManager::SnapshotAbsent );
-
-    BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 4 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
 }

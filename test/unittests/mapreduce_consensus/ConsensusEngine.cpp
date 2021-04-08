@@ -105,7 +105,7 @@ public:
         //////////////////////////////////////////////
 
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp() ) );
+            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
 
         m_consensusThread = std::thread( [this]() {
@@ -124,7 +124,7 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/ ) override {
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -138,7 +138,8 @@ public:
         transaction_promise.set_value( transactions_vector() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
-        system( "rm -rf /tmp/*.db*" );
+        int rv = system( "rm -rf /tmp/*.db*" );
+        ( void ) rv;
     }
 
     std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
@@ -198,7 +199,7 @@ public:
         //////////////////////////////////////////////
 
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp() ) );
+            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
 
         m_consensusThread = std::thread( [this]() {
@@ -262,7 +263,7 @@ public:
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
         uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
-        u256 /*_stateRoot*/ ) override {
+        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;

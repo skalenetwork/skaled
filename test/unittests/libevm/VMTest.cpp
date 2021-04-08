@@ -420,6 +420,7 @@ public:
 
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
+        state.setStorageLimit(1000000000);
         state.setStorage( to, 0, _originalValue );
         state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
 

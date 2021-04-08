@@ -8,7 +8,16 @@ set -e
 NAME=schain
 REPO_NAME=skalenetwork/$NAME
 IMAGE_NAME=$REPO_NAME:$VERSION
-LATEST_IMAGE_NAME=$REPO_NAME:$BRANCH-latest
+
+LABEL="develop"
+if [ $BRANCH = "stable" ]
+then
+    LABEL="stable"
+elif [ $BRANCH = "beta" ]
+then
+    LABEL="beta"
+fi
+LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -30,4 +39,8 @@ echo "Built $IMAGE_NAME"
 echo "$DOCKER_PASSWORD" | docker login --username $DOCKER_USERNAME --password-stdin
 
 docker push $IMAGE_NAME || exit $?
-docker push $LATEST_IMAGE_NAME || exit $?
+
+if [ $BRANCH = $LABEL ]
+then
+    docker push $LATEST_IMAGE_NAME || exit $?
+fi

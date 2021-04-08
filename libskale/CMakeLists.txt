@@ -25,7 +25,7 @@ set(headers
 )
 
 add_library(skale ${sources} ${headers})
-
+target_compile_options( skale PRIVATE -Wno-error=unused-variable )
 target_include_directories( skale PRIVATE
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}

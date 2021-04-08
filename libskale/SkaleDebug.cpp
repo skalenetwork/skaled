@@ -46,6 +46,7 @@ void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count )
 
     assert( !tp_obj.need_break );
     tp_obj.need_break = true;
+    tp_obj.waiting_count = 0;
     tp_obj.needed_waiting_count = count;
 }
 
@@ -78,6 +79,8 @@ void SkaleDebugTracer::tracepoint( const std::string& name ) {
     if ( tp_obj.need_break ) {
         ++tp_obj.waiting_count;
 
+        // WARNING! wait_for_tracepoint will be triggered exclusively if it was called BEFORE
+        // tracepoint was reached!!
         if ( tp_obj.waiting_count == tp_obj.needed_waiting_count ) {
             std::unique_lock< std::mutex > lock2( tp_obj.caller_mutex );
             tp_obj.need_break = false;

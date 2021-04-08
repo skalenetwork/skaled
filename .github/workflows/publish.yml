@@ -1,0 +1,127 @@
+name: Build and publish skaled container
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+      - develop
+      - beta
+      - stable
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: self-hosted
+    env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - name: Extract repo name
+        run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
+        shell: bash
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: Submodule update
+        run: git submodule update --init --recursive
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
+
+      - name: Cleanup containers
+        run: docker system prune -a
+      - name: Prepare ccache timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: Ccache cache files
+        uses: actions/cache@v1.1.0
+        with:
+          path: .ccache
+          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
+          restore-keys: |
+            ${ { matrix.config.name } }-ccache-
+      - name: Build dependencies
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd deps
+          ./clean.sh
+          rm -f ./libwebsockets-from-git.tar.gz
+          ./build.sh PARALLEL_COUNT=$(nproc)
+          cd ..
+      - name: Configure all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_FLAGS=-O3 -DCMAKE_C_FLAGS=-O3 ..
+          cd ..
+      - name: Format-check source code
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make format-check
+          cd ..
+      - name: Build all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make skaled -j$(nproc)
+          cd ..
+      - name: Build and publish container
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
+        run: |
+          cp build/skaled/skaled scripts/skale_build/executable/
+          export BRANCH=${GITHUB_REF##*/}
+          echo "Branch $BRANCH"
+          export VERSION=$(cat VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
+          echo "::set-env name=VERSION::$VERSION"
+          echo "Version $VERSION"
+          export RELEASE=true
+          echo "::set-env name=RELEASE::$RELEASE"
+          bash ./scripts/build_and_publish.sh
+      - name: Create Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: true
+      - name: Upload skaled binary to Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream

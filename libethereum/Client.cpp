@@ -69,6 +69,7 @@ std::string filtersToString( h256Hash const& _fs ) {
     return str.str();
 }
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
 void create_lock_file_or_fail( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
@@ -80,12 +81,12 @@ void create_lock_file_or_fail( const fs::path& dir ) {
             string( "Cannot create lock file " ) + p.string() + ": " + strerror( errno ) );
     fclose( fp );
 }
-
 void delete_lock_file( const fs::path& dir ) {
     fs::path p = dir / "skaled.lock";
     if ( fs::exists( p ) )
         fs::remove( p );
 }
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
 }  // namespace
 
@@ -102,7 +103,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool isStartedFromSnapshot )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -112,9 +113,21 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ),
-      is_started_from_snapshot( isStartedFromSnapshot ) {
+      m_dbPath( _dbPath ) {
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
+
+    m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
+        clog( VerbosityTrace, "client" )
+            << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
+    } );
+
+
+    m_debugHandler = [this]( const std::string& arg ) -> std::string {
+        return DebugTracer_handler( arg, this->m_debugTracer );
+    };
+
     init( _forceAction, _networkID );
 }
 
@@ -150,6 +163,7 @@ void Client::stopWorking() {
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );
 
+#if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
@@ -164,6 +178,7 @@ void Client::stopWorking() {
                         << cc::error( " after foreceful exit" );
     }
     LOG( m_logger ).flush();
+#endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     terminate();
 }
@@ -226,17 +241,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( chainParams().sChain.snapshotIntervalMs > 0 ) {
-        LOG( m_logger ) << "Snapshots enabled, snapshotInterval is: "
-                        << chainParams().sChain.snapshotIntervalMs;
-        if ( this->number() == 0 ) {
-            LOG( m_logger ) << "DOING SNAPSHOT: " << 0;
-            try {
-                m_snapshotManager->doSnapshot( 0 );
-            } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                cerror << "WARNING " << dev::nested_exception_what( ex );
-            }
-        }
+    bc().m_stateDB = m_state.db();
+
+    if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
+        LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
+                        << chainParams().sChain.snapshotIntervalSec;
         this->initHashes();
     }
 
@@ -425,68 +434,210 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
+static std::string stat_transactions2str(
+    const Transactions& _transactions, const std::string& strPrefix ) {
+    size_t cnt = _transactions.size();
+    std::string s;
+    if ( !strPrefix.empty() )
+        s += strPrefix;
+    s += cc::size10( cnt ) + " " +
+         cc::debug(
+             ( cnt > 1 ) ? "transactions: " : ( ( cnt == 1 ) ? "transaction: " : "transactions" ) );
+    size_t i = 0;
+    for ( const Transactions::value_type& tx : _transactions ) {
+        if ( i > 0 )
+            s += cc::normal( ", " );
+        s += cc::debug( "#" ) + cc::size10( i ) + cc::debug( "/" ) + cc::info( tx.sha3().hex() );
+        ++i;
+    }
+    return s;
+}
+
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     DEV_GUARDED( m_blockImportMutex ) {
-        unsigned block_number = this->number();
+        int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
-        int64_t snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
-        if ( snapshotIntervalMs > 0 && this->isTimeToDoSnapshot( _timestamp ) &&
-             block_number != 0 ) {
-            if ( this->last_snapshoted_block != -1 ) {
-                this->updateHashes();
-            }
-            try {
-                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
-                m_snapshotManager->doSnapshot( block_number );
-            } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                cerror << "WARNING " << dev::nested_exception_what( ex );
+        // init last block creation time with only robust time source - timestamp of 1st block!
+        if ( number() == 0 ) {
+            last_snapshot_creation_time = _timestamp;
+            LOG( m_logger ) << "Init last snapshot creation time: "
+                            << this->last_snapshot_creation_time;
+        } else if ( snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+            LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
+
+            if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
+                m_snapshotHashComputing->join();
+
+            // TODO Make this number configurable
+            // thread can be absent - if hash was already there
+            // snapshot can be absent too
+            // but hash cannot be absent
+            auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+            if ( latest_snapshots.second ) {
+                assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
+                this->last_snapshoted_block_with_hash = latest_snapshots.second;
+                m_snapshotManager->leaveNLastSnapshots( 2 );
             }
 
-            this->last_snapshot_time =
-                ( _timestamp / uint64_t( snapshotIntervalMs ) ) * uint64_t( snapshotIntervalMs );
+            // also there might be snapshot on disk
+            // and it's time to make it "last with hash"
+            if ( last_snapshoted_block_with_hash == 0 ) {
+                auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+                if ( latest_snapshots.second ) {
+                    uint64_t time_of_second =
+                        blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+                    if ( time_of_second == ( ( uint64_t ) last_snapshot_creation_time ) )
+                        this->last_snapshoted_block_with_hash = latest_snapshots.second;
+                }  // if second
+            }      // if == 0
+        }
+
+        //
+        // begin, detect partially executed block
+        bool bIsPartial = false;
+        TransactionReceipts partialTransactionReceipts;
+        size_t cntAll = _transactions.size();
+        size_t cntExpected = cntAll;
+        size_t cntMissing = 0;
+        Transactions vecPassed, vecMissing;
+        dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
+        for ( const Transaction& txWalk : _transactions ) {
+            const h256 shaWalk = txWalk.sha3();
+            if ( bIsPartial )
+                vecMissing.push_back( txWalk );
+            else {
+                vecPassed.push_back( txWalk );
+                if ( shaWalk == shaLastTx ) {
+                    bIsPartial = true;
+                }
+            }
+        }
+        size_t cntPassed = vecPassed.size();
+        cntMissing = vecMissing.size();
+        cntExpected = cntMissing;
+        if ( bIsPartial ) {
+            partialTransactionReceipts = m_state.safePartialTransactionReceipts();
+            LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
+                            << cc::warn( " found partially executed block, have " )
+                            << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
+                            << cc::size10( cntPassed ) << cc::warn( " passed, " )
+                            << cc::size10( cntMissing ) << cc::warn( " missing" );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( _transactions, cc::notice( " All " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
+            LOG( m_logger ).flush();
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                            << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
+            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+                            << cc::size10( partialTransactionReceipts.size() )
+                            << cc::attention( " partial transaction receipt(s) inside " )
+                            << cc::notice( "SAFETY CACHE" );
+            LOG( m_logger ).flush();
+        }
+        // end, detect partially executed block
+        //
+
+        TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
+        bool isSaveLastTxHash = true;
+        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
+            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
+        sealUnconditionally( false );
+        importWorkingBlock( &partialTransactionReceipts );
+
+        if ( bIsPartial )
+            cntSucceeded += cntPassed;
+        if ( cntSucceeded != cntAll ) {
+            LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
+                            << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
+                            << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
+                            << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
+            LOG( m_logger ).flush();
+        }
+        if ( bIsPartial ) {
+            LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " )
+                            << cc::size10( cntAll ) << cc::success( " transaction(s), " )
+                            << cc::size10( cntPassed ) << cc::success( " passed, " )
+                            << cc::size10( cntMissing ) << cc::success( " missing" );
+            LOG( m_logger ).flush();
+        }
+
+        if ( snapshotIntervalSec > 0 ) {
+            unsigned block_number = this->number();
 
             LOG( m_logger ) << "Block timestamp: " << _timestamp;
-            LOG( m_logger ) << "Last snapshot time: " << this->last_snapshot_time;
 
-            if ( m_snapshotHashComputing != nullptr ) {
-                m_snapshotHashComputing->join();
-            }
-            m_snapshotHashComputing.reset( new std::thread( [this, block_number]() {
+            if ( this->isTimeToDoSnapshot( _timestamp ) ) {
                 try {
-                    this->m_snapshotManager->computeSnapshotHash( block_number );
-                    this->last_snapshoted_block = block_number;
-                } catch ( const std::exception& ex ) {
-                    cerror << "CRITICAL " << dev::nested_exception_what( ex )
-                           << " in computeSnapshotHash() or updateHashes(). Exiting";
-                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
-                } catch ( ... ) {
-                    cerror << "CRITICAL unknown exception in computeSnapshotHash() or "
-                              "updateHashes(). Exiting";
-                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT );
-                }
-            } ) );
-            // TODO Make this number configurable
-            m_snapshotManager->leaveNLastSnapshots( 2 );
-        }  // if snapshot
+                    LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                    m_debugTracer.tracepoint( "doing_snapshot" );
 
-        size_t n_succeeded = syncTransactions( _transactions, _gasPrice, _timestamp );
-        sealUnconditionally( false );
-        importWorkingBlock();
+                    m_snapshotManager->doSnapshot( block_number );
+                } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                    cerror << "WARNING " << dev::nested_exception_what( ex );
+                }
+
+                this->last_snapshot_creation_time = _timestamp;
+
+                LOG( m_logger ) << "New snapshot creation time: "
+                                << this->last_snapshot_creation_time;
+            }
+
+            // snapshots without hash can appear either from start, from downloading or from just
+            // creation
+            auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+
+            // start if thread is free and there is work
+            if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
+                 latest_snapshots.second &&
+                 !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
+                m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
+                    m_debugTracer.tracepoint( "computeSnapshotHash_start" );
+                    try {
+                        this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
+                        LOG( m_logger )
+                            << "Computed hash for snapshot " << latest_snapshots.second << ": "
+                            << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
+                        m_debugTracer.tracepoint( "computeSnapshotHash_end" );
+
+                    } catch ( const std::exception& ex ) {
+                        cerror << cc::fatal( "CRITICAL" ) << " "
+                               << cc::warn( dev::nested_exception_what( ex ) )
+                               << cc::error( " in computeSnapshotHash(). Exiting..." );
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
+                        ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+                    } catch ( ... ) {
+                        cerror << cc::fatal( "CRITICAL" )
+                               << cc::error(
+                                      " unknown exception in computeSnapshotHash(). "
+                                      "Exiting..." );
+                        cerror << "\n"
+                               << skutils::signal::generate_stack_trace() << "\n"
+                               << std::endl;
+                        ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+                    }
+                } ) );
+            }  // if thread
+        }      // if snapshots enabled
 
         if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
             m_instanceMonitor->performRotation();
         }
-        return n_succeeded;
+
+        return cntSucceeded;
     }
     assert( false );
     return 0;
 }
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -496,22 +647,19 @@ size_t Client::syncTransactions(
         usleep( 1000 );
     }
 
-    cout << "isSealed: " << m_working.isSealed() << endl;
-
     resyncStateFromChain();
 
     Timer timer;
 
-    h256Hash changeds;
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
-        //        assert(m_state.m_db_write_lock.has_value());
-        tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+        // assert(m_state.m_db_write_lock.has_value());
+        tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
+            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts );
         m_state = m_state.startNew();
     }
 
@@ -519,15 +667,8 @@ size_t Client::syncTransactions(
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
 
-    DEV_READ_GUARDED( x_postSeal )
-    for ( size_t i = 0; i < newPendingReceipts.size(); i++ )
-        appendFromNewPending( newPendingReceipts[i], changeds, m_postSeal.pending()[i].sha3() );
-
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();
-
-    // Tell watches about the new transactions.
-    noteChanged( changeds );
 
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
@@ -558,10 +699,6 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
 
 void Client::onNewBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     assert( m_skaleHost );
-
-    // remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-    for ( auto const& h : _blocks )
-        LOG( m_loggerDetail ) << cc::debug( "Live block: " ) << h;
 
     m_skaleHost->noteNewBlocks();
 
@@ -625,9 +762,9 @@ void Client::resetState() {
 }
 
 bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    int snapshotIntervalMs = chainParams().sChain.snapshotIntervalMs;
-    return _timestamp / uint64_t( snapshotIntervalMs ) !=
-           this->last_snapshot_time / uint64_t( snapshotIntervalMs );
+    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
+    return _timestamp / uint64_t( snapshotIntervalSec ) >
+           this->last_snapshot_creation_time / uint64_t( snapshotIntervalSec );
 }
 
 void Client::setSchainExitTime( uint64_t _timestamp ) const {
@@ -664,7 +801,7 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_logger ) << cc::notice( "Mining Beneficiary: " ) << author();
+    LOG( m_logger ) << cc::notice( "Client::startSealing: " ) << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
@@ -689,22 +826,17 @@ void Client::rejigSealing() {
 
                 // TODO Deduplicate code!
                 dev::h256 stateRootToSet;
-                if ( this->last_snapshoted_block == -1 ) {
-                    secp256k1_sha256_t ctx;
-                    secp256k1_sha256_initialize( &ctx );
-
-                    dev::h256 empty_str = dev::h256( "" );
-                    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
-
-                    dev::h256 empty_state_root_hash;
-                    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
-
-                    stateRootToSet = empty_state_root_hash;
-                } else {
-                    unsigned latest_snapshot = this->last_snapshoted_block;
+                if ( this->last_snapshoted_block_with_hash > 0 ) {
                     dev::h256 state_root_hash =
-                        this->m_snapshotManager->getSnapshotHash( latest_snapshot );
+                        this->m_snapshotManager->getSnapshotHash( last_snapshoted_block_with_hash );
                     stateRootToSet = state_root_hash;
+                }
+                // propagate current!
+                else if ( this->number() > 0 ) {
+                    stateRootToSet =
+                        blockInfo( this->hashFromNumber( this->number() ) ).stateRoot();
+                } else {
+                    stateRootToSet = Client::empty_str_hash;
                 }
 
                 m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
@@ -747,7 +879,22 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
                               << cc::num10( m_working.info().number() );
-        m_working.commitToSeal( bc(), m_extraData, this->last_snapshot_hashes.first );
+        // latest hash is really updated after NEXT snapshot already started hash computation!
+        // TODO Deduplicate code!
+        dev::h256 stateRootToSet;
+        if ( this->last_snapshoted_block_with_hash > 0 ) {
+            dev::h256 state_root_hash =
+                this->m_snapshotManager->getSnapshotHash( last_snapshoted_block_with_hash );
+            stateRootToSet = state_root_hash;
+        }
+        // propagate current!
+        else if ( this->number() > 0 ) {
+            stateRootToSet = blockInfo( this->hashFromNumber( this->number() ) ).stateRoot();
+        } else {
+            stateRootToSet = Client::empty_str_hash;
+        }
+
+        m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )
@@ -760,8 +907,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     RLPStream headerRlp;
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
-    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
-                    << cc::num10( BlockHeader( header, HeaderData ).number() );
+    BlockHeader header_struct( header, HeaderData );
+    LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
+                    << " (" << header_struct.hash() << ")";
+
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
@@ -782,10 +931,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock() {
+void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working );
-    // m_new_block_watch.invoke( m_working );
+    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
+    m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }
 
@@ -1043,35 +1192,51 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     return ret;
 }
 
-void Client::updateHashes() {
-    if ( this->last_snapshot_hashes.second == this->empty_str_hash ) {
-        this->last_snapshot_hashes.second =
-            this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
-        return;
-    }
-    if ( this->last_snapshot_hashes.first != this->empty_str_hash ) {
-        std::swap( this->last_snapshot_hashes.first, this->last_snapshot_hashes.second );
-    }
-    this->last_snapshot_hashes.second =
-        this->m_snapshotManager->getSnapshotHash( this->last_snapshoted_block );
-}
-
 void Client::initHashes() {
-    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-    this->last_snapshoted_block = ( latest_snapshots.second ? latest_snapshots.second : -1 );
+    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
+    assert( snapshotIntervalSec > 0 );
+    ( void ) snapshotIntervalSec;
 
-    this->last_snapshot_time =
-        ( latest_snapshots.second ?
-                this->blockInfo( this->hashFromNumber( this->last_snapshoted_block ) ).timestamp() :
-                0 );
-    this->last_snapshot_hashes.first =
-        ( latest_snapshots.first ?
-                this->m_snapshotManager->getSnapshotHash( latest_snapshots.first ) :
-                this->empty_str_hash );
-    this->last_snapshot_hashes.second =
-        ( latest_snapshots.second ?
-                this->m_snapshotManager->getSnapshotHash( latest_snapshots.second ) :
-                this->empty_str_hash );
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+
+    // if two
+    if ( latest_snapshots.first ) {
+        assert( latest_snapshots.first != 1 );  // 1 can never be snapshotted
+
+        this->last_snapshoted_block_with_hash = latest_snapshots.first;
+
+        // ignore second as it was "in hash computation"
+        // check that both are imported!!
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        assert( h2 != h256() );
+        last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+
+        // one snapshot
+    } else if ( latest_snapshots.second ) {
+        assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
+        assert( this->number() > 0 );            // we created snapshot somehow
+
+        // whether it is local or downloaded - we shall ignore it's hash but use it's time
+        // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
+        h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        uint64_t time_of_second = blockInfo( h2 ).timestamp();
+
+        this->last_snapshoted_block_with_hash = -1;
+        last_snapshot_creation_time = time_of_second;
+
+        // no snapshots yet
+    } else {
+        this->last_snapshoted_block_with_hash = -1;
+
+        if ( this->number() >= 1 )
+            last_snapshot_creation_time = blockInfo( this->hashFromNumber( 1 ) ).timestamp();
+        else
+            this->last_snapshot_creation_time = 0;
+    }
+
+    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
+                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
+    LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
 }
 
 // new block watch
@@ -1091,3 +1256,6 @@ unsigned Client::installNewPendingTransactionWatch(
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
+
+const dev::h256 Client::empty_str_hash =
+    dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

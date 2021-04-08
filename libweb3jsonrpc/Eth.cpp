@@ -418,8 +418,10 @@ Json::Value Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !client()->isKnownTransaction( h ) )
             return Json::Value( Json::nullValue );
-
-        return toJson( client()->localisedTransactionReceipt( h ) );
+        auto cli = client();
+        auto rcp = cli->localisedTransactionReceipt( h );
+        auto jo = toJson( rcp );
+        return jo;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

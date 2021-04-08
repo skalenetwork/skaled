@@ -1,0 +1,103 @@
+name: Custom Docker and Binary
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch name'
+        default: ''
+        required: true
+      image_version:
+        description: 'Image version for docker hub'
+        default: ''
+        required: true
+      cmake_options:
+        description: 'Additional cmake options'
+        default: ''
+        required: false
+
+jobs:
+  main_job:
+    runs-on: self-hosted
+    env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - name: Extract repo name
+        run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
+        shell: bash
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch_name }}
+      - name: Submodule update
+        run: git submodule update --init --recursive
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
+
+      - name: Prepare ccache timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: Ccache cache files
+        uses: actions/cache@v1.1.0
+        with:
+          path: .ccache
+          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
+          restore-keys: |
+            ${ { matrix.config.name } }-ccache-
+      - name: Build dependencies
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd deps
+          ./clean.sh
+          rm -f ./libwebsockets-from-git.tar.gz
+          ./build.sh PARALLEL_COUNT=$(nproc)
+          cd ..
+      - name: Configure all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
+          cd ..
+      - name: Build all
+        run: |
+          export CC=gcc-7
+          export CXX=g++-7
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd build
+          make skaled -j$(nproc)
+          cd ..
+
+      - name: Build and publish container
+        run: |
+          cp build/skaled/skaled scripts/skale_build/executable/
+          export BRANCH=${{ github.event.inputs.branch_name }}
+          export VERSION=${{ github.event.inputs.image_version }}
+          echo "Version $VERSION"
+          export RELEASE=true
+          bash ./scripts/build_and_publish.sh
+          
+      - name: Upload skaled binary as artifact 
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }}
+        with:
+          name: skaled
+          path: ./build/skaled/skaled

@@ -28,6 +28,7 @@ namespace eth {
 namespace validation {
 string const c_sealEngine = "sealEngine";
 string const c_params = "params";
+string const c_unddos = "unddos";
 string const c_genesis = "genesis";
 string const c_accounts = "accounts";
 string const c_balance = "balance";
@@ -94,6 +95,7 @@ void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",
         {{c_sealEngine, {{js::str_type}, JsonFieldPresence::Required}},
             {c_params, {{js::obj_type}, JsonFieldPresence::Required}},
+            {c_unddos, {{js::obj_type}, JsonFieldPresence::Optional}},
             {c_genesis, {{js::obj_type}, JsonFieldPresence::Required}},
             {c_skaleConfig, {{js::obj_type}, JsonFieldPresence::Optional}},
             {c_accounts, {{js::obj_type}, JsonFieldPresence::Required}}} );
@@ -139,8 +141,16 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"wsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
             {"wssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
             {"wssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoHttpRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoHttpRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoHttpsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoHttpsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoWsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoWsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoWssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"infoWssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
             {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalSec", {{js::int_type}, JsonFieldPresence::Optional}},
             {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
             {"wallets", {{js::obj_type}, JsonFieldPresence::Optional}},
             {"ecdsaKeyName", {{js::str_type}, JsonFieldPresence::Required}},
@@ -155,6 +165,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"logLevelProposal", {{js::str_type}, JsonFieldPresence::Optional}},
             {"aa", {{js::str_type}, JsonFieldPresence::Optional}},
             {"acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"info-acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
             {"adminOrigins", {{js::array_type}, JsonFieldPresence::Optional}},
             {"db-path", {{js::str_type}, JsonFieldPresence::Optional}},
             {"ipcpath", {{js::str_type}, JsonFieldPresence::Optional}},
@@ -203,7 +214,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"schainID", {{js::int_type}, JsonFieldPresence::Required}},
             {"schainOwner", {{js::str_type}, JsonFieldPresence::Optional}},
             {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"snapshotIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"snapshotIntervalSec", {{js::int_type}, JsonFieldPresence::Optional}},
             {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
             {"storageLimit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"nodes", {{js::array_type}, JsonFieldPresence::Required}},

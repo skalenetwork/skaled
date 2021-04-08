@@ -12,13 +12,15 @@ set(EXECUTABLE_NAME skaled)
 
 add_executable(${EXECUTABLE_NAME} ${sources})
 
+target_compile_options( ${EXECUTABLE_NAME} PRIVATE -Wno-error=unused-variable )
+
 if( APPLE )
 	target_compile_definitions( ${EXECUTABLE_NAME} PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
 
 target_link_libraries(
     ${EXECUTABLE_NAME}
-    PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options pthread
+    PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options pthread idn2
 )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)

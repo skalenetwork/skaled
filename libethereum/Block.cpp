@@ -423,8 +423,9 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone(
-    BlockChain const& _bc, const Transactions _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -468,11 +469,24 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
+                OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
                 ++count_bad;
+
+            //
+            // Debug only, related SKALE-2814 partial catchup testing
+            //
+            // if ( i == 3 ) {
+            // std::cout << "\n\n"
+            //          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) << cc::num10( i )
+            //          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() ) << "\n\n\n";
+            // std::cout.flush();
+            //_exit( 200 );
+            //}
+
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -732,8 +746,9 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     return tdIncrease;
 }
 
-ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
+    Permanence _p, OnOpFunc const& _onOp, bool isSaveLastTxHash,
+    TransactionReceipts* accumulatedTransactionReceipts ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -761,7 +776,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw - 1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp,
+            isSaveLastTxHash, accumulatedTransactionReceipts );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {

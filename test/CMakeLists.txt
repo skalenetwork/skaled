@@ -61,6 +61,7 @@ hunter_add_package(yaml-cpp)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
+target_compile_options( testeth PRIVATE -Wno-error=unused-variable )
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
@@ -73,10 +74,13 @@ target_link_libraries(testeth PRIVATE
     jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
     jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
     jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
+    ${DEPS_INSTALL_ROOT}/lib/libff.a
+    ${DEPS_INSTALL_ROOT}/lib/libgmp.a
     ${DEPS_INSTALL_ROOT}/lib/libcurl.a
     ${DEPS_INSTALL_ROOT}/lib/libssl.a
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
     ${DEPS_INSTALL_ROOT}/lib/libz.a
+    idn2
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)

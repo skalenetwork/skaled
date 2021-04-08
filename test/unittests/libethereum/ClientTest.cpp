@@ -92,7 +92,7 @@ struct FixtureCommon {
             cerr << strerror( errno ) << endl;
             assert( false );
         }
-        setresgid( 0, 0, 0 );
+        res = setresgid( 0, 0, 0 );
         if ( res ) {
             cerr << strerror( errno ) << endl;
             assert( false );
@@ -171,7 +171,7 @@ public:
             auto txHash = m_ethereum->importTransaction(tx);
             dev::eth::mineTransaction(*(m_ethereum), 1);
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            return receipt["status"] == "1";
+            return receipt["status"] == "0x1";
         } catch (...) {
             return false;
         }
@@ -197,14 +197,15 @@ public:
 
         dropRoot();
 
-        system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
-        system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
+        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
+        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
-        system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
                     .c_str() );
-        chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        ( void )rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -274,9 +275,10 @@ public:
         if ( NC )
             return;
         gainRoot();
-        system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
+        ( void ) rv;
     }
 
 private:
@@ -368,6 +370,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "storageLimit": 32000,
+        "emptyBlockIntervalMs": -1,
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
@@ -787,7 +790,8 @@ static std::string const c_skaleConfigString = R"(
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
-            "snapshotIntervalMs": 10,
+            "snapshotIntervalSec": 10,
+            "emptyBlockIntervalMs": -1,
             "nodes": [
               { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
@@ -817,12 +821,10 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
 
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "0" ) );
-
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -834,6 +836,8 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
+    std::this_thread::sleep_for( 2000ms );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

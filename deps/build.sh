@@ -1256,11 +1256,12 @@ then
 			if [ ! -f "libwebsockets-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-                git clone https://github.com/warmcat/libwebsockets.git
+                                git clone https://github.com/warmcat/libwebsockets.git
 				cd libwebsockets
-				git checkout v3.1-stable
-				# git checkout v4.0-stable
-				git pull
+                                # git checkout v3.1-stable
+                                # git checkout v4.0-stable
+                                git checkout v4.1-stable
+                                git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf libwebsockets-from-git.tar.gz ./libwebsockets
@@ -2144,6 +2145,8 @@ then
         fi
         cd libff
         echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+        git fetch
+		git checkout 03b719a7c81757071f99fc60be1f7f7694e51390
         mkdir -p build
         cd build
         $CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" .. -DWITH_PROCPS=OFF
