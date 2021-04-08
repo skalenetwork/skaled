@@ -107,6 +107,10 @@ std::string formatBalance( bigint const& _b ) {
     return ret.str();
 }
 
+bytes getAccessControllerCallData( Address const& _deployer ) {
+    return fromHex( "13f44d10000000000000000000000000" + _deployer.hex() );
+}
+
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {
     string const c_line = cc::debug( string( 80, ' ' ) );
     string const c_border = cc::debug( string( 2, ' ' ) );

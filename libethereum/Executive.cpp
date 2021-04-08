@@ -469,6 +469,15 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
+                bytes in = getAccessControllerCallData( m_ext->caller );
+                unique_ptr< CallParameters > callParams( new CallParameters( SystemAddress,
+                    c_accessControllerContractAddress, c_accessControllerContractAddress, 0, 0,
+                    m_gas, bytesConstRef( in.data(), in.size() ), {} ) );
+                auto a = m_ext->call( *callParams );
+                u256 s = u256( dev::toHex( a.output ) );
+                if (s != u256(1))
+                    BOOST_THROW_EXCEPTION( OutOfGas() );
+
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
                     m_res->gasForDeposit = m_gas;
