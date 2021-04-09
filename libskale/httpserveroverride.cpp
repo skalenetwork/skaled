@@ -1134,18 +1134,18 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
         joResponse["id"] = joRequest["id"];
     joResponse["result"] = nullptr;
 
-    rapidjson::Document joRequestObj;
-    joRequestObj.SetObject();
+    rapidjson::Document joRequestRapidjson;
+    joRequestRapidjson.SetObject();
     std::string strRequest = joRequest.dump();
-    joRequestObj.Parse( strRequest.data() );
+    joRequestRapidjson.Parse( strRequest.data() );
 
-    rapidjson::Document joResponseObj;
-    joResponseObj.SetObject();
+    rapidjson::Document joResponseRapidjson;
+    joResponseRapidjson.SetObject();
     std::string strResponseCopy = joResponse.dump();
-    joResponseObj.Parse( strResponseCopy.data() );
+    joResponseRapidjson.Parse( strResponseCopy.data() );
 
     if ( !pso()->handleProtocolSpecificRequest(
-             getRelay(), getRemoteIp(), joRequestObj, joResponseObj ) ) {
+             getRelay(), getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
         if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
             strResponse = joResponse.dump();
             return false;
@@ -1154,7 +1154,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     } else {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joResponseObj.Accept( writer );
+        joResponseRapidjson.Accept( writer );
         strResponse = buffer.GetString();
     }
 
