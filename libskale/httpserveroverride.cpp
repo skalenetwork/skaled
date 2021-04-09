@@ -3285,32 +3285,6 @@ int SkaleServerOverride::ValidateJsonRpcRequest( const rapidjson::Document& joRe
     return error;
 }
 
-void SkaleServerOverride::wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
-    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse ) {
-    if ( joResponse.HasMember( "result" ) ) {
-        joResponse.RemoveMember( "result" );
-    }
-
-    rapidjson::Value joError;
-    joError.SetObject();
-
-    joError.AddMember( "code", exception.GetCode(), joResponse.GetAllocator() );
-
-    std::string message = exception.GetMessage();
-    joError.AddMember( "message", rapidjson::Value(), joResponse.GetAllocator() );
-    joError["message"].SetString( message.c_str(), message.size(), joResponse.GetAllocator() );
-
-    Json::Value joData = exception.GetData();
-    joError.AddMember( "data", rapidjson::Value(), joResponse.GetAllocator() );
-    if ( joData != Json::nullValue ) {
-        Json::FastWriter fastWriter;
-        std::string data = fastWriter.write( joData );
-        joError["data"].SetString( data.c_str(), data.size(), joResponse.GetAllocator() );
-    }
-
-    joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-}
-
 void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     const std::string& strOrigin, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
@@ -3440,37 +3414,13 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
 void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    try {
-        //        this->ValidateJsonRpcRequest( joRequest );
-        std::string strResponse =
-            opts_.fn_eth_sendRawTransaction_( joRequest["params"].GetArray()[0].GetString() );
-
-        rapidjson::Value& v = joResponse["result"];
-        v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-    } catch ( const dev::Exception& ) {
-        this->wrapJsonRpcException( joRequest,
-            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
-    }
+    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
 }
 
 void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    try {
-        //        this->ValidateJsonRpcRequest( joRequest );
-        dev::eth::LocalisedTransactionReceipt _t =
-            opts_.fn_eth_getTransactionReceipt_( joRequest["params"].GetArray()[0].GetString() );
-
-        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
-        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
-        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-    } catch ( std::invalid_argument& ex ) {
-        // not known transaction - skip exception
-        joResponse.AddMember( "result", rapidjson::Value(), joResponse.GetAllocator() );
-    } catch ( ... ) {
-        this->wrapJsonRpcException( joRequest,
-            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ), joResponse );
-    }
+    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

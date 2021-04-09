@@ -24,6 +24,7 @@
 #pragma once
 
 #include <json/json.h>
+#include <jsonrpccpp/common/exception.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethereum/LogFilter.h>
@@ -71,6 +72,9 @@ rapidjson::Document toRapidJson(
     LocalisedLogEntry const& _entry, rapidjson::Document::AllocatorType& allocator );
 rapidjson::Document toRapidJson(
     LocalisedTransactionReceipt const& _t, rapidjson::Document::AllocatorType& allocator );
+
+void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
+    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
 
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );

@@ -304,9 +304,9 @@ public:
 
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
-    typedef std::function< std::string( const std::string& request ) > fn_eth_sendRawTransaction_t;
-    typedef std::function< dev::eth::LocalisedTransactionReceipt( const std::string& request ) >
-        fn_eth_getTransactionReceipt_t;
+    typedef std::function< void(
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) >
+        fn_jsonrpc_call_t;
 
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
                                                                                // default 1 second
@@ -380,8 +380,8 @@ public:
     struct opts_t {
         net_opts_t netOpts_;
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
-        fn_eth_sendRawTransaction_t fn_eth_sendRawTransaction_;
-        fn_eth_getTransactionReceipt_t fn_eth_getTransactionReceipt_;
+        fn_jsonrpc_call_t fn_eth_sendRawTransaction_;
+        fn_jsonrpc_call_t fn_eth_getTransactionReceipt_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -520,9 +520,6 @@ protected:
     bool ValidateJsonRpcRequestFields( const rapidjson::Document& joRequest );
 
     int ValidateJsonRpcRequest( const rapidjson::Document& joRequest );
-
-    void wrapJsonRpcException( const rapidjson::Document& joRequest,
-        const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;

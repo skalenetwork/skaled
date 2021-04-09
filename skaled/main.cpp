@@ -2571,14 +2571,43 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
-            SkaleServerOverride::fn_eth_sendRawTransaction_t fn_eth_sendRawTransaction =
-                [=]( const std::string& request ) -> std::string {
-                return ethFace->eth_sendRawTransaction( request );
-            };
-            SkaleServerOverride::fn_eth_getTransactionReceipt_t fn_eth_getTransactionReceipt =
-                [=]( const std::string& request ) -> dev::eth::LocalisedTransactionReceipt {
-                return ethFace->eth_getTransactionReceipt( request );
-            };
+            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        std::string strResponse = ethFace->eth_sendRawTransaction(
+                            joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Value& v = joResponse["result"];
+                        v.SetString(
+                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                    } catch ( const dev::Exception& ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
+                            joResponse );
+                    }
+                };
+            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        dev::eth::LocalisedTransactionReceipt _t =
+                            ethFace->eth_getTransactionReceipt(
+                                joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+                        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+                        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+                    } catch ( std::invalid_argument& ex ) {
+                        // not known transaction - skip exception
+                        joResponse.AddMember(
+                            "result", rapidjson::Value(), joResponse.GetAllocator() );
+                    } catch ( ... ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
+                            joResponse );
+                    }
+                };
             //
             SkaleServerOverride::opts_t serverOpts;
             serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
