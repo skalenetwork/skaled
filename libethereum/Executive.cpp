@@ -467,7 +467,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 auto accessCallResult = m_ext->call( *accessCallParams );
                 auto accessCallOutput = dev::toHex( accessCallResult.output );
                 if ( !accessCallOutput.empty() && u256( accessCallOutput ) == 0 ) {
-                    BOOST_THROW_EXCEPTION( OutOfGas() );
+                    BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
                 }
 
                 auto out = vm->exec( m_gas, *m_ext, _onOp );

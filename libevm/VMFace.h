@@ -37,6 +37,7 @@ ETH_SIMPLE_EXCEPTION_VM( StackUnderflow );
 ETH_SIMPLE_EXCEPTION_VM( DisallowedStateChange );
 ETH_SIMPLE_EXCEPTION_VM( BufferOverrun );
 ETH_SIMPLE_EXCEPTION_VM( StorageOverflow );
+ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
 
 /// Reports VM internal error. This is not based on VMException because it must be handled
 /// differently than defined consensus exceptions.
