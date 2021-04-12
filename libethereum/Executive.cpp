@@ -396,15 +396,6 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
-    if ( m_sealEngine.chainParams().sChain.owner != Address( 0 ) &&
-         _origin != m_sealEngine.chainParams().sChain.owner &&
-         !m_sealEngine.chainParams().sChain.freeContractDeployment ) {
-        m_gas = 0;
-        m_excepted = TransactionException::InvalidDeployOrigin;
-        revert();
-        m_ext = {};
-        return !m_ext;
-    }
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
@@ -470,13 +461,14 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
                 bytes in = getAccessControllerCallData( m_ext->caller );
-                unique_ptr< CallParameters > callParams( new CallParameters( SystemAddress,
+                unique_ptr< CallParameters > accessCallParams( new CallParameters( SystemAddress,
                     c_accessControllerContractAddress, c_accessControllerContractAddress, 0, 0,
                     m_gas, bytesConstRef( in.data(), in.size() ), {} ) );
-                auto a = m_ext->call( *callParams );
-                u256 s = u256( dev::toHex( a.output ) );
-                if (s != u256(1))
+                auto accessCallResult = m_ext->call( *accessCallParams );
+                auto accessCallOutput = dev::toHex( accessCallResult.output );
+                if ( !accessCallOutput.empty() && u256( accessCallOutput ) == 0 ) {
                     BOOST_THROW_EXCEPTION( OutOfGas() );
+                }
 
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
