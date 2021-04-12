@@ -1809,6 +1809,8 @@ int main( int argc, char** argv ) try {
         std::shared_ptr< SkaleHost > skaleHost =
             std::make_shared< SkaleHost >( *g_client, &cons_fact );
 
+        snapshotManager->getLatestPrice = [=]() { return skaleHost->getGasPrice(); };
+
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();
         debugInterface.add_handler( [skaleHost_debug_handler]( const std::string& arg ) -> string {
