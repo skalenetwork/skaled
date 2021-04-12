@@ -724,6 +724,9 @@ static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
     //"genesis.*"
     //"params.*",
 
+    "skaleConfig.nodeInfo.wallets.ima.commonBLSPublicKey*",
+    "skaleConfig.nodeInfo.wallets.ima.BLSPublicKey*",
+
     "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
     "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
     "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
