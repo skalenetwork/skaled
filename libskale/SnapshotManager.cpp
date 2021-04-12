@@ -420,6 +420,7 @@ void SnapshotManager::computeDatabaseHash(
 
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
+    cnote << _dbDir << " hash is: " << hash_volume << std::endl;
 
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
 } catch ( const fs::filesystem_error& ex ) {
@@ -434,6 +435,7 @@ void SnapshotManager::addLastPriceToHash( secp256k1_sha256_t* ctx ) const {
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
+    cnote << "Latest price hash is: " << last_price_hash << std::endl;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
