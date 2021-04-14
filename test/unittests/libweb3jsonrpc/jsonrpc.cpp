@@ -301,6 +301,23 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                             joResponse );
                     }
                 };
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
+            [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                try {
+                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
+                        joRequest["params"].GetArray()[0] );
+                    std::string strResponse =
+                        ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
+
+                    rapidjson::Value& v = joResponse["result"];
+                    v.SetString(
+                        strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                } catch ( std::exception const& ex ) {
+                    throw jsonrpc::JsonRpcException( ex.what() );
+                } catch ( ... ) {
+                    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                }
+            };
         serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
         serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;

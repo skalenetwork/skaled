@@ -3263,27 +3263,10 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
     {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
     {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
-};
+    {"eth_call", &SkaleServerOverride::eth_call}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool SkaleServerOverride::ValidateJsonRpcRequestFields( const rapidjson::Document& joRequest ) {
-    if ( !joRequest.IsObject() ) {
-        return false;
-    }
-    return true;
-}
-
-int SkaleServerOverride::ValidateJsonRpcRequest( const rapidjson::Document& joRequest ) {
-    int error = 0;
-    if ( !this->ValidateJsonRpcRequestFields( joRequest ) ) {
-        error = jsonrpc::Errors::ERROR_RPC_INVALID_REQUEST;
-    } else {
-    }
-
-    return error;
-}
 
 void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     const std::string& strOrigin, const rapidjson::Document& joRequest,
@@ -3421,6 +3404,11 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
     opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_call( joRequest, joResponse );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

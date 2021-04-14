@@ -193,5 +193,14 @@ string TransactionSkeleton::userReadable( bool _toProxy,
                    "Additional network fees are at most" + formatBalance( gas * gasPrice ) + "." );
 }
 
+std::string TransactionSkeleton::toString() const {
+    std::stringstream s;
+    s << "from: " << from.hex() << ", to: " << to.hex() << ", value: " << value << ", gas: " << gas
+      << ", gasPrice: " << gasPrice << ", code: " << dev::secure_vector( data ).ref().toString()
+      << ", nonce: " << nonce << '\n';
+
+    return s.str();
+}
+
 }  // namespace eth
 }  // namespace dev

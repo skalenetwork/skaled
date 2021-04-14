@@ -382,6 +382,8 @@ public:
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
         fn_jsonrpc_call_t fn_eth_sendRawTransaction_;
         fn_jsonrpc_call_t fn_eth_getTransactionReceipt_;
+        fn_jsonrpc_call_t fn_eth_getTransactionCount_;
+        fn_jsonrpc_call_t fn_eth_call;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -517,9 +519,8 @@ protected:
     void eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    bool ValidateJsonRpcRequestFields( const rapidjson::Document& joRequest );
-
-    int ValidateJsonRpcRequest( const rapidjson::Document& joRequest );
+    void eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;

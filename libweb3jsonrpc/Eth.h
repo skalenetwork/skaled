@@ -91,7 +91,7 @@ public:
         std::string const& _address, std::string const& _blockNumber ) override;
     virtual std::string eth_sendTransaction( Json::Value const& _json ) override;
     virtual std::string eth_call(
-        Json::Value const& _json, std::string const& _blockNumber ) override;
+        eth::TransactionSkeleton& _t, std::string const& _blockNumber ) override;
     virtual std::string eth_estimateGas( Json::Value const& _json ) override;
     virtual bool eth_flush() override;
     virtual Json::Value eth_getBlockByHash(

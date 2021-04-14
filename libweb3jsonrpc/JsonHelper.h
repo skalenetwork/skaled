@@ -77,6 +77,7 @@ void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
     const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
 
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
+TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
 // LogFilter toLogFilter( Json::Value const& _json,
 //    Interface const& _client );  // commented to avoid warning. Uncomment once in use @ PoC-7.

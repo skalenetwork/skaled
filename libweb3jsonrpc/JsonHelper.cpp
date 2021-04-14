@@ -509,6 +509,39 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
         ret.nonce = jsToU256( _json["nonce"].asString() );
     return ret;
 }
+
+TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json ) {
+    TransactionSkeleton ret;
+    if ( !_json.IsObject() || _json.Empty() )
+        return ret;
+
+    if ( !_json["from"].Empty() )
+        ret.from = jsToAddress( _json["from"].GetString() );
+    if ( !_json["to"].Empty() && strncmp( _json["to"].GetString(), "0x", 2 ) != 0 &&
+         strncmp( _json["to"].GetString(), "", 1 ) != 0 )
+        ret.to = jsToAddress( _json["to"].GetString() );
+    else
+        ret.creation = true;
+
+    if ( !_json["value"].Empty() )
+        ret.value = jsToU256( _json["value"].GetString() );
+
+    if ( !_json["gas"].Empty() )
+        ret.gas = jsToU256( _json["gas"].GetString() );
+
+    if ( !_json["gasPrice"].Empty() )
+        ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
+
+    if ( !_json["data"].Empty() )  // ethereum.js has preconstructed the data array
+        ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
+
+    if ( !_json["code"].Empty() )
+        ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
+
+    if ( !_json["nonce"].Empty() )
+        ret.nonce = jsToU256( _json["nonce"].GetString() );
+    return ret;
+}
 /*
 dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
     dev::eth::LogFilter filter;

@@ -289,7 +289,8 @@ public:
         response = this->eth_sendTransaction( request[0u] );
     }
     inline virtual void eth_callI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_call( request[0u], request[1u].asString() );
+        dev::eth::TransactionSkeleton _t = dev::eth::toTransactionSkeleton( request[0u] );
+        response = this->eth_call( _t, request[1u].asString() );
     }
     inline virtual void eth_flushI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
@@ -446,7 +447,8 @@ public:
     virtual Json::Value eth_getUncleCountByBlockNumber( const std::string& param1 ) = 0;
     virtual std::string eth_getCode( const std::string& param1, const std::string& param2 ) = 0;
     virtual std::string eth_sendTransaction( const Json::Value& param1 ) = 0;
-    virtual std::string eth_call( const Json::Value& param1, const std::string& param2 ) = 0;
+    virtual std::string eth_call(
+        dev::eth::TransactionSkeleton& param1, const std::string& param2 ) = 0;
     virtual bool eth_flush() = 0;
     virtual Json::Value eth_getBlockByHash( const std::string& param1, bool param2 ) = 0;
     virtual Json::Value eth_getBlockByNumber( const std::string& param1, bool param2 ) = 0;

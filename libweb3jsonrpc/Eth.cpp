@@ -282,38 +282,30 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     return toJS( client()->importTransaction( t ) );
 }
 
-string Eth::eth_call( Json::Value const& _json, string const& /* _blockNumber */ ) {
-    try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
-        TransactionSkeleton t = toTransactionSkeleton( _json );
-        setTransactionDefaults( t );
-        ExecutionResult er = client()->call(
-            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
+    // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
+    // Remove this temporary fix.
+    string blockNumber = "latest";
+    setTransactionDefaults( t );
+    ExecutionResult er =
+        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
 
-        std::string strRevertReason;
-        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
-            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
-            if ( strRevertReason.empty() )
-                strRevertReason = "EVM revert instruction without description message";
-            Json::FastWriter fastWriter;
-            std::string strJSON = fastWriter.write( _json );
-            std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
-                                 cc::warn( strRevertReason ) +
-                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
-                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
-                                 cc::error( "=" ) + cc::bright( blockNumber );
-            cerror << strOut;
-            throw JsonRpcException( strRevertReason );
-        }
-
-        return toJS( er.output );
-    } catch ( std::exception const& ex ) {
-        throw JsonRpcException( ex.what() );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    std::string strRevertReason;
+    if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
+        strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+        if ( strRevertReason.empty() )
+            strRevertReason = "EVM revert instruction without description message";
+        std::string strTx = t.toString();
+        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                             cc::warn( strRevertReason ) + cc::error( ", with call arguments: " ) +
+                             cc::j( strTx ) + cc::error( ", and using " ) +
+                             cc::info( "blockNumber" ) + cc::error( "=" ) +
+                             cc::bright( blockNumber );
+        cerror << strOut;
+        throw std::logic_error( strRevertReason );
     }
+
+    return toJS( er.output );
 }
 
 string Eth::eth_estimateGas( Json::Value const& _json ) {
