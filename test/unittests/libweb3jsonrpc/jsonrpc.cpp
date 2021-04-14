@@ -304,8 +304,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
-                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
-                        joRequest["params"].GetArray()[0] );
+                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton( joRequest["params"].GetArray()[0] );
                     std::string strResponse =
                         ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
 
@@ -320,6 +319,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             };
         serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
         serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+        serverOpts.fn_eth_call_ = fn_eth_call;
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;

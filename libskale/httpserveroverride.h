@@ -382,8 +382,7 @@ public:
         fn_binary_snapshot_download_t fn_binary_snapshot_download_;
         fn_jsonrpc_call_t fn_eth_sendRawTransaction_;
         fn_jsonrpc_call_t fn_eth_getTransactionReceipt_;
-        fn_jsonrpc_call_t fn_eth_getTransactionCount_;
-        fn_jsonrpc_call_t fn_eth_call;
+        fn_jsonrpc_call_t fn_eth_call_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -396,6 +395,7 @@ public:
             fn_binary_snapshot_download_ = other.fn_binary_snapshot_download_;
             fn_eth_sendRawTransaction_ = other.fn_eth_sendRawTransaction_;
             fn_eth_getTransactionReceipt_ = other.fn_eth_getTransactionReceipt_;
+            fn_eth_call_ = other.fn_eth_call_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;

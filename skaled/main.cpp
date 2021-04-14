@@ -2629,6 +2629,7 @@ int main( int argc, char** argv ) try {
             serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
             serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
             serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+            serverOpts.fn_eth_call_ = fn_eth_call;
             serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
             serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
