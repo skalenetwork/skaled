@@ -783,6 +783,26 @@ static bytes stat_string_to_bytes_with_length( std::string& s ) {
     return rv;
 }
 
+static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
+    if ( strValue.empty() )
+        return dev::u256( 0 );
+    const size_t cnt = strValue.length();
+    if ( cnt >= 2 && strValue[0] == '0' && ( strValue[1] == 'x' || strValue[1] == 'X' ) ) {
+        dev::u256 uValue( strValue.c_str() );
+        return uValue;
+    }
+    dev::u256 uValue = 0;
+    for ( size_t i = 0; i < cnt; ++i ) {
+        char chr = strValue[i];
+        if ( !( '0' <= chr && chr <= '9' ) )
+            throw std::runtime_error( "Bad u256 value \"" + strValue + "\" cannot be parsed" );
+        int nDigit = int( chr - '0' );
+        uValue *= 10;
+        uValue += nDigit;
+    }
+    return uValue;
+}
+
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -797,8 +817,14 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
         nlohmann::json joValue =
             skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
-        dev::u256 uValue( strValue.c_str() );
+        std::string strValue = skutils::tools::trim_copy(
+            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+
+        // dev::u256 uValue( strValue.c_str() );
+        dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
+        // std::cout << "------------ Loaded config var \""
+        //          << rawName << "\" value is " << uValue
+        //          << "\n";
 
         bytes response = toBigEndian( uValue );
         return {true, response};
@@ -831,7 +857,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
         nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
         nlohmann::json joValue =
             skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
+        std::string strValue = skutils::tools::trim_copy(
+            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
         dev::u256 uValue( strValue.c_str() );
 
         bytes response = toBigEndian( uValue );
