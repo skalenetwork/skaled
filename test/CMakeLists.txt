@@ -74,13 +74,13 @@ target_link_libraries(testeth PRIVATE
     jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
     jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
     jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
+    idn2
     ${DEPS_INSTALL_ROOT}/lib/libff.a
     ${DEPS_INSTALL_ROOT}/lib/libgmp.a
     ${DEPS_INSTALL_ROOT}/lib/libcurl.a
     ${DEPS_INSTALL_ROOT}/lib/libssl.a
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
     ${DEPS_INSTALL_ROOT}/lib/libz.a
-    idn2
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
