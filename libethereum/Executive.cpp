@@ -460,13 +460,14 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-                bytes in = getAccessControllerCallData( m_ext->caller );
-                unique_ptr< CallParameters > accessCallParams( new CallParameters( SystemAddress,
-                    c_accessControllerContractAddress, c_accessControllerContractAddress, 0, 0,
-                    m_gas, bytesConstRef( in.data(), in.size() ), {} ) );
-                auto accessCallResult = m_ext->call( *accessCallParams );
-                auto accessCallOutput = dev::toHex( accessCallResult.output );
-                if ( !accessCallOutput.empty() && u256( accessCallOutput ) == 0 ) {
+                bytes in = getDeploymentControllerCallData( m_ext->caller );
+                unique_ptr< CallParameters > deploymentCallParams(
+                    new CallParameters( SystemAddress, c_deploymentControllerContractAddress,
+                        c_deploymentControllerContractAddress, 0, 0, m_gas,
+                        bytesConstRef( in.data(), in.size() ), {} ) );
+                auto deploymentCallResult = m_ext->call( *deploymentCallParams );
+                auto deploymentCallOutput = dev::toHex( deploymentCallResult.output );
+                if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
                     BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
                 }
 

@@ -54,11 +54,11 @@ extern const Address c_blockhashContractAddress;
 /// Code of the special contract for block hash storage defined in EIP96
 extern const bytes c_blockhashContractCode;
 
-/// Address of the special contract for access control
-extern const Address c_accessControllerContractAddress;
+/// Address of the special contract for deployment control
+extern const Address c_deploymentControllerContractAddress;
 
-/// Formatting call data for access control contract
-bytes getAccessControllerCallData( Address const& _deployer );
+/// Formatting call data for deployment control contract
+bytes getDeploymentControllerCallData( Address const& _deployer );
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance( bigint const& _b );
