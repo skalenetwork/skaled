@@ -233,7 +233,8 @@ protected:
 
 public:
     SkaleRelayWS( int ipVer, const char* strBindAddr, const char* strScheme,  // "ws" or "wss"
-        int nPort, e_server_mode_t esm, int nServerIndex = -1 );
+        int nPort, e_server_mode_t esm, int nServerIndex = -1,
+        skutils::ws::basic_network_settings* pBNS = nullptr );
     ~SkaleRelayWS() override;
     void run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag );
     bool isRunning() const { return m_isRunning; }
@@ -296,6 +297,8 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
     mutable dev::eth::Interface* pEth_;
 
 public:
+    skutils::ws::basic_network_settings bns4ws_;
+
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
 

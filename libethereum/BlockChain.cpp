@@ -611,8 +611,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         _block, ref( receipts ), &blockBloomFull, totalDifficulty, performanceLogger );
 }
 
-ImportRoute BlockChain::import(
-    const Block& _block, TransactionReceipts* partialTransactionReceipts ) {
+ImportRoute BlockChain::import( const Block& _block ) {
     assert( _block.isSealed() );
 
     VerifiedBlockRef verifiedBlock;
@@ -622,10 +621,6 @@ ImportRoute BlockChain::import(
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
     BlockReceipts blockReceipts;
-    if ( partialTransactionReceipts ) {
-        for ( unsigned i = 0; i < partialTransactionReceipts->size(); ++i )
-            blockReceipts.receipts.push_back( ( *partialTransactionReceipts )[i] );
-    }
     for ( unsigned i = 0; i < _block.pending().size(); ++i )
         blockReceipts.receipts.push_back( _block.receipt( i ) );
     bytes const receipts = blockReceipts.rlp();

@@ -34,6 +34,8 @@ jobs:
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
+      - name: Cleanup containers
+        run: docker system prune -a
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
         shell: cmake -P {0}
@@ -56,7 +58,7 @@ jobs:
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc)
+          ./build.sh PARALLEL_COUNT=64
           cd ..
       - name: Configure all
         run: |
@@ -87,7 +89,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
-          make -j$(nproc)
+          make skaled -j64
           cd ..
       - name: Build and publish container
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')

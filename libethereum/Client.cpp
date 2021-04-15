@@ -103,7 +103,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool isStartedFromSnapshot )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -113,8 +113,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ),
-      is_started_from_snapshot( isStartedFromSnapshot ) {
+      m_dbPath( _dbPath ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -544,10 +543,10 @@ size_t Client::importTransactionsAsBlock(
 
         TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
         bool isSaveLastTxHash = true;
-        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
-            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
+        size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp,
+            isSaveLastTxHash, &accumulatedTransactionReceipts, bIsPartial ? &vecMissing : nullptr );
         sealUnconditionally( false );
-        importWorkingBlock( &partialTransactionReceipts );
+        importWorkingBlock();
 
         if ( bIsPartial )
             cntSucceeded += cntPassed;
@@ -637,8 +636,9 @@ size_t Client::importTransactionsAsBlock(
 }
 
 size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash,
-    TransactionReceipts* accumulatedTransactionReceipts ) {
+    uint64_t _timestamp, bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+    Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
+) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -660,7 +660,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
-            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts );
+            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts, vecMissing );
         m_state = m_state.startNew();
     }
 
@@ -932,9 +932,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
+void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
+    ImportRoute importRoute = bc().import( m_working );
     m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }

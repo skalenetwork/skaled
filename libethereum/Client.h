@@ -85,8 +85,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
-        bool isStartedFromSnapshot = false );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
     virtual ~Client();
 
@@ -299,14 +298,16 @@ protected:
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr );
+        TransactionReceipts* accumulatedTransactionReceipts = nullptr,
+        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
+    );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!
     void sealUnconditionally( bool submitToBlockChain = true );
 
     /// thread unsafe!!
-    void importWorkingBlock( TransactionReceipts* partialTransactionReceipts = nullptr );
+    void importWorkingBlock();
 
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
@@ -495,7 +496,6 @@ private:
     int64_t last_snapshot_creation_time = 0;
     // usually this is snapshot before last!
     int64_t last_snapshoted_block_with_hash = -1;
-    bool is_started_from_snapshot = true;
     const static dev::h256 empty_str_hash;
 
 public:

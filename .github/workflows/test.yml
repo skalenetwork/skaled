@@ -53,7 +53,7 @@ jobs:
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc)
+          ./build.sh PARALLEL_COUNT=64
           cd ..
       - name: Configure all
         run: |
@@ -84,7 +84,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
-          make -j$(nproc)
+          make -j64
           cd ..
       - name: Testeth
         run : |
@@ -106,4 +106,4 @@ jobs:
           # Uploading report to CodeCov
           bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
           
-      - run: sudo umount build/test/btrfs
+      - run: sudo umount build/test/btrfs || true
