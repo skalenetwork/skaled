@@ -197,7 +197,8 @@ string TransactionSkeleton::userReadable( bool _toProxy,
 std::string TransactionSkeleton::toString() const {
     std::stringstream s;
     s << "from: " << from.hex() << ", to: " << to.hex() << ", value: " << value << ", gas: " << gas
-      << ", gasPrice: " << gasPrice << ", code: " << dev::toJS( data ) << ", nonce: " << nonce << '\n';
+      << ", gasPrice: " << gasPrice << ", code: " << dev::toJS( data ) << ", nonce: " << nonce
+      << '\n';
 
     return s.str();
 }

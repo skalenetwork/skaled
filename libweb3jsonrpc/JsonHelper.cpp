@@ -518,8 +518,8 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     if ( _json.HasMember( "from" ) )
         ret.from = jsToAddress( _json["from"].GetString() );
 
-    if ( _json.HasMember( "to" ) && strncmp( _json["to"].GetString(), "0x", 2 ) != 0 &&
-         strncmp( _json["to"].GetString(), "", 1 ) != 0 )
+    if ( _json.HasMember( "to" ) && strncmp( _json["to"].GetString(), "0x", 3 ) != 0 &&
+         strncmp( _json["to"].GetString(), "", 2 ) != 0 )
         ret.to = jsToAddress( _json["to"].GetString() );
     else
         ret.creation = true;

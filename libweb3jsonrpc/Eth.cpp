@@ -287,8 +287,8 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
     // Remove this temporary fix.
     string blockNumber = "latest";
     setTransactionDefaults( t );
-    ExecutionResult er = client()->call(
-        t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+    ExecutionResult er =
+        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -296,13 +296,11 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strTx = t.toString();
-        std::string strOut = cc::fatal( "Error message from eth_call():" ) +
-                             cc::error( " " ) +
-                             cc::warn( strRevertReason ) +
-                             cc::error( ", with call arguments: " ) + cc::j(
-                             strTx ) + cc::error( ", and using " ) + cc::info(
-                             "blockNumber" ) + cc::error( "=" ) + cc::bright(
-                             blockNumber );
+        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
+                             cc::warn( strRevertReason ) + cc::error( ", with call arguments: " ) +
+                             cc::j( strTx ) + cc::error( ", and using " ) +
+                             cc::info( "blockNumber" ) + cc::error( "=" ) +
+                             cc::bright( blockNumber );
         cerror << strOut;
         throw std::logic_error( strRevertReason );
     }
