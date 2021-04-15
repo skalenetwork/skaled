@@ -515,7 +515,7 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     if ( !_json.IsObject() )
         return ret;
 
-    if ( _json.HasMember( "from" ) )
+    if ( _json.HasMember( "from" ) && !_json["from"].IsNull() )
         ret.from = jsToAddress( _json["from"].GetString() );
 
     if ( _json.HasMember( "to" ) && strncmp( _json["to"].GetString(), "0x", 3 ) != 0 &&
@@ -524,22 +524,23 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     else
         ret.creation = true;
 
-    if ( _json.HasMember( "value" ) )
+    if ( _json.HasMember( "value" ) && !_json["value"].IsNull() )
         ret.value = jsToU256( _json["value"].GetString() );
 
-    if ( _json.HasMember( "gas" ) )
+    if ( _json.HasMember( "gas" ) && !_json["gas"].IsNull() )
         ret.gas = jsToU256( _json["gas"].GetString() );
 
-    if ( _json.HasMember( "gasPrice" ) )
+    if ( _json.HasMember( "gasPrice" ) && !_json["gasPrice"].IsNull() )
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
 
-    if ( _json.HasMember( "data" ) )  // ethereum.js has preconstructed the data array
+    if ( _json.HasMember( "data" ) && !_json["data"].IsNull() )  // ethereum.js has preconstructed
+                                                                 // the data array
         ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
 
-    if ( _json.HasMember( "code" ) )
+    if ( _json.HasMember( "code" ) && !_json["code"].IsNull() )
         ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
 
-    if ( _json.HasMember( "nonce" ) )
+    if ( _json.HasMember( "nonce" ) && !_json["nonce"].IsNull() )
         ret.nonce = jsToU256( _json["nonce"].GetString() );
     return ret;
 }
