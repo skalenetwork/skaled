@@ -26,6 +26,7 @@
 #include "Exceptions.h"
 #include <libdevcore/Base64.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 
@@ -196,8 +197,7 @@ string TransactionSkeleton::userReadable( bool _toProxy,
 std::string TransactionSkeleton::toString() const {
     std::stringstream s;
     s << "from: " << from.hex() << ", to: " << to.hex() << ", value: " << value << ", gas: " << gas
-      << ", gasPrice: " << gasPrice << ", code: " << dev::secure_vector( data ).ref().toString()
-      << ", nonce: " << nonce << '\n';
+      << ", gasPrice: " << gasPrice << ", code: " << dev::toJS( data ) << ", nonce: " << nonce << '\n';
 
     return s.str();
 }
