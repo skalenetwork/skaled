@@ -211,6 +211,7 @@ struct TransactionSkeleton {
         std::function< std::pair< bool, std::string >( TransactionSkeleton const& ) > const&
             _getNatSpec,
         std::function< std::string( Address const& ) > const& _formatAddress ) const;
+    std::string toString() const;
 };
 
 
