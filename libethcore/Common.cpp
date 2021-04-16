@@ -26,6 +26,7 @@
 #include "Exceptions.h"
 #include <libdevcore/Base64.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 
@@ -191,6 +192,15 @@ string TransactionSkeleton::userReadable( bool _toProxy,
                        formatBalance( gas * gasPrice ) + " = " +
                        formatBalance( value + gas * gasPrice ) + "." :
                    "Additional network fees are at most" + formatBalance( gas * gasPrice ) + "." );
+}
+
+std::string TransactionSkeleton::toString() const {
+    std::stringstream s;
+    s << "from: " << from.hex() << ", to: " << to.hex() << ", value: " << value << ", gas: " << gas
+      << ", gasPrice: " << gasPrice << ", code: " << dev::toJS( data ) << ", nonce: " << nonce
+      << '\n';
+
+    return s.str();
 }
 
 }  // namespace eth

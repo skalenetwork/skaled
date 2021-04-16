@@ -7,6 +7,9 @@
 
 #include "ModularServer.h"
 
+#include <libethereum/TransactionReceipt.h>
+#include <libweb3jsonrpc/JsonHelper.h>
+
 namespace dev {
 namespace rpc {
 class EthFace : public ServerInterface< EthFace > {
@@ -286,7 +289,8 @@ public:
         response = this->eth_sendTransaction( request[0u] );
     }
     inline virtual void eth_callI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_call( request[0u], request[1u].asString() );
+        dev::eth::TransactionSkeleton _t = dev::eth::toTransactionSkeleton( request[0u] );
+        response = this->eth_call( _t, request[1u].asString() );
     }
     inline virtual void eth_flushI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
@@ -314,7 +318,9 @@ public:
     }
     inline virtual void eth_getTransactionReceiptI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getTransactionReceipt( request[0u].asString() );
+        eth::LocalisedTransactionReceipt receipt =
+            this->eth_getTransactionReceipt( request[0u].asString() );
+        response = toJson( receipt );
     }
     inline virtual void eth_getUncleByBlockHashAndIndexI(
         const Json::Value& request, Json::Value& response ) {
@@ -441,7 +447,8 @@ public:
     virtual Json::Value eth_getUncleCountByBlockNumber( const std::string& param1 ) = 0;
     virtual std::string eth_getCode( const std::string& param1, const std::string& param2 ) = 0;
     virtual std::string eth_sendTransaction( const Json::Value& param1 ) = 0;
-    virtual std::string eth_call( const Json::Value& param1, const std::string& param2 ) = 0;
+    virtual std::string eth_call(
+        dev::eth::TransactionSkeleton& param1, const std::string& param2 ) = 0;
     virtual bool eth_flush() = 0;
     virtual Json::Value eth_getBlockByHash( const std::string& param1, bool param2 ) = 0;
     virtual Json::Value eth_getBlockByNumber( const std::string& param1, bool param2 ) = 0;
@@ -450,7 +457,8 @@ public:
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_getTransactionByBlockNumberAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
-    virtual Json::Value eth_getTransactionReceipt( const std::string& param1 ) = 0;
+    virtual dev::eth::LocalisedTransactionReceipt eth_getTransactionReceipt(
+        const std::string& param1 ) = 0;
     virtual Json::Value eth_getUncleByBlockHashAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(

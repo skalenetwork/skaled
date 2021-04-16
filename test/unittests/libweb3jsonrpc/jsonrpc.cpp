@@ -22,6 +22,7 @@
 #include "WebThreeStubClient.h"
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -30,6 +31,7 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
+#include <libskale/httpserveroverride.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -260,15 +262,83 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
             new rpc::Test( *client ) ) );
-        auto ipcServer = new TestIpcServer;
-        rpcServer->addConnector( ipcServer );
-        ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
+        SkaleServerOverride::opts_t serverOpts;
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        std::string strResponse = ethFace->eth_sendRawTransaction(
+                            joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Value& v = joResponse["result"];
+                        v.SetString(
+                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                    } catch ( const dev::Exception& ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
+                            joResponse );
+                    }
+                };
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        dev::eth::LocalisedTransactionReceipt _t =
+                            ethFace->eth_getTransactionReceipt(
+                                joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+                        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+                        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+                    } catch ( std::invalid_argument& ex ) {
+                        // not known transaction - skip exception
+                        joResponse.AddMember(
+                            "result", rapidjson::Value(), joResponse.GetAllocator() );
+                    } catch ( ... ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
+                            joResponse );
+                    }
+                };
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
+            [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                try {
+                    rapidjson::StringBuffer buffer;
+                    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+                    joRequest.Accept( writer );
+                    std::string strRequest = buffer.GetString();
+                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton( joRequest["params"].GetArray()[0] );
+                    std::string strResponse =
+                        ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
+
+                    rapidjson::Value& v = joResponse["result"];
+                    v.SetString(
+                        strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                } catch ( std::exception const& ex ) {
+                    throw jsonrpc::JsonRpcException( ex.what() );
+                } catch ( ... ) {
+                    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                }
+            };
+        serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
+        serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+        serverOpts.fn_eth_call_ = fn_eth_call;
+        serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
+        auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+        rpcServer->addConnector( skale_server_connector );
+        skale_server_connector->StartListening();
+
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
+
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    ~JsonRpcFixture() {}
+    ~JsonRpcFixture() {
+
+    }
 
     string sendingRawShouldFail( string const& _t ) {
         try {
@@ -1471,9 +1541,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     t["nonce"] = "1";
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
     auto signedTx2 = fixture.rpcClient->eth_signTransaction( t );
-
-    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ),
-        "Transaction gas price lower than current eth_gasPrice." );
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ), "Transaction gas price lower than current eth_gasPrice." );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
@@ -1539,7 +1607,6 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    std::cout << "STORAGE USED: " << fixture.client->state().storageUsed( contract ) << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
     
     Json::Value txPushValue;  // call store(2)
