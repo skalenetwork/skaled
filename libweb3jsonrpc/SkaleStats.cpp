@@ -53,6 +53,9 @@
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
 
+#include <libconsensus/SkaleCommon.h>
+#include <libconsensus/crypto/OpenSSLECDSAKey.h>
+
 namespace dev {
 
 namespace tracking {
@@ -306,6 +309,236 @@ void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcas
         broadcast_txn_erase( txe );
 }
 
+bool pending_ima_txns::broadcast_txn_sign_is_enabled() {
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            return false;
+        if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            return false;
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        const std::string strWalletURL =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+                "";
+        if ( strWalletURL.empty() )
+            return false;
+        return true;
+    } catch ( ... ) {
+    }
+    return false;
+}
+
+std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign ) {
+    std::string strBroadcastSignature;
+    try {
+        //
+        // Check wallet URL and keyShareName for future use,
+        // fetch SSL options for SGX
+        //
+        skutils::url u;
+        skutils::http::SSL_client_options optsSSL;
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_ecdsaKeyName =
+            joSkaleConfig_nodeInfo["ecdsaKeyName"];
+        std::string strEcdsaKeyName = joSkaleConfig_nodeInfo_ecdsaKeyName.get< std::string >();
+        if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        const std::string strWalletURL =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+                "";
+        if ( strWalletURL.empty() )
+            throw std::runtime_error( "empty wallet url" );
+        u = skutils::url( strWalletURL );
+        if ( u.scheme().empty() || u.host().empty() )
+            throw std::runtime_error( "bad wallet url" );
+        //
+        //
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "caFile" ) > 0 )
+                optsSSL.ca_file = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.ca_file.clear();
+        }
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
+                optsSSL.client_cert = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_cert.clear();
+        }
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
+                optsSSL.client_key = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_key.clear();
+        }
+        //
+        //
+        //
+        dev::u256 hashToSign =
+            dev::sha3( bytesConstRef( ( unsigned char* ) ( strToSign ? strToSign : "" ),
+                strToSign ? strlen( strToSign ) : 0 ) );
+        std::string strHashToSign = dev::toJS( hashToSign );
+        //
+        //
+        //
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "ecdsaSignMessageHash";
+        joCall["params"] = nlohmann::json::object();
+        joCall["params"]["base"] = 16;
+        joCall["params"]["keyName"] = strEcdsaKeyName;
+        joCall["params"]["messageHash"] = strHashToSign;
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( " Contacting " ) + cc::notice( "SGX Wallet" ) +
+                   cc::debug( " server at " ) + cc::u( u ) );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( " Will send " ) + cc::notice( "ECDSA sign query" ) +
+                   cc::debug( " to wallet: " ) + cc::j( joCall ) );
+        skutils::rest::client cli;
+        cli.optsSSL = optsSSL;
+        cli.open( u );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( d.empty() )
+            throw std::runtime_error( "failed to sign message(s) with wallet" );
+        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        std::string r = joSignResult["signature_r"].get< std::string >();
+        std::string v = joSignResult["signature_v"].get< std::string >();
+        std::string s = joSignResult["signature_s"].get< std::string >();
+        strBroadcastSignature = v + ":" + r.substr( 2 ) + ":" + s.substr( 2 );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::fatal( "BROADCAST SIGN ERROR:" ) + " " + cc::warn( ex.what() ) );
+        strBroadcastSignature = "";
+    } catch ( ... ) {
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::fatal( "BROADCAST SIGN ERROR:" ) + " " + cc::warn( "unknown exception" ) );
+        strBroadcastSignature = "";
+    }
+    return strBroadcastSignature;
+}
+
+std::string pending_ima_txns::broadcast_txn_compose_string(
+    const char* strActionName, const dev::u256& tx_hash ) {
+    std::string strToSign;
+    strToSign += strActionName ? strActionName : "N/A";
+    strToSign += ":";
+    strToSign += dev::toJS( tx_hash );
+    return strToSign;
+}
+
+std::string pending_ima_txns::broadcast_txn_sign(
+    const char* strActionName, const dev::u256& tx_hash ) {
+    std::string strToSign = broadcast_txn_compose_string( strActionName, tx_hash );
+    std::string strBroadcastSignature = broadcast_txn_sign_string( strToSign.c_str() );
+    return strBroadcastSignature;
+}
+
+std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) {
+    std::string strEcdsaPublicKey;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        // const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig.count( "sChain" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
+        if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+        const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
+        for ( auto& joNode : joSkaleConfig_sChain_nodes ) {
+            if ( !joNode.is_object() )
+                continue;
+            if ( joNode.count( "nodeID" ) == 0 )
+                continue;
+            int walk_id = joNode["nodeID"].get< int >();
+            if ( walk_id != node_id )
+                continue;
+            if ( joNode.count( "publicKey" ) == 0 )
+                continue;
+            strEcdsaPublicKey = joNode["publicKey"].get< std::string >();
+            break;
+        }
+    } catch ( ... ) {
+        strEcdsaPublicKey = "";
+    }
+    return strEcdsaPublicKey;
+}
+
+int pending_ima_txns::broadcast_txn_get_node_id() {
+    int node_id = 0;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "nodeID" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"nodeID\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_nodeID = joSkaleConfig_nodeInfo["nodeID"];
+        node_id = joSkaleConfig_nodeInfo_nodeID.get< int >();
+    } catch ( ... ) {
+        node_id = 0;
+    }
+    return node_id;
+}
+
+bool pending_ima_txns::broadcast_txn_verify_signature( const char* /*strActionName*/,
+    const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
+    std::string strEcdsaPublicKey = broadcast_txn_get_ecdsa_public_key( node_id );
+    auto key = OpenSSLECDSAKey::importSGXPubKey( strEcdsaPublicKey );
+    bytes v = dev::BMPBN::encode2vec< dev::u256 >( tx_hash, true );
+    return key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+}
+
 void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     dev::u256 tx_hash = txe.hash_;
@@ -316,6 +549,16 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
         if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
             throw std::runtime_error(
                 "failed to extract S-Chain node information from config JSON" );
+        nlohmann::json joParams = jo_tx;  // copy
+        std::string strBroadcastSignature = broadcast_txn_sign( "insert", tx_hash );
+        if ( !strBroadcastSignature.empty() ) {
+            joParams["broadcastSignature"] = strBroadcastSignature;
+            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
+        }
+        clog( VerbosityTrace, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
+                   cc::info( "inserted TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                   cc::debug( ": " ) + cc::j( joParams ) );
         size_t i, cnt = vecURLs.size();
         for ( i = 0; i < cnt; ++i ) {
             if ( i == nOwnIndex )
@@ -372,6 +615,16 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
         if ( !extract_s_chain_URL_infos( nOwnIndex, vecURLs ) )
             throw std::runtime_error(
                 "failed to extract S-Chain node information from config JSON" );
+        nlohmann::json joParams = jo_tx;  // copy
+        std::string strBroadcastSignature = broadcast_txn_sign( "erase", tx_hash );
+        if ( !strBroadcastSignature.empty() ) {
+            joParams["broadcastSignature"] = strBroadcastSignature;
+            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
+        }
+        clog( VerbosityTrace, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
+                   cc::info( "erased TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                   cc::debug( ": " ) + cc::j( joParams ) );
         size_t i, cnt = vecURLs.size();
         for ( i = 0; i < cnt; ++i ) {
             if ( i == nOwnIndex )
@@ -999,7 +1252,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
-        bool bIsVerifyImaMessagesViaLogsSearch = false;  // default is false
+        bool bIsVerifyImaMessagesViaLogsSearch = ( strDirection == "M2S" ) ? true : false;
         if ( joSkaleConfig_nodeInfo.count( "verifyImaMessagesViaLogsSearch" ) > 0 )
             bIsVerifyImaMessagesViaLogsSearch =
                 joSkaleConfig_nodeInfo["verifyImaMessagesViaLogsSearch"].get< bool >();
@@ -1253,9 +1506,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //     "sender": joValues.srcContract,
             //     "to": joValues.to
             // }
-            if ( joMessageToSign.count( "amount" ) == 0 )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"amount\"" );
+            // if ( joMessageToSign.count( "amount" ) == 0 )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"amount\"" );
             if ( joMessageToSign.count( "data" ) == 0 || ( !joMessageToSign["data"].is_string() ) ||
                  joMessageToSign["data"].get< std::string >().empty() )
                 throw std::runtime_error(
@@ -1271,20 +1524,20 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                  joMessageToSign["sender"].get< std::string >().empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object without field \"sender\"" );
-            if ( joMessageToSign.count( "to" ) == 0 || ( !joMessageToSign["to"].is_string() ) ||
-                 joMessageToSign["to"].get< std::string >().empty() )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"to\"" );
+            // if ( joMessageToSign.count( "to" ) == 0 || ( !joMessageToSign["to"].is_string() ) ||
+            //     joMessageToSign["to"].get< std::string >().empty() )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"to\"" );
             const std::string strData = joMessageToSign["data"].get< std::string >();
             if ( strData.empty() )
                 throw std::runtime_error(
                     "parameter \"messages\" contains message object with empty field "
                     "\"data\"" );
-            if ( joMessageToSign.count( "amount" ) == 0 ||
-                 ( !joMessageToSign["amount"].is_string() ) ||
-                 joMessageToSign["amount"].get< std::string >().empty() )
-                throw std::runtime_error(
-                    "parameter \"messages\" contains message object without field \"amount\"" );
+            // if ( joMessageToSign.count( "amount" ) == 0 ||
+            //     ( !joMessageToSign["amount"].is_string() ) ||
+            //     joMessageToSign["amount"].get< std::string >().empty() )
+            //    throw std::runtime_error(
+            //        "parameter \"messages\" contains message object without field \"amount\"" );
         }
         //
         // Check wallet URL and keyShareName for future use,
@@ -1366,11 +1619,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strDestinationContract = skutils::tools::trim_copy(
                 joMessageToSign["destinationContract"].get< std::string >() );
             const dev::u256 uDestinationContract( strDestinationContract );
-            const std::string strDestinationAddressTo =
-                skutils::tools::trim_copy( joMessageToSign["to"].get< std::string >() );
-            const dev::u256 uDestinationAddressTo( strDestinationAddressTo );
-            const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
-            const dev::u256 uMessageAmount( strMessageAmount );
+            // const std::string strDestinationAddressTo =
+            //    skutils::tools::trim_copy( joMessageToSign["to"].get< std::string >() );
+            // const dev::u256 uDestinationAddressTo( strDestinationAddressTo );
+            // const std::string strMessageAmount = joMessageToSign["amount"].get< std::string >();
+            // const dev::u256 uMessageAmount( strMessageAmount );
             //
             // here strMessageData must be disassembled and validated
             // it must be valid transfer reference
@@ -1383,11 +1636,37 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const size_t cntMessageBytes = vecBytes.size();
             if ( cntMessageBytes == 0 )
                 throw std::runtime_error( "bad empty message data to sign" );
-            const _byte_ b0 = vecBytes[0];
-            size_t nPos = 1, nFiledSize = 0;
-            switch ( b0 ) {
+            size_t nPos = 0, nFiledSize = 0;
+            // message type code, 32 bytes uint
+            nFiledSize = 32;
+            if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                throw std::runtime_error(
+                    skutils::tools::format( "IMA message type code(1) is too short, nPos=%zu, "
+                                            "nFiledSize=%zu, cntMessageBytes=%zu",
+                        nPos, nFiledSize, cntMessageBytes ) );
+            dev::u256 messageTypeCode =
+                BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+            size_t nMessageTypeCode = messageTypeCode.convert_to< size_t >();
+            // std::cout + "\"message type code(1) \" is " + toJS( messageType ) + std::endl;
+            nPos += nFiledSize;
+            //
+            if ( nMessageTypeCode == 0x20 ) {
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message type code(2) is too short, nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            nPos, nFiledSize, cntMessageBytes ) );
+                messageTypeCode =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nMessageTypeCode = messageTypeCode.convert_to< size_t >();
+                // std::cout + "\"message type code(2) \" is " + toJS( messageType ) + std::endl;
+                nPos += nFiledSize;
+            }  // if( nMessageTypeCode == 0x20 )
+            //
+            switch ( nMessageTypeCode ) {
             case 1: {
-                // ETH transfer, see
+                // ETH M->S/S->M transfer, see
                 // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/DepositBox.sol
                 // Data is:
                 // --------------------------------------------------------------
@@ -1395,13 +1674,85 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // --------------------------------------------------------------
                 // 0      | 1        | Value 1
                 // --------------------------------------------------------------
-                static const char strImaMessageTypeName[] = "ETH";
+                static const char strImaMessageTypeName[] = "ETH(1)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
                 //
             } break;
+            case 2: {
+                // ERC20 S->M transfer
+                // ERC20 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 2
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | amount, number
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ERC20(2)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"contractPosition\" is " + toJS( contractPosition ) + std::endl;
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"addressTo\" is " + toJS( addressTo ) + std::endl;
+                nPos += nFiledSize;
+                // amount, number
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 amount =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"amount\" is " + toJS( amount ) + std::endl;
+                nPos += nFiledSize;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    const size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "amount" ) + cc::debug( "................." ) +
+                           cc::info( amount.str() ) );
+            } break;
             case 3: {
+                // ERC20 M->S transfer + totalSupply
                 // ERC20 transfer, see source code of encodeData() function here:
                 // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
                 // Data is:
@@ -1413,24 +1764,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // 33     | 32       | to, address
                 // 65     | 32       | amount, number
                 // 97     | 32       | totalSupply, uint
-                // 129    | 32       | size of name (next field)
-                // 161    | variable | name, string memory
-                //        | 32       | size of symbol (next field)
-                //        | variable | symbol, string memory
-                //        | 1        | decimals, uint8
                 // --------------------------------------------------------------
-                // Or:
-                // --------------------------------------------------------------
-                // Offset | Size     | Description
-                // --------------------------------------------------------------
-                // 0      | 1        | Value 3
-                // 1      | 32       | contractPosition, address
-                // 33     | 32       | to, address
-                // 65     | 32       | amount, number
-                // 97     | 32       | totalSupply, uint
-                // --------------------------------------------------------------
-
-                static const char strImaMessageTypeName[] = "ERC20";
+                static const char strImaMessageTypeName[] = "ERC20(3)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
@@ -1478,68 +1813,152 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 // std::cout + "\"totalSupply\" is " + toJS( totalSupply ) + std::endl;
                 nPos += nFiledSize;
-                // next fields are in first message version only
-                bool isSmallEnvelope = true;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    const size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "amount" ) + cc::debug( "................." ) +
+                           cc::info( amount.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "totalSupply" ) + cc::debug( "............" ) +
+                           cc::info( totalSupply.str() ) );
+                break;
+            } break;
+            case 4: {
+                // ERC20 M->S transfer + tokenInfo
+                // ERC20 transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC20ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 4
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | amount, number
+                // 97     | 32       | totalSupply, uint
+                // 129    | 32       | size of name (next field)
+                // 161    | variable | name, string memory
+                //        | 32       | size of symbol (next field)
+                //        | 1        | decimals, uint8
+                //        | variable | symbol, string memory
+                // --------------------------------------------------------------
+                static const char strImaMessageTypeName[] = "ERC20(4)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"contractPosition\" is " + toJS( contractPosition ) + std::endl;
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"addressTo\" is " + toJS( addressTo ) + std::endl;
+                nPos += nFiledSize;
+                // amount, number
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 amount =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"amount\" is " + toJS( amount ) + std::endl;
+                nPos += nFiledSize;
+                // totalSupply, uint
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 totalSupply =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"totalSupply\" is " + toJS( totalSupply ) + std::endl;
+                nPos += nFiledSize;
+                // name
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfName =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"sizeOfName\" is " + toJS( sizeOfName ) + std::endl;
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                // decimals
+                nFiledSize = 1;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(9), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const uint8_t nDecimals = uint8_t( vecBytes[nPos] );
+                // std::cout + "\"nDecimals\" is " + nDecimals + std::endl;
+                nPos += nFiledSize;
+                // symbol
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfSymbol =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                // std::cout + "\"sizeOfSymbol\" is " + toJS( sizeOfSymbol ) + std::endl;
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(8), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
-                uint8_t nDecimals = 0;
-                if ( nPos < cntMessageBytes ) {
-                    isSmallEnvelope = false;
-                    // name
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfName =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    // std::cout + "\"sizeOfName\" is " + toJS( sizeOfName ) + std::endl;
-                    nPos += nFiledSize;
-                    nFiledSize = sizeOfName.convert_to< size_t >();
-                    // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    // symbol
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfSymbol =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    // std::cout + "\"sizeOfSymbol\" is " + toJS( sizeOfSymbol ) + std::endl;
-                    nPos += 32;
-                    nFiledSize = sizeOfSymbol.convert_to< size_t >();
-                    // std::cout + "\"nFiledSize\" is " + nFiledSize + std::endl;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(8), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    // decimals
-                    nFiledSize = 1;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(9), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    nDecimals = uint8_t( vecBytes[nPos] );
-                    // std::cout + "\"nDecimals\" is " + nDecimals + std::endl;
-                    nPos += nFiledSize;
-                    //
-
-                }  // next fields are in first message version only
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
                 //
                 if ( nPos > cntMessageBytes ) {
                     const size_t nExtra = cntMessageBytes - nPos;
@@ -1564,22 +1983,17 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "totalSupply" ) + cc::debug( "............" ) +
                            cc::info( totalSupply.str() ) );
                 clog( VerbosityDebug, "IMA" )
-                    << ( "    " + cc::info( "Envelope" ) + cc::debug( "..............." ) +
-                           ( isSmallEnvelope ? cc::warn( "yes" ) : cc::info( "no" ) ) );
-                if ( !isSmallEnvelope ) {
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
-                               cc::info( strName ) );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
-                               cc::info( strSymbol ) );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "decimals" ) + cc::debug( "..............." ) +
-                               cc::num10( nDecimals ) );
-                }  // if( ! isSmallEnvelope )
+                    << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
+                           cc::info( strName ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "decimals" ) + cc::debug( "..............." ) +
+                           cc::num10( nDecimals ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
+                           cc::info( strSymbol ) );
             } break;
             case 5: {
-                // ERC 721 transfer, see source code of encodeData() function here:
+                // ERC721 M->S/S->M transfer, see source code of encodeData() function here:
                 // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
                 // Data is:
                 // --------------------------------------------------------------
@@ -1589,22 +2003,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // 1      | 32       | contractPosition, address
                 // 33     | 32       | to, address
                 // 65     | 32       | tokenId
-                // 97     | 32       | size of name (next field)
-                // 129    | variable | name, string memory
-                //        | 32       | size of symbol (next field)
-                //        | variable | symbol, string memory
                 // --------------------------------------------------------------
-                // Or:
-                // --------------------------------------------------------------
-                // Offset | Size     | Description
-                // --------------------------------------------------------------
-                // 0      | 1        | Value 5
-                // 1      | 32       | contractPosition, address
-                // 33     | 32       | to, address
-                // 65     | 32       | tokenId
-                // --------------------------------------------------------------
-
-                static const char strImaMessageTypeName[] = "ERC721";
+                static const char strImaMessageTypeName[] = "ERC721(5)";
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Verifying " ) +
                            cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
@@ -1638,52 +2038,119 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 const dev::u256 tokenID =
                     BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
                 nPos += nFiledSize;
-                // next fields are in first message version only
-                bool isSmallEnvelope = true;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "contractPosition" ) + cc::debug( "......." ) +
+                           cc::info( contractPosition.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "to" ) + cc::debug( "....................." ) +
+                           cc::info( addressTo.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
+                           cc::info( tokenID.str() ) );
+            } break;
+            case 6: {
+                // ERC721 M->S transfer, see source code of encodeData() function here:
+                // https://github.com/skalenetwork/IMA/blob/develop/proxy/contracts/ERC721ModuleForMainnet.sol
+                // Data is:
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 5
+                // 1      | 32       | contractPosition, address
+                // 33     | 32       | to, address
+                // 65     | 32       | tokenId
+                // 97     | 32       | size of name (next field)
+                // 129    | variable | name, string memory
+                //        | 32       | size of symbol (next field)
+                //        | variable | symbol, string memory
+                // --------------------------------------------------------------
+
+                static const char strImaMessageTypeName[] = "ERC721(6)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // contractPosition, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 contractPosition =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // to, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressTo =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // tokenId
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(3), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 tokenID =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // name
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfName =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                nFiledSize = sizeOfName.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strName( "" );
+                strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                // symbol
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 sizeOfSymbol =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += 32;
+                nFiledSize = sizeOfSymbol.convert_to< size_t >();
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
                 std::string strSymbol( "" );
-                if ( nPos < cntMessageBytes ) {
-                    isSmallEnvelope = false;
-                    // name
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(4), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfName =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    nPos += nFiledSize;
-                    nFiledSize = sizeOfName.convert_to< size_t >();
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(5), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strName.insert( strName.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    // symbol
-                    nFiledSize = 32;
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(6), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    const dev::u256 sizeOfSymbol =
-                        BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
-                    nPos += 32;
-                    nFiledSize = sizeOfSymbol.convert_to< size_t >();
-                    if ( ( nPos + nFiledSize ) > cntMessageBytes )
-                        throw std::runtime_error(
-                            skutils::tools::format( "IMA message too short, %s(7), nPos=%zu, "
-                                                    "nFiledSize=%zu, cntMessageBytes=%zu",
-                                strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
-                    strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
-                        ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
-                    nPos += nFiledSize;
-                    //
-                }  // next fields are in first message version only
+                strSymbol.insert( strSymbol.end(), ( ( char* ) ( vecBytes.data() ) ) + nPos,
+                    ( ( char* ) ( vecBytes.data() ) ) + nPos + nFiledSize );
+                nPos += nFiledSize;
+                //
                 if ( nPos > cntMessageBytes ) {
                     size_t nExtra = cntMessageBytes - nPos;
                     clog( VerbosityDebug, "IMA" )
@@ -1704,17 +2171,13 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
                            cc::info( tokenID.str() ) );
                 clog( VerbosityDebug, "IMA" )
-                    << ( "    " + cc::info( "Envelope" ) + cc::debug( "..............." ) +
-                           ( isSmallEnvelope ? cc::warn( "yes" ) : cc::info( "no" ) ) );
-                if ( !isSmallEnvelope ) {
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
-                               cc::info( strName ) );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
-                               cc::info( strSymbol ) );
-                }  // if( ! isSmallEnvelope )
+                    << ( "    " + cc::info( "name" ) + cc::debug( "..................." ) +
+                           cc::info( strName ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
+                           cc::info( strSymbol ) );
             } break;
+            /*
             case 0x13: {
                 // Raw ERC20 transfer
                 // --------------------------------------------------------------
@@ -1828,20 +2291,28 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "tokenID" ) + cc::debug( "................" ) +
                            cc::info( tokenID.str() ) );
             } break;
+            */
             default: {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " + cc::fatal( " UNKNOWN IMA MESSAGE: " ) +
-                           cc::error( " Message code is " ) + cc::num10( b0 ) +
+                           cc::error( " Message typecode is " ) + cc::num10( nMessageTypeCode ) +
                            cc::error( ", message binary data is:\n" ) +
                            cc::binary_table( ( void* ) vecBytes.data(), vecBytes.size() ) );
-                throw std::runtime_error( "bad IMA message type " + std::to_string( b0 ) );
+                throw std::runtime_error(
+                    "bad IMA message type code " + std::to_string( nMessageTypeCode ) );
             } break;
-            }  // switch( b0 )
+            }  // switch( switch ( nMessageTypeCode ) )
             //
             //
+            // event OutgoingMessage(
+            //     bytes32 indexed dstChainHash,
+            //     uint256 indexed msgCounter,
+            //     address indexed srcContract,
+            //     address dstContract,
+            //     bytes data
+            // );
             static const std::string strSignature_event_OutgoingMessage(
-                "OutgoingMessage(string,bytes32,uint256,address,address,address,uint256,bytes,"
-                "uint256)" );
+                "OutgoingMessage(bytes32,uint256,address,address,bytes)" );
             static const std::string strTopic_event_OutgoingMessage =
                 dev::toJS( dev::sha3( strSignature_event_OutgoingMessage ) );
             static const dev::u256 uTopic_event_OutgoingMessage( strTopic_event_OutgoingMessage );
@@ -1849,8 +2320,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
             const dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
             static const size_t nPaddoingZeroesForUint256 = 64;
-            const std::string strTopic_msgCounter = dev::BMPBN::toHexStringWithPadding< dev::u256 >(
-                dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 );
+            const std::string strTopic_msgCounter =
+                skutils::tools::to_lower( dev::BMPBN::toHexStringWithPadding< dev::u256 >(
+                    dev::u256( nStartMessageIdx + idxMessage ), nPaddoingZeroesForUint256 ) );
             const dev::u256 uTopic_msgCounter( strTopic_msgCounter );
             nlohmann::json jarrTopic_dstChainHash = nlohmann::json::array();
             nlohmann::json jarrTopic_msgCounter = nlohmann::json::array();
@@ -1859,8 +2331,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             if ( bIsVerifyImaMessagesViaLogsSearch ) {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
-                           cc::debug(
-                               "Will use contract event based verification of IMA message(s)" ) );
+                           cc::debug( "Will use contract event based verification of IMA "
+                                      "message(s)" ) );
                 //
                 //
                 //
@@ -2014,8 +2486,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + cc::debug( " Reviewing transaction:" ) +
                                cc::j( joTransaction ) + cc::debug( "..." ) );
-                    // extract "to" address from transaction, then compare it with "sender" from IMA
-                    // message
+                    // extract "to" address from transaction, then compare it with "sender" from
+                    // IMA message
                     const std::string strTransactionTo = skutils::tools::trim_copy(
                         ( joTransaction.count( "to" ) > 0 && joTransaction["to"].is_string() ) ?
                             joTransaction["to"].get< std::string >() :
@@ -2037,7 +2509,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     }
                     //
                     //
-                    // Find more transaction details, simlar to call tp eth_getTransactionReceipt
+                    // Find more transaction details, simlar to call tp
+                    // eth_getTransactionReceipt
                     //
                     /* Receipt should look like:
                         {
@@ -2150,22 +2623,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                           ++idxReceiptLogRecord ) {
                         const nlohmann::json& joReceiptLogRecord =
                             jarrLogsReceipt[idxReceiptLogRecord];
+                        clog( VerbosityDebug, "IMA" )
+                            << ( strLogPrefix + cc::debug( " Reviewing TX receipt record:" ) +
+                                   cc::j( joReceiptLogRecord ) + cc::debug( "..." ) );
                         if ( joReceiptLogRecord.count( "address" ) == 0 ||
-                             ( !joReceiptLogRecord["address"].is_string() ) )
+                             ( !joReceiptLogRecord["address"].is_string() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) + cc::warn( " field is not found" ) );
                             continue;
+                        }
                         const std::string strReceiptLogRecord =
                             joReceiptLogRecord["address"].get< std::string >();
-                        if ( strReceiptLogRecord.empty() )
+                        if ( strReceiptLogRecord.empty() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) + cc::warn( " field is empty" ) );
                             continue;
+                        }
                         const std::string strReceiptLogRecordLC =
                             skutils::tools::to_lower( strReceiptLogRecord );
-                        if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC )
+                        if ( strAddressImaMessageProxyLC != strReceiptLogRecordLC ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "address" ) +
+                                       cc::warn( " field is not equal to " ) +
+                                       cc::notice( strAddressImaMessageProxyLC ) );
                             continue;
+                        }
                         //
                         // find needed entries in "topics"
                         if ( joReceiptLogRecord.count( "topics" ) == 0 ||
-                             ( !joReceiptLogRecord["topics"].is_array() ) )
+                             ( !joReceiptLogRecord["topics"].is_array() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field is not found" ) );
                             continue;
+                        }
                         bool bTopicSignatureFound = false, bTopicMsgCounterFound = false,
                              bTopicDstChainHashFound = false;
                         const nlohmann::json& jarrReceiptTopics = joReceiptLogRecord["topics"];
@@ -2184,24 +2683,63 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             if ( uTopic == uTopic_dstChainHash )
                                 bTopicDstChainHashFound = true;
                         }
-                        if ( !( bTopicSignatureFound && bTopicMsgCounterFound &&
-                                 bTopicDstChainHashFound ) )
+                        if ( !bTopicSignatureFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field does not contain signature" ) );
                             continue;
+                        }
+                        if ( !bTopicMsgCounterFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn(
+                                           " array field does not contain message counter" ) );
+                            continue;
+                        }
+                        if ( !bTopicDstChainHashFound ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "topics" ) +
+                                       cc::warn( " array field does not contain destination chain "
+                                                 "hash" ) );
+                            continue;
+                        }
                         //
                         // analyze "data"
                         if ( joReceiptLogRecord.count( "data" ) == 0 ||
-                             ( !joReceiptLogRecord["data"].is_string() ) )
+                             ( !joReceiptLogRecord["data"].is_string() ) ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is not found" ) );
                             continue;
+                        }
                         const std::string strData = joReceiptLogRecord["data"].get< std::string >();
-                        if ( strData.empty() )
+                        if ( strData.empty() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is empty" ) );
                             continue;
+                        }
                         const std::string strDataLC_linear = skutils::tools::trim_copy(
                             skutils::tools::replace_all_copy( skutils::tools::to_lower( strData ),
                                 std::string( "0x" ), std::string( "" ) ) );
                         const size_t nDataLength = strDataLC_linear.size();
                         if ( strDataLC_linear.find( strMessageData_linear_LC ) ==
-                             std::string::npos )
+                             std::string::npos ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) + cc::warn( " field is not equal to " ) +
+                                       cc::notice( strMessageData_linear_LC ) );
                             continue;  // no IMA messahe data
+                        }
                         // std::set< std::string > setChunksLC;
                         std::set< dev::u256 > setChunksU256;
                         static const size_t nChunkSize = 64;
@@ -2228,24 +2766,53 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 continue;
                             }
                         }
-                        if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() )
+                        if ( setChunksU256.find( uDestinationContract ) == setChunksU256.end() ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( strLogPrefix +
+                                       cc::warn( " TX receipt record is skipped because " ) +
+                                       cc::info( "data" ) +
+                                       cc::warn( " chunks does not contain destination contract "
+                                                 "address" ) );
                             continue;
-                        if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
-                            continue;
-                        if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() )
-                            continue;
-                        if ( setChunksU256.find( uDestinationChainID_32_max ) ==
-                             setChunksU256.end() )
-                            continue;
+                        }
+                        // if ( setChunksU256.find( uDestinationAddressTo ) == setChunksU256.end() )
+                        // {
+                        //    continue;
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn( " chunks does not contain destination receiver "
+                        //                         "address" ) );
+                        //}
+                        // if ( setChunksU256.find( uMessageAmount ) == setChunksU256.end() ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn( " chunks does not contain amount" ) );
+                        //    continue;
+                        //}
+                        // if ( setChunksU256.find( uDestinationChainID_32_max ) ==
+                        //     setChunksU256.end() ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( strLogPrefix +
+                        //               cc::warn( " TX receipt record is skipped because " ) +
+                        //               cc::info( "data" ) +
+                        //               cc::warn(
+                        //                   " chunks does not contain destination chain ID" ) );
+                        //    continue;
+                        //}
                         //
                         bReceiptVerified = true;
                         break;
-                    }
+                    }  // for ( idxReceiptLogRecord = 0; idxReceiptLogRecord < cntReceiptLogRecords;
+                       // ++idxReceiptLogRecord )
                     if ( !bReceiptVerified ) {
                         clog( VerbosityDebug, "IMA" )
                             << ( strLogPrefix + cc::debug( " Skipping transaction " ) +
                                    cc::notice( strTransactionHash ) +
-                                   cc::debug( " because no appropriate receipt was found" ) );
+                                   cc::warn( " because no appropriate receipt was found" ) );
                         continue;
                     }
                     //
@@ -2275,33 +2842,36 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             //
             if ( bIsImaMessagesViaContractCall ) {
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + " " +
-                           cc::debug(
-                               "Will use contract call based verification of IMA message(s)" ) );
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + " " +
-                           cc::warn(
-                               "Skipped contract event based verification of IMA message(s)" ) );
-                bool bTransactionWasVerifed = false;
+                if ( strDirection == "M2S" ) {
+                    //
+                    // Do nothing here becase "eth_getLogs" analysis for OutgoingMessage event is
+                    // already done above for M->S transfer
+                    //
+                } else {  // ( strDirection == "M2S" )
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + " " +
+                               cc::debug( "Will use contract call based verification of S->M IMA "
+                                          "message(s)" ) );
+                    bool bTransactionWasVerifed = false;
 
 
-                /*
-                struct OutgoingMessageData {
-                    string dstChain;
-                    uint256 msgCounter;
-                    address srcContract;
-                    address dstContract;
-                    address to;
-                    uint256 amount;
-                    bytes data;
-                }
+                    /*
+                    struct OutgoingMessageData {
+                        string dstChain;
+                        uint256 msgCounter;
+                        address srcContract;
+                        address dstContract;
+                        // address to;
+                        // uint256 amount;
+                        bytes data;
+                    }
 
-                function verifyOutgoingMessageData( OutgoingMessageData memory message ) public view
-                returns (bool isValidMessage)
-                */
-                /*
-0x12bf6f2b                                                    Global/In-Struct // 1) signature
+                    function verifyOutgoingMessageData( OutgoingMessageData memory message ) public
+                    view returns (bool isValidMessage)
+                    */
+                    /*
+------------------ OLD VERSION
+0x12bf6f2b                                               Global/In-Struct // 1) signature
 0000000000000000000000000000000000000000000000000000000000000020 000     //  2) position after
 structure 00000000000000000000000000000000000000000000000000000000000000e0 020 000 //  3) position
 for OutgoingMessageData.dstChain
@@ -2324,209 +2894,250 @@ OutgoingMessageData.dstChain
 OutgoingMessageData.data
 ???????????????????????????????????????????????????????????????? 160 140 // 13) string dara of
 OutgoingMessageData.data
+
+----------------- NEW VERSION
+0x12bf6f2b                                               Global/In-Struct // 1) signature
+0000000000000000000000000000000000000000000000000000000000000020 000     //  2) position after
+structure 00000000000000000000000000000000000000000000000000000000000000a0 020 000 //  3) position
+for OutgoingMessageData.dstChain
+???????????????????????????????????????????????????????????????? 040 020 //  4)
+OutgoingMessageData.msgCounter
+???????????????????????????????????????????????????????????????? 060 040 //  5)
+OutgoingMessageData.srcContract
+???????????????????????????????????????????????????????????????? 080 060 //  6)
+OutgoingMessageData.dstContract 00000000000000000000000000000000000000000000000000000000000000e0 0A0
+080 //  7) postion for OutgoingMessageData.data
+???????????????????????????????????????????????????????????????? 0C0 0A0 //  8) length of
+OutgoingMessageData.dstChain
+???????????????????????????????????????????????????????????????? 0E0 0C0 //  9) string dara of
+OutgoingMessageData.dstChain
+???????????????????????????????????????????????????????????????? 100 0E0 // 10) length of
+OutgoingMessageData.data
+???????????????????????????????????????????????????????????????? 120 100 // 11) string dara of
+OutgoingMessageData.data
 0----|----1----|----2----|----3----|----4----|----5----|----6----|----7----|----
 01234567890123456789012345678901234567890123456789012345678901234567890123456789
 0000000000000000000000000000000000000000000000000000000000000000
-                */
-                // 10) and 11) pre-encode OutgoingMessageData.dstChain(without 0x prefix)
-                std::string encoded_dstChain;
-                std::string strTargetChainName =
-                    ( strDirection == "M2S" ) ? strSChainName : "Mainnet";
-                size_t nLenTargetName = strTargetChainName.length();
-                encoded_dstChain += stat_encode_eth_call_data_chunck_size_t( nLenTargetName );
-                for ( size_t idxChar = 0; idxChar < nLenTargetName; ++idxChar ) {
-                    std::string strByte =
-                        skutils::tools::format( "%02x", strTargetChainName[idxChar] );
-                    encoded_dstChain += strByte;
-                }
-                size_t nLastPart = nLenTargetName % 32;
-                if ( nLastPart != 0 ) {
-                    size_t nNeededToAdd = 32 - nLastPart;
-                    for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
-                        encoded_dstChain += "00";
+                    */
+                    // 10) and 11) pre-encode OutgoingMessageData.dstChain(without 0x prefix)
+                    std::string encoded_dstChain;
+                    std::string strTargetChainName =
+                        ( strDirection == "M2S" ) ? strSChainName : "Mainnet";
+                    size_t nLenTargetName = strTargetChainName.length();
+                    encoded_dstChain += stat_encode_eth_call_data_chunck_size_t( nLenTargetName );
+                    for ( size_t idxChar = 0; idxChar < nLenTargetName; ++idxChar ) {
+                        std::string strByte =
+                            skutils::tools::format( "%02x", strTargetChainName[idxChar] );
+                        encoded_dstChain += strByte;
                     }
-                }
-                // 12) and 13) pre-encode OutgoingMessageData.data(without 0x prefix)
-                std::string encoded_data;
-                size_t nDataLedth = strMessageData_linear_LC.length() / 2;
-                encoded_data += stat_encode_eth_call_data_chunck_size_t( nDataLedth );
-                encoded_data += strMessageData_linear_LC;
-                nLastPart = nDataLedth % 32;
-                if ( nLastPart != 0 ) {
-                    size_t nNeededToAdd = 32 - nLastPart;
-                    for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
-                        encoded_data += "00";
-                    }
-                }
-                //
-                std::string strCallData =
-                    "12bf6f2b";  // 1) signature as first 8 symbols of keccak256 from
-                                 // "verifyOutgoingMessageData((string,uint256,address,address,address,uint256,bytes))",
-                                 // not "verifyOutgoingMessageData(OutgoingMessageData)"
-                // 2) position after structure
-                strCallData += stat_encode_eth_call_data_chunck_size_t( 0x20 );
-                // 3) position for OutgoingMessageData.dstChain
-                strCallData += stat_encode_eth_call_data_chunck_size_t( 0xe0 );
-                // 4) OutgoingMessageData.msgCounter
-                strCallData +=
-                    stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
-                // 5) OutgoingMessageData.srcContract
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["sender"].get< std::string >() );
-                // 6) OutgoingMessageData.dstContract
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["destinationContract"].get< std::string >() );
-                // 7) OutgoingMessageData.to
-                strCallData += stat_encode_eth_call_data_chunck_address(
-                    joMessageToSign["to"].get< std::string >() );
-                // 8) OutgoingMessageData.amount
-                strCallData += stat_encode_eth_call_data_chunck_size_t(
-                    joMessageToSign["amount"].get< std::string >() );
-                // 9) postion for OutgoingMessageData.data
-                strCallData +=
-                    stat_encode_eth_call_data_chunck_size_t( 0xe0 + encoded_dstChain.length() / 2 );
-                // 10) and 11)
-                strCallData += encoded_dstChain;
-                // 12) and 13)
-                strCallData += encoded_data;
-                //
-                nlohmann::json joCallItem = nlohmann::json::object();
-                joCallItem["data"] = "0x" + strCallData;  // call data
-                //
-                //
-                //
-                //
-                //
-                // joCallItem["from"] = ( strDirection == "M2S" ) ?
-                //                         strImaCallerAddressMainNetLC :
-                //                         strImaCallerAddressSChainLC;  // caller address
-                joCallItem["from"] =
-                    ( strDirection == "M2S" ) ?
-                        strAddressImaMessageProxyMainNetLC :
-                        strAddressImaMessageProxySChainLC;  // message proxy address
-                //
-                //
-                //
-                //
-                //
-                joCallItem["to"] = ( strDirection == "M2S" ) ?
-                                       strAddressImaMessageProxyMainNetLC :
-                                       strAddressImaMessageProxySChainLC;  // message proxy address
-                nlohmann::json jarrParams = nlohmann::json::array();
-                jarrParams.push_back( joCallItem );
-                jarrParams.push_back( std::string( "latest" ) );
-                nlohmann::json joCall = nlohmann::json::object();
-                joCall["jsonrpc"] = "2.0";
-                joCall["method"] = "eth_call";
-                joCall["params"] = jarrParams;
-                //
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Will send " ) +
-                           cc::notice( "message verification query" ) + cc::debug( " to " ) +
-                           cc::notice( "message proxy" ) + cc::debug( " smart contract for " ) +
-                           cc::info( strDirection ) + cc::debug( " message: " ) + cc::j( joCall ) );
-                if ( strDirection == "M2S" ) {
-                    skutils::rest::client cli( urlMainNet );
-                    skutils::rest::data_t d = cli.call( joCall );
-                    if ( d.empty() )
-                        throw std::runtime_error(
-                            strDirection +
-                            " eth_call to MessageProxy failed, empty data returned" );
-                    nlohmann::json joResult;
-                    try {
-                        joResult = nlohmann::json::parse( d.s_ )["result"];
-                        if ( joResult.is_string() ) {
-                            std::string strResult = joResult.get< std::string >();
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix + " " +
-                                       cc::debug( "Transaction verification got (raw) result: " ) +
-                                       cc::info( strResult ) );
-                            if ( !strResult.empty() ) {
-                                dev::u256 uResult( strResult ), uZero( "0" );
-                                if ( uResult != uZero )
-                                    bTransactionWasVerifed = true;
-                            }
+                    size_t nLastPart = nLenTargetName % 32;
+                    if ( nLastPart != 0 ) {
+                        size_t nNeededToAdd = 32 - nLastPart;
+                        for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
+                            encoded_dstChain += "00";
                         }
-                        if ( !bTransactionWasVerifed )
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with returned data answer: " ) +
-                                       cc::j( joResult ) );
-                    } catch ( ... ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with non-parse-able data answer: " ) +
-                                   cc::warn( d.s_ ) );
                     }
-                }  // if ( strDirection == "M2S" )
-                else {
-                    try {
-                        std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
-                        Json::Value _json;
-                        Json::Reader().parse( strCallToConvert, _json );
-                        // TODO: We ignore block number in order to be compatible with Metamask
-                        // (SKALE-430). Remove this temporary fix.
-                        std::string blockNumber = "latest";
-                        dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _json );
-                        // setTransactionDefaults( t ); // l_sergiy: we don't need this here for now
-                        dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
-                            t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
-                        std::string strRevertReason;
-                        if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
-                            strRevertReason = skutils::eth::call_error_message_2_str( er.output );
-                            if ( strRevertReason.empty() )
-                                strRevertReason =
-                                    "EVM revert instruction without description message";
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with revert reason: " ) +
-                                       cc::warn( strRevertReason ) + cc::error( ", " ) +
-                                       cc::info( "blockNumber" ) + cc::error( "=" ) +
-                                       cc::bright( blockNumber ) );
-                        } else {
-                            std::string strResult = toJS( er.output );
-                            clog( VerbosityDebug, "IMA" )
-                                << ( strLogPrefix + " " +
-                                       cc::debug( "Transaction verification got (raw) result: " ) +
-                                       cc::info( strResult ) );
-                            if ( !strResult.empty() ) {
-                                dev::u256 uResult( strResult ), uZero( "0" );
-                                if ( uResult != uZero )
-                                    bTransactionWasVerifed = true;
-                            }
+                    // 12) and 13) pre-encode OutgoingMessageData.data(without 0x prefix)
+                    std::string encoded_data;
+                    size_t nDataLedth = strMessageData_linear_LC.length() / 2;
+                    encoded_data += stat_encode_eth_call_data_chunck_size_t( nDataLedth );
+                    encoded_data += strMessageData_linear_LC;
+                    nLastPart = nDataLedth % 32;
+                    if ( nLastPart != 0 ) {
+                        size_t nNeededToAdd = 32 - nLastPart;
+                        for ( size_t idxChar = 0; idxChar < nNeededToAdd; ++idxChar ) {
+                            encoded_data += "00";
                         }
-                    } catch ( std::exception const& ex ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with exception: " ) +
-                                   cc::warn( ex.what() ) );
-                    } catch ( ... ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                   cc::info( "MessageProxy" ) +
-                                   cc::error( " failed with exception: " ) +
-                                   cc::warn( "unknown exception" ) );
                     }
-                }  // else from if( strDirection == "M2S" )
-                if ( !bTransactionWasVerifed ) {
+                    //
+                    // ------------------ OLD VERSION
+                    // 1) signature as first 8 symbols of keccak256 from
+                    // "verifyOutgoingMessageData((string,uint256,address,address,address,uint256,bytes))",
+                    // not "verifyOutgoingMessageData(OutgoingMessageData)"
+
+                    // ----------------- NEW VERSION
+                    // 1) signature as first 8 symbols of keccak256 from
+                    // "verifyOutgoingMessageData((string,uint256,address,address,bytes))",
+                    // not "verifyOutgoingMessageData(OutgoingMessageData)"
+                    std::string strCallData =
+                        // "12bf6f2b"; // old version
+                        "b51cc14d";  // new version
+                    // 2) position after structure
+                    strCallData += stat_encode_eth_call_data_chunck_size_t( 0x20 );
+                    // 3) position for OutgoingMessageData.dstChain
+                    //         strCallData += stat_encode_eth_call_data_chunck_size_t( 0xe0 );
+                    strCallData += stat_encode_eth_call_data_chunck_size_t( 0xa0 );
+                    // 4) OutgoingMessageData.msgCounter
+                    strCallData +=
+                        stat_encode_eth_call_data_chunck_size_t( nStartMessageIdx + idxMessage );
+                    // 5) OutgoingMessageData.srcContract
+                    strCallData += stat_encode_eth_call_data_chunck_address(
+                        joMessageToSign["sender"].get< std::string >() );
+                    // 6) OutgoingMessageData.dstContract
+                    strCallData += stat_encode_eth_call_data_chunck_address(
+                        joMessageToSign["destinationContract"].get< std::string >() );
+                    //// 7) OutgoingMessageData.to
+                    //         strCallData += stat_encode_eth_call_data_chunck_address(
+                    //         joMessageToSign["to"].get< std::string >() );
+                    //// 8) OutgoingMessageData.amount
+                    //         strCallData += stat_encode_eth_call_data_chunck_size_t(
+                    //         joMessageToSign["amount"].get< std::string >() );
+                    // 9) postion for OutgoingMessageData.data
+                    //         strCallData += stat_encode_eth_call_data_chunck_size_t( 0xe0 +
+                    //         encoded_dstChain.length() / 2 );
+                    strCallData += stat_encode_eth_call_data_chunck_size_t(
+                        0xa0 + encoded_dstChain.length() / 2 );
+                    // 10) and 11)
+                    strCallData += encoded_dstChain;
+                    // 12) and 13)
+                    strCallData += encoded_data;
+                    //
+                    nlohmann::json joCallItem = nlohmann::json::object();
+                    joCallItem["data"] = "0x" + strCallData;  // call data
+                    //
+                    //
+                    //
+                    //
+                    //
+                    // joCallItem["from"] = ( strDirection == "M2S" ) ?
+                    //                         strImaCallerAddressMainNetLC :
+                    //                         strImaCallerAddressSChainLC;  // caller address
+                    joCallItem["from"] =
+                        ( strDirection == "M2S" ) ?
+                            strAddressImaMessageProxyMainNetLC :
+                            strAddressImaMessageProxySChainLC;  // message proxy address
+                    //
+                    //
+                    //
+                    //
+                    //
+                    joCallItem["to"] =
+                        ( strDirection == "M2S" ) ?
+                            strAddressImaMessageProxyMainNetLC :
+                            strAddressImaMessageProxySChainLC;  // message proxy address
+                    nlohmann::json jarrParams = nlohmann::json::array();
+                    jarrParams.push_back( joCallItem );
+                    jarrParams.push_back( std::string( "latest" ) );
+                    nlohmann::json joCall = nlohmann::json::object();
+                    joCall["jsonrpc"] = "2.0";
+                    joCall["method"] = "eth_call";
+                    joCall["params"] = jarrParams;
+                    //
                     clog( VerbosityDebug, "IMA" )
-                        << ( strLogPrefix + " " +
-                               cc::error(
-                                   "Transaction verification was not passed for IMA message " ) +
-                               cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
-                    throw std::runtime_error(
-                        "Transaction verification was not passed for IMA message " +
-                        std::to_string( nStartMessageIdx + idxMessage ) );
-                }  // if ( !bTransactionWasVerifed )
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::success( " Success, IMA message " ) +
-                           cc::size10( nStartMessageIdx + idxMessage ) +
-                           cc::success( " was verified via call to MessageProxy." ) );
-            }  // if( bIsImaMessagesViaContractCall )
+                        << ( strLogPrefix + cc::debug( " Will send " ) +
+                               cc::notice( "message verification query" ) + cc::debug( " to " ) +
+                               cc::notice( "message proxy" ) + cc::debug( " smart contract for " ) +
+                               cc::info( strDirection ) + cc::debug( " message: " ) +
+                               cc::j( joCall ) );
+                    if ( strDirection == "M2S" ) {
+                        /*
+                        skutils::rest::client cli( urlMainNet );
+                        skutils::rest::data_t d = cli.call( joCall );
+                        if ( d.empty() )
+                            throw std::runtime_error(
+                                strDirection +
+                                " eth_call to MessageProxy failed, empty data returned" );
+                        nlohmann::json joResult;
+                        try {
+                            joResult = nlohmann::json::parse( d.s_ )["result"];
+                            if ( joResult.is_string() ) {
+                                std::string strResult = joResult.get< std::string >();
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( strLogPrefix + " " +
+                                           cc::debug( "Transaction verification got (raw) result: "
+                        ) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256 uResult(
+                        strResult ), uZero( "0" ); if ( uResult != uZero ) bTransactionWasVerifed =
+                        true;
+                                }
+                            }
+                            if ( !bTransactionWasVerifed )
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                           cc::info( "MessageProxy" ) +
+                                           cc::error( " failed with returned data answer: " ) +
+                                           cc::j( joResult ) );
+                        } catch ( ... ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with non-parse-able data answer: " ) +
+                                       cc::warn( d.s_ ) );
+                        }
+                        */
+                        bTransactionWasVerifed = true;
+                    }  // if ( strDirection == "M2S" )
+                    else {
+                        try {
+                            std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
+                            Json::Value _json;
+                            Json::Reader().parse( strCallToConvert, _json );
+                            // TODO: We ignore block number in order to be compatible with Metamask
+                            // (SKALE-430). Remove this temporary fix.
+                            std::string blockNumber = "latest";
+                            dev::eth::TransactionSkeleton t =
+                                dev::eth::toTransactionSkeleton( _json );
+                            // setTransactionDefaults( t ); // l_sergiy: we don't need this here for
+                            // now
+                            dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
+                                t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+                            std::string strRevertReason;
+                            if ( er.excepted ==
+                                 dev::eth::TransactionException::RevertInstruction ) {
+                                strRevertReason =
+                                    skutils::eth::call_error_message_2_str( er.output );
+                                if ( strRevertReason.empty() )
+                                    strRevertReason =
+                                        "EVM revert instruction without description message";
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                           cc::info( "MessageProxy" ) +
+                                           cc::error( " failed with revert reason: " ) +
+                                           cc::warn( strRevertReason ) + cc::error( ", " ) +
+                                           cc::info( "blockNumber" ) + cc::error( "=" ) +
+                                           cc::bright( blockNumber ) );
+                            } else {
+                                std::string strResult = toJS( er.output );
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( strLogPrefix + " " +
+                                           cc::debug(
+                                               "Transaction verification got (raw) result: " ) +
+                                           cc::info( strResult ) );
+                                if ( !strResult.empty() ) {
+                                    dev::u256 uResult( strResult ), uZero( "0" );
+                                    if ( uResult != uZero )
+                                        bTransactionWasVerifed = true;
+                                }
+                            }
+                        } catch ( std::exception const& ex ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with exception: " ) +
+                                       cc::warn( ex.what() ) );
+                        } catch ( ... ) {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                                       cc::info( "MessageProxy" ) +
+                                       cc::error( " failed with exception: " ) +
+                                       cc::warn( "unknown exception" ) );
+                        }
+                    }  // else from if( strDirection == "M2S" )
+                    if ( !bTransactionWasVerifed ) {
+                        clog( VerbosityDebug, "IMA" )
+                            << ( strLogPrefix + " " +
+                                   cc::error( "Transaction verification was not passed for IMA "
+                                              "message " ) +
+                                   cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
+                        throw std::runtime_error(
+                            "Transaction verification was not passed for IMA message " +
+                            std::to_string( nStartMessageIdx + idxMessage ) );
+                    }  // if ( !bTransactionWasVerifed )
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::success( " Success, IMA message " ) +
+                               cc::size10( nStartMessageIdx + idxMessage ) +
+                               cc::success( " was verified via call to MessageProxy." ) );
+                }  // else from ( strDirection == "M2S" )
+            }      // if( bIsImaMessagesViaContractCall )
             else {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + " " +
@@ -2540,22 +3151,22 @@ OutgoingMessageData.data
             if ( !bOnlyVerify ) {
                 // One more message is valid, concatenate it for further in-wallet signing
                 // Compose message to sign
-                static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
-                    size_t n = cnt / 2;
-                    for ( size_t i = 0; i < n; ++i ) {
-                        uint8_t b1 = arr[i];
-                        uint8_t b2 = arr[cnt - i - 1];
-                        arr[i] = b2;
-                        arr[cnt - i - 1] = b1;
-                    }
-                };
+                //    static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
+                //        size_t n = cnt / 2;
+                //        for ( size_t i = 0; i < n; ++i ) {
+                //            uint8_t b1 = arr[i];
+                //            uint8_t b2 = arr[cnt - i - 1];
+                //            arr[i] = b2;
+                //            arr[cnt - i - 1] = b1;
+                //        }
+                //    };
                 static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
                     while ( v.size() < cnt )
                         v.push_back( 0 );
                 };
-                uint8_t arr[32];
+                // uint8_t arr[32];
                 bytes v;
-                const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
+                // const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
                 fnAlignRight( v, 32 );
@@ -2565,14 +3176,15 @@ OutgoingMessageData.data
                 fnAlignRight( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
-                v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
-                fnAlignRight( v, 32 );
-                vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+                // v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
+                // fnAlignRight( v, 32 );
+                // vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end()
+                // );
                 //
-                dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
-                fnInvert( arr, cntArr );
-                vecAllTogetherMessages.insert(
-                    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
+                // dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
+                // fnInvert( arr, cntArr );
+                // vecAllTogetherMessages.insert(
+                //    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
                 //
                 v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
                 // fnInvert( v.data(), v.size() ); // do not invert byte order data field (see
@@ -2678,6 +3290,20 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
+        if ( broadcast_txn_sign_is_enabled() ) {
+            if ( joRequest.count( "broadcastSignature" ) > 0 &&
+                 joRequest.count( "broadcastFromNode" ) > 0 ) {
+                std::string strBroadcastSignature =
+                    joRequest["broadcastSignature"].get< std::string >();
+                int node_id = joRequest["broadcastFromNode"].get< int >();
+                if ( !broadcast_txn_verify_signature(
+                         "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+                    throw std::runtime_error(
+                        "IMA broadcast/insert call without broadcast/signature fields detected" );
+            } else
+                throw std::runtime_error(
+                    "IMA broadcast/insert call without broadcast/signature fields detected" );
+        }
         bool wasInserted = insert( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
@@ -2727,6 +3353,20 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
+        if ( broadcast_txn_sign_is_enabled() ) {
+            if ( joRequest.count( "broadcastSignature" ) > 0 &&
+                 joRequest.count( "broadcastFromNode" ) > 0 ) {
+                std::string strBroadcastSignature =
+                    joRequest["broadcastSignature"].get< std::string >();
+                int node_id = joRequest["broadcastFromNode"].get< int >();
+                if ( !broadcast_txn_verify_signature(
+                         "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+                    throw std::runtime_error(
+                        "IMA broadcast/erase call without broadcast/signature fields detected" );
+            } else
+                throw std::runtime_error(
+                    "IMA broadcast/erase call without broadcast/signature fields detected" );
+        }
         bool wasErased = erase( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();

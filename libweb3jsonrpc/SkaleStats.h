@@ -134,6 +134,21 @@ public:
     //
     virtual void on_txn_insert( const txn_entry& txe, bool isEnableBroadcast );
     virtual void on_txn_erase( const txn_entry& txe, bool isEnableBroadcast );
+
+    bool broadcast_txn_sign_is_enabled();
+
+private:
+    std::string broadcast_txn_sign_string( const char* strToSign );
+    std::string broadcast_txn_compose_string( const char* strActionName, const dev::u256& tx_hash );
+    std::string broadcast_txn_sign( const char* strActionName, const dev::u256& tx_hash );
+    std::string broadcast_txn_get_ecdsa_public_key( int node_id );
+    int broadcast_txn_get_node_id();
+
+public:
+    bool broadcast_txn_verify_signature( const char* strActionName,
+        const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash );
+
+public:
     virtual void broadcast_txn_insert( const txn_entry& txe );
     virtual void broadcast_txn_erase( const txn_entry& txe );
 
