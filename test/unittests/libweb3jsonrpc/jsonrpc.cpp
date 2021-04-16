@@ -69,7 +69,8 @@ static std::string const c_genesisConfigString =
          "homesteadForkBlock": "0x00",
          "EIP150ForkBlock": "0x00",
          "EIP158ForkBlock": "0x00",
-         "byzantiumForkBlock": "0x00"
+         "byzantiumForkBlock": "0x00",
+         "constantinopleForkBlock": "0x00"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -148,6 +149,13 @@ static std::string const c_genesisConfigString =
             "storage" : {
             }
         },
+        "0xD2002000000000000000000000000000000000D2": {
+            "balance": "0",
+            "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
+            "storage": {
+            },
+            "nonce": "0"
+        },
         "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x",
@@ -184,7 +192,7 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -195,8 +203,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             Json::Reader().parse( _config, ret );
             if ( _owner ) {
                 ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( coinbase.address() );
+                if (_deploymentControl)
+                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( coinbase.address() );
             } else {
                 ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+                if (_deploymentControl)
+                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( account2.address() );
             }
             Json::FastWriter fastWriter;
             std::string output = fastWriter.write( ret );
@@ -988,14 +1000,14 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     BOOST_REQUIRE( code.asString() == "0x" );
 }
 
-BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
+BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = true;
+    ret["accounts"].removeMember("0xD2002000000000000000000000000000000000D2");
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, false );
+    JsonRpcFixture fixture( config, false, false );
     auto senderAddress = fixture.coinbase.address();
 
     fixture.client->setAuthor( senderAddress );
@@ -1032,14 +1044,8 @@ BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
-BOOST_AUTO_TEST_CASE( deploy_contract_false_flag ) {
-    std::string _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = false;
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, false );
+BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
+    JsonRpcFixture fixture( c_genesisConfigString, false );
     auto senderAddress = fixture.coinbase.address();
 
     fixture.client->setAuthor( senderAddress );
@@ -1137,16 +1143,17 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     Json::Value checkAddress;
     checkAddress["to"] = contractAddress;
     checkAddress["data"] = "0x0dbe671f";
-    string response = fixture.rpcClient->eth_call( checkAddress, "latest" );
-    BOOST_CHECK( response == "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    string response1 = fixture.rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response1 != "0x0000000000000000000000000000000000000000000000000000000000000000" );
 
     fixture.client->setAuthor( senderAddress );
     transactionCallObject["from"] = toJS( senderAddress );
     fixture.rpcClient->eth_sendTransaction( transactionCallObject );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    response = fixture.rpcClient->eth_call( checkAddress, "latest" );
-    BOOST_CHECK( response != "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    string response2 = fixture.rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response2 != "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    BOOST_CHECK( response2 != response1 );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {

@@ -61,6 +61,8 @@ const bytes c_blockhashContractCode( fromHex(
     "a75761010083019250610100820491506101008104905061006d565b610100811215156100bd57600060a052602060"
     "a0f35b610100820683015460c052602060c0f350506100df565b600060e052602060e0f35b5b50" ) );
 
+const Address c_deploymentControllerContractAddress( "D2002000000000000000000000000000000000D2" );
+
 Address toAddress( std::string const& _s ) {
     try {
         auto b = fromHex( _s.substr( 0, 2 ) == "0x" ? _s.substr( 2 ) : _s, WhenError::Throw );
@@ -104,6 +106,10 @@ std::string formatBalance( bigint const& _b ) {
         }
     ret << b << " wei";
     return ret.str();
+}
+
+bytes getDeploymentControllerCallData( Address const& _deployer ) {
+    return fromHex( "13f44d10000000000000000000000000" + _deployer.hex() );
 }
 
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {
