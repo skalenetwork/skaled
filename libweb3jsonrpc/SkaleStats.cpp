@@ -437,6 +437,8 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         if ( d.empty() )
             throw std::runtime_error( "failed to sign message(s) with wallet" );
         nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
+                                           cc::debug( " result: " ) + cc::j( joSignResult ) );
         std::string r = joSignResult["signature_r"].get< std::string >();
         std::string v = joSignResult["signature_v"].get< std::string >();
         std::string s = joSignResult["signature_s"].get< std::string >();
