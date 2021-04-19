@@ -125,7 +125,7 @@ Example
 ```sh
 // Request
 
-curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshotSignature", "params": { "blockNumber": 14 }, "id": 73 }'
+curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshotSignature", "params": [ 14 ], "id": 73 }'
 
 // Result
 { 
