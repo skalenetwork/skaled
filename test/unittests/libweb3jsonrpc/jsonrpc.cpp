@@ -22,6 +22,7 @@
 #include "WebThreeStubClient.h"
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -30,6 +31,7 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
+#include <libskale/httpserveroverride.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -67,7 +69,8 @@ static std::string const c_genesisConfigString =
          "homesteadForkBlock": "0x00",
          "EIP150ForkBlock": "0x00",
          "EIP158ForkBlock": "0x00",
-         "byzantiumForkBlock": "0x00"
+         "byzantiumForkBlock": "0x00",
+         "constantinopleForkBlock": "0x00"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -146,6 +149,13 @@ static std::string const c_genesisConfigString =
             "storage" : {
             }
         },
+        "0xD2002000000000000000000000000000000000D2": {
+            "balance": "0",
+            "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
+            "storage": {
+            },
+            "nonce": "0"
+        },
         "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
             "balance" : "0x0de0b6b3a7640000",
             "code" : "0x",
@@ -182,7 +192,7 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -193,8 +203,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             Json::Reader().parse( _config, ret );
             if ( _owner ) {
                 ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( coinbase.address() );
+                if (_deploymentControl)
+                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( coinbase.address() );
             } else {
                 ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+                if (_deploymentControl)
+                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( account2.address() );
             }
             Json::FastWriter fastWriter;
             std::string output = fastWriter.write( ret );
@@ -260,15 +274,83 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
             new rpc::Test( *client ) ) );
-        auto ipcServer = new TestIpcServer;
-        rpcServer->addConnector( ipcServer );
-        ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
+        SkaleServerOverride::opts_t serverOpts;
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        std::string strResponse = ethFace->eth_sendRawTransaction(
+                            joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Value& v = joResponse["result"];
+                        v.SetString(
+                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                    } catch ( const dev::Exception& ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
+                            joResponse );
+                    }
+                };
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        //        this->ValidateJsonRpcRequest( joRequest );
+                        dev::eth::LocalisedTransactionReceipt _t =
+                            ethFace->eth_getTransactionReceipt(
+                                joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+                        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+                        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+                    } catch ( std::invalid_argument& ex ) {
+                        // not known transaction - skip exception
+                        joResponse.AddMember(
+                            "result", rapidjson::Value(), joResponse.GetAllocator() );
+                    } catch ( ... ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
+                            joResponse );
+                    }
+                };
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
+            [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                try {
+                    rapidjson::StringBuffer buffer;
+                    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+                    joRequest.Accept( writer );
+                    std::string strRequest = buffer.GetString();
+                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton( joRequest["params"].GetArray()[0] );
+                    std::string strResponse =
+                        ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
+
+                    rapidjson::Value& v = joResponse["result"];
+                    v.SetString(
+                        strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                } catch ( std::exception const& ex ) {
+                    throw jsonrpc::JsonRpcException( ex.what() );
+                } catch ( ... ) {
+                    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                }
+            };
+        serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
+        serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+        serverOpts.fn_eth_call_ = fn_eth_call;
+        serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
+        auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+        rpcServer->addConnector( skale_server_connector );
+        skale_server_connector->StartListening();
+
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
+
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    ~JsonRpcFixture() {}
+    ~JsonRpcFixture() {
+
+    }
 
     string sendingRawShouldFail( string const& _t ) {
         try {
@@ -918,14 +1000,14 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     BOOST_REQUIRE( code.asString() == "0x" );
 }
 
-BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
+BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = true;
+    ret["accounts"].removeMember("0xD2002000000000000000000000000000000000D2");
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, false );
+    JsonRpcFixture fixture( config, false, false );
     auto senderAddress = fixture.coinbase.address();
 
     fixture.client->setAuthor( senderAddress );
@@ -962,14 +1044,8 @@ BOOST_AUTO_TEST_CASE( deploy_contract_true_flag ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
-BOOST_AUTO_TEST_CASE( deploy_contract_false_flag ) {
-    std::string _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["freeContractDeployment"] = false;
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, false );
+BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
+    JsonRpcFixture fixture( c_genesisConfigString, false );
     auto senderAddress = fixture.coinbase.address();
 
     fixture.client->setAuthor( senderAddress );
@@ -1067,16 +1143,17 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     Json::Value checkAddress;
     checkAddress["to"] = contractAddress;
     checkAddress["data"] = "0x0dbe671f";
-    string response = fixture.rpcClient->eth_call( checkAddress, "latest" );
-    BOOST_CHECK( response == "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    string response1 = fixture.rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response1 != "0x0000000000000000000000000000000000000000000000000000000000000000" );
 
     fixture.client->setAuthor( senderAddress );
     transactionCallObject["from"] = toJS( senderAddress );
     fixture.rpcClient->eth_sendTransaction( transactionCallObject );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    response = fixture.rpcClient->eth_call( checkAddress, "latest" );
-    BOOST_CHECK( response != "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    string response2 = fixture.rpcClient->eth_call( checkAddress, "latest" );
+    BOOST_CHECK( response2 != "0x0000000000000000000000000000000000000000000000000000000000000000" );
+    BOOST_CHECK( response2 != response1 );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1471,9 +1548,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     t["nonce"] = "1";
     t["gasPrice"] = jsToDecimal( toJS( initial_gasPrice - 1 ) );
     auto signedTx2 = fixture.rpcClient->eth_signTransaction( t );
-
-    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ),
-        "Transaction gas price lower than current eth_gasPrice." );
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ), "Transaction gas price lower than current eth_gasPrice." );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
@@ -1539,7 +1614,6 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    std::cout << "STORAGE USED: " << fixture.client->state().storageUsed( contract ) << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
     
     Json::Value txPushValue;  // call store(2)
