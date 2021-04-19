@@ -414,6 +414,9 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
             dev::sha3( bytesConstRef( ( unsigned char* ) ( strToSign ? strToSign : "" ),
                 strToSign ? strlen( strToSign ) : 0 ) );
         std::string strHashToSign = dev::toJS( hashToSign );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "Did composeed IMA broadcast message hash " ) +
+                   cc::info( strHashToSign ) + cc::debug( " to sign" ) );
         //
         //
         //
@@ -466,8 +469,17 @@ std::string pending_ima_txns::broadcast_txn_compose_string(
 
 std::string pending_ima_txns::broadcast_txn_sign(
     const char* strActionName, const dev::u256& tx_hash ) {
+    clog( VerbosityTrace, "IMA" ) << ( cc::debug(
+                                           "Will compose IMA broadcast message to sign from TX " ) +
+                                       cc::info( dev::toJS( tx_hash ) ) +
+                                       cc::debug( " and action name " ) +
+                                       cc::info( strActionName ) + cc::debug( "..." ) );
     std::string strToSign = broadcast_txn_compose_string( strActionName, tx_hash );
+    clog( VerbosityTrace, "IMA" ) << ( cc::debug( "Did composed IMA broadcast message to sign " ) +
+                                       cc::info( strToSign ) );
     std::string strBroadcastSignature = broadcast_txn_sign_string( strToSign.c_str() );
+    clog( VerbosityTrace, "IMA" ) << ( cc::debug( "Got broadcast signature " ) +
+                                       cc::info( strBroadcastSignature ) );
     return strBroadcastSignature;
 }
 
@@ -500,7 +512,14 @@ std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) 
                 continue;
             if ( joNode.count( "publicKey" ) == 0 )
                 continue;
-            strEcdsaPublicKey = joNode["publicKey"].get< std::string >();
+            strEcdsaPublicKey =
+                skutils::tools::trim_copy( joNode["publicKey"].get< std::string >() );
+            if ( strEcdsaPublicKey.empty() )
+                continue;
+            auto nLength = strEcdsaPublicKey.length();
+            if ( nLength > 2 && strEcdsaPublicKey[0] == '0' &&
+                 ( strEcdsaPublicKey[1] == 'x' || strEcdsaPublicKey[1] == 'X' ) )
+                strEcdsaPublicKey = strEcdsaPublicKey.substr( 2, nLength - 2 );
             break;
         }
     } catch ( ... ) {
@@ -533,12 +552,72 @@ int pending_ima_txns::broadcast_txn_get_node_id() {
     return node_id;
 }
 
-bool pending_ima_txns::broadcast_txn_verify_signature( const char* /*strActionName*/,
+bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
     const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
-    std::string strEcdsaPublicKey = broadcast_txn_get_ecdsa_public_key( node_id );
-    auto key = OpenSSLECDSAKey::importSGXPubKey( strEcdsaPublicKey );
-    bytes v = dev::BMPBN::encode2vec< dev::u256 >( tx_hash, true );
-    return key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+    bool isSignatureOK = false;
+    std::string strNextErrorType = "", strEcdsaPublicKey = "<null-key>",
+                strHashToSign = "<null-message-hash>";
+    try {
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "Will compose IMA broadcast message to verify from TX " ) +
+                   cc::info( dev::toJS( tx_hash ) ) + cc::debug( " and action name " ) +
+                   cc::info( strActionName ) + cc::debug( "..." ) );
+        strNextErrorType = "compose verify string";
+        std::string strToSign = broadcast_txn_compose_string( strActionName, tx_hash );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "Did composed IMA broadcast message to verify " ) +
+                   cc::info( strToSign ) );
+        strNextErrorType = "compose verify hash";
+        dev::u256 hashToSign = dev::sha3(
+            bytesConstRef( ( unsigned char* ) ( ( !strToSign.empty() ) ? strToSign.c_str() : "" ),
+                strToSign.length() ) );
+        strHashToSign = dev::toJS( hashToSign );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "Did composeed IMA broadcast message hash " ) +
+                   cc::info( strHashToSign ) + cc::debug( " to verify" ) );
+        //
+        strNextErrorType = "find node ECDSA public key";
+        strEcdsaPublicKey = broadcast_txn_get_ecdsa_public_key( node_id );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "Will verify IMA broadcast ECDSA signature " ) +
+                   cc::info( strBroadcastSignature ) + cc::debug( " from node ID " ) +
+                   cc::num10( node_id ) + cc::debug( " using ECDSA public key " ) +
+                   cc::info( strEcdsaPublicKey ) + cc::debug( " and message/hash " ) +
+                   cc::info( strHashToSign ) + cc::debug( "..." ) );
+        strNextErrorType = "import node ECDSA public key";
+        auto key = OpenSSLECDSAKey::importSGXPubKey( strEcdsaPublicKey );
+        strNextErrorType = "encode TX hash";
+        bytes v = dev::BMPBN::encode2vec< dev::u256 >( hashToSign, true );
+        strNextErrorType = "do ECDSA signature verification";
+        isSignatureOK = key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "IMA broadcast ECDSA signature " ) + cc::info( strBroadcastSignature ) +
+                   cc::debug( " verification from node ID " ) + cc::num10( node_id ) +
+                   cc::debug( " using ECDSA public key " ) + cc::info( strEcdsaPublicKey ) +
+                   cc::debug( " and message/hash " ) + cc::info( strHashToSign ) +
+                   cc::debug( " is " ) +
+                   ( isSignatureOK ? cc::success( "passed" ) : cc::fatal( "failed" ) ) );
+    } catch ( const std::exception& ex ) {
+        isSignatureOK = false;
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "IMA broadcast ECDSA signature " ) + cc::info( strBroadcastSignature ) +
+                   cc::debug( " verification from node ID " ) + cc::num10( node_id ) +
+                   cc::debug( " using ECDSA public key " ) + cc::info( strEcdsaPublicKey ) +
+                   cc::debug( " and message/hash " ) + cc::info( strHashToSign ) +
+                   cc::debug( " is " ) + cc::fatal( "failed" ) + cc::debug( " during " ) +
+                   cc::warn( strNextErrorType ) + cc::debug( ", exception: " ) +
+                   cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        isSignatureOK = false;
+        clog( VerbosityTrace, "IMA" )
+            << ( cc::debug( "IMA broadcast ECDSA signature " ) + cc::info( strBroadcastSignature ) +
+                   cc::debug( " verification from node ID " ) + cc::num10( node_id ) +
+                   cc::debug( " using ECDSA public key " ) + cc::info( strEcdsaPublicKey ) +
+                   cc::debug( " and message/hash " ) + cc::info( strHashToSign ) +
+                   cc::debug( " is " ) + cc::fatal( "failed" ) + cc::debug( " during " ) +
+                   cc::warn( strNextErrorType ) + cc::debug( ", unknown exception" ) );
+    }
+    return isSignatureOK;
 }
 
 void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
@@ -553,10 +632,18 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                 "failed to extract S-Chain node information from config JSON" );
         nlohmann::json joParams = jo_tx;  // copy
         std::string strBroadcastSignature = broadcast_txn_sign( "insert", tx_hash );
+        int nNodeID = broadcast_txn_get_node_id();
         if ( !strBroadcastSignature.empty() ) {
+            clog( VerbosityTrace, "IMA" )
+                << ( strLogPrefix + " " + cc::debug( "Broadcast/insert signature from node iD " ) +
+                       cc::num10( nNodeID ) + cc::debug( " is " ) +
+                       cc::info( strBroadcastSignature ) );
             joParams["broadcastSignature"] = strBroadcastSignature;
-            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
-        }
+            joParams["broadcastFromNode"] = nNodeID;
+        } else
+            clog( VerbosityWarning, "IMA" )
+                << ( strLogPrefix + " " + cc::warn( "Broadcast/insert signature from node iD " ) +
+                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "empty" ) );
         clog( VerbosityTrace, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
                    cc::info( "inserted TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
@@ -566,7 +653,6 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -580,6 +666,10 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
+                    clog( VerbosityTrace, "IMA" )
+                        << ( strLogPrefix + " " + cc::debug( "Did broadcast" ) + " " +
+                               cc::info( "inserted TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                               cc::debug( " and got answer: " ) + cc::j( joAnswer ) );
                 } catch ( const std::exception& ex ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
@@ -619,10 +709,18 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                 "failed to extract S-Chain node information from config JSON" );
         nlohmann::json joParams = jo_tx;  // copy
         std::string strBroadcastSignature = broadcast_txn_sign( "erase", tx_hash );
+        int nNodeID = broadcast_txn_get_node_id();
         if ( !strBroadcastSignature.empty() ) {
+            clog( VerbosityTrace, "IMA" )
+                << ( strLogPrefix + " " + cc::debug( "Broadcast/erase signature from node iD " ) +
+                       cc::num10( nNodeID ) + cc::debug( " is " ) +
+                       cc::info( strBroadcastSignature ) );
             joParams["broadcastSignature"] = strBroadcastSignature;
-            joParams["broadcastFromNode"] = broadcast_txn_get_node_id();
-        }
+            joParams["broadcastFromNode"] = nNodeID;
+        } else
+            clog( VerbosityWarning, "IMA" )
+                << ( strLogPrefix + " " + cc::warn( "Broadcast/erase signature from node iD " ) +
+                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "empty" ) );
         clog( VerbosityTrace, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
                    cc::info( "erased TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
@@ -632,7 +730,6 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
             if ( i == nOwnIndex )
                 continue;
             std::string strURL = vecURLs[i];
-            nlohmann::json joParams = jo_tx;  // copy
             skutils::dispatch::async( g_strDispatchQueueID, [=]() -> void {
                 nlohmann::json joCall = nlohmann::json::object();
                 joCall["jsonrpc"] = "2.0";
@@ -646,6 +743,10 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
+                    clog( VerbosityTrace, "IMA" )
+                        << ( strLogPrefix + " " + cc::debug( "Did broadcast" ) + " " +
+                               cc::info( "erased TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
+                               cc::debug( " and got answer: " ) + cc::j( joAnswer ) );
                 } catch ( const std::exception& ex ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
@@ -3286,6 +3387,9 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
         const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Got external broadcast/insert request " ) +
+                   cc::j( joRequest ) );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
@@ -3293,18 +3397,18 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
         if ( broadcast_txn_sign_is_enabled() ) {
-            if ( joRequest.count( "broadcastSignature" ) > 0 &&
-                 joRequest.count( "broadcastFromNode" ) > 0 ) {
-                std::string strBroadcastSignature =
-                    joRequest["broadcastSignature"].get< std::string >();
-                int node_id = joRequest["broadcastFromNode"].get< int >();
-                if ( !broadcast_txn_verify_signature(
-                         "insert", strBroadcastSignature, node_id, txe.hash_ ) )
-                    throw std::runtime_error(
-                        "IMA broadcast/insert call without broadcast/signature fields detected" );
-            } else
+            if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
-                    "IMA broadcast/insert call without broadcast/signature fields detected" );
+                    "IMA broadcast/insert call without \"broadcastSignature\" field specified" );
+            if ( joRequest.count( "broadcastFromNode" ) == 0 )
+                throw std::runtime_error(
+                    "IMA broadcast/insert call without \"broadcastFromNode\" field specified" );
+            std::string strBroadcastSignature =
+                joRequest["broadcastSignature"].get< std::string >();
+            int node_id = joRequest["broadcastFromNode"].get< int >();
+            if ( !broadcast_txn_verify_signature(
+                     "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+                throw std::runtime_error( "IMA broadcast/insert signature verification failed" );
         }
         bool wasInserted = insert( txe, false );
         //
@@ -3349,6 +3453,9 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
         const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " + cc::debug( "Got external broadcast/erase request " ) +
+                   cc::j( joRequest ) );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
@@ -3356,18 +3463,18 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
         if ( broadcast_txn_sign_is_enabled() ) {
-            if ( joRequest.count( "broadcastSignature" ) > 0 &&
-                 joRequest.count( "broadcastFromNode" ) > 0 ) {
-                std::string strBroadcastSignature =
-                    joRequest["broadcastSignature"].get< std::string >();
-                int node_id = joRequest["broadcastFromNode"].get< int >();
-                if ( !broadcast_txn_verify_signature(
-                         "erase", strBroadcastSignature, node_id, txe.hash_ ) )
-                    throw std::runtime_error(
-                        "IMA broadcast/erase call without broadcast/signature fields detected" );
-            } else
+            if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
-                    "IMA broadcast/erase call without broadcast/signature fields detected" );
+                    "IMA broadcast/erase call without \"broadcastSignature\" field specified" );
+            if ( joRequest.count( "broadcastFromNode" ) == 0 )
+                throw std::runtime_error(
+                    "IMA broadcast/erase call without \"broadcastFromNode\" field specified" );
+            std::string strBroadcastSignature =
+                joRequest["broadcastSignature"].get< std::string >();
+            int node_id = joRequest["broadcastFromNode"].get< int >();
+            if ( !broadcast_txn_verify_signature(
+                     "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+                throw std::runtime_error( "IMA broadcast/erase signature verification failed" );
         }
         bool wasErased = erase( txe, false );
         //
