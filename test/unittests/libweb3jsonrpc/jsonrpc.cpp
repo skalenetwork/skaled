@@ -352,7 +352,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     ~JsonRpcFixture() {
-        skale_server_connector->StopListening();
+        if ( skale_server_connector )
+            skale_server_connector->StopListening();
     }
 
     string sendingRawShouldFail( string const& _t ) {
