@@ -43,7 +43,7 @@ int fromHexChar( char _i ) noexcept {
 
 bool dev::isHex( string const& _s ) noexcept {
     auto it = _s.begin();
-    if ( _s.compare( 0, 2, "0x" ) == 0 )
+    if ( _s.compare( 0, 2, "0x" ) == 0 || _s.compare( 0, 2, "0X" ) == 0 )
         it += 2;
     return std::all_of( it, _s.end(), []( char c ) { return fromHexChar( c ) != -1; } );
 }
