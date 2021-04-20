@@ -460,10 +460,6 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
         }
     }
 
-    if ( last_price == 0 ) {
-        throw std::invalid_argument( "Could not read latest gas price from prices.db" );
-    }
-
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
     cnote << "Latest price hash is: " << last_price_hash << std::endl;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
