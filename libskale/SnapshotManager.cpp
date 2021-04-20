@@ -430,7 +430,11 @@ void SnapshotManager::computeDatabaseHash(
 void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     dev::u256 last_price = 0;
     if ( this->getLatestPrice ) {
-        last_price = this->getLatestPrice();
+        try {
+            last_price = this->getLatestPrice();
+        } catch ( const std::exception& ) {
+            throw;
+        }
     } else {
         // manually open DB
         boost::filesystem::path prices_path =
