@@ -26,6 +26,7 @@
 #include <secp256k1_sha256.h>
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
