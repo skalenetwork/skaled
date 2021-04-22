@@ -2001,8 +2001,10 @@ bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_
     rapidjson::Document joResponse;
     joResponse.SetObject();
     joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
-    if ( joRequest.HasMember( "id" ) )
-        joResponse.AddMember( "id", joRequest["id"].GetUint64(), joResponse.GetAllocator() );
+    if ( joRequest.HasMember( "id" ) ) {
+        joResponse.AddMember( "id", rapidjson::Value(), joResponse.GetAllocator() );
+        joResponse["id"] = joRequest["id"];
+    }
     rapidjson::Value d;
     d.SetObject();
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
