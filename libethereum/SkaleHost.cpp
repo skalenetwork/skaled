@@ -495,8 +495,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
-        // FATAL if mismatch on non-empty block
-        if ( _approvedTransactions.size() > 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        // FATAL if mismatch in non-default
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -510,17 +510,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
             _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
-
-        // WARN if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot )
-            clog( VerbosityError, "skale-host" )
-                << cc::error( "ERROR: STATE ROOT MISMATCH in empty but non-default block!" )
-                << cc::error( " Current state root " )
-                << cc::warn( dev::h256::Arith( stCurrent ).str() )
-                << cc::error( " is not equal to arrived state root " )
-                << cc::warn( _stateRoot.str() ) << cc::warn( " with block ID " )
-                << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
-                << cc::error( " is other node outdated?" );
 
         // WARN if default but non-zero
         if ( _winningNodeIndex == 0 && _stateRoot != u256() )
