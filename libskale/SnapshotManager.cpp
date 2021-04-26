@@ -429,39 +429,30 @@ void SnapshotManager::computeDatabaseHash(
 
 void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     dev::u256 last_price = 0;
-    if ( this->getLatestPrice ) {
-        try {
-            last_price = this->getLatestPrice();
-        } catch ( const std::exception& ) {
-            throw;
+    // manually open DB
+    boost::filesystem::path prices_path =
+        this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[2];
+    if ( boost::filesystem::exists( prices_path ) ) {
+        boost::filesystem::directory_iterator it( prices_path ), end;
+        std::string last_price_str;
+        std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
+        while ( it != end ) {
+            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string() ) );
+            if ( m_db->exists( last_price_key ) ) {
+                last_price_str = m_db->lookup( last_price_key );
+                break;
+            }
+            ++it;
         }
+
+        if ( last_price_str.empty() ) {
+            throw std::invalid_argument(
+                "No such key in database: " + last_price_key + " : " + prices_path.string() );
+        }
+
+        last_price = dev::u256( last_price_str );
     } else {
-        // manually open DB
-        boost::filesystem::path prices_path =
-            this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[2];
-        if ( boost::filesystem::exists( prices_path ) ) {
-            boost::filesystem::directory_iterator it( prices_path ), end;
-            std::string last_price_str;
-            std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
-            while ( it != end ) {
-                std::unique_ptr< dev::db::LevelDB > m_db(
-                    new dev::db::LevelDB( it->path().string() ) );
-                if ( m_db->exists( last_price_key ) ) {
-                    last_price_str = m_db->lookup( last_price_key );
-                    break;
-                }
-                ++it;
-            }
-
-            if ( last_price_str.empty() ) {
-                throw std::invalid_argument(
-                    "No such key in database: " + last_price_key + " : " + prices_path.string() );
-            }
-
-            last_price = dev::u256( last_price_str );
-        } else {
-            throw std::invalid_argument( "No such file or directory: " + prices_path.string() );
-        }
+        throw std::invalid_argument( "No such file or directory: " + prices_path.string() );
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );

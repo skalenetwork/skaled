@@ -157,9 +157,6 @@ public:
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
 
-    typedef std::function< dev::u256() > fnConsensusCall;
-    fnConsensusCall getLatestPrice;
-
 private:
     boost::filesystem::path data_dir;
     std::vector< std::string > volumes;
