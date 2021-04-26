@@ -338,18 +338,22 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.fn_eth_call_ = fn_eth_call;
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = 1234;
-        auto skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+        // random port
+        std::srand(std::time(nullptr));
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
+        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
+        skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
-        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + "1234" );
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
     ~JsonRpcFixture() {
-
+        if ( skale_server_connector )
+            skale_server_connector->StopListening();
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -374,6 +378,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
+    SkaleServerOverride* skale_server_connector;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
