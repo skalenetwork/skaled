@@ -1484,7 +1484,7 @@ then
 		cd "$SOURCES_ROOT"
 		if [ ! -d "boost_1_68_0" ];
 		then
-			if [ ! -f "boost_1_68_0.tar.gz" ];
+                        if [ ! -f "boost_1_68_0.tar.bz2" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
                                 # $WGET https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz
