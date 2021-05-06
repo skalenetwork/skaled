@@ -53,7 +53,7 @@ jobs:
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=64
+          ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
         run: |
@@ -84,7 +84,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
-          make -j64
+          make -j$(nproc)
           cd ..
       - name: Testeth
         run : |
