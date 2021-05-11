@@ -670,7 +670,7 @@ test_client_ws_base::test_client_ws_base( const char* strClientName, int nTarget
     std::string strServerUrl = skutils::tools::format(
         "%s://%s:%d", strScheme_.c_str(), g_strLocalHostName, nTargetPort_ );
     test_log_c( strClientName_,
-        cc::debug( "test wlient will connect to: " ) + cc::u( strServerUrl ) + cc::debug( "..." ) );
+        cc::debug( "test client will connect to: " ) + cc::u( strServerUrl ) + cc::debug( "..." ) );
     size_t cnt = nConnectAttempts;
     if ( cnt < 1 )
         cnt = 1;
