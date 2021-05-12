@@ -1140,7 +1140,7 @@ void helper_protocol_busy_port( const char* strProtocol, int nPort ) {
     std::cout << ( cc::sunny( "Busy port de-allocated" ) + "\n" );
 }
 
-void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddress, int nPort ) {
+void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddress, int nPort, bool isAutoExitOnSuccess ) {
     std::atomic_bool end_reached = false, end_2_reached = false;
     with_server(
         [&]( helper_server & /*refServer*/ ) -> void {
@@ -1164,23 +1164,25 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
                 // assert( joCall.dump() == joResult.dump() );
                 end_reached = true;
                 std::cout << ( cc::success( "Finish" ) + "\n" );
+                if( isAutoExitOnSuccess )
+                    _exit( __EXIT_SUCCESS );
             } catch ( std::exception& ex ) {
                 std::string strErrorDescription = ex.what();
                 std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
                                cc::warn( strErrorDescription ) + "\n" );
                 // assert( false );
-                exit( __EXIT_ERROR_IN_TEST_EXCEPTOION );
+                _exit( __EXIT_ERROR_IN_TEST_EXCEPTOION );
             } catch ( ... ) {
                 std::string strErrorDescription = "unknown exception";
                 std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
                                cc::warn( strErrorDescription ) + "\n" );
                 // assert( false );
-                exit( __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION );
+                _exit( __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION );
             }
         },
         strProtocol, nPort );
     if ( !end_reached )
-        exit( __EXIT_ERROR_REST_CALL_FAILED );
+        _exit( __EXIT_ERROR_REST_CALL_FAILED );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1213,7 +1215,7 @@ int main( int argc, char** argv ) {
                 strBindAddress = skutils::tools::trim_copy( strValue );
                 if ( strBindAddress.empty() ) {
                     std::cerr << "Bad bind address specified in command line arguments.\n";
-                    exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
+                    _exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
                 }
             } )
         .on( "proto",
@@ -1225,7 +1227,7 @@ int main( int argc, char** argv ) {
                          strProtocol == "wss" ) ) {
                     std::cerr << "Bad protocol name specified in command line arguments, need "
                                  "\"http\", \"https\", \"ws\" or \"wss\".\n";
-                    exit( __EXIT_ERROR_BAD_PROTOCOL_NAME );
+                    _exit( __EXIT_ERROR_BAD_PROTOCOL_NAME );
                 }
             } )
         .on( "port", "Run RPC server(s) on specified port(default is 27890).",
@@ -1252,12 +1254,12 @@ int main( int argc, char** argv ) {
             } );
     if ( !clp.parse( argc, argv ) ) {
         std::cerr << "Failed to parse command line arguments\n";
-        return __EXIT_ERROR_FAILED_PARSE_CLI_ARGS;
+        _exit( __EXIT_ERROR_FAILED_PARSE_CLI_ARGS );
     }
     if ( nPort <= 0 ) {
         std::cerr << "Valid server port number (--port) must be specified to start RPC server(s). "
                      "See --help\n";
-        return __EXIT_ERROR_BAD_PORT_NUMBER;
+        _exit( __EXIT_ERROR_BAD_PORT_NUMBER );
     }
     bool bNeedSSL = ( strProtocol == "https" || strProtocol == "wss" ) ? true : false;
     if ( bNeedSSL ) {
@@ -1267,7 +1269,7 @@ int main( int argc, char** argv ) {
             std::cerr
                 << "Both SSL certificate(--ssl-cert) and key(--ssl-key) file must be specified. "
                    "See --help\n";
-            return __EXIT_ERROR_BAD_SSL_FILE_PATHS;
+            _exit( __EXIT_ERROR_BAD_SSL_FILE_PATHS );
         }
         helper_ssl_cert_and_key_holder::g_strFilePathKey = strPathSslKey;
         helper_ssl_cert_and_key_holder::g_strFilePathCert = strPathSslCert;
@@ -1279,7 +1281,7 @@ int main( int argc, char** argv ) {
         skutils::tools::format( "%s://%s:%d", strProtocol.c_str(), strBindAddress.c_str(), nPort );
     std::cout << ( "RPC server URL is \"" + strURL + "\"\n" );
 
-    helper_protocol_rest_call( strProtocol.c_str(), strBindAddress.c_str(), nPort );
+    helper_protocol_rest_call( strProtocol.c_str(), strBindAddress.c_str(), nPort, true );
 
-    return __EXIT_SUCCESS;
+    _exit( __EXIT_SUCCESS );
 }
