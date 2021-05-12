@@ -418,14 +418,14 @@ helper_server_http_base::helper_server_http_base(
         } );
     pServer_->Post( "/", [&]( const skutils::http::request& req, skutils::http::response& res ) {
         std::cout << ( cc::ws_rx_inv( ">>> " + std::string( strSchemeUC_ ) + "-RX-POST >>> " ) +
-                       cc::ws_rx( " >>> " ) + cc::j( req.body_ ) + "\n" );
+                       cc::j( req.body_ ) + "\n" );
         //
         //
         std::string strResult = req.body_;
         //
         //
         std::cout << ( cc::ws_tx_inv( "<<< " + std::string( strSchemeUC_ ) + "-TX-POST <<< " ) +
-                       cc::ws_tx( " <<< " ) + cc::j( strResult ) + "\n" );
+                       cc::j( strResult ) + "\n" );
         res.set_header( "access-control-allow-origin", "*" );
         res.set_header( "vary", "Origin" );
         res.set_content( strResult.c_str(), "application/json" );
@@ -1271,8 +1271,9 @@ int main( int argc, char** argv ) {
         }
         helper_ssl_cert_and_key_holder::g_strFilePathKey = strPathSslKey;
         helper_ssl_cert_and_key_holder::g_strFilePathCert = strPathSslCert;
-        std::cout << ( "Using SSL key file \"" + strPathSslKey + "\"\n" );
-        std::cout << ( "Using SSL certificate file \"" + strPathSslCert + "\"\n" );
+        std::cout << ( "Using specified SSL key file \"" + strPathSslKey + "\"(if available)\n" );
+        std::cout << ( "Using specified SSL certificate file \"" + strPathSslCert +
+                       "\"(if available)\n" );
     }
     std::string strURL =
         skutils::tools::format( "%s://%s:%d", strProtocol.c_str(), strBindAddress.c_str(), nPort );

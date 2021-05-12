@@ -1665,10 +1665,13 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     // clear_fields();
     deinit();
     interface_name_ = ( strInterfaceName && strInterfaceName[0] ) ? strInterfaceName : "";
-    bool bDoGlobalInitSSL = false;
+    bool bDoGlobalInitSSL = false, bDoLocalInitSSL = false;
     if ( isSSL && pSA != nullptr ) {
-        if ( ssl_perform_global_init_ )
-            bDoGlobalInitSSL = true;
+        // if ( ssl_perform_global_init_ ) // LS: always do global SSL init in WSS client
+        bDoGlobalInitSSL = true;
+        // if ( !bDoGlobalInitSSL )
+        //    bDoLocalInitSSL = true;
+
         cert_path_ = pSA->strCertificateFile_;
         key_path_ = pSA->strPrivateKeyFile_.c_str();
         ca_path_ = pSA->strCertificationChainFile_.c_str();  // ???
@@ -1818,6 +1821,11 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
 
     ctx_info_.iface =
         ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
+    //
+    //
+    //
+    //
+    //
 
     ctx_ = ::lws_create_context( &ctx_info_ );
     if ( ctx_ == nullptr ) {
@@ -1829,51 +1837,71 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     strURL_ = skutils::tools::format(
         "%s://%s:%d%s", ssl_flags_ ? "wss" : "ws", strHost.c_str(), nPort, sp.c_str() );
     std::string strOrigin = skutils::tools::format( "%s:%d", strHost.c_str(), nPort );
-    //				wsi_ =
-    //					::lws_client_connect(
-    //						ctx_,
-    //						strHost.c_str(),
-    //						nPort,
-    //						ssl_flags_,
-    //						sp.c_str(),
-    //						strOrigin.c_str(), // "origin"
-    //						nullptr,
-    //						g_strDefaultProtocolName.c_str(), // protocols_[cpi].name
-    //						-1
-    //						);
-    struct lws_client_connect_info cci;
-    ::memset( &cci, 0, sizeof( struct lws_client_connect_info ) );
-    cci.context = ctx_;
-    cci.ssl_connection = ssl_flags_;
-    cci.address = strHost.c_str();
-    cci.port = nPort;
-    cci.path = sp.c_str();
-    cci.host = ::lws_canonical_hostname( ctx_ );
-    cci.origin = strOrigin.c_str();  // "origin"
-    cci.protocol = g_strDefaultProtocolName.c_str();
-    cci.ietf_version_or_minus_one = -1;
-    cci.pwsi = &wsi_;
-    wsi_ = ::lws_client_connect_via_info( &cci );
-    if ( wsi_ == nullptr ) {
-        deinit();
-        onLogMessage( e_ws_log_message_type_t::eWSLMT_error, "NLWS: client wsi creation fail" );
-        return false;
-    }
-    configure_wsi( wsi_ );
-    stat_reg( this );
 
     clientThreadStopFlag_ = false;
     clientThreadWasStopped_ = true;
+    std::atomic_bool threadInitDone = false, threadInitSuccess = false;
     clientThread_ = std::thread( [&]() {
         clientThreadWasStopped_ = false;
+        if ( bDoLocalInitSSL ) {
+            SSL_load_error_strings();
+            SSL_library_init();
+        }
+        //				wsi_ =
+        //					::lws_client_connect(
+        //						ctx_,
+        //						strHost.c_str(),
+        //						nPort,
+        //						ssl_flags_,
+        //						sp.c_str(),
+        //						strOrigin.c_str(), // "origin"
+        //						nullptr,
+        //						g_strDefaultProtocolName.c_str(), // protocols_[cpi].name
+        //						-1
+        //						);
+        struct lws_client_connect_info cci;
+        ::memset( &cci, 0, sizeof( struct lws_client_connect_info ) );
+        cci.context = ctx_;
+        cci.ssl_connection = ssl_flags_;
+        cci.address = strHost.c_str();
+        cci.port = nPort;
+        cci.path = sp.c_str();
+        cci.host = ::lws_canonical_hostname( ctx_ );
+        cci.origin = strOrigin.c_str();  // "origin"
+        cci.protocol = g_strDefaultProtocolName.c_str();
+        cci.ietf_version_or_minus_one = -1;
+        cci.pwsi = &wsi_;
+        wsi_ = ::lws_client_connect_via_info( &cci );
+        if ( wsi_ == nullptr ) {
+            deinit();
+            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, "NLWS: client wsi creation fail" );
+            threadInitSuccess = false;
+            threadInitDone = true;
+            clientThreadWasStopped_ = true;
+            if ( bDoLocalInitSSL ) {
+                ERR_free_strings();
+            }
+            return;
+        }
+        configure_wsi( wsi_ );
+        stat_reg( this );
+        threadInitSuccess = true;
+        threadInitDone = true;
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: start" );
         while ( !clientThreadStopFlag_ ) {
             ::lws_service( ctx_, g_lws_service_timeout_ms );
             do_writable_callbacks_all_protocol();
         }
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: stop" );
+        if ( bDoLocalInitSSL ) {
+            ERR_free_strings();
+        }
         clientThreadWasStopped_ = true;
     } );
+    while ( !threadInitDone )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 20 ) );
+    if ( !threadInitSuccess )
+        return false;
     // do_writable_callbacks_all_protocol();
     // while( ! ( connection_flag_ || destroy_flag_ ) )
     //	std::this_thread::sleep_for( std::chrono::milliseconds(20) );
