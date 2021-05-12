@@ -1,5 +1,15 @@
 #include "main.h"
 
+#define __EXIT_SUCCESS 0
+#define __EXIT_ERROR_REST_CALL_FAILED 13
+#define __EXIT_ERROR_BAD_BIND_ADDRESS 14
+#define __EXIT_ERROR_BAD_PROTOCOL_NAME 15
+#define __EXIT_ERROR_FAILED_PARSE_CLI_ARGS 16
+#define __EXIT_ERROR_BAD_PORT_NUMBER 17
+#define __EXIT_ERROR_BAD_SSL_FILE_PATHS 18
+#define __EXIT_ERROR_IN_TEST_EXCEPTOION 19
+#define __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION 20
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -485,7 +495,7 @@ nlohmann::json helper_client::call( const nlohmann::json& joMsg ) {
 
 helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTargetPort,
     const char* strScheme, const size_t nConnectAttempts )
-    : helper_client( strClientName, nTargetPort, strScheme ) {
+    : helper_client( strClientName, nTargetPort, strScheme ), bHaveAnswer_( false ) {
     if ( strScheme_ == "wss" ) {
         auto& ssl_info = helper_ssl_info();
         strCertificateFile_ = ssl_info.strFilePathCert_;
@@ -1106,7 +1116,7 @@ void with_client_server( fn_with_client_server_t fn, const std::string& strClien
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void helper_protocol_busy_port( const char* strProto, int nPort ) {
+void helper_protocol_busy_port( const char* strProtocol, int nPort ) {
     std::cout << ( cc::debug( "Protocol busy port check" ) + "\n" );
     with_busy_tcp_port(
         [&]() -> void {  // fn_with_busy_tcp_port_worker_t
@@ -1117,7 +1127,7 @@ void helper_protocol_busy_port( const char* strProto, int nPort ) {
                     std::cout << ( cc::sunny( "WE SHOULD NOT REACH THIS EXECUTION POINT" ) + "\n" );
                     // assert( false );
                 },
-                strProto, nPort );
+                strProtocol, nPort );
             std::cout << ( cc::sunny( "Server finish" ) + "\n" );
         },
         [&]( const std::string& strErrorDescription ) -> bool {  // fn_with_busy_tcp_port_error_t
@@ -1130,58 +1140,95 @@ void helper_protocol_busy_port( const char* strProto, int nPort ) {
     std::cout << ( cc::sunny( "Busy port de-allocated" ) + "\n" );
 }
 
-void helper_protocol_rest_call( const char* strProto, int nPort ) {
+void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddress, int nPort ) {
     std::atomic_bool end_reached = false, end_2_reached = false;
     with_server(
         [&]( helper_server & /*refServer*/ ) -> void {
-            std::string strCall( "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
-            nlohmann::json joCall = ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
-            std::cout << ( cc::normal( "Startup" ) + "\n" );
-            std::string strURL = skutils::tools::format( "%s://127.0.0.1:%d", strProto, nPort );
-            skutils::url u( strURL );
-            skutils::rest::client restCall( u );
-            std::cout << ( cc::info( "input" ) + cc::debug( "..........." ) +
-                           cc::normal( joCall.dump() ) + "\n" );
-            skutils::rest::data_t dataOut = restCall.call( strCall );
-            // assert( ! dataOut.empty() );
-            nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
-            std::cout << ( cc::info( "output" ) + cc::debug( ".........." ) +
-                           cc::normal( joResult.dump() ) + "\n" );
-            // assert( joCall.dump() == joResult.dump() );
-            end_reached = true;
-            std::cout << ( cc::success( "Finish" ) + "\n" );
+            try {
+                std::string strCall(
+                    "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
+                nlohmann::json joCall =
+                    ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
+                std::cout << ( cc::normal( "Startup" ) + "\n" );
+                std::string strURL =
+                    skutils::tools::format( "%s://%s:%d", strProtocol, strBindAddress, nPort );
+                skutils::url u( strURL );
+                skutils::rest::client restCall( u );
+                std::cout << ( cc::info( "input" ) + cc::debug( "..........." ) +
+                               cc::normal( joCall.dump() ) + "\n" );
+                skutils::rest::data_t dataOut = restCall.call( strCall );
+                // assert( ! dataOut.empty() );
+                nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
+                std::cout << ( cc::info( "output" ) + cc::debug( ".........." ) +
+                               cc::normal( joResult.dump() ) + "\n" );
+                // assert( joCall.dump() == joResult.dump() );
+                end_reached = true;
+                std::cout << ( cc::success( "Finish" ) + "\n" );
+            } catch ( std::exception& ex ) {
+                std::string strErrorDescription = ex.what();
+                std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
+                               cc::warn( strErrorDescription ) + "\n" );
+                // assert( false );
+                exit( __EXIT_ERROR_IN_TEST_EXCEPTOION );
+            } catch ( ... ) {
+                std::string strErrorDescription = "unknown exception";
+                std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
+                               cc::warn( strErrorDescription ) + "\n" );
+                // assert( false );
+                exit( __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION );
+            }
         },
-        strProto, nPort );
+        strProtocol, nPort );
     if ( !end_reached )
-        exit( 13 );
+        exit( __EXIT_ERROR_REST_CALL_FAILED );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main( int argc, char** argv ) {
-    std::string strPathSslKey, strPathSslCert;
-    int nPort = -1;
+    std::string strProtocol = "https", strBindAddress = "127.0.0.1", strPathSslKey, strPathSslCert;
+    int nPort = 27890;
     skutils::command_line::parser clp( "skaled_ssl_test", "1.0.0" );
-    clp.on( "version", "Show version information",
+    clp.on( "version", "Show version information.",
            [&]() -> void {
                std::cout << clp.banner_text();
                exit( 0 );
            } )
-        .on( "help", "Show help",
+        .on( "help", "Show help.",
             [&]() -> void {
                 std::cout << clp.banner_text() << clp.options_text();
                 exit( 0 );
             } )
-        .on( "ssl-key", "Specifies path to SSL key file",
+        .on( "ssl-key", "Specifies path to existing valid SSL key file.",
             [&]( const std::string& strValue ) -> void {
                 strPathSslKey = skutils::tools::trim_copy( strValue );
             } )
-        .on( "ssl-cert", "Specifies path to SSL certificate file file",
+        .on( "ssl-cert", "Specifies path to existing valid SSL certificate file file.",
             [&]( const std::string& strValue ) -> void {
                 strPathSslCert = skutils::tools::trim_copy( strValue );
             } )
-        .on( "port", "Run RPC server(s) on specified port",
+        .on( "bind", "Bind RPC server(s) to specified address, default is \"127.0.0.1\".",
+            [&]( const std::string& strValue ) -> void {
+                strBindAddress = skutils::tools::trim_copy( strValue );
+                if ( strBindAddress.empty() ) {
+                    std::cerr << "Bad bind address specified in command line arguments.\n";
+                    exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
+                }
+            } )
+        .on( "proto",
+            "Run RPC server(s) on specified protocol(\"http\", \"https\", \"ws\", \"wss\", default "
+            "is \"https\").",
+            [&]( const std::string& strValue ) -> void {
+                strProtocol = skutils::tools::trim_copy( strValue );
+                if ( !( strProtocol == "http" || strProtocol == "https" || strProtocol == "ws" ||
+                         strProtocol == "wss" ) ) {
+                    std::cerr << "Bad protocol name specified in command line arguments, need "
+                                 "\"http\", \"https\", \"ws\" or \"wss\".\n";
+                    exit( __EXIT_ERROR_BAD_PROTOCOL_NAME );
+                }
+            } )
+        .on( "port", "Run RPC server(s) on specified port(default is 27890).",
             [&]( const std::string& strValue ) -> void {
                 std::string strPort = skutils::tools::trim_copy( strValue );
                 if ( !strPort.empty() ) {
@@ -1190,39 +1237,48 @@ int main( int argc, char** argv ) {
                         nPort = -1;
                 }
             } )
-        //.on( "ws-mode",
-        //    "Run web3 WS and/or WSS server(s) using specified mode(" +
-        //        skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
-        //        skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode ),
-        //    [&]( const std::string& strValue ) -> void {
-        //        skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( strValue );
-        //    } )
-        //.on( "ws-log",
-        //    "Web socket debug logging mode(\"none\", \"basic\", \"detailed\"; default is
-        //    \"none\")",
-        //    [&]( const std::string& strValue ) -> void {
-        //        skutils::ws::g_eWSLL = skutils::ws::str2wsll( strValue );
-        //    } )
-        ;
+        .on( "ws-mode",
+            "Run \"ws\" or \"wss\" RPC server(s) using specified mode(" +
+                skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
+                skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode ) + ".",
+            [&]( const std::string& strValue ) -> void {
+                skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( strValue );
+            } )
+        .on( "ws-log",
+            "Web socket debug logging mode(\"none\", \"basic\", \"detailed\"; default is "
+            "\"none\").",
+            [&]( const std::string& strValue ) -> void {
+                skutils::ws::g_eWSLL = skutils::ws::str2wsll( strValue );
+            } );
     if ( !clp.parse( argc, argv ) ) {
         std::cerr << "Failed to parse command line arguments\n";
-        return 13;
+        return __EXIT_ERROR_FAILED_PARSE_CLI_ARGS;
     }
     if ( nPort <= 0 ) {
-        std::cerr << "Server port number (--wss-port) must be specified to start web socket "
-                     "server(s). See --help\n";
-        return 13;
-    }
-    bool bHaveSSL = ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) ) ? true : false;
-    if ( !bHaveSSL ) {
-        std::cerr << "Both SSL certificate(--ssl-cert) and key(--ssl-key) file must be specified. "
+        std::cerr << "Valid server port number (--port) must be specified to start RPC server(s). "
                      "See --help\n";
-        return 13;
+        return __EXIT_ERROR_BAD_PORT_NUMBER;
     }
-    helper_ssl_cert_and_key_holder::g_strFilePathKey = strPathSslKey;
-    helper_ssl_cert_and_key_holder::g_strFilePathCert = strPathSslCert;
+    bool bNeedSSL = ( strProtocol == "https" || strProtocol == "wss" ) ? true : false;
+    if ( bNeedSSL ) {
+        bool bHaveSSL =
+            ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) ) ? true : false;
+        if ( !bHaveSSL ) {
+            std::cerr
+                << "Both SSL certificate(--ssl-cert) and key(--ssl-key) file must be specified. "
+                   "See --help\n";
+            return __EXIT_ERROR_BAD_SSL_FILE_PATHS;
+        }
+        helper_ssl_cert_and_key_holder::g_strFilePathKey = strPathSslKey;
+        helper_ssl_cert_and_key_holder::g_strFilePathCert = strPathSslCert;
+        std::cout << ( "Using SSL key file \"" + strPathSslKey + "\"\n" );
+        std::cout << ( "Using SSL certificate file \"" + strPathSslCert + "\"\n" );
+    }
+    std::string strURL =
+        skutils::tools::format( "%s://%s:%d", strProtocol.c_str(), strBindAddress.c_str(), nPort );
+    std::cout << ( "RPC server URL is \"" + strURL + "\"\n" );
 
-    helper_protocol_rest_call( "https", nPort );
+    helper_protocol_rest_call( strProtocol.c_str(), strBindAddress.c_str(), nPort );
 
-    return 0;
+    return __EXIT_SUCCESS;
 }
