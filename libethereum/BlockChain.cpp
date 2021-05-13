@@ -1273,18 +1273,19 @@ void BlockChain::garbageCollect( bool _force ) {
         m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
     }
 
-    /*
+
+
     {
         WriteGuard l(x_blockHashes);
-        // allow only 1024 blockhashes in the cache
-        if (m_blockHashes.size() > 1024) {
+        // allow only 4096 blockhashes in the cache
+        if (m_blockHashes.size() > 4096) {
             auto last = m_blockHashes.begin();
-            std::advance(last, (m_blockHashes.size() - 1024));
+            std::advance(last, (m_blockHashes.size() - 4096));
             m_blockHashes.erase(m_blockHashes.begin(), last);
-            assert(m_blockHashes.size() == 1024);
+            assert(m_blockHashes.size() == 4096);
         }
     }
-     */
+
 }
 
 void BlockChain::clearCaches() {
