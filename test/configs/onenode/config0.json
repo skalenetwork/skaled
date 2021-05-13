@@ -324,8 +324,8 @@
 	      "logLevelProposal": "info",
 	      "rotateAfterBlock": 0,
 	      "ecdsaKeyName": "",
-	      "minCacheSize": 1000000,
-	      "maxCacheSize": 2000000,
+	      "minCacheSize": 1000,
+	      "maxCacheSize": 2000,
 	      "collectionQueueSize": 2,
 	      "collectionDuration": 10,
 	      "transactionQueueSize": 100,
@@ -337,7 +337,7 @@
 	        "schainID": 1,
 	        "schainOwner": "0xd2c5b39B4e735C17612Bb5a08FD024ccc5dBCb23",
 	        "storageLimit": 1000000,
-	        "emptyBlockIntervalMs": 3000,
+	        "emptyBlockIntervalMs": 1,
 	        "nodes": [
 	          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey":""}
 	        ]
