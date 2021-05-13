@@ -1289,7 +1289,7 @@ void BlockChain::garbageCollect(bool _force) {
             assert(m_blockHashes.size() == 4096);
         }
     }
-     */
+
 }
 
 void BlockChain::clearCaches() {
