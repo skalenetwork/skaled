@@ -1239,6 +1239,7 @@ void BlockChain::garbageCollect(bool _force) {
     if (m_lastStats.memTotal() < c_minCacheSize)
         return;
 
+
     m_lastCollection = chrono::system_clock::now();
 
     {
