@@ -1146,7 +1146,7 @@ static unsigned getHashSize( unordered_map< K, T > const& _map ) {
 
 template < class K, class T >
 static unsigned getBlockHashSize( map< K, T > const& _map ) {
-    return _map.size() * (BlockHash::size + 64);
+    return _map.size() * ( BlockHash::size + 64 );
 }
 
 void BlockChain::updateStats() const {
@@ -1169,7 +1169,6 @@ void BlockChain::updateStats() const {
     {
         DEV_READ_GUARDED( x_blocksBlooms )
         blocksBloomsSize = getHashSize( m_blocksBlooms );
-
     }
 
     m_lastStats.memLogBlooms = logBloomsSize + blocksBloomsSize;
@@ -1247,11 +1246,11 @@ void BlockChain::garbageCollect( bool _force ) {
     m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
 
     // allow only 1024 blockhashes in the cache
-    if (m_blockHashes.size() > 1024) {
+    if ( m_blockHashes.size() > 1024 ) {
         auto last = m_blockHashes.begin();
-        std::advance(last, (m_blockHashes.size() - 1024));
-        m_blockHashes.erase(m_blockHashes.begin(), last);
-        assert(m_blockHashes.size() == 1024);
+        std::advance( last, ( m_blockHashes.size() - 1024 ) );
+        m_blockHashes.erase( m_blockHashes.begin(), last );
+        assert( m_blockHashes.size() == 1024 );
     }
 }
 
