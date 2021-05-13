@@ -1278,6 +1278,7 @@ void BlockChain::garbageCollect(bool _force) {
     }
 
 
+    /*
     {
         WriteGuard l(x_blockHashes);
         // allow only 1024 blockhashes in the cache
@@ -1288,6 +1289,7 @@ void BlockChain::garbageCollect(bool _force) {
             assert(m_blockHashes.size() == 1024);
         }
     }
+     */
 }
 
 void BlockChain::clearCaches() {
