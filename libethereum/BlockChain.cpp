@@ -348,10 +348,10 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 cwarn << "ODD: Import queue contains already imported block";
                 continue;
             } catch ( dev::eth::UnknownParent const& ) {
-                cwarn
-                    << "ODD: Import queue contains block with unknown parent.";  // << LogTag::Error
-                                                                                 // <<
-                                                                                 // boost::current_exception_diagnostic_information();
+                cwarn << "ODD: Import queue contains block with unknown parent.";  // <<
+                                                                                   // LogTag::Error
+                // <<
+                // boost::current_exception_diagnostic_information();
                 // NOTE: don't reimport since the queue should guarantee everything in the right
                 // order. Can't continue - chain bad.
                 badBlocks.push_back( block.verified.info.hash() );
@@ -770,8 +770,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // Most of the time these two will be equal - only when we're doing a chain revert
     // will they not be
     if ( common != last )
-        DEV_READ_GUARDED( x_lastBlockHash )
-    clearCachesDuringChainReversion( number( common ) + 1 );
+        DEV_READ_GUARDED( x_lastBlockHash ) clearCachesDuringChainReversion( number( common ) + 1 );
 
     // TODO Understand and remove this trash with "routes"
 
@@ -1145,46 +1144,72 @@ static unsigned getHashSize( unordered_map< K, T > const& _map ) {
 }
 
 template < class K, class T >
+static uint64_t getApproximateHashSize( unordered_map< K, T > const& _map ) {
+    uint64_t ret = 0;
+    uint64_t counter = 0;
+    for ( auto const& i : _map ) {
+        ret += i.second.size + 64;
+        counter++;
+        if ( counter >= 1024 ) {
+            break;
+        }
+    }
+    if ( _map.size() <= 1024 )
+        return ret;
+    else {
+        // sample for large cache
+        return ( ret * _map.size() ) / 1024;
+    }
+}
+
+
+template < class K, class T >
 static unsigned getBlockHashSize( map< K, T > const& _map ) {
     return _map.size() * ( BlockHash::size + 64 );
 }
 
 void BlockChain::updateStats() const {
     m_lastStats.memBlocks = 0;
+    uint64_t counter = 0;
     {
         DEV_READ_GUARDED( x_blocks )
-        for ( auto const& i : m_blocks )
+
+        for ( auto const& i : m_blocks ) {
             m_lastStats.memBlocks += i.second.size() + 64;
+            counter++;
+            if ( counter >= 1024 )
+                break;
+        }
+
+        // sample for large cache
+        if ( m_blocks.size() > 1024 ) {
+            m_lastStats.memBlocks = ( m_lastStats.memBlocks * m_blocks.size() ) / 1024;
+        }
     }
-    {
-        DEV_READ_GUARDED( x_details )
-        m_lastStats.memDetails = getHashSize( m_details );
-    }
+    { DEV_READ_GUARDED( x_details ) m_lastStats.memDetails = getApproximateHashSize( m_details ); }
     size_t logBloomsSize = 0;
     size_t blocksBloomsSize = 0;
-    {
-        DEV_READ_GUARDED( x_logBlooms )
-        logBloomsSize = getHashSize( m_logBlooms );
-    }
+    { DEV_READ_GUARDED( x_logBlooms ) logBloomsSize = getApproximateHashSize( m_logBlooms ); }
     {
         DEV_READ_GUARDED( x_blocksBlooms )
-        blocksBloomsSize = getHashSize( m_blocksBlooms );
+        blocksBloomsSize = getApproximateHashSize( m_blocksBlooms );
     }
 
     m_lastStats.memLogBlooms = logBloomsSize + blocksBloomsSize;
 
     {
         DEV_READ_GUARDED( x_receipts )
-        m_lastStats.memReceipts = getHashSize( m_receipts );
+        m_lastStats.memReceipts = getApproximateHashSize( m_receipts );
     }
     {
         DEV_READ_GUARDED( x_blockHashes )
-        m_lastStats.memBlockHashes = getBlockHashSize( m_blockHashes );
+        m_lastStats.memBlockHashes = m_blockHashes.size() * ( 64 + BlockHash::size );
     }
 
     {
         DEV_READ_GUARDED( x_transactionAddresses )
-        m_lastStats.memTransactionAddresses = getHashSize( m_transactionAddresses );
+        m_lastStats.memTransactionAddresses =
+            m_transactionAddresses.size() * ( 64 + TransactionAddress::size );
     }
 }
 
@@ -1197,61 +1222,69 @@ void BlockChain::garbageCollect( bool _force ) {
     if ( m_lastStats.memTotal() < c_minCacheSize )
         return;
 
+
     m_lastCollection = chrono::system_clock::now();
 
-    Guard l( x_cacheUsage );
-    for ( CacheID const& id : m_cacheUsage.back() ) {
-        m_inUse.erase( id );
-        // kill i from cache.
-        switch ( id.second ) {
-        case ( unsigned ) -1: {
-            WriteGuard l( x_blocks );
-            m_blocks.erase( id.first );
-            break;
+    {
+        Guard l( x_cacheUsage );
+        for ( CacheID const& id : m_cacheUsage.back() ) {
+            m_inUse.erase( id );
+            // kill i from cache.
+            switch ( id.second ) {
+            case ( unsigned ) -1: {
+                WriteGuard l( x_blocks );
+                m_blocks.erase( id.first );
+                break;
+            }
+            case ExtraDetails: {
+                WriteGuard l( x_details );
+                m_details.erase( id.first );
+                break;
+            }
+            case ExtraBlockHash: {
+                // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
+                // second noteUsed() in BlockChain.h, which is a no-op.
+                assert( false );
+                break;
+            }
+            case ExtraReceipts: {
+                WriteGuard l( x_receipts );
+                m_receipts.erase( id.first );
+                break;
+            }
+            case ExtraLogBlooms: {
+                WriteGuard l( x_logBlooms );
+                m_logBlooms.erase( id.first );
+                break;
+            }
+            case ExtraTransactionAddress: {
+                WriteGuard l( x_transactionAddresses );
+                m_transactionAddresses.erase( id.first );
+                break;
+            }
+            case ExtraBlocksBlooms: {
+                WriteGuard l( x_blocksBlooms );
+                m_blocksBlooms.erase( id.first );
+                break;
+            }
+            }
         }
-        case ExtraDetails: {
-            WriteGuard l( x_details );
-            m_details.erase( id.first );
-            break;
-        }
-        case ExtraBlockHash: {
-            // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
-            // second noteUsed() in BlockChain.h, which is a no-op.
-            assert( false );
-            break;
-        }
-        case ExtraReceipts: {
-            WriteGuard l( x_receipts );
-            m_receipts.erase( id.first );
-            break;
-        }
-        case ExtraLogBlooms: {
-            WriteGuard l( x_logBlooms );
-            m_logBlooms.erase( id.first );
-            break;
-        }
-        case ExtraTransactionAddress: {
-            WriteGuard l( x_transactionAddresses );
-            m_transactionAddresses.erase( id.first );
-            break;
-        }
-        case ExtraBlocksBlooms: {
-            WriteGuard l( x_blocksBlooms );
-            m_blocksBlooms.erase( id.first );
-            break;
-        }
-        }
+        m_cacheUsage.pop_back();
+        m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
     }
-    m_cacheUsage.pop_back();
-    m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
 
-    // allow only 1024 blockhashes in the cache
-    if ( m_blockHashes.size() > 1024 ) {
-        auto last = m_blockHashes.begin();
-        std::advance( last, ( m_blockHashes.size() - 1024 ) );
-        m_blockHashes.erase( m_blockHashes.begin(), last );
-        assert( m_blockHashes.size() == 1024 );
+    /*
+    {
+        WriteGuard l(x_blockHashes);
+        // allow only 1024 blockhashes in the cache
+        if (m_blockHashes.size() > 1024) {
+            auto last = m_blockHashes.begin();
+            std::advance(last, (m_blockHashes.size() - 1024));
+            m_blockHashes.erase(m_blockHashes.begin(), last);
+            assert(m_blockHashes.size() == 1024);
+        }
     }
+     */
 }
 
 void BlockChain::clearCaches() {
@@ -1292,6 +1325,7 @@ void BlockChain::clearCaches() {
         m_blockHashes.clear();
     }
 }
+
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
@@ -1337,6 +1371,7 @@ static inline unsigned upow( unsigned a, unsigned b ) {
         a *= a;
     return a;
 }
+
 static inline unsigned ceilDiv( unsigned n, unsigned d ) {
     return ( n + d - 1 ) / d;
 }
@@ -1607,8 +1642,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                                       CheckTransaction::Everything :
                                       CheckTransaction::None );
                 m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs
-                                                                  // blockGasLimit is checked
-                                                                  // later in enact function
+                // blockGasLimit is checked
+                // later in enact function
                 res.transactions.push_back( t );
             } catch ( Exception& ex ) {
                 ex << errinfo_phase( 1 );
