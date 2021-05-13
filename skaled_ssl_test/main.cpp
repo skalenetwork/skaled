@@ -144,10 +144,14 @@ helper_ssl_cert_and_key_holder& helper_ssl_cert_and_key_provider::helper_ssl_inf
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server::helper_server( const char* strScheme, int nListenPort )
+helper_server::helper_server(
+    const char* strScheme, int nListenPort, const std::string& strBindAddressServer )
     : strScheme_( skutils::tools::to_lower( strScheme ) ),
       strSchemeUC_( skutils::tools::to_upper( strScheme ) ),
-      nListenPort_( nListenPort ) {}
+      nListenPort_( nListenPort ),
+      strBindAddressServer_( strBindAddressServer.empty() ? "localhost" : strBindAddressServer )
+{
+}
 
 helper_server::~helper_server() {}
 
@@ -207,7 +211,7 @@ void helper_server::stat_check_port_availability_to_start_listen(
 
 void helper_server::check_can_listen() {
     stat_check_port_availability_to_start_listen(
-        4, "127.0.0.1", nListenPort_, strScheme_.c_str() );
+        4, strBindAddressServer_.c_str(), nListenPort_, strScheme_.c_str() );
     stat_check_port_availability_to_start_listen( 6, "::1", nListenPort_, strScheme_.c_str() );
 }
 
@@ -275,8 +279,9 @@ helper_server_ws_base& helper_ws_peer::get_helper_server() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_ws_base::helper_server_ws_base( const char* strScheme, int nListenPort )
-    : helper_server( strScheme, nListenPort ) {
+helper_server_ws_base::helper_server_ws_base(
+    const char* strScheme, int nListenPort, const std::string& strBindAddressServer )
+    : helper_server( strScheme, nListenPort, strBindAddressServer ) {
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
         std::cout << ( cc::info( strScheme_ ) + cc::debug( " server will instantiate new peer" ) +
@@ -368,8 +373,8 @@ void helper_server_ws_base::onLogMessage(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_ws::helper_server_ws( int nListenPort )
-    : helper_server_ws_base( "ws", nListenPort ) {}
+helper_server_ws::helper_server_ws( int nListenPort, const std::string& strBindAddressServer )
+    : helper_server_ws_base( "ws", nListenPort, strBindAddressServer ) {}
 
 helper_server_ws::~helper_server_ws() {}
 
@@ -380,8 +385,8 @@ bool helper_server_ws::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_wss::helper_server_wss( int nListenPort )
-    : helper_server_ws_base( "wss", nListenPort ) {}
+helper_server_wss::helper_server_wss( int nListenPort, const std::string& strBindAddressServer )
+    : helper_server_ws_base( "wss", nListenPort, strBindAddressServer ) {}
 
 helper_server_wss::~helper_server_wss() {}
 
@@ -392,9 +397,9 @@ bool helper_server_wss::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_http_base::helper_server_http_base(
-    const char* strScheme, int nListenPort, bool is_async_http_transfer_mode )
-    : helper_server( strScheme, nListenPort ) {
+helper_server_http_base::helper_server_http_base( const char* strScheme, int nListenPort,
+    const std::string& strBindAddressServer, bool is_async_http_transfer_mode )
+    : helper_server( strScheme, nListenPort, strBindAddressServer ) {
     if ( strScheme_ == "https" ) {
         auto& ssl_info = helper_ssl_info();
         pServer_.reset( new skutils::http::SSL_server( ssl_info.strFilePathCert_.c_str(),
@@ -443,14 +448,16 @@ void helper_server_http_base::stop() {
 }
 
 void helper_server_http_base::run() {
-    pServer_->listen( 4, "localhost", nListenPort_ );
+    pServer_->listen( 4, strBindAddressServer_.c_str(), nListenPort_ );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_http::helper_server_http( int nListenPort, bool is_async_http_transfer_mode )
-    : helper_server_http_base( "http", nListenPort, is_async_http_transfer_mode ) {}
+helper_server_http::helper_server_http(
+    int nListenPort, const std::string& strBindAddressServer, bool is_async_http_transfer_mode )
+    : helper_server_http_base(
+          "http", nListenPort, strBindAddressServer, is_async_http_transfer_mode ) {}
 helper_server_http::~helper_server_http() {}
 
 bool helper_server_http::isSSL() const {
@@ -460,8 +467,10 @@ bool helper_server_http::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_server_https::helper_server_https( int nListenPort, bool is_async_http_transfer_mode )
-    : helper_server_http_base( "https", nListenPort, is_async_http_transfer_mode ) {}
+helper_server_https::helper_server_https(
+    int nListenPort, const std::string& strBindAddressServer, bool is_async_http_transfer_mode )
+    : helper_server_http_base(
+          "https", nListenPort, strBindAddressServer, is_async_http_transfer_mode ) {}
 helper_server_https::~helper_server_https() {}
 
 bool helper_server_https::isSSL() const {
@@ -471,11 +480,14 @@ bool helper_server_https::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-helper_client::helper_client( const char* strClientName, int nTargetPort, const char* strScheme )
+helper_client::helper_client( const char* strClientName, int nTargetPort, const char* strScheme, const std::string& strBindAddressClient )
     : strClientName_( strClientName ),
       nTargetPort_( nTargetPort ),
       strScheme_( skutils::tools::to_lower( strScheme ) ),
-      strSchemeUC_( skutils::tools::to_upper( strScheme ) ) {}
+      strSchemeUC_( skutils::tools::to_upper( strScheme ) ),
+      strBindAddressClient_( strBindAddressClient.empty() ? "localhost" : strBindAddressClient )
+{
+}
 helper_client::~helper_client() {}
 
 nlohmann::json helper_client::call( const nlohmann::json& joMsg ) {
@@ -494,8 +506,8 @@ nlohmann::json helper_client::call( const nlohmann::json& joMsg ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTargetPort,
-    const char* strScheme, const size_t nConnectAttempts )
-    : helper_client( strClientName, nTargetPort, strScheme ), bHaveAnswer_( false ) {
+    const char* strScheme, const std::string& strBindAddressClient, const size_t nConnectAttempts )
+    : helper_client( strClientName, nTargetPort, strScheme, strBindAddressClient ), bHaveAnswer_( false ) {
     if ( strScheme_ == "wss" ) {
         auto& ssl_info = helper_ssl_info();
         strCertificateFile_ = ssl_info.strFilePathCert_;
@@ -526,9 +538,8 @@ helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTa
                    cc::debug( "Will initalize client " ) + cc::info( strClientName_ ) +
                    cc::debug( "..." ) + "\n" );
     enableRestartTimer( false );
-    static const char g_strLocalHostName[] = "localhost";  // "127.0.0.1" // "::1" // "localhost"
     std::string strServerUrl = skutils::tools::format(
-        "%s://%s:%d", strScheme_.c_str(), g_strLocalHostName, nTargetPort_ );
+        "%s://%s:%d", strScheme_.c_str(), strBindAddressClient_.c_str(), nTargetPort_ );
     std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
                    cc::debug( "client will connect to: " ) + cc::u( strServerUrl ) +
                    cc::debug( "..." ) + "\n" );
@@ -665,8 +676,8 @@ bool helper_client_ws_base::call( const nlohmann::json& joMsg ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_ws::helper_client_ws(
-    const char* strClientName, int nTargetPort, const size_t nConnectAttempts )
-    : helper_client_ws_base( strClientName, nTargetPort, "ws", nConnectAttempts ) {}
+    const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts )
+    : helper_client_ws_base( strClientName, nTargetPort, "ws", strBindAddressClient, nConnectAttempts ) {}
 helper_client_ws::~helper_client_ws() {}
 
 bool helper_client_ws::isSSL() const {
@@ -677,8 +688,8 @@ bool helper_client_ws::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_wss::helper_client_wss(
-    const char* strClientName, int nTargetPort, const size_t nConnectAttempts )
-    : helper_client_ws_base( strClientName, nTargetPort, "wss", nConnectAttempts ) {}
+    const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts )
+    : helper_client_ws_base( strClientName, nTargetPort, "wss", strBindAddressClient, nConnectAttempts ) {}
 helper_client_wss::~helper_client_wss() {}
 
 bool helper_client_wss::isSSL() const {
@@ -689,12 +700,12 @@ bool helper_client_wss::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_http_base::helper_client_http_base( const char* strClientName, int nTargetPort,
-    const char* strScheme, const size_t /*nConnectAttempts*/ )
-    : helper_client( strClientName, nTargetPort, strScheme ) {
+    const char* strScheme, const std::string& strBindAddressClient, const size_t /*nConnectAttempts*/ )
+    : helper_client( strClientName, nTargetPort, strScheme, strBindAddressClient ) {
     if ( strScheme_ == "https" )
-        pClient_.reset( new skutils::http::SSL_client( -1, "localhost", nTargetPort_ ) );
+        pClient_.reset( new skutils::http::SSL_client( -1, strBindAddressClient_.c_str(), nTargetPort_ ) );
     else
-        pClient_.reset( new skutils::http::client( -1, "localhost", nTargetPort_ ) );
+        pClient_.reset( new skutils::http::client( -1, strBindAddressClient_.c_str(), nTargetPort_ ) );
 }
 helper_client_http_base::~helper_client_http_base() {
     stop();
@@ -751,8 +762,8 @@ bool helper_client_http_base::call( const nlohmann::json& joMsg, nlohmann::json&
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_http::helper_client_http(
-    const char* strClientName, int nTargetPort, const size_t nConnectAttempts )
-    : helper_client_http_base( strClientName, nTargetPort, "http", nConnectAttempts ) {}
+    const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts )
+    : helper_client_http_base( strClientName, nTargetPort, "http", strBindAddressClient, nConnectAttempts ) {}
 helper_client_http::~helper_client_http() {}
 
 bool helper_client_http::isSSL() const {
@@ -763,8 +774,8 @@ bool helper_client_http::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 helper_client_https::helper_client_https(
-    const char* strClientName, int nTargetPort, const size_t nConnectAttempts )
-    : helper_client_http_base( strClientName, nTargetPort, "https", nConnectAttempts ) {}
+    const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts )
+    : helper_client_http_base( strClientName, nTargetPort, "https", strBindAddressClient, nConnectAttempts ) {}
 helper_client_https::~helper_client_https() {}
 
 bool helper_client_https::isSSL() const {
@@ -838,12 +849,15 @@ socket_t create_socket( int ipVer, const char* host, int port, Fn fn, int socket
 };  // namespace tcp_helpers
 
 void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
-    fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4,
-    bool isIPv6, bool is_reuse_address, bool is_reuse_port ) {
+                         fn_with_busy_tcp_port_error_t fnErrorHandler,
+                         const std::string& strBindAddressServer,
+                         const int nSocketListenPort, bool isIPv4,
+                         bool isIPv6, bool is_reuse_address,
+                         bool is_reuse_port ) {
     socket_t fd4 = INVALID_SOCKET, fd6 = INVALID_SOCKET;
     try {
         if ( isIPv4 ) {  // "0.0.0.0"
-            fd4 = tcp_helpers::create_socket( 4, "127.0.0.1", nSocketListenPort,
+            fd4 = tcp_helpers::create_socket( 4, strBindAddressServer.c_str(), nSocketListenPort,
                 [&]( socket_t sock, struct addrinfo& ai ) -> bool {
                     int ret = 0;
                     if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) )
@@ -916,28 +930,28 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
         tcp_helpers::close_socket( fd6 );
 }
 
-void with_server(
-    fn_with_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort ) {
+void with_server( fn_with_server_t fn, const std::string& strServerUrlScheme,
+    const std::string& strBindAddressServer, const int nSocketListenPort ) {
     skutils::ws::security_args sa;
     std::string sus = skutils::tools::to_lower( strServerUrlScheme );
     std::shared_ptr< helper_server > pServer;
     if ( sus == "wss" ) {
-        pServer.reset( new helper_server_wss( nSocketListenPort ) );
+        pServer.reset( new helper_server_wss( nSocketListenPort, strBindAddressServer ) );
         // assert( pServer->isSSL() );
     } else if ( sus == "ws" ) {
-        pServer.reset( new helper_server_ws( nSocketListenPort ) );
+        pServer.reset( new helper_server_ws( nSocketListenPort, strBindAddressServer ) );
         // assert( !pServer->isSSL() );
     } else if ( sus == "https" || sus == "https_async" ) {
-        pServer.reset( new helper_server_https( nSocketListenPort, true ) );
+        pServer.reset( new helper_server_https( nSocketListenPort, strBindAddressServer, true ) );
         // assert( pServer->isSSL() );
     } else if ( sus == "https_sync" ) {
-        pServer.reset( new helper_server_https( nSocketListenPort, false ) );
+        pServer.reset( new helper_server_https( nSocketListenPort, strBindAddressServer, false ) );
         // assert( pServer->isSSL() );
     } else if ( sus == "http" || sus == "http_async" ) {
-        pServer.reset( new helper_server_http( nSocketListenPort, true ) );
+        pServer.reset( new helper_server_http( nSocketListenPort, strBindAddressServer, true ) );
         // assert( !pServer->isSSL() );
     } else if ( sus == "http_sync" ) {
-        pServer.reset( new helper_server_http( nSocketListenPort, false ) );
+        pServer.reset( new helper_server_http( nSocketListenPort, strBindAddressServer, false ) );
         // assert( !pServer->isSSL() );
     } else {
         std::cerr << ( cc::error( "Unknown server type: " ) + cc::warn( strServerUrlScheme ) +
@@ -964,8 +978,9 @@ void with_server(
     pServer->stop();
 }
 
-void with_client( fn_with_client_t fn, const std::string& strClientName,
-    const std::string& strServerUrlScheme, const int nSocketListenPort,
+void with_client(
+    fn_with_client_t fn, const std::string& strClientName, const std::string& strServerUrlScheme,
+    const std::string& strBindAddressClient, const int nSocketListenPort,
     bool runClientInOtherThread,   // = false // typically, this is never needed
     const size_t nConnectAttempts  // = 10
 ) {
@@ -974,8 +989,8 @@ void with_client( fn_with_client_t fn, const std::string& strClientName,
                        cc::debug( " thread..." ) + "\n" );
         std::atomic_bool bClientThreadFinished( false );
         std::thread clientThread( [&]() {
-            with_client(
-                fn, strClientName, strServerUrlScheme, nSocketListenPort, false, nConnectAttempts );
+            with_client( fn, strClientName, strServerUrlScheme, strBindAddressClient,
+                nSocketListenPort, false, nConnectAttempts );
             bClientThreadFinished = true;
             std::cout << ( cc::debug( " client " ) + cc::info( strClientName ) +
                            cc::debug( " thread will exit" ) + "\n" );
@@ -1003,19 +1018,19 @@ void with_client( fn_with_client_t fn, const std::string& strClientName,
     std::shared_ptr< helper_client > pClient;
     if ( sus == "wss" ) {
         pClient.reset(
-            new helper_client_wss( strClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
+            new helper_client_wss( strClientName.c_str(), nSocketListenPort, strBindAddressClient, nConnectAttempts ) );
         // assert( pClient->isSSL() );
     } else if ( sus == "ws" ) {
         pClient.reset(
-            new helper_client_ws( strClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
+            new helper_client_ws( strClientName.c_str(), nSocketListenPort, strBindAddressClient, nConnectAttempts ) );
         // assert( !pClient->isSSL() );
     } else if ( sus == "https" || sus == "https_async" || sus == "https_sync" ) {
         pClient.reset(
-            new helper_client_https( strClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
+            new helper_client_https( strClientName.c_str(), nSocketListenPort, strBindAddressClient, nConnectAttempts ) );
         // assert( pClient->isSSL() );
     } else if ( sus == "http" || sus == "http_async" || sus == "http_sync" ) {
         pClient.reset(
-            new helper_client_http( strClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
+            new helper_client_http( strClientName.c_str(), nSocketListenPort, strBindAddressClient, nConnectAttempts ) );
         // assert( !pClient->isSSL() );
     } else {
         std::cerr << ( cc::error( "Unknown client type: " ) + cc::warn( strServerUrlScheme ) +
@@ -1043,7 +1058,8 @@ void with_client( fn_with_client_t fn, const std::string& strClientName,
 }
 
 extern void with_clients( fn_with_client_t fn, const std::vector< std::string >& vecClientNames,
-    const std::string& strServerUrlScheme, const int nSocketListenPort,
+    const std::string& strServerUrlScheme, const std::string& strBindAddressClient,
+    const int nSocketListenPort,
     const size_t nConnectAttempts  // = 10
 ) {
     size_t i, cnt = vecClientNames.size();
@@ -1054,10 +1070,10 @@ extern void with_clients( fn_with_client_t fn, const std::vector< std::string >&
     std::atomic_size_t cntRunningThreads = cnt;
     for ( i = 0; i < cnt; ++i )
         vecThreads.emplace_back(
-            std::thread( [fn, i, strServerUrlScheme, nSocketListenPort, nConnectAttempts,
-                             &cntRunningThreads, &vecClientNames]() -> void {
-                with_client( fn, vecClientNames[i], strServerUrlScheme, nSocketListenPort, false,
-                    nConnectAttempts );
+            std::thread( [fn, i, strServerUrlScheme, strBindAddressClient, nSocketListenPort,
+                             nConnectAttempts, &cntRunningThreads, &vecClientNames]() -> void {
+                with_client( fn, vecClientNames[i], strServerUrlScheme, strBindAddressClient,
+                    nSocketListenPort, false, nConnectAttempts );
                 std::cout << ( cc::debug( "  client " ) + cc::info( vecClientNames[i] ) +
                                cc::debug( " thread will exit" ) + "\n" );
                 --cntRunningThreads;
@@ -1078,7 +1094,8 @@ extern void with_clients( fn_with_client_t fn, const std::vector< std::string >&
 }
 
 void with_client_server( fn_with_client_server_t fn, const std::string& strClientName,
-    const std::string& strServerUrlScheme, const int nSocketListenPort,
+    const std::string& strServerUrlScheme, const std::string& strBindAddressServer,
+    const std::string& strBindAddressClient, const int nSocketListenPort,
     bool runClientInOtherThread,   // = false // typically, this is never needed
     const size_t nConnectAttempts  // = 10
 ) {
@@ -1107,16 +1124,17 @@ void with_client_server( fn_with_client_server_t fn, const std::string& strClien
                         // assert( false );
                     }
                 },
-                strClientName, strServerUrlScheme, nSocketListenPort, runClientInOtherThread,
-                nConnectAttempts );
+                strClientName, strServerUrlScheme, strBindAddressServer, nSocketListenPort,
+                runClientInOtherThread, nConnectAttempts );
         },
-        strServerUrlScheme, nSocketListenPort );
+        strServerUrlScheme, strBindAddressServer, nSocketListenPort );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void helper_protocol_busy_port( const char* strProtocol, int nPort ) {
+void helper_protocol_busy_port(
+    const char* strProtocol, const char* strBindAddressServer, int nPort ) {
     std::cout << ( cc::debug( "Protocol busy port check" ) + "\n" );
     with_busy_tcp_port(
         [&]() -> void {  // fn_with_busy_tcp_port_worker_t
@@ -1127,7 +1145,7 @@ void helper_protocol_busy_port( const char* strProtocol, int nPort ) {
                     std::cout << ( cc::sunny( "WE SHOULD NOT REACH THIS EXECUTION POINT" ) + "\n" );
                     // assert( false );
                 },
-                strProtocol, nPort );
+                strProtocol, strBindAddressServer, nPort );
             std::cout << ( cc::sunny( "Server finish" ) + "\n" );
         },
         [&]( const std::string& strErrorDescription ) -> bool {  // fn_with_busy_tcp_port_error_t
@@ -1136,11 +1154,12 @@ void helper_protocol_busy_port( const char* strProtocol, int nPort ) {
             std::cout << ( cc::success( "SUCCESS - busy port handled" ) + "\n" );
             return true;  // returns true if errror should be ignored
         },
-        nPort );
+        strBindAddressServer, nPort );
     std::cout << ( cc::sunny( "Busy port de-allocated" ) + "\n" );
 }
 
-void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddress, int nPort, bool isAutoExitOnSuccess ) {
+void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddressServer,
+    const char* strBindAddressClient, int nPort, bool isAutoExitOnSuccess ) {
     std::atomic_bool end_reached = false, end_2_reached = false;
     with_server(
         [&]( helper_server & /*refServer*/ ) -> void {
@@ -1150,8 +1169,8 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
                 nlohmann::json joCall =
                     ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
                 std::cout << ( cc::normal( "Startup" ) + "\n" );
-                std::string strURL =
-                    skutils::tools::format( "%s://%s:%d", strProtocol, strBindAddress, nPort );
+                std::string strURL = skutils::tools::format(
+                    "%s://%s:%d", strProtocol, strBindAddressClient, nPort );
                 skutils::url u( strURL );
                 skutils::rest::client restCall( u );
                 std::cout << ( cc::info( "input" ) + cc::debug( "..........." ) +
@@ -1164,7 +1183,7 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
                 // assert( joCall.dump() == joResult.dump() );
                 end_reached = true;
                 std::cout << ( cc::success( "Finish" ) + "\n" );
-                if( isAutoExitOnSuccess )
+                if ( isAutoExitOnSuccess )
                     _exit( __EXIT_SUCCESS );
             } catch ( std::exception& ex ) {
                 std::string strErrorDescription = ex.what();
@@ -1180,7 +1199,7 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
                 _exit( __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION );
             }
         },
-        strProtocol, nPort );
+        strProtocol, strBindAddressServer, nPort );
     if ( !end_reached )
         _exit( __EXIT_ERROR_REST_CALL_FAILED );
 }
@@ -1189,7 +1208,8 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main( int argc, char** argv ) {
-    std::string strProtocol = "https", strBindAddress = "127.0.0.1", strPathSslKey, strPathSslCert;
+    std::string strProtocol = "https", strBindAddressServer = "localhost",
+                strBindAddressClient = "localhost", strPathSslKey, strPathSslCert;
     int nPort = 27890;
     skutils::command_line::parser clp( "skaled_ssl_test", "1.0.0" );
     clp.on( "version", "Show version information.",
@@ -1210,10 +1230,28 @@ int main( int argc, char** argv ) {
             [&]( const std::string& strValue ) -> void {
                 strPathSslCert = skutils::tools::trim_copy( strValue );
             } )
-        .on( "bind", "Bind RPC server(s) to specified address, default is \"127.0.0.1\".",
+        .on( "bind",
+            "Bind RPC server to specified address and use it in client, default is \"localhost\".",
             [&]( const std::string& strValue ) -> void {
-                strBindAddress = skutils::tools::trim_copy( strValue );
+                std::string strBindAddress = skutils::tools::trim_copy( strValue );
                 if ( strBindAddress.empty() ) {
+                    std::cerr << "Bad bind address specified in command line arguments.\n";
+                    _exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
+                }
+                strBindAddressServer = strBindAddressClient = strBindAddress;
+            } )
+        .on( "bind-server", "Bind RPC server to specified address, default is \"localhost\".",
+            [&]( const std::string& strValue ) -> void {
+                strBindAddressServer = skutils::tools::trim_copy( strValue );
+                if ( strBindAddressServer.empty() ) {
+                    std::cerr << "Bad bind address specified in command line arguments.\n";
+                    _exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
+                }
+            } )
+        .on( "bind-client", "Connect client to specified address, default is \"localhost\".",
+            [&]( const std::string& strValue ) -> void {
+                strBindAddressClient = skutils::tools::trim_copy( strValue );
+                if ( strBindAddressClient.empty() ) {
                     std::cerr << "Bad bind address specified in command line arguments.\n";
                     _exit( __EXIT_ERROR_BAD_BIND_ADDRESS );
                 }
@@ -1277,11 +1315,15 @@ int main( int argc, char** argv ) {
         std::cout << ( "Using specified SSL certificate file \"" + strPathSslCert +
                        "\"(if available)\n" );
     }
-    std::string strURL =
-        skutils::tools::format( "%s://%s:%d", strProtocol.c_str(), strBindAddress.c_str(), nPort );
-    std::cout << ( "RPC server URL is \"" + strURL + "\"\n" );
+    std::string strURLsrv = skutils::tools::format(
+        "%s://%s:%d", strProtocol.c_str(), strBindAddressServer.c_str(), nPort );
+    std::cout << ( "RPC server URL is \"" + strURLsrv + "\"\n" );
+    std::string strURLcli = skutils::tools::format(
+        "%s://%s:%d", strProtocol.c_str(), strBindAddressClient.c_str(), nPort );
+    std::cout << ( "RPC client URL is \"" + strURLcli + "\"\n" );
 
-    helper_protocol_rest_call( strProtocol.c_str(), strBindAddress.c_str(), nPort, true );
+    helper_protocol_rest_call( strProtocol.c_str(), strBindAddressServer.c_str(),
+        strBindAddressClient.c_str(), nPort, true );
 
     _exit( __EXIT_SUCCESS );
 }

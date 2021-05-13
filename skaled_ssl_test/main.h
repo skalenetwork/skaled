@@ -1,4 +1,4 @@
-#if (!defined __MAIN_H)
+#if ( !defined __MAIN_H )
 #define __MAIN_H 1
 
 #include <atomic>
@@ -42,7 +42,8 @@ extern nlohmann::json ensure_call_id_present_copy(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class helper_ssl_cert_and_key_holder {
-    bool need_remove_files_:1;
+    bool need_remove_files_ : 1;
+
 public:
     std::string strFilePathKey_;
     std::string strFilePathCert_;
@@ -50,6 +51,7 @@ public:
     static std::string g_strFilePathCert;
     helper_ssl_cert_and_key_holder();
     ~helper_ssl_cert_and_key_holder();
+
 private:
     void auto_init();
     void auto_done();
@@ -73,7 +75,9 @@ public:
     const std::string strScheme_;    // protocol name, lover case
     const std::string strSchemeUC_;  // protocol name, upper case
     const int nListenPort_;
-    helper_server( const char* strScheme, int nListenPort );
+    const std::string strBindAddressServer_;
+    helper_server(
+        const char* strScheme, int nListenPort, const std::string& strBindAddressServer );
     virtual ~helper_server();
     virtual bool isSSL() const = 0;
     virtual void stop() = 0;
@@ -122,7 +126,8 @@ protected:
     std::atomic_bool bStopFlag_ = false;
 
 public:
-    helper_server_ws_base( const char* strScheme, int nListenPort );
+    helper_server_ws_base(
+        const char* strScheme, int nListenPort, const std::string& strBindAddressServer );
     ~helper_server_ws_base() override;
     void stop() override;
     void run() override;
@@ -135,7 +140,7 @@ public:
 
 class helper_server_ws : public helper_server_ws_base {
 public:
-    helper_server_ws( int nListenPort );
+    helper_server_ws( int nListenPort, const std::string& strBindAddressServer );
     ~helper_server_ws() override;
     bool isSSL() const override;
 };
@@ -145,7 +150,7 @@ public:
 
 class helper_server_wss : public helper_server_ws_base {
 public:
-    helper_server_wss( int nListenPort );
+    helper_server_wss( int nListenPort, const std::string& strBindAddressServer );
     virtual ~helper_server_wss();
     bool isSSL() const override;
 };
@@ -157,8 +162,8 @@ class helper_server_http_base : public helper_server {
     std::shared_ptr< skutils::http::server > pServer_;  // pointer to skutils::http::server or
                                                         // skutils::SSL_server
 public:
-    helper_server_http_base(
-        const char* strScheme, int nListenPort, bool is_async_http_transfer_mode = true );
+    helper_server_http_base( const char* strScheme, int nListenPort,
+        const std::string& strBindAddressServer, bool is_async_http_transfer_mode = true );
     virtual ~helper_server_http_base();
     void stop() override;
     void run() override;
@@ -169,7 +174,8 @@ public:
 
 class helper_server_http : public helper_server_http_base {
 public:
-    helper_server_http( int nListenPort, bool is_async_http_transfer_mode = true );
+    helper_server_http( int nListenPort, const std::string& strBindAddressServer,
+        bool is_async_http_transfer_mode = true );
     virtual ~helper_server_http();
     bool isSSL() const override;
 };
@@ -179,7 +185,8 @@ public:
 
 class helper_server_https : public helper_server_http_base {
 public:
-    helper_server_https( int nListenPort, bool is_async_http_transfer_mode = true );
+    helper_server_https( int nListenPort, const std::string& strBindAddressServer,
+        bool is_async_http_transfer_mode = true );
     ~helper_server_https() override;
     bool isSSL() const override;
 };
@@ -193,7 +200,8 @@ public:
     int nTargetPort_;
     const std::string strScheme_;
     const std::string strSchemeUC_;
-    helper_client( const char* strClientName, int nTargetPort, const char* strScheme );
+    const std::string strBindAddressClient_;
+    helper_client( const char* strClientName, int nTargetPort, const char* strScheme, const std::string& strBindAddressClient );
     virtual ~helper_client();
     virtual bool isSSL() const = 0;
     virtual void stop() = 0;
@@ -217,7 +225,7 @@ public:
     std::string strLocalCloseCode_;
     std::string strCloseReason_;
     helper_client_ws_base( const char* strClientName, int nTargetPort, const char* strScheme_,
-        const size_t nConnectAttempts );
+                           const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_ws_base();
     void stop() override;
     void run() override;
@@ -245,7 +253,7 @@ public:
 
 class helper_client_ws : public helper_client_ws_base {
 public:
-    helper_client_ws( const char* strClientName, int nTargetPort, const size_t nConnectAttempts );
+    helper_client_ws( const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_ws();
     bool isSSL() const override;
 };
@@ -255,7 +263,7 @@ public:
 
 class helper_client_wss : public helper_client_ws_base {
 public:
-    helper_client_wss( const char* strClientName, int nTargetPort, const size_t nConnectAttempts );
+    helper_client_wss( const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_wss();
     bool isSSL() const override;
 };
@@ -268,7 +276,7 @@ public:
     std::shared_ptr< skutils::http::client > pClient_;  // skutils::http::client or
                                                         // skutils::SSL_client
     helper_client_http_base( const char* strClientName, int nTargetPort, const char* strScheme_,
-        const size_t nConnectAttempts );
+                             const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_http_base();
     void stop() override;
     void run() override;
@@ -283,7 +291,7 @@ public:
 
 class helper_client_http : public helper_client_http_base {
 public:
-    helper_client_http( const char* strClientName, int nTargetPort, const size_t nConnectAttempts );
+    helper_client_http( const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_http();
     bool isSSL() const override;
 };
@@ -293,7 +301,8 @@ public:
 
 class helper_client_https : public helper_client_http_base {
 public:
-    helper_client_https( const char* strClientName, int nTargetPort, const size_t nConnectAttempts );
+    helper_client_https(
+        const char* strClientName, int nTargetPort, const std::string& strBindAddressClient, const size_t nConnectAttempts );
     virtual ~helper_client_https();
     bool isSSL() const override;
 };
@@ -311,38 +320,43 @@ typedef std::function< void() > fn_with_busy_tcp_port_worker_t;
 typedef std::function< bool( const std::string& strErrorDescription ) >
     fn_with_busy_tcp_port_error_t;  // returns true if errror should be ignored
 extern void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
-    fn_with_busy_tcp_port_error_t fnErrorHandler, const int nSocketListenPort, bool isIPv4 = true,
-    bool isIPv6 = true, bool is_reuse_address = true, bool is_reuse_port = false );
+                                fn_with_busy_tcp_port_error_t fnErrorHandler,
+                                const std::string& strBindAddressServer,
+                                const int nSocketListenPort, bool isIPv4 = true,
+                                bool isIPv6 = true, bool is_reuse_address = true,
+                                bool is_reuse_port = false );
 
 typedef std::function< void( helper_server& refServer ) > fn_with_server_t;
-extern void with_server(
-    fn_with_server_t fn, const std::string& strServerUrlScheme, const int nSocketListenPort );
+extern void with_server( fn_with_server_t fn, const std::string& strServerUrlScheme,
+    const std::string& strBindAddressServer, const int nSocketListenPort );
 
 typedef std::function< void( helper_client& refClient ) > fn_with_client_t;
 extern void with_client( fn_with_client_t fn, const std::string& strClientName,
-    const std::string& strServerUrlScheme, const int nSocketListenPort,
+    const std::string& strServerUrlScheme, const std::string& strBindAddressClient,
+    const int nSocketListenPort,
     bool runClientInOtherThread = false,  // typically, this is never needed
     const size_t nConnectAttempts = 10 );
-extern void with_clients( fn_with_client_t fn,
-    const std::vector< std::string >& vecClientNames, const std::string& strServerUrlScheme,
+extern void with_clients( fn_with_client_t fn, const std::vector< std::string >& vecClientNames,
+    const std::string& strServerUrlScheme, const std::string& strBindAddressClient,
     const int nSocketListenPort, const size_t nConnectAttempts = 10 );
 
 typedef std::function< void( helper_server& refServer, helper_client& refClient ) >
     fn_with_client_server_t;
-extern void with_client_server( fn_with_client_server_t fn,
-    const std::string& strClientName, const std::string& strServerUrlScheme,
-    const int nSocketListenPort, bool runClientInOtherThread = false,
-    const size_t nConnectAttempts = 10 );
+extern void with_client_server( fn_with_client_server_t fn, const std::string& strClientName,
+    const std::string& strServerUrlScheme, const std::string& strBindAddressServer,
+    const std::string& strBindAddressClient, const int nSocketListenPort,
+    bool runClientInOtherThread = false, const size_t nConnectAttempts = 10 );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern void helper_protocol_busy_port( const char* strProto, int nPort );
+extern void helper_protocol_busy_port(
+    const char* strProto, const char* strBindAddressServer, int nPort );
 
-extern void helper_protocol_rest_call( const char* strProto, int nPort, bool isAutoExitOnSuccess );
+extern void helper_protocol_rest_call( const char* strProto, const char* strBindAddressServer,
+    const char* strBindAddressClient, int nPort, bool isAutoExitOnSuccess );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#endif /// (!defined __MAIN_H)
-
+#endif  /// (!defined __MAIN_H)
