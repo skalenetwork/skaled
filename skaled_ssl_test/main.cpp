@@ -1124,7 +1124,7 @@ void with_client_server( fn_with_client_server_t fn, const std::string& strClien
                         // assert( false );
                     }
                 },
-                strClientName, strServerUrlScheme, strBindAddressServer, nSocketListenPort,
+                strClientName, strServerUrlScheme, strBindAddressClient, nSocketListenPort,
                 runClientInOtherThread, nConnectAttempts );
         },
         strServerUrlScheme, strBindAddressServer, nSocketListenPort );
