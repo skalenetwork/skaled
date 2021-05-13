@@ -1149,26 +1149,49 @@ static unsigned getHashSize( unordered_map< K, T > const& _map ) {
     return ret;
 }
 
+template < class K, class T >
+static unsigned getBlockHashSize( map< K, T > const& _map ) {
+    return _map.size() * (BlockHash::size + 64);
+}
+
 void BlockChain::updateStats() const {
     m_lastStats.memBlocks = 0;
-    DEV_READ_GUARDED( x_blocks )
-    for ( auto const& i : m_blocks )
-        m_lastStats.memBlocks += i.second.size() + 64;
-    DEV_READ_GUARDED( x_details )
-    m_lastStats.memDetails = getHashSize( m_details );
+    {
+        DEV_READ_GUARDED( x_blocks )
+        for ( auto const& i : m_blocks )
+            m_lastStats.memBlocks += i.second.size() + 64;
+    }
+    {
+        DEV_READ_GUARDED( x_details )
+        m_lastStats.memDetails = getHashSize( m_details );
+    }
     size_t logBloomsSize = 0;
     size_t blocksBloomsSize = 0;
-    DEV_READ_GUARDED( x_logBlooms )
-    logBloomsSize = getHashSize( m_logBlooms );
-    DEV_READ_GUARDED( x_blocksBlooms )
-    blocksBloomsSize = getHashSize( m_blocksBlooms );
+    {
+        DEV_READ_GUARDED( x_logBlooms )
+        logBloomsSize = getHashSize( m_logBlooms );
+    }
+    {
+        DEV_READ_GUARDED( x_blocksBlooms )
+        blocksBloomsSize = getHashSize( m_blocksBlooms );
+
+    }
+
     m_lastStats.memLogBlooms = logBloomsSize + blocksBloomsSize;
-    DEV_READ_GUARDED( x_receipts )
-    m_lastStats.memReceipts = getHashSize( m_receipts );
-    DEV_READ_GUARDED( x_blockHashes )
-    m_lastStats.memBlockHashes = getHashSize( m_blockHashes );
-    DEV_READ_GUARDED( x_transactionAddresses )
-    m_lastStats.memTransactionAddresses = getHashSize( m_transactionAddresses );
+
+    {
+        DEV_READ_GUARDED( x_receipts )
+        m_lastStats.memReceipts = getHashSize( m_receipts );
+    }
+    {
+        DEV_READ_GUARDED( x_blockHashes )
+        m_lastStats.memBlockHashes = getBlockHashSize( m_blockHashes );
+    }
+
+    {
+        DEV_READ_GUARDED( x_transactionAddresses )
+        m_lastStats.memTransactionAddresses = getHashSize( m_transactionAddresses );
+    }
 }
 
 void BlockChain::garbageCollect( bool _force ) {
@@ -1227,6 +1250,14 @@ void BlockChain::garbageCollect( bool _force ) {
     }
     m_cacheUsage.pop_back();
     m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
+
+    // allow only 1024 blockhashes in the cache
+    if (m_blockHashes.size() > 1024) {
+        auto last = m_blockHashes.begin();
+        std::advance(last, (m_blockHashes.size() - 1024));
+        m_blockHashes.erase(m_blockHashes.begin(), last);
+        assert(m_blockHashes.size() == 1024);
+    }
 }
 
 void BlockChain::clearCaches() {
