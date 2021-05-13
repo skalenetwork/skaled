@@ -485,9 +485,38 @@ private:
         return ret.first->second;
     }
 
+    template < class T, class K, unsigned N >
+    T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x,
+                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+        {
+            ReadGuard l( _x );
+            auto it = _m.find( _h );
+            if ( it != _m.end() )
+                return it->second;
+        }
+
+        std::string const s = ( _extrasDB ? _extrasDB : m_extrasDB )->lookup( toSlice( _h, N ) );
+        if ( s.empty() )
+            return _n;
+
+        noteUsed( _h, N );
+
+        WriteGuard l( _x );
+        auto ret = _m.insert( std::make_pair( _h, T( RLP( s ) ) ) );
+        return ret.first->second;
+    }
+
+
+
     template < class T, unsigned N >
     T queryExtras( h256 const& _h, std::unordered_map< h256, T >& _m, boost::shared_mutex& _x,
         T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+        return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
+    }
+
+    template < class T, unsigned N >
+    T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x,
+                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
         return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
     }
 
