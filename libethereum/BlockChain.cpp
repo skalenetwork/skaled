@@ -1274,18 +1274,16 @@ void BlockChain::garbageCollect( bool _force ) {
     }
 
 
-
     {
-        WriteGuard l(x_blockHashes);
+        WriteGuard l( x_blockHashes );
         // allow only 4096 blockhashes in the cache
-        if (m_blockHashes.size() > 4096) {
+        if ( m_blockHashes.size() > 4096 ) {
             auto last = m_blockHashes.begin();
-            std::advance(last, (m_blockHashes.size() - 4096));
-            m_blockHashes.erase(m_blockHashes.begin(), last);
-            assert(m_blockHashes.size() == 4096);
+            std::advance( last, ( m_blockHashes.size() - 4096 ) );
+            m_blockHashes.erase( m_blockHashes.begin(), last );
+            assert( m_blockHashes.size() == 4096 );
         }
     }
-
 }
 
 void BlockChain::clearCaches() {
