@@ -193,6 +193,7 @@ if( EVMJIT )
 endif()
 
 add_subdirectory( skaled )
+add_subdirectory( skaled_ssl_test )
 
 if( TOOLS )
     add_subdirectory( skale-key )
