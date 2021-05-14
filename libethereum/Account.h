@@ -28,6 +28,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/Common.h>
+#include "libethcore/Counter.h"
 
 namespace dev {
 namespace eth {
@@ -275,6 +276,11 @@ private:
 
     // is only valuable if account has code
     s256 m_storageUsed = 0;
+
+    Counter<Account> c;
+
+public:
+    static uint64_t howMany() { return Counter<Account>::howMany(); }
 };
 
 class AccountMask {
@@ -303,6 +309,8 @@ private:
     bool m_hasCode;
     bool m_hasStorage;
     bool m_shouldNotExist = false;
+
+
 };
 
 using AccountMap = std::unordered_map< Address, Account >;

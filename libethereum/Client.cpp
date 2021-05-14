@@ -911,6 +911,20 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     BlockHeader header_struct( header, HeaderData );
     LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
                     << " (" << header_struct.hash() << ")";
+    LOG( m_logger ) << cc::success( "Block stats" )
+       << ":TXS:" << TransactionBase::howMany()
+       << ":HDRS:" << BlockHeader::howMany()
+       << ":LOGS:" << LogEntry::howMany()
+       << ":SENGS:" << SealEngineBase::howMany()
+       << ":TXRS:" << TransactionReceipt::howMany()
+       << ":BLCKS:" << Block::howMany()
+       << ":ACCS:" << Account::howMany()
+       << ":BQS:" << BlockQueue::howMany()
+       << ":BDS:" << BlockDetails::howMany()
+       << ":TSS:" << TransactionSkeleton::howMany()
+       << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+       << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+       << endl;
 
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
