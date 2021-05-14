@@ -31,6 +31,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
+#include <libethcore/Counter.h>
 #include <algorithm>
 
 namespace dev {
@@ -246,6 +247,12 @@ private:
     mutable Mutex m_hashLock;    ///< A lock for both m_hash and m_hashWithout.
 
     mutable Logger m_logger{createLogger( VerbosityDebug, "blockhdr" )};
+
+    Counter<BlockHeader> c;
+
+public:
+
+    static uint64_t howMany() { return Counter<BlockHeader>::howMany(); }
 };
 
 inline std::ostream& operator<<( std::ostream& _out, BlockHeader const& _bi ) {
