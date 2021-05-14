@@ -1353,8 +1353,7 @@ void BlockChain::checkConsistency() {
 void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
     unsigned end = m_lastBlockNumber + 1;
     DEV_WRITE_GUARDED( x_blockHashes )
-    for ( auto i = _firstInvalid; i < end; ++i )
-        m_blockHashes.erase( i );
+    for ( auto i = _firstInvalid; i < end; ++i ) m_blockHashes.erase( i );
     DEV_WRITE_GUARDED( x_transactionAddresses )
     m_transactionAddresses.clear();  // TODO: could perhaps delete them individually?
 
