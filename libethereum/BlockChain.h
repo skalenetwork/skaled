@@ -486,8 +486,8 @@ private:
     }
 
     template < class T, class K, unsigned N >
-    T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x,
-                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+    T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x, T const& _n,
+        db::DatabaseFace* _extrasDB = nullptr ) const {
         {
             ReadGuard l( _x );
             auto it = _m.find( _h );
@@ -507,7 +507,6 @@ private:
     }
 
 
-
     template < class T, unsigned N >
     T queryExtras( h256 const& _h, std::unordered_map< h256, T >& _m, boost::shared_mutex& _x,
         T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
@@ -515,8 +514,8 @@ private:
     }
 
     template < class T, unsigned N >
-    T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x,
-                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+    T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x, T const& _n,
+        db::DatabaseFace* _extrasDB = nullptr ) const {
         return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
     }
 

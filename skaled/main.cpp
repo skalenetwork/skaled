@@ -583,7 +583,7 @@ int main( int argc, char** argv ) try {
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
     addClientOption( "ws-log", po::value< string >()->value_name( "<mode>" ),
-        "Web socket debug logging mode(none, basic detailed; default is none)" );
+        "Web socket debug logging mode(\"none\", \"basic\", \"detailed\"; default is \"none\")" );
     addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
         "Max number of RPC connections(such as web3) summary for all protocols(0 is default and "
         "means unlimited)" );
