@@ -922,6 +922,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
        << ":BQS:" << BlockQueue::howMany()
        << ":BDS:" << BlockDetails::howMany()
        << ":TSS:" << TransactionSkeleton::howMany()
+       << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+       << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
        << endl;
 
     if ( submitToBlockChain ) {
