@@ -29,6 +29,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/FixedHash.h>
+#include <libethcore/Counter.h>
 
 #include <functional>
 #include <string>
@@ -212,6 +213,11 @@ struct TransactionSkeleton {
             _getNatSpec,
         std::function< std::string( Address const& ) > const& _formatAddress ) const;
     std::string toString() const;
+
+    Counter<TransactionSkeleton> c;
+
+public:
+    static uint64_t howMany() { return Counter<TransactionSkeleton>::howMany(); }
 };
 
 
