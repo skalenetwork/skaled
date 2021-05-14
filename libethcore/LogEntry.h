@@ -23,6 +23,7 @@
 
 #include <libdevcore/Address.h>
 #include <libdevcore/FixedHash.h>
+#include <libethcore/Counter.h>
 
 namespace dev {
 
@@ -44,6 +45,12 @@ struct LogEntry {
     Address address;
     h256s topics;
     bytes data;
+
+    Counter<LogEntry> c;
+
+public:
+
+    static uint64_t howMany() { return Counter<LogEntry>::howMany(); }
 };
 
 using LogEntries = std::vector< LogEntry >;
