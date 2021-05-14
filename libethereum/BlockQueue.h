@@ -29,6 +29,7 @@
 #include <libdevcore/Log.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
+#include <libethcore/Counter.h>
 #include <boost/thread.hpp>
 #include <condition_variable>
 #include <deque>
@@ -330,6 +331,11 @@ private:
 
     Logger m_logger{createLogger( VerbosityDebug, "bq" )};
     Logger m_loggerDetail{createLogger( VerbosityTrace, "bq" )};
+
+    Counter<BlockQueue> c;
+
+public:
+    static uint64_t howMany() { return Counter<BlockQueue>::howMany(); }
 };
 
 std::ostream& operator<<( std::ostream& _out, BlockQueueStatus const& _s );
