@@ -66,16 +66,6 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_FLAGS=-O3 -DCMAKE_C_FLAGS=-O3 -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      - name: Format-check source code
-        run: |
-          export CC=gcc-7
-          export CXX=g++-7
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          cd build
-          make format-check
-          cd ..
       - name: Build all
         run: |
           export CC=gcc-7
