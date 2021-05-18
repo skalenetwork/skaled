@@ -4,7 +4,7 @@
 
 -----------------
 
-# SKALED – SKALE C++ Client
+# SKALED – SKALE C++ Client 
 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
