@@ -149,6 +149,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"infoWsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
             {"infoWssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
             {"infoWssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"imaMonitoringPort", {{js::int_type}, JsonFieldPresence::Optional}},
             {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
             {"snapshotIntervalSec", {{js::int_type}, JsonFieldPresence::Optional}},
             {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
