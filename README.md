@@ -15,6 +15,7 @@ Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem,
 Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized within finite time.
 
 
+
 ## Asynchronous block production
 
 Skaled is asynchronous, meaning that the consensus on the next block starts immediately after the previous block is finalized.  There is no set block time interval. This allows for subsecond block production in case of a fast network, enabling interactive Dapps.
