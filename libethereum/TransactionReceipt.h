@@ -25,8 +25,8 @@
 
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
-#include <libethcore/LogEntry.h>
 #include <libethcore/Counter.h>
+#include <libethcore/LogEntry.h>
 
 #include <boost/variant/variant.hpp>
 #include <array>
@@ -81,9 +81,10 @@ private:
     LogEntries m_log;
     std::string m_strRevertReason;
 
-    Counter<TransactionReceipt> c;
+    Counter< TransactionReceipt > c;
+
 public:
-    static uint64_t howMany() { return Counter<TransactionReceipt>::howMany(); }
+    static uint64_t howMany() { return Counter< TransactionReceipt >::howMany(); }
 };
 
 using TransactionReceipts = std::vector< TransactionReceipt >;
@@ -130,10 +131,10 @@ private:
     Address m_contractAddress;
     LocalisedLogEntries m_localisedLogs;
 
-    Counter<TransactionReceipt> c;
+    Counter< TransactionReceipt > c;
 
 public:
-    static uint64_t howMany() { return Counter<TransactionReceipt>::howMany(); }
+    static uint64_t howMany() { return Counter< TransactionReceipt >::howMany(); }
 };
 
 }  // namespace eth

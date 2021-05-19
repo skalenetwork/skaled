@@ -46,11 +46,10 @@ struct LogEntry {
     h256s topics;
     bytes data;
 
-    Counter<LogEntry> c;
+    Counter< LogEntry > c;
 
 public:
-
-    static uint64_t howMany() { return Counter<LogEntry>::howMany(); }
+    static uint64_t howMany() { return Counter< LogEntry >::howMany(); }
 };
 
 using LogEntries = std::vector< LogEntry >;

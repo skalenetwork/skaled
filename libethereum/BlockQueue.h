@@ -332,10 +332,10 @@ private:
     Logger m_logger{createLogger( VerbosityDebug, "bq" )};
     Logger m_loggerDetail{createLogger( VerbosityTrace, "bq" )};
 
-    Counter<BlockQueue> c;
+    Counter< BlockQueue > c;
 
 public:
-    static uint64_t howMany() { return Counter<BlockQueue>::howMany(); }
+    static uint64_t howMany() { return Counter< BlockQueue >::howMany(); }
 };
 
 std::ostream& operator<<( std::ostream& _out, BlockQueueStatus const& _s );

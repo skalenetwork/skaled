@@ -187,12 +187,10 @@ public:
         Transaction transaction;  ///< Transaction data
         int category = 0;         // for sorting
 
-        Counter<VerifiedTransaction> c;
+        Counter< VerifiedTransaction > c;
 
     public:
-        static uint64_t howMany() { return Counter<VerifiedTransaction>::howMany(); }
-
-
+        static uint64_t howMany() { return Counter< VerifiedTransaction >::howMany(); }
     };
 
     /// Transaction pending verification
@@ -216,11 +214,10 @@ public:
         bytes transaction;  ///< RLP encoded transaction data
         h512 nodeId;        ///< Network Id of the peer transaction comes from
 
-        Counter<UnverifiedTransaction> c;
+        Counter< UnverifiedTransaction > c;
 
     public:
-        static uint64_t howMany() { return Counter<UnverifiedTransaction>::howMany(); }
-
+        static uint64_t howMany() { return Counter< UnverifiedTransaction >::howMany(); }
     };
 
 private:
