@@ -1204,6 +1204,17 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
         _exit( __EXIT_ERROR_REST_CALL_FAILED );
 }
 
+void helper_protocol_echo_server( const char* strProtocol, const char* strBindAddressServer, int nPort ) {
+    with_server(
+        [&]( helper_server & /*refServer*/ ) -> void {
+            std::cout << ( cc::success( "Echo server started" ) + "\n" );
+            for( ; true; ) {
+                std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+            }
+        },
+        strProtocol, strBindAddressServer, nPort );
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1211,6 +1222,7 @@ int main( int argc, char** argv ) {
     std::string strProtocol = "https", strBindAddressServer = "localhost",
                 strBindAddressClient = "localhost", strPathSslKey, strPathSslCert;
     int nPort = 27890;
+    bool isEchoServerMode = false;
     skutils::command_line::parser clp( "skaled_ssl_test", "1.0.0" );
     clp.on( "version", "Show version information.",
            [&]() -> void {
@@ -1277,6 +1289,10 @@ int main( int argc, char** argv ) {
                         nPort = -1;
                 }
             } )
+        .on( "echo", "Run echo server only.",
+            [&]() -> void {
+                isEchoServerMode = true;
+            } )
         .on( "ws-mode",
             "Run \"ws\" or \"wss\" RPC server(s) using specified mode(" +
                 skutils::ws::nlws::list_srvmodes_as_str() + "); default mode is " +
@@ -1318,12 +1334,17 @@ int main( int argc, char** argv ) {
     std::string strURLsrv = skutils::tools::format(
         "%s://%s:%d", strProtocol.c_str(), strBindAddressServer.c_str(), nPort );
     std::cout << ( "RPC server URL is \"" + strURLsrv + "\"\n" );
+
+    if( isEchoServerMode ) {
+        helper_protocol_echo_server( strProtocol.c_str(), strBindAddressServer.c_str(), nPort );
+        _exit( __EXIT_SUCCESS );
+    }
+
     std::string strURLcli = skutils::tools::format(
         "%s://%s:%d", strProtocol.c_str(), strBindAddressClient.c_str(), nPort );
     std::cout << ( "RPC client URL is \"" + strURLcli + "\"\n" );
 
     helper_protocol_rest_call( strProtocol.c_str(), strBindAddressServer.c_str(),
         strBindAddressClient.c_str(), nPort, true );
-
     _exit( __EXIT_SUCCESS );
 }
