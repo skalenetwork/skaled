@@ -456,7 +456,7 @@ public:
     void close();
 
 private:
-    void rotateDBIfNeeded();
+    void rotateDBIfNeeded( const dev::h256& hash );
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
