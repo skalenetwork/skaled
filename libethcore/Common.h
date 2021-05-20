@@ -214,10 +214,10 @@ struct TransactionSkeleton {
         std::function< std::string( Address const& ) > const& _formatAddress ) const;
     std::string toString() const;
 
-    Counter<TransactionSkeleton> c;
+    Counter< TransactionSkeleton > c;
 
 public:
-    static uint64_t howMany() { return Counter<TransactionSkeleton>::howMany(); }
+    static uint64_t howMany() { return Counter< TransactionSkeleton >::howMany(); }
 };
 
 

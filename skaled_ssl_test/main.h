@@ -351,10 +351,12 @@ extern void with_client_server( fn_with_client_server_t fn, const std::string& s
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern void helper_protocol_busy_port(
-    const char* strProto, const char* strBindAddressServer, int nPort );
+    const char* strProtocol, const char* strBindAddressServer, int nPort );
 
-extern void helper_protocol_rest_call( const char* strProto, const char* strBindAddressServer,
+extern void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddressServer,
     const char* strBindAddressClient, int nPort, bool isAutoExitOnSuccess );
+
+extern void helper_protocol_echo_server( const char* strProtocol, const char* strBindAddressServer, int nPort );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
