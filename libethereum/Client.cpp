@@ -204,7 +204,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // blockchain database until after the construction.
     m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
         BaseState::PreExisting, chainParams().accountInitialFunds,
-        chainParams().sChain.storageLimit );
+        chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );

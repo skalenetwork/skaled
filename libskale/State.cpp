@@ -63,14 +63,14 @@ using dev::eth::TransactionReceipt;
 #endif
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
-    u256 _initialFunds, s256 _storageLimit )
+    u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      storageLimit_( _storageLimit ) {
+      contractStorageLimit_( _contractStorageLimit ) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
@@ -140,7 +140,7 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
-    storageLimit_ = _s.storageLimit_;
+    contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
 
     return *this;
@@ -565,7 +565,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     storageUsage[_contract] += count * 32;
     currentStorageUsed_ += count * 32;
 
-    if ( totalStorageUsed_ + currentStorageUsed_ > storageLimit_ ) {
+    if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
     // TODO::review it |^

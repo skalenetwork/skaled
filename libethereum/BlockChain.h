@@ -559,6 +559,9 @@ private:
     void updateStats() const;
     mutable Statistics m_lastStats;
 
+    // max storage used by rotating db
+    uint64_t m_maxStorageUsage;
+
     /// The disk DBs. Thread-safe, so no need for locks.
     std::unique_ptr< db::SplitDB > m_split_db;
     std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;

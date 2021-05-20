@@ -95,7 +95,7 @@ static std::string const c_genesisConfigString =
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
-            "storageLimit": 128,
+            "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
@@ -220,7 +220,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
-            chainParams.sChain.storageLimit = 128;
+            chainParams.sChain.contractStorageLimit = 128;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
