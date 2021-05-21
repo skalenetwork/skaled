@@ -643,6 +643,8 @@ int main( int argc, char** argv ) try {
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
 
+    addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
