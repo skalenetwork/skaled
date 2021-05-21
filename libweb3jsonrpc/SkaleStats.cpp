@@ -2280,6 +2280,56 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( "    " + cc::info( "symbol" ) + cc::debug( "................." ) +
                            cc::info( strSymbol ) );
             } break;
+            case 7: {
+                // Gas Reimbursement Address Freezing transfer
+                // --------------------------------------------------------------
+                // Offset | Size     | Description
+                // --------------------------------------------------------------
+                // 0      | 1        | Value 0x7
+                // 1      | 32       | receiver, address
+                // 33     | 32       | isUnfrozen, bool
+                static const char strImaMessageTypeName[] = "GasReimbursementAddressFreezing(7)";
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Verifying " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " transfer..." ) );
+                // receiver, address
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(1), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 addressReceiver =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                // isUnfrozen, bool
+                nFiledSize = 32;
+                if ( ( nPos + nFiledSize ) > cntMessageBytes )
+                    throw std::runtime_error(
+                        skutils::tools::format( "IMA message too short, %s(2), nPos=%zu, "
+                                                "nFiledSize=%zu, cntMessageBytes=%zu",
+                            strImaMessageTypeName, nPos, nFiledSize, cntMessageBytes ) );
+                const dev::u256 isUnfrozen =
+                    BMPBN::decode_inv< dev::u256 >( vecBytes.data() + nPos, nFiledSize );
+                nPos += nFiledSize;
+                //
+                if ( nPos > cntMessageBytes ) {
+                    size_t nExtra = cntMessageBytes - nPos;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Extra " ) + cc::size10( nExtra ) +
+                               cc::warn( " unused bytes found in message." ) );
+                }
+                //
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Extracted " ) +
+                           cc::sunny( strImaMessageTypeName ) + cc::debug( " data fields:" ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "receiver" ) + cc::debug( "..............." ) +
+                           cc::info( addressReceiver.str() ) );
+                clog( VerbosityDebug, "IMA" )
+                    << ( "    " + cc::info( "isUnfrozen" ) + cc::debug( "............." ) +
+                           cc::info( isUnfrozen.str() ) );
+            } break;
             /*
             case 0x13: {
                 // Raw ERC20 transfer
