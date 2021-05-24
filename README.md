@@ -6,6 +6,8 @@
 
 # SKALED – SKALE C++ Client
 
+
+
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
 Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
