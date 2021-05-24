@@ -1556,6 +1556,10 @@ int main( int argc, char** argv ) try {
         toImport.emplace_back( s );
     }
 
+    if ( vm.count( "sgx-url" ) ) {
+        chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
+    }
+
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) )
         snapshotManager.reset( new SnapshotManager(
