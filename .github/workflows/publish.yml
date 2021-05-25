@@ -30,7 +30,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
       - name: Submodule update
-        run: git submodule update --init --recursive
+        run: sleep 5 && git submodule update --init --recursive
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
