@@ -58,7 +58,7 @@ jobs:
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=64
+          ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
         run: |
@@ -79,7 +79,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
-          make skaled -j64
+          make skaled -j$(nproc)
           cd ..
       - name: Build and publish container
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
