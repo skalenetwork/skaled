@@ -191,8 +191,12 @@ ChainParams ChainParams::loadConfig(
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
                                      0;
 
-        s.storageLimit =
-            sChainObj.count( "storageLimit" ) ? sChainObj.at( "storageLimit" ).get_int64() : 0;
+        s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
+                                     sChainObj.at( "contractStorageLimit" ).get_int64() :
+                                     0;
+
+        s.dbStorageLimit =
+            sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
 
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
@@ -458,7 +462,8 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
-    sChainObj["storageLimit"] = ( int64_t ) sChain.storageLimit;
+    sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
+    sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
     js::mArray nodes;
 

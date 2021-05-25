@@ -456,7 +456,7 @@ public:
     void close();
 
 private:
-    void rotateDBIfNeeded();
+    void rotateDBIfNeeded( const dev::h256& hash );
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
@@ -558,6 +558,9 @@ private:
 
     void updateStats() const;
     mutable Statistics m_lastStats;
+
+    // max storage used by rotating db
+    uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
     std::unique_ptr< db::SplitDB > m_split_db;
