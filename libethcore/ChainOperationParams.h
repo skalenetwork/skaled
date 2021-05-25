@@ -124,7 +124,8 @@ public:
     u256 id;
     Address owner;
     std::vector< sChainNode > nodes;
-    s256 storageLimit;
+    s256 contractStorageLimit;
+    uint64_t dbStorageLimit;
     int snapshotIntervalSec = -1;
     bool freeContractDeployment = false;
     int emptyBlockIntervalMs = -1;

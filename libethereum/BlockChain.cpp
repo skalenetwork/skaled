@@ -675,12 +675,19 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
-void BlockChain::rotateDBIfNeeded() {
-    auto r = m_params.rotateAfterBlock_;
-    if ( r <= 0 )
+void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
+    if ( m_params.sChain.dbStorageLimit == 0 ) {
         return;
-    auto n = this->number();
-    if ( ( n % r ) == 0 ) {
+    }
+
+    uint64_t currentBlockSize = this->details( hash ).blockSizeBytes;
+    uint64_t totalStorageUsed = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "totalStorageUsed" ) ) {
+        totalStorageUsed =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "totalStorageUsed" ) );
+    }
+
+    if ( totalStorageUsed + currentBlockSize + 32 > m_params.sChain.dbStorageLimit ) {
         // remember genesis
         BlockDetails details = this->details( m_genesisHash );
 
@@ -691,6 +698,9 @@ void BlockChain::rotateDBIfNeeded() {
         auto r = details.rlp();
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+
+        // update storage usage
+        m_blocksDB->insert( db::Slice( "totalStorageUsed" ), db::Slice( "0" ) );
     }
 }
 
@@ -699,7 +709,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
 
-    rotateDBIfNeeded();
+    rotateDBIfNeeded( _block.info.hash() );
 
     // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
     // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
@@ -866,6 +876,15 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         newLastBlockNumber = ( unsigned ) _block.info.number();
         isImportedAndBest = true;
     }
+
+    // update storage usage
+    uint64_t totalStorageUsed = 0;
+    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) ) {
+        totalStorageUsed = std::stoull( m_blocksDB->lookup( db::Slice( "totalStorageUsed" ) ) );
+    }
+    totalStorageUsed += 32 + this->details( _block.info.hash() ).blockSizeBytes;
+    m_blocksDB->insert(
+        db::Slice( "totalStorageUsed" ), db::Slice( std::to_string( totalStorageUsed ) ) );
 
     LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
                           << cc::debug( " (" ) << cc::warn( "#" )
