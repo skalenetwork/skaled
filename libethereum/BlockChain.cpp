@@ -699,8 +699,8 @@ void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
 
-        // re-insert
-        m_blocksDB->insert( db::Slice( "totalStorageUsed" ), toSlice( 0 ) );
+        // update storage usage
+        m_blocksDB->insert( db::Slice( "totalStorageUsed" ), db::Slice( "0" ) );
     }
 }
 
@@ -882,8 +882,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) ) {
         totalStorageUsed = std::stoull( m_blocksDB->lookup( db::Slice( "totalStorageUsed" ) ) );
     }
-    m_blocksDB->insert( db::Slice( "totalStorageUsed" ),
-        toSlice( totalStorageUsed + 32 + this->details( _block.info.hash() ).blockSizeBytes ) );
+    totalStorageUsed += 32 + this->details( _block.info.hash() ).blockSizeBytes;
+    m_blocksDB->insert(
+        db::Slice( "totalStorageUsed" ), db::Slice( std::to_string( totalStorageUsed ) ) );
 
     LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
                           << cc::debug( " (" ) << cc::warn( "#" )
