@@ -643,6 +643,8 @@ int main( int argc, char** argv ) try {
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
 
+    addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -1552,6 +1554,10 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "import-session-secret" ) ) {
         Secret s( fromHex( vm["import-session-secret"].as< string >() ) );
         toImport.emplace_back( s );
+    }
+
+    if ( vm.count( "sgx-url" ) ) {
+        chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
     }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
