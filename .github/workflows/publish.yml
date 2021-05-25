@@ -28,7 +28,9 @@ jobs:
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
         id: extract_branch
       - name: checkout
-        run: git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
+        uses: actions/checkout@v2
+      - name: Submodule update
+        run: git submodule update --init --recursive
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
