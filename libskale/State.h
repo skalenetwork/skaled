@@ -178,12 +178,12 @@ public:
     /// than BaseState::PreExisting in order to prepopulate the state.
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _storageLimit = 32 )
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 )
         : State( _accountStartNonce,
               openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
-              _bs, _initialFunds, _storageLimit ) {}
+              _bs, _initialFunds, _contractStorageLimit ) {}
 
     State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
 
@@ -382,8 +382,8 @@ public:
 
     dev::s256 storageUsedTotal() const { return m_db_ptr->storageUsed(); }
 
-    void setStorageLimit( const dev::s256& _storageLimit ) {
-        storageLimit_ = _storageLimit;
+    void setStorageLimit( const dev::s256& _contractStorageLimit ) {
+        contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
 private:
@@ -391,7 +391,7 @@ private:
 
     explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
-        dev::s256 _storageLimit = 32 );
+        dev::s256 _contractStorageLimit = 32 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
@@ -452,7 +452,7 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-    dev::s256 storageLimit_ = 0;
+    dev::s256 contractStorageLimit_ = 0;
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;

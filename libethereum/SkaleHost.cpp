@@ -524,76 +524,86 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::atomic_bool have_consensus_born = false;  // means we need to re-verify old txns
 
-    m_debugTracer.tracepoint( "drop_good_transactions" );
+    // HACK this is for not allowing new transactions in tq between deletion and block creation!
+    // TODO decouple SkaleHost and Client!!!
+    size_t n_succeeded;
+    DEV_GUARDED( m_client.m_blockImportMutex ) {
+        m_debugTracer.tracepoint( "drop_good_transactions" );
 
-    skutils::task::performance::json jarrProcessedTxns = skutils::task::performance::json::array();
+        skutils::task::performance::json jarrProcessedTxns =
+            skutils::task::performance::json::array();
 
-    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-        const bytes& data = *it;
-        h256 sha = sha3( data );
-        LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
-        jarrProcessedTxns.push_back( toJS( sha ) );
+        for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
+            const bytes& data = *it;
+            h256 sha = sha3( data );
+            LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
+            jarrProcessedTxns.push_back( toJS( sha ) );
 #ifdef DEBUG_TX_BALANCE
-        if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
-            std::cerr << cc::error( "createBlock assert" ) << std::endl;
-            //            sleep(200);
-            assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
-        }
-        assert( arrived.count( sha ) == 0 );
-        arrived.insert( sha );
+            if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
+                std::cerr << cc::error( "createBlock assert" ) << std::endl;
+                //            sleep(200);
+                assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
+            }
+            assert( arrived.count( sha ) == 0 );
+            arrived.insert( sha );
 #endif
 
-        // if already known
-        // TODO clear occasionally this cache?!
-        if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
-            Transaction t = m_m_transaction_cache.at( sha.asArray() );
-            out_txns.push_back( t );
-            LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
-            m_debugTracer.tracepoint( "drop_good" );
-            m_tq.dropGood( t );
-            MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
-            m_m_transaction_cache.erase( sha.asArray() );
-            std::lock_guard< std::mutex > localGuard( m_receivedMutex );
-            m_received.erase( sha );
-            LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-        } else {
-            Transaction t( data, CheckTransaction::Everything, true );
-            t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
-            out_txns.push_back( t );
-            LOG( m_debugLogger ) << "Will import consensus-born txn!";
-            m_debugTracer.tracepoint( "import_consensus_born" );
-            have_consensus_born = true;
-        }
-        if ( m_tq.knownTransactions().count( sha ) != 0 ) {
-            // TODO fix this!!?
-            clog( VerbosityWarning, "skale-host" )
-                << "Consensus returned 'future'' transaction that we didn't yet send!!";
-            m_debugTracer.tracepoint( "import_future" );
-        }
+            // if already known
+            // TODO clear occasionally this cache?!
+            if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
+                Transaction t = m_m_transaction_cache.at( sha.asArray() );
+                out_txns.push_back( t );
+                LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
+                m_debugTracer.tracepoint( "drop_good" );
+                m_tq.dropGood( t );
+                MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
+                m_m_transaction_cache.erase( sha.asArray() );
+                std::lock_guard< std::mutex > localGuard( m_receivedMutex );
+                m_received.erase( sha );
+                LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+                // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
+                // ).detach();
+            } else {
+                Transaction t( data, CheckTransaction::Everything, true );
+                t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+                out_txns.push_back( t );
+                LOG( m_debugLogger ) << "Will import consensus-born txn!";
+                m_debugTracer.tracepoint( "import_consensus_born" );
+                have_consensus_born = true;
+            }
+            if ( m_tq.knownTransactions().count( sha ) != 0 ) {
+                // TODO fix this!!?
+                clog( VerbosityWarning, "skale-host" )
+                    << "Consensus returned 'future'' transaction that we didn't yet send!!";
+                m_debugTracer.tracepoint( "import_future" );
+            }
 
-    }  // for
-    // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
+        }  // for
+        // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
 
-    total_arrived += out_txns.size();
+        total_arrived += out_txns.size();
 
-    assert( _blockID == m_client.number() + 1 );
+        assert( _blockID == m_client.number() + 1 );
 
-    //
-    a_create_block.finish();
-    //
-    static std::atomic_size_t g_nImportBlockTaskNumber = 0;
-    size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
-    std::string strPerformanceQueueName_import_block = "bc/import_block";
-    std::string strPerformanceActionName_import_block =
-        skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-    skutils::task::performance::json jsn_import_block = skutils::task::performance::json::object();
-    jsn_import_block["txns"] = jarrProcessedTxns;
-    skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
-        strPerformanceActionName_import_block, jsn_import_block );
-    //
-    m_debugTracer.tracepoint( "import_block" );
+        //
+        a_create_block.finish();
+        //
+        static std::atomic_size_t g_nImportBlockTaskNumber = 0;
+        size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
+        std::string strPerformanceQueueName_import_block = "bc/import_block";
+        std::string strPerformanceActionName_import_block =
+            skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
+        skutils::task::performance::json jsn_import_block =
+            skutils::task::performance::json::object();
+        jsn_import_block["txns"] = jarrProcessedTxns;
+        skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
+            strPerformanceActionName_import_block, jsn_import_block );
+        //
+        m_debugTracer.tracepoint( "import_block" );
 
-    size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+        n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+    }  // m_blockImportMutex
+
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
