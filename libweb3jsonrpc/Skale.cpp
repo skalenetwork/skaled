@@ -61,9 +61,12 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
+const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 100;
+
 std::string exceptionToErrorMessage();
 
-Skale::Skale( Client& _client ) : m_client( _client ) {}
+Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
+    : m_client( _client ), m_shared_space( _sharedSpace ) {}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
@@ -144,6 +147,11 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     nlohmann::json joResponse = nlohmann::json::object();
 
+    // TODO check
+    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    if ( blockNumber == 0 )
+        throw std::runtime_error( "Snapshot for block 0 is absent" );
+
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 &&
          time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) {
@@ -154,17 +162,34 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         return joResponse;
     }
 
-    if ( currentSnapshotBlockNumber >= 0 )
+    if ( currentSnapshotBlockNumber >= 0 ) {
         fs::remove( currentSnapshotPath );
+        if ( m_shared_space )
+            m_shared_space->unlock();
+        currentSnapshotBlockNumber = -1;
+    }
 
-    // TODO check
-    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    if ( blockNumber == 0 )
-        throw std::runtime_error( "Snapshot for block 0 is absent" );
+    // exit if shared space unavailable
+    if ( m_shared_space && !m_shared_space->try_lock() ) {
+        joResponse["error"] = "snapshot serialization space is occupied, please try again later";
+        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        return joResponse;
+    }
 
     currentSnapshotPath = client.createSnapshotFile( blockNumber );
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
+    // TODO mutex here!!
+    skutils::dispatch::once( "dummy-queue-for-snapshot",
+        [this]() {
+            if ( currentSnapshotBlockNumber >= 0 ) {
+                fs::remove( currentSnapshotPath );
+                if ( m_shared_space )
+                    m_shared_space->unlock();
+                currentSnapshotBlockNumber = -1;
+            }
+        },
+        skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
 
     //
     //
