@@ -386,44 +386,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
 namespace snapshot {
 
-bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
+bool download( const std::string& strURLWeb3, unsigned block_number, const fs::path& saveTo,
     fn_progress_t onProgress, bool isBinaryDownload, std::string* pStrErrorDescription ) {
     if ( pStrErrorDescription )
         pStrErrorDescription->clear();
     std::ofstream f;
     try {
         boost::filesystem::remove( saveTo );
-        //
-        //
-        if ( block_number == unsigned( -1 ) ) {
-            // this means "latest"
-            skutils::rest::client cli;
-            if ( !cli.open( strURLWeb3 ) ) {
-                if ( pStrErrorDescription )
-                    ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
-                std::cout << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "REST failed to connect to server(1)" ) << "\n";
-                return false;
-            }
 
-            nlohmann::json joIn = nlohmann::json::object();
-            joIn["jsonrpc"] = "2.0";
-            joIn["method"] = "skale_getLatestSnapshotBlockNumber";
-            joIn["params"] = nlohmann::json::object();
-            skutils::rest::data_t d = cli.call( joIn );
-            if ( d.empty() ) {
-                if ( pStrErrorDescription )
-                    ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
-                std::cout << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "Failed to get latest bockNumber" ) << "\n";
-                return false;
-            }
-            // TODO catch?
-            block_number = dev::eth::jsToBlockNumber(
-                nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
-        }
-        //
-        //
         skutils::rest::client cli;
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
