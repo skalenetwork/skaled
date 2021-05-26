@@ -397,9 +397,9 @@ bool download( const std::string& strURLWeb3, unsigned block_number, const fs::p
         skutils::rest::client cli;
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
-                ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
+                ( *pStrErrorDescription ) = "REST failed to connect to server";
             std::cout << cc::fatal( "FATAL:" ) << " "
-                      << cc::error( "REST failed to connect to server(2)" ) << "\n";
+                      << cc::error( "REST failed to connect to server" ) << "\n";
             return false;
         }
 
