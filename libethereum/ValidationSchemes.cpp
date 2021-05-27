@@ -198,7 +198,6 @@ void validateConfigJson( js::mObject const& _obj ) {
         requireJsonFields( nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj(),
             "ChainParams::loadConfig::skaleConfig::nodeInfo::wallets::ima",
             {{"t", {{js::int_type}, JsonFieldPresence::Required}},
-                {"url", {{js::str_type}, JsonFieldPresence::Required}},
                 {"BLSPublicKey0", {{js::str_type}, JsonFieldPresence::Required}},
                 {"BLSPublicKey1", {{js::str_type}, JsonFieldPresence::Required}},
                 {"BLSPublicKey2", {{js::str_type}, JsonFieldPresence::Required}},
