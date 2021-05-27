@@ -56,6 +56,71 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/crypto/OpenSSLECDSAKey.h>
 
+static std::string stat_get_sgx_wallet_url( const nlohmann::json& joConfig ) {
+    //    if ( joConfig.count( "skaleConfig" ) == 0 )
+    //        throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+    //    const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+    //    if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+    //        throw std::runtime_error(
+    //            "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+    //    const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+    //    if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+    //        throw std::runtime_error(
+    //            "error config.json file, cannot find "
+    //            "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+    //    const nlohmann::json& joSkaleConfig_nodeInfo_ecdsaKeyName =
+    //        joSkaleConfig_nodeInfo["ecdsaKeyName"];
+    //    std::string strEcdsaKeyName = joSkaleConfig_nodeInfo_ecdsaKeyName.get< std::string >();
+    //    if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
+    //        throw std::runtime_error(
+    //            "error config.json file, cannot find "
+    //            "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+    //    const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+    //    if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+    //        throw std::runtime_error(
+    //            "error config.json file, cannot find "
+    //            "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+    //    const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+    //        joSkaleConfig_nodeInfo_wallets["ima"];
+    //    const std::string strWalletURL =
+    //        ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+    //            joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+    //            "";
+    //    return strWalletURL;
+
+
+    if ( joConfig.count( "chainParams" ) == 0 )
+        throw std::runtime_error( "error config.json file, cannot find \"chainParams\"" );
+    const nlohmann::json& joChainParams = joConfig["chainParams"];
+    if ( joChainParams.count( "nodeInfo" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find \"chainParams\"/\"nodeInfo\"" );
+    const nlohmann::json& joChainParams_nodeInfo = joChainParams["nodeInfo"];
+    if ( joChainParams_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find "
+            "\"chainParams\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+    const nlohmann::json& joChainParams_nodeInfo_ecdsaKeyName =
+        joChainParams_nodeInfo["ecdsaKeyName"];
+    std::string strEcdsaKeyName = joChainParams_nodeInfo_ecdsaKeyName.get< std::string >();
+    if ( joChainParams_nodeInfo.count( "wallets" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find "
+            "\"chainParams\"/\"nodeInfo\"/\"wallets\"" );
+    const nlohmann::json& joChainParams_nodeInfo_wallets = joChainParams_nodeInfo["wallets"];
+    if ( joChainParams_nodeInfo_wallets.count( "ima" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find "
+            "\"chainParams\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+    const nlohmann::json& joChainParams_nodeInfo_wallets_ima =
+        joChainParams_nodeInfo_wallets["ima"];
+    const std::string strWalletURL =
+        ( joChainParams_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+            joChainParams_nodeInfo_wallets_ima["url"].get< std::string >() :
+            "";
+    return strWalletURL;
+}
+
 namespace dev {
 
 namespace tracking {
@@ -327,10 +392,11 @@ bool pending_ima_txns::broadcast_txn_sign_is_enabled() {
             return false;
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
-        const std::string strWalletURL =
-            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
-                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
-                "";
+        // const std::string strWalletURL =
+        //    ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+        //        joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+        //        "";
+        const std::string strWalletURL = stat_get_sgx_wallet_url( joConfig );
         if ( strWalletURL.empty() )
             return false;
         return true;
@@ -375,12 +441,13 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
-        const std::string strWalletURL =
-            ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
-                joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
-                "";
-        if ( strWalletURL.empty() )
-            throw std::runtime_error( "empty wallet url" );
+        // const std::string strWalletURL =
+        //    ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+        //        joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+        //        "";
+        // if ( strWalletURL.empty() )
+        //    throw std::runtime_error( "empty wallet url" );
+        const std::string strWalletURL = stat_get_sgx_wallet_url( joConfig );
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad wallet url" );
@@ -1215,9 +1282,9 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
         // validate wallet description
-        static const char* g_arrMustHaveWalletFields[] = {"url", "keyShareName", "t", "n",
-            "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2", "BLSPublicKey3",
-            "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
+        static const char* g_arrMustHaveWalletFields[] = {// "url",
+            "keyShareName", "t", "n", "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
+            "BLSPublicKey3", "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
             "commonBLSPublicKey3"};
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
@@ -1649,12 +1716,13 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
         try {
-            const std::string strWalletURL =
-                ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
-                    joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
-                    "";
-            if ( strWalletURL.empty() )
-                throw std::runtime_error( "empty wallet url" );
+            // const std::string strWalletURL =
+            //    ( joSkaleConfig_nodeInfo_wallets_ima.count( "url" ) > 0 ) ?
+            //        joSkaleConfig_nodeInfo_wallets_ima["url"].get< std::string >() :
+            //        "";
+            // if ( strWalletURL.empty() )
+            //    throw std::runtime_error( "empty wallet url" );
+            const std::string strWalletURL = stat_get_sgx_wallet_url( joConfig );
             u = skutils::url( strWalletURL );
             if ( u.scheme().empty() || u.host().empty() )
                 throw std::runtime_error( "bad wallet url" );
