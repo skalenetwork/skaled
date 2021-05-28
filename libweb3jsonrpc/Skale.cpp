@@ -172,7 +172,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // exit if shared space unavailable
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
-        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] = time(NULL) + SNAPSHOT_DOWNLOAD_TIMEOUT;
         return joResponse;
     }
 

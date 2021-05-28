@@ -352,7 +352,10 @@ std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
-        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        try {
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        } catch ( ... ) { /*ignore non-numbers*/
+        }
     }  // for
 
     // delete all after n first
