@@ -2145,7 +2145,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *g_client );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
 
         std::string argv_string;
         {

@@ -30,6 +30,8 @@
 #include <jsonrpccpp/server.h>
 #include <libdevcore/Common.h>
 
+#include <libethereum/ChainParams.h>
+
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
@@ -96,10 +98,13 @@ private:
     list_txns_t list_txns_;
     set_txns_t set_txns_;
 
+protected:
+    const std::string strSgxWalletURL_;
+
 public:
     static std::atomic_size_t g_nMaxPendingTxns;
     static std::string g_strDispatchQueueID;
-    pending_ima_txns( const std::string& configPath );
+    pending_ima_txns( const std::string& configPath, const std::string& strSgxWalletURL );
     pending_ima_txns( const pending_ima_txns& ) = delete;
     pending_ima_txns( pending_ima_txns&& ) = delete;
     virtual ~pending_ima_txns();
@@ -135,7 +140,7 @@ public:
     virtual void on_txn_insert( const txn_entry& txe, bool isEnableBroadcast );
     virtual void on_txn_erase( const txn_entry& txe, bool isEnableBroadcast );
 
-    bool broadcast_txn_sign_is_enabled();
+    bool broadcast_txn_sign_is_enabled( const std::string& strWalletURL );
 
 private:
     std::string broadcast_txn_sign_string( const char* strToSign );
@@ -181,8 +186,11 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
+    const dev::eth::ChainParams& chainParams_;
+
 public:
-    SkaleStats( const std::string& configPath, eth::Interface& _eth );
+    SkaleStats( const std::string& configPath, eth::Interface& _eth,
+        const dev::eth::ChainParams& chainParams );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skaleStats", "1.0"}};

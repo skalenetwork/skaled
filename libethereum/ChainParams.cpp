@@ -152,7 +152,6 @@ ChainParams ChainParams::loadConfig(
             keyShareName = ima.at( "keyShareName" ).get_str();
 
             t = ima.at( "t" ).get_int();
-            sgxServerUrl = ima.at( "url" ).get_str();
 
             BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
             BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
