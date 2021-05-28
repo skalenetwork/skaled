@@ -326,8 +326,6 @@ bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWall
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             return false;
-        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
-            joSkaleConfig_nodeInfo_wallets["ima"];
         if ( strWalletURL.empty() )
             return false;
         return true;
@@ -890,8 +888,8 @@ namespace rpc {
 
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : chainParams_( chainParams ),
-      pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+    : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+      chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
 }
