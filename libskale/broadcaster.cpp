@@ -97,8 +97,6 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt(m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof(val));
 
-
-
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
         // connect server to clients
