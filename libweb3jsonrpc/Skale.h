@@ -37,6 +37,7 @@
 #include <libconsensus/thirdparty/json.hpp>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <boost/filesystem/path.hpp>
@@ -99,6 +100,7 @@ private:
     fs::path currentSnapshotPath;
     time_t currentSnapshotTime = 0;
     static const time_t SNAPSHOT_DOWNLOAD_TIMEOUT;
+    mutable std::mutex m_snapshot_mutex;
 };
 
 namespace snapshot {

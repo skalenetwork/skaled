@@ -145,6 +145,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
     // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
 
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
     nlohmann::json joResponse = nlohmann::json::object();
 
     // TODO check
@@ -164,29 +165,39 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     if ( currentSnapshotBlockNumber >= 0 ) {
         fs::remove( currentSnapshotPath );
+        currentSnapshotBlockNumber = -1;
         if ( m_shared_space )
             m_shared_space->unlock();
-        currentSnapshotBlockNumber = -1;
     }
 
     // exit if shared space unavailable
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
-        joResponse["timeValid"] = time(NULL) + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] = time( NULL ) + SNAPSHOT_DOWNLOAD_TIMEOUT;
         return joResponse;
     }
 
-    currentSnapshotPath = client.createSnapshotFile( blockNumber );
+    try {
+        currentSnapshotPath = client.createSnapshotFile( blockNumber );
+    } catch ( ... ) {
+        if ( m_shared_space )
+            m_shared_space->unlock();
+        throw;
+    }
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
     // TODO mutex here!!
     skutils::dispatch::once( "dummy-queue-for-snapshot",
         [this]() {
+            std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
-                fs::remove( currentSnapshotPath );
+                try {
+                    fs::remove( currentSnapshotPath );
+                } catch ( ... ) {
+                }
+                currentSnapshotBlockNumber = -1;
                 if ( m_shared_space )
                     m_shared_space->unlock();
-                currentSnapshotBlockNumber = -1;
             }
         },
         skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
@@ -239,8 +250,12 @@ std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
 }
 std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     const nlohmann::json& joRequest ) {
-    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    //    ... ...
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    if ( currentSnapshotBlockNumber < 0 ) {
+        return std::vector< uint8_t >();
+    }
+
     fs::path fp = currentSnapshotPath;
     //
     size_t idxFrom = joRequest["from"].get< size_t >();
@@ -257,8 +272,16 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     return buffer;
 }
 nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
-    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    //    ... ...
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    if ( currentSnapshotBlockNumber < 0 ) {
+        nlohmann::json joResponse = nlohmann::json::object();
+        joResponse["error"] =
+            "there's no current snapshot, or snapshot expored; please call skale_getSnapshot() "
+            "first";
+        return joResponse;
+    }
+
     fs::path fp = currentSnapshotPath;
     //
     size_t idxFrom = joRequest["from"].get< size_t >();
