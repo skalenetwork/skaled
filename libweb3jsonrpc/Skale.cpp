@@ -61,9 +61,12 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
+const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 100;
+
 std::string exceptionToErrorMessage();
 
-Skale::Skale( Client& _client ) : m_client( _client ) {}
+Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
+    : m_client( _client ), m_shared_space( _sharedSpace ) {}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
@@ -142,7 +145,13 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
     // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
 
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
     nlohmann::json joResponse = nlohmann::json::object();
+
+    // TODO check
+    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    if ( blockNumber == 0 )
+        throw std::runtime_error( "Snapshot for block 0 is absent" );
 
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 &&
@@ -154,17 +163,44 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         return joResponse;
     }
 
-    if ( currentSnapshotBlockNumber >= 0 )
+    if ( currentSnapshotBlockNumber >= 0 ) {
         fs::remove( currentSnapshotPath );
+        currentSnapshotBlockNumber = -1;
+        if ( m_shared_space )
+            m_shared_space->unlock();
+    }
 
-    // TODO check
-    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    if ( blockNumber == 0 )
-        throw std::runtime_error( "Snapshot for block 0 is absent" );
+    // exit if shared space unavailable
+    if ( m_shared_space && !m_shared_space->try_lock() ) {
+        joResponse["error"] = "snapshot serialization space is occupied, please try again later";
+        joResponse["timeValid"] = time( NULL ) + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        return joResponse;
+    }
 
-    currentSnapshotPath = client.createSnapshotFile( blockNumber );
+    try {
+        currentSnapshotPath = client.createSnapshotFile( blockNumber );
+    } catch ( ... ) {
+        if ( m_shared_space )
+            m_shared_space->unlock();
+        throw;
+    }
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
+    // TODO mutex here!!
+    skutils::dispatch::once( "dummy-queue-for-snapshot",
+        [this]() {
+            std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+            if ( currentSnapshotBlockNumber >= 0 ) {
+                try {
+                    fs::remove( currentSnapshotPath );
+                } catch ( ... ) {
+                }
+                currentSnapshotBlockNumber = -1;
+                if ( m_shared_space )
+                    m_shared_space->unlock();
+            }
+        },
+        skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
 
     //
     //
@@ -214,8 +250,12 @@ std::vector< uint8_t > Skale::ll_impl_skale_downloadSnapshotFragment(
 }
 std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     const nlohmann::json& joRequest ) {
-    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    //    ... ...
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    if ( currentSnapshotBlockNumber < 0 ) {
+        return std::vector< uint8_t >();
+    }
+
     fs::path fp = currentSnapshotPath;
     //
     size_t idxFrom = joRequest["from"].get< size_t >();
@@ -232,8 +272,16 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     return buffer;
 }
 nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
-    //    unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    //    ... ...
+    std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    if ( currentSnapshotBlockNumber < 0 ) {
+        nlohmann::json joResponse = nlohmann::json::object();
+        joResponse["error"] =
+            "there's no current snapshot, or snapshot expored; please call skale_getSnapshot() "
+            "first";
+        return joResponse;
+    }
+
     fs::path fp = currentSnapshotPath;
     //
     size_t idxFrom = joRequest["from"].get< size_t >();
