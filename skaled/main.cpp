@@ -1829,8 +1829,8 @@ int main( int argc, char** argv ) try {
         g_client->setGasPricer( gasPricer );
         g_client->injectSkaleHost( skaleHost );
 
-        const auto* buildinfo = skale_get_buildinfo();
-        g_client->setExtraData( rlpList( 0, string{buildinfo->project_name}.substr( 0, 5 ) ) );
+        skale_get_buildinfo();
+        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
