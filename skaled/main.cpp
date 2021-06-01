@@ -1579,7 +1579,9 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
-        std::lock_guard< SharedSpace > shared_space_lock( *shared_space );
+        std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
+        if ( shared_space )
+            shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
         std::string commonPublicKey = "";
         if ( !vm.count( "public-key" ) ) {
             throw std::runtime_error(
