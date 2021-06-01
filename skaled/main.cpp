@@ -1843,13 +1843,8 @@ int main( int argc, char** argv ) try {
         g_client->setGasPricer( gasPricer );
         g_client->injectSkaleHost( skaleHost );
 
-        const auto* buildinfo = skale_get_buildinfo();
-        g_client->setExtraData(
-            rlpList( 0, string{buildinfo->project_version}.substr( 0, 5 ) + "++" +
-                            string{buildinfo->git_commit_hash}.substr( 0, 4 ) +
-                            string{buildinfo->build_type}.substr( 0, 1 ) +
-                            string{buildinfo->system_name}.substr( 0, 5 ) +
-                            string{buildinfo->compiler_id}.substr( 0, 3 ) ) );
+        skale_get_buildinfo();
+        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
@@ -2159,7 +2154,7 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *g_client, shared_space );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
 
         std::string argv_string;
         {
