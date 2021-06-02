@@ -91,11 +91,11 @@ void* ZmqBroadcaster::server_socket() const {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
         int val = 15000;
-        zmq_setsockopt(m_zmq_server_socket, ZMQ_HEARTBEAT_IVL, &val, sizeof(val));
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_IVL, &val, sizeof( val ) );
         val = 3000;
-        zmq_setsockopt(m_zmq_server_socket, ZMQ_HEARTBEAT_TIMEOUT, &val, sizeof(val));
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TIMEOUT, &val, sizeof( val ) );
         val = 60000;
-        zmq_setsockopt(m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof(val));
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
@@ -119,13 +119,13 @@ void* ZmqBroadcaster::client_socket() const {
 
         int value = 1;
 
-        zmq_setsockopt(m_zmq_client_socket, ZMQ_TCP_KEEPALIVE, &value, sizeof(value) );
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE, &value, sizeof( value ) );
         value = 300;
-        zmq_setsockopt(m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_IDLE, &value, sizeof(value));
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_IDLE, &value, sizeof( value ) );
         value = 10;
-        zmq_setsockopt(m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_CNT, &value, sizeof(value));
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_CNT, &value, sizeof( value ) );
         value = 300;
-        zmq_setsockopt(m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof(value));
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
