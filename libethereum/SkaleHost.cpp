@@ -97,8 +97,13 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
     const std::string sgx_cert_filename = "sgx.crt";
     const std::string sgx_key_filename = "sgx.key";
-    std::string sgxSSLKeyFilePath = sgx_cert_path + sgx_key_filename;
-    std::string sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
+    std::string sgxSSLKeyFilePath;
+    std::string sgxSSLCertFilePath;
+    // if https
+    if ( sgxServerUrl.find(':') == 5 ) {
+        sgxSSLKeyFilePath = sgx_cert_path + sgx_key_filename;
+        sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
+    }
 
     std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
 

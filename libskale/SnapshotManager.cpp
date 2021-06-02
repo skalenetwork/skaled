@@ -49,14 +49,17 @@ const std::string SnapshotManager::snapshot_hash_file_name = "snapshot_hash.txt"
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager(
-    const fs::path& _dataDir, const std::vector< std::string >& _volumes ) {
+SnapshotManager::SnapshotManager( const fs::path& _dataDir,
+    const std::vector< std::string >& _volumes, const std::string& _diffsDir ) {
     assert( _volumes.size() > 0 );
 
     data_dir = _dataDir;
     volumes = _volumes;
     snapshots_dir = data_dir / "snapshots";
-    diffs_dir = data_dir / "diffs";
+    if ( _diffsDir.empty() )
+        diffs_dir = data_dir / "diffs";
+    else
+        diffs_dir = _diffsDir;
 
     if ( !fs::exists( _dataDir ) )
         try {
@@ -349,7 +352,10 @@ std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
-        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        try {
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        } catch ( ... ) { /*ignore non-numbers*/
+        }
     }  // for
 
     // delete all after n first

@@ -29,6 +29,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
+#include <libdevcore/SharedSpace.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/SkaleFace.h>
 #include <functional>
@@ -36,6 +37,7 @@
 #include <libconsensus/thirdparty/json.hpp>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <boost/filesystem/path.hpp>
@@ -53,7 +55,8 @@ namespace fs = boost::filesystem;
  */
 class Skale : public dev::rpc::SkaleFace {
 public:
-    explicit Skale( dev::eth::Client& _client );
+    explicit Skale(
+        dev::eth::Client& _client, std::shared_ptr< SharedSpace > _sharedSpace = nullptr );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skale", "0.1"}};
@@ -92,10 +95,12 @@ private:
     static list_fn_on_shutdown_t g_list_fn_on_shutdown;
 
     dev::eth::Client& m_client;
+    std::shared_ptr< SharedSpace > m_shared_space;
     int currentSnapshotBlockNumber = -1;
     fs::path currentSnapshotPath;
     time_t currentSnapshotTime = 0;
-    static const time_t SNAPSHOT_DOWNLOAD_TIMEOUT = 100;
+    static const time_t SNAPSHOT_DOWNLOAD_TIMEOUT;
+    mutable std::mutex m_snapshot_mutex;
 };
 
 namespace snapshot {

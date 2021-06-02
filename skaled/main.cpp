@@ -46,6 +46,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
+#include <libdevcore/SharedSpace.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
@@ -664,6 +665,10 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    addGeneralOption( "shared-space-path", po::value< string >()->value_name( "<path>" ),
+        ( "Use shared space folder for temporary files (default: " + getDataDir().string() +
+            "/diffs)" )
+            .c_str() );
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
@@ -1560,14 +1565,23 @@ int main( int argc, char** argv ) try {
         chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
     }
 
+    std::shared_ptr< SharedSpace > shared_space;
+    if ( vm.count( "shared-space-path" ) )
+        shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
+
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) )
-        snapshotManager.reset( new SnapshotManager(
-            getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
-                              "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                              "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
+        snapshotManager.reset( new SnapshotManager( getDataDir(),
+            {BlockChain::getChainDirName( chainParams ), "filestorage",
+                "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
+            shared_space ? shared_space->getPath() : std::string() ) );
+    }
 
     if ( vm.count( "download-snapshot" ) ) {
+        std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
+        if ( shared_space )
+            shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
         std::string commonPublicKey = "";
         if ( !vm.count( "public-key" ) ) {
             throw std::runtime_error(
@@ -2138,7 +2152,7 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *g_client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *g_client );
+        auto skaleFace = new rpc::Skale( *g_client, shared_space );
         /// skaleStatsFace
         auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
 
