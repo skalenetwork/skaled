@@ -2065,9 +2065,12 @@ bool server::process_request(
         write_response( strm, last_connection, req, res );
         return true;
     }
-    if ( req.get_header_value( "Connection" ) == "close" ) {
+
+    // temporary disable persistent connections
+    //if ( req.get_header_value( "Connection" ) == "close" ) {
         connection_close = true;
-    }
+    //}
+
     req.set_header( "REMOTE_ADDR", strm.get_remote_addr().c_str() );
     // body
     if ( req.method_ == "POST" || req.method_ == "PUT" || req.method_ == "PATCH" ) {
@@ -2369,9 +2372,10 @@ bool client::process_request( const std::string& /*origin*/, stream& strm, reque
         return false;
     }
 
-    if ( res.get_header_value( "Connection" ) == "close" || res.version_ == "HTTP/1.0" ) {
+    // temporary disable persistent connections
+    //if ( res.get_header_value( "Connection" ) == "close" || res.version_ == "HTTP/1.0" ) {
         connection_close = true;
-    }
+    //}
     // body
     if ( req.method_ != "HEAD" ) {
         if ( !detail::read_content( strm, res, req.progress_ ) ) {
