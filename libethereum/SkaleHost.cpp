@@ -94,17 +94,20 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
-    std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" );
+    std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
     if ( sgx_cert_path.empty() )
         sgx_cert_path = "/skale_node_data/sgx_certs/";
     else if ( sgx_cert_path[sgx_cert_path.length() - 1] != '/' )
         sgx_cert_path += '/';
-    std::string sgx_cert_filename = getenv( "SGX_CERT_FILE" );
-    if ( sgx_cert_filename.empty() )
+
+    const char* sgx_cert_filename = getenv( "SGX_CERT_FILE" );
+    if ( sgx_cert_filename == nullptr )
         sgx_cert_filename = "sgx.crt";
-    std::string sgx_key_filename = getenv( "SGX_KEY_FILE" );
-    if ( sgx_key_filename.empty() )
+
+    const char* sgx_key_filename = getenv( "SGX_KEY_FILE" );
+    if ( sgx_key_filename == nullptr )
         sgx_key_filename = "sgx.key";
+
     std::string sgxSSLKeyFilePath;
     std::string sgxSSLCertFilePath;
     // if https
