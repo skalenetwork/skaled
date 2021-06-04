@@ -1,0 +1,21 @@
+= SKALE Chain ETH
+
+SKALE Chains enable dApps to run gasless transactions. This provides an effective way to scale your dApp not only for speed but also to scale economically. However, SKALE Chains do require skETH to conduct transactions – this skETH is SKALE Chain "fake" ETH with no economic value but provides a way for dApps to facilitate permissive access to SKALE Chains and protects against DDoS attacks.
+
+There are a few ways to get SKALE ETH (skETH), depending on your setup.
+
+== ETH on SKALE SDKs
+
+For SKALE SDKs, an account is pre-funded with SKALE ETH (skETH). You can use this for conducting transactions, sending to users on your SKALE Chain, and more. See the README in the SDK for the pre-funded account.
+
+== ETH on Testnet SKALE Chains
+
+For Testnets, a faucet is available to fund accounts on your specific endpoint.  https://faucet.skale.network[Click here to access the Testnet Faucet.]
+
+== ETH on Mainnet SKALE Chains
+
+For Mainnet, the SKALE Chain owner account is provided ETH for the SKALE Chain. From this account, the owner can fund contracts, accounts, conduct transactions, etc. 
+
+== Real ETH on SKALE Chains
+
+To view Real ETH on SKALE Chains, you can use the _informational RPC ports_ for your endpoint. 
