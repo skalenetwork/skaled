@@ -1,4 +1,4 @@
-* xref:index.adoc[Overview]
+* xref:overview.adoc[Overview]
 * xref:skale-chain-eth.adoc[SKALE Chain ETH]
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
 * xref:snapshots.adoc[Snapshots]
