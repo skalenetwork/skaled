@@ -2621,7 +2621,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 size_t nOffsetOfAmounts = offsetOfAmounts.convert_to< size_t >();
                 nPos += nFieldSize;
                 //
-                const size_t nSavedStaticPos = nPos;
+                // const size_t nSavedStaticPos = nPos;
                 size_t nPosMaxDynamic = nPos;
                 // ids
                 nPos = nOffsetOfIDs + 32;
@@ -2788,7 +2788,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     ( ( char* ) ( vecBytes.data() ) ) + nPos + nFieldSize );
                 nPos += nFieldSize;
                 //
-                const size_t nSavedStaticPos = nPos;
+                // const size_t nSavedStaticPos = nPos;
                 size_t nPosMaxDynamic = nPos;
                 //
                 if ( nPos > cntMessageBytes ) {
