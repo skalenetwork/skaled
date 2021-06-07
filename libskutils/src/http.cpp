@@ -2067,8 +2067,8 @@ bool server::process_request(
     }
 
     // temporary disable persistent connections
-    //if ( req.get_header_value( "Connection" ) == "close" ) {
-        connection_close = true;
+    // if ( req.get_header_value( "Connection" ) == "close" ) {
+    connection_close = true;
     //}
 
     req.set_header( "REMOTE_ADDR", strm.get_remote_addr().c_str() );
@@ -2373,8 +2373,8 @@ bool client::process_request( const std::string& /*origin*/, stream& strm, reque
     }
 
     // temporary disable persistent connections
-    //if ( res.get_header_value( "Connection" ) == "close" || res.version_ == "HTTP/1.0" ) {
-        connection_close = true;
+    // if ( res.get_header_value( "Connection" ) == "close" || res.version_ == "HTTP/1.0" ) {
+    connection_close = true;
     //}
     // body
     if ( req.method_ != "HEAD" ) {
