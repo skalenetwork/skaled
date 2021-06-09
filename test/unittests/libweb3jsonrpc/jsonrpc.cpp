@@ -149,11 +149,25 @@ static std::string const c_genesisConfigString =
             "storage" : {
             }
         },
+//         {
+// 	"linkReferences": {},
+// 	"object":"608060405234801561001057600080fd5b5060d68061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
+// 	"opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0xD6 DUP1 PUSH2 0x1F PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH1 0xF JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x4 CALLDATASIZE LT PUSH1 0x32 JUMPI PUSH1 0x0 CALLDATALOAD PUSH1 0xE0 SHR DUP1 PUSH4 0x9B063104 EQ PUSH1 0x37 JUMPI DUP1 PUSH4 0xCD16ECBF EQ PUSH1 0x62 JUMPI JUMPDEST PUSH1 0x0 DUP1 REVERT JUMPDEST PUSH1 0x60 PUSH1 0x4 DUP1 CALLDATASIZE SUB PUSH1 0x20 DUP2 LT ISZERO PUSH1 0x4B JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST DUP2 ADD SWAP1 DUP1 DUP1 CALLDATALOAD SWAP1 PUSH1 0x20 ADD SWAP1 SWAP3 SWAP2 SWAP1 POP POP POP PUSH1 0x8D JUMP JUMPDEST STOP JUMPDEST PUSH1 0x8B PUSH1 0x4 DUP1 CALLDATASIZE SUB PUSH1 0x20 DUP2 LT ISZERO PUSH1 0x76 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST DUP2 ADD SWAP1 DUP1 DUP1 CALLDATALOAD SWAP1 PUSH1 0x20 ADD SWAP1 SWAP3 SWAP2 SWAP1 POP POP POP PUSH1 0x97 JUMP JUMPDEST STOP JUMPDEST DUP1 PUSH1 0x1 DUP2 SWAP1 SSTORE POP POP JUMP JUMPDEST DUP1 PUSH1 0x0 DUP2 SWAP1 SSTORE POP POP JUMP INVALID LOG2 PUSH6 0x627A7A723158 KECCAK256 0x29 0xDF SLOAD EXP PUSH22 0x55533EF4B3F66BC4F9ABE138B00117D1496EFBFD9D03 GAS 0x48 0xCD MSIZE 0x5E PUSH5 0x736F6C6343 STOP SDIV 0xD STOP ORIGIN ",
+// 	"sourceMap": "25:194:0:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;25:194:0;;;;;;;"
+// }
+        "0xC2002000000000000000000000000000000000C2": {
+            "balance": "0",
+            "code": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
+            "storage": {
+				"0x0": "0x01"
+			},
+            "nonce": "0"
+        },
         "0xD2002000000000000000000000000000000000D2": {
             "balance": "0",
             "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
             "storage": {
-            },
+			},
             "nonce": "0"
         },
         "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
@@ -1783,17 +1797,59 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
 
-//    Json::Value txZeroValue;  // call zero(1)
-//    txZeroValue["to"] = contractAddress1;
-//    txZeroValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000002";
-//    txZeroValue["from"] = toJS( senderAddress );
-//    txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-//    txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
-//    dev::eth::mineTransaction( *( fixture.client ), 1 );
-//    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+    Json::Value txZeroValue;  // call zero(1)
+    txZeroValue["to"] = contractAddress1;
+    txZeroValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000000";
+    txZeroValue["from"] = toJS( senderAddress );
+    txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
 }
 
-BOOST_AUTO_TEST_CASE( setSchainExitTime ){
+BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
+    JsonRpcFixture fixture( c_genesisConfigString );
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+    
+    string contractAddress = "0xC2002000000000000000000000000000000000C2";
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txChangeInt;
+    txChangeInt["to"] = contractAddress;
+    txChangeInt["data"] = "0xcd16ecbf0000000000000000000000000000000000000000000000000000000000000002";
+    txChangeInt["from"] = senderAddress;
+    txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    string txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto t = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    Json::FastWriter fastWriter;
+    std::cout << fastWriter.write( t ) << std::endl;
+    std::cout << fixture.client->state().storageUsedTotal() << std::endl;
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+
+    Json::Value txZeroValue;
+    txZeroValue["to"] = contractAddress;
+    txZeroValue["data"] = "0xcd16ecbf0000000000000000000000000000000000000000000000000000000000000000";
+    txZeroValue["from"] = senderAddress;
+    txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    std::cout << fixture.client->state().storageUsedTotal() << std::endl;
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 32 );
+
+    Json::Value txChangeInt1;
+    txChangeInt["to"] = contractAddress;
+    txChangeInt["data"] = "0x9b0631040000000000000000000000000000000000000000000000000000000000000001";
+    txChangeInt["from"] = senderAddress;
+    txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    std::cout << fixture.client->state().storageUsedTotal() << std::endl;
+    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
     JsonRpcFixture fixture;
     Json::Value requestJson;
     requestJson["finishTime"] = 100;

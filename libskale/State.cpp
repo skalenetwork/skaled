@@ -187,6 +187,8 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
+                totalStorageUsed_ += currentStorageUsed_;
+                updateStorageUsage();
             }
         }
     }
