@@ -275,9 +275,8 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
 
     if ( currentSnapshotBlockNumber < 0 )
-        throw jsonrpc::JsonRpcException(
-            "there's no current snapshot, or snapshot expired; please call skale_getSnapshot() "
-            "first" );
+        return "there's no current snapshot, or snapshot expired; please call skale_getSnapshot() "
+               "first";
 
     fs::path fp = currentSnapshotPath;
     //
