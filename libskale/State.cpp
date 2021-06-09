@@ -545,23 +545,16 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     dev::u256 _currentValue = storage( _contract, _key );
-    dev::u256 _originalValue = originalStorageValue( _contract, _key );
 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
     int count = 0;
-    if ( _originalValue == _currentValue ) {
-        if ( _currentValue == 0 ) {
-            count = 1;
-        } else if ( _value == 0 ) {
-            count = -1;
-        }
-    }
-    // copied from EXTVMFace.cpp ----- TODO: review it|^
 
-    if ( _value == _currentValue ) {
+    if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {
         count = 0;
+    } else {
+        count = ( _value == 0 ? -1 : 1 );
     }
 
     storageUsage[_contract] += count * 32;
