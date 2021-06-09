@@ -18,7 +18,7 @@ bool SharedSpace::lock() {
             sleep( 1 );
     } while ( fd < 0 );
 
-    int res = flock( lock_fd, LOCK_EX );
+    int res = flock( fd, LOCK_EX );
     if ( res == 0 ) {
         lock_fd = fd;
 
