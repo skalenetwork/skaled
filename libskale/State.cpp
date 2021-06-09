@@ -171,7 +171,6 @@ void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
         const eth::Account& account = addressAccountPair.second;
-
         if ( account.isDirty() ) {
             if ( !account.isAlive() ) {
                 throw logic_error( "Removing of accounts is not implemented" );
@@ -183,16 +182,16 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                     const u256& value = storageAddressValuePair.second;
                     setStorage( address, storageAddress, value );
                 }
-
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
+                totalStorageUsed_ += currentStorageUsed_;
+                updateStorageUsage();
             }
         }
     }
     commit( State::CommitBehaviour::KeepEmptyAccounts, OverlayDB::g_fn_pre_commit_empty );
 }
-
 std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
