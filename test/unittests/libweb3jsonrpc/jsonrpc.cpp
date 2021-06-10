@@ -310,6 +310,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
                         rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
                         rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+                        joResponse.EraseMember( "result" );
                         joResponse.AddMember( "result", d, joResponse.GetAllocator() );
                     } catch ( std::invalid_argument& ex ) {
                         // not known transaction - skip exception
