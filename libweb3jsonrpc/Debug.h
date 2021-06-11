@@ -54,6 +54,8 @@ public:
     virtual std::string debug_getArguments() override;
     virtual std::string debug_getConfig() override;
     virtual std::string debug_getSchainName() override;
+    virtual uint64_t debug_getSnapshotCalculationTime() override;
+    virtual uint64_t debug_getSnapshotHashCalculationTime() override;
 
 private:
     eth::Client const& m_eth;
