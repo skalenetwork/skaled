@@ -2999,6 +2999,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 joLogsQuery["fromBlock"] = "0x0";
                 joLogsQuery["toBlock"] = "latest";
                 joLogsQuery["topics"] = jarrTopics;
+                nlohmann::json jarrLogsQuery = nlohmann::json::array();
+                jarrLogsQuery.push_back( joLogsQuery );
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Will execute logs search query: " ) +
                            cc::j( joLogsQuery ) );
@@ -3010,7 +3012,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     nlohmann::json joCall = nlohmann::json::object();
                     joCall["jsonrpc"] = "2.0";
                     joCall["method"] = "eth_getLogs";
-                    joCall["params"] = joLogsQuery;
+                    joCall["params"] = jarrLogsQuery;
                     skutils::rest::client cli( urlMainNet );
                     skutils::rest::data_t d = cli.call( joCall );
                     if ( d.empty() )
