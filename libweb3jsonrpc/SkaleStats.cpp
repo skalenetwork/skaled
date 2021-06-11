@@ -3057,7 +3057,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 jarrTopics.push_back( strTopic_event_OutgoingMessage );
                 jarrTopics.push_back( jarrTopic_dstChainHash );
                 jarrTopics.push_back( jarrTopic_msgCounter );
-                jarrTopics.push_back( nullptr );
+                // jarrTopics.push_back( nullptr );
                 nlohmann::json joLogsQuery = nlohmann::json::object();
                 joLogsQuery["address"] = strAddressImaMessageProxy;
                 joLogsQuery["fromBlock"] = "0x0";
@@ -3554,7 +3554,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         << ( strLogPrefix + " " +
                                cc::debug( "Will use contract call based verification of S->M IMA "
                                           "message(s)" ) );
-                    bool bTransactionWasVerifed = false;
 
 
                     /*
@@ -3621,6 +3620,11 @@ OutgoingMessageData.data
 01234567890123456789012345678901234567890123456789012345678901234567890123456789
 0000000000000000000000000000000000000000000000000000000000000000
                     */
+
+
+                    // bool bTransactionWasVerifed = false;
+
+
                     // 10) and 11) pre-encode OutgoingMessageData.dstChain(without 0x prefix)
                     std::string encoded_dstChain;
                     std::string strTargetChainName =
@@ -3732,112 +3736,115 @@ OutgoingMessageData.data
                                cc::info( strDirection ) + cc::debug( " message: " ) +
                                cc::j( joCall ) );
                     if ( strDirection == "M2S" ) {
-                        /*
-                        skutils::rest::client cli( urlMainNet );
-                        skutils::rest::data_t d = cli.call( joCall );
-                        if ( d.empty() )
-                            throw std::runtime_error(
-                                strDirection +
-                                " eth_call to MessageProxy failed, empty data returned" );
-                        nlohmann::json joResult;
-                        try {
-                            joResult = nlohmann::json::parse( d.s_ )["result"];
-                            if ( joResult.is_string() ) {
-                                std::string strResult = joResult.get< std::string >();
-                                clog( VerbosityDebug, "IMA" )
-                                    << ( strLogPrefix + " " +
-                                           cc::debug( "Transaction verification got (raw) result: "
-                        ) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256 uResult(
-                        strResult ), uZero( "0" ); if ( uResult != uZero ) bTransactionWasVerifed =
-                        true;
-                                }
-                            }
-                            if ( !bTransactionWasVerifed )
-                                clog( VerbosityDebug, "IMA" )
-                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                           cc::info( "MessageProxy" ) +
-                                           cc::error( " failed with returned data answer: " ) +
-                                           cc::j( joResult ) );
-                        } catch ( ... ) {
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with non-parse-able data answer: " ) +
-                                       cc::warn( d.s_ ) );
-                        }
-                        */
-                        bTransactionWasVerifed = true;
+                        // skutils::rest::client cli( urlMainNet );
+                        // skutils::rest::data_t d = cli.call( joCall );
+                        // if ( d.empty() )
+                        //    throw std::runtime_error(
+                        //        strDirection +
+                        //        " eth_call to MessageProxy failed, empty data returned" );
+                        // nlohmann::json joResult;
+                        // try {
+                        //    joResult = nlohmann::json::parse( d.s_ )["result"];
+                        //    if ( joResult.is_string() ) {
+                        //        std::string strResult = joResult.get< std::string >();
+                        //        clog( VerbosityDebug, "IMA" )
+                        //            << ( strLogPrefix + " " +
+                        //                   cc::debug( "Transaction verification got (raw) result:
+                        //                   "
+                        //) + cc::info( strResult ) ); if ( !strResult.empty() ) { dev::u256
+                        // uResult( strResult ), uZero( "0" ); if ( uResult != uZero )
+                        // bTransactionWasVerifed = true;
+                        //        }
+                        //    }
+                        //    if ( !bTransactionWasVerifed )
+                        //        clog( VerbosityDebug, "IMA" )
+                        //            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                        //                   cc::info( "MessageProxy" ) +
+                        //                   cc::error( " failed with returned data answer: " ) +
+                        //                   cc::j( joResult ) );
+                        //} catch ( ... ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                        //               cc::info( "MessageProxy" ) +
+                        //               cc::error( " failed with non-parse-able data answer: " ) +
+                        //               cc::warn( d.s_ ) );
+                        //}
+
+                        // bTransactionWasVerifed = true;
                     }  // if ( strDirection == "M2S" )
                     else {
-                        try {
-                            std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
-                            Json::Value _json;
-                            Json::Reader().parse( strCallToConvert, _json );
-                            // TODO: We ignore block number in order to be compatible with Metamask
-                            // (SKALE-430). Remove this temporary fix.
-                            std::string blockNumber = "latest";
-                            dev::eth::TransactionSkeleton t =
-                                dev::eth::toTransactionSkeleton( _json );
-                            // setTransactionDefaults( t ); // l_sergiy: we don't need this here for
-                            // now
-                            dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
-                                t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
-                            std::string strRevertReason;
-                            if ( er.excepted ==
-                                 dev::eth::TransactionException::RevertInstruction ) {
-                                strRevertReason =
-                                    skutils::eth::call_error_message_2_str( er.output );
-                                if ( strRevertReason.empty() )
-                                    strRevertReason =
-                                        "EVM revert instruction without description message";
-                                clog( VerbosityDebug, "IMA" )
-                                    << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                           cc::info( "MessageProxy" ) +
-                                           cc::error( " failed with revert reason: " ) +
-                                           cc::warn( strRevertReason ) + cc::error( ", " ) +
-                                           cc::info( "blockNumber" ) + cc::error( "=" ) +
-                                           cc::bright( blockNumber ) );
-                            } else {
-                                std::string strResult = toJS( er.output );
-                                clog( VerbosityDebug, "IMA" )
-                                    << ( strLogPrefix + " " +
-                                           cc::debug(
-                                               "Transaction verification got (raw) result: " ) +
-                                           cc::info( strResult ) );
-                                if ( !strResult.empty() ) {
-                                    dev::u256 uResult( strResult ), uZero( "0" );
-                                    if ( uResult != uZero )
-                                        bTransactionWasVerifed = true;
-                                }
-                            }
-                        } catch ( std::exception const& ex ) {
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with exception: " ) +
-                                       cc::warn( ex.what() ) );
-                        } catch ( ... ) {
-                            clog( VerbosityDebug, "IMA" )
-                                << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
-                                       cc::info( "MessageProxy" ) +
-                                       cc::error( " failed with exception: " ) +
-                                       cc::warn( "unknown exception" ) );
-                        }
+                        // try {
+                        //    std::string strCallToConvert = joCallItem.dump();  // joCall.dump();
+                        //    Json::Value _json;
+                        //    Json::Reader().parse( strCallToConvert, _json );
+                        //    // TODO: We ignore block number in order to be compatible with
+                        //    Metamask
+                        //    // (SKALE-430). Remove this temporary fix.
+                        //    std::string blockNumber = "latest";
+                        //    dev::eth::TransactionSkeleton t =
+                        //        dev::eth::toTransactionSkeleton( _json );
+                        //    // setTransactionDefaults( t ); // l_sergiy: we don't need this here
+                        //    for
+                        //    // now
+                        //    dev::eth::ExecutionResult er = client()->call( t.from, t.value, t.to,
+                        //        t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+                        //    std::string strRevertReason;
+                        //    if ( er.excepted ==
+                        //         dev::eth::TransactionException::RevertInstruction ) {
+                        //        strRevertReason =
+                        //            skutils::eth::call_error_message_2_str( er.output );
+                        //        if ( strRevertReason.empty() )
+                        //            strRevertReason =
+                        //                "EVM revert instruction without description message";
+                        //        clog( VerbosityDebug, "IMA" )
+                        //            << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                        //                   cc::info( "MessageProxy" ) +
+                        //                   cc::error( " failed with revert reason: " ) +
+                        //                   cc::warn( strRevertReason ) + cc::error( ", " ) +
+                        //                   cc::info( "blockNumber" ) + cc::error( "=" ) +
+                        //                   cc::bright( blockNumber ) );
+                        //    } else {
+                        //        std::string strResult = toJS( er.output );
+                        //        clog( VerbosityDebug, "IMA" )
+                        //            << ( strLogPrefix + " " +
+                        //                   cc::debug(
+                        //                       "Transaction verification got (raw) result: " ) +
+                        //                   cc::info( strResult ) );
+                        //        if ( !strResult.empty() ) {
+                        //            dev::u256 uResult( strResult ), uZero( "0" );
+                        //            if ( uResult != uZero )
+                        //                bTransactionWasVerifed = true;
+                        //        }
+                        //    }
+                        //} catch ( std::exception const& ex ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                        //               cc::info( "MessageProxy" ) +
+                        //               cc::error( " failed with exception: " ) +
+                        //               cc::warn( ex.what() ) );
+                        //} catch ( ... ) {
+                        //    clog( VerbosityDebug, "IMA" )
+                        //        << ( cc::info( strDirection ) + cc::error( " eth_call to " ) +
+                        //               cc::info( "MessageProxy" ) +
+                        //               cc::error( " failed with exception: " ) +
+                        //               cc::warn( "unknown exception" ) );
+                        //}
                     }  // else from if( strDirection == "M2S" )
-                    if ( !bTransactionWasVerifed ) {
-                        clog( VerbosityDebug, "IMA" )
-                            << ( strLogPrefix + " " +
-                                   cc::error( "Transaction verification was not passed for IMA "
-                                              "message " ) +
-                                   cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." ) );
-                        throw std::runtime_error(
-                            "Transaction verification was not passed for IMA message " +
-                            std::to_string( nStartMessageIdx + idxMessage ) );
-                    }  // if ( !bTransactionWasVerifed )
-                    clog( VerbosityDebug, "IMA" )
-                        << ( strLogPrefix + cc::success( " Success, IMA message " ) +
-                               cc::size10( nStartMessageIdx + idxMessage ) +
-                               cc::success( " was verified via call to MessageProxy." ) );
+                    // if ( !bTransactionWasVerifed ) {
+                    //    clog( VerbosityDebug, "IMA" )
+                    //        << ( strLogPrefix + " " +
+                    //               cc::error( "Transaction verification was not passed for IMA "
+                    //                          "message " ) +
+                    //               cc::size10( nStartMessageIdx + idxMessage ) + cc::error( "." )
+                    //               );
+                    //    throw std::runtime_error(
+                    //        "Transaction verification was not passed for IMA message " +
+                    //        std::to_string( nStartMessageIdx + idxMessage ) );
+                    //}  // if ( !bTransactionWasVerifed )
+                    // clog( VerbosityDebug, "IMA" )
+                    //    << ( strLogPrefix + cc::success( " Success, IMA message " ) +
+                    //           cc::size10( nStartMessageIdx + idxMessage ) +
+                    //           cc::success( " was verified via call to MessageProxy." ) );
                 }  // else from ( strDirection == "M2S" )
             }      // if( bIsImaMessagesViaContractCall )
             else {
