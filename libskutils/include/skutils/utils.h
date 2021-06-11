@@ -26,6 +26,8 @@
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
+#include <skutils/url.h>
+
 namespace skutils {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -603,6 +605,7 @@ class json_config_file_accessor {
     mutex_type& mtx() { return mtx_; }
 
 public:
+    std::string strImaMainNetURL_;
     json_config_file_accessor( const std::string& configPath );
     virtual ~json_config_file_accessor();
     void reloadConfigIfNeeded();
@@ -629,6 +632,9 @@ public:
     bool extract_s_chain_URL_infos( size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs ) {
         return stat_extract_s_chain_URL_infos( getConfigJSON(), nOwnNodeIndex, vecURLs );
     }
+    std::string getImaMainNetURLstring() const;
+    skutils::url getImaMainNetURL() const;
+    bool validateImaMainNetURL() const;
 };  /// class json_config_file_accessor
 
 

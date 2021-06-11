@@ -810,6 +810,20 @@ int main( int argc, char** argv ) try {
             return EX_CONFIG;
         }
     }
+    if ( vm.count( "main-net-url" ) ) {
+        if ( !g_configAccesssor ) {
+            cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
+            return EX_SOFTWARE;
+        }
+        g_configAccesssor->strImaMainNetURL_ =
+            skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
+        if ( !g_configAccesssor->validateImaMainNetURL() ) {
+            cerr << "bad --main-net-url=<url> parameter value: "
+                 << g_configAccesssor->strImaMainNetURL_ << "\n"
+                 << endl;
+            return EX_SOFTWARE;
+        }
+    }
 
     if ( !chainConfigIsSet )
         // default to skale if not already set with `--config`

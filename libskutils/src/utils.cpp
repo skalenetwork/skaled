@@ -1850,6 +1850,68 @@ bool json_config_file_accessor::stat_extract_s_chain_URL_infos(
     }
 }
 
+std::string json_config_file_accessor::getImaMainNetURLstring() const {
+    if ( !strImaMainNetURL_.empty() )
+        return strImaMainNetURL_;
+    nlohmann::json joConfig = getConfigJSON();
+    if ( joConfig.count( "skaleConfig" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find \"skaleConfig\"(or no --main-net-url=<url> was "
+            "provided in the command line arguments)" );
+    const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+    //
+    if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"(or no "
+            "--main-net-url=<url> was provided in the command line arguments)" );
+    const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+    //
+    if ( joSkaleConfig_nodeInfo.count( "imaMainNet" ) == 0 )
+        throw std::runtime_error(
+            "error config.json file, cannot find "
+            "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"(or no --main-net-url=<url> was provided "
+            "in the command line arguments)" );
+    const nlohmann::json& joImaMainNetURL = joSkaleConfig_nodeInfo["imaMainNet"];
+    if ( !joImaMainNetURL.is_string() )
+        throw std::runtime_error(
+            "error config.json file, bad type of value in "
+            "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"(or no --main-net-url=<url> was provided "
+            "in the command line arguments)" );
+    std::string strImaMainNetURL = joImaMainNetURL.get< std::string >();
+    if ( strImaMainNetURL.empty() )
+        throw std::runtime_error(
+            "error config.json file, bad empty value in "
+            "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"(or no --main-net-url=<url> was provided "
+            "in the command line arguments)" );
+    return strImaMainNetURL;
+}
+
+skutils::url json_config_file_accessor::getImaMainNetURL() const {
+    std::string strImaMainNetURL = getImaMainNetURLstring();
+    skutils::url urlMainNet;
+    try {
+        urlMainNet = skutils::url( strImaMainNetURL );
+        if ( urlMainNet.scheme().empty() || urlMainNet.host().empty() )
+            throw std::runtime_error( "bad IMA Main Net url" );
+    } catch ( ... ) {
+        throw std::runtime_error(
+            "error config.json file, bad URL value in "
+            "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
+    }
+    return urlMainNet;
+}
+
+bool json_config_file_accessor::validateImaMainNetURL() const {
+    try {
+        skutils::url urlMainNet = getImaMainNetURL();
+        if ( urlMainNet.scheme().empty() || urlMainNet.host().empty() )
+            throw std::runtime_error( "bad IMA Main Net url" );
+    } catch ( ... ) {
+        return false;
+    }
+    return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
