@@ -1850,9 +1850,11 @@ bool json_config_file_accessor::stat_extract_s_chain_URL_infos(
     }
 }
 
+std::string json_config_file_accessor::g_strImaMainNetURL;
+
 std::string json_config_file_accessor::getImaMainNetURLstring() const {
-    if ( !strImaMainNetURL_.empty() )
-        return strImaMainNetURL_;
+    if ( !g_strImaMainNetURL.empty() )
+        return g_strImaMainNetURL;
     nlohmann::json joConfig = getConfigJSON();
     if ( joConfig.count( "skaleConfig" ) == 0 )
         throw std::runtime_error(

@@ -817,14 +817,17 @@ int main( int argc, char** argv ) try {
             cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
             return EX_SOFTWARE;
         }
-        g_configAccesssor->strImaMainNetURL_ =
+        skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
             cerr << "bad --main-net-url=<url> parameter value: "
-                 << g_configAccesssor->strImaMainNetURL_ << "\n"
+                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n"
                  << endl;
             return EX_SOFTWARE;
         }
+        clog( VerbosityInfo, "main" )
+            << cc::notice( "Main Net URL" ) + cc::debug( " is: " )
+            << cc::u( skutils::json_config_file_accessor::g_strImaMainNetURL );
     }
 
     if ( !chainConfigIsSet )
