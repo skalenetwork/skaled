@@ -504,6 +504,8 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "config", po::value< string >()->value_name( "<file>" ),
         "Configure specialised blockchain using given JSON information\n" );
+    addClientOption( "main-net-url", po::value< string >()->value_name( "<url>" ),
+        "Configure IMA verification algorithms to use specified Main Net url\n" );
     addClientOption( "ipc", "Enable IPC server (default: on)" );
     addClientOption( "ipcpath", po::value< string >()->value_name( "<path>" ),
         "Set .ipc socket path (default: data directory)" );
