@@ -822,43 +822,7 @@ bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
 
 bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
     try {
-        nlohmann::json joConfig = getConfigJSON();
-        if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
-        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
-        //
-        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-        //
-        if ( joSkaleConfig_nodeInfo.count( "imaMainNet" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        const nlohmann::json& joImaMainNetURL = joSkaleConfig_nodeInfo["imaMainNet"];
-        if ( !joImaMainNetURL.is_string() )
-            throw std::runtime_error(
-                "error config.json file, bad type of value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        std::string strImaMainNetURL = joImaMainNetURL.get< std::string >();
-        if ( strImaMainNetURL.empty() )
-            throw std::runtime_error(
-                "error config.json file, bad empty value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        // clog( VerbosityDebug, "IMA" )
-        //    << ( cc::debug( " Using " ) + cc::notice( "Main Net URL" ) +
-        //           cc::debug( " " ) + cc::info( strImaMainNetURL ) );
-        skutils::url urlMainNet;
-        try {
-            urlMainNet = skutils::url( strImaMainNetURL );
-            if ( urlMainNet.scheme().empty() || urlMainNet.host().empty() )
-                throw std::runtime_error( "bad IMA Main Net url" );
-        } catch ( ... ) {
-            throw std::runtime_error(
-                "error config.json file, bad URL value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        }
+        skutils::url urlMainNet = getImaMainNetURL();
         //
         nlohmann::json jarr = nlohmann::json::array();
         jarr.push_back( dev::toJS( hash ) );
@@ -1455,35 +1419,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                       strAddressImaMessageProxyMainNetLC :
                                                       strAddressImaMessageProxySChainLC;
         //
-        //
-        if ( joSkaleConfig_nodeInfo.count( "imaMainNet" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        const nlohmann::json& joImaMainNetURL = joSkaleConfig_nodeInfo["imaMainNet"];
-        if ( !joImaMainNetURL.is_string() )
-            throw std::runtime_error(
-                "error config.json file, bad type of value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        std::string strImaMainNetURL = joImaMainNetURL.get< std::string >();
-        if ( strImaMainNetURL.empty() )
-            throw std::runtime_error(
-                "error config.json file, bad empty value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " Using " ) + cc::notice( "Main Net URL" ) +
-                   cc::debug( " " ) + cc::info( strImaMainNetURL ) );
-        skutils::url urlMainNet;
-        try {
-            urlMainNet = skutils::url( strImaMainNetURL );
-            if ( urlMainNet.scheme().empty() || urlMainNet.host().empty() )
-                throw std::runtime_error( "bad IMA Main Net url" );
-        } catch ( ... ) {
-            throw std::runtime_error(
-                "error config.json file, bad URL value in "
-                "\"skaleConfig\"/\"nodeInfo\"/\"imaMainNet\"" );
-        }
-        //
+        skutils::url urlMainNet = getImaMainNetURL();
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
@@ -3063,6 +2999,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 joLogsQuery["fromBlock"] = "0x0";
                 joLogsQuery["toBlock"] = "latest";
                 joLogsQuery["topics"] = jarrTopics;
+                nlohmann::json jarrLogsQuery = nlohmann::json::array();
+                jarrLogsQuery.push_back( joLogsQuery );
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " Will execute logs search query: " ) +
                            cc::j( joLogsQuery ) );
@@ -3074,7 +3012,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     nlohmann::json joCall = nlohmann::json::object();
                     joCall["jsonrpc"] = "2.0";
                     joCall["method"] = "eth_getLogs";
-                    joCall["params"] = joLogsQuery;
+                    joCall["params"] = jarrLogsQuery;
                     skutils::rest::client cli( urlMainNet );
                     skutils::rest::data_t d = cli.call( joCall );
                     if ( d.empty() )
