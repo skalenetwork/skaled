@@ -825,7 +825,7 @@ int main( int argc, char** argv ) try {
                  << endl;
             return EX_SOFTWARE;
         }
-        clog( VerbosityInfo, "main" )
+        clog( VerbosityDebug, "main" )
             << cc::notice( "Main Net URL" ) + cc::debug( " is: " )
             << cc::u( skutils::json_config_file_accessor::g_strImaMainNetURL );
     }
