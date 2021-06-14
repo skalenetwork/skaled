@@ -290,6 +290,12 @@ public:
 
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
 
+    uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }
+
+    uint64_t getSnapshotHashCalculationTime() const {
+        return this->snapshot_hash_calculation_time_ms;
+    }
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
@@ -497,6 +503,9 @@ private:
     // usually this is snapshot before last!
     int64_t last_snapshoted_block_with_hash = -1;
     const static dev::h256 empty_str_hash;
+
+    uint64_t snapshot_calculation_time_ms;
+    uint64_t snapshot_hash_calculation_time_ms;
 
 public:
     FILE* performance_fd;
