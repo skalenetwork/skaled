@@ -67,9 +67,9 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 
     # Configuration-specific compiler settings.
     if ( APPLE )
-        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl")
+        set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} -DETH_DEBUG -rdynamic -Wl")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+        set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
     endif()
 
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
