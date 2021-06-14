@@ -1664,8 +1664,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                        cc::size10( cntPortions32 ) + cc::debug( " of 32-byte portions and " ) +
                        cc::size10( cntRestPart ) +
                        cc::debug( " bytes rest part, message typecode is " ) +
-                       cc::num10( nMessageTypeCode ) + cc::debug( ", message binary data is:\n" ) +
-                       cc::binary_table( ( void* ) vecBytes.data(), vecBytes.size(), 32 ) );
+                       cc::num10( nMessageTypeCode )
+                       // + cc::debug( ", message binary data is:\n" ) +
+                       // cc::binary_table( ( void* ) vecBytes.data(), vecBytes.size(), 32 )
+                   );
 
             /*
             // const std::string strDestinationAddressTo =
