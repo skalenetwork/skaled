@@ -504,6 +504,8 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "config", po::value< string >()->value_name( "<file>" ),
         "Configure specialised blockchain using given JSON information\n" );
+    addClientOption( "main-net-url", po::value< string >()->value_name( "<url>" ),
+        "Configure IMA verification algorithms to use specified Main Net url\n" );
     addClientOption( "ipc", "Enable IPC server (default: on)" );
     addClientOption( "ipcpath", po::value< string >()->value_name( "<path>" ),
         "Set .ipc socket path (default: data directory)" );
@@ -809,6 +811,23 @@ int main( int argc, char** argv ) try {
             cerr << configJSON << endl;
             return EX_CONFIG;
         }
+    }
+    if ( vm.count( "main-net-url" ) ) {
+        if ( !g_configAccesssor ) {
+            cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
+            return EX_SOFTWARE;
+        }
+        skutils::json_config_file_accessor::g_strImaMainNetURL =
+            skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
+        if ( !g_configAccesssor->validateImaMainNetURL() ) {
+            cerr << "bad --main-net-url=<url> parameter value: "
+                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n"
+                 << endl;
+            return EX_SOFTWARE;
+        }
+        clog( VerbosityDebug, "main" )
+            << cc::notice( "Main Net URL" ) + cc::debug( " is: " )
+            << cc::u( skutils::json_config_file_accessor::g_strImaMainNetURL );
     }
 
     if ( !chainConfigIsSet )
