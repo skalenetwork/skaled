@@ -573,10 +573,16 @@ size_t Client::importTransactionsAsBlock(
 
         if ( this->isTimeToDoSnapshot( _timestamp ) ) {
             try {
+                boost::chrono::high_resolution_clock::time_point t1;
+                boost::chrono::high_resolution_clock::time_point t2;
                 LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
                 m_debugTracer.tracepoint( "doing_snapshot" );
 
+                t1 = boost::chrono::high_resolution_clock::now();
                 m_snapshotManager->doSnapshot( block_number );
+                t2 = boost::chrono::high_resolution_clock::now();
+                this->snapshot_calculation_time_ms =
+                    boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
             } catch ( SnapshotManager::SnapshotPresent& ex ) {
                 cerror << "WARNING " << dev::nested_exception_what( ex );
             }
@@ -597,7 +603,15 @@ size_t Client::importTransactionsAsBlock(
             m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
                 m_debugTracer.tracepoint( "computeSnapshotHash_start" );
                 try {
+                    boost::chrono::high_resolution_clock::time_point t1;
+                    boost::chrono::high_resolution_clock::time_point t2;
+
+                    t1 = boost::chrono::high_resolution_clock::now();
                     this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
+                    t2 = boost::chrono::high_resolution_clock::now();
+                    this->snapshot_hash_calculation_time_ms =
+                        boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 )
+                            .count();
                     LOG( m_logger )
                         << "Computed hash for snapshot " << latest_snapshots.second << ": "
                         << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
