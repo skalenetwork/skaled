@@ -82,6 +82,14 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getSchainName",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_getSchainNameI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getSnapshotCalculationTime",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getSnapshotCalculationTimeI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getSnapshotHashCalculationTime",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getSnapshotHashCalculationTimeI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -146,6 +154,15 @@ public:
         response = this->debug_getSchainName();
     }
 
+    virtual void debug_getSnapshotCalculationTimeI( const Json::Value&, Json::Value& response ) {
+        response = this->debug_getSnapshotCalculationTime();
+    }
+
+    virtual void debug_getSnapshotHashCalculationTimeI(
+        const Json::Value&, Json::Value& response ) {
+        response = this->debug_getSnapshotHashCalculationTime();
+    }
+
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
     virtual Json::Value debug_traceTransaction(
@@ -168,6 +185,8 @@ public:
     virtual std::string debug_getArguments() = 0;
     virtual std::string debug_getConfig() = 0;
     virtual std::string debug_getSchainName() = 0;
+    virtual uint64_t debug_getSnapshotCalculationTime() = 0;
+    virtual uint64_t debug_getSnapshotHashCalculationTime() = 0;
 };
 
 }  // namespace rpc
