@@ -2315,6 +2315,29 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
             cc::info( strProtocolName ) + cc::notice( " server to start" ) );
 }
 
+string hostname_to_ip(string hostname)
+{
+    struct hostent *he;
+    struct in_addr **addr_list;
+    int i;
+
+    if ( (he = gethostbyname( hostname.c_str() ) ) == NULL)
+    {
+        return "";
+    }
+
+    addr_list = (struct in_addr **) he->h_addr_list;
+
+    for(i = 0; addr_list[i] != NULL; i++)
+    {
+        //Return the first one;
+        return string(inet_ntoa(*addr_list[i]) );
+    }
+
+    return "";
+}
+
+
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
@@ -2428,8 +2451,20 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             // unddos
             skutils::url url_unddos_origin( req.origin_ );
             const std::string str_unddos_origin = url_unddos_origin.host();
-            skutils::unddos::e_high_load_detection_result_t ehldr =
-                pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
+
+
+            skutils::unddos::e_high_load_detection_result_t ehldr;
+
+            static string mainnet_proxy_ip_address =
+                    hostname_to_ip("api.skalenodes.com");
+            static string testnet_proxy_ip_address = hostname_to_ip("testnet-api.skalenodes.com");
+
+            if (str_unddos_origin == mainnet_proxy_ip_address ||
+                str_unddos_origin == testnet_proxy_ip_address) {
+                ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
+            } else {
+                ehldr = pSO->unddos_.register_call_from_origin(str_unddos_origin, strMethod);
+            }
             switch ( ehldr ) {
             case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
                                                                                   // load per minute
