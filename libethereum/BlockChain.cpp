@@ -1232,6 +1232,10 @@ void BlockChain::updateStats() const {
     }
 }
 
+uint64_t BlockChain::getTotalCacheMemory() {
+    return m_lastStats.memTotal();
+}
+
 void BlockChain::garbageCollect( bool _force ) {
     updateStats();
 

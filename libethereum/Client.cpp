@@ -928,7 +928,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                     << ":BDS:" << BlockDetails::howMany()
                     << ":TSS:" << TransactionSkeleton::howMany()
                     << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany() << endl;
+                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                    << ":CMM:" << bc().getTotalCacheMemory()
+                    ;
+
 
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
