@@ -173,7 +173,7 @@ public:
         return m_onReplaced.add( _t );
     }
 
-private:
+public:
     /// Verified and imported transaction
     struct VerifiedTransaction {
         VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {}
@@ -186,6 +186,13 @@ private:
 
         Transaction transaction;  ///< Transaction data
         int category = 0;         // for sorting
+
+        Counter<VerifiedTransaction> c;
+
+    public:
+        static uint64_t howMany() { return Counter<VerifiedTransaction>::howMany(); }
+
+
     };
 
     /// Transaction pending verification
@@ -208,8 +215,15 @@ private:
 
         bytes transaction;  ///< RLP encoded transaction data
         h512 nodeId;        ///< Network Id of the peer transaction comes from
+
+        Counter<UnverifiedTransaction> c;
+
+    public:
+        static uint64_t howMany() { return Counter<UnverifiedTransaction>::howMany(); }
+
     };
 
+private:
     struct PriorityCompare {
         TransactionQueue& queue;
         /// Compare transaction by nonce height and gas price.

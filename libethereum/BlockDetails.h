@@ -26,6 +26,7 @@
 #include "TransactionReceipt.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
+#include <libethcore/Counter.h>
 #include <unordered_map>
 
 namespace dev {
@@ -59,6 +60,11 @@ struct BlockDetails {
     size_t blockSizeBytes = 0;
 
     unsigned size;
+
+    Counter<BlockDetails> c;
+
+public:
+    static uint64_t howMany() { return Counter<BlockDetails>::howMany(); }
 };
 
 struct BlockLogBlooms {
@@ -146,7 +152,7 @@ using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
 using BlockLogBloomsHash = std::unordered_map< h256, BlockLogBlooms >;
 using BlockReceiptsHash = std::unordered_map< h256, BlockReceipts >;
 using TransactionAddressHash = std::unordered_map< h256, TransactionAddress >;
-using BlockHashHash = std::unordered_map< uint64_t, BlockHash >;
+using BlockHashHash = std::map< uint64_t, BlockHash >;
 using BlocksBloomsHash = std::unordered_map< h256, BlocksBlooms >;
 
 static const BlockDetails NullBlockDetails;
@@ -155,6 +161,8 @@ static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
+
+
 
 }  // namespace eth
 }  // namespace dev
