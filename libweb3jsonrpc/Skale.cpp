@@ -61,7 +61,7 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
-const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 100;
+const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 3600;
 
 std::string exceptionToErrorMessage();
 
