@@ -1339,6 +1339,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( !( strDirection == "M2S" || strDirection == "S2M" ) )
             throw std::runtime_error(
                 "value of \"messages\"/\"direction\" must be \"M2S\" or \"S2M\"" );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Message direction is " ) + cc::sunny( strDirection ) );
         // from now on strLogPrefix includes strDirection
         strLogPrefix = cc::bright( strDirection ) + " " + cc::deep_info( "IMA Verify+Sign" );
         //
@@ -1585,16 +1587,29 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                    cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
                    cc::j( joImaRelated ) );
         const char* strLastStaringSearchedBlockKeyName =
-            ( strDirection == "M2S" ) ? "lastSarchedBlockM2S" : "lastSarchedBlockS2M";
+            ( strDirection == "M2S" ) ? "lastSearchedBlockM2S" : "lastSearchedBlockS2M";
+        bool wasNarrowedStaringSearchedBlock = false;
         dev::u256 uLastStaringSearchedBlock( "0" ), uLastStaringSearchedBlockNextValue( "0" );
         if ( joImaRelated.count( strLastStaringSearchedBlockKeyName ) ) {
             try {
                 nlohmann::json joLastSarchedBlock =
                     joImaRelated[strLastStaringSearchedBlockKeyName];
-                if ( joLastSarchedBlock.is_string() )
+                if ( joLastSarchedBlock.is_string() ) {
                     uLastStaringSearchedBlock =
                         dev::u256( joLastSarchedBlock.get< std::string >() );
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Got block number to start search logs " ) +
+                               cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
+                } else {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix +
+                               cc::error(
+                                   " Failed to read block number from IMA related state file" ) );
+                }
             } catch ( ... ) {
+                clog( VerbosityError, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Failed to parse IMA related state file " ) +
+                           cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
             }
         }
         // if ( strDirection == "M2S" ) {
@@ -3589,6 +3604,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                    uLastStaringSearchedBlockNextValue ) ) +
                                                cc::debug( " to " ) +
                                                cc::info( dev::toJS( uBlockNumber ) ) );
+                                    wasNarrowedStaringSearchedBlock = true;
                                     uLastStaringSearchedBlockNextValue = uBlockNumber;
                                 } else
                                     clog( VerbosityDebug, "IMA" )
@@ -3616,7 +3632,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         }
                         bReceiptVerified = true;
                         clog( VerbosityDebug, "IMA" )
-                            << ( strLogPrefix + cc::notice( "Notice:" ) + " " +
+                            << ( strLogPrefix + " " + cc::notice( "Notice:" ) + " " +
                                    cc::success( " Transaction " ) +
                                    cc::notice( strTransactionHash ) +
                                    cc::success( " receipt was verified, success" ) );
@@ -3625,7 +3641,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                        // ++idxReceiptLogRecord )
                     if ( !bReceiptVerified ) {
                         clog( VerbosityDebug, "IMA" )
-                            << ( strLogPrefix + cc::notice( "Notice:" ) + " " +
+                            << ( strLogPrefix + " " + cc::notice( "Notice:" ) + " " +
                                    cc::attention( " Skipping transaction " ) +
                                    cc::notice( strTransactionHash ) +
                                    cc::attention( " because no appropriate receipt was found" ) );
@@ -3654,6 +3670,22 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            cc::size10( nStartMessageIdx + idxMessage ) +
                            cc::success( " was found in logs." ) );
             }  // if( bIsVerifyImaMessagesViaLogsSearch )
+            if ( ( !wasNarrowedStaringSearchedBlock ) &&
+                 uLastStaringSearchedBlockNextValue != uLastStaringSearchedBlock ) {
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix +
+                           cc::debug(
+                               std::string( " Starting block number to search "
+                                            "logs next time on " ) +
+                               ( ( strDirection == "M2S" ) ? "Main Net" : "S-Chain" ) +
+                               std::string(
+                                   " was not narrowed during logs search, changing it from " ) ) +
+                           cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
+                           cc::debug( " to " ) +
+                           cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
+                wasNarrowedStaringSearchedBlock = true;
+                uLastStaringSearchedBlockNextValue = uLastStaringSearchedBlock;
+            }
             //
             //
             //
@@ -4017,7 +4049,8 @@ OutgoingMessageData.data
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
 
 
-        if ( uLastStaringSearchedBlock != uLastStaringSearchedBlockNextValue ) {
+        if ( wasNarrowedStaringSearchedBlock ||
+             uLastStaringSearchedBlock != uLastStaringSearchedBlockNextValue ) {
             joImaRelated[strLastStaringSearchedBlockKeyName] =
                 dev::toJS( uLastStaringSearchedBlockNextValue );
             bool bSavedmaRelatedJsonFile =
