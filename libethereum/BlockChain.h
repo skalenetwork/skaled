@@ -110,7 +110,6 @@ public:
  */
 class BlockChain {
 public:
-
     uint64_t getTotalCacheMemory();
 
 

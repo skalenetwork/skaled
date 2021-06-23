@@ -2315,23 +2315,20 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
             cc::info( strProtocolName ) + cc::notice( " server to start" ) );
 }
 
-string hostname_to_ip(string hostname)
-{
-    struct hostent *he;
-    struct in_addr **addr_list;
+string hostname_to_ip( string hostname ) {
+    struct hostent* he;
+    struct in_addr** addr_list;
     int i;
 
-    if ( (he = gethostbyname( hostname.c_str() ) ) == NULL)
-    {
+    if ( ( he = gethostbyname( hostname.c_str() ) ) == NULL ) {
         return "";
     }
 
-    addr_list = (struct in_addr **) he->h_addr_list;
+    addr_list = ( struct in_addr** ) he->h_addr_list;
 
-    for(i = 0; addr_list[i] != NULL; i++)
-    {
-        //Return the first one;
-        return string(inet_ntoa(*addr_list[i]) );
+    for ( i = 0; addr_list[i] != NULL; i++ ) {
+        // Return the first one;
+        return string( inet_ntoa( *addr_list[i] ) );
     }
 
     return "";
@@ -2455,15 +2452,14 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
 
             skutils::unddos::e_high_load_detection_result_t ehldr;
 
-            static string mainnet_proxy_ip_address =
-                    hostname_to_ip("api.skalenodes.com");
-            static string testnet_proxy_ip_address = hostname_to_ip("testnet-api.skalenodes.com");
+            static string mainnet_proxy_ip_address = hostname_to_ip( "api.skalenodes.com" );
+            static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
 
-            if (str_unddos_origin == mainnet_proxy_ip_address ||
-                str_unddos_origin == testnet_proxy_ip_address) {
+            if ( str_unddos_origin == mainnet_proxy_ip_address ||
+                 str_unddos_origin == testnet_proxy_ip_address ) {
                 ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
             } else {
-                ehldr = pSO->unddos_.register_call_from_origin(str_unddos_origin, strMethod);
+                ehldr = pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
             }
             switch ( ehldr ) {
             case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
