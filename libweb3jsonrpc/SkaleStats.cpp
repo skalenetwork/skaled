@@ -852,12 +852,100 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
+static std::string stat_get_ima_related_json_file_path() {
+    boost::filesystem::path pathDataDir = dev::getDataDir();
+    boost::filesystem::path pathImaRelatedJsonFile = pathDataDir / "ima.related.json";
+    std::string strPathImaRelatedJsonFile =
+        // boost::filesystem::canonical( pathImaRelatedJsonFile ).string();
+        pathImaRelatedJsonFile.string();
+    return strPathImaRelatedJsonFile;
+}
+
+static nlohmann::json stat_load_ima_related_json(
+    nlohmann::json joDefault = nlohmann::json::object(), std::string strPathImaRelatedJsonFile = "",
+    bool isThrowExceptionOnError = false ) {
+    try {
+        if ( strPathImaRelatedJsonFile.empty() )
+            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        std::ifstream ifs( strPathImaRelatedJsonFile.c_str() );
+        nlohmann::json joLoaded = nlohmann::json::parse( ifs );
+        return joLoaded;
+    } catch ( ... ) {
+        if ( isThrowExceptionOnError )
+            throw;
+        return joDefault;
+    }
+}
+
+static bool stat_save_ima_related_json( nlohmann::json jo,
+    std::string strPathImaRelatedJsonFile = "", bool isThrowExceptionOnError = true ) {
+    try {
+        if ( strPathImaRelatedJsonFile.empty() )
+            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        std::ofstream ofs( strPathImaRelatedJsonFile.c_str() );
+        ofs << jo;
+        return true;
+    } catch ( ... ) {
+        if ( isThrowExceptionOnError )
+            throw;
+        return false;
+    }
+}
+
+static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainNet,
+    nlohmann::json joDefault = nlohmann::json::object(),
+    std::string strPathImaRelatedJsonFile = "" ) {
+    std::string strLogPrefix( "IMA related state file init" );
+    nlohmann::json joLoaded =
+        stat_load_ima_related_json( joDefault, strPathImaRelatedJsonFile, false );
+    if ( joLoaded.count( "lastSearchedBlockM2S" ) != 0 )
+        return joLoaded;
+    bool gotBN = false;
+    try {
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "eth_blockNumber";
+        joCall["params"] = nlohmann::json::array();
+        skutils::rest::client cli( urlMainNet );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.empty() ) {
+            nlohmann::json joMainNetBlockNumber = nlohmann::json::parse( d.s_ )["result"];
+            if ( joMainNetBlockNumber.is_string() ) {
+                dev::u256 uBN = dev::u256( joMainNetBlockNumber.get< std::string >() );
+                gotBN = true;
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " (FIRST RUN) Block number on Main Net is " ) +
+                           cc::info( dev::toJS( uBN ) ) );
+                joLoaded["lastSearchedBlockM2S"] = dev::toJS( uBN );
+                if ( !stat_save_ima_related_json( joLoaded, strPathImaRelatedJsonFile, false ) ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix +
+                               cc::error( " (FIRST RUN) Failed to save IMA related state file" ) );
+                }
+            }
+        }
+    } catch ( ... ) {
+    }
+    if ( !gotBN ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix +
+                   cc::error( " (FIRST RUN) Failed to initialize IMA related state file" ) );
+    }
+    return joLoaded;
+}
+
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
     : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
+    //
+    std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+    skutils::url urlMainNet = getImaMainNetURL();
+    // nlohmann::json joImaRelated =
+    stat_load_or_init_ima_related_json(
+        urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -1276,46 +1364,6 @@ static std::string stat_encode_eth_call_data_chunck_size_t(
     return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
 }
 
-static std::string stat_get_ima_related_json_file_path() {
-    boost::filesystem::path pathDataDir = dev::getDataDir();
-    boost::filesystem::path pathImaRelatedJsonFile = pathDataDir / "ima.related.json";
-    std::string strPathImaRelatedJsonFile =
-        // boost::filesystem::canonical( pathImaRelatedJsonFile ).string();
-        pathImaRelatedJsonFile.string();
-    return strPathImaRelatedJsonFile;
-}
-
-static nlohmann::json stat_load_ima_related_json(
-    nlohmann::json joDefault = nlohmann::json::object(), std::string strPathImaRelatedJsonFile = "",
-    bool isThrowExceptionOnError = false ) {
-    try {
-        if ( strPathImaRelatedJsonFile.empty() )
-            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-        std::ifstream ifs( strPathImaRelatedJsonFile.c_str() );
-        nlohmann::json joLoaded = nlohmann::json::parse( ifs );
-        return joLoaded;
-    } catch ( ... ) {
-        if ( isThrowExceptionOnError )
-            throw;
-        return joDefault;
-    }
-}
-
-static bool stat_save_ima_related_json( nlohmann::json jo,
-    std::string strPathImaRelatedJsonFile = "", bool isThrowExceptionOnError = true ) {
-    try {
-        if ( strPathImaRelatedJsonFile.empty() )
-            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-        std::ofstream ofs( strPathImaRelatedJsonFile.c_str() );
-        ofs << jo;
-        return true;
-    } catch ( ... ) {
-        if ( isThrowExceptionOnError )
-            throw;
-        return false;
-    }
-}
-
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
@@ -1580,8 +1628,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Will load IMA related state file " ) +
                    cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
-        nlohmann::json joImaRelated =
-            stat_load_ima_related_json( nlohmann::json::object(), strPathImaRelatedJsonFile );
+        nlohmann::json joImaRelated = stat_load_or_init_ima_related_json(
+            urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Loaded IMA related state file " ) +
                    cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
