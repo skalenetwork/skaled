@@ -110,6 +110,9 @@ public:
  */
 class BlockChain {
 public:
+    uint64_t getTotalCacheMemory();
+
+
     class CreationException : public std::exception {
         virtual const char* what() const noexcept { return "Error creating blockchain"; }
     };

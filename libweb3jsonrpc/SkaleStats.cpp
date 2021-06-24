@@ -31,6 +31,7 @@
 #include <libdevcore/BMPBN.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonJS.h>
+#include <libdevcore/FileSystem.h>
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -42,6 +43,7 @@
 #include <csignal>
 #include <exception>
 #include <fstream>
+#include <iostream>
 #include <set>
 
 //#include "../libconsensus/libBLS/bls/bls.h"
@@ -850,12 +852,100 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
+static std::string stat_get_ima_related_json_file_path() {
+    boost::filesystem::path pathDataDir = dev::getDataDir();
+    boost::filesystem::path pathImaRelatedJsonFile = pathDataDir / "ima.related.json";
+    std::string strPathImaRelatedJsonFile =
+        // boost::filesystem::canonical( pathImaRelatedJsonFile ).string();
+        pathImaRelatedJsonFile.string();
+    return strPathImaRelatedJsonFile;
+}
+
+static nlohmann::json stat_load_ima_related_json(
+    nlohmann::json joDefault = nlohmann::json::object(), std::string strPathImaRelatedJsonFile = "",
+    bool isThrowExceptionOnError = false ) {
+    try {
+        if ( strPathImaRelatedJsonFile.empty() )
+            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        std::ifstream ifs( strPathImaRelatedJsonFile.c_str() );
+        nlohmann::json joLoaded = nlohmann::json::parse( ifs );
+        return joLoaded;
+    } catch ( ... ) {
+        if ( isThrowExceptionOnError )
+            throw;
+        return joDefault;
+    }
+}
+
+static bool stat_save_ima_related_json( nlohmann::json jo,
+    std::string strPathImaRelatedJsonFile = "", bool isThrowExceptionOnError = true ) {
+    try {
+        if ( strPathImaRelatedJsonFile.empty() )
+            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        std::ofstream ofs( strPathImaRelatedJsonFile.c_str() );
+        ofs << jo;
+        return true;
+    } catch ( ... ) {
+        if ( isThrowExceptionOnError )
+            throw;
+        return false;
+    }
+}
+
+static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainNet,
+    nlohmann::json joDefault = nlohmann::json::object(),
+    std::string strPathImaRelatedJsonFile = "" ) {
+    std::string strLogPrefix( "IMA related state file init" );
+    nlohmann::json joLoaded =
+        stat_load_ima_related_json( joDefault, strPathImaRelatedJsonFile, false );
+    if ( joLoaded.count( "lastSearchedBlockM2S" ) != 0 )
+        return joLoaded;
+    bool gotBN = false;
+    try {
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "eth_blockNumber";
+        joCall["params"] = nlohmann::json::array();
+        skutils::rest::client cli( urlMainNet );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.empty() ) {
+            nlohmann::json joMainNetBlockNumber = nlohmann::json::parse( d.s_ )["result"];
+            if ( joMainNetBlockNumber.is_string() ) {
+                dev::u256 uBN = dev::u256( joMainNetBlockNumber.get< std::string >() );
+                gotBN = true;
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " (FIRST RUN) Block number on Main Net is " ) +
+                           cc::info( dev::toJS( uBN ) ) );
+                joLoaded["lastSearchedBlockM2S"] = dev::toJS( uBN );
+                if ( !stat_save_ima_related_json( joLoaded, strPathImaRelatedJsonFile, false ) ) {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix +
+                               cc::error( " (FIRST RUN) Failed to save IMA related state file" ) );
+                }
+            }
+        }
+    } catch ( ... ) {
+    }
+    if ( !gotBN ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix +
+                   cc::error( " (FIRST RUN) Failed to initialize IMA related state file" ) );
+    }
+    return joLoaded;
+}
+
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
     : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
+    //
+    std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+    skutils::url urlMainNet = getImaMainNetURL();
+    // nlohmann::json joImaRelated =
+    stat_load_or_init_ima_related_json(
+        urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -1297,6 +1387,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( !( strDirection == "M2S" || strDirection == "S2M" ) )
             throw std::runtime_error(
                 "value of \"messages\"/\"direction\" must be \"M2S\" or \"S2M\"" );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Message direction is " ) + cc::sunny( strDirection ) );
         // from now on strLogPrefix includes strDirection
         strLogPrefix = cc::bright( strDirection ) + " " + cc::deep_info( "IMA Verify+Sign" );
         //
@@ -1531,6 +1623,83 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         // Perform basic validation of arrived messages we will sign
         //
+
+        std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Will load IMA related state file " ) +
+                   cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
+        nlohmann::json joImaRelated = stat_load_or_init_ima_related_json(
+            urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Loaded IMA related state file " ) +
+                   cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
+                   cc::j( joImaRelated ) );
+        const char* strLastStaringSearchedBlockKeyName =
+            ( strDirection == "M2S" ) ? "lastSearchedBlockM2S" : "lastSearchedBlockS2M";
+        bool wasNarrowedStaringSearchedBlock = false;
+        dev::u256 uLastStaringSearchedBlock( "0" ), uLastStaringSearchedBlockNextValue( "0" );
+        if ( joImaRelated.count( strLastStaringSearchedBlockKeyName ) ) {
+            try {
+                nlohmann::json joLastSarchedBlock =
+                    joImaRelated[strLastStaringSearchedBlockKeyName];
+                if ( joLastSarchedBlock.is_string() ) {
+                    uLastStaringSearchedBlock =
+                        dev::u256( joLastSarchedBlock.get< std::string >() );
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Got block number to start search logs " ) +
+                               cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
+                } else {
+                    clog( VerbosityError, "IMA" )
+                        << ( strLogPrefix +
+                               cc::error(
+                                   " Failed to read block number from IMA related state file" ) );
+                }
+            } catch ( ... ) {
+                clog( VerbosityError, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Failed to parse IMA related state file " ) +
+                           cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
+            }
+        }
+        // if ( strDirection == "M2S" ) {
+        //    nlohmann::json joCall = nlohmann::json::object();
+        //    joCall["jsonrpc"] = "2.0";
+        //    joCall["method"] = "eth_blockNumber";
+        //    joCall["params"] = nlohmann::json::array();
+        //    skutils::rest::client cli( urlMainNet );
+        //    skutils::rest::data_t d = cli.call( joCall );
+        //    if ( d.empty() )
+        //        clog( VerbosityDebug, "IMA" )
+        //            << ( strLogPrefix + cc::error( " Main Net call to eth_blockNumber failed" ) );
+        //    else {
+        //        bool gotBN = false;
+        //        nlohmann::json joMainNetBlockNumber;
+        //        try {
+        //            joMainNetBlockNumber = nlohmann::json::parse( d.s_ )["result"];
+        //            if ( joMainNetBlockNumber.is_string() ) {
+        //                uLastStaringSearchedBlockNextValue =
+        //                    dev::u256( joMainNetBlockNumber.get< std::string >() );
+        //                gotBN = true;
+        //                clog( VerbosityDebug, "IMA" )
+        //                    << ( strLogPrefix + cc::debug( " Block number on Main Net is " ) +
+        //                           cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) );
+        //            }
+        //        } catch ( ... ) {
+        //        }
+        //        if ( !gotBN )
+        //            clog( VerbosityDebug, "IMA" )
+        //                << ( strLogPrefix +
+        //                       cc::error( " Main Net call to eth_blockNumber failed, got malformed
+        //                       "
+        //                                  "call result " ) +
+        //                       cc::j( joMainNetBlockNumber ) );
+        //    }
+        //} else {
+        //    uLastStaringSearchedBlockNextValue = this->client()->number();
+        //    clog( VerbosityDebug, "IMA" )
+        //        << ( strLogPrefix + cc::debug( " Block number on this S-Chain is" ) +
+        //               cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) );
+        //}  // else from if( strDirection == "M2S" )
+
         for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
             if ( !joMessageToSign.is_object() )
@@ -2991,6 +3160,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( strLogPrefix + " " +
                            cc::debug( "Will use contract event based verification of IMA "
                                       "message(s)" ) );
+
                 //
                 //
                 //
@@ -3016,7 +3186,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 // jarrTopics.push_back( nullptr );
                 nlohmann::json joLogsQuery = nlohmann::json::object();
                 joLogsQuery["address"] = strAddressImaMessageProxy;
-                joLogsQuery["fromBlock"] = "0x0";
+                joLogsQuery["fromBlock"] = dev::toJS( uLastStaringSearchedBlock );  // "0x0";
                 joLogsQuery["toBlock"] = "latest";
                 joLogsQuery["topics"] = jarrTopics;
                 nlohmann::json jarrLogsQuery = nlohmann::json::array();
@@ -3464,15 +3634,65 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         //    continue;
                         //}
                         //
+                        if ( joReceiptLogRecord.count( "blockNumber" ) != 0 ) {
+                            try {
+                                dev::u256 uBlockNumber = dev::u256(
+                                    joReceiptLogRecord["blockNumber"].get< std::string >() );
+                                if ( uBlockNumber < uLastStaringSearchedBlockNextValue ||
+                                     uLastStaringSearchedBlockNextValue == 0 ) {
+                                    clog( VerbosityDebug, "IMA" )
+                                        << ( strLogPrefix +
+                                               cc::debug(
+                                                   std::string( " Starting block number to search "
+                                                                "logs next time on " ) +
+                                                   ( ( strDirection == "M2S" ) ? "Main Net" :
+                                                                                 "S-Chain" ) +
+                                                   std::string( " is narrowed from " ) ) +
+                                               cc::info( dev::toJS(
+                                                   uLastStaringSearchedBlockNextValue ) ) +
+                                               cc::debug( " to " ) +
+                                               cc::info( dev::toJS( uBlockNumber ) ) );
+                                    wasNarrowedStaringSearchedBlock = true;
+                                    uLastStaringSearchedBlockNextValue = uBlockNumber;
+                                } else
+                                    clog( VerbosityDebug, "IMA" )
+                                        << ( strLogPrefix +
+                                               cc::debug(
+                                                   std::string( " Starting block number to search "
+                                                                "logs next time on " ) +
+                                                   ( ( strDirection == "M2S" ) ? "Main Net" :
+                                                                                 "S-Chain" ) +
+                                                   " is kept set to " ) +
+                                               cc::info( dev::toJS(
+                                                   uLastStaringSearchedBlockNextValue ) ) );
+                            } catch ( ... ) {
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( strLogPrefix +
+                                           cc::warn( std::string( " Starting block number to "
+                                                                  "search logs next time on " ) +
+                                                     ( ( strDirection == "M2S" ) ? "Main Net" :
+                                                                                   "S-Chain" ) +
+                                                     " is kept set to " ) +
+                                           cc::info(
+                                               dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
+                                           cc::warn( " due to error" ) );
+                            }
+                        }
                         bReceiptVerified = true;
+                        clog( VerbosityDebug, "IMA" )
+                            << ( strLogPrefix + " " + cc::notice( "Notice:" ) + " " +
+                                   cc::success( " Transaction " ) +
+                                   cc::notice( strTransactionHash ) +
+                                   cc::success( " receipt was verified, success" ) );
                         break;
                     }  // for ( idxReceiptLogRecord = 0; idxReceiptLogRecord < cntReceiptLogRecords;
                        // ++idxReceiptLogRecord )
                     if ( !bReceiptVerified ) {
                         clog( VerbosityDebug, "IMA" )
-                            << ( strLogPrefix + cc::debug( " Skipping transaction " ) +
+                            << ( strLogPrefix + " " + cc::notice( "Notice:" ) + " " +
+                                   cc::attention( " Skipping transaction " ) +
                                    cc::notice( strTransactionHash ) +
-                                   cc::warn( " because no appropriate receipt was found" ) );
+                                   cc::attention( " because no appropriate receipt was found" ) );
                         continue;
                     }
                     //
@@ -3498,6 +3718,22 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            cc::size10( nStartMessageIdx + idxMessage ) +
                            cc::success( " was found in logs." ) );
             }  // if( bIsVerifyImaMessagesViaLogsSearch )
+            if ( ( !wasNarrowedStaringSearchedBlock ) &&
+                 uLastStaringSearchedBlockNextValue != uLastStaringSearchedBlock ) {
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix +
+                           cc::debug(
+                               std::string( " Starting block number to search "
+                                            "logs next time on " ) +
+                               ( ( strDirection == "M2S" ) ? "Main Net" : "S-Chain" ) +
+                               std::string(
+                                   " was not narrowed during logs search, changing it from " ) ) +
+                           cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
+                           cc::debug( " to " ) +
+                           cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
+                wasNarrowedStaringSearchedBlock = true;
+                uLastStaringSearchedBlockNextValue = uLastStaringSearchedBlock;
+            }
             //
             //
             //
@@ -3859,6 +4095,28 @@ OutgoingMessageData.data
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             }  // if( !bOnlyVerify )
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
+
+
+        if ( wasNarrowedStaringSearchedBlock ||
+             uLastStaringSearchedBlock != uLastStaringSearchedBlockNextValue ) {
+            joImaRelated[strLastStaringSearchedBlockKeyName] =
+                dev::toJS( uLastStaringSearchedBlockNextValue );
+            bool bSavedmaRelatedJsonFile =
+                stat_save_ima_related_json( joImaRelated, strPathImaRelatedJsonFile );
+            if ( bSavedmaRelatedJsonFile )
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Saved IMA related state file " ) +
+                           cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
+                           cc::j( joImaRelated ) );
+            else
+                clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FAILED" ) +
+                                                   cc::error( " to save IMA related state file " ) +
+                                                   cc::p( strPathImaRelatedJsonFile ) );
+        } else {
+            clog( VerbosityWarning, "IMA" ) << ( strLogPrefix + " " + cc::error( "SKIPPED" ) +
+                                                 cc::error( " saving IMA related state file " ) +
+                                                 cc::p( strPathImaRelatedJsonFile ) );
+        }
 
         if ( !bOnlyVerify ) {
             //
