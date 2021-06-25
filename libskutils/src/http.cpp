@@ -1502,6 +1502,10 @@ bool async_read_and_close_socket::step() {
         }
         schedule_next_step();
         return true;
+    } catch ( const common_network_exception& nx ) {
+        if ( nx.what() && nx.what()[0] )
+            strErrorDescription =
+                std::string( nx.what() ) + " (errcode=" + std::to_string( nx.ei_.ec_ ) + ")";
     } catch ( std::exception& ex ) {
         strErrorDescription = ex.what();
     } catch ( ... ) {
