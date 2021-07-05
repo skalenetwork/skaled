@@ -325,10 +325,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
-                    rapidjson::StringBuffer buffer;
-                    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-                    joRequest.Accept( writer );
-                    std::string strRequest = buffer.GetString();
+                    if ( joRequest["params"].GetArray().Size() != 2 ) {
+                        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
                     dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton( joRequest["params"].GetArray()[0] );
                     std::string strResponse =
                         ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
