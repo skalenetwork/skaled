@@ -941,11 +941,15 @@ SkaleStats::SkaleStats(
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
     //
-    std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-    skutils::url urlMainNet = getImaMainNetURL();
-    // nlohmann::json joImaRelated =
-    stat_load_or_init_ima_related_json(
-        urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
+    try {
+        std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+        skutils::url urlMainNet = getImaMainNetURL();
+        // nlohmann::json joImaRelated =
+        stat_load_or_init_ima_related_json(
+            urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
+    }  // catch
 }
 
 int SkaleStats::findThisNodeIndex() {
