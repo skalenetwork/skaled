@@ -49,14 +49,17 @@ const std::string SnapshotManager::snapshot_hash_file_name = "snapshot_hash.txt"
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager(
-    const fs::path& _dataDir, const std::vector< std::string >& _volumes ) {
+SnapshotManager::SnapshotManager( const fs::path& _dataDir,
+    const std::vector< std::string >& _volumes, const std::string& _diffsDir ) {
     assert( _volumes.size() > 0 );
 
     data_dir = _dataDir;
     volumes = _volumes;
     snapshots_dir = data_dir / "snapshots";
-    diffs_dir = data_dir / "diffs";
+    if ( _diffsDir.empty() )
+        diffs_dir = data_dir / "diffs";
+    else
+        diffs_dir = _diffsDir;
 
     if ( !fs::exists( _dataDir ) )
         try {
@@ -349,7 +352,10 @@ std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
-        numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        try {
+            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        } catch ( ... ) { /*ignore non-numbers*/
+        }
     }  // for
 
     // delete all after n first
@@ -420,40 +426,44 @@ void SnapshotManager::computeDatabaseHash(
 
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string() ) );
     dev::h256 hash_volume = m_db->hashBase();
+    cnote << _dbDir << " hash is: " << hash_volume << std::endl;
 
     secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
 } catch ( const fs::filesystem_error& ex ) {
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
-void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const
-    try {
+void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
+    dev::u256 last_price = 0;
+    // manually open DB
     boost::filesystem::path prices_path =
         this->snapshots_dir / std::to_string( _blockNumber ) / this->volumes[2];
-    if ( !boost::filesystem::exists( prices_path ) ) {
-        BOOST_THROW_EXCEPTION( InvalidPath( prices_path ) );
-    }
-
-    boost::filesystem::directory_iterator it( prices_path ), end;
-    std::string last_price;
-    std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
-    while ( it != end ) {
-        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string() ) );
-        if ( m_db->exists( last_price_key ) ) {
-            last_price = m_db->lookup( last_price_key );
-            break;
+    if ( boost::filesystem::exists( prices_path ) ) {
+        boost::filesystem::directory_iterator it( prices_path ), end;
+        std::string last_price_str;
+        std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
+        while ( it != end ) {
+            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string() ) );
+            if ( m_db->exists( last_price_key ) ) {
+                last_price_str = m_db->lookup( last_price_key );
+                break;
+            }
+            ++it;
         }
-        ++it;
+
+        if ( last_price_str.empty() ) {
+            throw std::invalid_argument(
+                "No such key in database: " + last_price_key + " : " + prices_path.string() );
+        }
+
+        last_price = dev::u256( last_price_str );
+    } else {
+        throw std::invalid_argument( "No such file or directory: " + prices_path.string() );
     }
 
-    if ( !last_price.size() ) {
-        BOOST_THROW_EXCEPTION( CannotRead( prices_path.string() + last_price_key ) );
-    }
-
-    dev::h256 last_price_hash = dev::sha256( last_price );
+    dev::h256 last_price_hash = dev::sha256( last_price.str() );
+    cnote << "Latest price hash is: " << last_price_hash << std::endl;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
-} catch ( const fs::filesystem_error& ex ) {
-    std::throw_with_nested( CannotRead( ex.path1() ) );
 }
 
 void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,

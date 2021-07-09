@@ -26,6 +26,7 @@
 #include "Exceptions.h"
 #include <libdevcore/Base64.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
 
@@ -59,6 +60,8 @@ const bytes c_blockhashContractCode( fromHex(
     "3512156100d4576000356001814303035b61010081121515610085576000610100830614610088565b60005b156100"
     "a75761010083019250610100820491506101008104905061006d565b610100811215156100bd57600060a052602060"
     "a0f35b610100820683015460c052602060c0f350506100df565b600060e052602060e0f35b5b50" ) );
+
+const Address c_deploymentControllerContractAddress( "D2002000000000000000000000000000000000D2" );
 
 Address toAddress( std::string const& _s ) {
     try {
@@ -103,6 +106,10 @@ std::string formatBalance( bigint const& _b ) {
         }
     ret << b << " wei";
     return ret.str();
+}
+
+bytes getDeploymentControllerCallData( Address const& _deployer ) {
+    return fromHex( "13f44d10000000000000000000000000" + _deployer.hex() );
 }
 
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {
@@ -191,6 +198,15 @@ string TransactionSkeleton::userReadable( bool _toProxy,
                        formatBalance( gas * gasPrice ) + " = " +
                        formatBalance( value + gas * gasPrice ) + "." :
                    "Additional network fees are at most" + formatBalance( gas * gasPrice ) + "." );
+}
+
+std::string TransactionSkeleton::toString() const {
+    std::stringstream s;
+    s << "from: " << from.hex() << ", to: " << to.hex() << ", value: " << value << ", gas: " << gas
+      << ", gasPrice: " << gasPrice << ", code: " << dev::toJS( data ) << ", nonce: " << nonce
+      << '\n';
+
+    return s.str();
 }
 
 }  // namespace eth

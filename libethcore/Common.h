@@ -55,6 +55,12 @@ extern const Address c_blockhashContractAddress;
 /// Code of the special contract for block hash storage defined in EIP96
 extern const bytes c_blockhashContractCode;
 
+/// Address of the special contract for deployment control
+extern const Address c_deploymentControllerContractAddress;
+
+/// Formatting call data for deployment control contract
+bytes getDeploymentControllerCallData( Address const& _deployer );
+
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance( bigint const& _b );
 
@@ -208,11 +214,10 @@ struct TransactionSkeleton {
         std::function< std::string( Address const& ) > const& _formatAddress ) const;
     std::string toString() const;
 
-    Counter<TransactionSkeleton> c;
+    Counter< TransactionSkeleton > c;
 
 public:
-    static uint64_t howMany() { return Counter<TransactionSkeleton>::howMany(); }
-
+    static uint64_t howMany() { return Counter< TransactionSkeleton >::howMany(); }
 };
 
 

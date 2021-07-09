@@ -85,7 +85,6 @@ DEV_SIMPLE_EXCEPTION( TransactionAlreadyInChain );
 DEV_SIMPLE_EXCEPTION( BlockNotFound );
 DEV_SIMPLE_EXCEPTION( UnknownParent );
 DEV_SIMPLE_EXCEPTION( AddressAlreadyUsed );
-DEV_SIMPLE_EXCEPTION( InvalidDeployOrigin );
 DEV_SIMPLE_EXCEPTION( ZeroSignatureTransaction );
 DEV_SIMPLE_EXCEPTION( UnknownTransactionValidationError );
 DEV_SIMPLE_EXCEPTION( UnknownError );
