@@ -61,10 +61,10 @@ struct BlockDetails {
 
     unsigned size;
 
-    Counter<BlockDetails> c;
+    Counter< BlockDetails > c;
 
 public:
-    static uint64_t howMany() { return Counter<BlockDetails>::howMany(); }
+    static uint64_t howMany() { return Counter< BlockDetails >::howMany(); }
 };
 
 struct BlockLogBlooms {
@@ -161,7 +161,6 @@ static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
-
 
 
 }  // namespace eth

@@ -51,7 +51,7 @@ enum class TransactionException {
     RevertInstruction,
     InvalidZeroSignatureFormat,
     AddressAlreadyUsed,
-    InvalidDeployOrigin,
+    InvalidContractDeployer,
     WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
 };
 

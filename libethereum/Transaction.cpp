@@ -59,8 +59,6 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
         return TransactionException::BlockGasLimitReached;
     if ( !!dynamic_cast< AddressAlreadyUsed const* >( &_e ) )
         return TransactionException::AddressAlreadyUsed;
-    if ( !!dynamic_cast< InvalidDeployOrigin const* >( &_e ) )
-        return TransactionException::InvalidDeployOrigin;
     // VM execution exceptions
     if ( !!dynamic_cast< BadInstruction const* >( &_e ) )
         return TransactionException::BadInstruction;
@@ -72,6 +70,8 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
         return TransactionException::OutOfStack;
     if ( !!dynamic_cast< StackUnderflow const* >( &_e ) )
         return TransactionException::StackUnderflow;
+    if ( !!dynamic_cast< InvalidContractDeployer const* >( &_e ) )
+        return TransactionException::InvalidContractDeployer;
     return TransactionException::Unknown;
 }
 
@@ -119,8 +119,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::StackUnderflow:
         _out << "StackUnderflow";
         break;
-    case TransactionException::InvalidDeployOrigin:
-        _out << "InvalidDeployOrigin";
+    case TransactionException::InvalidContractDeployer:
+        _out << "InvalidContractDeployer";
         break;
     default:
         _out << "Unknown";

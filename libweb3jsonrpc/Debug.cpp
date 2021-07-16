@@ -290,3 +290,11 @@ std::string Debug::debug_getConfig() {
 std::string Debug::debug_getSchainName() {
     return m_eth.chainParams().sChain.name;
 }
+
+uint64_t Debug::debug_getSnapshotCalculationTime() {
+    return m_eth.getSnapshotCalculationTime();
+}
+
+uint64_t Debug::debug_getSnapshotHashCalculationTime() {
+    return m_eth.getSnapshotHashCalculationTime();
+}

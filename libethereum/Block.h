@@ -32,8 +32,8 @@
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/ChainOperationParams.h>
-#include <libethcore/Exceptions.h>
 #include <libethcore/Counter.h>
+#include <libethcore/Exceptions.h>
 #include <libskale/State.h>
 
 #include "Account.h"
@@ -235,10 +235,12 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-        bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr );
+    std::tuple< TransactionReceipts, unsigned > syncEveryone(
+        BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp,
+        u256 _gasPrice, bool isSaveLastTxHash = false,
+        TransactionReceipts* accumulatedTransactionReceipts = nullptr,
+        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
+    );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
@@ -330,7 +332,7 @@ private:
     bytes m_currentTxs;     ///< The RLP-encoded block of transactions.
     bytes m_currentUncles;  ///< The RLP-encoded block of uncles.
 
-    Address m_author; ///< Our address (i.e. the address to which fees go).
+    Address m_author;  ///< Our address (i.e. the address to which fees go).
 
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
@@ -338,12 +340,11 @@ private:
     Logger m_logger{createLogger( VerbosityDebug, "block" )};
     Logger m_loggerDetailed{createLogger( VerbosityTrace, "block" )};
 
-    Counter<Block> c;;
+    Counter< Block > c;
+    ;
 
 public:
-    static uint64_t howMany() { return Counter<Block>::howMany(); }
-
-
+    static uint64_t howMany() { return Counter< Block >::howMany(); }
 };
 
 

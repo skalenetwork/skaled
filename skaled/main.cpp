@@ -46,6 +46,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
+#include <libdevcore/SharedSpace.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
@@ -359,11 +360,19 @@ int main( int argc, char** argv ) try {
 
         // try to exit nicely - then abort
         if ( !skutils::signal::g_bStop ) {
-            thread( []() {
+            thread( [nSignalNo]() {
                 sleep( ExitHandler::KILL_TIMEOUT );
                 std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
                           << std::endl;
-                _exit( ExitHandler::requestedExitCode() );
+
+                // TODO deduplicate this with main() before return
+                ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+                if ( ec == ExitHandler::ec_success ) {
+                    if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
+                        ec = ExitHandler::ec_failure;
+                }
+
+                _exit( ec );
             } )
                 .detach();
         }
@@ -495,6 +504,8 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "config", po::value< string >()->value_name( "<file>" ),
         "Configure specialised blockchain using given JSON information\n" );
+    addClientOption( "main-net-url", po::value< string >()->value_name( "<url>" ),
+        "Configure IMA verification algorithms to use specified Main Net url\n" );
     addClientOption( "ipc", "Enable IPC server (default: on)" );
     addClientOption( "ipcpath", po::value< string >()->value_name( "<path>" ),
         "Set .ipc socket path (default: data directory)" );
@@ -575,7 +586,7 @@ int main( int argc, char** argv ) try {
     addClientOption(
         "ws-mode", po::value< string >()->value_name( "<mode>" ), str_ws_mode_description.c_str() );
     addClientOption( "ws-log", po::value< string >()->value_name( "<mode>" ),
-        "Web socket debug logging mode(none, basic detailed; default is none)" );
+        "Web socket debug logging mode(\"none\", \"basic\", \"detailed\"; default is \"none\")" );
     addClientOption( "max-connections", po::value< size_t >()->value_name( "<count>" ),
         "Max number of RPC connections(such as web3) summary for all protocols(0 is default and "
         "means unlimited)" );
@@ -635,6 +646,8 @@ int main( int argc, char** argv ) try {
         "upnp", po::value< string >()->value_name( "<on/off>" ), "Use UPnP for NAT (default: on)" );
 #endif
 
+    addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -654,6 +667,10 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    addGeneralOption( "shared-space-path", po::value< string >()->value_name( "<path>" ),
+        ( "Use shared space folder for temporary files (default: " + getDataDir().string() +
+            "/diffs)" )
+            .c_str() );
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
@@ -794,6 +811,23 @@ int main( int argc, char** argv ) try {
             cerr << configJSON << endl;
             return EX_CONFIG;
         }
+    }
+    if ( vm.count( "main-net-url" ) ) {
+        if ( !g_configAccesssor ) {
+            cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
+            return EX_SOFTWARE;
+        }
+        skutils::json_config_file_accessor::g_strImaMainNetURL =
+            skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
+        if ( !g_configAccesssor->validateImaMainNetURL() ) {
+            cerr << "bad --main-net-url=<url> parameter value: "
+                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n"
+                 << endl;
+            return EX_SOFTWARE;
+        }
+        clog( VerbosityDebug, "main" )
+            << cc::notice( "Main Net URL" ) + cc::debug( " is: " )
+            << cc::u( skutils::json_config_file_accessor::g_strImaMainNetURL );
     }
 
     if ( !chainConfigIsSet )
@@ -1546,14 +1580,27 @@ int main( int argc, char** argv ) try {
         toImport.emplace_back( s );
     }
 
+    if ( vm.count( "sgx-url" ) ) {
+        chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
+    }
+
+    std::shared_ptr< SharedSpace > shared_space;
+    if ( vm.count( "shared-space-path" ) )
+        shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
+
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) )
-        snapshotManager.reset( new SnapshotManager(
-            getDataDir(), {BlockChain::getChainDirName( chainParams ), "filestorage",
-                              "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                              "blocks_" + chainParams.nodeInfo.id.str() + ".db"} ) );
+    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
+        snapshotManager.reset( new SnapshotManager( getDataDir(),
+            {BlockChain::getChainDirName( chainParams ), "filestorage",
+                "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
+            shared_space ? shared_space->getPath() : std::string() ) );
+    }
 
     if ( vm.count( "download-snapshot" ) ) {
+        std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
+        if ( shared_space )
+            shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
         std::string commonPublicKey = "";
         if ( !vm.count( "public-key" ) ) {
             throw std::runtime_error(
@@ -2124,9 +2171,9 @@ int main( int argc, char** argv ) try {
 
         auto ethFace = new rpc::Eth( *g_client, *accountHolder.get() );
         /// skale
-        auto skaleFace = new rpc::Skale( *g_client );
+        auto skaleFace = new rpc::Skale( *g_client, shared_space );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
+        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
 
         std::string argv_string;
         {
@@ -2558,9 +2605,69 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
+            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        std::string strResponse = ethFace->eth_sendRawTransaction(
+                            joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Value& v = joResponse["result"];
+                        v.SetString(
+                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                    } catch ( const dev::Exception& ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
+                            joResponse );
+                    }
+                };
+            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        dev::eth::LocalisedTransactionReceipt _t =
+                            ethFace->eth_getTransactionReceipt(
+                                joRequest["params"].GetArray()[0].GetString() );
+
+                        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+                        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+                        joResponse.EraseMember( "result" );
+                        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+                    } catch ( std::invalid_argument& ex ) {
+                        // not known transaction - skip exception
+                        joResponse.AddMember(
+                            "result", rapidjson::Value(), joResponse.GetAllocator() );
+                    } catch ( ... ) {
+                        wrapJsonRpcException( joRequest,
+                            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
+                            joResponse );
+                    }
+                };
+            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
+                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+                    try {
+                        if ( joRequest["params"].GetArray().Size() != 2 ) {
+                            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+                        dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
+                            joRequest["params"].GetArray()[0] );
+                        std::string strResponse =
+                            ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
+
+                        rapidjson::Value& v = joResponse["result"];
+                        v.SetString(
+                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                    } catch ( std::exception const& ex ) {
+                        throw jsonrpc::JsonRpcException( ex.what() );
+                    } catch ( ... ) {
+                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                    }
+                };
             //
             SkaleServerOverride::opts_t serverOpts;
             serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
+            serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
+            serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
+            serverOpts.fn_eth_call_ = fn_eth_call;
             serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
             serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;

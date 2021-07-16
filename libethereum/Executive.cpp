@@ -396,15 +396,6 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // the m_orig.address, since we delete it explicitly if we decide we need to revert.
 
     m_gas = _gas;
-    if ( m_sealEngine.chainParams().sChain.owner != Address( 0 ) &&
-         _origin != m_sealEngine.chainParams().sChain.owner &&
-         !m_sealEngine.chainParams().sChain.freeContractDeployment ) {
-        m_gas = 0;
-        m_excepted = TransactionException::InvalidDeployOrigin;
-        revert();
-        m_ext = {};
-        return !m_ext;
-    }
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
@@ -469,6 +460,17 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
+                bytes in = getDeploymentControllerCallData( m_ext->caller );
+                unique_ptr< CallParameters > deploymentCallParams(
+                    new CallParameters( SystemAddress, c_deploymentControllerContractAddress,
+                        c_deploymentControllerContractAddress, 0, 0, m_gas,
+                        bytesConstRef( in.data(), in.size() ), {} ) );
+                auto deploymentCallResult = m_ext->call( *deploymentCallParams );
+                auto deploymentCallOutput = dev::toHex( deploymentCallResult.output );
+                if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
+                    BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
+                }
+
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
                     m_res->gasForDeposit = m_gas;

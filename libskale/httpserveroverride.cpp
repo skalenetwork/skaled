@@ -29,7 +29,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 
-#include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/common/specificationparser.h>
 
 #include <cassert>
@@ -60,6 +59,7 @@
 
 #include <libethereum/Block.h>
 #include <libethereum/Transaction.h>
+#include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/Skale.h>
 
@@ -238,18 +238,31 @@ bool checkParamsIsArray(
     return false;
 }
 
-bool checkParamsIsObject(
-    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
+bool checkParamsIsObject( const char* strMethodName, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    joRequest.Accept( writer );
+    std::string strRequest = buffer.GetString();
+    nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+
+    nlohmann::json objResponse;
+    if ( !checkParamsPresent( strMethodName, objRequest, objResponse ) ) {
+        std::string strResponse = objResponse.dump();
+        joResponse.Parse( strResponse.data() );
         return false;
-    const nlohmann::json& joParams = joRequest["params"];
-    if ( joParams.is_object() )
+    }
+    if ( joRequest["params"].IsObject() )
         return true;
-    nlohmann::json joError = nlohmann::json::object();
-    joError["code"] = -32602;
-    joError["message"] = std::string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" must be object";
-    joResponse["error"] = joError;
+    rapidjson::Value joError;
+    joError.SetObject();
+    joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+    joError.AddMember( "message",
+        rapidjson::StringRef( std::string( std::string( "error in \"" ) + strMethodName +
+                                           "\" rpc method, json entry \"params\" must be object" )
+                                  .c_str() ),
+        joResponse.GetAllocator() );
+    joError.AddMember( "error", joError, joResponse.GetAllocator() );
     return false;
 }
 
@@ -1120,12 +1133,31 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     if ( joRequest.count( "id" ) > 0 )
         joResponse["id"] = joRequest["id"];
     joResponse["result"] = nullptr;
+
+    rapidjson::Document joRequestRapidjson;
+    joRequestRapidjson.SetObject();
+    std::string strRequest = joRequest.dump();
+    joRequestRapidjson.Parse( strRequest.data() );
+
+    rapidjson::Document joResponseRapidjson;
+    joResponseRapidjson.SetObject();
+    std::string strResponseCopy = joResponse.dump();
+    joResponseRapidjson.Parse( strResponseCopy.data() );
+
     if ( !pso()->handleProtocolSpecificRequest(
-             getRelay(), getRemoteIp(), joRequest, joResponse ) ) {
-        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) )
+             getRelay(), getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
+        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
+            strResponse = joResponse.dump();
             return false;
+        }
+        strResponse = joResponse.dump();
+    } else {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joResponseRapidjson.Accept( writer );
+        strResponse = buffer.GetString();
     }
-    strResponse = joResponse.dump();
+
     return true;
 }
 
@@ -1778,8 +1810,9 @@ void SkaleWsPeer::eth_unsubscribe(
 
 SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
     const char* strScheme,  // "ws" or "wss"
-    int nPort, e_server_mode_t esm, int nServerIndex )
-    : SkaleServerHelper( nServerIndex ),
+    int nPort, e_server_mode_t esm, int nServerIndex, skutils::ws::basic_network_settings* pBNS )
+    : skutils::ws::server( pBNS ),
+      SkaleServerHelper( nServerIndex ),
       ipVer_( ipVer ),
       strBindAddr_( strBindAddr ),
       m_strScheme_( skutils::tools::to_lower( strScheme ) ),
@@ -1958,22 +1991,46 @@ SkaleRelayHTTP::~SkaleRelayHTTP() {
 bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
     const std::string& strRequest, std::string& strResponse ) {
     strResponse.clear();
-    nlohmann::json joRequest;
+    rapidjson::Document joRequest;
+    joRequest.SetObject();
     try {
-        joRequest = nlohmann::json::parse( strRequest );
+        joRequest.Parse( strRequest.data() );
     } catch ( ... ) {
         return false;
     }
-    nlohmann::json joResponse = nlohmann::json::object();
-    joResponse["jsonrpc"] = "2.0";
-    if ( joRequest.count( "id" ) > 0 )
+    rapidjson::Document joResponse;
+    joResponse.SetObject();
+    joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
+    if ( joRequest.HasMember( "id" ) ) {
+        joResponse.AddMember( "id", rapidjson::Value(), joResponse.GetAllocator() );
         joResponse["id"] = joRequest["id"];
-    joResponse["result"] = nullptr;
-    if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
-        if ( !handleHttpSpecificRequest( strOrigin, esm, joRequest, joResponse ) )
-            return false;
     }
-    strResponse = joResponse.dump();
+    rapidjson::Value d;
+    d.SetObject();
+    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+    if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joRequest.Accept( writer );
+        std::string strRequest = buffer.GetString();
+        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+
+        rapidjson::StringBuffer bufferResponse;
+        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
+        joResponse.Accept( writerResponse );
+        std::string strResponseCopy = bufferResponse.GetString();
+        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
+        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
+            return false;
+        } else {
+            strResponse = joResponseObj.dump();
+        }
+    } else {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joResponse.Accept( writer );
+        strResponse = buffer.GetString();
+    }
     return true;
 }
 
@@ -2258,6 +2315,26 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
             cc::info( strProtocolName ) + cc::notice( " server to start" ) );
 }
 
+string hostname_to_ip( string hostname ) {
+    struct hostent* he;
+    struct in_addr** addr_list;
+    int i;
+
+    if ( ( he = gethostbyname( hostname.c_str() ) ) == NULL ) {
+        return "";
+    }
+
+    addr_list = ( struct in_addr** ) he->h_addr_list;
+
+    for ( i = 0; addr_list[i] != NULL; i++ ) {
+        // Return the first one;
+        return string( inet_ntoa( *addr_list[i] ) );
+    }
+
+    return "";
+}
+
+
 bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
     const std::string& strAddr, int nPort, const std::string& strPathSslKey,
     const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
@@ -2371,8 +2448,19 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             // unddos
             skutils::url url_unddos_origin( req.origin_ );
             const std::string str_unddos_origin = url_unddos_origin.host();
-            skutils::unddos::e_high_load_detection_result_t ehldr =
-                pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
+
+
+            skutils::unddos::e_high_load_detection_result_t ehldr;
+
+            static string mainnet_proxy_ip_address = hostname_to_ip( "api.skalenodes.com" );
+            static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
+
+            if ( str_unddos_origin == mainnet_proxy_ip_address ||
+                 str_unddos_origin == testnet_proxy_ip_address ) {
+                ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
+            } else {
+                ehldr = pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
+            }
             switch ( ehldr ) {
             case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
                                                                                   // load per minute
@@ -2602,7 +2690,7 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
                 cc::debug( " server on address " ) + cc::info( strAddr ) +
                 cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
         pSrv.reset( new SkaleRelayWS(
-            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex ) );
+            ipVer, strAddr.c_str(), bIsSSL ? "wss" : "ws", nPort, esm, nServerIndex, &bns4ws_ ) );
         if ( bIsSSL ) {
             pSrv->strCertificateFile_ = strPathSslCert;
             pSrv->strPrivateKeyFile_ = strPathSslKey;
@@ -3194,8 +3282,9 @@ bool SkaleServerOverride::handleAdminOriginFilter(
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool SkaleServerOverride::handleProtocolSpecificRequest( SkaleServerHelper& sse,
-    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    std::string strMethod = joRequest["method"].get< std::string >();
+    const std::string& strOrigin, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    std::string strMethod = joRequest["method"].GetString();
     protocol_rpc_map_t::const_iterator itFind = g_protocol_rpc_map.find( strMethod );
     if ( itFind == g_protocol_rpc_map.end() )
         return false;
@@ -3205,26 +3294,51 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( SkaleServerHelper& sse,
 
 const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
     {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
-};
+    {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
+    {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
+    {"eth_call", &SkaleServerOverride::eth_call}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
-    const std::string& strOrigin, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    const std::string& strOrigin, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
-        // check "params" in joRequest and it's JSON object { }
-        if ( !skale::server::helper::checkParamsIsObject(
-                 "setSchainExitTime", joRequest, joResponse ) )
+        if ( !joRequest.HasMember( "params" ) ) {
+            rapidjson::Value joError;
+            joError.SetObject();
+            joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+            std::string errorMessage = std::string( "error in \"" ) + "setSchainExitTime" +
+                                       "\" rpc method, json entry \"params\" must be object";
+            rapidjson::Value v;
+            v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
+            joError.AddMember( "message", v, joResponse.GetAllocator() );
+            joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
             return;
-        const nlohmann::json& joParams = joRequest["params"];
+        } else {
+            const rapidjson::Value& param = joRequest["params"];
+            if ( !param.IsObject() ) {
+                rapidjson::Value joError;
+                joError.SetObject();
+                joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+                std::string errorMessage = std::string( "error in \"" ) + "setSchainExitTime" +
+                                           "\" rpc method, json entry \"params\" must be object";
+                rapidjson::Value v;
+                v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
+                joError.AddMember( "message", v, joResponse.GetAllocator() );
+                joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
+                return;
+            }
+        }
+        const rapidjson::Value& joParams = joRequest["params"];
         // parse value of "finishTime"
         size_t finishTime = 0;
-        if ( joParams.count( "finishTime" ) > 0 ) {
-            const nlohmann::json& joValue = joParams["finishTime"];
-            if ( joValue.is_number() )
-                finishTime = joValue.get< size_t >();
+        if ( joParams.HasMember( "finishTime" ) > 0 ) {
+            const rapidjson::Value& joValue = joParams["finishTime"];
+            if ( joValue.IsNumber() )
+                finishTime = joValue.GetUint();
             else
                 throw std::runtime_error(
                     "invalid value in the \"finishTime\" parameter, need number" );
@@ -3268,8 +3382,10 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         // '{"jsonrpc":"2.0","id":12345,"method":"setSchainExitTime","params":{"finishTime":123}}'
 
         // Result
-        std::string strRequest = joRequest.dump();
-        std::string strResponse = joResponse.dump();
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joResponse.Accept( writer );
+        std::string strResponse = buffer.GetString();
         auto pEthereum = pSO->ethereum();
         if ( !pEthereum )
             throw std::runtime_error( "internal error, no Ethereum interface found" );
@@ -3277,18 +3393,22 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
-        joResponse = nlohmann::json::parse( strResponse );
+        joResponse.Parse( strResponse.data() );
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] =
+        rapidjson::Value joError;
+        joError.SetObject();
+        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+        std::string errorMessage =
             std::string( "error in \"setSchainExitTime\" rpc method, exception: " ) + ex.what();
-        joResponse["error"] = joError;
+        rapidjson::Value v;
+        v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
+        joError.AddMember( "message", v, joResponse.GetAllocator() );
+        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
@@ -3296,12 +3416,32 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        nlohmann::json joError = nlohmann::json::object();
-        joError["code"] = -32602;
-        joError["message"] = "error in \"setSchainExitTime\" rpc method, unknown exception";
-        joResponse["error"] = joError;
+        rapidjson::Value joError;
+        joError.SetObject();
+        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
+        joError.AddMember( "message",
+            "error in \"setSchainExitTime\" rpc method, unknown exception",
+            joResponse.GetAllocator() );
+        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
         return;
     }
+}
+
+void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_call_( joRequest, joResponse );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

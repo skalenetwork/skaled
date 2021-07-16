@@ -24,9 +24,11 @@
 #pragma once
 
 #include <json/json.h>
+#include <jsonrpccpp/common/exception.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethereum/LogFilter.h>
+#include <rapidjson/document.h>
 
 namespace dev {
 
@@ -63,7 +65,19 @@ Json::Value toJson( LocalisedLogEntry const& _e );
 Json::Value toJson( LogEntry const& _e );
 Json::Value toJson( std::unordered_map< h256, LocalisedLogEntries > const& _entriesByBlock );
 Json::Value toJsonByBlock( LocalisedLogEntries const& _entries );
+
+rapidjson::Document toRapidJson(
+    LogEntry const& _e, rapidjson::Document::AllocatorType& allocator );
+rapidjson::Document toRapidJson(
+    LocalisedLogEntry const& _entry, rapidjson::Document::AllocatorType& allocator );
+rapidjson::Document toRapidJson(
+    LocalisedTransactionReceipt const& _t, rapidjson::Document::AllocatorType& allocator );
+
+void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
+    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
+
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
+TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
 // LogFilter toLogFilter( Json::Value const& _json,
 //    Interface const& _client );  // commented to avoid warning. Uncomment once in use @ PoC-7.
@@ -84,6 +98,19 @@ Json::Value toJson( std::vector< T > const& _es ) {
     Json::Value res( Json::arrayValue );
     for ( auto const& e : _es )
         res.append( toJson( e ) );
+    return res;
+}
+
+template < class T >
+rapidjson::Document toRapidJson(
+    std::vector< T > const& _es, rapidjson::Document::AllocatorType& allocator ) {
+    rapidjson::Document res;
+    res.SetArray();
+
+    for ( const auto& e : _es ) {
+        res.PushBack( toRapidJson( e, allocator ), allocator );
+    }
+
     return res;
 }
 

@@ -264,7 +264,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.byzantiumForkBlock = 0;
         chainParams.externalGasDifficulty = 1;
-        chainParams.sChain.storageLimit = 0x1122334455667788UL;
+        chainParams.sChain.contractStorageLimit = 0x1122334455667788UL;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases

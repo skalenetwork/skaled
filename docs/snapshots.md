@@ -22,7 +22,18 @@ Additionally, a node can be restarted from a snapshot it the node was offline fo
 
 Skaled uses the btrfs file system to create snapshots.
 
-SKALE Chain nodes perform snapshots once the current block timestamp crosses a boundary in T seconds, where T<sub>snapshotInterval</sub> is a configurable number defined in the node config file. After creating the snapshot, each node calculates it's hash and passes it to stateRoot. If the first block on the SKALE chain occurred at T<sub>firstBlock</sub>, then the first snapshot will be performed once another block's timestamp crosses the boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>] + 1) \* T<sub>snapshotInterval</sub>.
+Assumptions:
+1. First block on SKALE chain occured at T<sub>firstBlock</sub>
+2. node does snapshot every T<sub>snapshotInterval</sub> seconds (configurable number, stored in SKALE chain config, so it is similar for all nodes in SKALE chain )
+
+Assume `k` snapshots were already done. Lets see when `k+1`-th will be done and ready to be used:
+1. `k+1`-th snapshot will be done once another block’s B timestamp crosses boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>] + 1) \* T<sub>snapshotInterval</sub>.
+2. Node updates `last_snapshoted_block_with_hash` with `k`-th snapshot block number.
+3. If it is time to do snapshot and node already has 3 snapshots stored it deletes the latest of them.
+4. Node creates a snapshot `S_latest`.
+5. Node updates `last_snapshot_creation_time with` `B`'s timestamp.
+6. Node calculates `S_latest`'s hash in separate thread (computes hash of every file in this snapshot including filestorage), assuming it will be successfully calculated before next snapshot is done. So `k+1`-th snapshot will be ready to be used only when `k+2`-th snapshot will be performing.
+7. Node updates `stateRoot` field with `k`-th snapshot hash
 
 To start from a snapshot, a node must confirm whether a snapshot is valid. To prevent downloading of snapshots from malicious nodes, the following procedure was designed:
 
@@ -31,7 +42,7 @@ To start from a snapshot, a node must confirm whether a snapshot is valid. To pr
 3.  Once node `A` receives all hashes and signatures, `A` tries to choose a hash `H` similar on at least 2/3 + 1 nodes, then `A` collects their BLS signatures into one and verifies it. (If steps 1 – 3 fails, a node will not start.)
 4.  Node `A` chooses a random node from those 2/3 + 1 nodes and downloads a snapshot from it, computes its hash and confirms whether it is similar to `H`. If it is similar then a node starts from this snapshot, otherwise node `A` will attempt to download a snapshot from another node.
 
-NOTE: stateRoot is needed to determine whether there are any node software issues. Each time a new block is passed from consensus, a node compares its own stateRoot with the stateRoot of the incoming block (so snapshot hashes of the last block from different nodes are compared). If the stateRoots fail to match, then a software issue is assumed and the node must restart from a snapshot.
+NOTE: `stateRoot` is needed to determine whether there are any node software issues. Each time a new block is passed from consensus, a node compares its own stateRoot with the stateRoot of the incoming block (so snapshot hashes of the last block from different nodes are compared). If the stateRoots fail to match, then a software issue is assumed and the node must restart from a snapshot.
 
 ## JSON-RPC Snapshot Methods
 
@@ -114,7 +125,7 @@ Example
 ```sh
 // Request
 
-curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshotSignature", "params": { "blockNumber": 14 }, "id": 73 }'
+curl -X POST --data '{ "jsonrpc": "2.0", "method": "skale_getSnapshotSignature", "params": [ 14 ], "id": 73 }'
 
 // Result
 { 

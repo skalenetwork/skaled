@@ -222,6 +222,10 @@ public:
     bool server_skip_canonical_name_;  // use LWS_SERVER_OPTION_SKIP_SERVER_CANONICAL_NAME option
     bool ssl_perform_global_init_;     // both client and server, use
                                        // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+                                       // (inclompatible with ssl_perform_local_init_)
+    bool ssl_perform_local_init_;      // both client and server, use
+                                       // explicit OpenSSL init locally
+                                       // (inclompatible with ssl_perform_global_init_)
     bool
         ssl_server_require_valid_certificate_;  // use
                                                 // LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT
@@ -238,7 +242,7 @@ public:
     bool ssl_client_allow_expired_;          // use LCCSCF_ALLOW_EXPIRED option
     size_t cntMaxPortionBytesToSend_;
 #endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
-    basic_network_settings();
+    basic_network_settings( basic_network_settings* pBNS = nullptr );
     basic_network_settings( const basic_network_settings& ) = default;
     basic_network_settings( basic_network_settings&& ) = default;
     basic_network_settings& operator=( const basic_network_settings& ) = default;
@@ -437,7 +441,7 @@ public:
     static std::string g_strDefaultProtocolName;
     static volatile size_t g_nDefaultBufferSizeRX;
     static volatile size_t g_nDefaultBufferSizeTX;
-    basic_api();
+    basic_api( basic_network_settings* pBNS = nullptr );
     basic_api( const basic_api& ) = delete;
     basic_api( basic_api&& ) = delete;
     basic_api& operator=( const basic_api& ) = delete;
@@ -481,7 +485,7 @@ public:
     //
     message_payload_data accumulator_;
     //
-    client_api();
+    client_api( basic_network_settings* pBNS = nullptr );
     client_api( const client_api& ) = delete;
     client_api( client_api&& ) = delete;
     client_api& operator=( const client_api& ) = delete;
@@ -623,7 +627,7 @@ public:
     typedef std::map< int, connection_data* > map_connections_t;
     map_connections_t connections_;
 
-    server_api();
+    server_api( basic_network_settings* pBNS = nullptr );
     server_api( const server_api& ) = delete;
     server_api( server_api&& ) = delete;
     server_api& operator=( const server_api& ) = delete;
@@ -855,7 +859,7 @@ public:
     onPeerInstantiate_t onPeerInstantiate_;
     onPeerEvent_t onPeerRegister_;
     onPeerEvent_t onPeerUnregister_;
-    server();
+    server( basic_network_settings* pBNS = nullptr );
     server( const server& ) = delete;
     server( server&& ) = delete;
     server& operator=( const server& ) = delete;
@@ -916,7 +920,7 @@ class client : public basic_socket,
     std::string strLastURI_;
 
 public:
-    client();
+    client( basic_network_settings* pBNS = nullptr );
     client( const client& ) = delete;
     client( client&& ) = delete;
     client& operator=( const client& ) = delete;

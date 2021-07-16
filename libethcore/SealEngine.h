@@ -27,9 +27,9 @@
 
 #include "BlockHeader.h"
 #include "Common.h"
+#include "libethcore/Counter.h"
 #include <libdevcore/Guards.h>
 #include <libdevcore/RLP.h>
-#include "libethcore/Counter.h"
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -142,10 +142,10 @@ protected:
     std::function< void( bytes const& s ) > m_onSealGenerated;
 
 private:
-    Counter<SealEngineBase> c;
+    Counter< SealEngineBase > c;
 
 public:
-    static uint64_t howMany() { return Counter<SealEngineBase>::howMany(); }
+    static uint64_t howMany() { return Counter< SealEngineBase >::howMany(); }
 };
 
 using SealEngineFactory = std::function< SealEngineFace*() >;
@@ -179,8 +179,6 @@ private:
 
     std::unordered_map< std::string, SealEngineFactory > m_sealEngines;
     static std::unique_ptr< SealEngineRegistrar > s_this;
-
-
 };
 
 #define ETH_REGISTER_SEAL_ENGINE( Name )                             \

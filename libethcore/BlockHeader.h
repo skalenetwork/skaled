@@ -248,11 +248,10 @@ private:
 
     mutable Logger m_logger{createLogger( VerbosityDebug, "blockhdr" )};
 
-    Counter<BlockHeader> c;
+    Counter< BlockHeader > c;
 
 public:
-
-    static uint64_t howMany() { return Counter<BlockHeader>::howMany(); }
+    static uint64_t howMany() { return Counter< BlockHeader >::howMany(); }
 };
 
 inline std::ostream& operator<<( std::ostream& _out, BlockHeader const& _bi ) {
