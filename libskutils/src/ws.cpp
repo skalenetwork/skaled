@@ -656,7 +656,7 @@ void guarded_traffic_stats::unlock() {
     skutils::get_ref_mtx().unlock();
 }
 
-basic_network_settings::basic_network_settings()
+basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
     // interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
     : timeout_pong_( 300 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
@@ -688,8 +688,13 @@ basic_network_settings::basic_network_settings()
       server_skip_canonical_name_( false )  // use LWS_SERVER_OPTION_SKIP_SERVER_CANONICAL_NAME
                                             // option
       ,
-      ssl_perform_global_init_( true )  // both client and server, use
-                                        // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+      ssl_perform_global_init_( false )  // both client and server, use
+                                         // LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT option
+                                         // (inclompatible with ssl_perform_local_init_)
+      ,
+      ssl_perform_local_init_( true )  // both client and server, use
+                                       // explicit OpenSSL init locally
+                                       // (inclompatible with ssl_perform_global_init_)
       ,
       ssl_server_require_valid_certificate_(
           false )  // use LWS_SERVER_OPTION_REQUIRE_VALID_OPENSSL_CLIENT_CERT option
@@ -712,6 +717,8 @@ basic_network_settings::basic_network_settings()
       cntMaxPortionBytesToSend_( 0 )
 #endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
 {
+    if ( pBNS != nullptr )
+        ( *this ) = ( *pBNS );
 }
 basic_network_settings& basic_network_settings::default_instance() {
     static basic_network_settings g_inst;
@@ -1025,8 +1032,9 @@ volatile size_t basic_api::g_nDefaultBufferSizeTX =
     1024 * 16;  // 0 - same as g_nDefaultBufferSizeRX
 
 
-basic_api::basic_api()
-//: mtx_api_( "RMTX-NLWS-BASIC-API" )
+basic_api::basic_api( basic_network_settings* pBNS )
+    : basic_network_settings( pBNS )
+//, mtx_api_( "RMTX-NLWS-BASIC-API" )
 {
     clear_fields();
 }
@@ -1600,11 +1608,18 @@ int basic_api::stat_callback_server(
     return 0;
 }
 
-client_api::client_api() {
+client_api::client_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
     clear_fields();
+    if ( ssl_perform_local_init_ ) {
+        SSL_load_error_strings();
+        SSL_library_init();
+    }
 }
 client_api::~client_api() {
     deinit();
+    if ( ssl_perform_local_init_ ) {
+        ERR_free_strings();
+    }
 }
 
 void client_api::clear_fields() {
@@ -1650,10 +1665,13 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     // clear_fields();
     deinit();
     interface_name_ = ( strInterfaceName && strInterfaceName[0] ) ? strInterfaceName : "";
-    bool bDoInitSSL = false;
+    bool bDoGlobalInitSSL = false, bDoLocalInitSSL = false;
     if ( isSSL && pSA != nullptr ) {
-        if ( ssl_perform_global_init_ )
-            bDoInitSSL = true;
+        // if ( ssl_perform_global_init_ ) // LS: always do global SSL init in WSS client
+        bDoGlobalInitSSL = true;
+        // if ( !bDoGlobalInitSSL )
+        //    bDoLocalInitSSL = true;
+
         cert_path_ = pSA->strCertificateFile_;
         key_path_ = pSA->strPrivateKeyFile_.c_str();
         ca_path_ = pSA->strCertificationChainFile_.c_str();  // ???
@@ -1681,8 +1699,8 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     }  // i( isSSL && pSA != nullptr )
 
 #if ( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
-    if ( bDoInitSSL )  // ssl_perform_global_init_
-#endif                 /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
+    if ( bDoGlobalInitSSL )  // ssl_perform_global_init_
+#endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
         ctx_info_.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
     //				ctx_info_.ssl_options_set = // compatibility with old implementation based on
@@ -1803,6 +1821,11 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
 
     ctx_info_.iface =
         ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
+    //
+    //
+    //
+    //
+    //
 
     ctx_ = ::lws_create_context( &ctx_info_ );
     if ( ctx_ == nullptr ) {
@@ -1814,51 +1837,71 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
     strURL_ = skutils::tools::format(
         "%s://%s:%d%s", ssl_flags_ ? "wss" : "ws", strHost.c_str(), nPort, sp.c_str() );
     std::string strOrigin = skutils::tools::format( "%s:%d", strHost.c_str(), nPort );
-    //				wsi_ =
-    //					::lws_client_connect(
-    //						ctx_,
-    //						strHost.c_str(),
-    //						nPort,
-    //						ssl_flags_,
-    //						sp.c_str(),
-    //						strOrigin.c_str(), // "origin"
-    //						nullptr,
-    //						g_strDefaultProtocolName.c_str(), // protocols_[cpi].name
-    //						-1
-    //						);
-    struct lws_client_connect_info cci;
-    ::memset( &cci, 0, sizeof( struct lws_client_connect_info ) );
-    cci.context = ctx_;
-    cci.ssl_connection = ssl_flags_;
-    cci.address = strHost.c_str();
-    cci.port = nPort;
-    cci.path = sp.c_str();
-    cci.host = ::lws_canonical_hostname( ctx_ );
-    cci.origin = strOrigin.c_str();  // "origin"
-    cci.protocol = g_strDefaultProtocolName.c_str();
-    cci.ietf_version_or_minus_one = -1;
-    cci.pwsi = &wsi_;
-    wsi_ = ::lws_client_connect_via_info( &cci );
-    if ( wsi_ == nullptr ) {
-        deinit();
-        onLogMessage( e_ws_log_message_type_t::eWSLMT_error, "NLWS: client wsi creation fail" );
-        return false;
-    }
-    configure_wsi( wsi_ );
-    stat_reg( this );
 
     clientThreadStopFlag_ = false;
     clientThreadWasStopped_ = true;
+    std::atomic_bool threadInitDone = false, threadInitSuccess = false;
     clientThread_ = std::thread( [&]() {
         clientThreadWasStopped_ = false;
+        if ( bDoLocalInitSSL ) {
+            SSL_load_error_strings();
+            SSL_library_init();
+        }
+        //				wsi_ =
+        //					::lws_client_connect(
+        //						ctx_,
+        //						strHost.c_str(),
+        //						nPort,
+        //						ssl_flags_,
+        //						sp.c_str(),
+        //						strOrigin.c_str(), // "origin"
+        //						nullptr,
+        //						g_strDefaultProtocolName.c_str(), // protocols_[cpi].name
+        //						-1
+        //						);
+        struct lws_client_connect_info cci;
+        ::memset( &cci, 0, sizeof( struct lws_client_connect_info ) );
+        cci.context = ctx_;
+        cci.ssl_connection = ssl_flags_;
+        cci.address = strHost.c_str();
+        cci.port = nPort;
+        cci.path = sp.c_str();
+        cci.host = ::lws_canonical_hostname( ctx_ );
+        cci.origin = strOrigin.c_str();  // "origin"
+        cci.protocol = g_strDefaultProtocolName.c_str();
+        cci.ietf_version_or_minus_one = -1;
+        cci.pwsi = &wsi_;
+        wsi_ = ::lws_client_connect_via_info( &cci );
+        if ( wsi_ == nullptr ) {
+            deinit();
+            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, "NLWS: client wsi creation fail" );
+            threadInitSuccess = false;
+            threadInitDone = true;
+            clientThreadWasStopped_ = true;
+            if ( bDoLocalInitSSL ) {
+                ERR_free_strings();
+            }
+            return;
+        }
+        configure_wsi( wsi_ );
+        stat_reg( this );
+        threadInitSuccess = true;
+        threadInitDone = true;
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: start" );
         while ( !clientThreadStopFlag_ ) {
             ::lws_service( ctx_, g_lws_service_timeout_ms );
             do_writable_callbacks_all_protocol();
         }
         onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS thread: stop" );
+        if ( bDoLocalInitSSL ) {
+            ERR_free_strings();
+        }
         clientThreadWasStopped_ = true;
     } );
+    while ( !threadInitDone )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 20 ) );
+    if ( !threadInitSuccess )
+        return false;
     // do_writable_callbacks_all_protocol();
     // while( ! ( connection_flag_ || destroy_flag_ ) )
     //	std::this_thread::sleep_for( std::chrono::milliseconds(20) );
@@ -2132,11 +2175,18 @@ std::string server_api::connection_data::description( bool isColored /*= false*/
 }
 
 
-server_api::server_api() {
+server_api::server_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
     clear_fields();
+    if ( ssl_perform_local_init_ ) {
+        SSL_load_error_strings();
+        SSL_library_init();
+    }
 }
 server_api::~server_api() {
     deinit();
+    if ( ssl_perform_local_init_ ) {
+        ERR_free_strings();
+    }
 }
 
 void server_api::clear_fields() {
@@ -3524,7 +3574,8 @@ std::string peer::getCidString() const {
 }
 
 
-server::server() : server_serial_number_( 0 ), listen_backlog_( 0 ) {
+server::server( basic_network_settings* pBNS )
+    : api_( pBNS ), server_serial_number_( 0 ), listen_backlog_( 0 ) {
     traffic_stats::register_default_event_queues_for_web_socket_server();
     api_.onConnect_ = [this]( connection_identifier_t cid, struct lws* /*wsi*/,
                           const char* /*strPeerClientAddressName*/,
@@ -3804,7 +3855,7 @@ const security_args& server::onGetSecurityArgs() const {
 }
 
 
-client::client() {
+client::client( basic_network_settings* pBNS ) : api_( pBNS ) {
     traffic_stats::register_default_event_queues_for_web_socket_client();
     api_.onConnect_ = [this]() {
         onOpen( api_.cid_ );

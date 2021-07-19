@@ -94,11 +94,27 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
-    const std::string sgx_cert_path = "/skale_node_data/sgx_certs/";
-    const std::string sgx_cert_filename = "sgx.crt";
-    const std::string sgx_key_filename = "sgx.key";
-    std::string sgxSSLKeyFilePath = sgx_cert_path + sgx_key_filename;
-    std::string sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
+    std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
+    if ( sgx_cert_path.empty() )
+        sgx_cert_path = "/skale_node_data/sgx_certs/";
+    else if ( sgx_cert_path[sgx_cert_path.length() - 1] != '/' )
+        sgx_cert_path += '/';
+
+    const char* sgx_cert_filename = getenv( "SGX_CERT_FILE" );
+    if ( sgx_cert_filename == nullptr )
+        sgx_cert_filename = "sgx.crt";
+
+    const char* sgx_key_filename = getenv( "SGX_KEY_FILE" );
+    if ( sgx_key_filename == nullptr )
+        sgx_key_filename = "sgx.key";
+
+    std::string sgxSSLKeyFilePath;
+    std::string sgxSSLCertFilePath;
+    // if https
+    if ( sgxServerUrl.find( ':' ) == 5 ) {
+        sgxSSLKeyFilePath = sgx_cert_path + sgx_key_filename;
+        sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
+    }
 
     std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
 
@@ -478,14 +494,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
 
+    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
     LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
-
-    std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( this->m_client.chainParams().sChain.snapshotIntervalSec > 0 ) {
         dev::h256 stCurrent =
@@ -495,8 +511,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( std::to_string( _blockID - 1 ) ) << ' '
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
-        // FATAL if mismatch on non-empty block
-        if ( _approvedTransactions.size() > 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        // FATAL if mismatch in non-default
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -511,17 +527,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             _exit( int( ExitHandler::ec_state_root_mismatch ) );
         }
 
-        // WARN if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot )
-            clog( VerbosityError, "skale-host" )
-                << cc::error( "ERROR: STATE ROOT MISMATCH in empty but non-default block!" )
-                << cc::error( " Current state root " )
-                << cc::warn( dev::h256::Arith( stCurrent ).str() )
-                << cc::error( " is not equal to arrived state root " )
-                << cc::warn( _stateRoot.str() ) << cc::warn( " with block ID " )
-                << cc::notice( "#" ) << cc::num10( _blockID ) << cc::warn( ", " )
-                << cc::error( " is other node outdated?" );
-
         // WARN if default but non-zero
         if ( _winningNodeIndex == 0 && _stateRoot != u256() )
             clog( VerbosityWarning, "skale-host" )
@@ -535,76 +540,86 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::atomic_bool have_consensus_born = false;  // means we need to re-verify old txns
 
-    m_debugTracer.tracepoint( "drop_good_transactions" );
+    // HACK this is for not allowing new transactions in tq between deletion and block creation!
+    // TODO decouple SkaleHost and Client!!!
+    size_t n_succeeded;
+    DEV_GUARDED( m_client.m_blockImportMutex ) {
+        m_debugTracer.tracepoint( "drop_good_transactions" );
 
-    skutils::task::performance::json jarrProcessedTxns = skutils::task::performance::json::array();
+        skutils::task::performance::json jarrProcessedTxns =
+            skutils::task::performance::json::array();
 
-    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-        const bytes& data = *it;
-        h256 sha = sha3( data );
-        LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
-        jarrProcessedTxns.push_back( toJS( sha ) );
+        for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
+            const bytes& data = *it;
+            h256 sha = sha3( data );
+            LOG( m_traceLogger ) << cc::debug( "Arrived txn: " ) << sha << std::endl;
+            jarrProcessedTxns.push_back( toJS( sha ) );
 #ifdef DEBUG_TX_BALANCE
-        if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
-            std::cerr << cc::error( "createBlock assert" ) << std::endl;
-            //            sleep(200);
-            assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
-        }
-        assert( arrived.count( sha ) == 0 );
-        arrived.insert( sha );
+            if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
+                std::cerr << cc::error( "createBlock assert" ) << std::endl;
+                //            sleep(200);
+                assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
+            }
+            assert( arrived.count( sha ) == 0 );
+            arrived.insert( sha );
 #endif
 
-        // if already known
-        // TODO clear occasionally this cache?!
-        if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
-            Transaction t = m_m_transaction_cache.at( sha.asArray() );
-            out_txns.push_back( t );
-            LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
-            m_debugTracer.tracepoint( "drop_good" );
-            m_tq.dropGood( t );
-            MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
-            m_m_transaction_cache.erase( sha.asArray() );
-            std::lock_guard< std::mutex > localGuard( m_receivedMutex );
-            m_received.erase( sha );
-            LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-        } else {
-            Transaction t( data, CheckTransaction::Everything, true );
-            t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
-            out_txns.push_back( t );
-            LOG( m_debugLogger ) << "Will import consensus-born txn!";
-            m_debugTracer.tracepoint( "import_consensus_born" );
-            have_consensus_born = true;
-        }
-        if ( m_tq.knownTransactions().count( sha ) != 0 ) {
-            // TODO fix this!!?
-            clog( VerbosityWarning, "skale-host" )
-                << "Consensus returned 'future'' transaction that we didn't yet send!!";
-            m_debugTracer.tracepoint( "import_future" );
-        }
+            // if already known
+            // TODO clear occasionally this cache?!
+            if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
+                Transaction t = m_m_transaction_cache.at( sha.asArray() );
+                out_txns.push_back( t );
+                LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
+                m_debugTracer.tracepoint( "drop_good" );
+                m_tq.dropGood( t );
+                MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
+                m_m_transaction_cache.erase( sha.asArray() );
+                std::lock_guard< std::mutex > localGuard( m_receivedMutex );
+                m_received.erase( sha );
+                LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+                // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
+                // ).detach();
+            } else {
+                Transaction t( data, CheckTransaction::Everything, true );
+                t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+                out_txns.push_back( t );
+                LOG( m_debugLogger ) << "Will import consensus-born txn!";
+                m_debugTracer.tracepoint( "import_consensus_born" );
+                have_consensus_born = true;
+            }
+            if ( m_tq.knownTransactions().count( sha ) != 0 ) {
+                // TODO fix this!!?
+                clog( VerbosityWarning, "skale-host" )
+                    << "Consensus returned 'future'' transaction that we didn't yet send!!";
+                m_debugTracer.tracepoint( "import_future" );
+            }
 
-    }  // for
-    // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
+        }  // for
+        // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
 
-    total_arrived += out_txns.size();
+        total_arrived += out_txns.size();
 
-    assert( _blockID == m_client.number() + 1 );
+        assert( _blockID == m_client.number() + 1 );
 
-    //
-    a_create_block.finish();
-    //
-    static std::atomic_size_t g_nImportBlockTaskNumber = 0;
-    size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
-    std::string strPerformanceQueueName_import_block = "bc/import_block";
-    std::string strPerformanceActionName_import_block =
-        skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-    skutils::task::performance::json jsn_import_block = skutils::task::performance::json::object();
-    jsn_import_block["txns"] = jarrProcessedTxns;
-    skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
-        strPerformanceActionName_import_block, jsn_import_block );
-    //
-    m_debugTracer.tracepoint( "import_block" );
+        //
+        a_create_block.finish();
+        //
+        static std::atomic_size_t g_nImportBlockTaskNumber = 0;
+        size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
+        std::string strPerformanceQueueName_import_block = "bc/import_block";
+        std::string strPerformanceActionName_import_block =
+            skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
+        skutils::task::performance::json jsn_import_block =
+            skutils::task::performance::json::object();
+        jsn_import_block["txns"] = jarrProcessedTxns;
+        skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
+            strPerformanceActionName_import_block, jsn_import_block );
+        //
+        m_debugTracer.tracepoint( "import_block" );
 
-    size_t n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+        n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+    }  // m_blockImportMutex
+
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 

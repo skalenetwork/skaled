@@ -204,7 +204,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // blockchain database until after the construction.
     m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
         BaseState::PreExisting, chainParams().accountInitialFunds,
-        chainParams().sChain.storageLimit );
+        chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
@@ -455,189 +455,199 @@ static std::string stat_transactions2str(
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
-    DEV_GUARDED( m_blockImportMutex ) {
-        int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
+    // HACK here was m_blockImportMutex - but now it is aquired in SkaleHost!!!
+    // TODO decouple Client and SkaleHost
+    int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
-        // init last block creation time with only robust time source - timestamp of 1st block!
-        if ( number() == 0 ) {
-            last_snapshot_creation_time = _timestamp;
-            LOG( m_logger ) << "Init last snapshot creation time: "
-                            << this->last_snapshot_creation_time;
-        } else if ( snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
-            LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
+    // init last block creation time with only robust time source - timestamp of 1st block!
+    if ( number() == 0 ) {
+        last_snapshot_creation_time = _timestamp;
+        LOG( m_logger ) << "Init last snapshot creation time: "
+                        << this->last_snapshot_creation_time;
+    } else if ( snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+        LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
-            if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
-                m_snapshotHashComputing->join();
+        if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
+            m_snapshotHashComputing->join();
 
-            // TODO Make this number configurable
-            // thread can be absent - if hash was already there
-            // snapshot can be absent too
-            // but hash cannot be absent
+        // TODO Make this number configurable
+        // thread can be absent - if hash was already there
+        // snapshot can be absent too
+        // but hash cannot be absent
+        auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+        if ( latest_snapshots.second ) {
+            assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
+            this->last_snapshoted_block_with_hash = latest_snapshots.second;
+            m_snapshotManager->leaveNLastSnapshots( 2 );
+        }
+
+        // also there might be snapshot on disk
+        // and it's time to make it "last with hash"
+        if ( last_snapshoted_block_with_hash == 0 ) {
             auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
             if ( latest_snapshots.second ) {
-                assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
-                this->last_snapshoted_block_with_hash = latest_snapshots.second;
-                m_snapshotManager->leaveNLastSnapshots( 2 );
-            }
-
-            // also there might be snapshot on disk
-            // and it's time to make it "last with hash"
-            if ( last_snapshoted_block_with_hash == 0 ) {
-                auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-                if ( latest_snapshots.second ) {
-                    uint64_t time_of_second =
-                        blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
-                    if ( time_of_second == ( ( uint64_t ) last_snapshot_creation_time ) )
-                        this->last_snapshoted_block_with_hash = latest_snapshots.second;
-                }  // if second
-            }      // if == 0
-        }
-
-        //
-        // begin, detect partially executed block
-        bool bIsPartial = false;
-        TransactionReceipts partialTransactionReceipts;
-        size_t cntAll = _transactions.size();
-        size_t cntExpected = cntAll;
-        size_t cntMissing = 0;
-        Transactions vecPassed, vecMissing;
-        dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
-        for ( const Transaction& txWalk : _transactions ) {
-            const h256 shaWalk = txWalk.sha3();
-            if ( bIsPartial )
-                vecMissing.push_back( txWalk );
-            else {
-                vecPassed.push_back( txWalk );
-                if ( shaWalk == shaLastTx ) {
-                    bIsPartial = true;
-                }
-            }
-        }
-        size_t cntPassed = vecPassed.size();
-        cntMissing = vecMissing.size();
-        cntExpected = cntMissing;
-        if ( bIsPartial ) {
-            partialTransactionReceipts = m_state.safePartialTransactionReceipts();
-            LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
-                            << cc::warn( " found partially executed block, have " )
-                            << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
-                            << cc::size10( cntPassed ) << cc::warn( " passed, " )
-                            << cc::size10( cntMissing ) << cc::warn( " missing" );
-            LOG( m_logger ).flush();
-            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                            << stat_transactions2str( _transactions, cc::notice( " All " ) );
-            LOG( m_logger ).flush();
-            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                            << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
-            LOG( m_logger ).flush();
-            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                            << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
-            LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
-                            << cc::size10( partialTransactionReceipts.size() )
-                            << cc::attention( " partial transaction receipt(s) inside " )
-                            << cc::notice( "SAFETY CACHE" );
-            LOG( m_logger ).flush();
-        }
-        // end, detect partially executed block
-        //
-
-        TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
-        bool isSaveLastTxHash = true;
-        size_t cntSucceeded = syncTransactions( bIsPartial ? vecMissing : _transactions, _gasPrice,
-            _timestamp, isSaveLastTxHash, &accumulatedTransactionReceipts );
-        sealUnconditionally( false );
-        importWorkingBlock( &partialTransactionReceipts );
-
-        if ( bIsPartial )
-            cntSucceeded += cntPassed;
-        if ( cntSucceeded != cntAll ) {
-            LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
-                            << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
-                            << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
-                            << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
-            LOG( m_logger ).flush();
-        }
-        if ( bIsPartial ) {
-            LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " )
-                            << cc::size10( cntAll ) << cc::success( " transaction(s), " )
-                            << cc::size10( cntPassed ) << cc::success( " passed, " )
-                            << cc::size10( cntMissing ) << cc::success( " missing" );
-            LOG( m_logger ).flush();
-        }
-
-        if ( snapshotIntervalSec > 0 ) {
-            unsigned block_number = this->number();
-
-            LOG( m_logger ) << "Block timestamp: " << _timestamp;
-
-            if ( this->isTimeToDoSnapshot( _timestamp ) ) {
-                try {
-                    LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
-                    m_debugTracer.tracepoint( "doing_snapshot" );
-
-                    m_snapshotManager->doSnapshot( block_number );
-                } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                    cerror << "WARNING " << dev::nested_exception_what( ex );
-                }
-
-                this->last_snapshot_creation_time = _timestamp;
-
-                LOG( m_logger ) << "New snapshot creation time: "
-                                << this->last_snapshot_creation_time;
-            }
-
-            // snapshots without hash can appear either from start, from downloading or from just
-            // creation
-            auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-
-            // start if thread is free and there is work
-            if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
-                 latest_snapshots.second &&
-                 !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
-                m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
-                    m_debugTracer.tracepoint( "computeSnapshotHash_start" );
-                    try {
-                        this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
-                        LOG( m_logger )
-                            << "Computed hash for snapshot " << latest_snapshots.second << ": "
-                            << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
-                        m_debugTracer.tracepoint( "computeSnapshotHash_end" );
-
-                    } catch ( const std::exception& ex ) {
-                        cerror << cc::fatal( "CRITICAL" ) << " "
-                               << cc::warn( dev::nested_exception_what( ex ) )
-                               << cc::error( " in computeSnapshotHash(). Exiting..." );
-                        cerror << "\n"
-                               << skutils::signal::generate_stack_trace() << "\n"
-                               << std::endl;
-                        ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-                    } catch ( ... ) {
-                        cerror << cc::fatal( "CRITICAL" )
-                               << cc::error(
-                                      " unknown exception in computeSnapshotHash(). "
-                                      "Exiting..." );
-                        cerror << "\n"
-                               << skutils::signal::generate_stack_trace() << "\n"
-                               << std::endl;
-                        ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-                    }
-                } ) );
-            }  // if thread
-        }      // if snapshots enabled
-
-        if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
-            m_instanceMonitor->performRotation();
-        }
-
-        return cntSucceeded;
+                uint64_t time_of_second =
+                    blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
+                if ( time_of_second == ( ( uint64_t ) last_snapshot_creation_time ) )
+                    this->last_snapshoted_block_with_hash = latest_snapshots.second;
+            }  // if second
+        }      // if == 0
     }
+
+    //
+    // begin, detect partially executed block
+    bool bIsPartial = false;
+    TransactionReceipts partialTransactionReceipts;
+    size_t cntAll = _transactions.size();
+    size_t cntExpected = cntAll;
+    size_t cntMissing = 0;
+    Transactions vecPassed, vecMissing;
+    dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
+    for ( const Transaction& txWalk : _transactions ) {
+        const h256 shaWalk = txWalk.sha3();
+        if ( bIsPartial )
+            vecMissing.push_back( txWalk );
+        else {
+            vecPassed.push_back( txWalk );
+            if ( shaWalk == shaLastTx ) {
+                bIsPartial = true;
+            }
+        }
+    }
+    size_t cntPassed = vecPassed.size();
+    cntMissing = vecMissing.size();
+    cntExpected = cntMissing;
+    if ( bIsPartial ) {
+        partialTransactionReceipts = m_state.safePartialTransactionReceipts();
+        LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
+                        << cc::warn( " found partially executed block, have " )
+                        << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
+                        << cc::size10( cntPassed ) << cc::warn( " passed, " )
+                        << cc::size10( cntMissing ) << cc::warn( " missing" );
+        LOG( m_logger ).flush();
+        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                        << stat_transactions2str( _transactions, cc::notice( " All " ) );
+        LOG( m_logger ).flush();
+        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                        << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
+        LOG( m_logger ).flush();
+        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
+                        << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
+        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+                        << cc::size10( partialTransactionReceipts.size() )
+                        << cc::attention( " partial transaction receipt(s) inside " )
+                        << cc::notice( "SAFETY CACHE" );
+        LOG( m_logger ).flush();
+    }
+    // end, detect partially executed block
+    //
+
+    TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
+    bool isSaveLastTxHash = true;
+    size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash,
+        &accumulatedTransactionReceipts, bIsPartial ? &vecMissing : nullptr );
+    sealUnconditionally( false );
+    importWorkingBlock();
+
+    if ( bIsPartial )
+        cntSucceeded += cntPassed;
+    if ( cntSucceeded != cntAll ) {
+        LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
+                        << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
+                        << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
+                        << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
+        LOG( m_logger ).flush();
+    }
+    if ( bIsPartial ) {
+        LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " ) << cc::size10( cntAll )
+                        << cc::success( " transaction(s), " ) << cc::size10( cntPassed )
+                        << cc::success( " passed, " ) << cc::size10( cntMissing )
+                        << cc::success( " missing" );
+        LOG( m_logger ).flush();
+    }
+
+    if ( snapshotIntervalSec > 0 ) {
+        unsigned block_number = this->number();
+
+        LOG( m_logger ) << "Block timestamp: " << _timestamp;
+
+        if ( this->isTimeToDoSnapshot( _timestamp ) ) {
+            try {
+                boost::chrono::high_resolution_clock::time_point t1;
+                boost::chrono::high_resolution_clock::time_point t2;
+                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+                m_debugTracer.tracepoint( "doing_snapshot" );
+
+                t1 = boost::chrono::high_resolution_clock::now();
+                m_snapshotManager->doSnapshot( block_number );
+                t2 = boost::chrono::high_resolution_clock::now();
+                this->snapshot_calculation_time_ms =
+                    boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+            } catch ( SnapshotManager::SnapshotPresent& ex ) {
+                cerror << "WARNING " << dev::nested_exception_what( ex );
+            }
+
+            this->last_snapshot_creation_time = _timestamp;
+
+            LOG( m_logger ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
+        }
+
+        // snapshots without hash can appear either from start, from downloading or from just
+        // creation
+        auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
+
+        // start if thread is free and there is work
+        if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
+             latest_snapshots.second &&
+             !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
+            m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
+                m_debugTracer.tracepoint( "computeSnapshotHash_start" );
+                try {
+                    boost::chrono::high_resolution_clock::time_point t1;
+                    boost::chrono::high_resolution_clock::time_point t2;
+
+                    t1 = boost::chrono::high_resolution_clock::now();
+                    this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
+                    t2 = boost::chrono::high_resolution_clock::now();
+                    this->snapshot_hash_calculation_time_ms =
+                        boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 )
+                            .count();
+                    LOG( m_logger )
+                        << "Computed hash for snapshot " << latest_snapshots.second << ": "
+                        << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
+                    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
+
+                } catch ( const std::exception& ex ) {
+                    cerror << cc::fatal( "CRITICAL" ) << " "
+                           << cc::warn( dev::nested_exception_what( ex ) )
+                           << cc::error( " in computeSnapshotHash(). Exiting..." );
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+                } catch ( ... ) {
+                    cerror << cc::fatal( "CRITICAL" )
+                           << cc::error(
+                                  " unknown exception in computeSnapshotHash(). "
+                                  "Exiting..." );
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+                }
+            } ) );
+        }  // if thread
+    }      // if snapshots enabled
+
+    if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
+        m_instanceMonitor->performRotation();
+    }
+
+    return cntSucceeded;
     assert( false );
     return 0;
 }
 
 size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash,
-    TransactionReceipts* accumulatedTransactionReceipts ) {
+    uint64_t _timestamp, bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+    Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
+) {
     assert( m_skaleHost );
 
     // HACK remove block verification and put it directly in blockchain!!
@@ -659,7 +669,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
-            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts );
+            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts, vecMissing );
         m_state = m_state.startNew();
     }
 
@@ -910,20 +920,17 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     BlockHeader header_struct( header, HeaderData );
     LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
                     << " (" << header_struct.hash() << ")";
-    LOG( m_logger ) << cc::success( "Block stats" )
-       << ":TXS:" << TransactionBase::howMany()
-       << ":HDRS:" << BlockHeader::howMany()
-       << ":LOGS:" << LogEntry::howMany()
-       << ":SENGS:" << SealEngineBase::howMany()
-       << ":TXRS:" << TransactionReceipt::howMany()
-       << ":BLCKS:" << Block::howMany()
-       << ":ACCS:" << Account::howMany()
-       << ":BQS:" << BlockQueue::howMany()
-       << ":BDS:" << BlockDetails::howMany()
-       << ":TSS:" << TransactionSkeleton::howMany()
-       << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-       << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-       << endl;
+    LOG( m_logger ) << cc::success( "Block stats" ) << ":TXS:" << TransactionBase::howMany()
+                    << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
+                    << ":SENGS:" << SealEngineBase::howMany()
+                    << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
+                    << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
+                    << ":BDS:" << BlockDetails::howMany()
+                    << ":TSS:" << TransactionSkeleton::howMany()
+                    << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                    << ":CMM:" << bc().getTotalCacheMemory();
+
 
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
@@ -945,9 +952,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
 }
 
-void Client::importWorkingBlock( TransactionReceipts* partialTransactionReceipts ) {
+void Client::importWorkingBlock() {
     DEV_READ_GUARDED( x_working );
-    ImportRoute importRoute = bc().import( m_working, partialTransactionReceipts );
+    ImportRoute importRoute = bc().import( m_working );
     m_new_block_watch.invoke( m_working );
     onChainChanged( importRoute );
 }

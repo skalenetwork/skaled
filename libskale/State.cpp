@@ -63,14 +63,14 @@ using dev::eth::TransactionReceipt;
 #endif
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
-    u256 _initialFunds, s256 _storageLimit )
+    u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      storageLimit_( _storageLimit ) {
+      contractStorageLimit_( _contractStorageLimit ) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
@@ -140,7 +140,7 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
-    storageLimit_ = _s.storageLimit_;
+    contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
 
     return *this;
@@ -187,6 +187,8 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
+                totalStorageUsed_ += currentStorageUsed_;
+                updateStorageUsage();
             }
         }
     }
@@ -543,29 +545,22 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
 void State::setStorage( Address const& _contract, u256 const& _key, u256 const& _value ) {
     dev::u256 _currentValue = storage( _contract, _key );
-    dev::u256 _originalValue = originalStorageValue( _contract, _key );
 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
     int count = 0;
-    if ( _originalValue == _currentValue ) {
-        if ( _currentValue == 0 ) {
-            count = 1;
-        } else if ( _value == 0 ) {
-            count = -1;
-        }
-    }
-    // copied from EXTVMFace.cpp ----- TODO: review it|^
 
-    if ( _value == _currentValue ) {
+    if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {
         count = 0;
+    } else {
+        count = ( _value == 0 ? -1 : 1 );
     }
 
     storageUsage[_contract] += count * 32;
     currentStorageUsed_ += count * 32;
 
-    if ( totalStorageUsed_ + currentStorageUsed_ > storageLimit_ ) {
+    if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
     // TODO::review it |^

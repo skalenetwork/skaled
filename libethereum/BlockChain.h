@@ -110,6 +110,9 @@ public:
  */
 class BlockChain {
 public:
+    uint64_t getTotalCacheMemory();
+
+
     class CreationException : public std::exception {
         virtual const char* what() const noexcept { return "Error creating blockchain"; }
     };
@@ -148,8 +151,7 @@ public:
     ImportRoute import( bytes const& _block, skale::State& _state, bool _mustBeNew = true );
     ImportRoute import(
         VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
-    ImportRoute import(
-        Block const& _block, TransactionReceipts* partialTransactionReceipts = nullptr );
+    ImportRoute import( Block const& _block );
 
     /// Import data into disk-backed DB.
     /// This will not execute the block and populate the state trie, but rather will simply add the
@@ -457,7 +459,7 @@ public:
     void close();
 
 private:
-    void rotateDBIfNeeded();
+    void rotateDBIfNeeded( const dev::h256& hash );
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
@@ -487,8 +489,8 @@ private:
     }
 
     template < class T, class K, unsigned N >
-    T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x,
-                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+    T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x, T const& _n,
+        db::DatabaseFace* _extrasDB = nullptr ) const {
         {
             ReadGuard l( _x );
             auto it = _m.find( _h );
@@ -508,7 +510,6 @@ private:
     }
 
 
-
     template < class T, unsigned N >
     T queryExtras( h256 const& _h, std::unordered_map< h256, T >& _m, boost::shared_mutex& _x,
         T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
@@ -516,8 +517,8 @@ private:
     }
 
     template < class T, unsigned N >
-    T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x,
-                   T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+    T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x, T const& _n,
+        db::DatabaseFace* _extrasDB = nullptr ) const {
         return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
     }
 
@@ -560,6 +561,9 @@ private:
 
     void updateStats() const;
     mutable Statistics m_lastStats;
+
+    // max storage used by rotating db
+    uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
     std::unique_ptr< db::SplitDB > m_split_db;
