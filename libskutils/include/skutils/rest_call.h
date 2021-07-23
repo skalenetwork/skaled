@@ -21,6 +21,21 @@
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
+
+#include <zmq.hpp>
+
+#include <jsonrpccpp/client.h>
+#include <thirdparty/zguide/zhelpers.hpp>
+
+#include <thirdparty/rapidjson/document.h>
+#include <thirdparty/rapidjson/stringbuffer.h>
+#include <thirdparty/rapidjson/writer.h>
+
 namespace skutils {
 namespace rest {
 
@@ -64,11 +79,52 @@ struct await_t {
     fn_async_call_error_handler_t onError;
 };  // struct await_t
 
+class sz_cli {
+public:
+    skutils::url u_;
+    skutils::http::SSL_client_options optsSSL_;
+
+private:
+    std::string cert_;
+    std::string key_;
+    EVP_PKEY* pKeyPrivate_ = nullptr;
+    EVP_PKEY* pKeyPublic_ = nullptr;
+    X509* x509Cert_ = nullptr;
+    zmq::context_t zmq_ctx_;
+    skutils::url u2_;
+    std::map< uint64_t, std::shared_ptr< zmq::socket_t > > mapClientSockets_;
+    std::recursive_mutex mtx_;
+    static uint64_t stat_get_pid();
+    static std::string stat_f2s( const std::string& strFileName );
+    static std::pair< EVP_PKEY*, X509* > stat_cert_2_public_key(
+        const std::string& strCertificate );
+    std::shared_ptr< rapidjson::Document > stat_sendMessage(
+        Json::Value& jvRequest, bool bExceptionOnTimeout );
+    std::string stat_sendMessageZMQ( std::string& _req, bool bExceptionOnTimeout );
+    static std::string stat_a2h( const uint8_t* ptr, size_t cnt );
+    static std::shared_ptr< rapidjson::Document > stat_parse(
+        const char* strMessage, size_t nSize );
+    static std::string stat_sign( EVP_PKEY* pKey, const std::string& s );
+
+public:
+    sz_cli();
+    sz_cli( const skutils::url& u, const skutils::http::SSL_client_options& optsSSL );
+    virtual ~sz_cli();
+    void reconnect();
+    bool is_sign() const;
+    bool is_ssl() const;
+    bool isConnected() const;
+    bool open( const std::string& strURL );
+    void close();
+    bool sendMessage( const std::string& strMessage, std::string& strAnswer );
+};  /// class sz_cli
+
 class client {
 private:
     skutils::url u_;
     std::unique_ptr< skutils::http::client > ch_;
     std::unique_ptr< skutils::ws::client > cw_;
+    std::unique_ptr< sz_cli > cz_;
 
 private:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
@@ -78,7 +134,7 @@ private:
     data_list_t lstData_;
 
 public:
-    skutils::http::SSL_client_options optsSSL;
+    skutils::http::SSL_client_options optsSSL_;
     client();
     client( const skutils::url& u );
     client( const std::string& url_str );

@@ -1,3 +1,10 @@
+#include "sys/random.h"
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <fstream>
+#include <regex>
+#include <streambuf>
+
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
@@ -78,6 +85,276 @@ std::string data_t::extract_json_id() const {
     return id;
 }
 
+sz_cli::sz_cli() {
+    close();
+}
+
+sz_cli::sz_cli( const skutils::url& u, const skutils::http::SSL_client_options& optsSSL )
+    : u_( u ), optsSSL_( optsSSL ) {
+    if ( is_sign() ) {
+        try {
+            cert_ = stat_f2s( optsSSL.client_cert );
+            if ( cert_.empty() )
+                throw std::runtime_error( "loaded data is empty" );
+        } catch ( std::exception& e ) {
+            throw std::runtime_error( "sz_cli: could not read client certificate file \"" +
+                                      optsSSL.client_cert + "\", exception is: " + e.what() );
+        }
+        try {
+            key_ = stat_f2s( optsSSL.client_key );
+            if ( key_.empty() )
+                throw std::runtime_error( "loaded data is empty" );
+        } catch ( std::exception& e ) {
+            throw std::runtime_error( "sz_cli: could not client key read file \"" +
+                                      optsSSL.client_key + "\", exception is: " + e.what() );
+        }
+        BIO* bo = BIO_new( BIO_s_mem() );
+        if ( !bo )
+            throw std::runtime_error( "sz_cli: BIO_new() failed(1)" );
+        BIO_write( bo, key_.c_str(), key_.size() );
+        PEM_read_bio_PrivateKey( bo, &pKeyPrivate_, 0, 0 );
+        BIO_free( bo );
+        if ( !pKeyPrivate_ )
+            throw std::runtime_error( "sz_cli: key creation failed" );
+        std::tie( pKeyPublic_, x509Cert_ ) = stat_cert_2_public_key( cert_ );
+        // auto sig = stat_sign( pkey, "sample" );
+    }
+    u2_ = u_;
+    u2_.scheme( "tcp" );
+}
+
+sz_cli::~sz_cli() {
+    close();
+}
+
+void sz_cli::reconnect() {
+    std::lock_guard< std::recursive_mutex > lock( mtx_ );
+    auto pid = stat_get_pid();
+    if ( mapClientSockets_.count( pid ) > 0 )
+        mapClientSockets_.erase( pid );
+    std::ifstream ifs_urandom( "/dev/urandom", std::ios::in | std::ios::binary );
+    uint64_t randNumber1, randNumber2, randNumber3, randNumber4;
+    ifs_urandom.read( ( char* ) &randNumber1, sizeof( uint64_t ) );
+    ifs_urandom.read( ( char* ) &randNumber2, sizeof( uint64_t ) );
+    ifs_urandom.read( ( char* ) &randNumber3, sizeof( uint64_t ) );
+    ifs_urandom.read( ( char* ) &randNumber4, sizeof( uint64_t ) );
+    ifs_urandom.close();
+    std::string identity = std::to_string( randNumber3 ) + ":" + std::to_string( randNumber4 ) +
+                           ":" + std::to_string( randNumber1 ) + ":" +
+                           std::to_string( randNumber2 );
+    auto clientSocket = std::make_shared< zmq::socket_t >( zmq_ctx_, ZMQ_DEALER );
+    clientSocket->setsockopt( ZMQ_IDENTITY, identity.c_str(), identity.size() + 1 );
+    // configure socket to not wait at close time
+    static const int ZMQ_TIMEOUT = 1000;
+    int timeout = ZMQ_TIMEOUT;
+    clientSocket->setsockopt( ZMQ_SNDTIMEO, &timeout, sizeof( int ) );
+    clientSocket->setsockopt( ZMQ_RCVTIMEO, &timeout, sizeof( int ) );
+    int linger = 0;
+    clientSocket->setsockopt( ZMQ_LINGER, &linger, sizeof( linger ) );
+    int val = 15000;
+    clientSocket->setsockopt( ZMQ_HEARTBEAT_IVL, &val, sizeof( val ) );
+    val = 3000;
+    clientSocket->setsockopt( ZMQ_HEARTBEAT_TIMEOUT, &val, sizeof( val ) );
+    val = 60000;
+    clientSocket->setsockopt( ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
+    clientSocket->connect( u2_.str() );
+    mapClientSockets_.insert( {pid, clientSocket} );
+}
+
+std::string sz_cli::stat_f2s( const std::string& strFileName ) {
+    std::ifstream ifs( strFileName );
+    ifs.exceptions( ifs.failbit | ifs.badbit | ifs.eofbit );
+    std::string s = std::string(
+        ( std::istreambuf_iterator< char >( ifs ) ), std::istreambuf_iterator< char >() );
+    return s;
+}
+
+std::pair< EVP_PKEY*, X509* > sz_cli::stat_cert_2_public_key( const std::string& strCertificate ) {
+    if ( strCertificate.empty() )
+        throw std::runtime_error( "sz_cli: certicicate must not be empty to read public key" );
+    BIO* bo = BIO_new( BIO_s_mem() );
+    if ( !bo )
+        throw std::runtime_error( "sz_cli: BIO_new() failed(2)" );
+    if ( !( BIO_write( bo, strCertificate.c_str(), strCertificate.size() ) > 0 ) )
+        throw std::runtime_error( "sz_cli: BIO_write() failed(2)" );
+    X509* cert = PEM_read_bio_X509( bo, nullptr, 0, 0 );
+    if ( !cert )
+        throw std::runtime_error( "sz_cli: PEM_read_bio_X509() failed(2)" );
+    auto key = X509_get_pubkey( cert );
+    BIO_free( bo );
+    if ( !key )
+        throw std::runtime_error( "sz_cli: X509_get_pubkey() failed(2)" );
+    return {key, cert};
+}
+
+std::shared_ptr< rapidjson::Document > sz_cli::stat_sendMessage(
+    Json::Value& jvRequest, bool bExceptionOnTimeout ) {
+    Json::FastWriter fastWriter;
+    fastWriter.omitEndingLineFeed();
+    if ( is_sign() )
+        jvRequest["cert"] = cert_;
+    std::string reqStr = fastWriter.write( jvRequest );
+    // assert( reqStr.back() == '}' );
+    if ( is_sign() ) {
+        auto sig = stat_sign( pKeyPrivate_, reqStr );
+        reqStr.back() = ',';
+        reqStr.append( "\"msgSig\":\"" );
+        reqStr.append( sig );
+        reqStr.append( "\"}" );
+    }
+    // assert( reqStr.front() == '{' );
+    // assert( reqStr.back() == '}' );
+    auto resultStr = stat_sendMessageZMQ( reqStr, bExceptionOnTimeout );
+    try {
+        // assert( resultStr.size() > 5 )
+        // assert( resultStr.front() == '{' )
+        // assert( resultStr.back() == '}' )
+        return stat_parse( resultStr.c_str(), resultStr.size() );
+    } catch ( std::exception& e ) {
+        throw std::runtime_error(
+            std::string( "sz_cli: stat_sendMessage() failed, exception is: " ) + e.what() );
+    } catch ( ... ) {
+        throw std::runtime_error( "sz_cli: stat_sendMessage() failed, unknown exception" );
+    }
+}  // namespace rest
+
+std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bExceptionOnTimeout ) {
+    std::stringstream request;
+    std::shared_ptr< zmq::socket_t > clientSocket = nullptr;
+    {
+        std::lock_guard< std::recursive_mutex > lock( mtx_ );
+        if ( !mapClientSockets_.count( stat_get_pid() ) )
+            reconnect();
+        clientSocket = mapClientSockets_.at( stat_get_pid() );
+        // assert( clientSocket );
+    }
+    s_send( *clientSocket, jvRequest );
+    while ( true ) {
+        zmq::pollitem_t items[] = {{static_cast< void* >( *clientSocket ), 0, ZMQ_POLLIN, 0}};
+        const int REQUEST_TIMEOUT = 10000;
+        zmq::poll( &items[0], 1, REQUEST_TIMEOUT );
+        if ( items[0].revents & ZMQ_POLLIN ) {
+            std::string reply = s_recv( *clientSocket );
+            // assert( reply.length() > 5 );
+            // assert( reply.front() == '{' );
+            // assert( reply.back() == '}' );
+            return reply;
+        } else {
+            if ( bExceptionOnTimeout )
+                throw std::runtime_error( "sz_cli: no response from sgx server" );
+            reconnect();
+            s_send( *clientSocket, jvRequest );  // send again
+        }
+    }
+}
+
+std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
+    // assert( pKey );
+    // assert( !s.empty() );
+    static std::regex r( "\\s+" );
+    auto msgToSign = std::regex_replace( s, r, "" );
+    EVP_MD_CTX* mdctx = NULL;
+    unsigned char* signature = NULL;
+    size_t slen = 0;
+    // assert( mdctx = EVP_MD_CTX_create() );
+    // assert( ( EVP_DigestSignInit( mdctx, NULL, EVP_sha256(), NULL, pKey ) == 1 ) );
+    // assert( EVP_DigestSignUpdate( mdctx, msgToSign.c_str(), msgToSign.size() ) == 1 );
+    // assert( EVP_DigestSignFinal( mdctx, NULL, &slen ) == 1 );
+    signature = ( unsigned char* ) OPENSSL_malloc( sizeof( unsigned char ) * slen );
+    // assert( signature );
+    // assert( EVP_DigestSignFinal( mdctx, signature, &slen ) == 1 );
+    auto hexSig = stat_a2h( signature, slen );
+    std::string hexStringSig( hexSig.begin(), hexSig.end() );
+    // cleanup
+    if ( signature )
+        OPENSSL_free( signature );
+    if ( mdctx )
+        EVP_MD_CTX_destroy( mdctx );
+    return hexStringSig;
+}
+
+std::string sz_cli::stat_a2h( const uint8_t* ptr, size_t cnt ) {
+    char hex[2 * cnt];
+    static char hexval[16] = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    for ( size_t i = 0; i < cnt; ++i ) {
+        hex[i * 2] = hexval[( ( ptr[i] >> 4 ) & 0xF )];
+        hex[( i * 2 ) + 1] = hexval[( ptr[i] ) & 0x0F];
+    }
+    std::string result( ( char* ) hex, 2 * cnt );
+    return result;
+}
+
+std::shared_ptr< rapidjson::Document > sz_cli::stat_parse( const char* strMessage, size_t nSize ) {
+    // assert( strMessage );
+    // assert( nSize > 5 );
+    // assert( strMessage[nSize] == 0 );
+    // assert( strMessage[nSize - 1] == '}' );
+    // assert( strMessage[0] == '{' );
+    auto d = std::make_shared< rapidjson::Document >();
+    d->Parse( strMessage );
+    // assert( !d->HasParseError() );
+    // assert( d->IsObject() );
+    // assert( d->HasMember( "status" ) )
+    // assert( ( *d )["status"].IsNumber() )
+    // uint64_t status = ( *d )["status"].GetInt64();
+    // assert( status == 0 );
+    // assert( d->HasMember( "type" ) );
+    // assert( ( *d )["type"].IsString() );
+    // std::string type = ( *d )["type"].GetString();
+    return d;
+}
+
+uint64_t sz_cli::stat_get_pid() {
+    return syscall( __NR_gettid );
+}
+
+bool sz_cli::is_sign() const {
+    if ( optsSSL_.client_cert.empty() )
+        return false;
+    if ( optsSSL_.client_key.empty() )
+        return false;
+    return true;
+}
+
+bool sz_cli::is_ssl() const {
+    return false;
+}
+
+bool sz_cli::isConnected() const {
+    return false;
+}
+
+bool sz_cli::open( const std::string& strURL ) {
+    return false;
+}
+
+void sz_cli::close() {
+    std::lock_guard< std::recursive_mutex > lock( mtx_ );
+    zmq_ctx_.shutdown();
+    for ( auto&& item : mapClientSockets_ )
+        item.second->close();
+}
+
+
+bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer ) {
+    if ( !isConnected() )
+        return false;
+    Json::Value p;
+    Json::Reader reader;
+    reader.parse( strMessage, p );
+    std::shared_ptr< rapidjson::Document > d = stat_sendMessage( p, true );
+    // assert( d);
+    // assert( d->getStatus() == 0 );
+    rapidjson::StringBuffer buffer;
+    buffer.Clear();
+    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    d->Accept( writer );
+    strAnswer = buffer.GetString();
+    return true;
+}
+
+
 client::client() {
     async_remove_all();
 }
@@ -119,8 +396,9 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         } else if ( strScheme == "https" ) {
             close();
             ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
-                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL ) );
+                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
+            close();
             cw_.reset( new skutils::ws::client );
             cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,
                                   skutils::ws::opcv eOpCode, const std::string& s ) -> void {
@@ -139,6 +417,18 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
                 std::this_thread::sleep_for( wait_step );
             }
             if ( !cw_->isConnected() ) {
+                close();
+                return false;
+            }
+        } else if ( strScheme == "zmq" || strScheme == "zmqs" || strScheme == "z" ||
+                    strScheme == "zs" ) {
+            close();
+            cz_.reset( new sz_cli( u, optsSSL_ ) );
+            if ( !cz_->open( u.str() ) ) {
+                close();
+                return false;
+            }
+            if ( !cz_->isConnected() ) {
                 close();
                 return false;
             }
@@ -170,6 +460,10 @@ void client::close() {
             cw_->close();
             cw_.reset();
         }
+        if ( cz_ ) {
+            cz_->close();
+            cz_.reset();
+        }
     } catch ( ... ) {
     }
 }
@@ -186,6 +480,12 @@ std::string client::get_connected_url_scheme() const {
             if ( cw_->is_ssl() )
                 return "wss";
             return "ws";
+        }
+    } else if ( cz_ ) {
+        if ( cz_->isConnected() ) {
+            if ( cz_->is_ssl() )
+                return "zmqs";
+            return "zmq";
         }
     }
     return "";  // not connected
@@ -353,6 +653,16 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
                 std::this_thread::sleep_for( wait_step );
             }
         }
+    } else if ( cz_ ) {
+        if ( cz_->isConnected() ) {
+            std::string strAnswer;
+            if ( !cz_->sendMessage( strJsonIn, strAnswer ) )
+                return data_t();
+            data_t d;
+            d.content_type_ = "application/json";
+            d.s_ = strAnswer;
+            handle_data_arrived( d );
+        }
     }
     data_t d = fetch_data_with_strategy( edfs );
     if ( d.empty() ) {
@@ -489,13 +799,29 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
                     jo, skutils::tools::format( "data transfer error to %s", u_.str().c_str() ) );
                 return;
             }
-            //            for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
-            //                data_t d = fetch_data_with_strategy( edfs );
-            //                if ( !d.empty() )
-            //                    return d;
-            //                std::this_thread::sleep_for( wait_step );
-            //            }
-            //            return;
+            // for ( size_t i = 0; ( cw_->isConnected() ) && i < cntSteps; ++i ) {
+            //    data_t d = fetch_data_with_strategy( edfs );
+            //    if ( !d.empty() )
+            //        return d;
+            //    std::this_thread::sleep_for( wait_step );
+            //}
+            // return;
+            return;
+        }
+        onError( jo, skutils::tools::format( "not connected to %s", u_.str().c_str() ) );
+        return;
+    }
+    if ( cz_ ) {
+        if ( cz_->isConnected() ) {
+            std::string strAnswer;
+            if ( !cz_->sendMessage( strJsonIn, strAnswer ) ) {
+                onError( jo, skutils::tools::format( "not connected to %s", u_.str().c_str() ) );
+                return;
+            }
+            data_t d;
+            d.content_type_ = "application/json";
+            d.s_ = strAnswer;
+            handle_data_arrived( d );
             return;
         }
         onError( jo, skutils::tools::format( "not connected to %s", u_.str().c_str() ) );

@@ -374,7 +374,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         ssl_options.client_key = sgx_cert_path + sgx_key_filename;
 
         skutils::rest::client cli;
-        cli.optsSSL = ssl_options;
+        cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )

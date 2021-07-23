@@ -426,7 +426,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
             << ( cc::debug( " Will send " ) + cc::notice( "ECDSA sign query" ) +
                    cc::debug( " to wallet: " ) + cc::j( joCall ) );
         skutils::rest::client cli;
-        cli.optsSSL = optsSSL;
+        cli.optsSSL_ = optsSSL;
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
@@ -4158,7 +4158,7 @@ OutgoingMessageData.data
                 << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "sign query" ) +
                        cc::debug( " to wallet: " ) + cc::j( joCall ) );
             skutils::rest::client cli;
-            cli.optsSSL = optsSSL;
+            cli.optsSSL_ = optsSSL;
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
             if ( d.empty() )
