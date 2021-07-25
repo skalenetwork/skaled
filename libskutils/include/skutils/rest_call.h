@@ -92,6 +92,7 @@ private:
     X509* x509Cert_ = nullptr;
     zmq::context_t zmq_ctx_;
     skutils::url u2_;
+    bool isConnected_ = false;
     std::map< uint64_t, std::shared_ptr< zmq::socket_t > > mapClientSockets_;
     std::recursive_mutex mtx_;
     static uint64_t stat_get_pid();
@@ -114,7 +115,6 @@ public:
     bool is_sign() const;
     bool is_ssl() const;
     bool isConnected() const;
-    bool open( const std::string& strURL );
     void close();
     bool sendMessage( const std::string& strMessage, std::string& strAnswer );
 };  /// class sz_cli

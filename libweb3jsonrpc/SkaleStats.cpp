@@ -934,9 +934,16 @@ static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainN
     return joLoaded;
 }
 
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+    skutils::url u( strURL );
+    u.scheme( "zmq" );
+    u.port( "1031" );
+    return u.str();
+}
+
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+    : pending_ima_txns( configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl ) ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();

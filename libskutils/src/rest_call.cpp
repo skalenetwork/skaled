@@ -15,6 +15,8 @@
 
 #include <skutils/utils.h>
 
+#include <assert.h>
+
 namespace skutils {
 namespace rest {
 
@@ -159,6 +161,7 @@ void sz_cli::reconnect() {
     clientSocket->setsockopt( ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
     clientSocket->connect( u2_.str() );
     mapClientSockets_.insert( {pid, clientSocket} );
+    isConnected_ = true;
 }
 
 std::string sz_cli::stat_f2s( const std::string& strFileName ) {
@@ -249,20 +252,25 @@ std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bException
 }
 
 std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
-    // assert( pKey );
-    // assert( !s.empty() );
+    assert( pKey );
+    assert( !s.empty() );
     static std::regex r( "\\s+" );
     auto msgToSign = std::regex_replace( s, r, "" );
     EVP_MD_CTX* mdctx = NULL;
     unsigned char* signature = NULL;
     size_t slen = 0;
-    // assert( mdctx = EVP_MD_CTX_create() );
-    // assert( ( EVP_DigestSignInit( mdctx, NULL, EVP_sha256(), NULL, pKey ) == 1 ) );
-    // assert( EVP_DigestSignUpdate( mdctx, msgToSign.c_str(), msgToSign.size() ) == 1 );
-    // assert( EVP_DigestSignFinal( mdctx, NULL, &slen ) == 1 );
+    mdctx = EVP_MD_CTX_create();
+    assert( mdctx );
+    auto rv1 = EVP_DigestSignInit( mdctx, NULL, EVP_sha256(), NULL, pKey );
+    assert( rv1 == 1 );
+    auto rv2 = EVP_DigestSignUpdate( mdctx, msgToSign.c_str(), msgToSign.size() );
+    assert( rv2 == 1 );
+    auto rv3 = EVP_DigestSignFinal( mdctx, NULL, &slen );
+    assert( rv3 == 1 );
     signature = ( unsigned char* ) OPENSSL_malloc( sizeof( unsigned char ) * slen );
-    // assert( signature );
-    // assert( EVP_DigestSignFinal( mdctx, signature, &slen ) == 1 );
+    assert( signature );
+    auto rv4 = EVP_DigestSignFinal( mdctx, signature, &slen );
+    assert( rv4 == 1 );
     auto hexSig = stat_a2h( signature, slen );
     std::string hexStringSig( hexSig.begin(), hexSig.end() );
     // cleanup
@@ -286,8 +294,8 @@ std::string sz_cli::stat_a2h( const uint8_t* ptr, size_t cnt ) {
 }
 
 std::shared_ptr< rapidjson::Document > sz_cli::stat_parse( const char* strMessage, size_t nSize ) {
-    // assert( strMessage );
-    // assert( nSize > 5 );
+    assert( strMessage );
+    assert( nSize > 5 );
     // assert( strMessage[nSize] == 0 );
     // assert( strMessage[nSize - 1] == '}' );
     // assert( strMessage[0] == '{' );
@@ -322,11 +330,7 @@ bool sz_cli::is_ssl() const {
 }
 
 bool sz_cli::isConnected() const {
-    return false;
-}
-
-bool sz_cli::open( const std::string& strURL ) {
-    return false;
+    return isConnected_;
 }
 
 void sz_cli::close() {
@@ -338,8 +342,11 @@ void sz_cli::close() {
 
 
 bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer ) {
-    if ( !isConnected() )
-        return false;
+    if ( !isConnected() ) {
+        reconnect();
+        if ( !isConnected() )
+            return false;
+    }
     Json::Value p;
     Json::Reader reader;
     reader.parse( strMessage, p );
@@ -424,14 +431,6 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
                     strScheme == "zs" ) {
             close();
             cz_.reset( new sz_cli( u, optsSSL_ ) );
-            if ( !cz_->open( u.str() ) ) {
-                close();
-                return false;
-            }
-            if ( !cz_->isConnected() ) {
-                close();
-                return false;
-            }
         } else
             return false;
         return true;
