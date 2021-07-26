@@ -154,26 +154,21 @@ void sz_cli::close() {
 void sz_cli::reconnect() {
     close();
     std::lock_guard< std::recursive_mutex > lock( mtx_ );
-    auto pid = stat_get_pid();
     int fd_urandom = ::open( "/dev/urandom", O_RDONLY );
     uint64_t randNumber1, randNumber2, randNumber3, randNumber4;
-    ssize_t rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber1, sizeof( uint64_t ) );
-    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber1, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
         ::close( fd_urandom );
         return;
     }
-    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber2, sizeof( uint64_t ) );
-    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber2, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
         ::close( fd_urandom );
         return;
     }
-    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber3, sizeof( uint64_t ) );
-    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber3, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
         ::close( fd_urandom );
         return;
     }
-    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber4, sizeof( uint64_t ) );
-    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber4, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
         ::close( fd_urandom );
         return;
     }
@@ -226,7 +221,7 @@ std::pair< EVP_PKEY*, X509* > sz_cli::stat_cert_2_public_key( const std::string&
     return {key, cert};
 }
 
-static void stat_append_msgSig( std::string& src, std::string sig ) {
+static void stat_append_msgSig( std::string& src, const std::string& sig ) {
     assert( src.length() > 2 );
     assert( src[src.length() - 1] == '}' );
     std::string w = ",\"msgSig\":\"";
@@ -326,10 +321,6 @@ std::string sz_cli::stat_a2h( const uint8_t* ptr, size_t cnt ) {
     }
     std::string result( ( char* ) hex, 2 * cnt );
     return result;
-}
-
-uint64_t sz_cli::stat_get_pid() {
-    return syscall( __NR_gettid );
 }
 
 bool sz_cli::is_sign() const {

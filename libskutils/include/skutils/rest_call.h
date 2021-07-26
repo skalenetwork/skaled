@@ -91,7 +91,6 @@ private:
     bool isConnected_ = false;
     std::shared_ptr< zmq::socket_t > pClientSocket_;
     std::recursive_mutex mtx_;
-    static uint64_t stat_get_pid();
     static std::string stat_f2s( const std::string& strFileName );
     static std::pair< EVP_PKEY*, X509* > stat_cert_2_public_key(
         const std::string& strCertificate );
