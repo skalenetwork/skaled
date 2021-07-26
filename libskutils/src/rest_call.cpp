@@ -156,19 +156,23 @@ void sz_cli::reconnect() {
     std::lock_guard< std::recursive_mutex > lock( mtx_ );
     int fd_urandom = ::open( "/dev/urandom", O_RDONLY );
     uint64_t randNumber1, randNumber2, randNumber3, randNumber4;
-    if (::read( fd_urandom, ( char* ) &randNumber1, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber1, sizeof( randNumber1 ) ) !=
+        sizeof( randNumber1 ) ) {
         ::close( fd_urandom );
         return;
     }
-    if (::read( fd_urandom, ( char* ) &randNumber2, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber2, sizeof( randNumber2 ) ) !=
+        sizeof( randNumber2 ) ) {
         ::close( fd_urandom );
         return;
     }
-    if (::read( fd_urandom, ( char* ) &randNumber3, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber3, sizeof( randNumber3 ) ) !=
+        sizeof( randNumber3 ) ) {
         ::close( fd_urandom );
         return;
     }
-    if (::read( fd_urandom, ( char* ) &randNumber4, sizeof( uint64_t ) ) != sizeof( uint64_t ) ) {
+    if (::read( fd_urandom, ( char* ) &randNumber4, sizeof( randNumber4 ) ) !=
+        sizeof( randNumber4 ) ) {
         ::close( fd_urandom );
         return;
     }
