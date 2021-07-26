@@ -21,6 +21,10 @@
 
 #include <assert.h>
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
 namespace skutils {
 namespace rest {
 
@@ -151,13 +155,29 @@ void sz_cli::reconnect() {
     close();
     std::lock_guard< std::recursive_mutex > lock( mtx_ );
     auto pid = stat_get_pid();
-    std::ifstream ifs_urandom( "/dev/urandom", std::ios::in | std::ios::binary );
+    int fd_urandom = ::open( "/dev/urandom", O_RDONLY );
     uint64_t randNumber1, randNumber2, randNumber3, randNumber4;
-    ifs_urandom.read( ( char* ) &randNumber1, sizeof( uint64_t ) );
-    ifs_urandom.read( ( char* ) &randNumber2, sizeof( uint64_t ) );
-    ifs_urandom.read( ( char* ) &randNumber3, sizeof( uint64_t ) );
-    ifs_urandom.read( ( char* ) &randNumber4, sizeof( uint64_t ) );
-    ifs_urandom.close();
+    ssize_t rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber1, sizeof( uint64_t ) );
+    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+        ::close( fd_urandom );
+        return;
+    }
+    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber2, sizeof( uint64_t ) );
+    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+        ::close( fd_urandom );
+        return;
+    }
+    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber3, sizeof( uint64_t ) );
+    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+        ::close( fd_urandom );
+        return;
+    }
+    rr = ( ssize_t )::read( fd_urandom, ( char* ) &randNumber4, sizeof( uint64_t ) );
+    if ( rr == ssize_t( -1 ) || rr != sizeof( uint64_t ) ) {
+        ::close( fd_urandom );
+        return;
+    }
+    ::close( fd_urandom );
     std::string identity = std::to_string( randNumber3 ) + ":" + std::to_string( randNumber4 ) +
                            ":" + std::to_string( randNumber1 ) + ":" +
                            std::to_string( randNumber2 );
