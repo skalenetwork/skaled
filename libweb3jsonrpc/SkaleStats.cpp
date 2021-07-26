@@ -415,6 +415,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "ecdsaSignMessageHash";
+        joCall["type"] = "ECDSASignReq";
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["base"] = 16;
         joCall["params"]["keyName"] = strEcdsaKeyName;
@@ -426,12 +427,14 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
             << ( cc::debug( " Will send " ) + cc::notice( "ECDSA sign query" ) +
                    cc::debug( " to wallet: " ) + cc::j( joCall ) );
         skutils::rest::client cli;
-        cli.optsSSL = optsSSL;
+        cli.optsSSL_ = optsSSL;
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
             throw std::runtime_error( "failed to sign message(s) with wallet" );
-        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        nlohmann::json joSignResult =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
         clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
                                            cc::debug( " result: " ) + cc::j( joSignResult ) );
         std::string r = joSignResult["signature_r"].get< std::string >();
@@ -934,9 +937,16 @@ static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainN
     return joLoaded;
 }
 
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+    skutils::url u( strURL );
+    u.scheme( "zmq" );
+    u.port( "1031" );
+    return u.str();
+}
+
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+    : pending_ima_txns( configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl ) ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
@@ -4145,6 +4155,7 @@ OutgoingMessageData.data
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "blsSignMessageHash";
+            joCall["type"] = "BLSSignReq";
             joCall["params"] = nlohmann::json::object();
             joCall["params"]["keyShareName"] = keyShareName;
             joCall["params"]["messageHash"] = sh;
@@ -4158,12 +4169,14 @@ OutgoingMessageData.data
                 << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "sign query" ) +
                        cc::debug( " to wallet: " ) + cc::j( joCall ) );
             skutils::rest::client cli;
-            cli.optsSSL = optsSSL;
+            cli.optsSSL_ = optsSSL;
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
             if ( d.empty() )
                 throw std::runtime_error( "failed to sign message(s) with wallet" );
-            nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+            nlohmann::json joSignResult =
+                ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
             jo["signResult"] = joSignResult;
             //
             // Done, provide result to caller
