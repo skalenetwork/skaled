@@ -32,10 +32,6 @@
 #include <jsonrpccpp/client.h>
 #include <thirdparty/zguide/zhelpers.hpp>
 
-#include <thirdparty/rapidjson/document.h>
-#include <thirdparty/rapidjson/stringbuffer.h>
-#include <thirdparty/rapidjson/writer.h>
-
 namespace skutils {
 namespace rest {
 
@@ -93,18 +89,15 @@ private:
     zmq::context_t zmq_ctx_;
     skutils::url u2_;
     bool isConnected_ = false;
-    std::map< uint64_t, std::shared_ptr< zmq::socket_t > > mapClientSockets_;
+    std::shared_ptr< zmq::socket_t > pClientSocket_;
     std::recursive_mutex mtx_;
     static uint64_t stat_get_pid();
     static std::string stat_f2s( const std::string& strFileName );
     static std::pair< EVP_PKEY*, X509* > stat_cert_2_public_key(
         const std::string& strCertificate );
-    std::shared_ptr< rapidjson::Document > stat_sendMessage(
-        Json::Value& jvRequest, bool bExceptionOnTimeout );
+    nlohmann::json stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout );
     std::string stat_sendMessageZMQ( std::string& _req, bool bExceptionOnTimeout );
     static std::string stat_a2h( const uint8_t* ptr, size_t cnt );
-    static std::shared_ptr< rapidjson::Document > stat_parse(
-        const char* strMessage, size_t nSize );
     static std::string stat_sign( EVP_PKEY* pKey, const std::string& s );
 
 public:

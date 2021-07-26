@@ -415,6 +415,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "ecdsaSignMessageHash";
+        joCall["type"] = "ECDSASignReq";
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["base"] = 16;
         joCall["params"]["keyName"] = strEcdsaKeyName;
@@ -431,7 +432,9 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         skutils::rest::data_t d = cli.call( joCall );
         if ( d.empty() )
             throw std::runtime_error( "failed to sign message(s) with wallet" );
-        nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        nlohmann::json joSignResult =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
         clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
                                            cc::debug( " result: " ) + cc::j( joSignResult ) );
         std::string r = joSignResult["signature_r"].get< std::string >();
@@ -4152,6 +4155,7 @@ OutgoingMessageData.data
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "blsSignMessageHash";
+            joCall["type"] = "BLSSignReq";
             joCall["params"] = nlohmann::json::object();
             joCall["params"]["keyShareName"] = keyShareName;
             joCall["params"]["messageHash"] = sh;
@@ -4170,7 +4174,9 @@ OutgoingMessageData.data
             skutils::rest::data_t d = cli.call( joCall );
             if ( d.empty() )
                 throw std::runtime_error( "failed to sign message(s) with wallet" );
-            nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
+            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+            nlohmann::json joSignResult =
+                ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
             jo["signResult"] = joSignResult;
             //
             // Done, provide result to caller

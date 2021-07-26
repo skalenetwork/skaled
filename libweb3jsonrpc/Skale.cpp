@@ -336,6 +336,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "blsSignMessageHash";
+        joCall["type"] = "BLSSignReq";
         nlohmann::json obj = nlohmann::json::object();
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
@@ -411,7 +412,9 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             throw std::runtime_error( g_strErrMsg );
         }
 
-        nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        nlohmann::json joResponse =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
         std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
@@ -474,8 +477,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 return false;
             }
             // TODO catch?
-            block_number = dev::eth::jsToBlockNumber(
-                nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
+            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+            block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
         }
         //
         //
