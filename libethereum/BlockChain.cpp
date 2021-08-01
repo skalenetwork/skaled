@@ -675,12 +675,11 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
-void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
+void BlockChain::rotateDBIfNeeded( uint64_t currentBlockSize ) {
     if ( m_params.sChain.dbStorageLimit == 0 ) {
         return;
     }
 
-    uint64_t currentBlockSize = this->details( hash ).blockSizeBytes;
     uint64_t totalStorageUsed = 0;
     if ( this->m_rotating_db->exists( ( db::Slice ) "totalStorageUsed" ) ) {
         totalStorageUsed =
@@ -704,57 +703,54 @@ void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
     }
 }
 
-ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
-    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
-    ImportPerformanceLogger& _performanceLogger ) {
-    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+struct SizeCountingWriteBatch {
+    SizeCountingWriteBatch( db::WriteBatchFace& _backend )
+        : backend( _backend ) {}
+    // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+    void insert( db::Slice _key, db::Slice _value ) {
+        consumedBytes += _key.size() + _value.size() + 1;
+        backend.insert( _key, _value );
+    }
+    db::WriteBatchFace& backend;
+    size_t consumedBytes = 0;
+};
 
-    rotateDBIfNeeded( _block.info.hash() );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
-
-    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
-    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
-    h256 newLastBlockHash = currentHash();
-    unsigned newLastBlockNumber = number();
+void BlockChain::prepareDbWriteBatches(VerifiedBlockRef const& _block,
+                                       bytesConstRef _receipts,
+                                       LogBloom* pLogBloomFull,
+                                       u256 const& _totalDifficulty,
+                                       db::WriteBatchFace& _originalBlocksWriteBatch,
+                                       db::WriteBatchFace& _originalExtrasWriteBatch,
+                                       size_t& _blocksBatchSize,
+                                       size_t& _extrasBatchSize,
+                                       ImportPerformanceLogger& _performanceLogger)
+{
+    SizeCountingWriteBatch blocksWriteBatch( _originalBlocksWriteBatch );
+    SizeCountingWriteBatch extrasWriteBatch( _originalExtrasWriteBatch );
 
     try {
         MICROPROFILE_SCOPEI( "BlockChain", "write", MP_DARKKHAKI );
 
-        // ensure parent is cached for later addition.
-        // TODO: this is a bit horrible would be better refactored into an enveloping
-        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
-        // safe in practice since the caches don't get flushed nearly often enough to be done
-        // here.
-        details( _block.info.parentHash() );
-        DEV_WRITE_GUARDED( x_details )
-        m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
-
-        _performanceLogger.onStageFinished( "collation" );
-
-        blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
 
         DEV_READ_GUARDED( x_details )
-        extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+        extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
         BlockDetails details( ( unsigned ) _block.info.number(), _totalDifficulty,
             _block.info.parentHash(), {}, _block.block.size() );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
 
         BlockLogBlooms blb;
         for ( auto i : RLP( _receipts ) )
             blb.blooms.push_back( TransactionReceipt( i.data() ).bloom() );
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
 
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
 
         _performanceLogger.onStageFinished( "writing" );
@@ -849,8 +845,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
                 MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
-                extrasWriteBatch->insert(
-                    toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+                extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
                     ( db::Slice ) dev::ref( ta.rlp() ) );
                 ++ta.index;
             }
@@ -863,12 +858,49 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
 
             for ( auto const& h : alteredBlooms )
-                extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
+                extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
                     ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-            extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+            extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
                 ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
         }
-    }
+    }// for
+
+    _blocksBatchSize = blocksWriteBatch.consumedBytes;
+    _extrasBatchSize = extrasWriteBatch.consumedBytes;
+}
+
+ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
+    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+    ImportPerformanceLogger& _performanceLogger ) {
+    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    // rotateDBIfNeeded( _block.block.size() );
+
+    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
+    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
+    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
+    // std::cout.flush();
+
+    // These batch wrappers can compute total insertion size in bytes
+    std::unique_ptr<db::WriteBatchFace> blocksWriteBatch ( m_blocksDB->createWriteBatch() );
+    std::unique_ptr<db::WriteBatchFace> extrasWriteBatch ( m_extrasDB->createWriteBatch() );
+
+    ////////////// sub-call //////////////
+
+    h256 newLastBlockHash = currentHash();
+    unsigned newLastBlockNumber = number();
+
+    // ensure parent is cached for later addition.
+    // TODO: this is a bit horrible would be better refactored into an enveloping
+    // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+    // safe in practice since the caches don't get flushed nearly often enough to be done
+    // here.
+    details( _block.info.parentHash() );
+    DEV_WRITE_GUARDED( x_details )
+    m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
+
+    _performanceLogger.onStageFinished( "collation" );
+    //////////////////////////////////////
 
     // FINALLY! change our best hash.
     {
@@ -882,7 +914,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) ) {
         totalStorageUsed = std::stoull( m_blocksDB->lookup( db::Slice( "totalStorageUsed" ) ) );
     }
-    totalStorageUsed += 32 + this->details( _block.info.hash() ).blockSizeBytes;
+    totalStorageUsed += 32 + _block.block.size();
     m_blocksDB->insert(
         db::Slice( "totalStorageUsed" ), db::Slice( std::to_string( totalStorageUsed ) ) );
 
@@ -892,9 +924,12 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
                           << cc::debug( " siblings. Route: " ) << route;
 
+    std::cerr << "Will write " << blocksWriteBatch.consumedBytes + extrasWriteBatch.consumedBytes
+              << " bytes" << std::endl;
+
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
-        m_blocksDB->commit( std::move( blocksWriteBatch ) );
+        m_blocksDB->commit( std::move( blocksWriteBatch.backend ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to blockchain database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -904,7 +939,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
-        m_extrasDB->commit( std::move( extrasWriteBatch ) );
+        m_extrasDB->commit( std::move( extrasWriteBatch.backend ) );
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to extras database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
