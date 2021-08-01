@@ -229,6 +229,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.byzantiumForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
+            // 474 = empty block size, 32 = key size
+            // 257 - to allow 256 blocks
+            chainParams.sChain.dbStorageLimit = (474+32) * 257 - 1;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -772,170 +775,169 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
-// TODO fix this test and enable it again! (possible performance degradation)
-//BOOST_AUTO_TEST_CASE(logs_range, *boost::unit_test::precondition( dev::test::run_not_express )) {
-//    JsonRpcFixture fixture;
-//    dev::eth::simulateMining( *( fixture.client ), 1 );
+BOOST_AUTO_TEST_CASE(logs_range, *boost::unit_test::precondition( dev::test::run_not_express )) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
 
-///*
-//pragma solidity >=0.4.10 <0.7.0;
+/*
+pragma solidity >=0.4.10 <0.7.0;
 
-//contract Logger{
-//    fallback() external payable {
-//        log2(bytes32(block.number+1), bytes32(block.number), "dimalit");
-//    }
-//}
-//*/
-//    string bytecode =
-//        "6080604052348015600f57600080fd5b50607d80601d6000396000f3fe60806040527f64696d616c69740000000000000000000000000000000000000000000000000043600102600143016001026040518082815260200191505060405180910390a200fea2646970667358221220ecafb98cd573366a37976cb7a4489abe5389d1b5989cd7b7136c8eb0c5ba0b5664736f6c63430006000033";
+contract Logger{
+    fallback() external payable {
+        log2(bytes32(block.number+1), bytes32(block.number), "dimalit");
+    }
+}
+*/
+    string bytecode =
+        "6080604052348015600f57600080fd5b50607d80601d6000396000f3fe60806040527f64696d616c69740000000000000000000000000000000000000000000000000043600102600143016001026040518082815260200191505060405180910390a200fea2646970667358221220ecafb98cd573366a37976cb7a4489abe5389d1b5989cd7b7136c8eb0c5ba0b5664736f6c63430006000033";
 
-//    Json::Value create;
-//    create["code"] = bytecode;
-//    create["gas"] = "180000";  // TODO or change global default of 90000?
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
 
-//    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
-//    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-//    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
-//    string contractAddress = deployReceipt["contractAddress"].asString();
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
 
-//    Json::Value filterObj;
-//    filterObj["address"] = contractAddress;
-//    filterObj["fromBlock"] = "0x1";
-//    string filterId = fixture.rpcClient->eth_newFilter( filterObj );
+    Json::Value filterObj;
+    filterObj["address"] = contractAddress;
+    filterObj["fromBlock"] = "0x1";
+    string filterId = fixture.rpcClient->eth_newFilter( filterObj );
 
-//    Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId);
-//    BOOST_REQUIRE(res.isArray());
-//    BOOST_REQUIRE_EQUAL(res.size(), 0);
-//    res = fixture.rpcClient->eth_getFilterChanges(filterId);
-//    BOOST_REQUIRE(res.isArray());
-//    BOOST_REQUIRE_EQUAL(res.size(), 0);
+    Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId);
+    BOOST_REQUIRE(res.isArray());
+    BOOST_REQUIRE_EQUAL(res.size(), 0);
+    res = fixture.rpcClient->eth_getFilterChanges(filterId);
+    BOOST_REQUIRE(res.isArray());
+    BOOST_REQUIRE_EQUAL(res.size(), 0);
 
-//    // need blockNumber==256 afterwards
-//    for(int i=0; i<255; ++i){
-//        Json::Value t;
-//        t["from"] = toJS( fixture.coinbase.address() );
-//        t["value"] = jsToDecimal( "0" );
-//        t["to"] = contractAddress;
-//        t["gas"] = "99000";
+    // need blockNumber==256 afterwards
+    for(int i=0; i<255; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
 
-//        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
-//        BOOST_REQUIRE( !txHash.empty() );
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
 
-//        dev::eth::mineTransaction( *( fixture.client ), 1 );
-//    }
-//    BOOST_REQUIRE_EQUAL(fixture.client->number(), 256 + 1);     // 1 block on bootstrapAll
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 256 + 1);     // 1 block on bootstrapAll
 
-//    // ask for logs
-//    Json::Value t;
-//    t["fromBlock"] = 0;         // really 2
-//    t["toBlock"] = 251;
-//    t["address"] = contractAddress;
-//    Json::Value logs = fixture.rpcClient->eth_getLogs(t);
-//    BOOST_REQUIRE(logs.isArray());
-//    BOOST_REQUIRE_EQUAL(logs.size(), 249);
+    // ask for logs
+    Json::Value t;
+    t["fromBlock"] = 0;         // really 2
+    t["toBlock"] = 251;
+    t["address"] = contractAddress;
+    Json::Value logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 249);
 
-//    // check logs
-//    for(size_t i=0; i<logs.size(); ++i){
-//        u256 block = dev::jsToU256( logs[(int)i]["topics"][0].asString() );
-//        BOOST_REQUIRE_EQUAL(block, i+3);
-//    }// for
+    // check logs
+    for(size_t i=0; i<logs.size(); ++i){
+        u256 block = dev::jsToU256( logs[(int)i]["topics"][0].asString() );
+        BOOST_REQUIRE_EQUAL(block, i+3);
+    }// for
 
-//    string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
+    string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
 
-//    // add 255 more blocks
-//    string lastHash;
-//    for(int i=0; i<255; ++i){
-//        Json::Value t;
-//        t["from"] = toJS( fixture.coinbase.address() );
-//        t["value"] = jsToDecimal( "0" );
-//        t["to"] = contractAddress;
-//        t["gas"] = "99000";
+    // add 255 more blocks
+    string lastHash;
+    for(int i=0; i<255; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
 
-//        lastHash = fixture.rpcClient->eth_sendTransaction( t );
-//        BOOST_REQUIRE( !lastHash.empty() );
+        lastHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !lastHash.empty() );
 
-//        dev::eth::mineTransaction( *( fixture.client ), 1 );
-//    }
-//    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512);
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512);
 
-//    // ask for logs
-//    t["toBlock"] = 512;
-//    logs = fixture.rpcClient->eth_getLogs(t);
-//    BOOST_REQUIRE(logs.isArray());
-//    BOOST_REQUIRE_EQUAL(logs.size(), 256+64);
+    // ask for logs
+    t["toBlock"] = 512;
+    logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 256+64);
 
-//    // and filter
-//    res = fixture.rpcClient->eth_getFilterChanges(filterId);
-//    BOOST_REQUIRE_EQUAL(res.size(), (255+255)*2);     // HACK!! in prod there should be *1! (no pending!)
-//    res = fixture.rpcClient->eth_getFilterLogs(filterId);
-//    BOOST_REQUIRE_EQUAL(res.size(), 256+64);
+    // and filter
+    res = fixture.rpcClient->eth_getFilterChanges(filterId);
+    BOOST_REQUIRE_EQUAL(res.size(), (255+255)*2);     // HACK!! in prod there should be *1! (no pending!)
+    res = fixture.rpcClient->eth_getFilterLogs(filterId);
+    BOOST_REQUIRE_EQUAL(res.size(), 256+64);
 
-//    ///////////////// OTHER CALLS //////////////////
-//    string existing = "0x1ff"; string existing_hash = logs[256+64-1-1]["blockHash"].asString();
+    ///////////////// OTHER CALLS //////////////////
+    string existing = "0x1ff"; string existing_hash = logs[256+64-1-1]["blockHash"].asString();
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
-//    BOOST_REQUIRE_EQUAL(res["number"], existing);
-//    BOOST_REQUIRE(res["transactions"].isArray() && res["transactions"].size() == 1);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByNumber(nonexisting, true), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
+    BOOST_REQUIRE_EQUAL(res["number"], existing);
+    BOOST_REQUIRE(res["transactions"].isArray() && res["transactions"].size() == 1);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByNumber(nonexisting, true), jsonrpc::JsonRpcException);
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByHash(existing_hash, false));
-//    BOOST_REQUIRE_EQUAL(res["number"], existing);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByHash(nonexisting_hash, true), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByHash(existing_hash, false));
+    BOOST_REQUIRE_EQUAL(res["number"], existing);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByHash(nonexisting_hash, true), jsonrpc::JsonRpcException);
 
-//    //
+    //
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByNumber(existing));
-//    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByNumber(nonexisting), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByNumber(existing));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByNumber(nonexisting), jsonrpc::JsonRpcException);
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByHash(existing_hash));
-//    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByHash(nonexisting_hash), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByHash(existing_hash));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByHash(nonexisting_hash), jsonrpc::JsonRpcException);
 
-//    //
+    //
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockNumber(existing));
-//    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockNumber(nonexisting), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockNumber(existing));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockNumber(nonexisting), jsonrpc::JsonRpcException);
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockHash(existing_hash));
-//    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockHash(nonexisting_hash), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockHash(existing_hash));
+    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockHash(nonexisting_hash), jsonrpc::JsonRpcException);
 
-//    //
+    //
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(existing, "0x0"));
-//    BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
-//    BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
-//    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(existing, "0x0"));
+    BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
+    BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
+    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
 
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(existing_hash, "0x0"));
-//    BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
-//    BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
-//    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(existing_hash, "0x0"));
+    BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
+    BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
+    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
 
-//    //
+    //
 
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(existing, "0x0"), jsonrpc::JsonRpcException);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(existing_hash, "0x0"), jsonrpc::JsonRpcException);
-//    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(existing, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(existing_hash, "0x0"), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
 
-//    //
+    //
 
-//    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionByHash(deployHash), jsonrpc::JsonRpcException);
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByHash(lastHash));
-//    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
+    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionByHash(deployHash), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByHash(lastHash));
+    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
 
-//    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(deployHash), jsonrpc::JsonRpcException);
-//    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(lastHash));
-//    BOOST_REQUIRE_EQUAL(res["transactionHash"], lastHash);
-//    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
-//    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-//}
+    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(deployHash), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(lastHash));
+    BOOST_REQUIRE_EQUAL(res["transactionHash"], lastHash);
+    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
+    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
+}
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     JsonRpcFixture fixture( c_genesisConfigString );

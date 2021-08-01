@@ -459,7 +459,18 @@ public:
     void close();
 
 private:
-    void rotateDBIfNeeded( const dev::h256& hash );
+    void rotateDBIfNeeded( uint64_t currentBlockSize );
+
+    // auxiliary method for insertBlockAndExtras
+    void prepareDbWriteBatches(VerifiedBlockRef const& _block,
+                                           bytesConstRef _receipts,
+                                           LogBloom* pLogBloomFull,
+                                           u256 const& _totalDifficulty,
+                                           db::WriteBatchFace& _blocksWriteBatch,
+                                           db::WriteBatchFace& _extrasWriteBatch,
+                                           size_t& _blocksBatchSize,
+                                           size_t& _extrasBatchSize,
+                                           ImportPerformanceLogger& _performanceLogger);
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
