@@ -163,43 +163,25 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
         std::throw_with_nested( CannotRead( ex.path1() ) );
     }
 
-    stringstream cat_cmd;
-    cat_cmd << "cat ";
-    vector< string > created;
+    stringstream volumes_cat;
 
-    for ( const string& vol : volumes ) {
-        string part_path = path.string() + "_" + vol;
-        cat_cmd << part_path << " ";
+    for ( auto it = volumes.begin(); it != volumes.end(); ++it ) {
+        const string& vol = *it;
+        if ( it + 1 != volumes.end() )
+            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string() << " ";
+        else
+            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string();
+    }  // for cat
 
-        created.push_back( part_path );  // file is created even in case of error
-
-        if ( btrfs.send( NULL, part_path.c_str(),
-                 ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
-            try {
-                fs::remove( path );
-                for ( const string& vol : created )
-                    fs::remove( vol );
-            } catch ( const fs::filesystem_error& ex ) {
-                throw_with_nested( CannotDelete( ex.path1() ) );
-            }  // catch
-
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-        }  // if error
-
-    }  // for
-
-    cat_cmd << ">" << path;
-    int cat_res = system( cat_cmd.str().c_str() );
-
-    for ( const string& vol : created )
+    if ( btrfs.send( NULL, path.c_str(), volumes_cat.str().c_str() ) ) {
         try {
-            fs::remove( vol );
+            fs::remove( path );
         } catch ( const fs::filesystem_error& ex ) {
             throw_with_nested( CannotDelete( ex.path1() ) );
-        }
+        }  // catch
 
-    if ( cat_res != 0 )
-        throw CannotWrite( path );
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }  // if error
 
     return path;
 }
