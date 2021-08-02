@@ -938,6 +938,8 @@ static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainN
 }
 
 static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+    if ( strURL.empty() )
+        return string();
     skutils::url u( strURL );
     u.scheme( "zmq" );
     u.port( "1031" );
