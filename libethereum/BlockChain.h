@@ -466,6 +466,7 @@ private:
                                            bytesConstRef _receipts,
                                            LogBloom* pLogBloomFull,
                                            u256 const& _totalDifficulty,
+                                           const h256s& alteredBlooms,
                                            db::WriteBatchFace& _blocksWriteBatch,
                                            db::WriteBatchFace& _extrasWriteBatch,
                                            size_t& _blocksBatchSize,
