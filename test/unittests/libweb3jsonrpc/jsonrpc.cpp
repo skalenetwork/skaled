@@ -229,9 +229,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.byzantiumForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
-            // 474 = empty block size, 32 = key size
-            // 257 - to allow 256 blocks
-            chainParams.sChain.dbStorageLimit = (474+32) * 257 - 1;
+            // 615 + 1430 is experimentally-derived block size + average extras size
+            chainParams.sChain.dbStorageLimit = 321*( 615 + 1430 ) - 1;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -775,7 +774,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
-BOOST_AUTO_TEST_CASE(logs_range, *boost::unit_test::precondition( dev::test::run_not_express )) {
+BOOST_AUTO_TEST_CASE(logs_range) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
