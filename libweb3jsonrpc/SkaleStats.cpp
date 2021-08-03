@@ -913,9 +913,15 @@ static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainN
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.empty() ) {
             nlohmann::json joMainNetBlockNumber = nlohmann::json::parse( d.s_ )["result"];
+            dev::u256 uBN( "0" );
             if ( joMainNetBlockNumber.is_string() ) {
-                dev::u256 uBN = dev::u256( joMainNetBlockNumber.get< std::string >() );
+                uBN = dev::u256( joMainNetBlockNumber.get< std::string >() );
                 gotBN = true;
+            } else if ( joMainNetBlockNumber.is_number() ) {
+                uBN = dev::u256( joMainNetBlockNumber.get< uint64_t >() );
+                gotBN = true;
+            }
+            if ( gotBN ) {
                 clog( VerbosityDebug, "IMA" )
                     << ( strLogPrefix + cc::debug( " (FIRST RUN) Block number on Main Net is " ) +
                            cc::info( dev::toJS( uBN ) ) );
@@ -1695,19 +1701,22 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //                uLastStaringSearchedBlockNextValue =
         //                    dev::u256( joMainNetBlockNumber.get< std::string >() );
         //                gotBN = true;
+        //            } else if ( joMainNetBlockNumber.is_number() ) {
+        //                uLastStaringSearchedBlockNextValue = dev::u256( joMainNetBlockNumber.get<
+        //                uint64_t >() ); gotBN = true;
+        //            }
+        //            if( gotBN ) {
         //                clog( VerbosityDebug, "IMA" )
         //                    << ( strLogPrefix + cc::debug( " Block number on Main Net is " ) +
         //                           cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) );
         //            }
         //        } catch ( ... ) {
         //        }
-        //        if ( !gotBN )
-        //            clog( VerbosityDebug, "IMA" )
-        //                << ( strLogPrefix +
-        //                       cc::error( " Main Net call to eth_blockNumber failed, got malformed
-        //                       "
-        //                                  "call result " ) +
-        //                       cc::j( joMainNetBlockNumber ) );
+        //        if ( !gotBN ) {
+        //            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix +
+        //            cc::error( " Main Net call to eth_blockNumber failed, got malformedcall result
+        //            " ) + cc::j( joMainNetBlockNumber ) );
+        //        }
         //    }
         //} else {
         //    uLastStaringSearchedBlockNextValue = this->client()->number();
@@ -3176,66 +3185,194 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     << ( strLogPrefix + " " +
                            cc::debug( "Will use contract event based verification of IMA "
                                       "message(s)" ) );
-
-                //
-                //
-                //
-                // Forming eth_getLogs query similar to web3's getPastEvents, see details here:
-                // https://solidity.readthedocs.io/en/v0.4.24/abi-spec.html
-                // Here is example
-                // {
-                //    "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
-                //    "fromBlock": "0x0",
-                //    "toBlock": "latest",
-                //    "topics":
-                //    ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
-                //      ["0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26"],
-                //      ["0x0000000000000000000000000000000000000000000000000000000000000010"],
-                //      null
-                //    ]
-                // }
-                //
-                nlohmann::json jarrTopics = nlohmann::json::array();
-                jarrTopics.push_back( strTopic_event_OutgoingMessage );
-                jarrTopics.push_back( jarrTopic_dstChainHash );
-                jarrTopics.push_back( jarrTopic_msgCounter );
-                // jarrTopics.push_back( nullptr );
-                nlohmann::json joLogsQuery = nlohmann::json::object();
-                joLogsQuery["address"] = strAddressImaMessageProxy;
-                joLogsQuery["fromBlock"] = dev::toJS( uLastStaringSearchedBlock );  // "0x0";
-                joLogsQuery["toBlock"] = "latest";
-                joLogsQuery["topics"] = jarrTopics;
-                nlohmann::json jarrLogsQuery = nlohmann::json::array();
-                jarrLogsQuery.push_back( joLogsQuery );
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Will execute logs search query: " ) +
-                           cc::j( joLogsQuery ) );
-                //
-                //
-                //
-                nlohmann::json jarrFoundLogRecords;
-                if ( strDirection == "M2S" ) {
-                    nlohmann::json joCall = nlohmann::json::object();
-                    joCall["jsonrpc"] = "2.0";
-                    joCall["method"] = "eth_getLogs";
-                    joCall["params"] = jarrLogsQuery;
-                    skutils::rest::client cli( urlMainNet );
-                    skutils::rest::data_t d = cli.call( joCall );
-                    if ( d.empty() )
-                        throw std::runtime_error( "Main Net call to eth_getLogs failed" );
-                    jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
-                } else {
-                    Json::Value jvLogsQuery;
-                    Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
-                    Json::Value jvLogs =
-                        dev::toJson( this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
-                    jarrFoundLogRecords =
-                        nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
-                }  // else from if( strDirection == "M2S" )
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Got logs search query result: " ) +
-                           cc::j( jarrFoundLogRecords ) );
-                /* exammple of jarrFoundLogRecords value:
+                std::function< dev::u256() > do_getBlockNumber = [&]() -> dev::u256 {
+                    if ( strDirection == "M2S" ) {
+                        try {
+                            nlohmann::json joCall = nlohmann::json::object();
+                            joCall["jsonrpc"] = "2.0";
+                            joCall["method"] = "eth_blockNumber";
+                            joCall["params"] = nlohmann::json::array();
+                            skutils::rest::client cli( urlMainNet );
+                            skutils::rest::data_t d = cli.call( joCall );
+                            if ( !d.empty() ) {
+                                nlohmann::json joMainNetBlockNumber =
+                                    nlohmann::json::parse( d.s_ )["result"];
+                                if ( joMainNetBlockNumber.is_string() ) {
+                                    dev::u256 uBN =
+                                        dev::u256( joMainNetBlockNumber.get< std::string >() );
+                                    return uBN;
+                                } else if ( joMainNetBlockNumber.is_number() ) {
+                                    dev::u256 uBN =
+                                        dev::u256( joMainNetBlockNumber.get< uint64_t >() );
+                                    return uBN;
+                                }
+                            }
+                        } catch ( ... ) {
+                        }
+                    } else {
+                        dev::u256 uBN = this->client()->number();
+                        return uBN;
+                    }  // else from if( strDirection == "M2S" )
+                    dev::u256 uBN = dev::u256( "0" );
+                    return uBN;
+                };
+                std::function< nlohmann::json( dev::u256 ) > do_logs_search =
+                    [&]( dev::u256 uBlockFrom ) -> nlohmann::json {
+                    //
+                    //
+                    //
+                    // Forming eth_getLogs query similar to web3's getPastEvents, see details here:
+                    // https://solidity.readthedocs.io/en/v0.4.24/abi-spec.html
+                    // Here is example
+                    // {
+                    //    "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
+                    //    "fromBlock": "0x0",
+                    //    "toBlock": "latest",
+                    //    "topics":
+                    //    ["0xa701ebe76260cb49bb2dc03cf8cf6dacbc4c59a5d615c4db34a7dfdf36e6b6dc",
+                    //      ["0x8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26"],
+                    //      ["0x0000000000000000000000000000000000000000000000000000000000000010"],
+                    //      null
+                    //    ]
+                    // }
+                    //
+                    nlohmann::json jarrTopics = nlohmann::json::array();
+                    jarrTopics.push_back( strTopic_event_OutgoingMessage );
+                    jarrTopics.push_back( jarrTopic_dstChainHash );
+                    jarrTopics.push_back( jarrTopic_msgCounter );
+                    // jarrTopics.push_back( nullptr );
+                    nlohmann::json joLogsQuery = nlohmann::json::object();
+                    joLogsQuery["address"] = strAddressImaMessageProxy;
+                    joLogsQuery["fromBlock"] = dev::toJS( uBlockFrom );  // "0x0";
+                    joLogsQuery["toBlock"] = "latest";
+                    joLogsQuery["topics"] = jarrTopics;
+                    nlohmann::json jarrLogsQuery = nlohmann::json::array();
+                    jarrLogsQuery.push_back( joLogsQuery );
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Will search " ) +
+                               cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                               cc::debug( " logs from block " ) +
+                               cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( " to block " ) +
+                               cc::info( "latest" ) +
+                               cc::debug( " by executing logs search query: " ) +
+                               cc::j( joLogsQuery ) );
+                    //
+                    //
+                    //
+                    nlohmann::json jarrFoundLogRecords;
+                    if ( strDirection == "M2S" ) {
+                        nlohmann::json joCall = nlohmann::json::object();
+                        joCall["jsonrpc"] = "2.0";
+                        joCall["method"] = "eth_getLogs";
+                        joCall["params"] = jarrLogsQuery;
+                        skutils::rest::client cli( urlMainNet );
+                        skutils::rest::data_t d = cli.call( joCall );
+                        if ( d.empty() ) {
+                            throw std::runtime_error( "Main Net call to eth_getLogs failed" );
+                        }
+                        jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
+                    } else {
+                        Json::Value jvLogsQuery;
+                        Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
+                        Json::Value jvLogs = dev::toJson(
+                            this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
+                        jarrFoundLogRecords =
+                            nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
+                    }  // else from if( strDirection == "M2S" )
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Got " ) +
+                               cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                               cc::debug( " logs search from block " ) +
+                               cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( " to block " ) +
+                               cc::info( "latest" ) + cc::debug( " results: " ) +
+                               cc::j( jarrFoundLogRecords ) );
+                    return jarrFoundLogRecords;
+                };
+                typedef std::list< dev::u256 > plan_list_t;
+                std::function< plan_list_t( dev::u256 ) > create_progressive_events_scan_plan =
+                    []( dev::u256 nLatestBlockNumber ) -> plan_list_t {
+                    // assume Main Net mines 60 txns per second for one account
+                    // approximately 10x larger then real
+                    const dev::u256 txns_in_1_minute( 60 );
+                    const dev::u256 txns_in_1_hour( txns_in_1_minute * 60 );
+                    const dev::u256 txns_in_1_day( txns_in_1_hour * 24 );
+                    const dev::u256 txns_in_1_week( txns_in_1_day * 7 );
+                    const dev::u256 txns_in_1_month( txns_in_1_day * 31 );
+                    const dev::u256 txns_in_1_year( txns_in_1_day * 366 );
+                    plan_list_t a_plan;
+                    if ( nLatestBlockNumber > txns_in_1_day )
+                        a_plan.push_back( nLatestBlockNumber - txns_in_1_day );
+                    if ( nLatestBlockNumber > txns_in_1_week )
+                        a_plan.push_back( nLatestBlockNumber - txns_in_1_week );
+                    if ( nLatestBlockNumber > txns_in_1_month )
+                        a_plan.push_back( nLatestBlockNumber - txns_in_1_month );
+                    if ( nLatestBlockNumber > txns_in_1_year )
+                        a_plan.push_back( nLatestBlockNumber - txns_in_1_year );
+                    a_plan.push_back( dev::u256( 0 ) );
+                    return a_plan;
+                };
+                std::function< nlohmann::json( dev::u256 ) > do_logs_search_progressive =
+                    [&]( dev::u256 uLatestBlockNumber ) -> nlohmann::json {
+                    clog( VerbosityDebug, "IMA" )
+                        << ( strLogPrefix + cc::debug( " Will progressive search " ) +
+                               cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                               cc::debug( " logs..." ) );
+                    const plan_list_t a_plan =
+                        create_progressive_events_scan_plan( uLatestBlockNumber );
+                    plan_list_t::const_iterator itPlanWalk = a_plan.cbegin(), itPlanEnd =
+                                                                                  a_plan.cend();
+                    for ( ; itPlanWalk != itPlanEnd; ++itPlanWalk ) {
+                        dev::u256 uBlockFrom = ( *itPlanWalk );
+                        try {
+                            nlohmann::json jarrFoundLogRecords = do_logs_search( uBlockFrom );
+                            if ( jarrFoundLogRecords.is_array() &&
+                                 jarrFoundLogRecords.size() > 0 ) {
+                                clog( VerbosityWarning, "IMA" )
+                                    << ( strLogPrefix + cc::success( " Progressive " ) +
+                                           cc::info( ( strDirection == "M2S" ) ? "Main NET" :
+                                                                                 "S-Chain" ) +
+                                           cc::success( " logs search from block " ) +
+                                           cc::info( dev::toJS( uBlockFrom ) ) +
+                                           cc::success( " to block " ) + cc::j( "latest" ) +
+                                           cc::success( " finished with " ) +
+                                           cc::error( jarrFoundLogRecords ) );
+                                return jarrFoundLogRecords;
+                            }
+                        } catch ( const std::exception& ex ) {
+                            clog( VerbosityWarning, "IMA" )
+                                << ( strLogPrefix + cc::warn( " Progressive " ) +
+                                       cc::info(
+                                           ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                                       cc::warn( " logs search from block " ) +
+                                       cc::info( dev::toJS( uBlockFrom ) ) +
+                                       cc::warn( " to block " ) + cc::info( "latest" ) +
+                                       cc::warn( " error: " ) + cc::error( ex.what() ) );
+                            continue;
+                        } catch ( ... ) {
+                            clog( VerbosityWarning, "IMA" )
+                                << ( strLogPrefix + cc::warn( " Progressive " ) +
+                                       cc::info(
+                                           ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                                       cc::warn( " logs search from block " ) +
+                                       cc::info( dev::toJS( uBlockFrom ) ) +
+                                       cc::warn( " to block " ) + cc::info( "latest" ) +
+                                       cc::warn( " error: " ) + cc::error( "unknown error" ) );
+                            continue;
+                        }
+                    }  // for ( ; itPlanWalk != itPlanEnd; ++itPlanWalk )
+                    clog( VerbosityWarning, "IMA" )
+                        << ( strLogPrefix + cc::warn( " Progressive " ) +
+                               cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                               cc::warn( " logs search finished with " ) +
+                               cc::error( "empty result" ) );
+                    nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
+                    return jarrFoundLogRecords;
+                };
+                nlohmann::json jarrFoundLogRecords =
+                    ( uLastStaringSearchedBlock == 0 ) ?
+                        do_logs_search_progressive( do_getBlockNumber() ) :
+                        do_logs_search( uLastStaringSearchedBlock );
+                /* example of jarrFoundLogRecords value:
                     [{
                         "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
 
