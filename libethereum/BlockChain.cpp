@@ -675,22 +675,18 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
-void BlockChain::rotateDBIfNeeded( uint64_t currentBlockSize ) {
+bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     if ( m_params.sChain.dbStorageLimit == 0 ) {
-        return;
+        return false;
     }
 
-    uint64_t totalStorageUsed = 0;
-    if ( this->m_rotating_db->exists( ( db::Slice ) "totalStorageUsed" ) ) {
-        totalStorageUsed =
-            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "totalStorageUsed" ) );
-    }
-
-    if ( totalStorageUsed + currentBlockSize + 32 > m_params.sChain.dbStorageLimit ) {
+    // account for size of 1 piece
+    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) {
         // remember genesis
         BlockDetails details = this->details( m_genesisHash );
 
         clearCaches();
+        this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
         this->m_rotating_db->rotate();
 
         // re-insert genesis
@@ -698,14 +694,13 @@ void BlockChain::rotateDBIfNeeded( uint64_t currentBlockSize ) {
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
 
-        // update storage usage
-        m_blocksDB->insert( db::Slice( "totalStorageUsed" ), db::Slice( "0" ) );
-    }
+        return true;
+    } else
+        return false;
 }
 
 struct SizeCountingWriteBatch {
-    SizeCountingWriteBatch( db::WriteBatchFace& _backend )
-        : backend( _backend ) {}
+    SizeCountingWriteBatch( db::WriteBatchFace& _backend ) : backend( _backend ) {}
     // HACK +1 is needed for SplitDB; of course, this should be redesigned!
     void insert( db::Slice _key, db::Slice _value ) {
         consumedBytes += _key.size() + _value.size() + 1;
@@ -715,17 +710,11 @@ struct SizeCountingWriteBatch {
     size_t consumedBytes = 0;
 };
 
-void BlockChain::prepareDbWriteBatches(VerifiedBlockRef const& _block,
-                                       bytesConstRef _receipts,
-                                       LogBloom* pLogBloomFull,
-                                       u256 const& _totalDifficulty,
-                                       const h256s& alteredBlooms,
-                                       db::WriteBatchFace& _originalBlocksWriteBatch,
-                                       db::WriteBatchFace& _originalExtrasWriteBatch,
-                                       size_t& _blocksBatchSize,
-                                       size_t& _extrasBatchSize,
-                                       ImportPerformanceLogger& _performanceLogger)
-{
+void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
+    u256 const& _totalDifficulty, const h256s& alteredBlooms,
+    db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
+    size_t& _blocksBatchSize, size_t& _extrasBatchSize,
+    ImportPerformanceLogger& _performanceLogger ) {
     SizeCountingWriteBatch blocksWriteBatch( _originalBlocksWriteBatch );
     SizeCountingWriteBatch extrasWriteBatch( _originalExtrasWriteBatch );
 
@@ -800,6 +789,10 @@ void BlockChain::prepareDbWriteBatches(VerifiedBlockRef const& _block,
 
     _blocksBatchSize = blocksWriteBatch.consumedBytes;
     _extrasBatchSize = extrasWriteBatch.consumedBytes;
+
+    // HACK Since blooms are often re-used, let's adjust size for them
+    _extrasBatchSize -= ( 4096 + 32 ) * 2;                         // 2x16 blooms altered by block
+    _extrasBatchSize += ( 4096 + 32 ) / 16 + ( 4096 + 32 ) / 256;  // 1+1/16th bloom per block
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -807,18 +800,14 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
 
-    // rotateDBIfNeeded( _block.block.size() );
-
     // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
     // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
     // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
     // std::cout.flush();
 
     // These batch wrappers can compute total insertion size in bytes
-    std::unique_ptr<db::WriteBatchFace> blocksWriteBatch ( m_blocksDB->createWriteBatch() );
-    std::unique_ptr<db::WriteBatchFace> extrasWriteBatch ( m_extrasDB->createWriteBatch() );
-
-    ////////////// sub-call //////////////
+    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
+    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
 
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
@@ -873,22 +862,36 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     for ( auto const& h : alteredBlooms )
         noteUsed( h, ExtraBlocksBlooms );
 
-    ////// call /////
+    size_t blocksWriteSize = 0;
+    size_t extrasWriteSize = 0;
+    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, alteredBlooms, *blocksWriteBatch,
+        *extrasWriteBatch, blocksWriteSize, extrasWriteSize, _performanceLogger );
 
-    //////////////////////////////////////
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    }
+    pieceUsageBytes += blocksWriteSize + extrasWriteSize;
+
+    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+
+    // re-evaluate batches and reset total usage counter if rotated!
+    if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
+        LOG( m_loggerDetail ) << "Rotated out some blocks";
+        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, alteredBlooms,
+            *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
+            _performanceLogger );
+        pieceUsageBytes = blocksWriteSize + extrasWriteSize;
+    }
+
+    // update storage usage
+    m_rotating_db->insert(
+        db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
 
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
-
-    // update storage usage
-    uint64_t totalStorageUsed = 0;
-    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) ) {
-        totalStorageUsed = std::stoull( m_blocksDB->lookup( db::Slice( "totalStorageUsed" ) ) );
-    }
-    totalStorageUsed += 32 + _block.block.size();
-    m_blocksDB->insert(
-        db::Slice( "totalStorageUsed" ), db::Slice( std::to_string( totalStorageUsed ) ) );
 
     LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
                           << cc::debug( " (" ) << cc::warn( "#" )
@@ -944,8 +947,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             m_extrasDB->insert(
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
         } catch ( boost::exception const& ex ) {
-            cwarn << "Error writing to extras database: "
-                  << boost::diagnostic_information( ex );
+            cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to extras database. Bombing out.";
@@ -972,7 +974,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     if ( m_onBlockImport )
         m_onBlockImport( _block.info );
 
-    h256s dead;         // will be empty
+    h256s dead;  // will be empty
     h256s fresh;
     fresh.push_back( tbi.hash() );
 
