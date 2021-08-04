@@ -472,7 +472,9 @@ void SnapshotManager::proceedRegularFile(
         return;
     }
 
-    std::string fileHashPathStr = path.string() + "._hash";
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
+
+    std::string fileHashPathStr = relativePath + "._hash";
     if ( !is_checking ) {
         dev::h256 fileHash;
         if ( !boost::filesystem::exists( fileHashPathStr ) ) {
@@ -481,7 +483,7 @@ void SnapshotManager::proceedRegularFile(
             secp256k1_sha256_t fileData;
             secp256k1_sha256_initialize( &fileData );
 
-            dev::h256 filePathHash = dev::sha256( path.string() );
+            dev::h256 filePathHash = dev::sha256( relativePath );
             secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
 
             std::ifstream originFile( path.string() );
@@ -507,7 +509,7 @@ void SnapshotManager::proceedRegularFile(
         secp256k1_sha256_t fileData;
         secp256k1_sha256_initialize( &fileData );
 
-        dev::h256 filePathHash = dev::sha256( path.string() );
+        dev::h256 filePathHash = dev::sha256( relativePath );
         secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
 
         std::ifstream originFile( path.string() );
@@ -537,7 +539,9 @@ void SnapshotManager::proceedRegularFile(
 
 void SnapshotManager::proceedDirectory(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
-    std::string fileHashPathStr = path.string() + "._hash";
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
+
+    std::string fileHashPathStr = relativePath + "._hash";
     if ( !is_checking ) {
         // assuming ._hash always exists for directories
         std::ifstream hash_file( fileHashPathStr );
@@ -545,7 +549,7 @@ void SnapshotManager::proceedDirectory(
         hash_file >> hash;
         secp256k1_sha256_write( ctx, hash.data(), hash.size );
     } else {
-        dev::h256 directoryHash = dev::sha256( path.string() );
+        dev::h256 directoryHash = dev::sha256( relativePath );
         secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
 
         std::ofstream hash( fileHashPathStr );
