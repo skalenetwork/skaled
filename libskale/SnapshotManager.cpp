@@ -474,7 +474,7 @@ void SnapshotManager::proceedRegularFile(
 
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
-    std::string fileHashPathStr = relativePath + "._hash";
+    std::string fileHashPathStr = path.string() + "._hash";
     if ( !is_checking ) {
         dev::h256 fileHash;
         if ( !boost::filesystem::exists( fileHashPathStr ) ) {
@@ -541,7 +541,7 @@ void SnapshotManager::proceedDirectory(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
-    std::string fileHashPathStr = relativePath + "._hash";
+    std::string fileHashPathStr = path.string() + "._hash";
     if ( !is_checking ) {
         // assuming ._hash always exists for directories
         std::ifstream hash_file( fileHashPathStr );

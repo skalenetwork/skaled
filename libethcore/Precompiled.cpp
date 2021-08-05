@@ -496,7 +496,9 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
 
         const std::string absolutePathStr = absolutePath.string();
 
-        dev::h256 directoryPathHash = dev::sha256( absolutePathStr );
+        std::string relativePath = absolutePathStr.substr( absolutePathStr.find( "filestorage" ) );
+
+        dev::h256 directoryPathHash = dev::sha256( relativePath );
 
         std::ofstream hashFile( absolutePathStr + "._hash" );
         hashFile << directoryPathHash;
@@ -579,7 +581,10 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         std::fstream fileHash;
         fileHash.open( fileHashName, ios::binary | ios::out | ios::in );
 
-        dev::h256 filePathHash = dev::sha256( filePath.string() );
+        std::string relativePath =
+            filePath.string().substr( filePath.string().find( "filestorage" ) );
+
+        dev::h256 filePathHash = dev::sha256( relativePath );
 
         dev::h256 fileContentHash = dev::sha256( fileContent );
 
