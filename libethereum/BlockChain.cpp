@@ -711,7 +711,7 @@ struct SizeCountingWriteBatch {
 };
 
 void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
-    u256 const& _totalDifficulty, const h256s& alteredBlooms,
+    u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
     size_t& _blocksBatchSize, size_t& _extrasBatchSize,
     ImportPerformanceLogger& _performanceLogger ) {
@@ -774,56 +774,6 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
         }
     }
 
-    // Update database with them.
-    // ReadGuard l1( x_blocksBlooms );
-    WriteGuard l1( x_blocksBlooms );
-    {
-        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
-
-        for ( auto const& h : alteredBlooms )
-            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
-                ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-        extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-            ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
-    }
-
-    _blocksBatchSize = blocksWriteBatch.consumedBytes;
-    _extrasBatchSize = extrasWriteBatch.consumedBytes;
-
-    // HACK Since blooms are often re-used, let's adjust size for them
-    _extrasBatchSize -= ( 4096 + 32 ) * 2;                         // 2x16 blooms altered by block
-    _extrasBatchSize += ( 4096 + 32 ) / 16 + ( 4096 + 32 ) / 256;  // 1+1/16th bloom per block
-}
-
-ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
-    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
-    ImportPerformanceLogger& _performanceLogger ) {
-    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
-
-    // These batch wrappers can compute total insertion size in bytes
-    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
-    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
-
-    h256 newLastBlockHash = currentHash();
-    unsigned newLastBlockNumber = number();
-    BlockHeader tbi = _block.info;
-
-    // ensure parent is cached for later addition.
-    // TODO: this is a bit horrible would be better refactored into an enveloping
-    // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
-    // safe in practice since the caches don't get flushed nearly often enough to be done
-    // here.
-    details( _block.info.parentHash() );
-    DEV_WRITE_GUARDED( x_details )
-    m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
-
-    _performanceLogger.onStageFinished( "collation" );
-
     // Collate logs into blooms.
     h256s alteredBlooms;
     {
@@ -862,9 +812,59 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     for ( auto const& h : alteredBlooms )
         noteUsed( h, ExtraBlocksBlooms );
 
+    // Update database with them.
+    // ReadGuard l1( x_blocksBlooms );
+    WriteGuard l1( x_blocksBlooms );
+    {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
+
+        for ( auto const& h : alteredBlooms )
+            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
+                ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+        extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+            ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+    }
+
+    _blocksBatchSize = blocksWriteBatch.consumedBytes;
+    _extrasBatchSize = extrasWriteBatch.consumedBytes;
+
+    // HACK Since blooms are often re-used, let's adjust size for them
+    _extrasBatchSize -= ( 4096 + 32 ) * 2;                         // 2 big blooms altered by block
+    _extrasBatchSize += ( 4096 + 32 ) / 16 + ( 4096 + 32 ) / 256;  // 1+1/16th big bloom per block
+}
+
+ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
+    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+    ImportPerformanceLogger& _performanceLogger ) {
+    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
+    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
+    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
+    // std::cout.flush();
+
+    // These batch wrappers can compute total insertion size in bytes
+    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
+    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
+
+    h256 newLastBlockHash = currentHash();
+    unsigned newLastBlockNumber = number();
+    BlockHeader tbi = _block.info;
+
+    // ensure parent is cached for later addition.
+    // TODO: this is a bit horrible would be better refactored into an enveloping
+    // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+    // safe in practice since the caches don't get flushed nearly often enough to be done
+    // here.
+    details( _block.info.parentHash() );
+    DEV_WRITE_GUARDED( x_details )
+    m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
+
+    _performanceLogger.onStageFinished( "collation" );
+
     size_t blocksWriteSize = 0;
     size_t extrasWriteSize = 0;
-    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, alteredBlooms, *blocksWriteBatch,
+    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull, *blocksWriteBatch,
         *extrasWriteBatch, blocksWriteSize, extrasWriteSize, _performanceLogger );
 
     uint64_t pieceUsageBytes = 0;
@@ -874,12 +874,12 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += blocksWriteSize + extrasWriteSize;
 
-    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+    // std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
         LOG( m_loggerDetail ) << "Rotated out some blocks";
-        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, alteredBlooms,
+        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
             *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
             _performanceLogger );
         pieceUsageBytes = blocksWriteSize + extrasWriteSize;
