@@ -606,11 +606,20 @@ void SnapshotManager::computeAllVolumesHash(
                                                  "blocks_and_extras";
 
     // few dbs
-    boost::filesystem::directory_iterator it( blocks_extras_path ), end;
+    boost::filesystem::recursive_directory_iterator directory_it( blocks_extras_path ), end;
 
-    while ( it != end ) {
-        this->computeDatabaseHash( it->path(), ctx );
-        ++it;
+    std::vector< boost::filesystem::path > contents;
+    while ( directory_it != end ) {
+        contents.push_back( *directory_it );
+        ++directory_it;
+    }
+    std::sort( contents.begin(), contents.end(),
+        []( const boost::filesystem::path& lhs, const boost::filesystem::path& rhs ) {
+            return lhs.string() < rhs.string();
+        } );
+
+    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
+        this->computeDatabaseHash( *it, ctx );
     }
 
     // filestorage

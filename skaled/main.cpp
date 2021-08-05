@@ -1717,8 +1717,13 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            clog( VerbosityWarning, "main" ) << cc::notice(
-                                "Downloaded snapshot with incorrect hash! Will try again" );
+                            clog( VerbosityWarning, "main" )
+                                << cc::notice(
+                                       "Downloaded snapshot with incorrect hash! Incoming hash " )
+                                << cc::notice( voted_hash.first.hex() )
+                                << cc::notice( " is not equal to calculated hash " )
+                                << cc::notice( calculated_hash.hex() )
+                                << cc::notice( "Will try again" );
                             snapshotManager->cleanup();
                         }
                     } catch ( const std::exception& ex ) {
