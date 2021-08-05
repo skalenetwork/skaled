@@ -606,7 +606,7 @@ void SnapshotManager::computeAllVolumesHash(
                                                  "blocks_and_extras";
 
     // few dbs
-    boost::filesystem::recursive_directory_iterator directory_it( blocks_extras_path ), end;
+    boost::filesystem::directory_iterator directory_it( blocks_extras_path ), end;
 
     std::vector< boost::filesystem::path > contents;
     while ( directory_it != end ) {
