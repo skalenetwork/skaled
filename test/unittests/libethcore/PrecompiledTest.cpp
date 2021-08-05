@@ -1700,7 +1700,8 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     std::string fileHashName = pathToFile.string() + "._hash";
 
     std::ofstream fileHash( fileHashName );
-    dev::h256 hash = dev::sha256( pathToFile.string() );
+    std::string relativePath = pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
+    dev::h256 hash = dev::sha256( relativePath );
     fileHash << hash;
 
     fileHash.close();
