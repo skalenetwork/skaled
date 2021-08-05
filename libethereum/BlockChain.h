@@ -274,8 +274,12 @@ public:
         return blocksBlooms( chunkId( _level, _index ) );
     }
     BlocksBlooms blocksBlooms( h256 const& _chunkId ) const {
-        return queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
+        auto res = queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
             _chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms );
+        // std::cerr << "Queried " << _chunkId.hex() << "->" << std::endl;
+        // for ( size_t i = 0; i < 16; ++i )
+        //    std::cerr << "\t" << i << " = " << res.blooms[i].hex() << std::endl;
+        return res;
     }
     LogBloom blockBloom( unsigned _number ) const {
         return blocksBlooms( chunkId( 0, _number / c_bloomIndexSize ) )
@@ -463,7 +467,7 @@ private:
 
     // auxiliary method for insertBlockAndExtras
     void prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
-        u256 const& _totalDifficulty, const h256s& alteredBlooms,
+        u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         db::WriteBatchFace& _blocksWriteBatch, db::WriteBatchFace& _extrasWriteBatch,
         size_t& _blocksBatchSize, size_t& _extrasBatchSize,
         ImportPerformanceLogger& _performanceLogger );
