@@ -175,8 +175,7 @@ private:
         secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedRegularFile(
         const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
-    void proceedDirectory(
-        const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
     void computeAllVolumesHash(
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeDatabaseHash(

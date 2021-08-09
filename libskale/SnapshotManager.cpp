@@ -541,28 +541,14 @@ void SnapshotManager::proceedRegularFile(
 }
 
 void SnapshotManager::proceedDirectory(
-    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const {
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
     std::cout << "DIRECTORY PATH: " << path.string() << '\n'
               << "RELATIVE PATH: " << relativePath << '\n';
 
-    std::string fileHashPathStr = path.string() + "._hash";
-    if ( !is_checking ) {
-        // assuming ._hash always exists for directories
-        std::ifstream hash_file( fileHashPathStr );
-        dev::h256 hash;
-        hash_file >> hash;
-        std::cout << "NOT CHECKING DIRECTORY HASH: " << hash << '\n';
-        secp256k1_sha256_write( ctx, hash.data(), hash.size );
-    } else {
-        dev::h256 directoryHash = dev::sha256( relativePath );
-        std::cout << "CHECKING DIRECTORY HASH: " << directoryHash << '\n';
-        secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
-
-        std::ofstream hash( fileHashPathStr );
-        hash.clear();
-        hash << directoryHash;
-    }
+    dev::h256 directoryHash = dev::sha256( relativePath );
+    std::cout << "DIRECTORY HASH: " << directoryHash << '\n';
+    secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
 }
 
 void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
@@ -583,7 +569,7 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
         if ( boost::filesystem::is_regular_file( *it ) ) {
             proceedRegularFile( *it, ctx, is_checking );
         } else {
-            proceedDirectory( *it, ctx, is_checking );
+            proceedDirectory( *it, ctx );
         }
     }
 }

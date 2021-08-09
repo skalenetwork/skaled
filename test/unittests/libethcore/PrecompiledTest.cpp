@@ -1655,6 +1655,8 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
+    BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
@@ -1675,7 +1677,6 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
-    BOOST_REQUIRE( boost::filesystem::exists( pathToDir.string() + "._hash" ) );
     remove( pathToDir.c_str() );
 }
 
@@ -1691,7 +1692,6 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
-    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir.string() + "._hash" ) );
 }
 
 BOOST_AUTO_TEST_CASE( calculateFileHash ) {

@@ -494,15 +494,6 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
             throw std::runtime_error( "createDirectory() failed because cannot create directory" );
         }
 
-        const std::string absolutePathStr = absolutePath.string();
-
-        std::string relativePath = absolutePathStr.substr( absolutePathStr.find( "filestorage" ) );
-
-        dev::h256 directoryPathHash = dev::sha256( relativePath );
-
-        std::ofstream hashFile( absolutePathStr + "._hash" );
-        hashFile << directoryPathHash;
-
         u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
