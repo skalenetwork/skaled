@@ -1614,6 +1614,20 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     remove( path.c_str() );
 }
 
+BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "createFile" );
+
+    std::string fileName = "createFile._hash";
+    auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+            numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first == false);
+    BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
 BOOST_AUTO_TEST_CASE( uploadChunk ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "uploadChunk" );
 

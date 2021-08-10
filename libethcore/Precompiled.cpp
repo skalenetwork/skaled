@@ -291,7 +291,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
             }
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
-        if ( filePath.filename().extension() == "_hash" ) {
+        if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
