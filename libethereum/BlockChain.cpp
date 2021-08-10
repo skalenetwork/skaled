@@ -829,8 +829,8 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
     _extrasBatchSize = extrasWriteBatch.consumedBytes;
 
     // HACK Since blooms are often re-used, let's adjust size for them
-    _extrasBatchSize -= ( 4096 + 32 ) * 2;                         // 2 big blooms altered by block
-    _extrasBatchSize += ( 4096 + 32 ) / 16 + ( 4096 + 32 ) / 256;  // 1+1/16th big bloom per block
+    _extrasBatchSize -= ( 4147 + 34 ) * 2;                             // 2 big blooms altered by block
+    _extrasBatchSize += ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
