@@ -190,7 +190,7 @@ h256 LevelDB::hashBase() const {
         std::string value_ = it->value().ToString();
         // HACK! For backward compatibility!
         // TODO Move this logic to separated "compatiliblity layer"!
-        if ( key_ == "\x01totalStorageUsed" )
+        if ( key_ == "\x00totalStorageUsed" )
             value_ = "0";
         if ( key_ == "pieceUsageBytes" )
             continue;
