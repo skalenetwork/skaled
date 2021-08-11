@@ -188,6 +188,12 @@ h256 LevelDB::hashBase() const {
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         std::string key_ = it->key().ToString();
         std::string value_ = it->value().ToString();
+        // HACK! For backward compatibility!
+        // TODO Move this logic to separated "compatiliblity layer"!
+        if ( key_ == "\x01totalStorageUsed" )
+            value_ = "0";
+        if ( key_ == "pieceUsageBytes" )
+            continue;
         std::string key_value = key_ + value_;
         const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
         bytesConstRef str_key_value( usc.data(), usc.size() );

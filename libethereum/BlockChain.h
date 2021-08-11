@@ -472,6 +472,9 @@ private:
         size_t& _blocksBatchSize, size_t& _extrasBatchSize,
         ImportPerformanceLogger& _performanceLogger );
 
+    // auxiliary method for recomputing blocks inserted earlier
+    void recomputeExistingOccupiedSpaceForBlockRotation();
+
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
         ImportPerformanceLogger& _performanceLogger );
