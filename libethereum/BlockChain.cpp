@@ -273,6 +273,8 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
+
+    recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -710,6 +712,7 @@ struct SizeCountingWriteBatch {
     size_t consumedBytes = 0;
 };
 
+// TOOD ACHTUNG This function must be kept in sync with the next one!
 void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
     u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
@@ -829,8 +832,99 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
     _extrasBatchSize = extrasWriteBatch.consumedBytes;
 
     // HACK Since blooms are often re-used, let's adjust size for them
-    _extrasBatchSize -= ( 4147 + 34 ) * 2;                             // 2 big blooms altered by block
-    _extrasBatchSize += ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+    _extrasBatchSize -= ( 4147 + 34 ) * 2;  // 2 big blooms altered by block
+    _extrasBatchSize +=
+        ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+}
+
+// TOOD ACHTUNG This function must be kept in sync with prepareDbWriteBatches defined above!!
+void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() {
+    unsigned number = this->number();
+
+    if ( !m_rotating_db->exists( db::Slice( "\x01totalStorageUsed" ) ) )
+        m_rotating_db->insert( db::Slice( "\x01totalStorageUsed" ), db::Slice( "0" ) );
+
+    size_t blocksBatchSize = 0;
+    size_t extrasBatchSize = 0;
+
+    LOG( m_logger ) << "Recomputing old blocks sizes...";
+
+    // HACK 34 is key size + extra size + db prefix (blocks or extras
+    for ( unsigned i = 1; i <= number; ++i ) {
+        h256 hash = this->numberHash( i );
+        BlockHeader header = this->info( hash );
+
+        // blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        blocksBatchSize += 34 + this->block( hash ).size();
+
+        // extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+        //    ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
+        extrasBatchSize += 34 + this->details( header.parentHash() ).rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
+        // HACK on insertion this field was empty - so we do it here!
+        BlockDetails details = this->details( hash );
+        details.children.resize( 0 );
+        extrasBatchSize += 34 + details.rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
+        extrasBatchSize += 34 + this->logBlooms( hash ).rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
+        extrasBatchSize += 34 + this->receipts( hash ).rlp().size();
+
+        //        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+        //            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ),
+        //            ExtraTransactionAddress ),
+        //                ( db::Slice ) dev::ref( ta.rlp() ) );
+        //            ++ta.index;
+        //        }
+        h256s tx_hashes = this->transactionHashes( hash );
+        for ( auto th : tx_hashes ) {
+            std::pair< h256, unsigned > pair = this->transactionLocation( th );
+            assert( pair.first == hash );
+            TransactionAddress ta;
+            ta.blockHash = pair.first;
+            ta.index = pair.second;
+            extrasBatchSize += 34 + ta.rlp().size();
+        }
+
+        //        for ( auto const& h : alteredBlooms )
+        //            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
+        //                ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+        // blooms are always constant!!: 34+4147
+
+        // extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+        //    ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+        extrasBatchSize += 34 + BlockHash( hash ).rlp().size();
+
+        // HACK Since blooms are often re-used, let's adjust size for them
+        extrasBatchSize +=
+            ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+        std::cerr << "computed = " << blocksBatchSize + extrasBatchSize << std::endl;
+    }  // for block
+
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    }
+
+    LOG( m_logger ) << "pieceUsageBytes from DB = " << pieceUsageBytes
+                    << " computed = " << blocksBatchSize + extrasBatchSize;
+
+    if ( pieceUsageBytes == 0 ) {
+        pieceUsageBytes = blocksBatchSize + extrasBatchSize;
+        m_rotating_db->insert(
+            db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+    } else {
+        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
+            LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
+                                    "should happen only if block rotation has occured!";
+    }  // else
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -874,7 +968,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += blocksWriteSize + extrasWriteSize;
 
-    // std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
