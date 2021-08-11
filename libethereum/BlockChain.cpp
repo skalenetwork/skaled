@@ -274,6 +274,10 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
+    if ( !m_rotating_db->exists( db::Slice( "\x00totalStorageUsed" ) ) )
+        m_rotating_db->insert(
+            db::Slice( "\x00totalStorageUsed" ), db::Slice( to_string( this->number() * 32 ) ) );
+
     recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
@@ -840,9 +844,6 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
 // TOOD ACHTUNG This function must be kept in sync with prepareDbWriteBatches defined above!!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() {
     unsigned number = this->number();
-
-    if ( !m_rotating_db->exists( db::Slice( "\x01totalStorageUsed" ) ) )
-        m_rotating_db->insert( db::Slice( "\x01totalStorageUsed" ), db::Slice( "0" ) );
 
     size_t blocksBatchSize = 0;
     size_t extrasBatchSize = 0;
