@@ -274,10 +274,6 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    if ( !m_rotating_db->exists( db::Slice( "\x00totalStorageUsed" ) ) )
-        m_rotating_db->insert(
-            db::Slice( "\x00totalStorageUsed" ), db::Slice( to_string( this->number() * 32 ) ) );
-
     recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
@@ -983,6 +979,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // update storage usage
     m_rotating_db->insert(
         db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+    // HACK This is for backward compatibility
+    m_blocksDB->insert(
+        db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
 
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
