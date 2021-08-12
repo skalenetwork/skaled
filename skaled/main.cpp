@@ -1717,8 +1717,13 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            clog( VerbosityWarning, "main" ) << cc::notice(
-                                "Downloaded snapshot with incorrect hash! Will try again" );
+                            clog( VerbosityWarning, "main" )
+                                << cc::notice(
+                                       "Downloaded snapshot with incorrect hash! Incoming hash " )
+                                << cc::notice( voted_hash.first.hex() )
+                                << cc::notice( " is not equal to calculated hash " )
+                                << cc::notice( calculated_hash.hex() )
+                                << cc::notice( "Will try again" );
                             snapshotManager->cleanup();
                         }
                     } catch ( const std::exception& ex ) {
@@ -2645,7 +2650,8 @@ int main( int argc, char** argv ) try {
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
                         if ( joRequest["params"].GetArray().Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
                         dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
                             joRequest["params"].GetArray()[0] );
