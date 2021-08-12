@@ -965,7 +965,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += blocksWriteSize + extrasWriteSize;
 
-    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+    // std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+    LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
@@ -974,6 +975,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
             _performanceLogger );
         pieceUsageBytes = blocksWriteSize + extrasWriteSize;
+        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // update storage usage
