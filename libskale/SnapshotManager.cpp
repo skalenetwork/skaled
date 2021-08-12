@@ -450,108 +450,116 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
-void SnapshotManager::proceedFileSystemDirectory( const boost::filesystem::path& _fileSystemDir,
-    secp256k1_sha256_t* ctx, bool is_checking ) const {
-    boost::filesystem::recursive_directory_iterator it( _fileSystemDir ), end;
+void SnapshotManager::proceedRegularFile(
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
+    if ( boost::filesystem::extension( path ) == "._hash" ) {
+        return;
+    }
 
-    while ( it != end ) {
-        std::string fileHashPathStr = it->path().string() + "._hash";
-        if ( boost::filesystem::is_regular_file( *it ) ) {
-            if ( boost::filesystem::extension( it->path() ) != "._hash" ) {
-                if ( !is_checking ) {
-                    if ( !boost::filesystem::exists( fileHashPathStr ) ) {
-                        // file has not been downloaded fully
-                        secp256k1_sha256_t fileData;
-                        secp256k1_sha256_initialize( &fileData );
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
-                        dev::h256 filePathHash = dev::sha256( it->path().string() );
-                        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+    std::string fileHashPathStr = path.string() + "._hash";
+    if ( !is_checking ) {
+        dev::h256 fileHash;
+        if ( !boost::filesystem::exists( fileHashPathStr ) ) {
+            // file has not been downloaded fully
+            // calculate hash, add to global hash, do not create ._hash file
+            secp256k1_sha256_t fileData;
+            secp256k1_sha256_initialize( &fileData );
 
-                        std::ifstream originFile( it->path().string() );
-                        originFile.seekg( 0, std::ios::end );
-                        size_t fileContentSize = originFile.tellg();
-                        std::string fileContent( fileContentSize, ' ' );
-                        originFile.seekg( 0 );
-                        originFile.read( &fileContent[0], fileContentSize );
+            dev::h256 filePathHash = dev::sha256( relativePath );
+            secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
 
-                        dev::h256 fileContentHash = dev::sha256( fileContent );
+            std::ifstream originFile( path.string() );
+            originFile.seekg( 0, std::ios::end );
+            size_t fileContentSize = originFile.tellg();
+            std::string fileContent( fileContentSize, ' ' );
+            originFile.seekg( 0 );
+            originFile.read( &fileContent[0], fileContentSize );
 
-                        secp256k1_sha256_write(
-                            &fileData, fileContentHash.data(), fileContentHash.size );
+            dev::h256 fileContentHash = dev::sha256( fileContent );
 
-                        dev::h256 fileHash;
-                        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+            secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
 
-                        std::ofstream hash( fileHashPathStr );
-                        hash << fileHash;
-                    }
-
-                    std::ifstream hash_file( fileHashPathStr );
-                    dev::h256 hash;
-                    hash_file >> hash;
-                    secp256k1_sha256_write( ctx, hash.data(), hash.size );
-                } else {
-                    secp256k1_sha256_t fileData;
-                    secp256k1_sha256_initialize( &fileData );
-
-                    dev::h256 filePathHash = dev::sha256( it->path().string() );
-                    secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
-
-                    std::ifstream originFile( it->path().string() );
-                    originFile.seekg( 0, std::ios::end );
-                    size_t fileContentSize = originFile.tellg();
-                    std::string fileContent( fileContentSize, ' ' );
-                    originFile.seekg( 0 );
-                    originFile.read( &fileContent[0], fileContentSize );
-
-                    dev::h256 fileContentHash = dev::sha256( fileContent );
-                    secp256k1_sha256_write(
-                        &fileData, fileContentHash.data(), fileContentHash.size );
-
-                    dev::h256 fileHash;
-                    secp256k1_sha256_finalize( &fileData, fileHash.data() );
-
-                    std::ofstream hash( fileHashPathStr );
-                    hash.clear();
-                    hash << fileHash;
-
-                    secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
-                }
-            }
+            secp256k1_sha256_finalize( &fileData, fileHash.data() );
         } else {
-            if ( !is_checking ) {
-                if ( !boost::filesystem::exists( fileHashPathStr ) ) {
-                    // hash file hasn't been computed
-                    std::ofstream hash_file( fileHashPathStr );
-                    dev::h256 hash = dev::sha256( it->path().string() );
-                    hash_file << hash;
-                }
-                std::ifstream hash_file( fileHashPathStr );
-                dev::h256 hash;
-                hash_file >> hash;
-                secp256k1_sha256_write( ctx, hash.data(), hash.size );
-            } else {
-                dev::h256 directoryHash = dev::sha256( it->path().string() );
-                secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
+            std::ifstream hash_file( fileHashPathStr );
+            hash_file >> fileHash;
+        }
 
-                std::ofstream hash( fileHashPathStr );
-                hash.clear();
-                hash << directoryHash;
-            }
+        secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
+    } else {
+        secp256k1_sha256_t fileData;
+        secp256k1_sha256_initialize( &fileData );
+
+        dev::h256 filePathHash = dev::sha256( relativePath );
+        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+
+        std::ifstream originFile( path.string() );
+        originFile.seekg( 0, std::ios::end );
+        size_t fileContentSize = originFile.tellg();
+        std::string fileContent( fileContentSize, ' ' );
+        originFile.seekg( 0 );
+        originFile.read( &fileContent[0], fileContentSize );
+
+        dev::h256 fileContentHash = dev::sha256( fileContent );
+        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 fileHash;
+        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+        if ( boost::filesystem::exists( fileHashPathStr ) ) {
+            // write to ._hash if exists
+            // if no ._hash - file has not been fully downloaded
+            std::ofstream hash( fileHashPathStr );
+            hash.clear();
+            hash << fileHash;
+        }
+
+        secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
+    }
+}
+
+void SnapshotManager::proceedDirectory(
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const {
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
+    dev::h256 directoryHash = dev::sha256( relativePath );
+    secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
+}
+
+void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
+    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    boost::filesystem::recursive_directory_iterator directory_it( _fileSystemDir ), end;
+
+    std::vector< boost::filesystem::path > contents;
+    while ( directory_it != end ) {
+        contents.push_back( *directory_it );
+        ++directory_it;
+    }
+    std::sort( contents.begin(), contents.end(),
+        []( const boost::filesystem::path& lhs, const boost::filesystem::path& rhs ) {
+            return lhs.string() < rhs.string();
+        } );
+
+    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
+        if ( boost::filesystem::is_regular_file( *it ) ) {
+            proceedRegularFile( *it, ctx, is_checking );
+        } else {
+            proceedDirectory( *it, ctx );
         }
 
         ++it;
     }
 }
 
-void SnapshotManager::computeFileSystemHash( const boost::filesystem::path& _fileSystemDir,
+void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
     secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
         throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
                                 _fileSystemDir.string() + " doesn't exist" );
     }
 
-    this->proceedFileSystemDirectory( _fileSystemDir, ctx, is_checking );
+    this->proceedFileStorageDirectory( _fileSystemDir, ctx, is_checking );
 }
 
 void SnapshotManager::computeAllVolumesHash(
@@ -569,15 +577,24 @@ void SnapshotManager::computeAllVolumesHash(
                                                  "blocks_and_extras";
 
     // few dbs
-    boost::filesystem::directory_iterator it( blocks_extras_path ), end;
+    boost::filesystem::directory_iterator directory_it( blocks_extras_path ), end;
 
-    while ( it != end ) {
-        this->computeDatabaseHash( it->path(), ctx );
-        ++it;
+    std::vector< boost::filesystem::path > contents;
+    while ( directory_it != end ) {
+        contents.push_back( *directory_it );
+        ++directory_it;
+    }
+    std::sort( contents.begin(), contents.end(),
+        []( const boost::filesystem::path& lhs, const boost::filesystem::path& rhs ) {
+            return lhs.string() < rhs.string();
+        } );
+
+    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
+        this->computeDatabaseHash( *it, ctx );
     }
 
     // filestorage
-    this->computeFileSystemHash(
+    this->computeFileStorageHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
     // if have prices and blocks

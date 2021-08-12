@@ -139,7 +139,7 @@ void Client::stopWorking() {
     Worker::stopWorking();
 
     if ( m_skaleHost )
-        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to start/stop all
                                      // workers
     else
         cerror << "Instance of SkaleHost was not properly created.";
