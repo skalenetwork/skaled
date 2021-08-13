@@ -3296,7 +3296,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
                                cc::debug( " logs search from block " ) +
                                cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( " to block " ) +
-                               cc::info( "latest" ) + cc::debug( " results: " ) +
+                               cc::info( dev::toJS( uBlockTo ) ) + cc::debug( " results: " ) +
                                cc::j( jarrFoundLogRecords ) );
                     return jarrFoundLogRecords;
                 };
