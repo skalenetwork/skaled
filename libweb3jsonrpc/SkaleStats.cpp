@@ -58,6 +58,8 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/crypto/OpenSSLECDSAKey.h>
 
+//#define __ENABLE_IMA_RELATED_JSON__ 1
+
 namespace dev {
 
 namespace tracking {
@@ -852,6 +854,8 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
+
 static std::string stat_get_ima_related_json_file_path() {
     boost::filesystem::path pathDataDir = dev::getDataDir();
     boost::filesystem::path pathImaRelatedJsonFile = pathDataDir / "ima.related.json";
@@ -940,6 +944,9 @@ static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainN
     return joLoaded;
 }
 
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
+
+
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
     : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
@@ -948,11 +955,15 @@ SkaleStats::SkaleStats(
     nThisNodeIndex_ = findThisNodeIndex();
     //
     try {
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
         std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
         skutils::url urlMainNet = getImaMainNetURL();
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
         // nlohmann::json joImaRelated =
         stat_load_or_init_ima_related_json(
             urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
@@ -1634,6 +1645,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // Perform basic validation of arrived messages we will sign
         //
 
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
         std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Will load IMA related state file " ) +
@@ -1670,6 +1682,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
             }
         }
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
         // if ( strDirection == "M2S" ) {
         //    nlohmann::json joCall = nlohmann::json::object();
         //    joCall["jsonrpc"] = "2.0";
@@ -3204,8 +3217,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     dev::u256 uBN = dev::u256( "0" );
                     return uBN;
                 };
-                std::function< nlohmann::json( dev::u256 ) > do_logs_search =
-                    [&]( dev::u256 uBlockFrom ) -> nlohmann::json {
+                std::function< nlohmann::json( dev::u256, dev::u256 ) > do_logs_search =
+                    [&]( dev::u256 uBlockFrom, dev::u256 uBlockTo ) -> nlohmann::json {
                     //
                     //
                     //
@@ -3231,8 +3244,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     // jarrTopics.push_back( nullptr );
                     nlohmann::json joLogsQuery = nlohmann::json::object();
                     joLogsQuery["address"] = strAddressImaMessageProxy;
-                    joLogsQuery["fromBlock"] = dev::toJS( uBlockFrom );  // "0x0";
-                    joLogsQuery["toBlock"] = "latest";
+                    joLogsQuery["fromBlock"] = dev::toJS( uBlockFrom );
+                    joLogsQuery["toBlock"] = dev::toJS( uBlockTo );
                     joLogsQuery["topics"] = jarrTopics;
                     nlohmann::json jarrLogsQuery = nlohmann::json::array();
                     jarrLogsQuery.push_back( joLogsQuery );
@@ -3241,7 +3254,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
                                cc::debug( " logs from block " ) +
                                cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( " to block " ) +
-                               cc::info( "latest" ) +
+                               cc::info( dev::toJS( uBlockTo ) ) +
                                cc::debug( " by executing logs search query: " ) +
                                cc::j( joLogsQuery ) );
                     //
@@ -3272,8 +3285,109 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
                                cc::debug( " logs search from block " ) +
                                cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( " to block " ) +
-                               cc::info( "latest" ) + cc::debug( " results: " ) +
+                               cc::info( dev::toJS( uBlockTo ) ) + cc::debug( " results: " ) +
                                cc::j( jarrFoundLogRecords ) );
+                    return jarrFoundLogRecords;
+                };
+                static const int64_t g_nCountOfBlocksInIterativeStep = 1000;
+                static const int64_t g_nMaxBlockScanIterationsInAllRange = 5000;
+                std::function< nlohmann::json( dev::u256 ) > do_logs_search_iterative =
+                    [&]( dev::u256 uBlockFrom ) -> nlohmann::json {
+                    dev::u256 nLatestBlockNumber = do_getBlockNumber();
+                    dev::u256 uBlockTo = nLatestBlockNumber;
+                    if ( g_nCountOfBlocksInIterativeStep <= 0 ||
+                         g_nMaxBlockScanIterationsInAllRange <= 0 ) {
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::fatal( "IMPORTANT NOTICE:" ) + " " + cc::warn( "Will skip " ) +
+                                   cc::attention( "iterative" ) +
+                                   cc::warn( " events scan in block range from " ) +
+                                   cc::info( dev::toJS( uBlockFrom ) ) + cc::warn( " to " ) +
+                                   cc::info( dev::toJS( uBlockTo ) ) +
+                                   cc::warn( " because it's " ) + cc::error( "DISABLED" ) );
+                        return do_logs_search( uBlockFrom, uBlockTo );
+                    }
+                    if ( ( nLatestBlockNumber / g_nCountOfBlocksInIterativeStep ) >
+                         g_nMaxBlockScanIterationsInAllRange ) {
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::fatal( "IMPORTANT NOTICE:" ) + " " + cc::warn( "Will skip " ) +
+                                   cc::attention( "iterative" ) +
+                                   cc::warn( " scan and use scan in block range from " ) +
+                                   cc::info( dev::toJS( uBlockFrom ) ) + cc::warn( " to " ) +
+                                   cc::info( dev::toJS( uBlockTo ) ) );
+                        return do_logs_search( uBlockFrom, uBlockTo );
+                    }
+                    clog( VerbosityDebug, "IMA" )
+                        << ( cc::debug( "Iterative scan in " ) +
+                               cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( "/" ) +
+                               cc::info( dev::toJS( uBlockTo ) ) + cc::debug( " block range..." ) );
+                    clog( VerbosityDebug, "IMA" )
+                        << ( cc::debug( "Iterative scan up to latest block " ) +
+                               cc::attention( "#" ) + cc::info( dev::toJS( uBlockTo ) ) +
+                               cc::debug( " assumed instead of " ) + cc::attention( "latest" ) );
+                    dev::u256 idxBlockSubRangeFrom = uBlockFrom;
+                    for ( ; true; ) {
+                        dev::u256 idxBlockSubRangeTo =
+                            idxBlockSubRangeFrom + g_nCountOfBlocksInIterativeStep;
+                        if ( idxBlockSubRangeTo > uBlockTo )
+                            idxBlockSubRangeTo = uBlockTo;
+                        try {
+                            clog( VerbosityDebug, "IMA" )
+                                << ( cc::debug( "Iterative scan of " ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeFrom ) ) +
+                                       cc::debug( "/" ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeTo ) ) +
+                                       cc::debug( " block sub-range in " ) +
+                                       cc::info( dev::toJS( uBlockFrom ) ) + cc::debug( "/" ) +
+                                       cc::info( dev::toJS( uBlockTo ) ) +
+                                       cc::debug( " block range..." ) );
+                            nlohmann::json joAllEventsInBlock =
+                                do_logs_search( idxBlockSubRangeFrom, idxBlockSubRangeTo );
+                            if ( joAllEventsInBlock.is_array() && joAllEventsInBlock.size() > 0 ) {
+                                clog( VerbosityDebug, "IMA" )
+                                    << ( cc::success( "Result of " ) +
+                                           cc::attention( "iterative" ) +
+                                           cc::success( " scan in " ) +
+                                           cc::info( dev::toJS( uBlockFrom ) ) +
+                                           cc::success( "/" ) + cc::info( dev::toJS( uBlockTo ) ) +
+                                           cc::success( " block range is " ) +
+                                           cc::j( joAllEventsInBlock ) );
+                                return joAllEventsInBlock;
+                            }
+                        } catch ( const std::exception& ex ) {
+                            clog( VerbosityError, "IMA" )
+                                << ( strLogPrefix + " " + cc::fatal( "FAILED:" ) + " " +
+                                       cc::error( "Iterative scan of " ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeFrom ) ) +
+                                       cc::error( "/" ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeTo ) ) +
+                                       cc::error( " block sub-range in " ) +
+                                       cc::info( dev::toJS( uBlockFrom ) ) + cc::error( "/" ) +
+                                       cc::info( dev::toJS( uBlockTo ) ) +
+                                       cc::error( " block range, error:" ) + " " +
+                                       cc::warn( ex.what() ) );
+                        } catch ( ... ) {
+                            clog( VerbosityError, "IMA" )
+                                << ( strLogPrefix + " " + cc::fatal( "FAILED:" ) + " " +
+                                       cc::error( "Iterative scan of " ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeFrom ) ) +
+                                       cc::error( "/" ) +
+                                       cc::info( dev::toJS( idxBlockSubRangeTo ) ) +
+                                       cc::error( " block sub-range in " ) +
+                                       cc::info( dev::toJS( uBlockFrom ) ) + cc::error( "/" ) +
+                                       cc::info( dev::toJS( uBlockTo ) ) +
+                                       cc::error( " block range, error:" ) + " " +
+                                       cc::warn( "unknown exception" ) );
+                        }
+                        idxBlockSubRangeFrom = idxBlockSubRangeTo;
+                        if ( idxBlockSubRangeFrom == uBlockTo )
+                            break;
+                    }
+                    clog( VerbosityDebug, "IMA" )
+                        << ( cc::debug( "Result of " ) + cc::attention( "iterative" ) +
+                               cc::debug( " scan in " ) + cc::info( dev::toJS( uBlockFrom ) ) +
+                               cc::debug( "/" ) + cc::info( dev::toJS( uBlockTo ) ) +
+                               cc::debug( " block range is " ) + cc::warn( "empty" ) );
+                    nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
                     return jarrFoundLogRecords;
                 };
                 typedef std::list< dev::u256 > plan_list_t;
@@ -3312,7 +3426,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     for ( ; itPlanWalk != itPlanEnd; ++itPlanWalk ) {
                         dev::u256 uBlockFrom = ( *itPlanWalk );
                         try {
-                            nlohmann::json jarrFoundLogRecords = do_logs_search( uBlockFrom );
+                            nlohmann::json jarrFoundLogRecords =
+                                do_logs_search_iterative( uBlockFrom );
                             if ( jarrFoundLogRecords.is_array() &&
                                  jarrFoundLogRecords.size() > 0 ) {
                                 clog( VerbosityWarning, "IMA" )
@@ -3323,7 +3438,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                            cc::info( dev::toJS( uBlockFrom ) ) +
                                            cc::success( " to block " ) + cc::j( "latest" ) +
                                            cc::success( " finished with " ) +
-                                           cc::error( jarrFoundLogRecords ) );
+                                           cc::j( jarrFoundLogRecords ) );
                                 return jarrFoundLogRecords;
                             }
                         } catch ( const std::exception& ex ) {
@@ -3356,10 +3471,16 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
                     return jarrFoundLogRecords;
                 };
+
                 nlohmann::json jarrFoundLogRecords =
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
                     ( uLastStaringSearchedBlock == 0 ) ?
                         do_logs_search_progressive( do_getBlockNumber() ) :
-                        do_logs_search( uLastStaringSearchedBlock );
+                        do_logs_search_iterative( uLastStaringSearchedBlock );
+#else   // (defined __ENABLE_IMA_RELATED_JSON__)
+                    do_logs_search_progressive( do_getBlockNumber() );
+#endif  /// else from (defined __ENABLE_IMA_RELATED_JSON__)
+
                 /* example of jarrFoundLogRecords value:
                     [{
                         "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
@@ -3776,6 +3897,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         //}
                         //
                         if ( joReceiptLogRecord.count( "blockNumber" ) != 0 ) {
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
                             try {
                                 dev::u256 uBlockNumber = dev::u256(
                                     joReceiptLogRecord["blockNumber"].get< std::string >() );
@@ -3818,6 +3940,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
                                            cc::warn( " due to error" ) );
                             }
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
                         }
                         bReceiptVerified = true;
                         clog( VerbosityDebug, "IMA" )
@@ -3859,6 +3982,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            cc::size10( nStartMessageIdx + idxMessage ) +
                            cc::success( " was found in logs." ) );
             }  // if( bIsVerifyImaMessagesViaLogsSearch )
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
             if ( ( !wasNarrowedStaringSearchedBlock ) &&
                  uLastStaringSearchedBlockNextValue != uLastStaringSearchedBlock ) {
                 clog( VerbosityDebug, "IMA" )
@@ -3875,9 +3999,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 wasNarrowedStaringSearchedBlock = true;
                 uLastStaringSearchedBlockNextValue = uLastStaringSearchedBlock;
             }
-            //
-            //
-            //
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
+        //
+        //
+        //
             if ( bIsVerifyImaMessagesViaContractCall ) {
                 if ( strDirection == "M2S" ) {
                     //
@@ -4238,6 +4363,7 @@ OutgoingMessageData.data
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
 
 
+#if ( defined __ENABLE_IMA_RELATED_JSON__ )
         if ( wasNarrowedStaringSearchedBlock ||
              uLastStaringSearchedBlock != uLastStaringSearchedBlockNextValue ) {
             joImaRelated[strLastStaringSearchedBlockKeyName] =
@@ -4258,6 +4384,7 @@ OutgoingMessageData.data
                                                  cc::error( " saving IMA related state file " ) +
                                                  cc::p( strPathImaRelatedJsonFile ) );
         }
+#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
 
         if ( !bOnlyVerify ) {
             //
