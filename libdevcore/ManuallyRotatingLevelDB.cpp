@@ -44,7 +44,8 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
     if ( current_i == _nPieces )
         current_i = 0;
 
-    // rotate so min_i will be first
+    // TODO Generally, we shoud rotate in different direction, but in reality this doesn't matter
+    // (but reverse it!) rotate so min_i will be first
     for ( size_t i = 0; i < current_i; ++i ) {
         std::unique_ptr< DatabaseFace > el = std::move( pieces.front() );
         pieces.pop_front();

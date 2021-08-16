@@ -965,7 +965,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += blocksWriteSize + extrasWriteSize;
 
-    // std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
+    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
     LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
@@ -982,8 +982,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     m_rotating_db->insert(
         db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
     // HACK This is for backward compatibility
-    m_blocksDB->insert(
-        db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
+    // update totalStorageUsed only if schain already had it!
+    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
+        m_blocksDB->insert(
+            db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
 
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
