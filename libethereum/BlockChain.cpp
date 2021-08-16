@@ -838,7 +838,7 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
 }
 
 // TOOD ACHTUNG This function must be kept in sync with prepareDbWriteBatches defined above!!
-void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() {
+void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
 
     size_t blocksBatchSize = 0;
@@ -846,7 +846,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() {
 
     LOG( m_logger ) << "Recomputing old blocks sizes...";
 
-    // HACK 34 is key size + extra size + db prefix (blocks or extras
+    // HACK 34 is key size + extra size + db prefix (blocks or extras)
     for ( unsigned i = 1; i <= number; ++i ) {
         h256 hash = this->numberHash( i );
         BlockHeader header = this->info( hash );
@@ -922,6 +922,10 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() {
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
                                     "should happen only if block rotation has occured!";
     }  // else
+} catch ( const std::exception& ex ) {
+    LOG( m_loggerError )
+        << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
+        << ex.what();
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
