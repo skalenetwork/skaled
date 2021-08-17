@@ -274,7 +274,8 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    recomputeExistingOccupiedSpaceForBlockRotation();
+    if ( !this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
+        recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -901,7 +902,8 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         // HACK Since blooms are often re-used, let's adjust size for them
         extrasBatchSize +=
             ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
-        std::cerr << "computed = " << blocksBatchSize + extrasBatchSize << std::endl;
+        LOG( m_loggerDetail ) << "Computed block " << i
+                              << " DB usage = " << blocksBatchSize + extrasBatchSize;
     }  // for block
 
     uint64_t pieceUsageBytes = 0;
@@ -969,8 +971,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += blocksWriteSize + extrasWriteSize;
 
-    std::cerr << "Will write " << blocksWriteSize << " + " << extrasWriteSize << std::endl;
-    LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerDetail ) << "Block " << tbi.number() << " DB usage is "
+                          << blocksWriteSize + extrasWriteSize;
+    LOG( m_loggerDetail ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
