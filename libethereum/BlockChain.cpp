@@ -302,7 +302,7 @@ string BlockChain::dumpDatabase() const {
     oss << m_lastBlockHash << '\n';
     std::map< string, string > sorted;
     m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
-        // give priority ti 1-st occurence
+        // give priority ti 1-st occurrence
         if ( sorted.count( toHex( key ) ) == 0 )
             sorted[toHex( key )] = toHex( value );
         return true;
@@ -597,7 +597,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     //
     // We need to compute log blooms directly here without using Block::logBloom()
     // method because _receipts may contain extra receipt items corresponding to
-    // partially cought-up transactions
+    // partially caught-up transactions
     //
     // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
     //
@@ -630,7 +630,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
     //
     // We need to compute log blooms directly here without using Block::logBloom()
     // method because _receipts may contain extra receipt items corresponding to
-    // partially cought-up transactions
+    // partially caught-up transactions
     //
     // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
     //
@@ -805,7 +805,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             //
             // We need to compute log blooms directly here without using Block::logBloom()
             // method because _receipts may contain extra receipt items corresponding to
-            // partially cought-up transactions
+            // partially caught-up transactions
             //
             // old code was: // LogBloom blockBloom = tbi.logBloom();
             //
@@ -982,7 +982,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             fresh.push_back( h );
 
     clog( VerbosityTrace, "BlockChain" )
-        << cc::debug( "Insterted block with " ) << _block.transactions.size()
+        << cc::debug( "Inserted block with " ) << _block.transactions.size()
         << cc::debug( " transactions" );
 
     return ImportRoute{dead, fresh, _block.transactions};
