@@ -811,7 +811,16 @@ int main( int argc, char** argv ) try {
             skutils::rest::client cli;
             cli.optsSSL_ = optsSSL;
             cli.open( u );
-            skutils::rest::data_t d = cli.call( joIn );
+            const bool isAutoGenJsonID = true;
+            const skutils::rest::e_data_fetch_strategy edfs =
+                skutils::rest::e_data_fetch_strategy::edfs_default;
+            const std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 );
+            const size_t cntSteps = 1000;
+            const bool isReturnErrorResponce = true;
+            skutils::rest::data_t d =
+                cli.call( joIn, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponce );
+            if ( !d.err_s_.empty() )
+                throw std::runtime_error( d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error( "EMPTY answer received" );
             std::cout << ( cc::debug( "Raw received data is" ) + cc::debug( "....." ) +

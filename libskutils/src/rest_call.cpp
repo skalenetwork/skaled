@@ -59,6 +59,7 @@ void data_t::clear() {
 }
 void data_t::assign( const data_t& d ) {
     s_ = d.s_;
+    err_s_ = d.err_s_;
     content_type_ = d.content_type_;
     ei_ = d.ei_;
 }
@@ -590,7 +591,7 @@ bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
 }
 
 data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponce ) {
     nlohmann::json jo = joIn;
     if ( isAutoGenJsonID )
         stat_auto_gen_json_id( jo );
@@ -599,12 +600,18 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
         if ( ch_->is_valid() ) {
             data_t d;
             std::shared_ptr< skutils::http::response > resp =
-                ch_->Post( "/", strJsonIn, "application/json" );
+                ch_->Post( "/", strJsonIn, "application/json", isReturnErrorResponce );
             d.ei_ = ch_->eiLast_;
             if ( !resp )
                 return d;  // data_t();
-            if ( resp->status_ != 200 )
+            if ( !resp->send_status_ ) {
+                d.err_s_ = resp->body_;
                 return d;  // data_t();
+            }
+            if ( resp->status_ != 200 ) {
+                d.err_s_ = resp->body_;
+                return d;  // data_t();
+            }
             d.s_ = resp->body_;
             std::string h;
             if ( resp->has_header( "Content-Type" ) )
@@ -642,10 +649,10 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     return d;
 }
 data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponce ) {
     try {
         nlohmann::json jo = nlohmann::json::parse( strJsonIn );
-        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps );
+        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponce );
     } catch ( ... ) {
     }
     return data_t();
