@@ -678,6 +678,10 @@ int main( int argc, char** argv ) try {
         "Perform test JSON RPC call to Ethereum client at sepcified URL and exit" );
     addGeneralOption( "test-json", po::value< string >()->value_name( "<JSON>" ),
         "Send specified JSON in test RPC call" );
+    addGeneralOption( "test-ca", po::value< string >()->value_name( "<path>" ), "Test CA file" );
+    addGeneralOption(
+        "test-cert", po::value< string >()->value_name( "<path>" ), "Test certifcicate file" );
+    addGeneralOption( "test-key", po::value< string >()->value_name( "<path>" ), "Test key file" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
     addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "log-value-size-limit",
@@ -743,9 +747,16 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "test-url" ) ) {
-        std::string strJSON, strURL = vm["test-url"].as< std::string >();
+        std::string strJSON, strURL = vm["test-url"].as< std::string >(), strPathCA, strPathCert,
+                             strPathKey;
         if ( vm.count( "test-json" ) )
             strJSON = vm["test-json"].as< std::string >();
+        if ( vm.count( "test-ca" ) )
+            strPathCA = vm["test-ca"].as< std::string >();
+        if ( vm.count( "test-cert" ) )
+            strPathCert = vm["test-cert"].as< std::string >();
+        if ( vm.count( "test-key" ) )
+            strPathKey = vm["test-key"].as< std::string >();
         skutils::url u;
         try {
             u = skutils::url( strURL );
@@ -780,9 +791,25 @@ int main( int argc, char** argv ) try {
                            cc::warn( "unknown exception" ) + "\n" );
             return EX_TEMPFAIL;
         }
+        skutils::http::SSL_client_options optsSSL;
+        if ( !strPathCA.empty() ) {
+            optsSSL.ca_file = skutils::tools::trim_copy( strPathCA );
+            std::cout << ( cc::debug( "Using CA file " ) + cc::debug( "..........." ) +
+                           cc::p( strPathCA ) + "\n" );
+        }
+        if ( !strPathCert.empty() ) {
+            optsSSL.client_cert = skutils::tools::trim_copy( strPathCert );
+            std::cout << ( cc::debug( "Using CERT file " ) + cc::debug( "........." ) +
+                           cc::p( strPathCert ) + "\n" );
+        }
+        if ( !strPathKey.empty() ) {
+            optsSSL.client_key = skutils::tools::trim_copy( strPathKey );
+            std::cout << ( cc::debug( "Using KEY file " ) + cc::debug( ".........." ) +
+                           cc::p( strPathKey ) + "\n" );
+        }
         try {
             skutils::rest::client cli;
-            // cli.optsSSL_ = optsSSL;
+            cli.optsSSL_ = optsSSL;
             cli.open( u );
             skutils::rest::data_t d = cli.call( joIn );
             if ( d.empty() )
