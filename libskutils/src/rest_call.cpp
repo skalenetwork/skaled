@@ -605,7 +605,7 @@ bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
 }
 
 data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponce ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
     nlohmann::json jo = joIn;
     if ( isAutoGenJsonID )
         stat_auto_gen_json_id( jo );
@@ -615,7 +615,7 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
             data_t d;
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp = ch_->Post(
-                strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponce );
+                strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
             d.ei_ = ch_->eiLast_;
             if ( !resp )
                 return d;  // data_t();
@@ -668,10 +668,10 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     return d;
 }
 data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponce ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
     try {
         nlohmann::json jo = nlohmann::json::parse( strJsonIn );
-        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponce );
+        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponse );
     } catch ( ... ) {
     }
     return data_t();

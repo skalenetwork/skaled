@@ -2414,12 +2414,12 @@ bool client::read_and_close_socket( socket_t sock, request& req, response& res )
 }
 
 std::shared_ptr< response > client::Get(
-    const char* path, fn_progress progress, bool isReturnErrorResponce ) {
-    return Get( path, map_headers(), progress, isReturnErrorResponce );
+    const char* path, fn_progress progress, bool isReturnErrorResponse ) {
+    return Get( path, map_headers(), progress, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Get( const char* path, const map_headers& headers,
-    fn_progress progress, bool isReturnErrorResponce ) {
+    fn_progress progress, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "GET";
     req.path_ = path;
@@ -2427,31 +2427,31 @@ std::shared_ptr< response > client::Get( const char* path, const map_headers& he
     req.progress_ = progress;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Head( const char* path, bool isReturnErrorResponce ) {
-    return Head( path, map_headers(), isReturnErrorResponce );
+std::shared_ptr< response > client::Head( const char* path, bool isReturnErrorResponse ) {
+    return Head( path, map_headers(), isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Head(
-    const char* path, const map_headers& headers, bool isReturnErrorResponce ) {
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "HEAD";
     req.headers_ = headers;
     req.path_ = path;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 std::shared_ptr< response > client::Post( const char* path, const std::string& body,
-    const char* content_type, bool isReturnErrorResponce ) {
-    return Post( path, map_headers(), body, content_type, isReturnErrorResponce );
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Post( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Post( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type, bool isReturnErrorResponce ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "POST";
     req.headers_ = headers;
@@ -2460,16 +2460,16 @@ std::shared_ptr< response > client::Post( const char* path, const map_headers& h
     req.body_ = body;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 std::shared_ptr< response > client::Post(
-    const char* path, const map_params& params, bool isReturnErrorResponce ) {
-    return Post( path, map_headers(), params, isReturnErrorResponce );
+    const char* path, const map_params& params, bool isReturnErrorResponse ) {
+    return Post( path, map_headers(), params, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Post( const char* path, const map_headers& headers,
-    const map_params& params, bool isReturnErrorResponce ) {
+    const map_params& params, bool isReturnErrorResponse ) {
     std::string query;
     for ( auto it = params.begin(); it != params.end(); ++it ) {
         if ( it != params.begin() ) {
@@ -2479,16 +2479,16 @@ std::shared_ptr< response > client::Post( const char* path, const map_headers& h
         query += "=";
         query += it->second;
     }
-    return Post( path, headers, query, "application/x-www-form-urlencoded", isReturnErrorResponce );
+    return Post( path, headers, query, "application/x-www-form-urlencoded", isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Put( const char* path, const std::string& body,
-    const char* content_type, bool isReturnErrorResponce ) {
-    return Put( path, map_headers(), body, content_type, isReturnErrorResponce );
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Put( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Put( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type, bool isReturnErrorResponce ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "PUT";
     req.headers_ = headers;
@@ -2497,16 +2497,16 @@ std::shared_ptr< response > client::Put( const char* path, const map_headers& he
     req.body_ = body;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 std::shared_ptr< response > client::Patch( const char* path, const std::string& body,
-    const char* content_type, bool isReturnErrorResponce ) {
-    return Patch( path, map_headers(), body, content_type, isReturnErrorResponce );
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Patch( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Patch( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type, bool isReturnErrorResponce ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "PATCH";
     req.headers_ = headers;
@@ -2515,37 +2515,37 @@ std::shared_ptr< response > client::Patch( const char* path, const map_headers& 
     req.body_ = body;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Delete( const char* path, bool isReturnErrorResponce ) {
-    return Delete( path, map_headers(), isReturnErrorResponce );
+std::shared_ptr< response > client::Delete( const char* path, bool isReturnErrorResponse ) {
+    return Delete( path, map_headers(), isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Delete(
-    const char* path, const map_headers& headers, bool isReturnErrorResponce ) {
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "DELETE";
     req.path_ = path;
     req.headers_ = headers;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Options( const char* path, bool isReturnErrorResponce ) {
-    return Options( path, map_headers(), isReturnErrorResponce );
+std::shared_ptr< response > client::Options( const char* path, bool isReturnErrorResponse ) {
+    return Options( path, map_headers(), isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Options(
-    const char* path, const map_headers& headers, bool isReturnErrorResponce ) {
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "OPTIONS";
     req.path_ = path;
     req.headers_ = headers;
     auto res = std::make_shared< response >();
     res->send_status_ = send( req, *res );
-    return ( res->send_status_ || isReturnErrorResponce ) ? res : nullptr;
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
