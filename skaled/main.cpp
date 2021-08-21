@@ -817,9 +817,9 @@ int main( int argc, char** argv ) try {
                 skutils::rest::e_data_fetch_strategy::edfs_default;
             const std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 );
             const size_t cntSteps = 1000;
-            const bool isReturnErrorResponce = true;
+            const bool isReturnErrorResponse = true;
             skutils::rest::data_t d =
-                cli.call( joIn, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponce );
+                cli.call( joIn, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponse );
             if ( !d.err_s_.empty() )
                 throw std::runtime_error( "REST call error: " + d.err_s_ );
             if ( d.empty() )

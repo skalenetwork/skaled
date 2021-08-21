@@ -530,41 +530,41 @@ public:
     virtual bool is_ssl() const { return false; }
 
     std::shared_ptr< response > Get(
-        const char* path, fn_progress progress = nullptr, bool isReturnErrorResponce = false );
+        const char* path, fn_progress progress = nullptr, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Get( const char* path, const map_headers& headers,
-        fn_progress progress = nullptr, bool isReturnErrorResponce = false );
+        fn_progress progress = nullptr, bool isReturnErrorResponse = false );
 
-    std::shared_ptr< response > Head( const char* path, bool isReturnErrorResponce = false );
+    std::shared_ptr< response > Head( const char* path, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Head(
-        const char* path, const map_headers& headers, bool isReturnErrorResponce = false );
+        const char* path, const map_headers& headers, bool isReturnErrorResponse = false );
 
     std::shared_ptr< response > Post( const char* path, const std::string& body,
-        const char* content_type, bool isReturnErrorResponce = false );
+        const char* content_type, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Post( const char* path, const map_headers& headers,
-        const std::string& body, const char* content_type, bool isReturnErrorResponce = false );
+        const std::string& body, const char* content_type, bool isReturnErrorResponse = false );
 
     std::shared_ptr< response > Post(
-        const char* path, const map_params& params, bool isReturnErrorResponce = false );
+        const char* path, const map_params& params, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Post( const char* path, const map_headers& headers,
-        const map_params& params, bool isReturnErrorResponce = false );
+        const map_params& params, bool isReturnErrorResponse = false );
 
     std::shared_ptr< response > Put( const char* path, const std::string& body,
-        const char* content_type, bool isReturnErrorResponce = false );
+        const char* content_type, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Put( const char* path, const map_headers& headers,
-        const std::string& body, const char* content_type, bool isReturnErrorResponce = false );
+        const std::string& body, const char* content_type, bool isReturnErrorResponse = false );
 
     std::shared_ptr< response > Patch( const char* path, const std::string& body,
-        const char* content_type, bool isReturnErrorResponce = false );
+        const char* content_type, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Patch( const char* path, const map_headers& headers,
-        const std::string& body, const char* content_type, bool isReturnErrorResponce = false );
+        const std::string& body, const char* content_type, bool isReturnErrorResponse = false );
 
-    std::shared_ptr< response > Delete( const char* path, bool isReturnErrorResponce = false );
+    std::shared_ptr< response > Delete( const char* path, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Delete(
-        const char* path, const map_headers& headers, bool isReturnErrorResponce = false );
+        const char* path, const map_headers& headers, bool isReturnErrorResponse = false );
 
-    std::shared_ptr< response > Options( const char* path, bool isReturnErrorResponce = false );
+    std::shared_ptr< response > Options( const char* path, bool isReturnErrorResponse = false );
     std::shared_ptr< response > Options(
-        const char* path, const map_headers& headers, bool isReturnErrorResponce = false );
+        const char* path, const map_headers& headers, bool isReturnErrorResponse = false );
 
     bool send( request& req, response& res );
 
