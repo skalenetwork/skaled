@@ -351,8 +351,20 @@ client::~client() {
     close();
 }
 
+std::string client::u_path() const {
+    std::string s = u_.path();
+    if ( s.empty() )
+        s = "/";
+    return s;
+}
+std::string client::u_path_and_args() const {
+    std::string s = u_path() + u_.str_query();
+    return s;
+}
+
 bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, size_t cntSteps ) {
     try {
+        u_ = u;
         std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u.scheme() ) );
         if ( strScheme.empty() )
             return false;
@@ -601,8 +613,9 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
-            std::shared_ptr< skutils::http::response > resp =
-                ch_->Post( "/", strJsonIn, "application/json", isReturnErrorResponce );
+            const std::string strHttpQueryPath = u_path_and_args();
+            std::shared_ptr< skutils::http::response > resp = ch_->Post(
+                strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponce );
             d.ei_ = ch_->eiLast_;
             if ( !resp )
                 return d;  // data_t();
@@ -741,8 +754,9 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+            const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
-                ch_->Post( "/", strJsonIn, "application/json" );
+                ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );
             if ( !resp ) {
                 onError( jo, "empty responce" );
                 return;

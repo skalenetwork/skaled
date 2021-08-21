@@ -149,6 +149,8 @@ public:
     bool is_open() const;
 
 private:
+    std::string u_path() const;
+    std::string u_path_and_args() const;
     bool handle_data_arrived( const data_t& d );
     data_t fetch_data_with_strategy(
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
