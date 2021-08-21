@@ -96,6 +96,7 @@
 #include <skutils/console_colors.h>
 #include <skutils/rest_call.h>
 #include <skutils/task_performance.h>
+#include <skutils/url.h>
 #include <skutils/utils.h>
 
 using namespace std;
@@ -673,6 +674,10 @@ int main( int argc, char** argv ) try {
             .c_str() );
     addGeneralOption( "bls-key-file", po::value< string >()->value_name( "<file>" ),
         "Load BLS keys from file (default: none)" );
+    addGeneralOption( "test-url", po::value< string >()->value_name( "<url>" ),
+        "Perform test JSON RPC call to Ethereum client at sepcified URL and exit" );
+    addGeneralOption( "test-json", po::value< string >()->value_name( "<JSON>" ),
+        "Send specified JSON in test RPC call" );
     addGeneralOption( "colors", "Use ANSI colorized output and logging" );
     addGeneralOption( "no-colors", "Use output and logging without colors" );
     addGeneralOption( "log-value-size-limit",
@@ -735,6 +740,68 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+    }
+
+    if ( vm.count( "test-url" ) ) {
+        std::string strJSON, strURL = vm["test-url"].as< std::string >();
+        if ( vm.count( "test-json" ) )
+            strJSON = vm["test-json"].as< std::string >();
+        skutils::url u;
+        try {
+            u = skutils::url( strURL );
+            std::cout << ( cc::debug( "Using URL" ) + cc::debug( "................" ) +
+                           cc::u( u.str() ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        nlohmann::json joIn, joOut;
+        try {
+            if ( !strJSON.empty() ) {
+                joIn = nlohmann::json::parse( strJSON );
+                std::cout << ( cc::debug( "Input JSON is" ) + cc::debug( "............" ) +
+                               cc::j( joIn ) + "\n" );
+            } else
+                std::cout << ( cc::error( "NOTICE:" ) +
+                               cc::warn( " No valid JSON specified for test call" ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) +
+                           cc::error( " Failed to parse specified test JSON: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) +
+                           cc::error( " Failed to parse specified test JSON: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        try {
+            skutils::rest::client cli;
+            // cli.optsSSL_ = optsSSL;
+            cli.open( u );
+            skutils::rest::data_t d = cli.call( joIn );
+            if ( d.empty() )
+                throw std::runtime_error( "EMPTY answer received" );
+            std::cout << ( cc::debug( "Raw received data is" ) + cc::debug( "....." ) +
+                           cc::normal( d.s_ ) + "\n" );
+            joOut = nlohmann::json::parse( d.s_ );
+            std::cout << ( cc::debug( "Output JSON is" ) + cc::debug( "..........." ) +
+                           cc::j( joOut ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        return 0;
     }
 
     cout << std::endl << "skaled " << Version << std::endl << std::endl;

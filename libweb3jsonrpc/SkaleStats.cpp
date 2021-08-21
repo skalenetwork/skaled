@@ -37,6 +37,7 @@
 #include <skutils/eth_utils.h>
 #include <skutils/rest_call.h>
 #include <skutils/task_performance.h>
+#include <skutils/url.h>
 
 #include <algorithm>
 #include <array>
