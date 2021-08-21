@@ -361,8 +361,12 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             return false;
         //
         std::string strPort = skutils::tools::to_lower( skutils::tools::trim_copy( u.port() ) );
-        if ( strPort.empty() )
-            strPort = "80";
+        if ( strPort.empty() ) {
+            if ( strScheme == "https" || strScheme == "wss" )
+                strPort = "443";
+            else
+                strPort = "80";
+        }
         int nPort = std::atoi( strPort.c_str() );
         //
         if ( strScheme == "http" ) {
