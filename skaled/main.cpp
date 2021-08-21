@@ -217,9 +217,10 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     joIn["method"] = "skale_getLatestSnapshotBlockNumber";
     joIn["params"] = nlohmann::json::object();
     skutils::rest::data_t d = cli.call( joIn );
-    if ( d.empty() ) {
+    if ( !d.err_s_.empty() )
+        throw std::runtime_error( "cannot get blockNumber to download snapshot: " + d.err_s_ );
+    if ( d.empty() )
         throw std::runtime_error( "cannot get blockNumber to download snapshot" );
-    }
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
     unsigned block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
 
@@ -820,7 +821,7 @@ int main( int argc, char** argv ) try {
             skutils::rest::data_t d =
                 cli.call( joIn, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponce );
             if ( !d.err_s_.empty() )
-                throw std::runtime_error( d.err_s_ );
+                throw std::runtime_error( "REST call error: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error( "EMPTY answer received" );
             std::cout << ( cc::debug( "Raw received data is" ) + cc::debug( "....." ) +

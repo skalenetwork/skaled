@@ -470,6 +470,8 @@ bool client::is_open() const {
 }
 
 bool client::handle_data_arrived( const data_t& d ) {
+    if ( !d.err_s_.empty() )
+        return false;
     if ( d.empty() )
         return false;
     await_t a;
@@ -641,10 +643,14 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
         handle_data_arrived( d );
     }
     data_t d = fetch_data_with_strategy( edfs );
-    if ( d.empty() ) {
+    if ( ( !d.err_s_.empty() ) || d.empty() ) {
         d.ei_.et_ = skutils::http::common_network_exception::error_type::et_unknown;
         d.ei_.ec_ = errno;
         d.ei_.strError_ = "WS(S) data transfer error";
+        if ( !d.err_s_.empty() ) {
+            d.ei_.strError_ += ": ";
+            d.ei_.strError_ += d.err_s_;
+        }
     }
     return d;
 }

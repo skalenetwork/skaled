@@ -431,6 +431,8 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         cli.optsSSL_ = optsSSL;
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
         if ( d.empty() )
             throw std::runtime_error(
                 "failed to sign message(s) with wallet, EMPTY data received" );
@@ -658,6 +660,8 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                 skutils::rest::client cli( strURL );
                 skutils::rest::data_t d = cli.call( joCall );
                 try {
+                    if ( !d.err_s_.empty() )
+                        throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
@@ -735,6 +739,8 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                 skutils::rest::client cli( strURL );
                 skutils::rest::data_t d = cli.call( joCall );
                 try {
+                    if ( !d.err_s_.empty() )
+                        throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
@@ -839,6 +845,8 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
         joCall["params"] = jarr;
         skutils::rest::client cli( urlMainNet );
         skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "Main Net call to eth_getLogs failed: " + d.err_s_ );
         if ( d.empty() )
             throw std::runtime_error( "Main Net call to eth_getLogs failed, EMPTY data received" );
         nlohmann::json joReceipt = nlohmann::json::parse( d.s_ )["result"];
@@ -1563,10 +1571,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //    joCall["params"] = nlohmann::json::array();
         //    skutils::rest::client cli( urlMainNet );
         //    skutils::rest::data_t d = cli.call( joCall );
+        //    if ( !d.err_s_.empty() )
+        //        throw std::runtime_error( "strLogPrefix + cc::error( " Main Net call to
+        //        eth_blockNumber failed: " + d.err_s_ );
         //    if ( d.empty() )
-        //        clog( VerbosityDebug, "IMA" )
-        //            << ( strLogPrefix + cc::error( " Main Net call to eth_blockNumber failed,
-        //            EMPTY data received" ) );
+        //        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::error( " Main Net call to
+        //        eth_blockNumber failed, EMPTY data received" ) );
         //    else {
         //        bool gotBN = false;
         //        nlohmann::json joMainNetBlockNumber;
@@ -3069,11 +3079,13 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = nlohmann::json::array();
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
-                            if ( d.empty() ) {
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_blockNumber failed: " + d.err_s_ );
+                            if ( d.empty() )
                                 throw std::runtime_error(
                                     "Main Net call to eth_blockNumber failed, EMPTY data "
                                     "received" );
-                            }
                             nlohmann::json joMainNetBlockNumber =
                                 nlohmann::json::parse( d.s_ )["result"];
                             if ( joMainNetBlockNumber.is_string() ) {
@@ -3147,10 +3159,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         joCall["params"] = jarrLogsQuery;
                         skutils::rest::client cli( urlMainNet );
                         skutils::rest::data_t d = cli.call( joCall );
-                        if ( d.empty() ) {
+                        if ( !d.err_s_.empty() )
+                            throw std::runtime_error(
+                                "Main Net call to eth_getLogs failed: " + d.err_s_ );
+                        if ( d.empty() )
                             throw std::runtime_error(
                                 "Main Net call to eth_getLogs failed, EMPTY data received" );
-                        }
                         jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
                     } else {
                         Json::Value jvLogsQuery;
@@ -3424,6 +3438,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = jarrParams;
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionByHash failed: " +
+                                    d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
                                     "Main Net call to eth_getTransactionByHash failed, EMPTY data "
@@ -3550,6 +3568,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = jarrParams;
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionReceipt failed: " +
+                                    d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
                                     "Main Net call to eth_getTransactionReceipt failed, EMPTY data "
@@ -4012,10 +4034,12 @@ OutgoingMessageData.data
                     if ( strDirection == "M2S" ) {
                         // skutils::rest::client cli( urlMainNet );
                         // skutils::rest::data_t d = cli.call( joCall );
+                        // if ( !d.err_s_.empty() )
+                        //    throw std::runtime_error( strDirection + " eth_call to MessageProxy
+                        //    failed: " + d.err_s_ );
                         // if ( d.empty() )
-                        //    throw std::runtime_error(
-                        //        strDirection +
-                        //        " eth_call to MessageProxy failed, EMPTY data received" );
+                        //    throw std::runtime_error( strDirection + " eth_call to MessageProxy
+                        //    failed, EMPTY data received" );
                         // nlohmann::json joResult;
                         // try {
                         //    joResult = nlohmann::json::parse( d.s_ )["result"];
@@ -4216,6 +4240,8 @@ OutgoingMessageData.data
             cli.optsSSL_ = optsSSL;
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
+            if ( !d.err_s_.empty() )
+                throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error(
                     "failed to sign message(s) with wallet, EMPTY data received" );
