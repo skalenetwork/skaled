@@ -2413,41 +2413,45 @@ bool client::read_and_close_socket( socket_t sock, request& req, response& res )
     return true;
 }
 
-std::shared_ptr< response > client::Get( const char* path, fn_progress progress ) {
-    return Get( path, map_headers(), progress );
+std::shared_ptr< response > client::Get(
+    const char* path, fn_progress progress, bool isReturnErrorResponse ) {
+    return Get( path, map_headers(), progress, isReturnErrorResponse );
 }
 
-std::shared_ptr< response > client::Get(
-    const char* path, const map_headers& headers, fn_progress progress ) {
+std::shared_ptr< response > client::Get( const char* path, const map_headers& headers,
+    fn_progress progress, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "GET";
     req.path_ = path;
     req.headers_ = headers;
     req.progress_ = progress;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Head( const char* path ) {
-    return Head( path, map_headers() );
+std::shared_ptr< response > client::Head( const char* path, bool isReturnErrorResponse ) {
+    return Head( path, map_headers(), isReturnErrorResponse );
 }
 
-std::shared_ptr< response > client::Head( const char* path, const map_headers& headers ) {
+std::shared_ptr< response > client::Head(
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "HEAD";
     req.headers_ = headers;
     req.path_ = path;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Post(
-    const char* path, const std::string& body, const char* content_type ) {
-    return Post( path, map_headers(), body, content_type );
+std::shared_ptr< response > client::Post( const char* path, const std::string& body,
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Post( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Post( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "POST";
     req.headers_ = headers;
@@ -2455,15 +2459,17 @@ std::shared_ptr< response > client::Post( const char* path, const map_headers& h
     req.headers_.emplace( "Content-Type", content_type );
     req.body_ = body;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
-}
-
-std::shared_ptr< response > client::Post( const char* path, const map_params& params ) {
-    return Post( path, map_headers(), params );
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 std::shared_ptr< response > client::Post(
-    const char* path, const map_headers& headers, const map_params& params ) {
+    const char* path, const map_params& params, bool isReturnErrorResponse ) {
+    return Post( path, map_headers(), params, isReturnErrorResponse );
+}
+
+std::shared_ptr< response > client::Post( const char* path, const map_headers& headers,
+    const map_params& params, bool isReturnErrorResponse ) {
     std::string query;
     for ( auto it = params.begin(); it != params.end(); ++it ) {
         if ( it != params.begin() ) {
@@ -2473,16 +2479,16 @@ std::shared_ptr< response > client::Post(
         query += "=";
         query += it->second;
     }
-    return Post( path, headers, query, "application/x-www-form-urlencoded" );
+    return Post( path, headers, query, "application/x-www-form-urlencoded", isReturnErrorResponse );
 }
 
-std::shared_ptr< response > client::Put(
-    const char* path, const std::string& body, const char* content_type ) {
-    return Put( path, map_headers(), body, content_type );
+std::shared_ptr< response > client::Put( const char* path, const std::string& body,
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Put( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Put( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "PUT";
     req.headers_ = headers;
@@ -2490,16 +2496,17 @@ std::shared_ptr< response > client::Put( const char* path, const map_headers& he
     req.headers_.emplace( "Content-Type", content_type );
     req.body_ = body;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Patch(
-    const char* path, const std::string& body, const char* content_type ) {
-    return Patch( path, map_headers(), body, content_type );
+std::shared_ptr< response > client::Patch( const char* path, const std::string& body,
+    const char* content_type, bool isReturnErrorResponse ) {
+    return Patch( path, map_headers(), body, content_type, isReturnErrorResponse );
 }
 
 std::shared_ptr< response > client::Patch( const char* path, const map_headers& headers,
-    const std::string& body, const char* content_type ) {
+    const std::string& body, const char* content_type, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "PATCH";
     req.headers_ = headers;
@@ -2507,33 +2514,38 @@ std::shared_ptr< response > client::Patch( const char* path, const map_headers& 
     req.headers_.emplace( "Content-Type", content_type );
     req.body_ = body;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Delete( const char* path ) {
-    return Delete( path, map_headers() );
+std::shared_ptr< response > client::Delete( const char* path, bool isReturnErrorResponse ) {
+    return Delete( path, map_headers(), isReturnErrorResponse );
 }
 
-std::shared_ptr< response > client::Delete( const char* path, const map_headers& headers ) {
+std::shared_ptr< response > client::Delete(
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "DELETE";
     req.path_ = path;
     req.headers_ = headers;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
-std::shared_ptr< response > client::Options( const char* path ) {
-    return Options( path, map_headers() );
+std::shared_ptr< response > client::Options( const char* path, bool isReturnErrorResponse ) {
+    return Options( path, map_headers(), isReturnErrorResponse );
 }
 
-std::shared_ptr< response > client::Options( const char* path, const map_headers& headers ) {
+std::shared_ptr< response > client::Options(
+    const char* path, const map_headers& headers, bool isReturnErrorResponse ) {
     request req;
     req.method_ = "OPTIONS";
     req.path_ = path;
     req.headers_ = headers;
     auto res = std::make_shared< response >();
-    return send( req, *res ) ? res : nullptr;
+    res->send_status_ = send( req, *res );
+    return ( res->send_status_ || isReturnErrorResponse ) ? res : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

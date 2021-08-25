@@ -498,6 +498,13 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         joParams["blockNumber"] = block_number;
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
+        if ( !d.err_s_.empty() ) {
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = "REST call failed: " + d.err_s_;
+            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed: " )
+                      << cc::warn( d.err_s_ ) << "\n";
+            return false;
+        }
         if ( d.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed";

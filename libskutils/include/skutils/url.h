@@ -103,6 +103,7 @@ public:
         wasBuilt_ = wasParsed_ = false;
         return ( *this );
     }  // all fields are overwritten
+    std::string str_query( bool isWithFragment = true ) const;
 
     const std::string& scheme() const {
         lazy_parse();
