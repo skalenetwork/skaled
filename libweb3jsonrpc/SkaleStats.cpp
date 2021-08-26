@@ -37,6 +37,7 @@
 #include <skutils/eth_utils.h>
 #include <skutils/rest_call.h>
 #include <skutils/task_performance.h>
+#include <skutils/url.h>
 
 #include <algorithm>
 #include <array>
@@ -57,8 +58,6 @@
 
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/crypto/OpenSSLECDSAKey.h>
-
-//#define __ENABLE_IMA_RELATED_JSON__ 1
 
 namespace dev {
 
@@ -428,11 +427,14 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
             << ( cc::debug( " Will send " ) + cc::notice( "ECDSA sign query" ) +
                    cc::debug( " to wallet: " ) + cc::j( joCall ) );
         skutils::rest::client cli;
-        cli.optsSSL = optsSSL;
+        cli.optsSSL_ = optsSSL;
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
         if ( d.empty() )
-            throw std::runtime_error( "failed to sign message(s) with wallet" );
+            throw std::runtime_error(
+                "failed to sign message(s) with wallet, EMPTY data received" );
         nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
         clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
                                            cc::debug( " result: " ) + cc::j( joSignResult ) );
@@ -637,7 +639,7 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
         } else
             clog( VerbosityWarning, "IMA" )
                 << ( strLogPrefix + " " + cc::warn( "Broadcast/insert signature from node iD " ) +
-                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "empty" ) );
+                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "EMPTY" ) );
         clog( VerbosityTrace, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
                    cc::info( "inserted TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
@@ -655,8 +657,10 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                 skutils::rest::client cli( strURL );
                 skutils::rest::data_t d = cli.call( joCall );
                 try {
+                    if ( !d.err_s_.empty() )
+                        throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
-                        throw std::runtime_error( "empty broadcast answer" );
+                        throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
@@ -714,7 +718,7 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
         } else
             clog( VerbosityWarning, "IMA" )
                 << ( strLogPrefix + " " + cc::warn( "Broadcast/erase signature from node iD " ) +
-                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "empty" ) );
+                       cc::num10( nNodeID ) + cc::warn( " is " ) + cc::error( "EMPTY" ) );
         clog( VerbosityTrace, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Will broadcast" ) + " " +
                    cc::info( "erased TXN" ) + " " + cc::info( dev::toJS( tx_hash ) ) +
@@ -732,8 +736,10 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                 skutils::rest::client cli( strURL );
                 skutils::rest::data_t d = cli.call( joCall );
                 try {
+                    if ( !d.err_s_.empty() )
+                        throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
-                        throw std::runtime_error( "empty broadcast answer" );
+                        throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
                     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
@@ -836,8 +842,10 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
         joCall["params"] = jarr;
         skutils::rest::client cli( urlMainNet );
         skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "Main Net call to eth_getLogs failed: " + d.err_s_ );
         if ( d.empty() )
-            throw std::runtime_error( "Main Net call to eth_getLogs failed" );
+            throw std::runtime_error( "Main Net call to eth_getLogs failed, EMPTY data received" );
         nlohmann::json joReceipt = nlohmann::json::parse( d.s_ )["result"];
         if ( joReceipt.is_object() && joReceipt.count( "transactionHash" ) > 0 &&
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
@@ -854,98 +862,14 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-
-static std::string stat_get_ima_related_json_file_path() {
-    boost::filesystem::path pathDataDir = dev::getDataDir();
-    boost::filesystem::path pathImaRelatedJsonFile = pathDataDir / "ima.related.json";
-    std::string strPathImaRelatedJsonFile =
-        // boost::filesystem::canonical( pathImaRelatedJsonFile ).string();
-        pathImaRelatedJsonFile.string();
-    return strPathImaRelatedJsonFile;
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+    if ( strURL.empty() )
+        return string();
+    skutils::url u( strURL );
+    u.scheme( "zmq" );
+    u.port( "1031" );
+    return u.str();
 }
-
-static nlohmann::json stat_load_ima_related_json(
-    nlohmann::json joDefault = nlohmann::json::object(), std::string strPathImaRelatedJsonFile = "",
-    bool isThrowExceptionOnError = false ) {
-    try {
-        if ( strPathImaRelatedJsonFile.empty() )
-            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-        std::ifstream ifs( strPathImaRelatedJsonFile.c_str() );
-        nlohmann::json joLoaded = nlohmann::json::parse( ifs );
-        return joLoaded;
-    } catch ( ... ) {
-        if ( isThrowExceptionOnError )
-            throw;
-        return joDefault;
-    }
-}
-
-static bool stat_save_ima_related_json( nlohmann::json jo,
-    std::string strPathImaRelatedJsonFile = "", bool isThrowExceptionOnError = true ) {
-    try {
-        if ( strPathImaRelatedJsonFile.empty() )
-            strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-        std::ofstream ofs( strPathImaRelatedJsonFile.c_str() );
-        ofs << jo;
-        return true;
-    } catch ( ... ) {
-        if ( isThrowExceptionOnError )
-            throw;
-        return false;
-    }
-}
-
-static nlohmann::json stat_load_or_init_ima_related_json( skutils::url& urlMainNet,
-    nlohmann::json joDefault = nlohmann::json::object(),
-    std::string strPathImaRelatedJsonFile = "" ) {
-    std::string strLogPrefix( "IMA related state file init" );
-    nlohmann::json joLoaded =
-        stat_load_ima_related_json( joDefault, strPathImaRelatedJsonFile, false );
-    if ( joLoaded.count( "lastSearchedBlockM2S" ) != 0 )
-        return joLoaded;
-    bool gotBN = false;
-    try {
-        nlohmann::json joCall = nlohmann::json::object();
-        joCall["jsonrpc"] = "2.0";
-        joCall["method"] = "eth_blockNumber";
-        joCall["params"] = nlohmann::json::array();
-        skutils::rest::client cli( urlMainNet );
-        skutils::rest::data_t d = cli.call( joCall );
-        if ( !d.empty() ) {
-            nlohmann::json joMainNetBlockNumber = nlohmann::json::parse( d.s_ )["result"];
-            dev::u256 uBN( "0" );
-            if ( joMainNetBlockNumber.is_string() ) {
-                uBN = dev::u256( joMainNetBlockNumber.get< std::string >() );
-                gotBN = true;
-            } else if ( joMainNetBlockNumber.is_number() ) {
-                uBN = dev::u256( joMainNetBlockNumber.get< uint64_t >() );
-                gotBN = true;
-            }
-            if ( gotBN ) {
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " (FIRST RUN) Block number on Main Net is " ) +
-                           cc::info( dev::toJS( uBN ) ) );
-                joLoaded["lastSearchedBlockM2S"] = dev::toJS( uBN );
-                if ( !stat_save_ima_related_json( joLoaded, strPathImaRelatedJsonFile, false ) ) {
-                    clog( VerbosityError, "IMA" )
-                        << ( strLogPrefix +
-                               cc::error( " (FIRST RUN) Failed to save IMA related state file" ) );
-                }
-            }
-        }
-    } catch ( ... ) {
-    }
-    if ( !gotBN ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix +
-                   cc::error( " (FIRST RUN) Failed to initialize IMA related state file" ) );
-    }
-    return joLoaded;
-}
-
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
-
 
 SkaleStats::SkaleStats(
     const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
@@ -955,15 +879,7 @@ SkaleStats::SkaleStats(
     nThisNodeIndex_ = findThisNodeIndex();
     //
     try {
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-        std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
         skutils::url urlMainNet = getImaMainNetURL();
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-        // nlohmann::json joImaRelated =
-        stat_load_or_init_ima_related_json(
-            urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
@@ -1454,7 +1370,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             joAddressImaMessageProxySChain.get< std::string >();
         if ( strAddressImaMessageProxySChain.empty() )
             throw std::runtime_error(
-                "error config.json file, bad empty value in "
+                "error config.json file, bad EMPTY value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxySChain\"" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Using " ) + cc::notice( "IMA Message Proxy/S-Chain" ) +
@@ -1478,7 +1394,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             joAddressImaMessageProxyMainNet.get< std::string >();
         if ( strAddressImaMessageProxyMainNet.empty() )
             throw std::runtime_error(
-                "error config.json file, bad empty value in "
+                "error config.json file, bad EMPTY value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxyMainNet\"" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Using " ) + cc::notice( "IMA Message Proxy/MainNet" ) +
@@ -1591,7 +1507,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const std::string strSrcChainID = joSrcChainID.get< std::string >();
         if ( strSrcChainID.empty() )
             throw std::runtime_error(
-                "value of \"messages\"/\"dstChainID\" must be non-empty string" );
+                "value of \"messages\"/\"dstChainID\" must be non-EMPTY string" );
         clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::notice( "Source Chain ID" ) +
                                            cc::debug( " is " ) + cc::info( strSrcChainID ) );
         //
@@ -1604,7 +1520,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const std::string strDstChainID = joDstChainID.get< std::string >();
         if ( strDstChainID.empty() )
             throw std::runtime_error(
-                "value of \"messages\"/\"dstChainID\" must be non-empty string" );
+                "value of \"messages\"/\"dstChainID\" must be non-EMPTY string" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + " " + cc::notice( "Destination Chain ID" ) + cc::debug( " is " ) +
                    cc::info( strDstChainID ) );
@@ -1631,7 +1547,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const size_t cntMessagesToSign = jarrMessags.size();
         if ( cntMessagesToSign == 0 )
             throw std::runtime_error(
-                "parameter \"messages\" is empty array, nothing to verify and sign" );
+                "parameter \"messages\" is EMPTY array, nothing to verify and sign" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Composing summary message to sign from " ) +
                    cc::size10( cntMessagesToSign ) +
@@ -1645,44 +1561,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // Perform basic validation of arrived messages we will sign
         //
 
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-        std::string strPathImaRelatedJsonFile = stat_get_ima_related_json_file_path();
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " Will load IMA related state file " ) +
-                   cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
-        nlohmann::json joImaRelated = stat_load_or_init_ima_related_json(
-            urlMainNet, nlohmann::json::object(), strPathImaRelatedJsonFile );
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " Loaded IMA related state file " ) +
-                   cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
-                   cc::j( joImaRelated ) );
-        const char* strLastStaringSearchedBlockKeyName =
-            ( strDirection == "M2S" ) ? "lastSearchedBlockM2S" : "lastSearchedBlockS2M";
-        bool wasNarrowedStaringSearchedBlock = false;
-        dev::u256 uLastStaringSearchedBlock( "0" ), uLastStaringSearchedBlockNextValue( "0" );
-        if ( joImaRelated.count( strLastStaringSearchedBlockKeyName ) ) {
-            try {
-                nlohmann::json joLastSarchedBlock =
-                    joImaRelated[strLastStaringSearchedBlockKeyName];
-                if ( joLastSarchedBlock.is_string() ) {
-                    uLastStaringSearchedBlock =
-                        dev::u256( joLastSarchedBlock.get< std::string >() );
-                    clog( VerbosityDebug, "IMA" )
-                        << ( strLogPrefix + cc::debug( " Got block number to start search logs " ) +
-                               cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
-                } else {
-                    clog( VerbosityError, "IMA" )
-                        << ( strLogPrefix +
-                               cc::error(
-                                   " Failed to read block number from IMA related state file" ) );
-                }
-            } catch ( ... ) {
-                clog( VerbosityError, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Failed to parse IMA related state file " ) +
-                           cc::p( strPathImaRelatedJsonFile ) + cc::debug( "..." ) );
-            }
-        }
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
         // if ( strDirection == "M2S" ) {
         //    nlohmann::json joCall = nlohmann::json::object();
         //    joCall["jsonrpc"] = "2.0";
@@ -1690,9 +1568,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //    joCall["params"] = nlohmann::json::array();
         //    skutils::rest::client cli( urlMainNet );
         //    skutils::rest::data_t d = cli.call( joCall );
+        //    if ( !d.err_s_.empty() )
+        //        throw std::runtime_error( "strLogPrefix + cc::error( " Main Net call to
+        //        eth_blockNumber failed: " + d.err_s_ );
         //    if ( d.empty() )
-        //        clog( VerbosityDebug, "IMA" )
-        //            << ( strLogPrefix + cc::error( " Main Net call to eth_blockNumber failed" ) );
+        //        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::error( " Main Net call to
+        //        eth_blockNumber failed, EMPTY data received" ) );
         //    else {
         //        bool gotBN = false;
         //        nlohmann::json joMainNetBlockNumber;
@@ -1764,7 +1645,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             const std::string strData = joMessageToSign["data"].get< std::string >();
             if ( strData.empty() )
                 throw std::runtime_error(
-                    "parameter \"messages\" contains message object with empty field "
+                    "parameter \"messages\" contains message object with EMPTY field "
                     "\"data\"" );
             // if ( joMessageToSign.count( "amount" ) == 0 ||
             //     ( !joMessageToSign["amount"].is_string() ) ||
@@ -1879,7 +1760,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                        cc::debug( " of " ) + cc::size10( cntMessagesToSign ) +
                        cc::debug( " with content: " ) + cc::info( strMessageData ) );
             if ( cntMessageBytes == 0 )
-                throw std::runtime_error( "bad empty message data to sign" );
+                throw std::runtime_error( "bad EMPTY message data to sign" );
             try {
                 size_t nPos = 0, nFieldSize = 0;
                 // message type code, 32 bytes uint
@@ -3195,19 +3076,26 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = nlohmann::json::array();
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
-                            if ( !d.empty() ) {
-                                nlohmann::json joMainNetBlockNumber =
-                                    nlohmann::json::parse( d.s_ )["result"];
-                                if ( joMainNetBlockNumber.is_string() ) {
-                                    dev::u256 uBN =
-                                        dev::u256( joMainNetBlockNumber.get< std::string >() );
-                                    return uBN;
-                                } else if ( joMainNetBlockNumber.is_number() ) {
-                                    dev::u256 uBN =
-                                        dev::u256( joMainNetBlockNumber.get< uint64_t >() );
-                                    return uBN;
-                                }
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_blockNumber failed: " + d.err_s_ );
+                            if ( d.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_blockNumber failed, EMPTY data "
+                                    "received" );
+                            nlohmann::json joMainNetBlockNumber =
+                                nlohmann::json::parse( d.s_ )["result"];
+                            if ( joMainNetBlockNumber.is_string() ) {
+                                dev::u256 uBN =
+                                    dev::u256( joMainNetBlockNumber.get< std::string >() );
+                                return uBN;
+                            } else if ( joMainNetBlockNumber.is_number() ) {
+                                dev::u256 uBN = dev::u256( joMainNetBlockNumber.get< uint64_t >() );
+                                return uBN;
                             }
+                            throw std::runtime_error(
+                                "Main Net call to eth_blockNumber failed, bad data returned: " +
+                                joMainNetBlockNumber.dump() );
                         } catch ( ... ) {
                         }
                     } else {
@@ -3216,7 +3104,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     }  // else from if( strDirection == "M2S" )
                     dev::u256 uBN = dev::u256( "0" );
                     return uBN;
-                };
+                };  /// do_getBlockNumber
                 std::function< nlohmann::json( dev::u256, dev::u256 ) > do_logs_search =
                     [&]( dev::u256 uBlockFrom, dev::u256 uBlockTo ) -> nlohmann::json {
                     //
@@ -3268,9 +3156,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         joCall["params"] = jarrLogsQuery;
                         skutils::rest::client cli( urlMainNet );
                         skutils::rest::data_t d = cli.call( joCall );
-                        if ( d.empty() ) {
-                            throw std::runtime_error( "Main Net call to eth_getLogs failed" );
-                        }
+                        if ( !d.err_s_.empty() )
+                            throw std::runtime_error(
+                                "Main Net call to eth_getLogs failed: " + d.err_s_ );
+                        if ( d.empty() )
+                            throw std::runtime_error(
+                                "Main Net call to eth_getLogs failed, EMPTY data received" );
                         jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
                     } else {
                         Json::Value jvLogsQuery;
@@ -3288,7 +3179,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                cc::info( dev::toJS( uBlockTo ) ) + cc::debug( " results: " ) +
                                cc::j( jarrFoundLogRecords ) );
                     return jarrFoundLogRecords;
-                };
+                };  /// do_logs_search
                 static const int64_t g_nCountOfBlocksInIterativeStep = 1000;
                 static const int64_t g_nMaxBlockScanIterationsInAllRange = 5000;
                 std::function< nlohmann::json( dev::u256 ) > do_logs_search_iterative =
@@ -3349,7 +3240,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                            cc::success( " scan in " ) +
                                            cc::info( dev::toJS( uBlockFrom ) ) +
                                            cc::success( "/" ) + cc::info( dev::toJS( uBlockTo ) ) +
-                                           cc::success( " block range is " ) +
+                                           cc::success( " block range is: " ) +
                                            cc::j( joAllEventsInBlock ) );
                                 return joAllEventsInBlock;
                             }
@@ -3386,10 +3277,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         << ( cc::debug( "Result of " ) + cc::attention( "iterative" ) +
                                cc::debug( " scan in " ) + cc::info( dev::toJS( uBlockFrom ) ) +
                                cc::debug( "/" ) + cc::info( dev::toJS( uBlockTo ) ) +
-                               cc::debug( " block range is " ) + cc::warn( "empty" ) );
+                               cc::debug( " block range is " ) + cc::warn( "EMPTY" ) );
                     nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
                     return jarrFoundLogRecords;
-                };
+                };  /// do_logs_search_iterative
                 typedef std::list< dev::u256 > plan_list_t;
                 std::function< plan_list_t( dev::u256 ) > create_progressive_events_scan_plan =
                     []( dev::u256 nLatestBlockNumber ) -> plan_list_t {
@@ -3412,7 +3303,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         a_plan.push_back( nLatestBlockNumber - txns_in_1_year );
                     a_plan.push_back( dev::u256( 0 ) );
                     return a_plan;
-                };
+                };  /// create_progressive_events_scan_plan()
                 std::function< nlohmann::json( dev::u256 ) > do_logs_search_progressive =
                     [&]( dev::u256 uLatestBlockNumber ) -> nlohmann::json {
                     clog( VerbosityDebug, "IMA" )
@@ -3436,11 +3327,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                                                  "S-Chain" ) +
                                            cc::success( " logs search from block " ) +
                                            cc::info( dev::toJS( uBlockFrom ) ) +
-                                           cc::success( " to block " ) + cc::j( "latest" ) +
+                                           cc::success( " to block " ) + cc::info( "latest" ) +
                                            cc::success( " finished with " ) +
                                            cc::j( jarrFoundLogRecords ) );
                                 return jarrFoundLogRecords;
                             }
+                            clog( VerbosityWarning, "IMA" )
+                                << ( strLogPrefix + cc::warn( " Progressive " ) +
+                                       cc::info(
+                                           ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
+                                       cc::warn( " logs search finished with " ) +
+                                       cc::error( "EMPTY" ) + cc::warn( " result: " ) +
+                                       cc::j( jarrFoundLogRecords ) );
                         } catch ( const std::exception& ex ) {
                             clog( VerbosityWarning, "IMA" )
                                 << ( strLogPrefix + cc::warn( " Progressive " ) +
@@ -3463,23 +3361,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             continue;
                         }
                     }  // for ( ; itPlanWalk != itPlanEnd; ++itPlanWalk )
-                    clog( VerbosityWarning, "IMA" )
-                        << ( strLogPrefix + cc::warn( " Progressive " ) +
-                               cc::info( ( strDirection == "M2S" ) ? "Main NET" : "S-Chain" ) +
-                               cc::warn( " logs search finished with " ) +
-                               cc::error( "empty result" ) );
                     nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
                     return jarrFoundLogRecords;
-                };
+                };  /// do_logs_search_progressive()
 
                 nlohmann::json jarrFoundLogRecords =
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-                    ( uLastStaringSearchedBlock == 0 ) ?
-                        do_logs_search_progressive( do_getBlockNumber() ) :
-                        do_logs_search_iterative( uLastStaringSearchedBlock );
-#else   // (defined __ENABLE_IMA_RELATED_JSON__)
                     do_logs_search_progressive( do_getBlockNumber() );
-#endif  /// else from (defined __ENABLE_IMA_RELATED_JSON__)
 
                 /* example of jarrFoundLogRecords value:
                     [{
@@ -3548,9 +3435,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = jarrParams;
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionByHash failed: " +
+                                    d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionByHash failed" );
+                                    "Main Net call to eth_getTransactionByHash failed, EMPTY data "
+                                    "received" );
                             joTransaction = nlohmann::json::parse( d.s_ )["result"];
                         } else {
                             Json::Value jvTransaction;
@@ -3673,9 +3565,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             joCall["params"] = jarrParams;
                             skutils::rest::client cli( urlMainNet );
                             skutils::rest::data_t d = cli.call( joCall );
+                            if ( !d.err_s_.empty() )
+                                throw std::runtime_error(
+                                    "Main Net call to eth_getTransactionReceipt failed: " +
+                                    d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionReceipt failed" );
+                                    "Main Net call to eth_getTransactionReceipt failed, EMPTY data "
+                                    "received" );
                             joTransactionReceipt = nlohmann::json::parse( d.s_ )["result"];
                         } else {
                             Json::Value jvTransactionReceipt;
@@ -3732,7 +3629,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             clog( VerbosityDebug, "IMA" )
                                 << ( strLogPrefix +
                                        cc::warn( " TX receipt record is skipped because " ) +
-                                       cc::info( "address" ) + cc::warn( " field is empty" ) );
+                                       cc::info( "address" ) + cc::warn( " field is EMPTY" ) );
                             continue;
                         }
                         const std::string strReceiptLogRecordLC =
@@ -3816,7 +3713,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             clog( VerbosityDebug, "IMA" )
                                 << ( strLogPrefix +
                                        cc::warn( " TX receipt record is skipped because " ) +
-                                       cc::info( "data" ) + cc::warn( " field is empty" ) );
+                                       cc::info( "data" ) + cc::warn( " field is EMPTY" ) );
                             continue;
                         }
                         const std::string strDataLC_linear = skutils::tools::trim_copy(
@@ -3896,52 +3793,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         //    continue;
                         //}
                         //
-                        if ( joReceiptLogRecord.count( "blockNumber" ) != 0 ) {
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-                            try {
-                                dev::u256 uBlockNumber = dev::u256(
-                                    joReceiptLogRecord["blockNumber"].get< std::string >() );
-                                if ( uBlockNumber < uLastStaringSearchedBlockNextValue ||
-                                     uLastStaringSearchedBlockNextValue == 0 ) {
-                                    clog( VerbosityDebug, "IMA" )
-                                        << ( strLogPrefix +
-                                               cc::debug(
-                                                   std::string( " Starting block number to search "
-                                                                "logs next time on " ) +
-                                                   ( ( strDirection == "M2S" ) ? "Main Net" :
-                                                                                 "S-Chain" ) +
-                                                   std::string( " is narrowed from " ) ) +
-                                               cc::info( dev::toJS(
-                                                   uLastStaringSearchedBlockNextValue ) ) +
-                                               cc::debug( " to " ) +
-                                               cc::info( dev::toJS( uBlockNumber ) ) );
-                                    wasNarrowedStaringSearchedBlock = true;
-                                    uLastStaringSearchedBlockNextValue = uBlockNumber;
-                                } else
-                                    clog( VerbosityDebug, "IMA" )
-                                        << ( strLogPrefix +
-                                               cc::debug(
-                                                   std::string( " Starting block number to search "
-                                                                "logs next time on " ) +
-                                                   ( ( strDirection == "M2S" ) ? "Main Net" :
-                                                                                 "S-Chain" ) +
-                                                   " is kept set to " ) +
-                                               cc::info( dev::toJS(
-                                                   uLastStaringSearchedBlockNextValue ) ) );
-                            } catch ( ... ) {
-                                clog( VerbosityDebug, "IMA" )
-                                    << ( strLogPrefix +
-                                           cc::warn( std::string( " Starting block number to "
-                                                                  "search logs next time on " ) +
-                                                     ( ( strDirection == "M2S" ) ? "Main Net" :
-                                                                                   "S-Chain" ) +
-                                                     " is kept set to " ) +
-                                           cc::info(
-                                               dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
-                                           cc::warn( " due to error" ) );
-                            }
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
-                        }
                         bReceiptVerified = true;
                         clog( VerbosityDebug, "IMA" )
                             << ( strLogPrefix + " " + cc::notice( "Notice:" ) + " " +
@@ -3982,27 +3833,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            cc::size10( nStartMessageIdx + idxMessage ) +
                            cc::success( " was found in logs." ) );
             }  // if( bIsVerifyImaMessagesViaLogsSearch )
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-            if ( ( !wasNarrowedStaringSearchedBlock ) &&
-                 uLastStaringSearchedBlockNextValue != uLastStaringSearchedBlock ) {
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix +
-                           cc::debug(
-                               std::string( " Starting block number to search "
-                                            "logs next time on " ) +
-                               ( ( strDirection == "M2S" ) ? "Main Net" : "S-Chain" ) +
-                               std::string(
-                                   " was not narrowed during logs search, changing it from " ) ) +
-                           cc::info( dev::toJS( uLastStaringSearchedBlockNextValue ) ) +
-                           cc::debug( " to " ) +
-                           cc::info( dev::toJS( uLastStaringSearchedBlock ) ) );
-                wasNarrowedStaringSearchedBlock = true;
-                uLastStaringSearchedBlockNextValue = uLastStaringSearchedBlock;
-            }
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
-        //
-        //
-        //
+               //
+               //
+               //
             if ( bIsVerifyImaMessagesViaContractCall ) {
                 if ( strDirection == "M2S" ) {
                     //
@@ -4198,10 +4031,12 @@ OutgoingMessageData.data
                     if ( strDirection == "M2S" ) {
                         // skutils::rest::client cli( urlMainNet );
                         // skutils::rest::data_t d = cli.call( joCall );
+                        // if ( !d.err_s_.empty() )
+                        //    throw std::runtime_error( strDirection + " eth_call to MessageProxy
+                        //    failed: " + d.err_s_ );
                         // if ( d.empty() )
-                        //    throw std::runtime_error(
-                        //        strDirection +
-                        //        " eth_call to MessageProxy failed, empty data returned" );
+                        //    throw std::runtime_error( strDirection + " eth_call to MessageProxy
+                        //    failed, EMPTY data received" );
                         // nlohmann::json joResult;
                         // try {
                         //    joResult = nlohmann::json::parse( d.s_ )["result"];
@@ -4362,30 +4197,6 @@ OutgoingMessageData.data
             }  // if( !bOnlyVerify )
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
 
-
-#if ( defined __ENABLE_IMA_RELATED_JSON__ )
-        if ( wasNarrowedStaringSearchedBlock ||
-             uLastStaringSearchedBlock != uLastStaringSearchedBlockNextValue ) {
-            joImaRelated[strLastStaringSearchedBlockKeyName] =
-                dev::toJS( uLastStaringSearchedBlockNextValue );
-            bool bSavedmaRelatedJsonFile =
-                stat_save_ima_related_json( joImaRelated, strPathImaRelatedJsonFile );
-            if ( bSavedmaRelatedJsonFile )
-                clog( VerbosityDebug, "IMA" )
-                    << ( strLogPrefix + cc::debug( " Saved IMA related state file " ) +
-                           cc::p( strPathImaRelatedJsonFile ) + cc::debug( " with content: " ) +
-                           cc::j( joImaRelated ) );
-            else
-                clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FAILED" ) +
-                                                   cc::error( " to save IMA related state file " ) +
-                                                   cc::p( strPathImaRelatedJsonFile ) );
-        } else {
-            clog( VerbosityWarning, "IMA" ) << ( strLogPrefix + " " + cc::error( "SKIPPED" ) +
-                                                 cc::error( " saving IMA related state file " ) +
-                                                 cc::p( strPathImaRelatedJsonFile ) );
-        }
-#endif  /// (defined __ENABLE_IMA_RELATED_JSON__)
-
         if ( !bOnlyVerify ) {
             //
             //
@@ -4422,11 +4233,14 @@ OutgoingMessageData.data
                 << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "sign query" ) +
                        cc::debug( " to wallet: " ) + cc::j( joCall ) );
             skutils::rest::client cli;
-            cli.optsSSL = optsSSL;
+            cli.optsSSL_ = optsSSL;
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
+            if ( !d.err_s_.empty() )
+                throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
             if ( d.empty() )
-                throw std::runtime_error( "failed to sign message(s) with wallet" );
+                throw std::runtime_error(
+                    "failed to sign message(s) with wallet, EMPTY data received" );
             nlohmann::json joSignResult = nlohmann::json::parse( d.s_ )["result"];
             jo["signResult"] = joSignResult;
             //
