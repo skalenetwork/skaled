@@ -41,6 +41,8 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
     }  // for
 
     // if newly created DB
+    // TODO Correctly, we should write here into current_piece_mark_key
+    // but as it is - it works ok too
     if ( current_i == _nPieces )
         current_i = 0;
 
