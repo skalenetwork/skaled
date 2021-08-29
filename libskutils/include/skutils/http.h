@@ -88,9 +88,11 @@ typedef int socket_t;
 #define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ( 5 )
 
 #define __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__ ( 10 )
-#define __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__ ( 10 )
-#define __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ ( 40 )
-#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT__ ( 100 * 30 )
+#define __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__ ( 20 )
+#define __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ ( 100 )
+#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT__ ( 10 * 30 )
+// above: multiplier 10 makes about 1 second(for 100 milliseconds of 2nd timeout), 30 is 30 seconds
+// appripriately
 
 #define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ ( 16 )
 
