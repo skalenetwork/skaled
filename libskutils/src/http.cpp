@@ -2145,7 +2145,7 @@ void server::read_and_close_socket_async( socket_t sock ) {
             throw std::runtime_error( "failed to process request" );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket " << sock
+        std::cout << "failed to process http request from socket " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )
@@ -2219,7 +2219,7 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
         return process_request( origin, strm, last_connection, connection_close );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket(SSL) " << sock
+        std::cout << "failed to process http request from socket(SSL) " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )
