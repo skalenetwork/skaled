@@ -1336,6 +1336,7 @@ async_query_handler::~async_query_handler() {
     std::cout << skutils::tools::format( "http task dtor %p\n", this );
     std::cout.flush();
 #endif
+    remove_this_task();
 }
 
 void async_query_handler::was_added() {
@@ -1480,7 +1481,12 @@ bool async_read_and_close_socket::step() {
         if ( retry_index_ > retry_count_ )
             throw std::runtime_error( "max attempt count done" );
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ > retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1575,7 +1581,12 @@ bool async_read_and_close_socket_SSL::step() {
                 detail::SSL_accept_wrapper( ssl_ );
         }
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ >= retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             SSL_socket_stream strm( socket_, ssl_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1655,6 +1666,7 @@ server::server( size_t a_max_handler_queues, bool is_async_http_transfer_mode )
 }
 
 server::~server() {
+    remove_all_tasks();
     close_all_handler_queues();
 }
 
@@ -1688,6 +1700,12 @@ server& server::Options( const char* pattern, Handler handler ) {
     return *this;
 }
 
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
+
+std::string server::base_dir_get() const {
+    return base_dir_;
+}
+
 bool server::set_base_dir( const char* path ) {
     if ( detail::is_dir( path ) ) {
         base_dir_ = path;
@@ -1695,6 +1713,8 @@ bool server::set_base_dir( const char* path ) {
     }
     return false;
 }
+
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
 
 void server::set_error_handler( Handler handler ) {
     error_handler_ = handler;
@@ -1850,6 +1870,8 @@ void server::write_response(
     }
 }
 
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
+
 bool server::handle_file_request( request& req, response& res ) {
     if ( !base_dir_.empty() && detail::is_valid_path( req.path_ ) ) {
         std::string path = base_dir_ + req.path_;
@@ -1869,6 +1891,8 @@ bool server::handle_file_request( request& req, response& res ) {
     }
     return false;
 }
+
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
 
 socket_t server::create_server_socket( int ipVer, const char* host, int port, int socket_flags,
     bool is_reuse_address, bool is_reuse_port ) const {
@@ -2003,22 +2027,22 @@ void server::remove_all_tasks() {
 }
 
 bool server::routing( request& req, response& res ) {
-    if ( req.method_ == "GET" && handle_file_request( req, res ) ) {
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
+    if ( req.method_ == "GET" && handle_file_request( req, res ) )
         return true;
-    }
-    if ( req.method_ == "GET" || req.method_ == "HEAD" ) {
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
+    if ( req.method_ == "GET" || req.method_ == "HEAD" )
         return dispatch_request( req, res, get_handlers_ );
-    } else if ( req.method_ == "POST" ) {
+    else if ( req.method_ == "POST" )
         return dispatch_request( req, res, post_handlers_ );
-    } else if ( req.method_ == "PUT" ) {
+    else if ( req.method_ == "PUT" )
         return dispatch_request( req, res, put_handlers_ );
-    } else if ( req.method_ == "PATCH" ) {
+    else if ( req.method_ == "PATCH" )
         return dispatch_request( req, res, patch_handlers_ );
-    } else if ( req.method_ == "DELETE" ) {
+    else if ( req.method_ == "DELETE" )
         return dispatch_request( req, res, delete_handlers_ );
-    } else if ( req.method_ == "OPTIONS" ) {
+    else if ( req.method_ == "OPTIONS" )
         return dispatch_request( req, res, options_handlers_ );
-    }
     return false;
 }
 

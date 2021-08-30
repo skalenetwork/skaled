@@ -88,13 +88,17 @@ typedef int socket_t;
 #define __SKUTILS_HTTP_KEEPALIVE_MAX_COUNT__ ( 5 )
 
 #define __SKUTILS_ASYNC_HTTP_POLL_TIMEOUT_MILLISECONDS__ ( 10 )
-#define __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__ ( 10 )
-#define __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ ( 40 )
-#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT__ ( 100 * 30 )
+#define __SKUTILS_ASYNC_HTTP_FIRST_TIMEOUT_MILLISECONDS__ ( 20 )
+#define __SKUTILS_ASYNC_HTTP_NEXT_TIMEOUT_MILLISECONDS__ ( 100 )
+#define __SKUTILS_ASYNC_HTTP_RETRY_COUNT__ ( 10 * 30 )
+// above: multiplier 10 makes about 1 second(for 100 milliseconds of 2nd timeout), 30 is 30 seconds
+// appripriately
 
 #define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ ( 16 )
 
 #define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ ( 60 * 1000 )
+
+//#define #define __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +412,10 @@ public:
     server& Delete( const char* pattern, Handler handler );
     server& Options( const char* pattern, Handler handler );
 
-    bool set_base_dir( const char* path );
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
+    std::string base_dir_get() const;
+    bool base_dir_set( const char* path );
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
 
     void set_error_handler( Handler handler );
     void set_logger( Logger logger );
@@ -444,7 +451,9 @@ private:
     bool listen_internal();
 
     bool routing( request& req, response& res );
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
     bool handle_file_request( request& req, response& res );
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
     bool dispatch_request( request& req, response& res, Handlers& handlers );
 
     bool parse_request_line( const char* s, request& req );
@@ -456,7 +465,9 @@ private:
     std::atomic_bool is_in_loop_ = false;
     std::atomic_bool is_running_ = false;
     socket_t svr_sock_;
+#if ( defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING )
     std::string base_dir_;
+#endif  // (defined __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING)
     Handlers get_handlers_;
     Handlers post_handlers_;
     Handlers put_handlers_;
