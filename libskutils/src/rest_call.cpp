@@ -59,6 +59,7 @@ void data_t::clear() {
 }
 void data_t::assign( const data_t& d ) {
     s_ = d.s_;
+    err_s_ = d.err_s_;
     content_type_ = d.content_type_;
     ei_ = d.ei_;
 }
@@ -350,8 +351,20 @@ client::~client() {
     close();
 }
 
+std::string client::u_path() const {
+    std::string s = u_.path();
+    if ( s.empty() )
+        s = "/";
+    return s;
+}
+std::string client::u_path_and_args() const {
+    std::string s = u_path() + u_.str_query();
+    return s;
+}
+
 bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, size_t cntSteps ) {
     try {
+        u_ = u;
         std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u.scheme() ) );
         if ( strScheme.empty() )
             return false;
@@ -361,8 +374,12 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             return false;
         //
         std::string strPort = skutils::tools::to_lower( skutils::tools::trim_copy( u.port() ) );
-        if ( strPort.empty() )
-            strPort = "80";
+        if ( strPort.empty() ) {
+            if ( strScheme == "https" || strScheme == "wss" )
+                strPort = "443";
+            else
+                strPort = "80";
+        }
         int nPort = std::atoi( strPort.c_str() );
         //
         if ( strScheme == "http" ) {
@@ -465,6 +482,8 @@ bool client::is_open() const {
 }
 
 bool client::handle_data_arrived( const data_t& d ) {
+    if ( !d.err_s_.empty() )
+        return false;
     if ( d.empty() )
         return false;
     await_t a;
@@ -586,7 +605,7 @@ bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
 }
 
 data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
     nlohmann::json jo = joIn;
     if ( isAutoGenJsonID )
         stat_auto_gen_json_id( jo );
@@ -594,13 +613,20 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
-            std::shared_ptr< skutils::http::response > resp =
-                ch_->Post( "/", strJsonIn, "application/json" );
+            const std::string strHttpQueryPath = u_path_and_args();
+            std::shared_ptr< skutils::http::response > resp = ch_->Post(
+                strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
             d.ei_ = ch_->eiLast_;
             if ( !resp )
                 return d;  // data_t();
-            if ( resp->status_ != 200 )
+            if ( !resp->send_status_ ) {
+                d.err_s_ = resp->body_;
                 return d;  // data_t();
+            }
+            if ( resp->status_ != 200 ) {
+                d.err_s_ = resp->body_;
+                return d;  // data_t();
+            }
             d.s_ = resp->body_;
             std::string h;
             if ( resp->has_header( "Content-Type" ) )
@@ -630,18 +656,22 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
         handle_data_arrived( d );
     }
     data_t d = fetch_data_with_strategy( edfs );
-    if ( d.empty() ) {
+    if ( ( !d.err_s_.empty() ) || d.empty() ) {
         d.ei_.et_ = skutils::http::common_network_exception::error_type::et_unknown;
         d.ei_.ec_ = errno;
         d.ei_.strError_ = "WS(S) data transfer error";
+        if ( !d.err_s_.empty() ) {
+            d.ei_.strError_ += ": ";
+            d.ei_.strError_ += d.err_s_;
+        }
     }
     return d;
 }
 data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
     try {
         nlohmann::json jo = nlohmann::json::parse( strJsonIn );
-        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps );
+        return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponse );
     } catch ( ... ) {
     }
     return data_t();
@@ -724,8 +754,9 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+            const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
-                ch_->Post( "/", strJsonIn, "application/json" );
+                ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );
             if ( !resp ) {
                 onError( jo, "empty responce" );
                 return;
