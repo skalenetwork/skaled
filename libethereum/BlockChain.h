@@ -349,7 +349,7 @@ public:
     /// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent,
     /// parent + 1, ... parent + @a _generations).
     /// @returns set including the header-hash of every parent (including @a _parent) up to and
-    /// including generation + @a _generations togther with all their quoted uncles.
+    /// including generation + @a _generations together with all their quoted uncles.
     h256Hash allKinFrom( h256 const& _parent, unsigned _generations ) const;
 
     /// Alter the head of the chain to some prior block along it.
@@ -450,7 +450,7 @@ private:
         return h256( _index * 0xff + _level );
     }
 
-    /// Initialise everything and ready for openning the database.
+    /// Initialise everything and ready for opening the database.
     void init( ChainParams const& _p );
     /// Open the database.
 public:

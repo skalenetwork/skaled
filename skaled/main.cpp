@@ -1470,7 +1470,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "enable-debug-behavior-apis" ) )
         bEnabledDebugBehaviorAPIs = true;
     clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
         << cc::flag_ed( bEnabledDebugBehaviorAPIs );
 
@@ -1487,7 +1487,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
     clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
         << cc::flag_ed( !alwaysConfirm );
 
@@ -1505,7 +1505,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "web3-shutdown" ) )
         bEnabledShutdownViaWeb3 = true;
     clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notce: " ) << cc::debug( "Programmatic " )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
         << cc::flag_ed( bEnabledShutdownViaWeb3 );
 
