@@ -207,13 +207,13 @@ then
 	DEBUG=1
 	TOP_CMAKE_BUILD_TYPE="Debug"
 	DEBUG_D="d"
-	DEBUG_DEBUG="_debug"
+	# DEBUG_DEBUG="_debug"
 	DEBUG__DEBUG="_debug"
 	CONF_DEBUG_OPTIONS="--enable-debug"
 else
 	DEBUG=0
 	DEBUG_D=""
-	DEBUG_DEBUG=""
+	# DEBUG_DEBUG=""
 	DEBUG__DEBUG=""
 	CONF_DEBUG_OPTIONS=""
 fi
@@ -2402,7 +2402,7 @@ then
 		if [ ! -d "gflags" ];
 		then
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			unzip -o $PREDOWNLOADED_ROOT/gflags-master.zip
+			unzip -o "$PREDOWNLOADED_ROOT/gflags-master.zip"
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd gflags-master
 			mkdir -p build
