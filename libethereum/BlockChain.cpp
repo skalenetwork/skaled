@@ -225,7 +225,8 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
         m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >(
             chainPath / fs::path( "blocks_and_extras" ), 5 );
-        m_split_db = std::make_unique< db::SplitDB >( m_rotating_db );
+        m_split_db = std::make_unique< db::SplitDB >(
+            std::static_pointer_cast< db::DatabaseFace >( m_rotating_db ) );
         m_blocksDB = m_split_db->newInterface();
         m_extrasDB = m_split_db->newInterface();
         // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
@@ -985,15 +986,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
-    // update storage usage
-    m_rotating_db->insert(
-        db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
-    // HACK This is for backward compatibility
-    // update totalStorageUsed only if schain already had it!
-    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
-        m_blocksDB->insert(
-            db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
-
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
@@ -1049,8 +1041,21 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         m_lastBlockHash = newLastBlockHash;
         m_lastBlockNumber = newLastBlockNumber;
         try {
-            m_extrasDB->insert(
-                db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
+            std::unique_ptr< db::WriteBatchFace > wb = m_rotating_db->createWriteBatch();
+
+            // update storage usage
+            wb->insert(
+                db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+            // HACK This is for backward compatibility
+            // update totalStorageUsed only if schain already had it!
+            if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
+                wb->insert( db::Slice( "\x0totalStorageUsed" ),
+                    db::Slice( to_string( _block.info.number() * 32 ) ) );
+
+            wb->insert( db::Slice( "\x1"
+                                   "best" ),
+                db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
+            m_rotating_db->commit( std::move( wb ) );
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"

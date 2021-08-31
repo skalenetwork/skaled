@@ -14,7 +14,7 @@ DatabaseFace* SplitDB::newInterface() {
     unsigned char prefix = this->interfaces.size();
 
     mutexes.push_back( std::make_unique< std::shared_mutex >() );
-    PrefixedDB* pdb = new PrefixedDB( prefix, backend.get(), *mutexes.back() );
+    PrefixedDB* pdb = new PrefixedDB( prefix, backend, *mutexes.back() );
     interfaces.emplace_back( pdb );
 
     return pdb;
@@ -41,7 +41,8 @@ void SplitDB::PrefixedWriteBatchFace::kill( Slice _key ) {
     backend->kill( ref( store.back() ) );
 }
 
-SplitDB::PrefixedDB::PrefixedDB( char _prefix, DatabaseFace* _backend, std::shared_mutex& _mutex )
+SplitDB::PrefixedDB::PrefixedDB(
+    char _prefix, std::shared_ptr< DatabaseFace > _backend, std::shared_mutex& _mutex )
     : prefix( _prefix ), backend( _backend ), backend_mutex( _mutex ) {}
 
 std::string SplitDB::PrefixedDB::lookup( Slice _key ) const {
@@ -101,7 +102,7 @@ void SplitDB::PrefixedDB::forEach( std::function< bool( Slice, Slice ) > f ) con
 
 h256 SplitDB::PrefixedDB::hashBase() const {
     // HACK TODO implement that it would work with any DatabaseFace*
-    const LevelDB* ldb = dynamic_cast< const LevelDB* >( backend );
+    const LevelDB* ldb = dynamic_cast< const LevelDB* >( backend.get() );
     if ( ldb )
         return ldb->hashBaseWithPrefix( prefix );
     else
