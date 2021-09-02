@@ -306,7 +306,7 @@ string BlockChain::dumpDatabase() const {
     oss << m_lastBlockHash << '\n';
     std::map< string, string > sorted;
     m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
-        // give priority ti 1-st occurence
+        // give priority to 1-st occurrence
         if ( sorted.count( toHex( key ) ) == 0 )
             sorted[toHex( key )] = toHex( value );
         return true;
@@ -601,7 +601,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     //
     // We need to compute log blooms directly here without using Block::logBloom()
     // method because _receipts may contain extra receipt items corresponding to
-    // partially cought-up transactions
+    // partially caught-up transactions
     //
     // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
     //

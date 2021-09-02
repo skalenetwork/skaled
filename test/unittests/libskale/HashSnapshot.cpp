@@ -563,7 +563,7 @@ BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
 
     auto t1 = std::chrono::high_resolution_clock::now();
     // 140s - with 4k and 1b files both
-    mgr->computeFileSystemHash("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx, false);
+    mgr->proceedFileStorageDirectory("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx, false);
     dev::h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
     auto t2 = std::chrono::high_resolution_clock::now();

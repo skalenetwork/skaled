@@ -946,6 +946,32 @@ void url::compose_url() const {
     strUrl_ = ss_url.str();
 }
 
+std::string url::str_query( bool isWithFragment ) const {
+    lazy_parse();
+    std::stringstream ss_url;
+    if ( !kvQuery_.empty() ) {
+        ss_url << "?";
+        auto it = kvQuery_.begin(), end = kvQuery_.end();
+        if ( it->key().empty() )
+            throw url::compose_error( "first query entry has no key" );
+        ss_url << encode_query_key( it->key(), 0x1F );
+        if ( !it->val().empty() )
+            ss_url << "=" << encode_query_val( it->val(), 0x1F );
+        while ( ++it != end ) {
+            if ( it->key().empty() )
+                throw url::compose_error( "a query entry has no key" );
+            ss_url << "&" << encode_query_key( it->key(), 0x1F );
+            if ( !it->val().empty() )
+                ss_url << "=" << encode_query_val( it->val(), 0x1F );
+        }
+    }
+    if ( isWithFragment ) {
+        if ( !strFragment_.empty() )
+            ss_url << "#" << encode( strFragment_, 0x1F );
+    }
+    return ss_url.str();
+}
+
 std::ostream& url::output( std::ostream& o ) const {
     lazy_parse();
     if ( !wasBuilt_ )

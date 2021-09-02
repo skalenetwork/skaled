@@ -249,10 +249,10 @@ public:
         return m_unknownSet.size() ? *m_unknownSet.begin() : h256();
     }
 
-    /// Get some infomration on the current status.
+    /// Get some information on the current status.
     BlockQueueStatus status() const;
 
-    /// Get some infomration on the given block's status regarding us.
+    /// Get some information on the given block's status regarding us.
     QueueStatus blockStatus( h256 const& _h ) const;
 
     Handler<> onReady( std::function< void( void ) > _t ) { return m_onReady.add( _t ); }
@@ -267,7 +267,7 @@ public:
 
     bool knownFull() const;
     bool unknownFull() const;
-    u256 difficulty() const;  // Total difficulty of queueud blocks
+    u256 difficulty() const;  // Total difficulty of queued blocks
     bool isActive() const;
 
 private:
