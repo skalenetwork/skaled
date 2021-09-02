@@ -1684,7 +1684,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         } catch ( ... ) {
             optsSSL.client_cert.clear();
         }
-        clog( VerbosityDebug, "IMA" )joMessageToSign
+        clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
                    cc::info( optsSSL.client_cert ) );
         try {
