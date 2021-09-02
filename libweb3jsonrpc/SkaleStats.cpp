@@ -1714,7 +1714,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
             const nlohmann::json& joMessageToSign = jarrMessags[idxMessage];
             const std::string strMessageSender =
-                skutils::tools::trim_copy( ["sender"].get< std::string >() );
+                skutils::tools::trim_copy( joMessageToSign["sender"].get< std::string >() );
             const std::string strMessageSenderLC =
                 skutils::tools::to_lower( skutils::tools::trim_copy( strMessageSender ) );
             const dev::u256 uMessageSender( strMessageSenderLC );
