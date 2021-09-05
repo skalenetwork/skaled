@@ -3473,6 +3473,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + cc::debug( " Reviewing transaction:" ) +
                                cc::j( joTransaction ) + cc::debug( "..." ) );
+                    /*
                     // extract "to" address from transaction, then compare it with "sender" from
                     // IMA message
                     const std::string strTransactionTo = skutils::tools::trim_copy(
@@ -3494,6 +3495,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                    cc::notice( strMessageSender ) );
                         continue;
                     }
+                    */
                     //
                     //
                     // Find more transaction details, simlar to call tp
