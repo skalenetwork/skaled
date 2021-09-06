@@ -99,10 +99,9 @@ void* ZmqBroadcaster::server_socket() const {
 
 
         val = 16;
-        zmq_setsockopt (m_zmq_server_socket, ZMQ_RCVHWM, &val, sizeof (val));
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_RCVHWM, &val, sizeof( val ) );
         val = 16;
-        zmq_setsockopt (m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof (val));
-
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
@@ -136,9 +135,9 @@ void* ZmqBroadcaster::client_socket() const {
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
         value = 16;
-        zmq_setsockopt (m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof (value));
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
         value = 16;
-        zmq_setsockopt (m_zmq_client_socket, ZMQ_SNDHWM, &value, sizeof (value));
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_SNDHWM, &value, sizeof( value ) );
 
 
         const dev::eth::ChainParams& ch = m_client.chainParams();

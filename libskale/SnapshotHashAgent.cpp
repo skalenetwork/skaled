@@ -245,11 +245,20 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     skaleClient.skale_getLatestSnapshotBlockNumber();
                     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
                     this->nodes_to_download_snapshot_from_.push_back( i );
+                    delete jsonRpcClient;
                     return;
                 }
 
-                Json::Value joSignatureResponse =
-                    skaleClient.skale_getSnapshotSignature( block_number );
+                Json::Value joSignatureResponse;
+                try {
+                    joSignatureResponse = skaleClient.skale_getSnapshotSignature( block_number );
+                } catch ( jsonrpc::JsonRpcException& ex ) {
+                    cerror << "WARNING "
+                           << "Error while trying to get snapshot signature from "
+                           << this->chain_params_.sChain.nodes[i].ip << " : " << ex.what();
+                    delete jsonRpcClient;
+                    return;
+                }
 
                 if ( !joSignatureResponse.get( "hash", 0 ) || !joSignatureResponse.get( "X", 0 ) ||
                      !joSignatureResponse.get( "Y", 0 ) ) {
