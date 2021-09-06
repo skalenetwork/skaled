@@ -1328,21 +1328,21 @@ then
 			##	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
 			#	echo " "
 			#fi
-			if [ "$WITH_EVENT" = "yes" ];
-			then
-				if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
-				then
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-					echo " "
-				else
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
-					LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
-				fi
-			else
-				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-				echo " "
-				LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
-			fi
+            #if [ "$WITH_EVENT" = "yes" ];
+            #then
+            #	if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
+            #	then
+            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
+            #		echo " "
+            #	else
+            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
+            #		LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
+            #	fi
+            #else
+            #	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
+            #	echo " "
+            #	LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
+            #fi
 			if [ "$WITH_UV" = "yes" ];
 			then
 				if [ ! -f "$INSTALL_ROOT/lib/libuv.a" ];
