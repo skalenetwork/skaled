@@ -1724,6 +1724,8 @@ int main( int argc, char** argv ) try {
                     std::string( "http://" ) + std::string( chainParams.sChain.nodes[idx].ip ) +
                     std::string( ":" ) +
                     ( chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+                
+                clog( VerbosityInfo, "main" ) << cc::notice( "Asking node " ) << cc:p( std::to_string( idx ) ) << ' ' << cc:notice( blockNumber_url ) << cc:notice( " for latest snapshot block number." );
 
                 unsigned blockNumber = getLatestSnapshotBlockNumber( blockNumber_url );
                 clog( VerbosityInfo, "main" )

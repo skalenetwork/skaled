@@ -329,6 +329,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         }  // catch
 
     if ( !result ) {
+        cnote << "Not enough nodes to choose snapshot hash for block " << std::to_string( block_number );
         return {};
     }
 
