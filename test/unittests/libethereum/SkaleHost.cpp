@@ -940,4 +940,54 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     client->importTransaction( tx2 );
 }
 
+// test two blocks with overlapping transactions :)
+BOOST_AUTO_TEST_CASE( partialCatchUp ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // create 1 txns in 1 block
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    // now 2 txns
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash = tx2.sha3();
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out(), stream2.out()}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 2, 2 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 1, txHash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
