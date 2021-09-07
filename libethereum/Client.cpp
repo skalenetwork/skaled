@@ -139,7 +139,7 @@ void Client::stopWorking() {
     Worker::stopWorking();
 
     if ( m_skaleHost )
-        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to start/stop all
                                      // workers
     else
         cerror << "Instance of SkaleHost was not properly created.";
@@ -175,7 +175,7 @@ void Client::stopWorking() {
         LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
                         << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
                                   std::string( "/skaled.lock" ) )
-                        << cc::error( " after foreceful exit" );
+                        << cc::error( " after forceful exit" );
     }
     LOG( m_logger ).flush();
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -210,7 +210,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
         m_state = m_state.startNew();
     };
-    // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this
+    // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;
@@ -455,7 +455,7 @@ static std::string stat_transactions2str(
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
-    // HACK here was m_blockImportMutex - but now it is aquired in SkaleHost!!!
+    // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
     int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
@@ -638,6 +638,10 @@ size_t Client::importTransactionsAsBlock(
     if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
         m_instanceMonitor->performRotation();
     }
+
+    // TEMPRORARY FIX!
+    // TODO: REVIEW
+    tick();
 
     return cntSucceeded;
     assert( false );
@@ -1004,7 +1008,9 @@ void Client::doWork( bool _doWait ) {
     //    m_syncTransactionQueue.compare_exchange_strong(t, false))
     //        syncTransactionQueue();
 
-    tick();
+    // TEMPRORARY FIX!
+    // TODO: REVIEW
+    // tick();
 
     // SKALE Mine only empty blocks! (for tests passing/account balancing)
     rejigSealing();
@@ -1088,7 +1094,7 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement whis when syncing will be needed
+    // TODO implement this when syncing will be needed
     SyncStatus s;
     s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
     return s;

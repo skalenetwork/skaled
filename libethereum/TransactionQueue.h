@@ -70,20 +70,20 @@ public:
 
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
-    /// @param _ik Set to Retry to force re-addinga transaction that was previously dropped.
+    /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
     /// @returns Import result code.
     ImportResult import( bytes const& _tx, IfDropped _ik = IfDropped::Ignore ) {
         return import( &_tx, _ik );
     }
 
     /// Verify and add transaction to the queue synchronously.
-    /// @param _tx Trasnaction data.
-    /// @param _ik Set to Retry to force re-addinga transaction that was previously dropped.
+    /// @param _tx Transaction data.
+    /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
     /// @returns Import result code.
     ImportResult import( Transaction const& _tx, IfDropped _ik = IfDropped::Ignore );
 
     /// Remove transaction from the queue
-    /// @param _txHash Trasnaction hash
+    /// @param _txHash Transaction hash
     void drop( h256 const& _txHash );
 
     int getCategory( const h256& hash ) { return m_currentByHash[hash]->category; }
@@ -120,12 +120,12 @@ public:
     /// @returns Max transaction nonce for account in the queue
     u256 maxNonce( Address const& _a ) const;
 
-    /// Mark transaction as future. It wont be retured in topTransactions list until a transaction
+    /// Mark transaction as future. It wont be returned in topTransactions list until a transaction
     /// with a preceeding nonce is imported or marked with dropGood
     /// @param _t Transaction hash
     void setFuture( h256 const& _t );
 
-    /// Drop a trasnaction from the list if exists and move following future trasnactions to current
+    /// Drop a transaction from the list if exists and move following future transactions to current
     /// (if any)
     /// @param _t Transaction hash
     void dropGood( Transaction const& _t );
@@ -147,7 +147,7 @@ public:
         return ret;
     }
 
-    /// @returns the transacrtion limits on current/future.
+    /// @returns the transaction limits on current/future.
     Limits limits() const { return Limits{m_limit, m_futureLimit}; }
 
     /// Clear the queue
@@ -159,14 +159,14 @@ public:
         return m_onReady.add( _t );
     }
 
-    /// Register a handler that will be called once asynchronous verification is comeplte an
+    /// Register a handler that will be called once asynchronous verification is complete an
     /// transaction has been imported
     template < class T >
     Handler< ImportResult, h256 const&, h512 const& > onImport( T const& _t ) {
         return m_onImport.add( _t );
     }
 
-    /// Register a handler that will be called once asynchronous verification is comeplte an
+    /// Register a handler that will be called once asynchronous verification is complete an
     /// transaction has been imported
     template < class T >
     Handler< h256 const& > onReplaced( T const& _t ) {
@@ -301,7 +301,7 @@ private:
                                                                   ///< result, transaction id an
                                                                   ///< node id. Be nice and exit
                                                                   ///< fast.
-    Signal< h256 const& > m_onReplaced;  ///< Called whan transction is dropped during a call to
+    Signal< h256 const& > m_onReplaced;  ///< Called when transaction is dropped during a call to
                                          ///< import() to make room for another transaction.
     unsigned m_limit;                    ///< Max number of pending transactions
     unsigned m_futureLimit;              ///< Max number of future transactions

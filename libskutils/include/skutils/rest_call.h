@@ -45,7 +45,7 @@ enum class e_data_fetch_strategy {
 };  /// enum class e_data_fetch_strategy
 
 struct data_t {
-    std::string s_;
+    std::string s_, err_s_;
     std::string content_type_;
     skutils::http::common_network_exception::error_info ei_;
     data_t();
@@ -149,6 +149,8 @@ public:
     bool is_open() const;
 
 private:
+    std::string u_path() const;
+    std::string u_path_and_args() const;
     bool handle_data_arrived( const data_t& d );
     data_t fetch_data_with_strategy(
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
@@ -163,11 +165,11 @@ public:
     data_t call( const nlohmann::json& joIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000 );
+        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
     data_t call( const std::string& strJsonIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000 );
+        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
 
 private:
     typedef std::map< std::string, await_t > map_await_t;

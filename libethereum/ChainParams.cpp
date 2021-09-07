@@ -196,7 +196,6 @@ ChainParams ChainParams::loadConfig(
 
         s.dbStorageLimit =
             sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
-        s.dbStorageLimit /= 5;
 
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();

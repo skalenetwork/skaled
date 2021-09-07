@@ -1669,6 +1669,7 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
+    BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
@@ -1689,7 +1690,6 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
-    BOOST_REQUIRE( boost::filesystem::exists( pathToDir.string() + "._hash" ) );
     remove( pathToDir.c_str() );
 }
 
@@ -1705,7 +1705,6 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
-    BOOST_REQUIRE( !boost::filesystem::exists( pathToDir.string() + "._hash" ) );
 }
 
 BOOST_AUTO_TEST_CASE( calculateFileHash ) {
@@ -1714,7 +1713,8 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     std::string fileHashName = pathToFile.string() + "._hash";
 
     std::ofstream fileHash( fileHashName );
-    dev::h256 hash = dev::sha256( pathToFile.string() );
+    std::string relativePath = pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
+    dev::h256 hash = dev::sha256( relativePath );
     fileHash << hash;
 
     fileHash.close();

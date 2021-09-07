@@ -274,8 +274,12 @@ public:
         return blocksBlooms( chunkId( _level, _index ) );
     }
     BlocksBlooms blocksBlooms( h256 const& _chunkId ) const {
-        return queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
+        auto res = queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
             _chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms );
+        // std::cerr << "Queried " << _chunkId.hex() << "->" << std::endl;
+        // for ( size_t i = 0; i < 16; ++i )
+        //    std::cerr << "\t" << i << " = " << res.blooms[i].hex() << std::endl;
+        return res;
     }
     LogBloom blockBloom( unsigned _number ) const {
         return blocksBlooms( chunkId( 0, _number / c_bloomIndexSize ) )
@@ -349,7 +353,7 @@ public:
     /// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent,
     /// parent + 1, ... parent + @a _generations).
     /// @returns set including the header-hash of every parent (including @a _parent) up to and
-    /// including generation + @a _generations togther with all their quoted uncles.
+    /// including generation + @a _generations together with all their quoted uncles.
     h256Hash allKinFrom( h256 const& _parent, unsigned _generations ) const;
 
     /// Alter the head of the chain to some prior block along it.
@@ -450,7 +454,7 @@ private:
         return h256( _index * 0xff + _level );
     }
 
-    /// Initialise everything and ready for openning the database.
+    /// Initialise everything and ready for opening the database.
     void init( ChainParams const& _p );
     /// Open the database.
 public:
@@ -459,7 +463,17 @@ public:
     void close();
 
 private:
-    void rotateDBIfNeeded( const dev::h256& hash );
+    bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
+
+    // auxiliary method for insertBlockAndExtras
+    void prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
+        u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
+        db::WriteBatchFace& _blocksWriteBatch, db::WriteBatchFace& _extrasWriteBatch,
+        size_t& _blocksBatchSize, size_t& _extrasBatchSize,
+        ImportPerformanceLogger& _performanceLogger );
+
+    // auxiliary method for recomputing blocks inserted earlier
+    void recomputeExistingOccupiedSpaceForBlockRotation();
 
     ImportRoute insertBlockAndExtras( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
