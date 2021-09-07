@@ -8,6 +8,7 @@ add_library( skutils STATIC
     ./src/dispatch.cpp              ./include/skutils/dispatch.h
     ./src/eth_utils.cpp             ./include/skutils/eth_utils.h
     ./src/http.cpp                  ./include/skutils/http.h
+    ./src/http_pg.cpp               ./include/skutils/http_pg.h
     ./src/mail.cpp                  ./include/skutils/mail.h
                                     ./include/skutils/multifunction.h
     ./src/multithreading.cpp        ./include/skutils/multithreading.h
