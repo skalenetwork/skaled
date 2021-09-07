@@ -221,9 +221,10 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     // Handle blocks from main chain
     set< unsigned > matchingBlocks;
     if ( !_f.isRangeFilter() )
-        for ( auto const& i : _f.bloomPossibilities() )
-            for ( auto u : bc().withBlockBloom( i, end, begin ) )
-                matchingBlocks.insert( u );
+        for ( auto const& i : _f.bloomPossibilities() ) {
+            std::vector< unsigned > matchingBlocksVector = bc().withBlockBloom( i, end, begin );
+            matchingBlocks.insert( matchingBlocksVector.begin(), matchingBlocksVector.end() );
+        }
     else
         // if it is a range filter, we want to get all logs from all blocks in given range
         for ( unsigned i = end; i <= begin; i++ )

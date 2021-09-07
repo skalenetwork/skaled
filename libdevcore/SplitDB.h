@@ -18,13 +18,14 @@ private:
         virtual void kill( Slice _key );
 
         std::unique_ptr< WriteBatchFace > backend;
-        char prefix;
         std::list< std::vector< char > > store;
+        char prefix;
     };
 
     class PrefixedDB : public DatabaseFace {
     public:
-        PrefixedDB( char _prefix, DatabaseFace* _backend, std::shared_mutex& _mutex );
+        PrefixedDB(
+            char _prefix, std::shared_ptr< DatabaseFace > _backend, std::shared_mutex& _mutex );
 
         virtual std::string lookup( Slice _key ) const;
         virtual bool exists( Slice _key ) const;
@@ -39,7 +40,7 @@ private:
 
     private:
         char prefix;
-        DatabaseFace* backend;
+        std::shared_ptr< DatabaseFace > backend;
         std::shared_mutex& backend_mutex;
     };
 
@@ -47,6 +48,7 @@ private:
 public:
     SplitDB( std::shared_ptr< DatabaseFace > _backend );
     DatabaseFace* newInterface();
+    DatabaseFace* getBackendInterface() const { return backend.get(); }
 
 private:
     std::shared_ptr< DatabaseFace > backend;
