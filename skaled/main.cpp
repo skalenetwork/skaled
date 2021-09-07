@@ -649,6 +649,7 @@ int main( int argc, char** argv ) try {
 #endif
 
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
+    addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
@@ -1687,6 +1688,10 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "sgx-url" ) ) {
         chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
     }
+    bool isDisableZMQ = false;
+    if ( vm.count( "sgx-url-no-zmq" ) ) {
+        isDisableZMQ = true;
+    }
 
     std::shared_ptr< SharedSpace > shared_space;
     if ( vm.count( "shared-space-path" ) )
@@ -2287,7 +2292,8 @@ int main( int argc, char** argv ) try {
         /// skale
         auto skaleFace = new rpc::Skale( *g_client, shared_space );
         /// skaleStatsFace
-        auto skaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
+        auto skaleStatsFace =
+            new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
 
         std::string argv_string;
         {
