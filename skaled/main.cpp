@@ -52,7 +52,6 @@
 #include <libethcore/KeyManager.h>
 #include <libethereum/ClientTest.h>
 #include <libethereum/Defaults.h>
-#include <libethereum/SnapshotImporter.h>
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
 
@@ -414,18 +413,6 @@ int main( int argc, char** argv ) try {
     Defaults::get();
     Ethash::init();
     NoProof::init();
-
-    /// Operating mode.
-    OperationMode mode = OperationMode::Node;
-
-    /// File name for import/export.
-    string filename;
-    bool safeImport = false;
-
-    /// Hashes/numbers for export range.
-    string exportFrom = "1";
-    string exportTo = "latest";
-    Format exportFormat = Format::Binary;
 
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
@@ -862,11 +849,6 @@ int main( int argc, char** argv ) try {
               << cc::debug( " threads in task dispatcher" ) << std::endl;
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
-
-    if ( vm.count( "import-snapshot" ) ) {
-        mode = OperationMode::ImportSnapshot;
-        filename = vm["import-snapshot"].as< string >();
-    }
 
     bool chainConfigIsSet = false, chainConfigParsed = false;
     static nlohmann::json joConfig;
@@ -1608,43 +1590,12 @@ int main( int argc, char** argv ) try {
         } else
             remoteHost = host;
     }
-    if ( vm.count( "import" ) ) {
-        mode = OperationMode::Import;
-        filename = vm["import"].as< string >();
-    }
-    if ( vm.count( "export" ) ) {
-        mode = OperationMode::Export;
-        filename = vm["export"].as< string >();
-    }
     if ( vm.count( "password" ) )
         passwordsToNote.push_back( vm["password"].as< string >() );
     if ( vm.count( "master" ) ) {
         masterPassword = vm["master"].as< string >();
         masterSet = true;
     }
-    if ( vm.count( "dont-check" ) )
-        safeImport = true;
-    if ( vm.count( "format" ) ) {
-        string m = vm["format"].as< string >();
-        if ( m == "binary" )
-            exportFormat = Format::Binary;
-        else if ( m == "hex" )
-            exportFormat = Format::Hex;
-        else if ( m == "human" )
-            exportFormat = Format::Human;
-        else {
-            cerr << "Bad "
-                 << "--format"
-                 << " option: " << m << "\n";
-            return EX_USAGE;
-        }
-    }
-    if ( vm.count( "to" ) )
-        exportTo = vm["to"].as< string >();
-    if ( vm.count( "from" ) )
-        exportFrom = vm["from"].as< string >();
-    if ( vm.count( "only" ) )
-        exportTo = exportFrom = vm["only"].as< string >();
 #if ETH_MINIUPNPC
     if ( vm.count( "upnp" ) ) {
         string m = vm["upnp"].as< string >();
@@ -1983,152 +1934,6 @@ int main( int argc, char** argv ) try {
         g_client->startWorking();
     }
 
-    auto toNumber = [&]( string const& s ) -> unsigned {
-        if ( s == "latest" )
-            return g_client->number();
-        if ( s.size() == 64 || ( s.size() == 66 && s.substr( 0, 2 ) == "0x" ) )
-            return g_client->blockChain().number( h256( s ) );
-        try {
-            return static_cast< unsigned int >( stoul( s ) );
-        } catch ( ... ) {
-            cerr << "Bad block number/hash option: " << s << "\n";
-            return static_cast< unsigned int >( -1 );
-        }
-    };
-
-    if ( mode == OperationMode::Export ) {
-        ofstream fout( filename, std::ofstream::binary );
-        ostream& out = ( filename.empty() || filename == "--" ) ? cout : fout;
-
-        unsigned last = toNumber( exportTo );
-        for ( unsigned i = toNumber( exportFrom ); i <= last; ++i ) {
-            bytes block = g_client->blockChain().block( g_client->blockChain().numberHash( i ) );
-            switch ( exportFormat ) {
-            case Format::Binary:
-                out.write( reinterpret_cast< char const* >( block.data() ),
-                    std::streamsize( block.size() ) );
-                break;
-            case Format::Hex:
-                out << toHex( block ) << "\n";
-                break;
-            case Format::Human:
-                out << RLP( block ) << "\n";
-                break;
-            }
-        }
-        return 0;
-    }
-
-    if ( mode == OperationMode::Import ) {
-        std::thread th( [&]() {
-            dev::setThreadName( "import" );
-
-            ifstream fin( filename, std::ifstream::binary );
-            istream& in = ( filename.empty() || filename == "--" ) ? cin : fin;
-            unsigned alreadyHave = 0;
-            unsigned good = 0;
-            unsigned futureTime = 0;
-            unsigned unknownParent = 0;
-            unsigned bad = 0;
-            chrono::steady_clock::time_point t = chrono::steady_clock::now();
-            double last = 0;
-            unsigned lastImported = 0;
-            unsigned imported = 0;
-
-            unsigned block_no = static_cast< unsigned int >( -1 );
-            cout << "Skipping " << g_client->syncStatus().currentBlockNumber + 1 << " blocks.\n";
-            MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-            while ( in.peek() != -1 && ( !ExitHandler::shouldExit() ) ) {
-                bytes block( 8 );
-                {
-                    if ( block_no >= g_client->number() ) {
-                        MICROPROFILE_ENTERI( "main", "in.read", -1 );
-                    }
-                    in.read( reinterpret_cast< char* >( block.data() ),
-                        std::streamsize( block.size() ) );
-                    block.resize( RLP( block, RLP::LaissezFaire ).actualSize() );
-                    if ( block.size() >= 8 ) {
-                        in.read( reinterpret_cast< char* >( block.data() + 8 ),
-                            std::streamsize( block.size() ) - 8 );
-                        if ( block_no >= g_client->number() ) {
-                            MICROPROFILE_LEAVE();
-                        }
-                    } else {
-                        throw std::runtime_error( "Buffer error" );
-                    }
-                }
-                block_no++;
-
-                if ( block_no <= g_client->number() )
-                    continue;
-
-                switch ( g_client->queueBlock( block, safeImport ) ) {
-                case ImportResult::Success:
-                    good++;
-                    break;
-                case ImportResult::AlreadyKnown:
-                    alreadyHave++;
-                    break;
-                case ImportResult::UnknownParent:
-                    unknownParent++;
-                    break;
-                case ImportResult::FutureTimeUnknown:
-                    unknownParent++;
-                    futureTime++;
-                    break;
-                case ImportResult::FutureTimeKnown:
-                    futureTime++;
-                    break;
-                default:
-                    bad++;
-                    break;
-                }
-
-                // sync chain with queue
-                tuple< ImportRoute, bool, unsigned > r = g_client->syncQueue( 10 );
-                imported += get< 2 >( r );
-
-                double e =
-                    chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
-                        .count() /
-                    1000.0;
-                if ( static_cast< unsigned int >( e ) >= last + 10 ) {
-                    MICROPROFILE_LEAVE();
-                    auto i = imported - lastImported;
-                    auto d = e - last;
-                    cout << i << " more imported at " << i / d << " blocks/s. " << imported
-                         << " imported in " << e << " seconds at "
-                         << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#"
-                         << g_client->number() << ")"
-                         << "\n";
-                    fprintf( g_client->performance_fd, "%d\t%.2lf\n", g_client->number(), i / d );
-                    last = static_cast< unsigned >( e );
-                    lastImported = imported;
-                    MICROPROFILE_ENTERI( "main", "bunch 10s", MP_LIGHTGRAY );
-                }
-            }  // while
-            MICROPROFILE_LEAVE();
-
-            bool moreToImport = true;
-            while ( moreToImport ) {
-                {
-                    MICROPROFILE_SCOPEI( "main", "sleep 1 sec", MP_DIMGREY );
-                    this_thread::sleep_for( chrono::seconds( 1 ) );
-                }
-                tie( ignore, moreToImport, ignore ) = g_client->syncQueue( 100000 );
-            }
-            double e =
-                chrono::duration_cast< chrono::milliseconds >( chrono::steady_clock::now() - t )
-                    .count() /
-                1000.0;
-            cout << imported << " imported in " << e << " seconds at "
-                 << ( round( imported * 10 / e ) / 10 ) << " blocks/s (#" << g_client->number()
-                 << ")\n";
-        } );  // thread
-        th.join();
-        return 0;
-    }
-
     try {
         if ( keyManager.exists() ) {
             if ( !keyManager.load( masterPassword ) && masterSet ) {
@@ -2159,22 +1964,6 @@ int main( int argc, char** argv ) try {
 
     for ( auto const& s : toImport ) {
         keyManager.import( s, "Imported key (UNSAFE)" );
-    }
-
-    if ( mode == OperationMode::ImportSnapshot ) {
-        try {
-            auto stateImporter = g_client->createStateImporter();
-            auto blockChainImporter = g_client->createBlockChainImporter();
-            SnapshotImporter importer( *stateImporter, *blockChainImporter );
-
-            auto snapshotStorage( createSnapshotStorage( filename ) );
-            importer.import( *snapshotStorage, g_client->blockChain().genesisHash() );
-            // continue with regular sync from the snapshot block
-        } catch ( ... ) {
-            cerr << "Error during importing the snapshot: "
-                 << boost::current_exception_diagnostic_information() << endl;
-            return EX_DATAERR;
-        }
     }
 
     if ( nodeMode == NodeMode::Full ) {
