@@ -185,26 +185,6 @@ but not imported into chain)
 }
 */
 
-BOOST_AUTO_TEST_CASE( insertWithoutParent ) {
-    TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    TestTransaction tr = TestTransaction::defaultTransaction();
-    TestBlock block;
-    block.mine( bc );
-
-    BlockHeader header = block.blockHeader();
-    header.setNumber( 10 );
-    block.setBlockHeader( header );
-
-    BlockChain& bcRef = bc.interfaceUnsafe();
-
-    bcRef.insertWithoutParent( block.bytes(), block.receipts(), 0x040000 );
-    BOOST_CHECK_EQUAL( bcRef.number(), 10 );
-
-    bcRef.setChainStartBlockNumber( 10 );
-    BOOST_REQUIRE_EQUAL( bcRef.chainStartBlockNumber(), 10 );
-}
-
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( BlockChainMainNetworkSuite, MainNetworkNoProofTestFixture )
@@ -233,13 +213,6 @@ BOOST_AUTO_TEST_CASE( Mining_5_BlockFutureTime ) {
     pair< ImportResult, ImportRoute > importAttempt;
     importAttempt = bcRef.attemptImport( uncleBlock.bytes(), bc.testGenesis().mutableState() );
     BOOST_REQUIRE( importAttempt.first == ImportResult::FutureTimeKnown );
-
-    auto is_critical = []( std::exception const& _e ) {
-        cnote << _e.what();
-        return true;
-    };
-    BOOST_CHECK_EXCEPTION(
-        bcRef.insert( uncleBlock.bytes(), uncleBlock.receipts() ), FutureTime, is_critical );
 }
 
 bool onBadwasCalled = false;
@@ -276,59 +249,6 @@ BOOST_AUTO_TEST_CASE( attemptImport ) {
     importAttempt = bcRef.attemptImport( blockBytes, bc.testGenesis().mutableState() );
     BOOST_REQUIRE( importAttempt.first == ImportResult::Malformed );
     BOOST_REQUIRE( onBadwasCalled == true );
-}
-
-BOOST_AUTO_TEST_CASE( insert ) {
-    TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    TestTransaction tr = TestTransaction::defaultTransaction();
-    TestBlock block;
-    block.addTransaction( tr );
-    block.mine( bc );
-
-    BlockChain& bcRef = bc.interfaceUnsafe();
-
-    // Incorrect Receipt
-    ZeroGasPricer gp;
-    Block bl = bcRef.genesisBlock( bc.testGenesis().state() );
-    bl.sync( bcRef );
-    bl.sync( bcRef, block.transactionQueue(), gp );
-
-    // Receipt should be RLPStream
-    const bytes receipt = bl.receipt( 0 ).rlp();
-    bytesConstRef receiptRef( &receipt[0], receipt.size() );
-
-    auto is_critical = []( std::exception const& _e ) {
-        return string( _e.what() ).find( "InvalidBlockFormat" ) != string::npos;
-    };
-    BOOST_CHECK_EXCEPTION(
-        bcRef.insert( bl.blockData(), receiptRef ), InvalidBlockFormat, is_critical );
-    auto is_critical2 = []( std::exception const& _e ) {
-        return string( _e.what() ).find( "InvalidReceiptsStateRoot" ) != string::npos;
-    };
-    BOOST_CHECK_EXCEPTION(
-        bcRef.insert( block.bytes(), receiptRef ), InvalidReceiptsStateRoot, is_critical2 );
-
-    BOOST_REQUIRE( bcRef.number() == 0 );
-
-    bcRef.insert( block.bytes(), block.receipts() );
-}
-
-BOOST_AUTO_TEST_CASE( insertException ) {
-    TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    BlockChain& bcRef = bc.interfaceUnsafe();
-
-    TestTransaction tr = TestTransaction::defaultTransaction();
-    TestBlock block;
-    block.addTransaction( tr );
-    block.mine( bc );
-    bc.addBlock( block );
-
-    auto is_critical = []( std::exception const& _e ) {
-        cnote << _e.what();
-        return true;
-    };
-    BOOST_CHECK_EXCEPTION(
-        bcRef.insert( block.bytes(), block.receipts() ), AlreadyHaveBlock, is_critical );
 }
 
 BOOST_AUTO_TEST_CASE( updateStats ) {
