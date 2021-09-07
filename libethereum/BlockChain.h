@@ -153,16 +153,6 @@ public:
         VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
     ImportRoute import( Block const& _block );
 
-    /// Import data into disk-backed DB.
-    /// This will not execute the block and populate the state trie, but rather will simply add the
-    /// block/header and receipts directly into the databases.
-    void insert( bytes const& _block, bytesConstRef _receipts, bool _mustBeNew = true );
-    void insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew = true );
-    /// Insert that doesn't require parent to be imported, useful when we don't have the full
-    /// blockchain (like restoring from partial snapshot).
-    ImportRoute insertWithoutParent(
-        bytes const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty );
-
     /// Returns true if the given block is known (though not necessarily a part of the canon chain).
     bool isKnown( h256 const& _hash, bool _isCurrent = true ) const;
 

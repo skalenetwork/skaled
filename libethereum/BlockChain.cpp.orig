@@ -306,7 +306,7 @@ string BlockChain::dumpDatabase() const {
     oss << m_lastBlockHash << '\n';
     std::map< string, string > sorted;
     m_extrasDB->forEach( [&sorted]( db::Slice key, db::Slice value ) {
-        // give priority to 1-st occurrence
+        // give priority ti 1-st occurrence
         if ( sorted.count( toHex( key ) ) == 0 )
             sorted[toHex( key )] = toHex( value );
         return true;
@@ -409,6 +409,112 @@ ImportRoute BlockChain::import( bytes const& _block, State& _state, bool _mustBe
     //    cerr << "Import block #" << block.info.number() << " with hash = " << block.info.hash() <<
     //    endl;
     return import( block, _state, _mustBeNew );
+}
+
+void BlockChain::insert( bytes const& _block, bytesConstRef _receipts, bool _mustBeNew ) {
+    // VERIFY: populates from the block and checks the block is internally coherent.
+    VerifiedBlockRef const block =
+        verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
+    insert( block, _receipts, _mustBeNew );
+}
+
+void BlockChain::insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew ) {
+    // Check block doesn't already exist first!
+    if ( _mustBeNew )
+        checkBlockIsNew( _block );
+
+    // Work out its number as the parent's number + 1
+    if ( !isKnown( _block.info.parentHash(), false ) ) {
+        LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
+        // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
+        // about its ancestry later on.
+        BOOST_THROW_EXCEPTION( UnknownParent() );
+    }
+
+    // Check receipts
+    vector< bytesConstRef > receipts;
+    for ( auto i : RLP( _receipts ) )
+        receipts.push_back( i.data() );
+    h256 receiptsRoot = orderedTrieRoot( receipts );
+    if ( _block.info.receiptsRoot() != receiptsRoot ) {
+        LOG( m_logger ) << _block.info.hash() << " : Invalid receipts root "
+                        << _block.info.receiptsRoot() << " not " << receiptsRoot;
+        // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
+        // about its ancestry later on.
+        BOOST_THROW_EXCEPTION( InvalidReceiptsStateRoot() );
+    }
+
+    auto pd = details( _block.info.parentHash() );
+    if ( !pd ) {
+        auto pdata = pd.rlp();
+        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata );
+        auto parentBlock = block( _block.info.parentHash() );
+        LOG( m_loggerError ) << "isKnown: " << isKnown( _block.info.parentHash() );
+        LOG( m_loggerError ) << "last/number: " << m_lastBlockNumber << " " << m_lastBlockHash
+                             << " " << _block.info.number();
+        LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
+        LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
+        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        exit( -1 );
+    }
+
+    // Check it's not crazy
+    checkBlockTimestamp( _block.info );
+
+    // Verify parent-critical parts
+    verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
+
+    // OK - we're happy. Insert into database.
+    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
+    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
+
+    BlockLogBlooms blb;
+    for ( auto i : RLP( _receipts ) )
+        blb.blooms.push_back( TransactionReceipt( i.data() ).bloom() );
+
+    // ensure parent is cached for later addition.
+    // TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
+    // together with an "ensureCachedWithUpdatableLock(l)" method.
+    // This is safe in practice since the caches don't get flushed nearly often enough to be
+    // done here.
+    details( _block.info.parentHash() );
+    DEV_WRITE_GUARDED( x_details ) {
+        if ( !dev::contains( m_details[_block.info.parentHash()].children, _block.info.hash() ) )
+            m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
+    }
+
+    blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+    DEV_READ_GUARDED( x_details )
+    extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+        ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
+
+    BlockDetails bd( ( unsigned ) pd.number + 1, pd.totalDifficulty + _block.info.difficulty(),
+        _block.info.parentHash(), {}, _block.block.size() );
+    bytes bd_rlp = bd.rlp();
+    bd.size = bd_rlp.size();
+
+    extrasWriteBatch->insert(
+        toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( bd_rlp ) );
+    extrasWriteBatch->insert(
+        toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
+    extrasWriteBatch->insert(
+        toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
+
+    try {
+        m_blocksDB->commit( std::move( blocksWriteBatch ) );
+    } catch ( boost::exception const& ex ) {
+        cwarn << "Error writing to blockchain database: " << boost::diagnostic_information( ex );
+        cwarn << "Fail writing to blockchain database. Bombing out.";
+        exit( -1 );
+    }
+
+    try {
+        m_extrasDB->commit( std::move( extrasWriteBatch ) );
+    } catch ( boost::exception const& ex ) {
+        cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
+        cwarn << "Fail writing to extras database. Bombing out.";
+        exit( -1 );
+    }
 }
 
 ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
@@ -528,7 +634,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
     //
     // We need to compute log blooms directly here without using Block::logBloom()
     // method because _receipts may contain extra receipt items corresponding to
-    // partially cought-up transactions
+    // partially caught-up transactions
     //
     // normally it's performed like: // LogBloom blockBloom = tbi.logBloom();
     //
@@ -540,6 +646,20 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     return insertBlockAndExtras( verifiedBlock, ref( receipts ), &blockBloomFull,
         _block.info().difficulty(), performanceLogger );
+}
+
+ImportRoute BlockChain::insertWithoutParent(
+    bytes const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty ) {
+    VerifiedBlockRef const block =
+        verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
+
+    // Check block doesn't already exist first!
+    checkBlockIsNew( block );
+
+    checkBlockTimestamp( block.info );
+
+    ImportPerformanceLogger performanceLogger;
+    return insertBlockAndExtras( block, _receipts, nullptr, _totalDifficulty, performanceLogger );
 }
 
 void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
@@ -650,12 +770,54 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
 
         RLP txns_rlp = blockRLP[1];
 
+<<<<<<< HEAD
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
             extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
                 ( db::Slice ) dev::ref( ta.rlp() ) );
             ++ta.index;
+=======
+        BlockHeader tbi;
+        if ( *i == _block.info.hash() )
+            tbi = _block.info;
+        else
+            tbi = BlockHeader( block( *i ) );
+
+        // Collate logs into blooms.
+        h256s alteredBlooms;
+        {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
+
+            //
+            // l_sergiy:
+            //
+            // We need to compute log blooms directly here without using Block::logBloom()
+            // method because _receipts may contain extra receipt items corresponding to
+            // partially caught-up transactions
+            //
+            // old code was: // LogBloom blockBloom = tbi.logBloom();
+            //
+            LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : tbi.logBloom();
+            //
+            //
+
+            blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
+
+            // Pre-memoize everything we need before locking x_blocksBlooms
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize )
+                blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
+
+            WriteGuard l( x_blocksBlooms );
+            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+                  level++, index /= c_bloomIndexSize ) {
+                unsigned i = index / c_bloomIndexSize;
+                unsigned o = index % c_bloomIndexSize;
+                alteredBlooms.push_back( chunkId( level, i ) );
+                m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
+            }
+>>>>>>> develop
         }
     }
 
@@ -969,7 +1131,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     fresh.push_back( tbi.hash() );
 
     clog( VerbosityTrace, "BlockChain" )
-        << cc::debug( "Insterted block with " ) << _block.transactions.size()
+        << cc::debug( "Inserted block with " ) << _block.transactions.size()
         << cc::debug( " transactions" );
 
     return ImportRoute{dead, fresh, _block.transactions};

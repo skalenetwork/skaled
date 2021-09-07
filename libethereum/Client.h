@@ -46,7 +46,6 @@
 
 #include "Block.h"
 #include "BlockChain.h"
-#include "BlockChainImporter.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "InstanceMonitor.h"
@@ -229,9 +228,6 @@ public:
     std::unique_ptr< StateImporterFace > createStateImporter() {
         throw std::logic_error( "createStateImporter is not implemented" );
         //        return dev::eth::createStateImporter(m_state);
-    }
-    std::unique_ptr< BlockChainImporterFace > createBlockChainImporter() {
-        return dev::eth::createBlockChainImporter( m_bc );
     }
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
