@@ -2352,6 +2352,11 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 cc::num10( nServerIndex ) + cc::debug( "/" ) + cc::notice( esm2str( esm ) ) +
                 cc::debug( " server on address " ) + cc::info( strAddr ) +
                 cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
+
+
+        skutils::http_pg::xx_start();
+
+
         if ( bIsSSL )
             pSrv.reset( new SkaleRelayHTTP( pSO, ipVer, strAddr.c_str(), nPort,
                 strPathSslCert.c_str(), strPathSslKey.c_str(), nServerIndex,

@@ -722,6 +722,13 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 }
 
 };  // namespace http
+
+namespace http_pg {
+
+void xx_start();
+
+};  // namespace http_pg
+
 };  // namespace skutils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
