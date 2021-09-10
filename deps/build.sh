@@ -307,7 +307,7 @@ setup_variable WITH_DOUBLE_CONVERSION "yes"
 setup_variable WITH_GOOGLE_LOG "yes"
 setup_variable WITH_GFLAGS "yes"
 setup_variable WITH_FOLLY "yes"
-setup_variable WITH_SODIUM "yes"
+setup_variable WITH_SODIUM "no"
 setup_variable WITH_WANGLE "yes"
 setup_variable WITH_GTEST "yes"
 setup_variable WITH_FIZZ "yes"
@@ -2492,7 +2492,7 @@ then
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libsodium
 			./autogen.sh -s
-			./configure --enable-static --disable-shared --prefix="$INSTALL_ROOT"
+            ./configure --enable-static --disable-shared --disable-pie --prefix="$INSTALL_ROOT"
 			cd ..
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"

@@ -133,7 +133,7 @@ bool server::start() {
     server_.reset( new proxygen::HTTPServer( std::move( options ) ) );
     server_->bind( IPs );
     // start HTTPServer mainloop in a separate thread
-    std::thread t( [&]() { server_->start(); } );
+    thread_ = std::move( std::thread( [&]() { server_->start(); } ) );
     return true;
 }
 
