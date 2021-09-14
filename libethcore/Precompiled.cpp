@@ -574,7 +574,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         const std::string fileHashName = filePath.string() + "._hash";
 
         std::fstream fileHash;
-        fileHash.open( fileHashName, ios::binary | ios::out | ios::in );
+        fileHash.open( fileHashName, ios::out );
 
         std::string relativePath =
             filePath.string().substr( filePath.string().find( "filestorage" ) );
