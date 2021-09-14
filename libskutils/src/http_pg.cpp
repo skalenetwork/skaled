@@ -42,28 +42,28 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
 }
 
 void request_site::onBody( std::unique_ptr< folly::IOBuf > body ) noexcept {
-    auto cnt = body->computeChainDataLength();
-    auto pData = body->data();
-    std::string strIn, strOut;
-    strIn.insert( strIn.end(), pData, pData + cnt );
+//    auto cnt = body->computeChainDataLength();
+//    auto pData = body->data();
+//    std::string strIn, strOut;
+//    strIn.insert( strIn.end(), pData, pData + cnt );
+//     std::cout << " ----------------- site::onBody(): " << strIn << "\n";
 
-    std::cout << " ----------------- site::onBody(): " << strIn << "\n";
-    proxygen::ResponseBuilder( downstream_ ).body( std::move( body ) ).send();
+     proxygen::ResponseBuilder( downstream_ ).body( std::move( body ) ).send();
 
-    //    nlohmann::json joID = "0xBADF00D", joIn, joOut;
-    //    try {
-    //        joIn = nlohmann::json::parse( strIn );
-    //        if ( joIn.count( "id" ) > 0 )
-    //            joID = joIn["id"];
-    //        joOut = pSSRQ_->onRequest( joIn );
-    //    } catch ( const std::exception& ex ) {
-    //        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
-    //    } catch ( ... ) {
-    //        joOut = server_side_request_handler::json_from_error_text(
-    //            "unknown exception in HTTP handler", joID );
-    //    }
-    //    strOut = joOut.dump();
-    //    proxygen::ResponseBuilder( downstream_ ).body( strOut ).send();
+//    nlohmann::json joID = "0xBADF00D", joIn, joOut;
+//    try {
+//        joIn = nlohmann::json::parse( strIn );
+//        if ( joIn.count( "id" ) > 0 )
+//            joID = joIn["id"];
+//        joOut = pSSRQ_->onRequest( joIn );
+//    } catch ( const std::exception& ex ) {
+//        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
+//    } catch ( ... ) {
+//        joOut = server_side_request_handler::json_from_error_text(
+//            "unknown exception in HTTP handler", joID );
+//    }
+//    strOut = joOut.dump();
+//    proxygen::ResponseBuilder( downstream_ ).body( strOut ).send();
 }
 
 void request_site::onEOM() noexcept {
