@@ -1713,12 +1713,8 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     std::string fileHashName = pathToFile.string() + "._hash";
 
-    std::ofstream fileHash( fileHashName );
     std::string relativePath = pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
     dev::h256 hash = dev::sha256( relativePath );
-    fileHash << hash;
-
-    fileHash.close();
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
