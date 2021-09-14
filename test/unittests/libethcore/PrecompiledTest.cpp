@@ -1754,7 +1754,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     BOOST_REQUIRE( calculatedHash == commonFileHash );
     BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
-    remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
+    remove( fileHashName.c_str() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
