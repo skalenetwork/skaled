@@ -81,6 +81,9 @@ typedef int socket_t;
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
+
 /// configuration
 
 #define __SKUTILS_HTTP_ACCEPT_WAIT_MILLISECONDS__ ( 5 * 1000 )
@@ -725,7 +728,10 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 
 namespace http_pg {
 
-void xx_start();
+typedef std::function< nlohmann::json( const nlohmann::json& ) > pg_on_request_handler_t;
+
+void pg_start( pg_on_request_handler_t h );
+void pg_stop();
 
 };  // namespace http_pg
 

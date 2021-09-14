@@ -12,12 +12,19 @@
 #include <proxygen/httpserver/HTTPServer.h>
 #include <proxygen/httpserver/RequestHandlerFactory.h>
 
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
+
+#include <skutils/http.h>
+
 namespace proxygen {
 class ResponseHandler;
 }
 
 namespace skutils {
 namespace http_pg {
+
+class server_side_request_handler;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,9 +45,10 @@ public:
 class request_site : public proxygen::RequestHandler {
     request_sink& sink_;
     std::unique_ptr< folly::IOBuf > body_;
+    server_side_request_handler* pSSRQ_;
 
 public:
-    explicit request_site( request_sink& a_sink );
+    explicit request_site( request_sink& a_sink, server_side_request_handler* pSSRQ );
     ~request_site() override;
 
     void onRequest( std::unique_ptr< proxygen::HTTPMessage > headers ) noexcept override;
@@ -57,9 +65,10 @@ public:
 
 class request_site_factory : public proxygen::RequestHandlerFactory {
     folly::ThreadLocalPtr< request_sink > sink_;
+    server_side_request_handler* pSSRQ_ = nullptr;
 
 public:
-    request_site_factory();
+    request_site_factory( server_side_request_handler* pSSRQ );
     ~request_site_factory() override;
     void onServerStart( folly::EventBase* /*evb*/ ) noexcept override;
     void onServerStop() noexcept override;
@@ -70,15 +79,31 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class server {
+class server_side_request_handler {
+public:
+    server_side_request_handler();
+    virtual ~server_side_request_handler();
+    static nlohmann::json json_from_error_text(
+        const char* strErrorDescription, const nlohmann::json& joID );
+    static std::string answer_from_error_text(
+        const char* strErrorDescription, const nlohmann::json& joID );
+    virtual nlohmann::json onRequest( const nlohmann::json& joIn ) = 0;
+};  /// class server_side_request_handler
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class server : public server_side_request_handler {
     std::thread thread_;
     std::unique_ptr< proxygen::HTTPServer > server_;
+    pg_on_request_handler_t h_;
 
 public:
-    server();
-    virtual ~server();
+    server( pg_on_request_handler_t h );
+    ~server() override;
     bool start();
     void stop();
+    nlohmann::json onRequest( const nlohmann::json& joIn ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
