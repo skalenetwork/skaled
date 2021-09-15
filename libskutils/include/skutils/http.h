@@ -728,8 +728,11 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 
 namespace http_pg {
 
-typedef std::function< nlohmann::json( const nlohmann::json& ) > pg_on_request_handler_t;
+typedef std::function< nlohmann::json( const nlohmann::json&, const std::string& strOrigin ) >
+    pg_on_request_handler_t;
 
+bool pg_logging_get();
+void pg_logging_set( bool bIsLoggingMode );
 void pg_start( pg_on_request_handler_t h );
 void pg_stop();
 

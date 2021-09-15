@@ -3,8 +3,27 @@
 #include <proxygen/httpserver/RequestHandler.h>
 #include <proxygen/httpserver/ResponseBuilder.h>
 
+#include <skutils/console_colors.h>
+
 namespace skutils {
 namespace http_pg {
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void pg_log( const char* s ) {
+    if ( s == nullptr || s[0] == '\0' )
+        return;
+    if ( !pg_logging_get() )
+        return;
+    std::cout << s;
+}
+
+void pg_log( const std::string& s ) {
+    if ( s.empty() )
+        return;
+    return pg_log( s.c_str() );
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,61 +43,114 @@ void request_sink::OnRecordRequestCountIncrement() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-request_site::request_site( request_sink& a_sink, server_side_request_handler* pSSRQ )
-    : sink_( a_sink ), pSSRQ_( pSSRQ ) {}
+std::atomic_uint64_t request_site::g_instance_counter = 0;
 
-request_site::~request_site() {}
+request_site::request_site( request_sink& a_sink, server_side_request_handler* pSSRQ )
+    : sink_( a_sink ), pSSRQ_( pSSRQ ), nInstanceNumber_( g_instance_counter++ ) {
+    strLogPrefix_ = cc::notice( "PG" ) + cc::normal( "/" ) + cc::notice( "rq" ) +
+                    cc::normal( "/" ) + cc::notice( "site" ) + cc::normal( "/" ) +
+                    cc::size10( nInstanceNumber_ ) + " ";
+    pg_log( strLogPrefix_ + cc::debug( "constructor" ) + "\n" );
+}
+
+request_site::~request_site() {
+    pg_log( strLogPrefix_ + cc::debug( "destructor" ) + "\n" );
+}
 
 void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noexcept {
     sink_.OnRecordRequestCountIncrement();
-    proxygen::ResponseBuilder builder( downstream_ );
-    builder.status( 200, "OK" );
-    builder.header( "Request-Number", folly::to< std::string >( sink_.getRequestCount() ) );
+    strHttpMethod_ =
+        skutils::tools::to_upper( skutils::tools::trim_copy( req->getMethodString() ) );
+    const folly::SocketAddress& origin_address = req->getClientAddress();
+    std::string strClientAddress = origin_address.getAddressStr();  // getFullyQualified()
+    ipVer_ = ( is_ipv6( strClientAddress ) && is_valid_ipv6( strClientAddress ) ) ? 6 : 4;
+    std::string strAddressPart =
+        ( ( ipVer_ == 6 ) ? "[" : "" ) + strClientAddress + ( ( ipVer_ == 6 ) ? "]" : "" );
+    strOrigin_ = req->getScheme() + "://" + strAddressPart + ":" + req->getClientPort();
+    strPath_ = req->getPath();
+    pg_log( strLogPrefix_ + cc::debug( "request query " ) + cc::sunny( strHttpMethod_ ) +
+            cc::debug( " from origin " ) + cc::info( strOrigin_ ) + cc::debug( ", path " ) +
+            cc::p( strPath_ ) + "\n" );
+    size_t nHeaderIdx = 0;
     req->getHeaders().forEach( [&]( std::string& name, std::string& value ) {
-        builder.header( folly::to< std::string >( "x-echo-", name ), value );
-        std::cout << "----------------- value of \"" << name << "\" is: " << value << "\n";
+        pg_log( strLogPrefix_ + cc::debug( "header " ) + cc::num10( nHeaderIdx ) + " " +
+                cc::attention( name ) + cc::debug( "=" ) + cc::attention( value ) + "\n" );
+        ++nHeaderIdx;
     } );
-    builder.send();
+    if ( strHttpMethod_ == "OPTIONS" ) {
+        proxygen::ResponseBuilder( downstream_ )
+            .status( 200, "OK" )
+            .header( "access-control-allow-headers", "Content-Type" )
+            .header( "access-control-allow-methods", "POST" )
+            .header( "access-control-allow-origin", "*" )
+            .header( "content-length", "0" )
+            .header(
+                "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" )
+            .send();
+        return;
+    }
+    //    proxygen::ResponseBuilder( downstream_ )
+    //        .status( 200, "OK" )
+    //        .header( "access-control-allow-origin", "*" )
+    //        .send();
 }
 
 void request_site::onBody( std::unique_ptr< folly::IOBuf > body ) noexcept {
-//    auto cnt = body->computeChainDataLength();
-//    auto pData = body->data();
-//    std::string strIn, strOut;
-//    strIn.insert( strIn.end(), pData, pData + cnt );
-//     std::cout << " ----------------- site::onBody(): " << strIn << "\n";
-
-     proxygen::ResponseBuilder( downstream_ ).body( std::move( body ) ).send();
-
-//    nlohmann::json joID = "0xBADF00D", joIn, joOut;
-//    try {
-//        joIn = nlohmann::json::parse( strIn );
-//        if ( joIn.count( "id" ) > 0 )
-//            joID = joIn["id"];
-//        joOut = pSSRQ_->onRequest( joIn );
-//    } catch ( const std::exception& ex ) {
-//        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
-//    } catch ( ... ) {
-//        joOut = server_side_request_handler::json_from_error_text(
-//            "unknown exception in HTTP handler", joID );
-//    }
-//    strOut = joOut.dump();
-//    proxygen::ResponseBuilder( downstream_ ).body( strOut ).send();
+    pg_log( strLogPrefix_ + cc::debug( "body query" ) + "\n" );
+    if ( strHttpMethod_ == "OPTIONS" )
+        return;
+    auto cnt = body->computeChainDataLength();
+    auto pData = body->data();
+    std::string strIn, strOut;
+    strIn.insert( strIn.end(), pData, pData + cnt );
+    nlohmann::json joID = "0xBADF00D", joIn, joOut;
+    try {
+        joIn = nlohmann::json::parse( strIn );
+        pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
+        if ( joIn.count( "id" ) > 0 )
+            joID = joIn["id"];
+        joOut = pSSRQ_->onRequest( joIn, strOrigin_ );
+        pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( joOut ) + "\n" );
+    } catch ( const std::exception& ex ) {
+        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
+                cc::error( ", error info: " ) + cc::warn( ex.what() ) + "\n" );
+        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
+    } catch ( ... ) {
+        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
+                cc::error( ", error info: " ) + cc::warn( "unknown exception in HTTP handler" ) +
+                "\n" );
+        joOut = server_side_request_handler::json_from_error_text(
+            "unknown exception in HTTP handler", joID );
+        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
+    }
+    strOut = joOut.dump();
+    proxygen::ResponseBuilder( downstream_ )
+        .status( 200, "OK" )
+        .header( "access-control-allow-origin", "*" )
+        .header( "content-length", skutils::tools::format( "%zu", strOut.size() ) )
+        .body( strOut )
+        .send();
 }
 
 void request_site::onEOM() noexcept {
+    pg_log( strLogPrefix_ + cc::debug( "EOM query" ) + "\n" );
     proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept {
     // handler doesn't support upgrades
+    pg_log( strLogPrefix_ + cc::debug( "upgrade query" ) + "\n" );
 }
 
 void request_site::requestComplete() noexcept {
+    pg_log( strLogPrefix_ + cc::debug( "complete notification" ) + "\n" );
     delete this;
 }
 
-void request_site::onError( proxygen::ProxygenError /*err*/ ) noexcept {
+void request_site::onError( proxygen::ProxygenError err ) noexcept {
+    pg_log(
+        strLogPrefix_ + cc::error( "error notification: " ) + cc::size10( size_t( err ) ) + "\n" );
     delete this;
 }
 
@@ -130,26 +202,58 @@ std::string server_side_request_handler::answer_from_error_text(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-server::server( pg_on_request_handler_t h ) : h_( h ) {}
+server::server( pg_on_request_handler_t h ) : h_( h ) {
+    strLogPrefix_ = cc::notice( "PG" ) + cc::normal( "/" ) + cc::notice( "server" ) + " ";
+    pg_log( strLogPrefix_ + cc::debug( "constructor" ) + "\n" );
+}
 
 server::~server() {
+    pg_log( strLogPrefix_ + cc::debug( "destructor" ) + "\n" );
     stop();
 }
 
 bool server::start() {
     stop();
 
-    int32_t http_port = 11000;      // HTTP protocol
-    int32_t spdy_port = 11001;      // SPDY protocol
-    int32_t h2_port = 11002;        // HTTP/2 protocol
-    std::string ip( "localhost" );  // IP/Hostname to bind to
+    pg_log( strLogPrefix_ + cc::debug( "will start server thread" ) + "\n" );
+
+    int32_t http_port = 11000;
+    int32_t http_port6 = 12000;
+    int32_t https_port = 11001;
+    int32_t https_port6 = 12001;
+    //    int32_t spdy_port = 11001;      // SPDY protocol
+    //    int32_t h2_port = 11002;        // HTTP/2 protocol
+    // std::string ip( "localhost" );  // IP/Hostname to bind to
     int32_t threads =
         0;  // Number of threads to listen on, if <= 0 will use the number ofcores on this machine
 
+
+    wangle::SSLContextConfig sslCfg;
+    sslCfg.isDefault = true;
+    sslCfg.setCertificate( "./cert.pem", "./key.pem", "" );
+    // sslCfg.clientCAFile = "./ca_cert.pem";
+    sslCfg.clientVerification =
+        folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
+    //    cfg.sslConfigs.push_back( sslCfg );
+
+
+    proxygen::HTTPServer::IPConfig cfg_http( folly::SocketAddress( "127.0.0.1", http_port, true ),
+        proxygen::HTTPServer::Protocol::HTTP );
+    proxygen::HTTPServer::IPConfig cfg_http6(
+        folly::SocketAddress( "::1", http_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
+    proxygen::HTTPServer::IPConfig cfg_https( folly::SocketAddress( "127.0.0.1", https_port, true ),
+        proxygen::HTTPServer::Protocol::HTTP );
+    proxygen::HTTPServer::IPConfig cfg_https6(
+        folly::SocketAddress( "::1", https_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
+    cfg_https.sslConfigs.push_back( sslCfg );
+    cfg_https6.sslConfigs.push_back( sslCfg );
+
     std::vector< proxygen::HTTPServer::IPConfig > IPs = {
-        {folly::SocketAddress( ip, http_port, true ), proxygen::HTTPServer::Protocol::HTTP},
-        {folly::SocketAddress( ip, spdy_port, true ), proxygen::HTTPServer::Protocol::SPDY},
-        {folly::SocketAddress( ip, h2_port, true ), proxygen::HTTPServer::Protocol::HTTP2},
+        cfg_http, cfg_http6, cfg_https, cfg_https6,
+        // {folly::SocketAddress( ip, http_port, true ), proxygen::HTTPServer::Protocol::HTTP},
+        // {folly::SocketAddress( ip, spdy_port, true ),
+        // proxygen::HTTPServer::Protocol::SPDY}, {folly::SocketAddress( ip, h2_port, true ),
+        // proxygen::HTTPServer::Protocol::HTTP2},
     };
 
     if ( threads <= 0 ) {
@@ -177,25 +281,41 @@ bool server::start() {
     server_->bind( IPs );
     // start HTTPServer mainloop in a separate thread
     thread_ = std::move( std::thread( [&]() { server_->start(); } ) );
+
+    pg_log( strLogPrefix_ + cc::debug( "did started server thread" ) + "\n" );
     return true;
 }
 
 void server::stop() {
     if ( thread_.joinable() ) {
+        pg_log( strLogPrefix_ + cc::debug( "will stop server thread" ) + "\n" );
         thread_.join();
+        pg_log( strLogPrefix_ + cc::debug( "did stopped server thread" ) + "\n" );
     }
     if ( server_ ) {
+        pg_log( strLogPrefix_ + cc::debug( "will release server instance" ) + "\n" );
         server_.reset();
+        pg_log( strLogPrefix_ + cc::debug( "did released server instance" ) + "\n" );
     }
 }
 
-nlohmann::json server::onRequest( const nlohmann::json& joIn ) {
-    nlohmann::json joOut = h_( joIn );
+nlohmann::json server::onRequest( const nlohmann::json& joIn, const std::string& strOrigin ) {
+    nlohmann::json joOut = h_( joIn, strOrigin );
     return joOut;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool g_b_pb_logging = true;
+
+bool pg_logging_get() {
+    return g_b_pb_logging;
+}
+
+void pg_logging_set( bool bIsLoggingMode ) {
+    g_b_pb_logging = bIsLoggingMode;
+}
 
 std::unique_ptr< skutils::http_pg::server > g_pServer;
 
@@ -218,3 +338,14 @@ void pg_stop() {
 
 };  // namespace http_pg
 };  // namespace skutils
+
+/*
+
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83}'
+http://127.0.0.1:11000 curl -X POST --data
+'{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":83}' http://127.0.0.1:11000 curl -X POST
+--data
+'[{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83},{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":83}]'
+http://127.0.0.1:11000
+
+*/

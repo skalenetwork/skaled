@@ -46,8 +46,14 @@ class request_site : public proxygen::RequestHandler {
     request_sink& sink_;
     std::unique_ptr< folly::IOBuf > body_;
     server_side_request_handler* pSSRQ_;
+    static std::atomic_uint64_t g_instance_counter;
+    uint64_t nInstanceNumber_;
+    std::string strLogPrefix_;
 
 public:
+    std::string strHttpMethod_, strOrigin_, strPath_;
+    int ipVer_ = -1;
+
     explicit request_site( request_sink& a_sink, server_side_request_handler* pSSRQ );
     ~request_site() override;
 
@@ -87,7 +93,8 @@ public:
         const char* strErrorDescription, const nlohmann::json& joID );
     static std::string answer_from_error_text(
         const char* strErrorDescription, const nlohmann::json& joID );
-    virtual nlohmann::json onRequest( const nlohmann::json& joIn ) = 0;
+    virtual nlohmann::json onRequest(
+        const nlohmann::json& joIn, const std::string& strOrigin ) = 0;
 };  /// class server_side_request_handler
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,13 +104,14 @@ class server : public server_side_request_handler {
     std::thread thread_;
     std::unique_ptr< proxygen::HTTPServer > server_;
     pg_on_request_handler_t h_;
+    std::string strLogPrefix_;
 
 public:
     server( pg_on_request_handler_t h );
     ~server() override;
     bool start();
     void stop();
-    nlohmann::json onRequest( const nlohmann::json& joIn ) override;
+    nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

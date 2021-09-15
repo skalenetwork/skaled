@@ -2571,12 +2571,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
         };
 
 
-        skutils::http_pg::pg_start( [=, &pSrv]( const nlohmann::json& joIn ) -> nlohmann::json {
+        skutils::http_pg::pg_start( [=, &pSrv]( const nlohmann::json& joIn,
+                                        const std::string& strOrigin ) -> nlohmann::json {
             if ( isShutdownMode() )
                 throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-            nlohmann::json joOut = fnHandler( joIn, "PG-HTTP", 0,
-                "*",  // TO-FIX: later, origin
-                4,    // TO-FIX: later, ipVer
+            nlohmann::json joOut = fnHandler( joIn, "PG-HTTP", 0, strOrigin.c_str(),
+                4,  // TO-FIX: later, ipVer
                 this, pSrv );
             return joOut;
         } );
