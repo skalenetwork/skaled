@@ -38,6 +38,7 @@
 #include <libethcore/Common.h>
 #include <libethcore/SealEngine.h>
 #include <libskale/State.h>
+#include <libdevcore/batched_io.h>
 
 #include "Account.h"
 #include "BlockDetails.h"
@@ -605,6 +606,44 @@ private:
     mutable Logger m_loggerError{createLogger( VerbosityError, "chain" )};
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
+};
+
+class batched_blocks_and_extras: public batched_io::batched_face<unsigned>,
+                                 public db::WriteBatchFace {
+private:
+    db::DatabaseFace* m_db;
+    std::unique_ptr<db::WriteBatchFace> m_batch;
+    void ensure_batch(){
+        if(!m_batch)
+            m_batch = m_db->createWriteBatch();
+    }
+
+public:
+    virtual void open(db::DatabaseFace* _db){
+        m_db = _db;
+    }
+    virtual bool is_open() const {
+        return !!m_db;
+    }
+    virtual void insert( db::Slice _key, db::Slice _value ){
+        ensure_batch();
+        m_batch->insert(_key, _value);
+    }
+    virtual void kill( db::Slice _key ){
+        ensure_batch();
+        m_batch->kill(_key);
+    }
+    virtual unsigned latest() const {
+
+    }
+    virtual void commit(const unsigned& _bn) {
+        (void) _bn; // as it's written before
+        ensure_batch();
+        m_db->commit(std::move(m_batch));
+    }
+
+protected:
+    void recover(){/*nothing*/}
 };
 
 std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
