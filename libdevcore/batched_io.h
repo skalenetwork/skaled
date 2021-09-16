@@ -3,24 +3,21 @@
 
 namespace batched_io{
 
-template<typename Key>
+// 1 Derive from this class
+// 2 Implement in your class your specific I/O operations (DB write, file write etc)
+// 3 Implement commit() and proper recover() at opening
 class batched_face{
 public:
 
-    // sometimes it's not needed in case if backing storage is opened in ctor
-    // but better be awre of this function
-    virtual bool is_open() const = 0;
-
-    virtual Key latest() const = 0;
-
-    // sometimes cost Key& argument is not needed
-    // but better keep it in mind
-    virtual void commit(const Key&) = 0;
+    virtual void commit() = 0;
+    virtual ~batched_face(){}
 
 protected:
+
     // sometimes it's not needed
-    // but...you got it
+    // but it should never be forgotten!
     virtual void recover() = 0;
+
 };
 
 }// namespace

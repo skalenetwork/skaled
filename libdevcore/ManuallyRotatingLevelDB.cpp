@@ -19,7 +19,14 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 
     size_t current_i = _nPieces;
 
-    // open and find min size
+    // open and find marked item
+    // NB there can be 2 marked items in case of unfinished rotation
+    // in this case do the following:
+    // 0 and 1 -> choose 0
+    // 1 and 2 -> choose 1
+    // 2 and 3 -> choose 2
+    // 3 and 4 -> choose 3
+    // 0 and 4 -> choose 4
     for ( size_t i = 0; i < _nPieces; ++i ) {
         boost::filesystem::path path = base_path / ( std::to_string( i ) + ".db" );
         DatabaseFace* db = new LevelDB( path );
@@ -27,16 +34,13 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
         pieces.emplace_back( db );
 
         if ( db->exists( current_piece_mark_key ) ) {
-            if ( current_i != _nPieces ) {
-                DatabaseError ex;
-                ex << errinfo_dbStatusCode( DatabaseStatus::Corruption )
-                   << errinfo_dbStatusString( "Rotating DB has more then one 'current' piece" )
-                   << errinfo_path( path.string() );
-                BOOST_THROW_EXCEPTION( ex );
-            }  // if error
-
-            current_i = i;
-        }  // if
+            // write only if empty or this is last and 0-th was non-empty
+            if ( current_i == _nPieces || ( current_i == 0 && i == _nPieces - 1 ) )
+                current_i = i;
+            else {  // if excess mark
+                db->kill( current_piece_mark_key );
+            }  // else
+        }      // if
 
     }  // for
 
@@ -64,16 +68,14 @@ void ManuallyRotatingLevelDB::rotate() {
     assert( this->batch_cache.empty() );
     // we delete one below and make it current
 
-    current_piece->kill( current_piece_mark_key );
-
+    // 1 remove oldest
     int old_db_no = current_piece_file_no - 1;
     if ( old_db_no < 0 )
         old_db_no += pieces.size();
     boost::filesystem::path old_path = base_path / ( std::to_string( old_db_no ) + ".db" );
-
-    pieces.pop_back();  // will delete here
     boost::filesystem::remove_all( old_path );
 
+    // 2 recreate it as new current
     DatabaseFace* new_db = new LevelDB( old_path );
     pieces.emplace_front( new_db );
 
@@ -81,6 +83,12 @@ void ManuallyRotatingLevelDB::rotate() {
     current_piece = new_db;
 
     current_piece->insert( current_piece_mark_key, std::string( "" ) );
+
+    // NB crash in this place (between insert() and kill() is handled in ctor logic above^
+
+    // 3 clear previous current
+    pieces.back()->kill( current_piece_mark_key );
+    pieces.pop_back();  // will delete here
 }
 
 std::string ManuallyRotatingLevelDB::lookup( Slice _key ) const {
@@ -147,6 +155,87 @@ h256 ManuallyRotatingLevelDB::hashBase() const {
     h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
     return hash;
+}
+
+batched_rotating_db_io::batched_rotating_db_io(
+    const boost::filesystem::path& _path, size_t _nPieces )
+    : base_path( _path ) {
+    // open all
+    for ( size_t i = 0; i < _nPieces; ++i ) {
+        boost::filesystem::path path = base_path / ( std::to_string( i ) + ".db" );
+        DatabaseFace* db = new LevelDB( path );
+        pieces.emplace_back( db );
+    }  // for
+
+    // fix possible errors (i.e. duplicated mark key)
+    recover();
+
+    // find current
+    size_t current_i = _nPieces;
+    for ( size_t i = 0; i < _nPieces; ++i ) {
+        if ( pieces[i]->exists( current_piece_mark_key ) ) {
+            current_i = i;
+            break;
+        }  // if
+    }      // for
+
+    // if newly created DB
+    // TODO Correctly, we should write here into current_piece_mark_key
+    // but as it is - it works ok too
+    if ( current_i == _nPieces )
+        current_i = 0;
+
+    // TODO Generally, we shoud rotate in different direction, but in reality this doesn't matter
+    // (but reverse it!) rotate so min_i will be first
+    for ( size_t i = 0; i < current_i; ++i ) {
+        std::unique_ptr< DatabaseFace > el = std::move( pieces.front() );
+        pieces.pop_front();
+        pieces.push_back( std::move( el ) );
+    }  // for
+
+    this->current_piece_file_no = current_i;
+}
+
+void batched_rotating_db_io::rotate() {
+    // 1 remove oldest
+    int old_db_no = current_piece_file_no - 1;
+    if ( old_db_no < 0 )
+        old_db_no += pieces.size();
+    boost::filesystem::path old_path = base_path / ( std::to_string( old_db_no ) + ".db" );
+    boost::filesystem::remove_all( old_path );
+
+    // 2 recreate it as new current
+    DatabaseFace* new_db = new LevelDB( old_path );
+    pieces.emplace_front( new_db );
+
+    current_piece_file_no = old_db_no;
+
+    pieces[0]->insert( current_piece_mark_key, std::string( "" ) );
+
+    // NB crash in this place (between insert() and kill() is handled in recover()!
+
+    // 3 clear previous current
+    pieces.back()->kill( current_piece_mark_key );
+    pieces.pop_back();  // will delete here
+}
+
+void batched_rotating_db_io::recover() {
+    // delete 2nd mark
+    // NB there can be 2 marked items in case of unfinished rotation
+    // in this case do the following:
+    // 0 and 1 -> choose 0
+    // 1 and 2 -> choose 1
+    // 2 and 3 -> choose 2
+    // 3 and 4 -> choose 3
+    // 0 and 4 -> choose 4
+
+    for ( size_t i = 0; i < pieces.size(); ++i ) {
+        if ( pieces[i]->exists( current_piece_mark_key ) ) {
+            size_t prev_i = ( i + pieces.size() - 1 ) % pieces.size();
+            if ( pieces[prev_i]->exists( current_piece_mark_key ) )
+                pieces[i]->kill( current_piece_mark_key );
+        }  // if
+    }      // for
 }
 
 }  // namespace db

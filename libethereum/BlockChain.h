@@ -34,11 +34,11 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SplitDB.h>
+#include <libdevcore/batched_io.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethcore/SealEngine.h>
 #include <libskale/State.h>
-#include <libdevcore/batched_io.h>
 
 #include "Account.h"
 #include "BlockDetails.h"
@@ -608,42 +608,34 @@ private:
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };
 
-class batched_blocks_and_extras: public batched_io::batched_face<unsigned>,
-                                 public db::WriteBatchFace {
+class batched_blocks_and_extras : public batched_io::batched_face, public db::WriteBatchFace {
 private:
     db::DatabaseFace* m_db;
-    std::unique_ptr<db::WriteBatchFace> m_batch;
-    void ensure_batch(){
-        if(!m_batch)
+    std::unique_ptr< db::WriteBatchFace > m_batch;
+    void ensure_batch() {
+        if ( !m_batch )
             m_batch = m_db->createWriteBatch();
     }
 
 public:
-    virtual void open(db::DatabaseFace* _db){
-        m_db = _db;
-    }
-    virtual bool is_open() const {
-        return !!m_db;
-    }
-    virtual void insert( db::Slice _key, db::Slice _value ){
+    void open( db::DatabaseFace* _db ) { m_db = _db; }
+    bool is_open() const { return !!m_db; }
+    void insert( db::Slice _key, db::Slice _value ) {
         ensure_batch();
-        m_batch->insert(_key, _value);
+        m_batch->insert( _key, _value );
     }
-    virtual void kill( db::Slice _key ){
+    void kill( db::Slice _key ) {
         ensure_batch();
-        m_batch->kill(_key);
+        m_batch->kill( _key );
     }
-    virtual unsigned latest() const {
-
-    }
-    virtual void commit(const unsigned& _bn) {
-        (void) _bn; // as it's written before
+    virtual void commit() {
         ensure_batch();
-        m_db->commit(std::move(m_batch));
+        m_db->commit( std::move( m_batch ) );
     }
 
 protected:
-    void recover(){/*nothing*/}
+    void recover() { /*nothing*/
+    }
 };
 
 std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
