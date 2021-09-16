@@ -109,7 +109,7 @@ void request_site::onBody( std::unique_ptr< folly::IOBuf > body ) noexcept {
         pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
         if ( joIn.count( "id" ) > 0 )
             joID = joIn["id"];
-        joOut = pSSRQ_->onRequest( joIn, strOrigin_ );
+        joOut = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_ );
         pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( joOut ) + "\n" );
     } catch ( const std::exception& ex ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
@@ -299,8 +299,9 @@ void server::stop() {
     }
 }
 
-nlohmann::json server::onRequest( const nlohmann::json& joIn, const std::string& strOrigin ) {
-    nlohmann::json joOut = h_( joIn, strOrigin );
+nlohmann::json server::onRequest(
+    const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) {
+    nlohmann::json joOut = h_( joIn, strOrigin, ipVer );
     return joOut;
 }
 

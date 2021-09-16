@@ -94,7 +94,7 @@ public:
     static std::string answer_from_error_text(
         const char* strErrorDescription, const nlohmann::json& joID );
     virtual nlohmann::json onRequest(
-        const nlohmann::json& joIn, const std::string& strOrigin ) = 0;
+        const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) = 0;
 };  /// class server_side_request_handler
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,8 @@ public:
     ~server() override;
     bool start();
     void stop();
-    nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin ) override;
+    nlohmann::json onRequest(
+        const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
