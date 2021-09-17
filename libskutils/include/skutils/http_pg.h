@@ -104,10 +104,26 @@ class server : public server_side_request_handler {
     std::thread thread_;
     std::unique_ptr< proxygen::HTTPServer > server_;
     pg_on_request_handler_t h_;
+    bool m_bHelperIsSSL = false;
+    int ipVer_ = -1;
+    std::string strBindAddr_;
+    int nPort_ = -1;
+    std::string cert_path_;
+    std::string private_key_path_;
+    int32_t threads_ = 0;
+
     std::string strLogPrefix_;
 
 public:
-    server( pg_on_request_handler_t h );
+    server(
+            pg_on_request_handler_t h,
+            int ipVer,
+            std::string strBindAddr,
+            int nPort,
+            const char* cert_path,
+            const char* private_key_path,
+            int32_t threads = 0
+            );
     ~server() override;
     bool start();
     void stop();

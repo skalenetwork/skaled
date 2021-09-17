@@ -732,10 +732,20 @@ typedef std::function< nlohmann::json(
     const nlohmann::json&, const std::string& strOrigin, int ipVer ) >
     pg_on_request_handler_t;
 
+typedef void * wrapped_proxygen_server_handle;
+
 bool pg_logging_get();
 void pg_logging_set( bool bIsLoggingMode );
-void pg_start( pg_on_request_handler_t h );
-void pg_stop();
+wrapped_proxygen_server_handle pg_start(
+        pg_on_request_handler_t h,
+        int ipVer,
+        std::string strBindAddr,
+        int nPort,
+        const char* cert_path,
+        const char* private_key_path,
+        int32_t threads = 0
+        );
+void pg_stop( wrapped_proxygen_server_handle hServer );
 
 };  // namespace http_pg
 

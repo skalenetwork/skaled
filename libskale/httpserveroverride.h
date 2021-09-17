@@ -259,7 +259,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SkaleRelayHTTP : public SkaleServerHelper {
+class SkaleRelayMiniHTTP : public SkaleServerHelper {
 protected:
     SkaleServerOverride* m_pSO = nullptr;
 
@@ -269,15 +269,39 @@ public:
     int nPort_;
     const bool m_bHelperIsSSL : 1;
     std::shared_ptr< skutils::http::server > m_pServer;
-    SkaleRelayHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
+    SkaleRelayMiniHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
         const char* cert_path = nullptr, const char* private_key_path = nullptr,
         int nServerIndex = -1,
         size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
         bool is_async_http_transfer_mode = true );
-    ~SkaleRelayHTTP() override;
+    ~SkaleRelayMiniHTTP() override;
     SkaleServerOverride* pso() { return m_pSO; }
     const SkaleServerOverride* pso() const { return m_pSO; }
-};  /// class SkaleRelayHTTP
+};  /// class SkaleRelayMiniHTTP
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SkaleRelayProxygenHTTP : public SkaleServerHelper {
+protected:
+    SkaleServerOverride* m_pSO = nullptr;
+    skutils::http_pg::wrapped_proxygen_server_handle hServer_ = nullptr;
+
+public:
+    int ipVer_;
+    std::string strBindAddr_;
+    int nPort_;
+    const bool m_bHelperIsSSL;
+    e_server_mode_t esm_;
+    std::string cert_path_, private_key_path_;
+    SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
+        const char* cert_path, const char* private_key_path, int nServerIndex, e_server_mode_t esm, int32_t threads = 0 );
+    ~SkaleRelayProxygenHTTP() override;
+    SkaleServerOverride* pso() { return m_pSO; }
+    const SkaleServerOverride* pso() const { return m_pSO; }
+    bool is_running() const;
+    void stop();
+};  /// class SkaleRelayProxygenHTTP
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -428,23 +452,35 @@ public:
     dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
-private:
+protected:
     nlohmann::json implHandleHttpRequest( const nlohmann::json& joIn,
         const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer,
-        int nPort, e_server_mode_t esm, SkaleServerOverride* pSO );
+        int nPort, e_server_mode_t esm );
 
-    bool implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
+private:
+    bool implStartListening( // mini HTTP
+        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
         size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
         bool is_async_http_transfer_mode = true );
-    bool implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
+    bool implStartListening( // web socket
+        std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
         const std::string& strAddr, int nPort, const std::string& strPathSslKey,
         const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm );
-    bool implStopListening(
-        std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
-    bool implStopListening(
+    bool implStartListening( // proxygen HTTP
+        std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer,
+        const std::string& strAddr, int nPort, const std::string& strPathSslKey,
+        const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
+        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+        bool is_async_http_transfer_mode = true );
+
+    bool implStopListening( // mini HTTP
+        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    bool implStopListening( // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    bool implStopListening( // proxygen HTTP
+        std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
 
 public:
     size_t max_http_handler_queues_ = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
@@ -473,11 +509,12 @@ public:
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-    std::list< std::shared_ptr< SkaleRelayHTTP > > serversHTTP4std_, serversHTTP6std_,
-        serversHTTPS4std_, serversHTTPS6std_, serversHTTP4nfo_, serversHTTP6nfo_, serversHTTPS4nfo_,
-        serversHTTPS6nfo_;
-    std::list< std::shared_ptr< SkaleRelayWS > > serversWS4std_, serversWS6std_, serversWSS4std_,
-        serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >
+        serversMiniHTTP4std_, serversMiniHTTP6std_, serversMiniHTTPS4std_, serversMiniHTTPS6std_, serversMiniHTTP4nfo_, serversMiniHTTP6nfo_, serversMiniHTTPS4nfo_, serversMiniHTTPS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayWS > >
+        serversWS4std_, serversWS6std_, serversWSS4std_, serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >
+        serversProxygenHTTP4std_, serversProxygenHTTP6std_, serversProxygenHTTPS4std_, serversProxygenHTTPS6std_, serversProxygenHTTP4nfo_, serversProxygenHTTP6nfo_, serversProxygenHTTPS4nfo_, serversProxygenHTTPS6nfo_;
 
 public:
     // status API, returns running server port or -1 if server is not started
@@ -555,6 +592,8 @@ protected:
     bool handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
+    friend class SkaleRelayMiniHTTP;
+    friend class SkaleRelayProxygenHTTP;
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride
