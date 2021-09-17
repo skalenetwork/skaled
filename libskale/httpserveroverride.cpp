@@ -2669,10 +2669,10 @@ bool SkaleServerOverride::implStopListening(
                                         opts_.netOpts_.bindOptsStandard_ :
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
-                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
-        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
-                                       ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrMiniHTTPS4_ : bo.strAddrMiniHTTP4_ ) :
+                                               ( bIsSSL ? bo.strAddrMiniHTTPS6_ : bo.strAddrMiniHTTP6_ );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortMiniHTTPS4_ : bo.nBasePortMiniHTTP4_ ) :
+                                       ( bIsSSL ? bo.nBasePortMiniHTTPS6_ : bo.nBasePortMiniHTTP6_ ) ) +
                     nServerIndex;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::notice( "Will stop " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
@@ -2734,11 +2734,11 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTP4std_ : serversHTTP4nfo_;
     size_t nServerIndex;
-    if ( 0 <= bo.nBasePortHTTP4_ && bo.nBasePortHTTP4_ <= 65535 ) {
+    if ( 0 <= bo.nBasePortMiniHTTP4_ && bo.nBasePortMiniHTTP4_ <= 65535 ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrHTTP4_,
-                     bo.nBasePortHTTP4_ + nServerIndex, "", "", nServerIndex, esm,
+            if ( !implStartListening( pServer, 4, bo.strAddrMiniHTTP4_,
+                     bo.nBasePortMiniHTTP4_ + nServerIndex, "", "", nServerIndex, esm,
                      max_http_handler_queues_, is_async_http_transfer_mode_ ) )
                 return false;
             serversHTTP4.push_back( pServer );
@@ -2746,11 +2746,11 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     }
     std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTP6std_ : serversHTTP6nfo_;
-    if ( 0 <= bo.nBasePortHTTP6_ && bo.nBasePortHTTP6_ <= 65535 ) {
+    if ( 0 <= bo.nBasePortMiniHTTP6_ && bo.nBasePortMiniHTTP6_ <= 65535 ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrHTTP6_,
-                     bo.nBasePortHTTP6_ + nServerIndex, "", "", nServerIndex, esm,
+            if ( !implStartListening( pServer, 6, bo.strAddrMiniHTTP6_,
+                     bo.nBasePortMiniHTTP6_ + nServerIndex, "", "", nServerIndex, esm,
                      max_http_handler_queues_, is_async_http_transfer_mode_ ) )
                 return false;
             serversHTTP6.push_back( pServer );
@@ -2758,14 +2758,14 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     }
     std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS4std_ : serversHTTPS4nfo_;
-    if ( 0 <= bo.nBasePortHTTPS4_ && bo.nBasePortHTTPS4_ <= 65535 &&
+    if ( 0 <= bo.nBasePortMiniHTTPS4_ && bo.nBasePortMiniHTTPS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortHTTPS4_ != bo.nBasePortHTTP4_ ) {
+         bo.nBasePortMiniHTTPS4_ != bo.nBasePortMiniHTTP4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrHTTPS4_,
-                     bo.nBasePortHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
+            if ( !implStartListening( pServer, 4, bo.strAddrMiniHTTPS4_,
+                     bo.nBasePortMiniHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
                      opts_.netOpts_.strPathSslCert_, nServerIndex, esm, max_http_handler_queues_,
                      is_async_http_transfer_mode_ ) )
                 return false;
@@ -2774,14 +2774,14 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     }
     std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS6std_ : serversHTTPS6nfo_;
-    if ( 0 <= bo.nBasePortHTTPS6_ && bo.nBasePortHTTPS6_ <= 65535 &&
+    if ( 0 <= bo.nBasePortMiniHTTPS6_ && bo.nBasePortMiniHTTPS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortHTTPS6_ != bo.nBasePortHTTP6_ ) {
+         bo.nBasePortMiniHTTPS6_ != bo.nBasePortMiniHTTP6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrHTTPS6_,
-                     bo.nBasePortHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
+            if ( !implStartListening( pServer, 6, bo.strAddrMiniHTTPS6_,
+                     bo.nBasePortMiniHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
                      opts_.netOpts_.strPathSslCert_, nServerIndex, esm, max_http_handler_queues_,
                      is_async_http_transfer_mode_ ) )
                 return false;
@@ -2791,7 +2791,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
     if ( 0 <= bo.nBasePortWS4_ && bo.nBasePortWS4_ <= 65535 &&
-         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWS4_ != bo.nBasePortMiniHTTP4_ && bo.nBasePortWS4_ != bo.nBasePortMiniHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening( pServer, 4, bo.strAddrWS4_, bo.nBasePortWS4_ + nServerIndex,
@@ -2803,7 +2803,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS6std_ : serversWS6nfo_;
     if ( 0 <= bo.nBasePortWS6_ && bo.nBasePortWS6_ <= 65535 &&
-         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWS6_ != bo.nBasePortMiniHTTP6_ && bo.nBasePortWS6_ != bo.nBasePortMiniHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening( pServer, 6, bo.strAddrWS6_, bo.nBasePortWS6_ + nServerIndex,
@@ -2817,7 +2817,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS4_ && bo.nBasePortWSS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS4_ != bo.nBasePortWS4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWSS4_ != bo.nBasePortMiniHTTP4_ && bo.nBasePortWSS4_ != bo.nBasePortMiniHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening( pServer, 4, bo.strAddrWSS4_, bo.nBasePortWSS4_ + nServerIndex,
@@ -2832,7 +2832,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS6_ && bo.nBasePortWSS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS6_ != bo.nBasePortWS6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWSS6_ != bo.nBasePortMiniHTTP6_ && bo.nBasePortWSS6_ != bo.nBasePortMiniHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening( pServer, 6, bo.strAddrWSS6_, bo.nBasePortWSS6_ + nServerIndex,
@@ -2923,7 +2923,7 @@ bool SkaleServerOverride::StopListening() {
     return b;
 }
 
-int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
@@ -2933,12 +2933,12 @@ int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTP6std_ : serversHTTP6nfo_;
     for ( auto pServer : ( ( ipVer == 4 ) ? serversHTTP4 : serversHTTP6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortHTTP4_ : bo.nBasePortHTTP6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortMiniHTTP4_ : bo.nBasePortMiniHTTP6_ ) +
                    pServer->serverIndex();
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusHTTPS( int ipVer, e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
@@ -2948,11 +2948,12 @@ int SkaleServerOverride::getServerPortStatusHTTPS( int ipVer, e_server_mode_t es
         ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS6std_ : serversHTTPS6nfo_;
     for ( auto pServer : ( ( ipVer == 4 ) ? serversHTTPS4 : serversHTTPS6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTPS6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortMiniHTTPS4_ : bo.nBasePortMiniHTTPS6_ ) +
                    pServer->serverIndex();
     }
     return -1;
 }
+
 int SkaleServerOverride::getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
@@ -2982,6 +2983,13 @@ int SkaleServerOverride::getServerPortStatusWSS( int ipVer, e_server_mode_t esm 
                    pServer->serverIndex();
     }
     return -1;
+}
+
+int SkaleServerOverride::getServerPortStatusProxygenHTTP( int ipVer, e_server_mode_t esm ) const {
+    return -1;
+}
+int SkaleServerOverride::getServerPortStatusProxygenHTTPS( int ipVer, e_server_mode_t esm ) const {
+    return -1; // TO-FIX: return real status value here
 }
 
 bool SkaleServerOverride::is_connection_limit_overflow() const {

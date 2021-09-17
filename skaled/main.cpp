@@ -191,10 +191,7 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
-        "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
-        "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
-        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "acceptors", "info-acceptors"};
+    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port", "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port", "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6", "info-wss-port6", "pg-http-port", "pg-https-port", "pg-http-port6", "pg-https-port6", "info-pg-http-port", "info-pg-https-port", "info-pg-http-port6", "info-pg-https-port6", "ws-log", "ssl-key", "ssl-cert", "acceptors", "info-acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -418,14 +415,14 @@ int main( int argc, char** argv ) try {
     NodeMode nodeMode = NodeMode::Full;
 
     bool is_ipc = false;
-    int nExplicitPortHTTP4std = -1;
-    int nExplicitPortHTTP4nfo = -1;
-    int nExplicitPortHTTP6std = -1;
-    int nExplicitPortHTTP6nfo = -1;
-    int nExplicitPortHTTPS4std = -1;
-    int nExplicitPortHTTPS4nfo = -1;
-    int nExplicitPortHTTPS6std = -1;
-    int nExplicitPortHTTPS6nfo = -1;
+    int nExplicitPortMiniHTTP4std = -1;
+    int nExplicitPortMiniHTTP4nfo = -1;
+    int nExplicitPortMiniHTTP6std = -1;
+    int nExplicitPortMiniHTTP6nfo = -1;
+    int nExplicitPortMiniHTTPS4std = -1;
+    int nExplicitPortMiniHTTPS4nfo = -1;
+    int nExplicitPortMiniHTTPS6std = -1;
+    int nExplicitPortMiniHTTPS6nfo = -1;
     int nExplicitPortWS4std = -1;
     int nExplicitPortWS4nfo = -1;
     int nExplicitPortWS6std = -1;
@@ -434,6 +431,14 @@ int main( int argc, char** argv ) try {
     int nExplicitPortWSS4nfo = -1;
     int nExplicitPortWSS6std = -1;
     int nExplicitPortWSS6nfo = -1;
+    int nExplicitPortProxygenHTTP4std = -1;
+    int nExplicitPortProxygenHTTP4nfo = -1;
+    int nExplicitPortProxygenHTTP6std = -1;
+    int nExplicitPortProxygenHTTP6nfo = -1;
+    int nExplicitPortProxygenHTTPS4std = -1;
+    int nExplicitPortProxygenHTTPS4nfo = -1;
+    int nExplicitPortProxygenHTTPS6std = -1;
+    int nExplicitPortProxygenHTTPS6nfo = -1;
     bool bTraceJsonRpcCalls = false;
     bool bTraceJsonRpcSpecialCalls = false;
     bool bEnabledDebugBehaviorAPIs = false;
@@ -501,11 +506,13 @@ int main( int argc, char** argv ) try {
     addClientOption( "no-ipc", "Disable IPC server" );
 
     addClientOption( "http-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTP(IPv4) server(s) on specified port(and next set of ports if --acceptors > "
-        "1)" );
+        "Run web3 mini/HTTP(IPv4) server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "https-port", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTPS(IPv4) server(s) on specified port(and next set of ports if --acceptors > "
-        "1)" );
+        "Run web3 mini/HTTPS(IPv4) server(s) on specified port(and next set of ports if --acceptors > 1)" );
+    addClientOption( "pg-http-port", po::value< string >()->value_name( "<port>" ),
+        "Run web3 proxygen/HTTP(IPv4) server(s) on specified port(and next set of ports if --acceptors > 1)" );
+    addClientOption( "pg-https-port", po::value< string >()->value_name( "<port>" ),
+        "Run web3 proxygen/HTTPS(IPv4) server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "ws-port", po::value< string >()->value_name( "<port>" ),
         "Run web3 WS(IPv4) server on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "wss-port", po::value< string >()->value_name( "<port>" ),
@@ -513,11 +520,13 @@ int main( int argc, char** argv ) try {
         "1)" );
 
     addClientOption( "http-port6", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTP(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
-        "1)" );
+        "Run web3 mini/HTTP(IPv6) server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "https-port6", po::value< string >()->value_name( "<port>" ),
-        "Run web3 HTTPS(IPv6) server(s) on specified port(and next set of ports if --acceptors > "
-        "1)" );
+        "Run web3 mini/HTTPS(IPv6) server(s) on specified port(and next set of ports if --acceptors > 1)" );
+    addClientOption( "pg-http-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 proxygen/HTTP(IPv6) server(s) on specified port(and next set of ports if --acceptors > 1)" );
+    addClientOption( "pg-https-port6", po::value< string >()->value_name( "<port>" ),
+        "Run web3 proxygen/HTTPS(IPv6) server(s) on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "ws-port6", po::value< string >()->value_name( "<port>" ),
         "Run web3 WS(IPv6) server on specified port(and next set of ports if --acceptors > 1)" );
     addClientOption( "wss-port6", po::value< string >()->value_name( "<port>" ),
@@ -525,11 +534,13 @@ int main( int argc, char** argv ) try {
         "1)" );
 
     addClientOption( "info-http-port", po::value< string >()->value_name( "<port>" ),
-        "Run informational web3 HTTP(IPv4) server(s) on specified port(and next set of ports if "
-        "--info-acceptors > 1)" );
-    addClientOption( "info-ttps-port", po::value< string >()->value_name( "<port>" ),
-        "Run informational web3 HTTPS(IPv4) server(s) on specified port(and next set of ports if "
-        "--info-acceptors > 1)" );
+        "Run informational web3 mini/HTTP(IPv4) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
+    addClientOption( "info-https-port", po::value< string >()->value_name( "<port>" ),
+        "Run informational web3 mini/HTTPS(IPv4) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
+    addClientOption( "info-pg-http-port", po::value< string >()->value_name( "<port>" ),
+        "Run informational web3 proxygen/HTTP(IPv4) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
+    addClientOption( "info-pg-https-port", po::value< string >()->value_name( "<port>" ),
+        "Run informational web3 proxygen/HTTPS(IPv4) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
     addClientOption( "info-ws-port", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WS(IPv4) server on specified port(and next set of ports if "
         "--info-acceptors > 1)" );
@@ -538,11 +549,13 @@ int main( int argc, char** argv ) try {
         "--info-acceptors > 1)" );
 
     addClientOption( "info-http-port6", po::value< string >()->value_name( "<port>" ),
-        "Run informational web3 HTTP(IPv6) server(s) on specified port(and next set of ports if "
-        "--info-acceptors > 1)" );
+        "Run informational web3 mini/HTTP(IPv6) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
     addClientOption( "info-https-port6", po::value< string >()->value_name( "<port>" ),
-        "Run informational web3 HTTPS(IPv6) server(s) on specified port(and next set of ports if "
-        "--info-acceptors > 1)" );
+        "Run informational web3 mini/HTTPS(IPv6) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
+    addClientOption( "info-pg-http-port6", po::value< string >()->value_name( "<port>" ),
+        "Run informational web3 proxygen/HTTP(IPv6) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
+    addClientOption( "info-pg-https-port6", po::value< string >()->value_name( "<port>" ),
+        "Run informational web3 proxygen/HTTPS(IPv6) server(s) on specified port(and next set of ports if --info-acceptors > 1)" );
     addClientOption( "info-ws-port6", po::value< string >()->value_name( "<port>" ),
         "Run informational web3 WS(IPv6) server on specified port(and next set of ports if "
         "--info-info-acceptors > 1)" );
@@ -938,475 +951,65 @@ int main( int argc, char** argv ) try {
     clog( VerbosityDebug, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
                                    << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
 
-    // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort" and "wssRpcPort" from config.json
+    // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort", "wssRpcPort" ... from config.json
     // Second, get them from command line parameters (higher priority source)
     if ( chainConfigParsed ) {
-        nExplicitPortHTTP4std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort" ) )
-                nExplicitPortHTTP4std =
-                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTP4std && nExplicitPortHTTP4std <= 65535 ) )
-            nExplicitPortHTTP4std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTP/4/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTP4std );
-        //
-        nExplicitPortHTTP4nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoHttpRpcPort" ) )
-                nExplicitPortHTTP4nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoHttpRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTP4nfo && nExplicitPortHTTP4nfo <= 65535 ) )
-            nExplicitPortHTTP4nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTP/4/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTP4nfo );
-        //
-        nExplicitPortHTTP6std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpRpcPort6" ) )
-                nExplicitPortHTTP6std =
-                    joConfig["skaleConfig"]["nodeInfo"]["httpRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTP6std && nExplicitPortHTTP6std <= 65535 ) )
-            nExplicitPortHTTP6std = nExplicitPortHTTP4std;
-        if ( !( 0 <= nExplicitPortHTTP6std && nExplicitPortHTTP6std <= 65535 ) )
-            nExplicitPortHTTP6std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTP/6/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTP6std );
-        //
-        nExplicitPortHTTP6nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoHttpRpcPort6" ) )
-                nExplicitPortHTTP6nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoHttpRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTP6nfo && nExplicitPortHTTP6nfo <= 65535 ) )
-            nExplicitPortHTTP6nfo = nExplicitPortHTTP4nfo;
-        if ( !( 0 <= nExplicitPortHTTP6nfo && nExplicitPortHTTP6nfo <= 65535 ) )
-            nExplicitPortHTTP6nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTP/6/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTP6nfo );
-        //
-        //
-        nExplicitPortHTTPS4std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort" ) )
-                nExplicitPortHTTPS4std =
-                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTPS4std && nExplicitPortHTTPS4std <= 65535 ) )
-            nExplicitPortHTTPS4std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTPS/4/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTPS4std );
-        //
-        nExplicitPortHTTPS4nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoHttpsRpcPort" ) )
-                nExplicitPortHTTPS4nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoHttpsRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTPS4nfo && nExplicitPortHTTPS4nfo <= 65535 ) )
-            nExplicitPortHTTPS4nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTPS/4/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTPS4nfo );
-        //
-        nExplicitPortHTTPS6std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "httpsRpcPort6" ) )
-                nExplicitPortHTTPS6std =
-                    joConfig["skaleConfig"]["nodeInfo"]["httpsRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTPS6std && nExplicitPortHTTPS6std <= 65535 ) )
-            nExplicitPortHTTPS6std = nExplicitPortHTTPS4std;
-        if ( !( 0 <= nExplicitPortHTTPS6std && nExplicitPortHTTPS6std <= 65535 ) )
-            nExplicitPortHTTPS6std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTPS/6/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTPS6std );
-        //
-        nExplicitPortHTTPS6nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoHttpsRpcPort6" ) )
-                nExplicitPortHTTPS6nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoHttpsRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortHTTPS6nfo && nExplicitPortHTTPS6nfo <= 65535 ) )
-            nExplicitPortHTTPS6nfo = nExplicitPortHTTPS4nfo;
-        if ( !( 0 <= nExplicitPortHTTPS6nfo && nExplicitPortHTTPS6nfo <= 65535 ) )
-            nExplicitPortHTTPS6nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "HTTPS/6/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortHTTPS6nfo );
-        //
-        //
-        nExplicitPortWS4std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort" ) )
-                nExplicitPortWS4std = joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWS4std && nExplicitPortWS4std <= 65535 ) )
-            nExplicitPortWS4std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WS/4/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWS4std );
-        //
-        nExplicitPortWS4nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoWsRpcPort" ) )
-                nExplicitPortWS4nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoWsRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWS4nfo && nExplicitPortWS4nfo <= 65535 ) )
-            nExplicitPortWS4nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WS/4/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWS4nfo );
-        //
-        nExplicitPortWS6std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wsRpcPort6" ) )
-                nExplicitPortWS6std =
-                    joConfig["skaleConfig"]["nodeInfo"]["wsRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWS6std && nExplicitPortWS6std <= 65535 ) )
-            nExplicitPortWS6std = nExplicitPortWS4std;
-        if ( !( 0 <= nExplicitPortWS6std && nExplicitPortWS6std <= 65535 ) )
-            nExplicitPortWS6std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WS/6/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWS6std );
-        //
-        nExplicitPortWS6nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoWsRpcPort6" ) )
-                nExplicitPortWS6nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoWsRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWS6nfo && nExplicitPortWS6nfo <= 65535 ) )
-            nExplicitPortWS6nfo = nExplicitPortWS4nfo;
-        if ( !( 0 <= nExplicitPortWS6nfo && nExplicitPortWS6nfo <= 65535 ) )
-            nExplicitPortWS6nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WS/6/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWS6nfo );
-        //
-        //
-        nExplicitPortWSS4std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort" ) )
-                nExplicitPortWSS4std =
-                    joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWSS4std && nExplicitPortWSS4std <= 65535 ) )
-            nExplicitPortWSS4std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WSS/4/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWSS4std );
-        //
-        nExplicitPortWSS4nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoWssRpcPort" ) )
-                nExplicitPortWSS4nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoWssRpcPort"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWSS4nfo && nExplicitPortWSS4nfo <= 65535 ) )
-            nExplicitPortWSS4nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WSS/4/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWSS4nfo );
-        //
-        nExplicitPortWSS6std = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "wssRpcPort6" ) )
-                nExplicitPortWSS6std =
-                    joConfig["skaleConfig"]["nodeInfo"]["wssRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWSS6std && nExplicitPortWSS6std <= 65535 ) )
-            nExplicitPortWSS6std = nExplicitPortWSS4std;
-        if ( !( 0 <= nExplicitPortWSS6std && nExplicitPortWSS6std <= 65535 ) )
-            nExplicitPortWSS6std = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WSS/6/std port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWSS6std );
-        //
-        nExplicitPortWSS6nfo = -1;
-        try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "infoWssRpcPort6" ) )
-                nExplicitPortWSS6nfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["infoWssRpcPort6"].get< int >();
-        } catch ( ... ) {
-        }
-        if ( !( 0 <= nExplicitPortWSS6nfo && nExplicitPortWSS6nfo <= 65535 ) )
-            nExplicitPortWSS6nfo = nExplicitPortWSS4nfo;
-        if ( !( 0 <= nExplicitPortWSS6nfo && nExplicitPortWSS6nfo <= 65535 ) )
-            nExplicitPortWSS6nfo = -1;
-        else
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "Got " )
-                << cc::notice( "WSS/6/nfo port" ) + cc::debug( " from configuration JSON: " )
-                << cc::num10( nExplicitPortWSS6nfo );
+        auto fnExtractPort = [&]( const char* strConfigVarName, const char* strCommandLineKey,
+                                 const char* strDescription ) -> int {
+            int nPort = -1;
+            try {
+                if ( joConfig["skaleConfig"]["nodeInfo"].count( strConfigVarName ) )
+                    nPort = joConfig["skaleConfig"]["nodeInfo"][strConfigVarName].get< int >();
+            } catch ( ... ) {
+            }
+            if ( !( 0 <= nPort && nPort <= 65535 ) )
+                nPort = -1;
+            else
+                clog( VerbosityDebug, "main" )
+                    << cc::debug( "Got " )
+                    << cc::notice( strDescription ) + cc::debug( " from configuration JSON: " )
+                    << cc::num10( nPort );
+            if ( vm.count( strCommandLineKey ) ) {
+                std::string strPort = vm[strCommandLineKey].as< string >();
+                if ( !strPort.empty() ) {
+                    nPort = atoi( strPort.c_str() );
+                    if ( !( 0 <= nPort && nPort <= 65535 ) )
+                        nPort = -1;
+                    else
+                        clog( VerbosityDebug, "main" )
+                            << cc::debug( "Got " )
+                            << cc::notice( strDescription ) + cc::debug( " from command line: " )
+                            << cc::num10( nPort );
+                }
+            }
+            return nPort;
+        };
+        nExplicitPortMiniHTTP4std = fnExtractPort( "httpRpcPort", "http-port", "mini/HTTP/4/std port" );
+        nExplicitPortMiniHTTP4nfo = fnExtractPort( "infoHttpRpcPort", "info-http-port", "mini/HTTP/4/nfo port" );
+        nExplicitPortMiniHTTP6std = fnExtractPort( "httpRpcPort6", "http-port6", "mini/HTTP/6/std port" );
+        nExplicitPortMiniHTTP6nfo = fnExtractPort( "infoHttpRpcPort6", "info-http-port6", "mini/HTTP/6/nfo port" );
+        nExplicitPortMiniHTTPS4std = fnExtractPort( "httpsRpcPort", "https-port", "mini/HTTPS/4/std port" );
+        nExplicitPortMiniHTTPS4nfo = fnExtractPort( "infoHttpsRpcPort", "info-https-port", "mini/HTTPS/4/nfo port" );
+        nExplicitPortMiniHTTPS6std = fnExtractPort( "httpsRpcPort6", "https-port6", "mini/HTTPS/6/std port" );
+        nExplicitPortMiniHTTPS6nfo = fnExtractPort( "infoHttpsRpcPort6", "info-https-port6", "mini/HTTPS/6/nfo port" );
+        nExplicitPortWS4std = fnExtractPort( "wsRpcPort", "ws-port", "WS/4/std port" );
+        nExplicitPortWS4nfo = fnExtractPort( "infoWsRpcPort", "info-ws-port", "WS/4/nfo port" );
+        nExplicitPortWS6std = fnExtractPort( "wsRpcPort6", "ws-port6", "WS/6/std port" );
+        nExplicitPortWS6nfo = fnExtractPort( "infoWsRpcPort6", "info-ws-port6", "WS/6/nfo port" );
+        nExplicitPortWSS4std = fnExtractPort( "wssRpcPort", "wss-port", "WSS/4/std port" );
+        nExplicitPortWSS4nfo = fnExtractPort( "infoWssRpcPort", "info-wss-port", "WSS/4/nfo port" );
+        nExplicitPortWSS6std = fnExtractPort( "wssRpcPort6", "wss-port6", "WSS/6/std port" );
+        nExplicitPortWSS6nfo = fnExtractPort( "infoWssRpcPort6", "info-wss-port6", "WSS/6/nfo port" );
+        nExplicitPortProxygenHTTP4std = fnExtractPort( "pgHttpRpcPort", "pg-http-port", "proxygen/HTTP/4/std port" );
+        nExplicitPortProxygenHTTP4nfo = fnExtractPort( "infoPgHttpRpcPort", "info-pg-http-port", "proxygen/HTTP/4/nfo port" );
+        nExplicitPortProxygenHTTP6std = fnExtractPort( "pgHttpRpcPort6", "pg-http-port6", "proxygen/HTTP/6/std port" );
+        nExplicitPortProxygenHTTP6nfo = fnExtractPort( "infoPgHttpRpcPort6", "info-pg-http-port6", "proxygen/HTTP/6/nfo port" );
+        nExplicitPortProxygenHTTPS4std = fnExtractPort( "pgHttpsRpcPort", "pg-https-port", "proxygen/HTTPS/4/std port" );
+        nExplicitPortProxygenHTTPS4nfo = fnExtractPort( "infoPgHttpsRpcPort", "info-pg-https-port", "proxygen/HTTPS/4/nfo port" );
+        nExplicitPortProxygenHTTPS6std = fnExtractPort( "pgHttpsRpcPort6", "pg-https-port6", "proxygen/HTTPS/6/std port" );
+        nExplicitPortProxygenHTTPS6nfo = fnExtractPort( "infoPgHttpsRpcPort6", "info-pg-https-port6", "PGproxygenHTTPS/6/nfo port" );
+
     }  // if ( chainConfigParsed )
-    if ( vm.count( "http-port" ) ) {
-        std::string strPort = vm["http-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTP4std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTP4std && nExplicitPortHTTP4std <= 65535 ) )
-                nExplicitPortHTTP4std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTP/4/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTP4std );
-        }
-    }
-    if ( vm.count( "info-http-port" ) ) {
-        std::string strPort = vm["info-http-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTP4nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTP4nfo && nExplicitPortHTTP4nfo <= 65535 ) )
-                nExplicitPortHTTP4nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTP/4/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTP4nfo );
-        }
-    }
-    if ( vm.count( "http-port6" ) ) {
-        std::string strPort = vm["http-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTP6std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTP6std && nExplicitPortHTTP6std <= 65535 ) )
-                nExplicitPortHTTP6std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTP/6/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTP6std );
-        }
-    }
-    if ( vm.count( "info-http-port6" ) ) {
-        std::string strPort = vm["info-http-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTP6nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTP6nfo && nExplicitPortHTTP6nfo <= 65535 ) )
-                nExplicitPortHTTP6nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTP/6/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTP6nfo );
-        }
-    }
-    if ( vm.count( "https-port" ) ) {
-        std::string strPort = vm["https-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTPS4std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTPS4std && nExplicitPortHTTPS4std <= 65535 ) )
-                nExplicitPortHTTPS4std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTPS/4/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTPS4std );
-        }
-    }
-    if ( vm.count( "info-https-port" ) ) {
-        std::string strPort = vm["info-https-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTPS4nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTPS4nfo && nExplicitPortHTTPS4nfo <= 65535 ) )
-                nExplicitPortHTTPS4nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTPS/4/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTPS4nfo );
-        }
-    }
-    if ( vm.count( "https-port6" ) ) {
-        std::string strPort = vm["https-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTPS6std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTPS6std && nExplicitPortHTTPS6std <= 65535 ) )
-                nExplicitPortHTTPS6std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTPS/6/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTPS6std );
-        }
-    }
-    if ( vm.count( "info-https-port6" ) ) {
-        std::string strPort = vm["info-https-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortHTTPS6nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortHTTPS6nfo && nExplicitPortHTTPS6nfo <= 65535 ) )
-                nExplicitPortHTTPS6nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "HTTPS/6/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortHTTPS6nfo );
-        }
-    }
-    if ( vm.count( "ws-port" ) ) {
-        std::string strPort = vm["ws-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWS4std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWS4std && nExplicitPortWS4std <= 65535 ) )
-                nExplicitPortWS4std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WS/4/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWS4std );
-        }
-    }
-    if ( vm.count( "info-ws-port" ) ) {
-        std::string strPort = vm["info-ws-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWS4nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWS4nfo && nExplicitPortWS4nfo <= 65535 ) )
-                nExplicitPortWS4nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WS/4/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWS4nfo );
-        }
-    }
-    if ( vm.count( "ws-port6" ) ) {
-        std::string strPort = vm["ws-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWS6std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWS6std && nExplicitPortWS6std <= 65535 ) )
-                nExplicitPortWS6std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WS/6/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWS6std );
-        }
-    }
-    if ( vm.count( "info-ws-port6" ) ) {
-        std::string strPort = vm["info-ws-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWS6nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWS6nfo && nExplicitPortWS6nfo <= 65535 ) )
-                nExplicitPortWS6nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WS/6/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWS6nfo );
-        }
-    }
-    if ( vm.count( "wss-port" ) ) {
-        std::string strPort = vm["wss-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWSS4std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWSS4std && nExplicitPortWSS4std <= 65535 ) )
-                nExplicitPortWSS4std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WSS/4/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWSS4std );
-        }
-    }
-    if ( vm.count( "info-wss-port" ) ) {
-        std::string strPort = vm["info-wss-port"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWSS4nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWSS4nfo && nExplicitPortWSS4nfo <= 65535 ) )
-                nExplicitPortWSS4nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WSS/4/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWSS4nfo );
-        }
-    }
-    if ( vm.count( "wss-port6" ) ) {
-        std::string strPort = vm["wss-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWSS6std = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWSS6std && nExplicitPortWSS6std <= 65535 ) )
-                nExplicitPortWSS6std = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WSS/6/std port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWSS6std );
-        }
-    }
-    if ( vm.count( "info-wss-port6" ) ) {
-        std::string strPort = vm["info-wss-port6"].as< string >();
-        if ( !strPort.empty() ) {
-            nExplicitPortWSS6nfo = atoi( strPort.c_str() );
-            if ( !( 0 <= nExplicitPortWSS6nfo && nExplicitPortWSS6nfo <= 65535 ) )
-                nExplicitPortWSS6nfo = -1;
-            else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( "WSS/6/nfo port" ) + cc::debug( " from command line: " )
-                    << cc::num10( nExplicitPortWSS6nfo );
-        }
-    }
 
     // First, get "web3-trace" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -2048,24 +1651,30 @@ int main( int argc, char** argv ) try {
         clog( VerbosityWarning, "main" )
             << cc::info( "IPv4" )
             << cc::warn( " bind address is not set, will not start RPC on this protocol" );
-        nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortWS4std =
-            nExplicitPortWSS4std = nExplicitPortHTTP4nfo = nExplicitPortHTTPS4nfo =
-                nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
+        nExplicitPortMiniHTTP4std = nExplicitPortMiniHTTPS4std = nExplicitPortMiniHTTP4nfo = nExplicitPortMiniHTTPS4nfo
+                = nExplicitPortWS4std = nExplicitPortWSS4std = nExplicitPortWS4nfo = nExplicitPortWSS4nfo
+                = nExplicitPortProxygenHTTP4std = nExplicitPortProxygenHTTPS4std = nExplicitPortProxygenHTTP4nfo = nExplicitPortProxygenHTTPS4nfo
+                = -1;
     }
     if ( chainParams.nodeInfo.ip6.empty() ) {
         clog( VerbosityWarning, "main" )
             << cc::info( "IPv6" )
             << cc::warn( " bind address is not set, will not start RPC on this protocol" );
-        nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortWS6std =
-            nExplicitPortWSS6std = nExplicitPortHTTP6nfo = nExplicitPortHTTPS6nfo =
-                nExplicitPortWS6nfo = nExplicitPortWSS6nfo = -1;
+        nExplicitPortMiniHTTP6std = nExplicitPortMiniHTTPS6std = nExplicitPortMiniHTTP6nfo = nExplicitPortMiniHTTPS6nfo
+            = nExplicitPortWS6std = nExplicitPortWSS6std = nExplicitPortWS6nfo = nExplicitPortWSS6nfo
+            = nExplicitPortProxygenHTTP6std = nExplicitPortProxygenHTTPS6std = nExplicitPortProxygenHTTP6nfo = nExplicitPortProxygenHTTPS6nfo
+            = -1;
     }
-    if ( is_ipc || nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 ||
-         nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortHTTP6std > 0 ||
-         nExplicitPortHTTPS6std > 0 || nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0 ||
-         nExplicitPortHTTP4nfo > 0 || nExplicitPortHTTPS4nfo > 0 || nExplicitPortWS4nfo > 0 ||
-         nExplicitPortWSS4nfo > 0 || nExplicitPortHTTP6nfo > 0 || nExplicitPortHTTPS6nfo > 0 ||
-         nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
+    if ( is_ipc
+         || nExplicitPortMiniHTTP4std > 0 || nExplicitPortMiniHTTPS4std > 0 || nExplicitPortMiniHTTP6std > 0 || nExplicitPortMiniHTTPS6std > 0
+         || nExplicitPortMiniHTTP4nfo > 0 || nExplicitPortMiniHTTPS4nfo > 0 || nExplicitPortMiniHTTP6nfo > 0 || nExplicitPortMiniHTTPS6nfo > 0
+         || nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0
+         || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 || nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0
+         || nExplicitPortProxygenHTTP4std > 0 || nExplicitPortProxygenHTTP4nfo > 0
+         || nExplicitPortProxygenHTTP6std > 0 || nExplicitPortProxygenHTTP6nfo > 0
+         || nExplicitPortProxygenHTTPS4std > 0 || nExplicitPortProxygenHTTPS4nfo > 0
+         || nExplicitPortProxygenHTTPS6std > 0 || nExplicitPortProxygenHTTPS6nfo > 0
+          ) {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,   /// skale
             rpc::SkaleStats,  /// skaleStats
@@ -2123,202 +1732,88 @@ int main( int argc, char** argv ) try {
             }  // catch
         }      // if ( is_ipc )
 
-        if ( nExplicitPortHTTP4std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--http-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTP4nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-http-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTP6std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTP6nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-http-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTPS4std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--https-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTPS4nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-https-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTPS6std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortHTTPS6nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-https-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWS4std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWS4nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-ws-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWS6std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWS6nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-ws-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWSS4std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWSS4nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-wss-port" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWSS6std >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-        if ( nExplicitPortWSS6nfo >= 65536 ) {
-            clog( VerbosityError, "main" )
-                << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                << cc::warn( "--info-wss-port6" ) << cc::error( "=" ) << cc::warn( "number" );
-            return EX_USAGE;
-        }
-
-        if ( nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 || nExplicitPortWS4std > 0 ||
-             nExplicitPortWSS4std > 0 || nExplicitPortHTTP6std > 0 || nExplicitPortHTTPS6std > 0 ||
-             nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0 || nExplicitPortHTTP4nfo > 0 ||
-             nExplicitPortHTTPS4nfo > 0 || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 ||
-             nExplicitPortHTTP6nfo > 0 || nExplicitPortHTTPS6nfo > 0 || nExplicitPortWS6nfo > 0 ||
-             nExplicitPortWSS6nfo > 0 ) {
+        auto fnCheckPort = [&] ( int & nPort, const char * strCommandLineKey ) -> bool {
+            if ( nPort <= 0 || nPort >= 65536 ) {
+                clog( VerbosityError, "main" )
+                        << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
+                        << cc::warn( std::string( "--" ) + strCommandLineKey ) << cc::error( "=" ) << cc::warn( "number" );
+                return false;
+            }
+            return true;
+        };
+        if( ! fnCheckPort( nExplicitPortMiniHTTP4std, "http-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTP4nfo, "info-http-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTP6std, "http-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTP6nfo, "info-http-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTPS4std, "https-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTPS4nfo, "info-https-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTPS6std, "https-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortMiniHTTPS6nfo, "info-https-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWS4std, "ws-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWS4nfo, "info-ws-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWS6std, "ws-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWS6nfo, "info-ws-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWSS4std, "wss-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWSS4nfo, "info-wss-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWSS6std, "wss-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortWSS6nfo, "info-wss-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTP4std, "pg-http-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTP4nfo, "info-pg-http-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTP6std, "pg-http-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTP6nfo, "info-pg-http-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTPS4std, "pg-https-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTPS4nfo, "info-pg-https-port" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTPS6std, "pg-https-port6" ) ) return EX_USAGE;
+        if( ! fnCheckPort( nExplicitPortProxygenHTTPS6nfo, "info-pg-https-port6" ) ) return EX_USAGE;
+        if ( nExplicitPortMiniHTTP4std > 0 || nExplicitPortMiniHTTPS4std > 0 || nExplicitPortMiniHTTP6std > 0 || nExplicitPortMiniHTTPS6std > 0
+             || nExplicitPortMiniHTTP4nfo > 0 || nExplicitPortMiniHTTPS4nfo > 0 || nExplicitPortMiniHTTP6nfo > 0 || nExplicitPortMiniHTTPS6nfo > 0
+             || nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0
+             || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 || nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0
+             || nExplicitPortProxygenHTTP4std > 0 || nExplicitPortProxygenHTTP4nfo > 0 || nExplicitPortProxygenHTTP6std > 0 || nExplicitPortProxygenHTTP6nfo > 0
+             || nExplicitPortProxygenHTTPS4std > 0 || nExplicitPortProxygenHTTPS4nfo > 0 || nExplicitPortProxygenHTTPS6std > 0 || nExplicitPortProxygenHTTPS6nfo > 0
+             ) {
             clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
             //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/4/std port" )
-                << cc::debug( ".............................. " )
-                << ( ( nExplicitPortHTTP4std >= 0 ) ? cc::num10( nExplicitPortHTTP4std ) :
-                                                      cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/4/nfo port" )
-                << cc::debug( ".............................. " )
-                << ( ( nExplicitPortHTTP4nfo >= 0 ) ? cc::num10( nExplicitPortHTTP4nfo ) :
-                                                      cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/6/std port" )
-                << cc::debug( ".............................. " )
-                << ( ( nExplicitPortHTTP6std >= 0 ) ? cc::num10( nExplicitPortHTTP6std ) :
-                                                      cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/6/nfo port" )
-                << cc::debug( ".............................. " )
-                << ( ( nExplicitPortHTTP6nfo >= 0 ) ? cc::num10( nExplicitPortHTTP6nfo ) :
-                                                      cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/4/std port" )
-                << cc::debug( "............................. " )
-                << ( ( nExplicitPortHTTPS4std >= 0 ) ? cc::num10( nExplicitPortHTTPS4std ) :
-                                                       cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/4/nfo port" )
-                << cc::debug( "............................. " )
-                << ( ( nExplicitPortHTTPS4nfo >= 0 ) ? cc::num10( nExplicitPortHTTPS4nfo ) :
-                                                       cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/6/std port" )
-                << cc::debug( "............................. " )
-                << ( ( nExplicitPortHTTPS6std >= 0 ) ? cc::num10( nExplicitPortHTTPS6std ) :
-                                                       cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/6/nfo port" )
-                << cc::debug( "............................. " )
-                << ( ( nExplicitPortHTTPS6nfo >= 0 ) ? cc::num10( nExplicitPortHTTPS6nfo ) :
-                                                       cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/4/std port" )
-                << cc::debug( "................................ " )
-                << ( ( nExplicitPortWS4std >= 0 ) ? cc::num10( nExplicitPortWS4std ) :
-                                                    cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/4/nfo port" )
-                << cc::debug( "................................ " )
-                << ( ( nExplicitPortWS4nfo >= 0 ) ? cc::num10( nExplicitPortWS4nfo ) :
-                                                    cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/6/std port" )
-                << cc::debug( "................................ " )
-                << ( ( nExplicitPortWS6std >= 0 ) ? cc::num10( nExplicitPortWS6std ) :
-                                                    cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/6/nfo port" )
-                << cc::debug( "................................ " )
-                << ( ( nExplicitPortWS6nfo >= 0 ) ? cc::num10( nExplicitPortWS6nfo ) :
-                                                    cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/4/std port" )
-                << cc::debug( "............................... " )
-                << ( ( nExplicitPortWSS4std >= 0 ) ? cc::num10( nExplicitPortWSS4std ) :
-                                                     cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/4/nfo port" )
-                << cc::debug( "............................... " )
-                << ( ( nExplicitPortWSS4nfo >= 0 ) ? cc::num10( nExplicitPortWSS4nfo ) :
-                                                     cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/6/std port" )
-                << cc::debug( "............................... " )
-                << ( ( nExplicitPortWSS6std >= 0 ) ? cc::num10( nExplicitPortWSS6std ) :
-                                                     cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/6/nfo port" )
-                << cc::debug( "............................... " )
-                << ( ( nExplicitPortWSS6nfo >= 0 ) ? cc::num10( nExplicitPortWSS6nfo ) :
-                                                     cc::error( "off" ) );
+            auto fnPrintPort = [&] ( const int & nPort, const char * strDescription ) -> void {
+                static const size_t nAlign = 35;
+                size_t nDescLen = strlen( strDescription );
+                std::string strDots;
+                for( ; ( strDots.size() + nDescLen ) < nAlign; )
+                    strDots += ".";
+                clog( VerbosityDebug, "main" ) << cc::debug( "...." ) << cc::info( strDescription ) << cc::debug( strDots ) << " " << ( ( nPort >= 0 ) ? cc::num10( nPort ) : cc::error( "off" ) );
+            };
+            fnPrintPort( nExplicitPortMiniHTTP4std, "mini/HTTP/4/std port" );
+            fnPrintPort( nExplicitPortMiniHTTP4nfo, "mini/HTTP/4/nfo port" );
+            fnPrintPort( nExplicitPortMiniHTTP6std, "mini/HTTP/6/std port" );
+            fnPrintPort( nExplicitPortMiniHTTP6nfo, "mini/HTTP/6/nfo port" );
+            fnPrintPort( nExplicitPortMiniHTTPS4std, "mini/HTTPS/4/std port" );
+            fnPrintPort( nExplicitPortMiniHTTPS4nfo, "mini/HTTPS/4/nfo port" );
+            fnPrintPort( nExplicitPortMiniHTTPS6std, "mini/HTTPS/6/std port" );
+            fnPrintPort( nExplicitPortMiniHTTPS6nfo, "mini/HTTPS/6/nfo port" );
+            fnPrintPort( nExplicitPortWS4std, "WS/4/std port" );
+            fnPrintPort( nExplicitPortWS4nfo, "WS/4/nfo port" );
+            fnPrintPort( nExplicitPortWS6std, "WS/6/std port" );
+            fnPrintPort( nExplicitPortWS6nfo, "WS/6/nfo port" );
+            fnPrintPort( nExplicitPortWSS4std, "WSS/4/std port" );
+            fnPrintPort( nExplicitPortWSS4nfo, "WSS/4/nfo port" );
+            fnPrintPort( nExplicitPortWSS6std, "WSS/6/std port" );
+            fnPrintPort( nExplicitPortWSS6nfo, "WSS/6/nfo port" );
+            fnPrintPort( nExplicitPortProxygenHTTP4std, "proxygen/HTTP/4/std port" );
+            fnPrintPort( nExplicitPortProxygenHTTP4nfo, "proxygen/HTTP/4/nfo port" );
+            fnPrintPort( nExplicitPortProxygenHTTP6std, "proxygen/HTTP/6/std port" );
+            fnPrintPort( nExplicitPortProxygenHTTP6nfo, "proxygen/HTTP/6/nfo port" );
+            fnPrintPort( nExplicitPortProxygenHTTPS4std, "proxygen/HTTPS/4/std port" );
+            fnPrintPort( nExplicitPortProxygenHTTPS4nfo, "proxygen/HTTPS/4/nfo port" );
+            fnPrintPort( nExplicitPortProxygenHTTPS6std, "proxygen/HTTPS/6/std port" );
+            fnPrintPort( nExplicitPortProxygenHTTPS6nfo, "proxygen/HTTPS/6/nfo port" );
             //
             std::string strPathSslKey, strPathSslCert;
             bool bHaveSSL = false;
-            if ( ( nExplicitPortHTTPS4std > 0 || nExplicitPortWSS4std > 0 ||
-                     nExplicitPortHTTPS6std > 0 || nExplicitPortWSS6std > 0 ||
-                     nExplicitPortHTTPS4nfo > 0 || nExplicitPortWSS4nfo > 0 ||
-                     nExplicitPortHTTPS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) &&
+            if ( ( nExplicitPortMiniHTTPS4std > 0 || nExplicitPortMiniHTTPS6std > 0 || nExplicitPortMiniHTTPS4nfo > 0 || nExplicitPortMiniHTTPS6nfo > 0
+                   || nExplicitPortWSS4std > 0 || nExplicitPortWSS6std > 0 || nExplicitPortWSS4nfo > 0 || nExplicitPortWSS6nfo > 0
+                   || nExplicitPortProxygenHTTPS4std > 0 || nExplicitPortProxygenHTTPS6std > 0 || nExplicitPortProxygenHTTPS4nfo > 0 || nExplicitPortProxygenHTTPS6nfo > 0
+                     ) &&
                  vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
                 strPathSslKey = vm["ssl-key"].as< std::string >();
                 strPathSslCert = vm["ssl-cert"].as< std::string >();
@@ -2352,9 +1847,10 @@ int main( int argc, char** argv ) try {
                                               cc::error( "off" ) );
 
             if ( !bHaveSSL )
-                nExplicitPortHTTPS4std = nExplicitPortWSS4std = nExplicitPortHTTPS6std =
-                    nExplicitPortWSS6std = nExplicitPortHTTPS4nfo = nExplicitPortWSS4nfo =
-                        nExplicitPortHTTPS6nfo = nExplicitPortWSS6nfo = -1;
+                nExplicitPortMiniHTTPS4std = nExplicitPortMiniHTTPS6std = nExplicitPortMiniHTTPS4nfo = nExplicitPortMiniHTTPS6nfo
+                = nExplicitPortWSS4std = nExplicitPortWSS6std = nExplicitPortWSS4nfo = nExplicitPortWSS6nfo
+                = nExplicitPortProxygenHTTPS4std = nExplicitPortProxygenHTTPS6std = nExplicitPortProxygenHTTPS4nfo = nExplicitPortProxygenHTTPS6nfo
+                = -1;
             if ( bHaveSSL ) {
                 clog( VerbosityDebug, "main" )
                     << cc::debug( "...." ) << cc::info( "SSL key is" )
@@ -2579,14 +2075,14 @@ int main( int argc, char** argv ) try {
             serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
             serverOpts.fn_eth_call_ = fn_eth_call;
             serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
-            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
-            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
-            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
-            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
-            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = chainParams.nodeInfo.ip6;
-            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTP4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ = nExplicitPortMiniHTTP4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTP6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP6_ = nExplicitPortMiniHTTP6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTPS4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTPS4_ = nExplicitPortMiniHTTPS4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTPS6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTPS6_ = nExplicitPortMiniHTTPS6std;
             serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
             serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams.nodeInfo.ip6;
@@ -2595,15 +2091,26 @@ int main( int argc, char** argv ) try {
             serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
             serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
+
+            serverOpts.netOpts_.bindOptsStandard_.strAddrProxygenHTTP4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortProxygenHTTP4_ = nExplicitPortProxygenHTTP4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrProxygenHTTP6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortProxygenHTTP6_ = nExplicitPortProxygenHTTP6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrProxygenHTTPS4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortProxygenHTTPS4_ = nExplicitPortProxygenHTTPS4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrProxygenHTTPS6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortProxygenHTTPS6_ = nExplicitPortProxygenHTTPS6std;
+
             serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
-            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
-            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
-            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ = nExplicitPortHTTPS4nfo;
-            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ = chainParams.nodeInfo.ip6;
-            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ = nExplicitPortHTTPS6nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrMiniHTTP4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortMiniHTTP4_ = nExplicitPortMiniHTTP4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrMiniHTTP6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortMiniHTTP6_ = nExplicitPortMiniHTTP6nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrMiniHTTPS4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortMiniHTTPS4_ = nExplicitPortMiniHTTPS4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrMiniHTTPS6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortMiniHTTPS6_ = nExplicitPortMiniHTTPS6nfo;
+
             serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
             serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = chainParams.nodeInfo.ip6;
@@ -2612,6 +2119,16 @@ int main( int argc, char** argv ) try {
             serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
             serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
             serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
+
+            serverOpts.netOpts_.bindOptsInformational_.strAddrProxygenHTTP4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortProxygenHTTP4_ = nExplicitPortProxygenHTTP4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrProxygenHTTP6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortProxygenHTTP6_ = nExplicitPortProxygenHTTP6nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrProxygenHTTPS4_ = chainParams.nodeInfo.ip;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortProxygenHTTPS4_ = nExplicitPortProxygenHTTPS4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrProxygenHTTPS6_ = chainParams.nodeInfo.ip6;
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortProxygenHTTPS6_ = nExplicitPortProxygenHTTPS6nfo;
+
             serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
             serverOpts.netOpts_.strPathSslCert_ = strPathSslCert;
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
@@ -2665,164 +2182,104 @@ int main( int argc, char** argv ) try {
                            cc::error( "Failed to start JSON RPC, will exit..." ) );
                 return EX_IOERR;
             }
-            int nStatHTTP4std =
-                skale_server_connector->getServerPortStatusHTTP( 4, e_server_mode_t::esm_standard );
-            int nStatHTTP4nfo = skale_server_connector->getServerPortStatusHTTP(
-                4, e_server_mode_t::esm_informational );
-            int nStatHTTP6std =
-                skale_server_connector->getServerPortStatusHTTP( 6, e_server_mode_t::esm_standard );
-            int nStatHTTP6nfo = skale_server_connector->getServerPortStatusHTTP(
-                6, e_server_mode_t::esm_informational );
-            int nStatHTTPS4std = skale_server_connector->getServerPortStatusHTTPS(
-                4, e_server_mode_t::esm_standard );
-            int nStatHTTPS4nfo = skale_server_connector->getServerPortStatusHTTPS(
-                4, e_server_mode_t::esm_informational );
-            int nStatHTTPS6std = skale_server_connector->getServerPortStatusHTTPS(
-                6, e_server_mode_t::esm_standard );
-            int nStatHTTPS6nfo = skale_server_connector->getServerPortStatusHTTPS(
-                6, e_server_mode_t::esm_informational );
-            int nStatWS4std =
-                skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_standard );
-            int nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
-                4, e_server_mode_t::esm_informational );
-            int nStatWS6std =
-                skale_server_connector->getServerPortStatusWS( 6, e_server_mode_t::esm_standard );
-            int nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
-                6, e_server_mode_t::esm_informational );
-            int nStatWSS4std =
-                skale_server_connector->getServerPortStatusWSS( 4, e_server_mode_t::esm_standard );
-            int nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
-                4, e_server_mode_t::esm_informational );
-            int nStatWSS6std =
-                skale_server_connector->getServerPortStatusWSS( 6, e_server_mode_t::esm_standard );
-            int nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
-                6, e_server_mode_t::esm_informational );
+            int nStatMiniHTTP4std = skale_server_connector->getServerPortStatusMiniHTTP( 4, e_server_mode_t::esm_standard );
+            int nStatMiniHTTP4nfo = skale_server_connector->getServerPortStatusMiniHTTP( 4, e_server_mode_t::esm_informational );
+            int nStatMiniHTTP6std = skale_server_connector->getServerPortStatusMiniHTTP( 6, e_server_mode_t::esm_standard );
+            int nStatMiniHTTP6nfo = skale_server_connector->getServerPortStatusMiniHTTP( 6, e_server_mode_t::esm_informational );
+            int nStatMiniHTTPS4std = skale_server_connector->getServerPortStatusMiniHTTPS( 4, e_server_mode_t::esm_standard );
+            int nStatMiniHTTPS4nfo = skale_server_connector->getServerPortStatusMiniHTTPS( 4, e_server_mode_t::esm_informational );
+            int nStatMiniHTTPS6std = skale_server_connector->getServerPortStatusMiniHTTPS( 6, e_server_mode_t::esm_standard );
+            int nStatMiniHTTPS6nfo = skale_server_connector->getServerPortStatusMiniHTTPS( 6, e_server_mode_t::esm_informational );
+            int nStatWS4std = skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_standard );
+            int nStatWS4nfo = skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_informational );
+            int nStatWS6std = skale_server_connector->getServerPortStatusWS( 6, e_server_mode_t::esm_standard );
+            int nStatWS6nfo = skale_server_connector->getServerPortStatusWS( 6, e_server_mode_t::esm_informational );
+            int nStatWSS4std = skale_server_connector->getServerPortStatusWSS( 4, e_server_mode_t::esm_standard );
+            int nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS( 4, e_server_mode_t::esm_informational );
+            int nStatWSS6std = skale_server_connector->getServerPortStatusWSS( 6, e_server_mode_t::esm_standard );
+            int nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS( 6, e_server_mode_t::esm_informational );
+            int nStatProxygenHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP( 4, e_server_mode_t::esm_standard );
+            int nStatProxygenHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP( 4, e_server_mode_t::esm_informational );
+            int nStatProxygenHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP( 6, e_server_mode_t::esm_standard );
+            int nStatProxygenHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP( 6, e_server_mode_t::esm_informational );
+            int nStatProxygenHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS( 4, e_server_mode_t::esm_standard );
+            int nStatProxygenHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS( 4, e_server_mode_t::esm_informational );
+            int nStatProxygenHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS( 6, e_server_mode_t::esm_standard );
+            int nStatProxygenHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS( 6, e_server_mode_t::esm_informational );
             static const size_t g_cntWaitAttempts = 30;
             static const std::chrono::milliseconds g_waitAttempt = std::chrono::milliseconds( 100 );
-            if ( nExplicitPortHTTP4std > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTP4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/4/std" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTP/4/std" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTP4std = skale_server_connector->getServerPortStatusHTTP(
-                        4, e_server_mode_t::esm_standard );
+                    nStatMiniHTTP4std = skale_server_connector->getServerPortStatusMiniHTTP( 4, e_server_mode_t::esm_standard );
                 }
             }
-            if ( nExplicitPortHTTP4nfo > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTP4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/4/nfo" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTP/4/nfo" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTP4nfo = skale_server_connector->getServerPortStatusHTTP(
-                        4, e_server_mode_t::esm_informational );
+                    nStatMiniHTTP4nfo = skale_server_connector->getServerPortStatusMiniHTTP( 4, e_server_mode_t::esm_informational );
                 }
             }
-            if ( nExplicitPortHTTP6std > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTP6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/6/std" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTP/6/std" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTP6std = skale_server_connector->getServerPortStatusHTTP(
-                        6, e_server_mode_t::esm_standard );
+                    nStatMiniHTTP6std = skale_server_connector->getServerPortStatusMiniHTTP( 6, e_server_mode_t::esm_standard );
                 }
             }
-            if ( nExplicitPortHTTP6nfo > 0 ) {
+            if ( nExplicitPortMiniHTTP6nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+                      nStatMiniHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/6/nfo" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTP/6/nfo" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTP6nfo = skale_server_connector->getServerPortStatusHTTP(
-                        6, e_server_mode_t::esm_informational );
+                    nStatMiniHTTP6nfo = skale_server_connector->getServerPortStatusMiniHTTP( 6, e_server_mode_t::esm_informational );
                 }
             }
-            if ( nExplicitPortHTTPS4std > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTPS4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4/std" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTPS/4/std" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTPS4std = skale_server_connector->getServerPortStatusHTTPS(
-                        4, e_server_mode_t::esm_standard );
+                    nStatMiniHTTPS4std = skale_server_connector->getServerPortStatusMiniHTTPS( 4, e_server_mode_t::esm_standard );
                 }
             }
-            if ( nExplicitPortHTTPS4nfo > 0 ) {
+            if ( nExplicitPortMiniHTTPS4nfo > 0 ) {
                 for ( size_t idxWaitAttempt = 0;
-                      nStatHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+                      nStatMiniHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4/nfo" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTPS/4/nfo" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTPS4nfo = skale_server_connector->getServerPortStatusHTTPS(
-                        4, e_server_mode_t::esm_informational );
+                    nStatMiniHTTPS4nfo = skale_server_connector->getServerPortStatusMiniHTTPS( 4, e_server_mode_t::esm_informational );
                 }
             }
-            if ( nExplicitPortHTTPS6std > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTPS6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6/std" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTPS/6/std" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTPS6std = skale_server_connector->getServerPortStatusHTTPS(
-                        6, e_server_mode_t::esm_standard );
+                    nStatMiniHTTPS6std = skale_server_connector->getServerPortStatusMiniHTTPS( 6, e_server_mode_t::esm_standard );
                 }
             }
-            if ( nExplicitPortHTTPS6nfo > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+            if ( nExplicitPortMiniHTTPS6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatMiniHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6/nfo" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "mini/HTTPS/6/nfo" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatHTTPS6nfo = skale_server_connector->getServerPortStatusHTTPS(
-                        6, e_server_mode_t::esm_informational );
+                    nStatMiniHTTPS6nfo = skale_server_connector->getServerPortStatusMiniHTTPS( 6, e_server_mode_t::esm_informational );
                 }
             }
             if ( nExplicitPortWS4std > 0 ) {
-                for ( size_t idxWaitAttempt = 0;
-                      nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                      ( !ExitHandler::shouldExit() );
-                      ++idxWaitAttempt ) {
+                for ( size_t idxWaitAttempt = 0; nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS/4/std" )
-                            << cc::debug( " start... " );
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "WS/4/std" ) << cc::debug( " start... " );
                     std::this_thread::sleep_for( g_waitAttempt );
-                    nStatWS4std = skale_server_connector->getServerPortStatusWS(
-                        4, e_server_mode_t::esm_standard );
+                    nStatWS4std = skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_standard );
                 }
             }
             if ( nExplicitPortWS4nfo > 0 ) {
@@ -2919,125 +2376,107 @@ int main( int argc, char** argv ) try {
                         6, e_server_mode_t::esm_informational );
                 }
             }
+            if ( nExplicitPortProxygenHTTP4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTP/4/std" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP( 4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortProxygenHTTP4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTP/4/nfo" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP( 4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortProxygenHTTP6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTP/6/std" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP( 6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortProxygenHTTP6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatProxygenHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTP/6/nfo" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP( 6, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortProxygenHTTPS4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTPS/4/std" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS( 4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortProxygenHTTPS4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatProxygenHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTPS/4/nfo" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS( 4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortProxygenHTTPS6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTPS/6/std" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS( 6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortProxygenHTTPS6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0; nStatProxygenHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts && ( !ExitHandler::shouldExit() ); ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        clog( VerbosityDebug, "main" ) << cc::debug( "Waiting for " ) + cc::info( "proxygen/HTTPS/6/nfo" ) << cc::debug( " start... " );
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatProxygenHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS( 6, e_server_mode_t::esm_informational );
+                }
+            }
             clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/4std" )
-                << cc::debug( "................................. " )
-                << ( ( nStatHTTP4std >= 0 ) ?
-                           ( ( nExplicitPortHTTP4std > 0 ) ? cc::num10( nStatHTTP4std ) :
-                                                             cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/4nfo" )
-                << cc::debug( "................................. " )
-                << ( ( nStatHTTP4nfo >= 0 ) ?
-                           ( ( nExplicitPortHTTP4nfo > 0 ) ? cc::num10( nStatHTTP4nfo ) :
-                                                             cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/6std" )
-                << cc::debug( "................................. " )
-                << ( ( nStatHTTP6std >= 0 ) ?
-                           ( ( nExplicitPortHTTP6std > 0 ) ? cc::num10( nStatHTTP6std ) :
-                                                             cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTP/6nfo" )
-                << cc::debug( "................................. " )
-                << ( ( nStatHTTP6nfo >= 0 ) ?
-                           ( ( nExplicitPortHTTP6nfo > 0 ) ? cc::num10( nStatHTTP6nfo ) :
-                                                             cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/4std" )
-                << cc::debug( "................................ " )
-                << ( ( nStatHTTPS4std >= 0 ) ?
-                           ( ( nExplicitPortHTTPS4std > 0 ) ? cc::num10( nStatHTTPS4std ) :
-                                                              cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/4nfo" )
-                << cc::debug( "................................ " )
-                << ( ( nStatHTTPS4nfo >= 0 ) ?
-                           ( ( nExplicitPortHTTPS4nfo > 0 ) ? cc::num10( nStatHTTPS4nfo ) :
-                                                              cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/6std" )
-                << cc::debug( "................................ " )
-                << ( ( nStatHTTPS6std >= 0 ) ?
-                           ( ( nExplicitPortHTTPS6std > 0 ) ? cc::num10( nStatHTTPS6std ) :
-                                                              cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "HTTPS/6nfo" )
-                << cc::debug( "................................ " )
-                << ( ( nStatHTTPS6nfo >= 0 ) ?
-                           ( ( nExplicitPortHTTPS6nfo > 0 ) ? cc::num10( nStatHTTPS6nfo ) :
-                                                              cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/4std" )
-                << cc::debug( "................................... " )
-                << ( ( nStatWS4std >= 0 ) ?
-                           ( ( nExplicitPortWS4std > 0 ) ? cc::num10( nStatWS4std ) :
-                                                           cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/4nfo" )
-                << cc::debug( "................................... " )
-                << ( ( nStatWS4nfo >= 0 ) ?
-                           ( ( nExplicitPortWS4nfo > 0 ) ? cc::num10( nStatWS4nfo ) :
-                                                           cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/6std" )
-                << cc::debug( "................................... " )
-                << ( ( nStatWS6std >= 0 ) ?
-                           ( ( nExplicitPortWS6std > 0 ) ? cc::num10( nStatWS6std ) :
-                                                           cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WS/6nfo" )
-                << cc::debug( "................................... " )
-                << ( ( nStatWS6nfo >= 0 ) ?
-                           ( ( nExplicitPortWS6nfo > 0 ) ? cc::num10( nStatWS6nfo ) :
-                                                           cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/4std" )
-                << cc::debug( ".................................. " )
-                << ( ( nStatWSS4std >= 0 ) ?
-                           ( ( nExplicitPortWSS4std > 0 ) ? cc::num10( nStatWSS4std ) :
-                                                            cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/4nfo" )
-                << cc::debug( ".................................. " )
-                << ( ( nStatWSS4nfo >= 0 ) ?
-                           ( ( nExplicitPortWSS4nfo > 0 ) ? cc::num10( nStatWSS4nfo ) :
-                                                            cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/6std" )
-                << cc::debug( ".................................. " )
-                << ( ( nStatWSS6std >= 0 ) ?
-                           ( ( nExplicitPortWSS6std > 0 ) ? cc::num10( nStatWSS6std ) :
-                                                            cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "WSS/6nfo" )
-                << cc::debug( ".................................. " )
-                << ( ( nStatWSS6nfo >= 0 ) ?
-                           ( ( nExplicitPortWSS6nfo > 0 ) ? cc::num10( nStatWSS6nfo ) :
-                                                            cc::warn( "still starting..." ) ) :
-                           cc::error( "off" ) );
-        }  // if ( nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0 || nExplicitPortWS > 0 ||
-           // nExplicitPortWSS > 0 )
+            auto fnPrintStatus = [] ( const int & nPort, const int & nStat, const char * strDescription ) -> void {
+                static const size_t nAlign = 35;
+                size_t nDescLen = strlen( strDescription );
+                std::string strDots;
+                for( ; ( strDots.size() + nDescLen ) < nAlign; )
+                    strDots += ".";
+                clog( VerbosityDebug, "main" ) << cc::debug( "...." ) << cc::info( strDescription ) << cc::debug( strDots ) << ( ( nStat >= 0 ) ? ( ( nPort > 0 ) ? cc::num10( nStat ) : cc::warn( "still starting..." ) ) : cc::error( "off" ) );
+            };
+            fnPrintStatus( nExplicitPortMiniHTTP4std, nStatMiniHTTP4std, "mini/HTTP/4std" );
+            fnPrintStatus( nExplicitPortMiniHTTP4nfo, nStatMiniHTTP4nfo, "mini/HTTP/4nfo" );
+            fnPrintStatus( nExplicitPortMiniHTTP6std, nStatMiniHTTP6std, "mini/HTTP/6std" );
+            fnPrintStatus( nExplicitPortMiniHTTP6nfo, nStatMiniHTTP6nfo, "mini/HTTP/6nfo" );
+            fnPrintStatus( nExplicitPortMiniHTTPS4std, nStatMiniHTTPS4std, "mini/HTTPS/4std" );
+            fnPrintStatus( nExplicitPortMiniHTTPS4nfo, nStatMiniHTTPS4nfo, "mini/HTTPS/4nfo" );
+            fnPrintStatus( nExplicitPortMiniHTTPS6std, nStatMiniHTTPS6std, "mini/HTTPS/6std" );
+            fnPrintStatus( nExplicitPortMiniHTTPS6nfo, nStatMiniHTTPS6nfo, "mini/HTTPS/6nfo" );
+            fnPrintStatus( nExplicitPortWS4std, nStatWS4std, "WS/4std" );
+            fnPrintStatus( nExplicitPortWS4nfo, nStatWS4nfo, "WS/4nfo" );
+            fnPrintStatus( nExplicitPortWS6std, nStatWS6std, "WS/6std" );
+            fnPrintStatus( nExplicitPortWS6nfo, nStatWS6nfo, "WS/6nfo" );
+            fnPrintStatus( nExplicitPortWSS4std, nStatWS4std, "WSS/4std" );
+            fnPrintStatus( nExplicitPortWSS4nfo, nStatWS4nfo, "WSS/4nfo" );
+            fnPrintStatus( nExplicitPortWSS6std, nStatWS6std, "WSS/6std" );
+            fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
+            fnPrintStatus( nExplicitPortProxygenHTTP4std, nStatProxygenHTTP4std, "proxygen/HTTP/4std" );
+            fnPrintStatus( nExplicitPortProxygenHTTP4nfo, nStatProxygenHTTP4nfo, "proxygen/HTTP/4nfo" );
+            fnPrintStatus( nExplicitPortProxygenHTTP6std, nStatProxygenHTTP6std, "proxygen/HTTP/6std" );
+            fnPrintStatus( nExplicitPortProxygenHTTP6nfo, nStatProxygenHTTP6nfo, "proxygen/HTTP/6nfo" );
+            fnPrintStatus( nExplicitPortProxygenHTTPS4std, nStatProxygenHTTPS4std, "proxygen/HTTPS/4std" );
+            fnPrintStatus( nExplicitPortProxygenHTTPS4nfo, nStatProxygenHTTPS4nfo, "proxygen/HTTPS/4nfo" );
+            fnPrintStatus( nExplicitPortProxygenHTTPS6std, nStatProxygenHTTPS6std, "proxygen/HTTPS/6std" );
+            fnPrintStatus( nExplicitPortProxygenHTTPS6nfo, nStatProxygenHTTPS6nfo, "proxygen/HTTPS/6nfo" );
+        }  // if ( nExplicitPort ......
 
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
@@ -3048,8 +2487,7 @@ int main( int argc, char** argv ) try {
 
         clog( VerbosityInfo, "main" )
             << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
-    }  // if ( is_ipc || nExplicitPortHTTP > 0 || nExplicitPortHTTPS > 0  || nExplicitPortWS > 0 ||
-       // nExplicitPortWSS > 0 )
+    }  // if ( is_ipc || nExplicitPort...
 
     if ( bEnabledShutdownViaWeb3 ) {
         clog( VerbosityWarning, "main" )
