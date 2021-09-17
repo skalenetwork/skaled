@@ -101,8 +101,9 @@ static std::string const c_genesisInfoSkale = std::string() +
       "max-connections": 0,
 	  "ws-mode": "simple",
 	  "ws-log": "none",
-	  "web3-trace": true,
-	  "enable-debug-behavior-apis": false,
+      "web3-trace": true,
+      "pg-trace": false,
+      "enable-debug-behavior-apis": false,
 	  "unsafe-transactions": false
     },
     "sChain": {

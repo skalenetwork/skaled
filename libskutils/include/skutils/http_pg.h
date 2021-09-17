@@ -51,8 +51,8 @@ class request_site : public proxygen::RequestHandler {
     std::string strLogPrefix_;
 
 public:
-    std::string strHttpMethod_, strOrigin_, strPath_;
-    int ipVer_ = -1;
+    std::string strHttpMethod_, strOrigin_, strPath_, strDstAddress_;
+    int ipVer_ = -1, nDstPort_ = 0;
 
     explicit request_site( request_sink& a_sink, server_side_request_handler* pSSRQ );
     ~request_site() override;
@@ -93,8 +93,8 @@ public:
         const char* strErrorDescription, const nlohmann::json& joID );
     static std::string answer_from_error_text(
         const char* strErrorDescription, const nlohmann::json& joID );
-    virtual nlohmann::json onRequest(
-        const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) = 0;
+    virtual nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
+        int ipVer, const std::string& strDstAddress, int nDstPort ) = 0;
 };  /// class server_side_request_handler
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,24 +104,20 @@ class server : public server_side_request_handler {
     std::thread thread_;
     std::unique_ptr< proxygen::HTTPServer > server_;
     pg_on_request_handler_t h_;
-    bool m_bHelperIsSSL = false;
-    int ipVer_ = -1;
-    std::string strBindAddr_;
-    int nPort_ = -1;
-    std::string cert_path_;
-    std::string private_key_path_;
+    pg_accumulate_entries entries_;
     int32_t threads_ = 0;
+    int32_t threads_limit_ = 0;
 
     std::string strLogPrefix_;
 
 public:
-    server( pg_on_request_handler_t h, int ipVer, std::string strBindAddr, int nPort,
-        const char* cert_path, const char* private_key_path, int32_t threads = 0 );
+    server( pg_on_request_handler_t h, const pg_accumulate_entries& entries, int32_t threads = 0,
+        int32_t threads_limit = 0 );
     ~server() override;
     bool start();
     void stop();
-    nlohmann::json onRequest(
-        const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) override;
+    nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
+        const std::string& strDstAddress, int nDstPort ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

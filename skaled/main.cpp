@@ -196,7 +196,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
         "info-wss-port6", "pg-http-port", "pg-https-port", "pg-http-port6", "pg-https-port6",
         "info-pg-http-port", "info-pg-https-port", "info-pg-http-port6", "info-pg-https-port6",
-        "ws-log", "ssl-key", "ssl-cert", "acceptors", "info-acceptors"};
+        "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors", "info-acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -493,7 +493,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "ssl-key", po::value< std::string >()->value_name( "<path>" ),
         "Specifies path to SSL key file" );
     addClientOption( "ssl-cert", po::value< std::string >()->value_name( "<path>" ),
-        "Specifies path to SSL certificate file file" );
+        "Specifies path to SSL certificate file" );
+    addClientOption( "ssl-ca", po::value< std::string >()->value_name( "<path>" ),
+        "Specifies path to SSL CA file" );
 
     /// skale
     addClientOption( "aa", po::value< string >()->value_name( "<yes/no/always>" ),
@@ -618,6 +620,12 @@ int main( int argc, char** argv ) try {
     addClientOption(
         "async-http-transfer-mode", "Use asynchronous HTTP(S) query handling, default mode" );
     addClientOption( "sync-http-transfer-mode", "Use synchronous HTTP(S) query handling" );
+
+    addClientOption( "pg-threads", po::value< int32_t >()->value_name( "<count>" ),
+        "Proxygen threads, zero means use CPU thread count" );
+    addClientOption( "pg-threads-limit", po::value< int32_t >()->value_name( "<count>" ),
+        "Limit number of proxygen threads, zero means no limit" );
+    addClientOption( "pg-trace", "Log low level proxygen information" );
 
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
@@ -1045,7 +1053,7 @@ int main( int argc, char** argv ) try {
         nExplicitPortProxygenHTTPS6std =
             fnExtractPort( "pgHttpsRpcPort6", "pg-https-port6", "proxygen/HTTPS/6/std port" );
         nExplicitPortProxygenHTTPS6nfo = fnExtractPort(
-            "infoPgHttpsRpcPort6", "info-pg-https-port6", "PGproxygenHTTPS/6/nfo port" );
+            "infoPgHttpsRpcPort6", "info-pg-https-port6", "proxygen/HTTPS/6/nfo port" );
 
     }  // if ( chainConfigParsed )
 
@@ -1776,61 +1784,85 @@ int main( int argc, char** argv ) try {
         auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
             if ( nPort <= 0 || nPort >= 65536 ) {
                 clog( VerbosityError, "main" )
-                    << cc::fatal( "FATAL:" ) << cc::error( " Please specify valid value " )
-                    << cc::warn( std::string( "--" ) + strCommandLineKey ) << cc::error( "=" )
-                    << cc::warn( "number" );
+                    << cc::error( "WARNING:" ) << cc::warn( " No valid port value provided with " )
+                    << cc::info( std::string( "--" ) + strCommandLineKey ) << cc::warn( "=" )
+                    << cc::info( "number" );
                 return false;
             }
             return true;
         };
-        if ( !fnCheckPort( nExplicitPortMiniHTTP4std, "http-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTP4nfo, "info-http-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTP6std, "http-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTP6nfo, "info-http-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTPS4std, "https-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTPS4nfo, "info-https-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTPS6std, "https-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortMiniHTTPS6nfo, "info-https-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWS4std, "ws-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWS4nfo, "info-ws-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWS6std, "ws-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWS6nfo, "info-ws-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWSS4std, "wss-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWSS4nfo, "info-wss-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWSS6std, "wss-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortWSS6nfo, "info-wss-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTP4std, "pg-http-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTP4nfo, "info-pg-http-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTP6std, "pg-http-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTP6nfo, "info-pg-http-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTPS4std, "pg-https-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTPS4nfo, "info-pg-https-port" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTPS6std, "pg-https-port6" ) )
-            return EX_USAGE;
-        if ( !fnCheckPort( nExplicitPortProxygenHTTPS6nfo, "info-pg-https-port6" ) )
-            return EX_USAGE;
+        if ( !fnCheckPort( nExplicitPortMiniHTTP4std, "http-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTP4nfo, "info-http-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTP6std, "http-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTP6nfo, "info-http-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTPS4std, "https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTPS4nfo, "info-https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTPS6std, "https-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortMiniHTTPS6nfo, "info-https-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS4std, "ws-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS4nfo, "info-ws-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS6std, "ws-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS6nfo, "info-ws-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS4std, "wss-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS4nfo, "info-wss-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS6std, "wss-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS6nfo, "info-wss-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTP4std, "pg-http-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTP4nfo, "info-pg-http-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTP6std, "pg-http-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTP6nfo, "info-pg-http-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTPS4std, "pg-https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTPS4nfo, "info-pg-https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTPS6std, "pg-https-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortProxygenHTTPS6nfo, "info-pg-https-port6" ) ) {
+            // return EX_USAGE;
+        }
         if ( nExplicitPortMiniHTTP4std > 0 || nExplicitPortMiniHTTPS4std > 0 ||
              nExplicitPortMiniHTTP6std > 0 || nExplicitPortMiniHTTPS6std > 0 ||
              nExplicitPortMiniHTTP4nfo > 0 || nExplicitPortMiniHTTPS4nfo > 0 ||
@@ -1880,7 +1912,7 @@ int main( int argc, char** argv ) try {
             fnPrintPort( nExplicitPortProxygenHTTPS6std, "proxygen/HTTPS/6/std port" );
             fnPrintPort( nExplicitPortProxygenHTTPS6nfo, "proxygen/HTTPS/6/nfo port" );
             //
-            std::string strPathSslKey, strPathSslCert;
+            std::string strPathSslKey, strPathSslCert, strPathSslCA;
             bool bHaveSSL = false;
             if ( ( nExplicitPortMiniHTTPS4std > 0 || nExplicitPortMiniHTTPS6std > 0 ||
                      nExplicitPortMiniHTTPS4nfo > 0 || nExplicitPortMiniHTTPS6nfo > 0 ||
@@ -1893,7 +1925,10 @@ int main( int argc, char** argv ) try {
                 strPathSslCert = vm["ssl-cert"].as< std::string >();
                 if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
                     bHaveSSL = true;
+                if ( vm.count( "ssl-ca" ) > 0 )
+                    strPathSslCA = vm["ssl-ca"].as< std::string >();
             }
+
 
             double lfExecutionDurationMaxForPerformanceWarning = SkaleServerOverride::
                 g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds, default 1
@@ -1934,6 +1969,9 @@ int main( int argc, char** argv ) try {
                 clog( VerbosityDebug, "main" )
                     << cc::debug( "...." ) + cc::info( "SSL certificate is" )
                     << cc::debug( "....................... " ) << cc::p( strPathSslCert );
+                clog( VerbosityDebug, "main" )
+                    << cc::debug( "...." ) + cc::info( "SSL CA is" )
+                    << cc::debug( "................................ " ) << cc::p( strPathSslCA );
             }
             //
             //
@@ -1941,6 +1979,8 @@ int main( int argc, char** argv ) try {
                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
                    cntServersStd = 1, cntServersNfo = 0, cntInBatch = 128;
             bool is_async_http_transfer_mode = true;
+            int32_t pg_threads = 0;
+            int32_t pg_threads_limit = 0;
 
             // First, get "max-connections" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -1983,6 +2023,36 @@ int main( int argc, char** argv ) try {
                 is_async_http_transfer_mode = true;
             if ( vm.count( "sync-http-transfer-mode" ) )
                 is_async_http_transfer_mode = false;
+
+            if ( chainConfigParsed ) {
+                try {
+                    pg_threads = joConfig["skaleConfig"]["nodeInfo"]["pg-threads"].get< int32_t >();
+                    if ( pg_threads < 0 )
+                        pg_threads = 0;
+                } catch ( ... ) {
+                    pg_threads = 0;
+                }
+                try {
+                    pg_threads_limit =
+                        joConfig["skaleConfig"]["nodeInfo"]["pg-threads-limit"].get< int32_t >();
+                    if ( pg_threads_limit < 0 )
+                        pg_threads_limit = 0;
+                } catch ( ... ) {
+                    pg_threads_limit = 0;
+                }
+                bool is_pg_trace = false;
+                try {
+                    is_pg_trace = joConfig["skaleConfig"]["nodeInfo"]["pg-trace"].get< bool >();
+                } catch ( ... ) {
+                    is_pg_trace = 0;
+                }
+            }
+            if ( vm.count( "pg-threads" ) )
+                pg_threads = vm["pg-threads"].as< int32_t >();
+            if ( vm.count( "pg-threads-limit" ) )
+                pg_threads_limit = vm["pg-threads-limit"].as< int32_t >();
+            if ( vm.count( "pg-trace" ) )
+                skutils::http_pg::pg_logging_set( true );
 
             // First, get "acceptors"/"info-acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
@@ -2072,6 +2142,13 @@ int main( int argc, char** argv ) try {
             clog( VerbosityDebug, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
                                            << cc::debug( "........................ " )
                                            << cc::yn( is_async_http_transfer_mode );
+            clog( VerbosityDebug, "main" )
+                << cc::debug( "...." ) + cc::info( "Proxygen threads" )
+                << cc::debug( "......................... " ) << cc::num10( pg_threads );
+            clog( VerbosityDebug, "main" )
+                << cc::debug( "...." ) + cc::info( "Proxygen threads limit" )
+                << cc::debug( "................... " ) << cc::num10( pg_threads_limit );
+
             //
             clog( VerbosityDebug, "main" )
                 << cc::debug( "...." ) + cc::info( "Max count in batch JSON RPC request" )
@@ -2224,6 +2301,7 @@ int main( int argc, char** argv ) try {
 
             serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
             serverOpts.netOpts_.strPathSslCert_ = strPathSslCert;
+            serverOpts.netOpts_.strPathSslCA_ = strPathSslCA;
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
                 lfExecutionDurationMaxForPerformanceWarning;
             try {
@@ -2260,6 +2338,8 @@ int main( int argc, char** argv ) try {
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
+            skale_server_connector->pg_threads_ = pg_threads;
+            skale_server_connector->pg_threads_limit_ = pg_threads_limit;
             //
             skaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( skaleStatsFace );

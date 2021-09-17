@@ -185,6 +185,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"ipcpath", {{js::str_type}, JsonFieldPresence::Optional}},
             {"enable-debug-behavior-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"pg-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"web3-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"web3-shutdown", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},

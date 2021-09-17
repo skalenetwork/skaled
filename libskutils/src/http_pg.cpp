@@ -63,11 +63,16 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
         skutils::tools::to_upper( skutils::tools::trim_copy( req->getMethodString() ) );
     const folly::SocketAddress& origin_address = req->getClientAddress();
     std::string strClientAddress = origin_address.getAddressStr();  // getFullyQualified()
-    ipVer_ = ( is_ipv6( strClientAddress ) && is_valid_ipv6( strClientAddress ) ) ? 6 : 4;
+    ipVer_ =
+        ( skutils::is_ipv6( strClientAddress ) && skutils::is_valid_ipv6( strClientAddress ) ) ? 6 :
+                                                                                                 4;
     std::string strAddressPart =
         ( ( ipVer_ == 6 ) ? "[" : "" ) + strClientAddress + ( ( ipVer_ == 6 ) ? "]" : "" );
     strOrigin_ = req->getScheme() + "://" + strAddressPart + ":" + req->getClientPort();
     strPath_ = req->getPath();
+    strDstAddress_ = req->getDstAddress().getAddressStr();  // getFullyQualified()
+    std::string strDstPort = req->getDstPort();
+    nDstPort_ = ( !strDstPort.empty() ) ? atoi( strDstPort.c_str() ) : 0;
     pg_log( strLogPrefix_ + cc::debug( "request query " ) + cc::sunny( strHttpMethod_ ) +
             cc::debug( " from origin " ) + cc::info( strOrigin_ ) + cc::debug( ", path " ) +
             cc::p( strPath_ ) + "\n" );
@@ -109,7 +114,7 @@ void request_site::onBody( std::unique_ptr< folly::IOBuf > body ) noexcept {
         pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
         if ( joIn.count( "id" ) > 0 )
             joID = joIn["id"];
-        joOut = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_ );
+        joOut = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_, strDstAddress_, nDstPort_ );
         pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( joOut ) + "\n" );
     } catch ( const std::exception& ex ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
@@ -202,17 +207,9 @@ std::string server_side_request_handler::answer_from_error_text(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-server::server( pg_on_request_handler_t h, int ipVer, std::string strBindAddr, int nPort,
-    const char* cert_path, const char* private_key_path, int32_t threads )
-    : h_( h ),
-      m_bHelperIsSSL(
-          ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ? true : false ),
-      ipVer_( ipVer ),
-      strBindAddr_( strBindAddr ),
-      nPort_( nPort ),
-      cert_path_( cert_path ? cert_path : "" ),
-      private_key_path_( private_key_path ? private_key_path : "" ),
-      threads_( threads ) {
+server::server( pg_on_request_handler_t h, const pg_accumulate_entries& entries, int32_t threads,
+    int32_t threads_limit )
+    : h_( h ), entries_( entries ), threads_( threads ), threads_limit_( threads_limit ) {
     strLogPrefix_ = cc::notice( "PG" ) + cc::normal( "/" ) + cc::notice( "server" ) + " ";
     pg_log( strLogPrefix_ + cc::debug( "constructor" ) + "\n" );
 }
@@ -253,12 +250,15 @@ bool server::start() {
        cfg_https6, };
     */
 
+    /*
     wangle::SSLContextConfig sslCfg;
     if ( m_bHelperIsSSL ) {
         sslCfg.isDefault = true;
         sslCfg.setCertificate( cert_path_.c_str(), private_key_path_.c_str(), "" );
         sslCfg.clientVerification =
             folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
+        if ( !ca_path_.empty() )
+            sslCfg.clientCAFile = ca_path_.c_str();
     }
     proxygen::HTTPServer::IPConfig cfg_ip(
         folly::SocketAddress( strBindAddr_.c_str(), nPort_, true ),
@@ -267,6 +267,29 @@ bool server::start() {
         cfg_ip.sslConfigs.push_back( sslCfg );
     }
     std::vector< proxygen::HTTPServer::IPConfig > IPs = {cfg_ip};
+    */
+
+    std::vector< proxygen::HTTPServer::IPConfig > IPs;
+    pg_accumulate_entries::const_iterator itWalk = entries_.cbegin(), itEnd = entries_.cend();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        const pg_accumulate_entry& pge = ( *itWalk );
+        proxygen::HTTPServer::IPConfig cfg_ip(
+            folly::SocketAddress( pge.strBindAddr_.c_str(), pge.nPort_, true ),
+            proxygen::HTTPServer::Protocol::HTTP );
+        bool bHelperIsSSL =
+            ( ( !pge.cert_path_.empty() ) && ( !pge.private_key_path_.empty() ) ) ? true : false;
+        if ( bHelperIsSSL ) {
+            wangle::SSLContextConfig sslCfg;
+            sslCfg.isDefault = true;
+            sslCfg.setCertificate( pge.cert_path_.c_str(), pge.private_key_path_.c_str(), "" );
+            sslCfg.clientVerification =
+                folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
+            if ( !pge.ca_path_.empty() )
+                sslCfg.clientCAFile = pge.ca_path_.c_str();
+            cfg_ip.sslConfigs.push_back( sslCfg );
+        }
+        IPs.push_back( cfg_ip );
+    }
 
 
     if ( threads_ <= 0 ) {
@@ -275,6 +298,8 @@ bool server::start() {
             stop();
             return false;
         }
+        if ( threads_limit_ > 0 && threads_ > threads_limit_ )
+            threads_ = threads_limit_;
     }
 
     proxygen::HTTPServerOptions options;
@@ -312,16 +337,16 @@ void server::stop() {
     }
 }
 
-nlohmann::json server::onRequest(
-    const nlohmann::json& joIn, const std::string& strOrigin, int ipVer ) {
-    nlohmann::json joOut = h_( joIn, strOrigin, ipVer );
+nlohmann::json server::onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
+    int ipVer, const std::string& strDstAddress, int nDstPort ) {
+    nlohmann::json joOut = h_( joIn, strOrigin, ipVer, strDstAddress, nDstPort );
     return joOut;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool g_b_pb_logging = true;
+bool g_b_pb_logging = false;
 
 bool pg_logging_get() {
     return g_b_pb_logging;
@@ -331,11 +356,17 @@ void pg_logging_set( bool bIsLoggingMode ) {
     g_b_pb_logging = bIsLoggingMode;
 }
 
-wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h, int ipVer,
-    std::string strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
-    int32_t threads ) {
-    skutils::http_pg::server* ptrServer = new skutils::http_pg::server(
-        h, ipVer, strBindAddr, nPort, cert_path, private_key_path, threads );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h, const pg_accumulate_entry& pge,
+    int32_t threads, int32_t threads_limit ) {
+    pg_accumulate_entries entries;
+    entries.push_back( pge );
+    return pg_start( h, entries, threads, threads_limit );
+}
+
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h,
+    const pg_accumulate_entries& entries, int32_t threads, int32_t threads_limit ) {
+    skutils::http_pg::server* ptrServer =
+        new skutils::http_pg::server( h, entries, threads, threads_limit );
     ptrServer->start();
     return wrapped_proxygen_server_handle( ptrServer );
 }
@@ -348,19 +379,39 @@ void pg_stop( wrapped_proxygen_server_handle hServer ) {
     delete ptrServer;
 }
 
+static pg_accumulate_entries g_accumulated_entries;
+
+void pg_accumulate_clear() {
+    g_accumulated_entries.clear();
+}
+
+size_t pg_accumulate_size() {
+    size_t cnt = g_accumulated_entries.size();
+    return cnt;
+}
+
+void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
+    const char* private_key_path, const char* ca_path ) {
+    pg_accumulate_entry pge = {ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
+        private_key_path ? private_key_path : "", ca_path ? ca_path : ""};
+    pg_accumulate_add( pge );
+}
+
+void pg_accumulate_add( const pg_accumulate_entry& pge ) {
+    g_accumulated_entries.push_back( pge );
+}
+
+wrapped_proxygen_server_handle pg_accumulate_start(
+    pg_on_request_handler_t h, int32_t threads, int32_t threads_limit ) {
+    skutils::http_pg::server* ptrServer =
+        new skutils::http_pg::server( h, g_accumulated_entries, threads, threads_limit );
+    ptrServer->start();
+    return wrapped_proxygen_server_handle( ptrServer );
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace http_pg
 };  // namespace skutils
-
-/*
-
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83}'
-http://127.0.0.1:11000 curl -X POST --data
-'{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":83}' http://127.0.0.1:11000 curl -X POST
---data
-'[{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":83},{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":83}]'
-http://127.0.0.1:11000
-
-*/
