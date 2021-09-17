@@ -202,24 +202,17 @@ std::string server_side_request_handler::answer_from_error_text(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-server::server(
-        pg_on_request_handler_t h,
-        int ipVer,
-        std::string strBindAddr,
-        int nPort,
-        const char* cert_path,
-        const char* private_key_path,
-        int32_t threads
-        )
-        : h_( h ),
-        m_bHelperIsSSL( ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ? true : false ),
-        ipVer_( ipVer ),
-        strBindAddr_( strBindAddr ),
-        nPort_( nPort ),
-        cert_path_( cert_path ? cert_path : "" ),
-        private_key_path_( private_key_path ? private_key_path : "" ),
-        threads_( threads )
-{
+server::server( pg_on_request_handler_t h, int ipVer, std::string strBindAddr, int nPort,
+    const char* cert_path, const char* private_key_path, int32_t threads )
+    : h_( h ),
+      m_bHelperIsSSL(
+          ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ? true : false ),
+      ipVer_( ipVer ),
+      strBindAddr_( strBindAddr ),
+      nPort_( nPort ),
+      cert_path_( cert_path ? cert_path : "" ),
+      private_key_path_( private_key_path ? private_key_path : "" ),
+      threads_( threads ) {
     strLogPrefix_ = cc::notice( "PG" ) + cc::normal( "/" ) + cc::notice( "server" ) + " ";
     pg_log( strLogPrefix_ + cc::debug( "constructor" ) + "\n" );
 }
@@ -234,42 +227,46 @@ bool server::start() {
 
     pg_log( strLogPrefix_ + cc::debug( "will start server thread" ) + "\n" );
 
-/*
-    int32_t http_port = 11000;
-    int32_t http_port6 = 12000;
-    int32_t https_port = 11001;
-    int32_t https_port6 = 12001;
+    /*
+        int32_t http_port = 11000;
+        int32_t http_port6 = 12000;
+        int32_t https_port = 11001;
+        int32_t https_port6 = 12001;
+
+        wangle::SSLContextConfig sslCfg;
+        sslCfg.isDefault = true;
+        sslCfg.setCertificate( "./cert.pem", "./key.pem", "" );
+        // sslCfg.clientCAFile = "./ca_cert.pem";
+        sslCfg.clientVerification = folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  //
+       IF_PRESENTED
+
+        proxygen::HTTPServer::IPConfig cfg_http( folly::SocketAddress( "127.0.0.1", http_port, true
+       ), proxygen::HTTPServer::Protocol::HTTP ); proxygen::HTTPServer::IPConfig cfg_http6(
+       folly::SocketAddress( "::1", http_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
+        proxygen::HTTPServer::IPConfig cfg_https( folly::SocketAddress( "127.0.0.1", https_port,
+       true ), proxygen::HTTPServer::Protocol::HTTP ); proxygen::HTTPServer::IPConfig cfg_https6(
+       folly::SocketAddress( "::1", https_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
+        cfg_https.sslConfigs.push_back( sslCfg );
+        cfg_https6.sslConfigs.push_back( sslCfg );
+
+        std::vector< proxygen::HTTPServer::IPConfig > IPs = { cfg_http, cfg_http6, cfg_https,
+       cfg_https6, };
+    */
 
     wangle::SSLContextConfig sslCfg;
-    sslCfg.isDefault = true;
-    sslCfg.setCertificate( "./cert.pem", "./key.pem", "" );
-    // sslCfg.clientCAFile = "./ca_cert.pem";
-    sslCfg.clientVerification = folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
-
-    proxygen::HTTPServer::IPConfig cfg_http( folly::SocketAddress( "127.0.0.1", http_port, true ), proxygen::HTTPServer::Protocol::HTTP );
-    proxygen::HTTPServer::IPConfig cfg_http6( folly::SocketAddress( "::1", http_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
-    proxygen::HTTPServer::IPConfig cfg_https( folly::SocketAddress( "127.0.0.1", https_port, true ), proxygen::HTTPServer::Protocol::HTTP );
-    proxygen::HTTPServer::IPConfig cfg_https6( folly::SocketAddress( "::1", https_port6, true ), proxygen::HTTPServer::Protocol::HTTP );
-    cfg_https.sslConfigs.push_back( sslCfg );
-    cfg_https6.sslConfigs.push_back( sslCfg );
-
-    std::vector< proxygen::HTTPServer::IPConfig > IPs = { cfg_http, cfg_http6, cfg_https, cfg_https6, };
-*/
-
-    wangle::SSLContextConfig sslCfg;
-    if( m_bHelperIsSSL ) {
+    if ( m_bHelperIsSSL ) {
         sslCfg.isDefault = true;
         sslCfg.setCertificate( cert_path_.c_str(), private_key_path_.c_str(), "" );
-        sslCfg.clientVerification = folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
+        sslCfg.clientVerification =
+            folly::SSLContext::VerifyClientCertificate::DO_NOT_REQUEST;  // IF_PRESENTED
     }
-    proxygen::HTTPServer::IPConfig cfg_ip( folly::SocketAddress( strBindAddr_.c_str(), nPort_, true ), proxygen::HTTPServer::Protocol::HTTP );
-    if( m_bHelperIsSSL ) {
+    proxygen::HTTPServer::IPConfig cfg_ip(
+        folly::SocketAddress( strBindAddr_.c_str(), nPort_, true ),
+        proxygen::HTTPServer::Protocol::HTTP );
+    if ( m_bHelperIsSSL ) {
         cfg_ip.sslConfigs.push_back( sslCfg );
     }
-    std::vector< proxygen::HTTPServer::IPConfig > IPs = { cfg_ip };
-
-
-
+    std::vector< proxygen::HTTPServer::IPConfig > IPs = {cfg_ip};
 
 
     if ( threads_ <= 0 ) {
@@ -334,33 +331,19 @@ void pg_logging_set( bool bIsLoggingMode ) {
     g_b_pb_logging = bIsLoggingMode;
 }
 
-wrapped_proxygen_server_handle pg_start(
-        pg_on_request_handler_t h,
-        int ipVer,
-        std::string strBindAddr,
-        int nPort,
-        const char* cert_path,
-        const char* private_key_path,
-        int32_t threads
-        ) {
-    skutils::http_pg::server * ptrServer =
-            new skutils::http_pg::server(
-                h,
-                ipVer,
-                strBindAddr,
-                nPort,
-                cert_path,
-                private_key_path,
-                threads
-                );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h, int ipVer,
+    std::string strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
+    int32_t threads ) {
+    skutils::http_pg::server* ptrServer = new skutils::http_pg::server(
+        h, ipVer, strBindAddr, nPort, cert_path, private_key_path, threads );
     ptrServer->start();
     return wrapped_proxygen_server_handle( ptrServer );
 }
 
 void pg_stop( wrapped_proxygen_server_handle hServer ) {
-    if ( ! hServer )
+    if ( !hServer )
         return;
-    skutils::http_pg::server * ptrServer = (skutils::http_pg::server*) hServer;
+    skutils::http_pg::server* ptrServer = ( skutils::http_pg::server* ) hServer;
     ptrServer->stop();
     delete ptrServer;
 }

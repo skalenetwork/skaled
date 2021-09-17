@@ -115,15 +115,8 @@ class server : public server_side_request_handler {
     std::string strLogPrefix_;
 
 public:
-    server(
-            pg_on_request_handler_t h,
-            int ipVer,
-            std::string strBindAddr,
-            int nPort,
-            const char* cert_path,
-            const char* private_key_path,
-            int32_t threads = 0
-            );
+    server( pg_on_request_handler_t h, int ipVer, std::string strBindAddr, int nPort,
+        const char* cert_path, const char* private_key_path, int32_t threads = 0 );
     ~server() override;
     bool start();
     void stop();
