@@ -80,35 +80,27 @@ const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
     []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
         std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
 
-dev::h256 OverlayDB::stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB ) {
+dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
     dev::h256 shaLastTx;
-    if ( pDB ) {
+    if ( m_db ) {
         const std::string l =
-            pDB->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
+            m_db->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
         if ( !l.empty() )
             shaLastTx = dev::h256( l, dev::h256::FromBinary );
     }
     return shaLastTx;
 }
 
-dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
-    return stat_safeLastExecutedTransactionHash( m_db.get() );
-}
-
-dev::bytes OverlayDB::stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB ) {
+dev::bytes OverlayDB::safePartialTransactionReceipts() {
     dev::bytes partialTransactionReceipts;
-    if ( pDB ) {
+    if ( m_db ) {
         const std::string l =
-            pDB->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+            m_db->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
         if ( !l.empty() )
             partialTransactionReceipts.insert(
                 partialTransactionReceipts.end(), l.begin(), l.end() );
     }
     return partialTransactionReceipts;
-}
-
-dev::bytes OverlayDB::safePartialTransactionReceipts() {
-    return stat_safePartialTransactionReceipts( m_db.get() );
 }
 
 void OverlayDB::commit() {

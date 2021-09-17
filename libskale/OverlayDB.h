@@ -56,9 +56,7 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
-    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
     dev::h256 safeLastExecutedTransactionHash();
-    static dev::bytes stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB );
     dev::bytes safePartialTransactionReceipts();
 
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
