@@ -24,10 +24,9 @@ public:
     const_iterator begin() const { return pieces.begin(); }
     const_iterator end() const { return pieces.end(); }
     DatabaseFace* current_piece() const { return begin()->get(); }
-    size_t pieces_count() const {return  pieces.size();}
+    size_t pieces_count() const { return pieces.size(); }
     void rotate();
-    virtual void commit() {
-        /*already implemented in rotate()*/
+    virtual void commit() { /*already implemented in rotate()*/
     }
 
 protected:
@@ -36,13 +35,13 @@ protected:
 
 class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
-    std::shared_ptr<batched_rotating_db_io> io_backend;
+    std::shared_ptr< batched_rotating_db_io > io_backend;
 
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;
 
 public:
-    ManuallyRotatingLevelDB( std::shared_ptr<batched_rotating_db_io> _io_backend );
+    ManuallyRotatingLevelDB( std::shared_ptr< batched_rotating_db_io > _io_backend );
     void rotate();
     size_t piecesCount() const { return io_backend->pieces_count(); }
 

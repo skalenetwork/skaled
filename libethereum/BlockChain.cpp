@@ -223,8 +223,9 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >(
+        auto batcher = std::make_shared< db::batched_rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5 );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( batcher );
         m_split_db = std::make_unique< db::SplitDB >(
             std::static_pointer_cast< db::DatabaseFace >( m_rotating_db ) );
         m_blocksDB = m_split_db->newInterface();

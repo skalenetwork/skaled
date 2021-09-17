@@ -13,7 +13,7 @@ const std::string current_piece_mark_key =
 }  // namespace
 
 ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
-    std::shared_ptr<batched_rotating_db_io> _io_backend )
+    std::shared_ptr< batched_rotating_db_io > _io_backend )
     : io_backend( _io_backend ) {}
 
 void ManuallyRotatingLevelDB::rotate() {

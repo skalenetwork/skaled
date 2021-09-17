@@ -608,7 +608,7 @@ private:
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };
 
-class batched_blocks_and_extras : public batched_io::batched_face, public db::WriteBatchFace {
+class batched_blocks_and_extras : public batched_io::batched_face {
 private:
     db::DatabaseFace* m_db;
     std::unique_ptr< db::WriteBatchFace > m_batch;
