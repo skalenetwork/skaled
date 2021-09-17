@@ -80,7 +80,10 @@ const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
     []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
         std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
 
-dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
+dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
+    if ( lastExecutedTransactionHash.has_value() )
+        return lastExecutedTransactionHash.value();
+
     dev::h256 shaLastTx;
     if ( m_db ) {
         const std::string l =
@@ -88,10 +91,15 @@ dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
         if ( !l.empty() )
             shaLastTx = dev::h256( l, dev::h256::FromBinary );
     }
+
+    lastExecutedTransactionHash = shaLastTx;
     return shaLastTx;
 }
 
-dev::bytes OverlayDB::safePartialTransactionReceipts() {
+dev::bytes OverlayDB::getPartialTransactionReceipts() const {
+    if ( lastExecutedTransactionReceipts.has_value() )
+        return lastExecutedTransactionReceipts.value();
+
     dev::bytes partialTransactionReceipts;
     if ( m_db ) {
         const std::string l =
@@ -100,7 +108,16 @@ dev::bytes OverlayDB::safePartialTransactionReceipts() {
             partialTransactionReceipts.insert(
                 partialTransactionReceipts.end(), l.begin(), l.end() );
     }
+
+    lastExecutedTransactionReceipts = partialTransactionReceipts;
     return partialTransactionReceipts;
+}
+
+void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
+    this->lastExecutedTransactionHash = _newHash;
+}
+void OverlayDB::setPartialTransactionReceipts( const dev::bytes& _newReceipts ) {
+    this->lastExecutedTransactionReceipts = _newReceipts;
 }
 
 void OverlayDB::commit() {
@@ -147,6 +164,12 @@ void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
                 }
                 writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
                     skale::slicing::toSlice( storageUsed_.str() ) );
+
+                writeBatch->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                    skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
+
+                writeBatch->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
+                    skale::slicing::toSlice( getPartialTransactionReceipts() ) );
             }
             bool bIsPreCommitCallbackPassed = false;
             try {

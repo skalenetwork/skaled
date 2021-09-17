@@ -56,8 +56,10 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
-    dev::h256 safeLastExecutedTransactionHash();
-    dev::bytes safePartialTransactionReceipts();
+    dev::h256 getLastExecutedTransactionHash() const;
+    dev::bytes getPartialTransactionReceipts() const;
+    void setLastExecutedTransactionHash( const dev::h256& );
+    void setPartialTransactionReceipts( const dev::bytes& );
 
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
         std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
@@ -109,6 +111,10 @@ private:
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
+
+
+    mutable std::optional< dev::h256 > lastExecutedTransactionHash;
+    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
 public:
     std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }
