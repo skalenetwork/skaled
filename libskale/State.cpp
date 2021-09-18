@@ -840,18 +840,20 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
         // shaLastTx.hex() << "\n";
 
-        TransactionReceipt receipt =
-            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
-                TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
-        receipt.setRevertReason( strRevertReason );
-        accumulatedTransactionReceipts->push_back( receipt );
-        dev::eth::BlockReceipts blockReceipts;
-        for ( unsigned i = 0; i < accumulatedTransactionReceipts->size(); ++i )
-            blockReceipts.receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
-        bytes const receipts = blockReceipts.rlp();
+        if ( accumulatedTransactionReceipts ) {
+            TransactionReceipt receipt =
+                _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+                    TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                    TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+            receipt.setRevertReason( strRevertReason );
+            accumulatedTransactionReceipts->push_back( receipt );
+            dev::eth::BlockReceipts blockReceipts;
+            for ( unsigned i = 0; i < accumulatedTransactionReceipts->size(); ++i )
+                blockReceipts.receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+            bytes const receipts = blockReceipts.rlp();
 
-        m_db_ptr->setPartialTransactionReceipts( receipts );
+            m_db_ptr->setPartialTransactionReceipts( receipts );
+        }
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
