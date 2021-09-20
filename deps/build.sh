@@ -1192,7 +1192,8 @@ then
 			if [ ! -f "libevent-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:libevent/libevent.git
+				#git clone git@github.com:libevent/libevent.git
+				git clone https://github.com/libevent/libevent.git
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf libevent-from-git.tar.gz ./libevent
 			else
