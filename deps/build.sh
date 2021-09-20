@@ -2227,6 +2227,7 @@ fi
 
 #https://github.com/fmtlib/fmt
 #git@github.com:fmtlib/fmt.git
+#https://github.com/fmtlib/fmt.git
 if [ "$WITH_FMT" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libFmt++${COLOR_SEPARATOR} =====================================${COLOR_RESET}"
@@ -2239,7 +2240,7 @@ then
 			if [ ! -f "fmt-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:fmtlib/fmt.git --recursive
+				git clone https://github.com/fmtlib/fmt.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf fmt-from-git.tar.gz ./fmt
 			else
@@ -2268,6 +2269,7 @@ fi
 
 #https://github.com/facebook/zstd
 #git@github.com:facebook/zstd.git
+#https://github.com/facebook/zstd.git
 if [ "$WITH_ZSTD" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libZSTD${COLOR_SEPARATOR} ======================================${COLOR_RESET}"
@@ -2280,7 +2282,7 @@ then
 			if [ ! -f "zstd-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:facebook/zstd.git --recursive
+				git clone https://github.com/facebook/zstd.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf zstd-from-git.tar.gz ./zstd
 			else
@@ -2309,6 +2311,7 @@ fi
 
 #https://github.com/google/double-conversion
 #git@github.com:google/double-conversion.git
+#https://github.com/google/double-conversion.git
 if [ "$WITH_DOUBLE_CONVERSION" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libDoubleConversion${COLOR_SEPARATOR} ==========================${COLOR_RESET}"
@@ -2321,7 +2324,7 @@ then
 			if [ ! -f "double-conversion-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:google/double-conversion.git --recursive
+				git clone https://github.com/google/double-conversion.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf double-conversion-from-git.tar.gz ./double-conversion
 			else
@@ -2362,7 +2365,7 @@ then
 			if [ ! -f "glog-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:google/glog.git --recursive
+				git clone https://github.com/google/glog.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf glog-from-git.tar.gz ./glog
 			else
@@ -2427,6 +2430,7 @@ fi
 
 #https://github.com/facebook/folly
 #git@github.com:facebook/folly.git
+#https://github.com/facebook/folly.git
 if [ "$WITH_FOLLY" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libFolly${COLOR_SEPARATOR} =====================================${COLOR_RESET}"
@@ -2439,7 +2443,7 @@ then
 			if [ ! -f "folly-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:facebook/folly.git --recursive
+				git clone https://github.com/facebook/folly.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf folly-from-git.tar.gz ./folly
 			else
@@ -2634,6 +2638,7 @@ fi
 #https://github.com/facebook/proxygen
 #https://habr.com/ru/company/infopulse/blog/243181/
 #git@github.com:facebook/proxygen.git
+#https://github.com/facebook/proxygen.git
 if [ "$WITH_PROXYGEN" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libProxygen${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
@@ -2646,7 +2651,7 @@ then
 			if [ ! -f "proxygen-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:facebook/proxygen.git --recursive
+				git clone https://github.com/facebook/proxygen.git --recursive
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf proxygen-from-git.tar.gz ./proxygen
 			else
