@@ -186,6 +186,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"enable-debug-behavior-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"pg-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"pg-threads", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"pg-threads-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"web3-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"web3-shutdown", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},

@@ -1879,7 +1879,7 @@ int main( int argc, char** argv ) try {
             //
             auto fnPrintPort = [&]( const int& nPort, const char* strDescription ) -> void {
                 static const size_t nAlign = 35;
-                size_t nDescLen = strlen( strDescription );
+                size_t nDescLen = strnlen( strDescription, 1024 );
                 std::string strDots;
                 for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                     strDots += ".";
@@ -2746,7 +2746,7 @@ int main( int argc, char** argv ) try {
             auto fnPrintStatus = []( const int& nPort, const int& nStat,
                                      const char* strDescription ) -> void {
                 static const size_t nAlign = 35;
-                size_t nDescLen = strlen( strDescription );
+                size_t nDescLen = strnlen( strDescription, 1024 );
                 std::string strDots;
                 for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                     strDots += ".";

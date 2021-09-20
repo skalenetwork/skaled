@@ -2559,7 +2559,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
                     bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
                 if ( opts_.isTraceCalls_ )
                     logTraceServerTraffic( true, dev::VerbosityTrace, ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm, req.origin_.c_str(),
                         cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
                 res.set_header( "access-control-allow-headers", "Content-Type" );
                 res.set_header( "access-control-allow-methods", "POST" );
@@ -2579,8 +2579,8 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
                 nlohmann::json joIn = nlohmann::json::parse( req.body_ );
                 if ( joIn.count( "id" ) > 0 )
                     joID = joIn["id"];
-                nlohmann::json joOut = implHandleHttpRequest( joIn, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), req.origin_, ipVer, nPort, esm );
+                nlohmann::json joOut = implHandleHttpRequest(
+                    joIn, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, req.origin_, ipVer, nPort, esm );
                 std::string strOut = joOut.dump();
                 res.set_header( "access-control-allow-origin", "*" );
                 res.set_header( "vary", "Origin" );
@@ -2589,7 +2589,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
                 return true;
             } catch ( const std::exception& ex ) {
                 logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( ex.what() ) );
+                    nServerIndex, esm, req.origin_.c_str(), cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
@@ -2604,7 +2604,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
                 logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
+                    nServerIndex, esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
@@ -2619,8 +2619,8 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             }
         } );
         // check if somebody is already listening
-        stat_check_port_availability_for_server_to_start_listen( ipVer, strAddr.c_str(), nPort, esm,
-            bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), this );
+        stat_check_port_availability_for_server_to_start_listen(
+            ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
@@ -2632,20 +2632,20 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
         } )
             .detach();
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::success( "OK, started " ) + cc::attention( "mini" ) + cc::debug( "/" ) +
                 cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
-                cc::num10( pSrv->serverIndex() ) + cc::success( " server on address " ) +
+                cc::num10( nServerIndex ) + cc::success( " server on address " ) +
                 cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
                 cc::success( "/" ) + cc::notice( esm2str( esm ) ) + " " );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "mini" ) +
                 cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "mini" ) +
                 cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
