@@ -325,6 +325,11 @@ bool server::start() {
 }
 
 void server::stop() {
+    if ( server_ ) {
+        pg_log( strLogPrefix_ + cc::debug( "will stop server instance" ) + "\n" );
+        server_->stop();
+        pg_log( strLogPrefix_ + cc::debug( "did stopped server instance" ) + "\n" );
+    }
     if ( thread_.joinable() ) {
         pg_log( strLogPrefix_ + cc::debug( "will stop server thread" ) + "\n" );
         thread_.join();
