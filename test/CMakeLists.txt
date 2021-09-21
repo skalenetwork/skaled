@@ -82,6 +82,7 @@ target_link_libraries(testeth PRIVATE
     ${DEPS_INSTALL_ROOT}/lib/libz.a
     idn2
     lzma
+    unwind
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
