@@ -616,8 +616,8 @@ bool test_server_https::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 test_server_proxygen::test_server_proxygen(
-        const char* strBindAddr4, const char* strBindAddr6,
-        int nListenPortHTTP4, int nListenPortHTTPS4, int nListenPortHTTP6, int nListenPortHTTPS6,
+        const char* strBindAddr4, const char* /*strBindAddr6*/,
+        int nListenPortHTTP4, int /*nListenPortHTTPS4*/, int /*nListenPortHTTP6*/, int /*nListenPortHTTPS6*/,
         int32_t threads, int32_t threads_limit
         )
         : test_server( "proxygen", nListenPortHTTP4 )
