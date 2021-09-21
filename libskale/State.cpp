@@ -792,9 +792,8 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    bool isSaveLastTxHash, dev::eth::TransactionReceipts* accumulatedTransactionReceipts ) {
-    ( void ) isSaveLastTxHash;
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
+    OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -840,14 +839,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
         // shaLastTx.hex() << "\n";
 
-        if ( accumulatedTransactionReceipts ) {
-            TransactionReceipt receipt =
-                _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
-                    TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                    TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
-            receipt.setRevertReason( strRevertReason );
-            m_db_ptr->addReceiptToPartials( receipt );
-        }
+        TransactionReceipt receipt =
+            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+                TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+        receipt.setRevertReason( strRevertReason );
+        m_db_ptr->addReceiptToPartials( receipt );
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :

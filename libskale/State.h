@@ -327,8 +327,7 @@ public:
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool isSaveLastTxHash = false,
-        dev::eth::TransactionReceipts* accumulatedTransactionReceipts = nullptr );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }
