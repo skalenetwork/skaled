@@ -31,6 +31,11 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/db.h>
 
+namespace dev {
+namespace eth {
+class TransactionReceipt;
+}
+}  // namespace dev
 
 namespace skale {
 
@@ -60,6 +65,9 @@ public:
     dev::bytes getPartialTransactionReceipts() const;
     void setLastExecutedTransactionHash( const dev::h256& );
     void setPartialTransactionReceipts( const dev::bytes& );
+
+    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
+    void clearPartialTransactionReceipts();
 
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
         std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >

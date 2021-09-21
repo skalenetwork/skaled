@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -447,6 +447,25 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
+            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
+
+                auto iterMissing = std::find_if( vecMissing->begin(), vecMissing->end(),
+                    [&tr]( const Transaction& trMissing ) -> bool {
+                        return trMissing.sha3() == tr.sha3();
+                    } );
+
+                if ( iterMissing == vecMissing->end() ) {
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
+                    // HACK TODO We assume but don't check that accumulated receipts contain
+                    // exactly receipts of first n txns!
+                    m_receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+                    receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
+                    continue;  // skip this transaction, it was already executed before PARTIAL
+                               // CATCHUP
+                }              // if
+            }
+
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
@@ -471,25 +490,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
-                bool foundMissing = false;
-                for ( const Transaction& trMissing : ( *vecMissing ) ) {
-                    if ( trMissing.sha3() == tr.sha3() ) {
-                        foundMissing = true;
-                        break;
-                    }
-                }
-                if ( !foundMissing ) {
-                    m_transactions.push_back( tr );
-                    m_transactionSet.insert( tr.sha3() );
-                    // HACK TODO We assume but don't check that accumulated receipts contain
-                    // exactly receipts of first n txns!
-                    m_receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
-                    receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
-                    continue;  // skip this transaction, it was already executed before PARTIAL
-                               // CATCHUP
-                }              // if
-            }
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
                 OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
             receipts.push_back( m_receipts.back() );

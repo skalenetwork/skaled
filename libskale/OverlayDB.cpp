@@ -32,6 +32,7 @@ using std::vector;
 
 #include <libdevcore/Common.h>
 #include <libdevcore/db.h>
+#include <libethereum/BlockDetails.h>
 
 //#include "SHA3.h"
 
@@ -118,6 +119,27 @@ void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
 }
 void OverlayDB::setPartialTransactionReceipts( const dev::bytes& _newReceipts ) {
     this->lastExecutedTransactionReceipts = _newReceipts;
+}
+
+void OverlayDB::addReceiptToPartials( const dev::eth::TransactionReceipt& _receipt ) {
+    auto rawTransactionReceipts = getPartialTransactionReceipts();
+
+    // TODO Temporary solution - do not (de)serialize forth and back!
+
+    dev::eth::BlockReceipts blockReceipts;
+    if ( !rawTransactionReceipts.empty() ) {
+        dev::RLP rlp( rawTransactionReceipts );
+        blockReceipts = dev::eth::BlockReceipts( rlp );
+    }  // if
+
+    blockReceipts.receipts.push_back( _receipt );
+
+    setPartialTransactionReceipts( blockReceipts.rlp() );
+}
+
+void OverlayDB::clearPartialTransactionReceipts() {
+    dev::eth::BlockReceipts blockReceipts;
+    setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
 void OverlayDB::commit() {
