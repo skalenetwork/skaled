@@ -2457,6 +2457,7 @@ then
 			mkdir -p build2
 			cd build2
 			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                -D BOOST_ROOT="$INSTALL_ROOT" \
 				..
 			cd ..
 		else
