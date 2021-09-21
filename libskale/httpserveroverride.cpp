@@ -2660,7 +2660,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
 bool SkaleServerOverride::implStartListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
     const std::string& strPathSslKey, const std::string& strPathSslCert,
-    const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm ) {
+    const std::string& /*strPathSslCA*/, int nServerIndex, e_server_mode_t esm ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
