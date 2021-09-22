@@ -13,10 +13,12 @@ target_link_libraries(
     skaled_ssl_test
     PRIVATE
     skutils
-    ${DEPS_INSTALL_ROOT}/lib/libcurl.a
-    ${DEPS_INSTALL_ROOT}/lib/libssl.a
-    ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-    ${DEPS_INSTALL_ROOT}/lib/libz.a
+    "${DEPS_INSTALL_ROOT}/lib/libcurl.a"
+    "${DEPS_INSTALL_ROOT}/lib/libssl.a"
+    "${DEPS_INSTALL_ROOT}/lib/libcrypto.a"
+    "${DEPS_INSTALL_ROOT}/lib/libz.a"
+    "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+    "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
     idn2
     dl
     )

@@ -43,7 +43,9 @@ target_include_directories( skale PUBLIC
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
 		"${DEPS_INSTALL_ROOT}/lib/libzmq.a"
-		bls
+        "${DEPS_INSTALL_ROOT}/lib/libsodium.a"
+        bls
+        pthread
         )
 
 #target_compile_options( skale PRIVATE -Weffc++ )

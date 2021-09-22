@@ -116,11 +116,20 @@ echo "Cleaning archive files..."
 rm -f ./*.tar.gz
 rm -f ./*.zip
 echo "Cleaning upacked library folders..."
+rm -rf ./double-conversion
+rm -rf ./fizz
+rm -rf ./fmt
+rm -rf ./folly
+rm -rf ./gflags-master
+rm -rf ./glog
+rm -rf ./googletest
 rm -rf ./libiconv-1.15
 rm -rf ./zlib
 rm -rf ./openssl
 rm -rf ./curl
 rm -rf ./libuv
+rm -rf ./libevent
+rm -rf ./libsodium
 rm -rf ./libwebsockets
 rm -rf ./boost_1_68_0
 rm -rf ./argtable2
@@ -131,6 +140,9 @@ rm -rf ./libmicrohttpd
 rm -rf ./jsoncpp
 rm -rf ./libjson-rpc-cpp
 rm -rf ./libcryptopp
+rm -rf ./proxygen
+rm -rf ./wangle
+rm -rf ./zstd
 # rm -rf ./bzip2
 # rm -rf ./lzma
 # rm -rf ./SDL2-2.0.7
