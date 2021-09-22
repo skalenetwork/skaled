@@ -547,8 +547,6 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
         } else {
             proceedDirectory( *it, ctx );
         }
-
-        ++it;
     }
 }
 
