@@ -30,19 +30,19 @@ jobs:
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
-        # - name: Prepare ccache timestamp
-        #   id: ccache_cache_timestamp
-        #   shell: cmake -P {0}
-        #   run: |
-        #     string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-        #     message("::set-output name=timestamp::${current_date}")
-        # - name: Ccache cache files
-        #   uses: actions/cache@v1.1.0
-        #   with:
-        #     path: .ccache
-        #     key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
-        #     restore-keys: |
-        #       ${ { matrix.config.name } }-ccache-
+      - name: Prepare ccache timestamp
+        id: ccache_cache_timestamp
+        shell: cmake -P {0}
+        run: |
+          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+          message("::set-output name=timestamp::${current_date}")
+      - name: Ccache cache files
+        uses: actions/cache@v1.1.0
+        with:
+          path: .ccache
+          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
+          restore-keys: |
+            ${ { matrix.config.name } }-ccache-
       - name: Build dependencies
         run: |
           export CC=gcc-7
@@ -51,7 +51,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd deps
-          ./clean.sh
+          #######################################./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=1
           cd ..
