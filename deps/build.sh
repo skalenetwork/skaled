@@ -263,7 +263,7 @@ setup_variable() {
 setup_variable WITH_ZLIB "no"
 setup_variable WITH_OPENSSL "no"
 setup_variable WITH_CURL "no"
-setup_variable WITH_LZMA "no"
+setup_variable WITH_LZMA "yes"
 setup_variable WITH_SSH "no"
 
 setup_variable WITH_SDL "no"
@@ -708,41 +708,44 @@ env_save
 # 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # fi
 
-# if [ "$WITH_LZMA" = "yes" ];
-# then
-# 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}LZMA${COLOR_SEPARATOR} =========================================${COLOR_RESET}"
-# 	if [ ! -f "$INSTALL_ROOT/lib/liblzma.a" ];
-# 	then
-# 		env_restore
-# 		cd "$SOURCES_ROOT"
-# 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
-# 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
-# 		if [ ! -d "lzma" ];
-# 		then
-# 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-# 			tar -xzf $PREDOWNLOADED_ROOT/lzma-from-git.tar.gz
-# 			#
-# 			#
-# 			#
-# 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-# 			cd lzma
-# 			mkdir -p build
-# 			cd build
-# 			cmake "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
-# 			cd ../..
-# 		fi
-# 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-# 		cd lzma/build
-# 		$MAKE ${PARALLEL_MAKE_OPTIONS}
-# 		$MAKE ${PARALLEL_MAKE_OPTIONS} install
-# 		cd ..
-# 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
-# 		export PKG_CONFIG_PATH_SAVED=
-# 		cd "$SOURCES_ROOT"
-# 	else
-# 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
-# 	fi
-# fi
+ if [ "$WITH_LZMA" = "yes" ];
+ then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}LZMA${COLOR_SEPARATOR} =========================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/liblzma.a" ];
+    then
+        env_restore
+        cd "$SOURCES_ROOT"
+        if [ ! -d "liblzma" ];
+        then
+            if [ ! -f "liblzma-from-git.tar.gz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                git clone https://github.com/kobolabs/liblzma.git
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -czf liblzma-from-git.tar.gz ./liblzma
+            else
+                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -xzf liblzma-from-git.tar.gz
+            fi
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+            cd liblzma
+            aclocal
+            autoconf
+            autoheader
+            automake --add-missing
+            ./configure --disable-shared --prefix="$INSTALL_ROOT"
+            cd ..
+        fi
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        cd liblzma
+        $MAKE ${PARALLEL_MAKE_OPTIONS}
+        $MAKE ${PARALLEL_MAKE_OPTIONS} install
+        cd ..
+        cd "$SOURCES_ROOT"
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+ fi
 
 if [ "$WITH_ZLIB" = "yes" ];
 then
