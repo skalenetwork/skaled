@@ -615,6 +615,80 @@ bool test_server_https::isSSL() const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+test_server_proxygen::test_server_proxygen(
+        const char* strBindAddr4, const char* /*strBindAddr6*/,
+        int nListenPortHTTP4, int /*nListenPortHTTPS4*/, int /*nListenPortHTTP6*/, int /*nListenPortHTTPS6*/,
+        int32_t threads, int32_t threads_limit
+        )
+        : test_server( "proxygen", nListenPortHTTP4 )
+{
+    skutils::http_pg::pg_on_request_handler_t fnHandler = [=]( const nlohmann::json& joIn,
+            const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort )
+            -> nlohmann::json {
+        nlohmann::json joOut =
+                implHandleHttpRequest(
+                    joIn,
+                    strOrigin,
+                    ipVer,
+                    strDstAddress,
+                    nDstPort
+                    );
+        return joOut;
+    };
+//    auto& ssl_info = helper_ssl_info();
+//    BOOST_REQUIRE( (!ssl_info.strFilePathCert_.empty()) );
+//    BOOST_REQUIRE( (!ssl_info.strFilePathCert_.empty()) );
+    skutils::http_pg::pg_accumulate_entries arr_pge = {
+        { 4, strBindAddr4, nListenPortHTTP4, "", "", "" },
+//        { 4, strBindAddr4, nListenPortHTTPS4, ssl_info.strFilePathCert_.c_str(), ssl_info.strFilePathCert_.c_str(), "" },
+//        { 6, strBindAddr6, nListenPortHTTP6, "", "", "" },
+//        { 6, strBindAddr6, nListenPortHTTPS6, ssl_info.strFilePathCert_.c_str(), ssl_info.strFilePathKey_.c_str(), "" },
+    };
+    hProxygenServer_ = skutils::http_pg::pg_start( fnHandler, arr_pge, threads, threads_limit );
+    std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+}
+
+test_server_proxygen::~test_server_proxygen() {
+    stop();
+}
+
+void test_server_proxygen::stop() {
+    // thread_is_running_ = false;
+    skutils::http_pg::pg_stop( hProxygenServer_ );
+    hProxygenServer_ = nullptr;
+    std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+}
+
+void test_server_proxygen::run() {
+}
+
+void test_server_proxygen::run_parallel() {
+    run();
+    // test_server::run_parallel();
+}
+
+void test_server_proxygen::check_can_listen() {
+    // test_server::check_can_listen();
+}
+
+bool test_server_proxygen::isSSL() const {
+    return false;
+}
+
+nlohmann::json test_server_proxygen::implHandleHttpRequest(
+        const nlohmann::json & joIn,
+        const std::string& strOrigin,
+        int /*ipVer*/,
+        const std::string& /*strDstAddress*/,
+        int /*nDstPort*/
+        ) {
+    test_log_p( cc::ws_tx_inv( "<<< PROXYGEN-TX-POST <<< " ) + cc::u( strOrigin ) + cc::ws_tx( " <<< " ) + cc::j( joIn ) );
+    return joIn;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 test_client::test_client( const char* strClientName, int nTargetPort, const char* strScheme )
     : strClientName_( strClientName ),
       nTargetPort_( nTargetPort ),
@@ -1114,6 +1188,11 @@ void with_test_server(
     } else if ( sus == "http_sync" ) {
         pServer.reset( new test_server_http( nSocketListenPort, false ) );
         BOOST_REQUIRE( !pServer->isSSL() );
+    } else if ( sus == "proxygen" ) {
+        pServer.reset( new test_server_proxygen( "127.0.0.1", "::1",
+                                                 nSocketListenPort + 0, nSocketListenPort + 1, nSocketListenPort + 2, nSocketListenPort + 3,
+                                                 0, 0
+                                                 ) );
     } else {
         test_log_se( cc::error( "Unknown server type: " ) + cc::warn( strServerUrlScheme ) );
         throw std::runtime_error( "Unknown server type: " + strServerUrlScheme );
@@ -1184,7 +1263,7 @@ void with_test_client( fn_with_test_client_t fn, const std::string& strTestClien
         pClient.reset( new test_client_https(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( pClient->isSSL() );
-    } else if ( sus == "http" || sus == "http_async" || sus == "http_sync" ) {
+    } else if ( sus == "http" || sus == "http_async" || sus == "http_sync" || sus == "proxygen" ) {
         pClient.reset( new test_client_http(
             strTestClientName.c_str(), nSocketListenPort, nConnectAttempts ) );
         BOOST_REQUIRE( !pClient->isSSL() );
@@ -1300,6 +1379,7 @@ void test_print_header_name( const char* s ) {
 
 
 int g_nDefaultPort = 9696;
+int g_nDefaultPortProxygen = 8686;
 
 std::vector< std::string > g_vecTestClientNamesA = {"Frodo", "Bilbo", "Sam", "Elrond", "Galadriel",
     "Celeborn", "Balrog", "Anduin", "Samwise", "Gandalf", "Legolas", "Aragorn", "Gimli", "Faramir",

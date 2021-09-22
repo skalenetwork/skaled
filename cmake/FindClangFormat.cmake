@@ -34,6 +34,7 @@ else()
 	set( CLANG_FORMAT_FOUND "1" )
 	set( CLANG_FORMAT     "${CLANG_FORMAT_BIN_NAME}" )
 	set( CLANG_FORMAT_BIN "${CLANG_FORMAT_BIN_NAME}" )
+	set( BLS_CLANG_FORMAT_BIN_NAME "${CLANG_FORMAT_BIN_NAME}" )
 endif()
 
 # if custom path check there first
@@ -47,6 +48,7 @@ if( CLANG_FORMAT_ROOT_DIR )
 endif()
 
 find_program( CLANG_FORMAT_BIN NAMES ${CLANG_FORMAT_BIN_NAME} )
+
 
 include( FindPackageHandleStandardArgs )
 FIND_PACKAGE_HANDLE_STANDARD_ARGS( CLANG_FORMAT DEFAULT_MSG CLANG_FORMAT_BIN )

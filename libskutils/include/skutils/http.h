@@ -64,6 +64,7 @@ typedef int socket_t;
 #include <regex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -80,6 +81,9 @@ typedef int socket_t;
 #include <skutils/network.h>
 #include <skutils/url.h>
 #include <skutils/utils.h>
+
+//#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 /// configuration
 
@@ -722,6 +726,44 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 }
 
 };  // namespace http
+
+namespace http_pg {
+
+typedef std::function< nlohmann::json( const nlohmann::json&, const std::string& strOrigin,
+    int ipVer, const std::string& strDstAddress, int nDstPort ) >
+    pg_on_request_handler_t;
+
+typedef void* wrapped_proxygen_server_handle;
+
+struct pg_accumulate_entry {
+    int ipVer_ = -1;
+    std::string strBindAddr_;
+    int nPort_ = -1;
+    std::string cert_path_;
+    std::string private_key_path_;
+    std::string ca_path_;
+};  // struct pg_accumulate_entry
+
+typedef std::vector< pg_accumulate_entry > pg_accumulate_entries;
+
+bool pg_logging_get();
+void pg_logging_set( bool bIsLoggingMode );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h, const pg_accumulate_entry& pge,
+    int32_t threads = 0, int32_t threads_limit = 0 );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h,
+    const pg_accumulate_entries& entries, int32_t threads = 0, int32_t threads_limit = 0 );
+void pg_stop( wrapped_proxygen_server_handle hServer );
+
+void pg_accumulate_clear();
+size_t pg_accumulate_size();
+void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
+    const char* private_key_path, const char* ca_path );
+void pg_accumulate_add( const pg_accumulate_entry& pge );
+wrapped_proxygen_server_handle pg_accumulate_start(
+    pg_on_request_handler_t h, int32_t threads = 0, int32_t threads_limit = 0 );
+
+};  // namespace http_pg
+
 };  // namespace skutils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

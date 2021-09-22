@@ -81,6 +81,8 @@ target_link_libraries(testeth PRIVATE
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
     ${DEPS_INSTALL_ROOT}/lib/libz.a
     idn2
+    ${DEPS_INSTALL_ROOT}/lib/liblzma.a
+    ${DEPS_INSTALL_ROOT}/lib/libunwind.a
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
