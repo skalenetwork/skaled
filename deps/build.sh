@@ -265,6 +265,7 @@ setup_variable WITH_OPENSSL "no"
 setup_variable WITH_CURL "no"
 setup_variable WITH_LZMA "yes"
 setup_variable WITH_SSH "no"
+setup_variable WITH_UNWIND "yes"
 
 setup_variable WITH_SDL "no"
 setup_variable WITH_SDL_TTF "no"
@@ -590,6 +591,7 @@ echo -e "${COLOR_VAR_NAME}WITH_OPENSSL${COLOR_DOTS}...........${COLOR_VAR_DESC}O
 echo -e "${COLOR_VAR_NAME}WITH_CURL${COLOR_DOTS}..............${COLOR_VAR_DESC}CURL${COLOR_DOTS}...................................${COLOR_VAR_VAL}$WITH_CURL${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_LZMA${COLOR_DOTS}..............${COLOR_VAR_DESC}LZMA${COLOR_DOTS}...................................${COLOR_VAR_VAL}$WITH_LZMA${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_SSH${COLOR_DOTS}...............${COLOR_VAR_DESC}SSH${COLOR_DOTS}....................................${COLOR_VAR_VAL}$WITH_SSH${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_UNWIND${COLOR_DOTS}............${COLOR_VAR_DESC}Unwind${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_UNWIND${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_SDL${COLOR_DOTS}...............${COLOR_VAR_DESC}SDL${COLOR_DOTS}....................................${COLOR_VAR_VAL}$WITH_SDL${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_SDL_TTF${COLOR_DOTS}...........${COLOR_VAR_DESC}SDL-TTF${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_SDL_TTF${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_EV${COLOR_DOTS}................${COLOR_VAR_DESC}libEv${COLOR_DOTS}..................................${COLOR_VAR_VAL}$WITH_EV${COLOR_RESET}"
@@ -745,7 +747,47 @@ env_save
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
- fi
+fi
+
+if [ "$WITH_UNWIND" = "yes" ];
+ then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}UNWIND${COLOR_SEPARATOR} =======================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libunwind.a" ];
+    then
+        env_restore
+        cd "$SOURCES_ROOT"
+        if [ ! -d "libunwind" ];
+        then
+            if [ ! -f "libunwind-from-git.tar.gz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                git clone https://github.com/libunwind/libunwind.git
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -czf libunwind-from-git.tar.gz ./libunwind
+            else
+                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -xzf libunwind-from-git.tar.gz
+            fi
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+            cd libunwind
+            #aclocal
+            #autoconf
+            #autoheader
+            #automake --add-missing
+            autoreconf -i
+            ./configure --disable-shared --prefix="$INSTALL_ROOT"
+            cd ..
+        fi
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        cd libunwind
+        $MAKE ${PARALLEL_MAKE_OPTIONS}
+        $MAKE ${PARALLEL_MAKE_OPTIONS} install
+        cd ..
+        cd "$SOURCES_ROOT"
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
 
 if [ "$WITH_ZLIB" = "yes" ];
 then
