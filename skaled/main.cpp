@@ -2040,11 +2040,11 @@ int main( int argc, char** argv ) try {
                 } catch ( ... ) {
                     pg_threads_limit = 0;
                 }
-                bool is_pg_trace = false;
                 try {
-                    is_pg_trace = joConfig["skaleConfig"]["nodeInfo"]["pg-trace"].get< bool >();
+                    bool is_pg_trace =
+                        joConfig["skaleConfig"]["nodeInfo"]["pg-trace"].get< bool >();
+                    skutils::http_pg::pg_logging_set( is_pg_trace );
                 } catch ( ... ) {
-                    is_pg_trace = 0;
                 }
             }
             if ( vm.count( "pg-threads" ) )
