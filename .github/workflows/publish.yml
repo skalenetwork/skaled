@@ -69,7 +69,8 @@ jobs:
           export CODE_COVERAGE=ON
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCMAKE_CXX_FLAGS=-O3 -DCMAKE_C_FLAGS=-O3 ..
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ..
           cd ..
       - name: Build all
         run: |
