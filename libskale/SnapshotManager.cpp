@@ -541,11 +541,11 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
             return lhs.string() < rhs.string();
         } );
 
-    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
-        if ( boost::filesystem::is_regular_file( *it ) ) {
-            proceedRegularFile( *it, ctx, is_checking );
+    for ( auto& content : contents ) {
+        if ( boost::filesystem::is_regular_file( content ) ) {
+            proceedRegularFile( content, ctx, is_checking );
         } else {
-            proceedDirectory( *it, ctx );
+            proceedDirectory( content, ctx );
         }
     }
 }
@@ -587,8 +587,8 @@ void SnapshotManager::computeAllVolumesHash(
             return lhs.string() < rhs.string();
         } );
 
-    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
-        this->computeDatabaseHash( *it, ctx );
+    for ( auto& content : contents ) {
+        this->computeDatabaseHash( content, ctx );
     }
 
     // filestorage
