@@ -60,6 +60,8 @@ target_link_libraries( skutils
     "${DEPS_INSTALL_ROOT}/lib/libssl.a"
     "${DEPS_INSTALL_ROOT}/lib/libcrypto.a"
     "${DEPS_INSTALL_ROOT}/lib/libsodium.a"
+    "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+    "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
     websockets uv pthread dl z
     )
 
