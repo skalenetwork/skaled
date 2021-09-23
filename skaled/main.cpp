@@ -1179,7 +1179,7 @@ int main( int argc, char** argv ) try {
 
     UnsafeRegion::init(getDataDir());
     if(UnsafeRegion::isActive()){
-        clog( VerbosityError, "main" ) << "FATAL " << "Previous skale dshutdown was too hard, need to repair!";
+        clog( VerbosityError, "main" ) << "FATAL " << "Previous skaled shutdown was too hard, need to repair!";
         return int( ExitHandler::ec_state_root_mismatch );
     }// if bad exit
 
