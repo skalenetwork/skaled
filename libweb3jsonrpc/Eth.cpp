@@ -66,7 +66,7 @@ bool Eth::isEnabledTransactionSending() const {
                 "\"skaleConfig\"/\"nodeInfo\"/\"no-txn-sending\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
             joSkaleConfig_nodeInfo["no-txn-sending"];
-        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >();
+        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >() ? false : true;
     } catch ( ... ) {
     }
     return isEnabled;
