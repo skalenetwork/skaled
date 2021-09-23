@@ -4,11 +4,13 @@
 #include <assert.h>
 #include <boost/filesystem.hpp>
 #include <chrono>
+#include <mutex>
 
 class UnsafeRegion {
 private:
     static int counter;
     static boost::filesystem::path path;
+    static std::mutex local_mutex;
     static std::chrono::system_clock::time_point last_start_time;
     static std::chrono::system_clock::duration total_time;
 
