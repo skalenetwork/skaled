@@ -10,6 +10,7 @@ set(sources
     ConsensusGasPricer.cpp
     SnapshotManager.cpp
     SnapshotHashAgent.cpp
+    UnsafeRegion.cpp
 )
 
 set(headers
@@ -22,6 +23,7 @@ set(headers
     ConsensusGasPricer.h
     SnapshotManager.h
     SnapshotHashAgent.h
+    UnsafeRegion.h
 )
 
 add_library(skale ${sources} ${headers})

@@ -56,6 +56,7 @@
 #include <libevm/VMFactory.h>
 
 #include <libskale/ConsensusGasPricer.h>
+#include <libskale/UnsafeRegion.h>
 
 #include <libdevcrypto/LibSnark.h>
 
@@ -1175,6 +1176,12 @@ int main( int argc, char** argv ) try {
 
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
+
+    UnsafeRegion::init(getDataDir());
+    if(UnsafeRegion::isActive()){
+        clog( VerbosityError, "main" ) << "FATAL " << "Previous skale dshutdown was too hard, need to repair!";
+        return int( ExitHandler::ec_state_root_mismatch );
+    }// if bad exit
 
     ///////////////// CACHE PARAMS ///////////////
     extern chrono::system_clock::duration c_collectionDuration;
