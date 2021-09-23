@@ -195,6 +195,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"max-http-queues", {{js::int_type}, JsonFieldPresence::Optional}},
             {"ws-mode", {{js::str_type}, JsonFieldPresence::Optional}},
             {"ws-log", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"no-txn-sending", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"no-ima-signing", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"imaMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
