@@ -2721,8 +2721,8 @@ then
 		sed -i 's/if (FLAGS_request_number)/   \/*   if (FLAGS_request_number)   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd build2
-		$MAKE ${PARALLEL_MAKE_OPTIONS} proxygen
-		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		$MAKE "${PARALLEL_MAKE_OPTIONS}" proxygen
+		$MAKE "${PARALLEL_MAKE_OPTIONS}" install
 		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
