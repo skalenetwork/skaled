@@ -273,6 +273,9 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
+
+    if ( !this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
+        recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -675,23 +678,18 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     }
 }
 
-void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
+bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     if ( m_params.sChain.dbStorageLimit == 0 ) {
-        return;
+        return false;
     }
 
-    uint64_t currentBlockSize = this->details( hash ).blockSizeBytes;
-    uint64_t totalStorageUsed = 0;
-    if ( this->m_rotating_db->exists( ( db::Slice ) "totalStorageUsed" ) ) {
-        totalStorageUsed =
-            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "totalStorageUsed" ) );
-    }
-
-    if ( totalStorageUsed + currentBlockSize + 32 > m_params.sChain.dbStorageLimit ) {
+    // account for size of 1 piece
+    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) {
         // remember genesis
         BlockDetails details = this->details( m_genesisHash );
 
         clearCaches();
+        this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
         this->m_rotating_db->rotate();
 
         // re-insert genesis
@@ -699,62 +697,54 @@ void BlockChain::rotateDBIfNeeded( const dev::h256& hash ) {
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
 
-        // update storage usage
-        m_blocksDB->insert( db::Slice( "totalStorageUsed" ), db::Slice( "0" ) );
-    }
+        return true;
+    } else
+        return false;
 }
 
-ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
-    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+struct SizeCountingWriteBatch {
+    SizeCountingWriteBatch( db::WriteBatchFace& _backend ) : backend( _backend ) {}
+    // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+    void insert( db::Slice _key, db::Slice _value ) {
+        consumedBytes += _key.size() + _value.size() + 1;
+        backend.insert( _key, _value );
+    }
+    db::WriteBatchFace& backend;
+    size_t consumedBytes = 0;
+};
+
+// TOOD ACHTUNG This function must be kept in sync with the next one!
+void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
+    u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
+    db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
+    size_t& _blocksBatchSize, size_t& _extrasBatchSize,
     ImportPerformanceLogger& _performanceLogger ) {
-    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
-
-    rotateDBIfNeeded( _block.info.hash() );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
-
-    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch = m_blocksDB->createWriteBatch();
-    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch = m_extrasDB->createWriteBatch();
-    h256 newLastBlockHash = currentHash();
-    unsigned newLastBlockNumber = number();
+    SizeCountingWriteBatch blocksWriteBatch( _originalBlocksWriteBatch );
+    SizeCountingWriteBatch extrasWriteBatch( _originalExtrasWriteBatch );
 
     try {
         MICROPROFILE_SCOPEI( "BlockChain", "write", MP_DARKKHAKI );
 
-        // ensure parent is cached for later addition.
-        // TODO: this is a bit horrible would be better refactored into an enveloping
-        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
-        // safe in practice since the caches don't get flushed nearly often enough to be done
-        // here.
-        details( _block.info.parentHash() );
-        DEV_WRITE_GUARDED( x_details )
-        m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
-
-        _performanceLogger.onStageFinished( "collation" );
-
-        blocksWriteBatch->insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
 
         DEV_READ_GUARDED( x_details )
-        extrasWriteBatch->insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+        extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
             ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
         BlockDetails details( ( unsigned ) _block.info.number(), _totalDifficulty,
             _block.info.parentHash(), {}, _block.block.size() );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
 
         BlockLogBlooms blb;
         for ( auto i : RLP( _receipts ) )
             blb.blooms.push_back( TransactionReceipt( i.data() ).bloom() );
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
 
-        extrasWriteBatch->insert(
+        extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
 
         _performanceLogger.onStageFinished( "writing" );
@@ -763,134 +753,256 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         throw;
     }
 
-    h256s route;
-    h256 common;
-    bool isImportedAndBest = false;
-    // This might be the new best block...
-    h256 last = currentHash();
-    // we import every block even if it's difficulty is not enough
     MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
 
-    // don't include bi.hash() in treeRoute, since it's not yet in details DB...
-    // just tack it on afterwards.
-    unsigned commonIndex;
-    tie( route, common, commonIndex ) = treeRoute( last, _block.info.parentHash() );
-    route.push_back( _block.info.hash() );
+    BlockHeader tbi = _block.info;
 
-    // Most of the time these two will be equal - only when we're doing a chain revert
-    // will they not be
-    if ( common != last )
-        DEV_READ_GUARDED( x_lastBlockHash ) clearCachesDuringChainReversion( number( common ) + 1 );
+    // Collate transaction hashes and remember who they were.
+    // h256s newTransactionAddresses;
+    {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
 
-    // TODO Understand and remove this trash with "routes"
+        RLP blockRLP( _block.block );
+        TransactionAddress ta;
+        ta.blockHash = tbi.hash();
+        ta.index = 0;
 
-    // Go through ret backwards (i.e. from new head to common) until hash !=
-    // last.parent and update m_transactionAddresses, m_blockHashes
-    for ( auto i = route.rbegin(); i != route.rend() && *i != common; ++i ) {
-        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for", MP_PEACHPUFF1 );
+        RLP txns_rlp = blockRLP[1];
 
-        BlockHeader tbi;
-        if ( *i == _block.info.hash() )
-            tbi = _block.info;
-        else
-            tbi = BlockHeader( block( *i ) );
+        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
-        // Collate logs into blooms.
-        h256s alteredBlooms;
-        {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
-
-            //
-            // l_sergiy:
-            //
-            // We need to compute log blooms directly here without using Block::logBloom()
-            // method because _receipts may contain extra receipt items corresponding to
-            // partially cought-up transactions
-            //
-            // old code was: // LogBloom blockBloom = tbi.logBloom();
-            //
-            LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : tbi.logBloom();
-            //
-            //
-
-            blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
-
-            // Pre-memoize everything we need before locking x_blocksBlooms
-            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
-                  level++, index /= c_bloomIndexSize )
-                blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
-
-            WriteGuard l( x_blocksBlooms );
-            for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
-                  level++, index /= c_bloomIndexSize ) {
-                unsigned i = index / c_bloomIndexSize;
-                unsigned o = index % c_bloomIndexSize;
-                alteredBlooms.push_back( chunkId( level, i ) );
-                m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
-            }
-        }
-
-        for ( auto const& h : alteredBlooms )
-            noteUsed( h, ExtraBlocksBlooms );
-
-        // Collate transaction hashes and remember who they were.
-        // h256s newTransactionAddresses;
-        {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_txns", MP_LAVENDERBLUSH );
-
-            bytes blockBytes;
-            RLP blockRLP( *i == _block.info.hash() ? _block.block : &( blockBytes = block( *i ) ) );
-            TransactionAddress ta;
-            ta.blockHash = tbi.hash();
-            ta.index = 0;
-
-            RLP txns_rlp = blockRLP[1];
-
-            for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
-                MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
-
-                extrasWriteBatch->insert(
-                    toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
-                    ( db::Slice ) dev::ref( ta.rlp() ) );
-                ++ta.index;
-            }
-        }
-
-        // Update database with them.
-        // ReadGuard l1( x_blocksBlooms );
-        WriteGuard l1( x_blocksBlooms );
-        {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
-
-            for ( auto const& h : alteredBlooms )
-                extrasWriteBatch->insert( toSlice( h, ExtraBlocksBlooms ),
-                    ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-            extrasWriteBatch->insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-                ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+                ( db::Slice ) dev::ref( ta.rlp() ) );
+            ++ta.index;
         }
     }
 
-    // FINALLY! change our best hash.
+    // Collate logs into blooms.
+    h256s alteredBlooms;
     {
-        newLastBlockHash = _block.info.hash();
-        newLastBlockNumber = ( unsigned ) _block.info.number();
-        isImportedAndBest = true;
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "collate_logs", MP_PALETURQUOISE );
+
+        //
+        // l_sergiy:
+        //
+        // We need to compute log blooms directly here without using Block::logBloom()
+        // method because _receipts may contain extra receipt items corresponding to
+        // partially cought-up transactions
+        //
+        // old code was: // LogBloom blockBloom = tbi.logBloom();
+        //
+        LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : tbi.logBloom();
+        //
+        //
+
+        blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
+
+        // Pre-memoize everything we need before locking x_blocksBlooms
+        for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+              level++, index /= c_bloomIndexSize )
+            blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
+
+        WriteGuard l( x_blocksBlooms );
+        for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+              level++, index /= c_bloomIndexSize ) {
+            unsigned i = index / c_bloomIndexSize;
+            unsigned o = index % c_bloomIndexSize;
+            alteredBlooms.push_back( chunkId( level, i ) );
+            m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
+        }
+    }
+
+    for ( auto const& h : alteredBlooms )
+        noteUsed( h, ExtraBlocksBlooms );
+
+    // Update database with them.
+    // ReadGuard l1( x_blocksBlooms );
+    WriteGuard l1( x_blocksBlooms );
+    {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
+
+        for ( auto const& h : alteredBlooms )
+            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
+                ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+        extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+            ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+    }
+
+    _blocksBatchSize = blocksWriteBatch.consumedBytes;
+    _extrasBatchSize = extrasWriteBatch.consumedBytes;
+
+    // HACK Since blooms are often re-used, let's adjust size for them
+    _extrasBatchSize -= ( 4147 + 34 ) * 2;  // 2 big blooms altered by block
+    _extrasBatchSize +=
+        ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+}
+
+// TOOD ACHTUNG This function must be kept in sync with prepareDbWriteBatches defined above!!
+void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
+    unsigned number = this->number();
+
+    size_t blocksBatchSize = 0;
+    size_t extrasBatchSize = 0;
+
+    LOG( m_logger ) << "Recomputing old blocks sizes...";
+
+    // HACK 34 is key size + extra size + db prefix (blocks or extras)
+    for ( unsigned i = 1; i <= number; ++i ) {
+        h256 hash = this->numberHash( i );
+        BlockHeader header = this->info( hash );
+
+        // blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        blocksBatchSize += 34 + this->block( hash ).size();
+
+        // extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+        //    ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
+        extrasBatchSize += 34 + this->details( header.parentHash() ).rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
+        // HACK on insertion this field was empty - so we do it here!
+        BlockDetails details = this->details( hash );
+        details.children.resize( 0 );
+        extrasBatchSize += 34 + details.rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
+        extrasBatchSize += 34 + this->logBlooms( hash ).rlp().size();
+
+        // extrasWriteBatch.insert(
+        //    toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
+        extrasBatchSize += 34 + this->receipts( hash ).rlp().size();
+
+        //        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+        //            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ),
+        //            ExtraTransactionAddress ),
+        //                ( db::Slice ) dev::ref( ta.rlp() ) );
+        //            ++ta.index;
+        //        }
+        h256s tx_hashes = this->transactionHashes( hash );
+        for ( auto th : tx_hashes ) {
+            std::pair< h256, unsigned > pair = this->transactionLocation( th );
+            assert( pair.first == hash );
+            TransactionAddress ta;
+            ta.blockHash = pair.first;
+            ta.index = pair.second;
+            extrasBatchSize += 34 + ta.rlp().size();
+        }
+
+        //        for ( auto const& h : alteredBlooms )
+        //            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
+        //                ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
+        // blooms are always constant!!: 34+4147
+
+        // extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
+        //    ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+        extrasBatchSize += 34 + BlockHash( hash ).rlp().size();
+
+        // HACK Since blooms are often re-used, let's adjust size for them
+        extrasBatchSize +=
+            ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+        LOG( m_loggerDetail ) << "Computed block " << i
+                              << " DB usage = " << blocksBatchSize + extrasBatchSize;
+    }  // for block
+
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    }
+
+    LOG( m_logger ) << "pieceUsageBytes from DB = " << pieceUsageBytes
+                    << " computed = " << blocksBatchSize + extrasBatchSize;
+
+    if ( pieceUsageBytes == 0 ) {
+        pieceUsageBytes = blocksBatchSize + extrasBatchSize;
+        m_rotating_db->insert(
+            db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+    } else {
+        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
+            LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
+                                    "should happen only if block rotation has occured!";
+    }  // else
+} catch ( const std::exception& ex ) {
+    LOG( m_loggerError )
+        << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
+        << ex.what();
+}
+
+ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
+    bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
+    ImportPerformanceLogger& _performanceLogger ) {
+    MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
+
+    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
+    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
+    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
+    // std::cout.flush();
+
+    // These batch wrappers can compute total insertion size in bytes
+    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
+    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
+
+    h256 newLastBlockHash = currentHash();
+    unsigned newLastBlockNumber = number();
+    BlockHeader tbi = _block.info;
+
+    // ensure parent is cached for later addition.
+    // TODO: this is a bit horrible would be better refactored into an enveloping
+    // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+    // safe in practice since the caches don't get flushed nearly often enough to be done
+    // here.
+    details( _block.info.parentHash() );
+    DEV_WRITE_GUARDED( x_details )
+    m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
+
+    _performanceLogger.onStageFinished( "collation" );
+
+    size_t blocksWriteSize = 0;
+    size_t extrasWriteSize = 0;
+    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull, *blocksWriteBatch,
+        *extrasWriteBatch, blocksWriteSize, extrasWriteSize, _performanceLogger );
+
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    }
+    pieceUsageBytes += blocksWriteSize + extrasWriteSize;
+
+    LOG( m_loggerDetail ) << "Block " << tbi.number() << " DB usage is "
+                          << blocksWriteSize + extrasWriteSize;
+    LOG( m_loggerDetail ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
+
+    // re-evaluate batches and reset total usage counter if rotated!
+    if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
+        LOG( m_loggerDetail ) << "Rotated out some blocks";
+        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
+            *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
+            _performanceLogger );
+        pieceUsageBytes = blocksWriteSize + extrasWriteSize;
+        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // update storage usage
-    uint64_t totalStorageUsed = 0;
-    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) ) {
-        totalStorageUsed = std::stoull( m_blocksDB->lookup( db::Slice( "totalStorageUsed" ) ) );
-    }
-    totalStorageUsed += 32 + this->details( _block.info.hash() ).blockSizeBytes;
-    m_blocksDB->insert(
-        db::Slice( "totalStorageUsed" ), db::Slice( std::to_string( totalStorageUsed ) ) );
+    m_rotating_db->insert(
+        db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+    // HACK This is for backward compatibility
+    // update totalStorageUsed only if schain already had it!
+    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
+        m_blocksDB->insert(
+            db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
+
+    // FINALLY! change our best hash.
+    newLastBlockHash = _block.info.hash();
+    newLastBlockNumber = ( unsigned ) _block.info.number();
 
     LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
                           << cc::debug( " (" ) << cc::warn( "#" )
                           << cc::num10( _block.info.number() ) << cc::debug( "). Has " )
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
-                          << cc::debug( " siblings. Route: " ) << route;
+                          << cc::debug( " siblings." );
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
@@ -931,24 +1043,22 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
 #endif  // ETH_PARANOIA
 
-    if ( m_lastBlockHash != newLastBlockHash )
-        DEV_WRITE_GUARDED( x_lastBlockHash ) {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "m_lastBlockHash", MP_LIGHTGOLDENROD );
+    DEV_WRITE_GUARDED( x_lastBlockHash ) {
+        MICROPROFILE_SCOPEI( "insertBlockAndExtras", "m_lastBlockHash", MP_LIGHTGOLDENROD );
 
-            m_lastBlockHash = newLastBlockHash;
-            m_lastBlockNumber = newLastBlockNumber;
-            try {
-                m_extrasDB->insert(
-                    db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-            } catch ( boost::exception const& ex ) {
-                cwarn << "Error writing to extras database: "
-                      << boost::diagnostic_information( ex );
-                cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                     << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
-                cwarn << "Fail writing to extras database. Bombing out.";
-                exit( -1 );
-            }
+        m_lastBlockHash = newLastBlockHash;
+        m_lastBlockNumber = newLastBlockNumber;
+        try {
+            m_extrasDB->insert(
+                db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
+        } catch ( boost::exception const& ex ) {
+            cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
+            cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
+                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+            cwarn << "Fail writing to extras database. Bombing out.";
+            exit( -1 );
         }
+    }
 
 #if ETH_PARANOIA
     checkConsistency();
@@ -964,22 +1074,14 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         {"transactions", toString( _block.transactions.size() )},
         {"gasUsed", toString( _block.info.gasUsed() )}} );
 
-    if ( !route.empty() )
-        noteCanonChanged();
+    noteCanonChanged();
 
-    if ( isImportedAndBest && m_onBlockImport )
+    if ( m_onBlockImport )
         m_onBlockImport( _block.info );
 
+    h256s dead;  // will be empty
     h256s fresh;
-    h256s dead;
-    bool isOld = true;
-    for ( auto const& h : route )
-        if ( h == common )
-            isOld = false;
-        else if ( isOld )
-            dead.push_back( h );
-        else
-            fresh.push_back( h );
+    fresh.push_back( tbi.hash() );
 
     clog( VerbosityTrace, "BlockChain" )
         << cc::debug( "Insterted block with " ) << _block.transactions.size()

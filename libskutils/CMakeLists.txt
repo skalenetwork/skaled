@@ -28,9 +28,14 @@ endif()
 target_include_directories( skutils PRIVATE
     ./include
     ${SKUTILS_INCLUDE_DIRS}
-    "${DEPS_INSTALL_ROOT}/include" "${DEPS_INSTALL_ROOT}/include/cryptopp"
+    "${DEPS_INSTALL_ROOT}/include"
+    "${DEPS_INSTALL_ROOT}/include/cryptopp"
     )
 target_link_libraries( skutils
+    "${DEPS_INSTALL_ROOT}/lib/libzmq.a"
     websockets uv pthread
+    "${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a"
+    "${DEPS_INSTALL_ROOT}/lib/libssl.a"
+    "${DEPS_INSTALL_ROOT}/lib/libcrypto.a"
     )
 

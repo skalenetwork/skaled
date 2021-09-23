@@ -21,6 +21,17 @@
 //#include <nlohmann/json.hpp>
 #include <json.hpp>
 
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
+
+#include <zmq.hpp>
+
+#include <jsonrpccpp/client.h>
+#include <thirdparty/zguide/zhelpers.hpp>
+
 namespace skutils {
 namespace rest {
 
@@ -34,7 +45,7 @@ enum class e_data_fetch_strategy {
 };  /// enum class e_data_fetch_strategy
 
 struct data_t {
-    std::string s_;
+    std::string s_, err_s_;
     std::string content_type_;
     skutils::http::common_network_exception::error_info ei_;
     data_t();
@@ -64,11 +75,48 @@ struct await_t {
     fn_async_call_error_handler_t onError;
 };  // struct await_t
 
+class sz_cli {
+public:
+    skutils::url u_;
+    skutils::http::SSL_client_options optsSSL_;
+
+private:
+    std::string cert_;
+    std::string key_;
+    EVP_PKEY* pKeyPrivate_ = nullptr;
+    EVP_PKEY* pKeyPublic_ = nullptr;
+    X509* x509Cert_ = nullptr;
+    zmq::context_t zmq_ctx_;
+    skutils::url u2_;
+    bool isConnected_ = false;
+    std::shared_ptr< zmq::socket_t > pClientSocket_;
+    std::recursive_mutex mtx_;
+    static std::string stat_f2s( const std::string& strFileName );
+    static std::pair< EVP_PKEY*, X509* > stat_cert_2_public_key(
+        const std::string& strCertificate );
+    nlohmann::json stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout );
+    std::string stat_sendMessageZMQ( std::string& _req, bool bExceptionOnTimeout );
+    static std::string stat_a2h( const uint8_t* ptr, size_t cnt );
+    static std::string stat_sign( EVP_PKEY* pKey, const std::string& s );
+
+public:
+    sz_cli();
+    sz_cli( const skutils::url& u, const skutils::http::SSL_client_options& optsSSL );
+    virtual ~sz_cli();
+    void reconnect();
+    bool is_sign() const;
+    bool is_ssl() const;
+    bool isConnected() const;
+    void close();
+    bool sendMessage( const std::string& strMessage, std::string& strAnswer );
+};  /// class sz_cli
+
 class client {
 private:
     skutils::url u_;
     std::unique_ptr< skutils::http::client > ch_;
     std::unique_ptr< skutils::ws::client > cw_;
+    std::unique_ptr< sz_cli > cz_;
 
 private:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
@@ -78,7 +126,7 @@ private:
     data_list_t lstData_;
 
 public:
-    skutils::http::SSL_client_options optsSSL;
+    skutils::http::SSL_client_options optsSSL_;
     client();
     client( const skutils::url& u );
     client( const std::string& url_str );
@@ -101,6 +149,8 @@ public:
     bool is_open() const;
 
 private:
+    std::string u_path() const;
+    std::string u_path_and_args() const;
     bool handle_data_arrived( const data_t& d );
     data_t fetch_data_with_strategy(
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
@@ -115,11 +165,11 @@ public:
     data_t call( const nlohmann::json& joIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000 );
+        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
     data_t call( const std::string& strJsonIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000 );
+        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
 
 private:
     typedef std::map< std::string, await_t > map_await_t;

@@ -139,7 +139,7 @@ void Client::stopWorking() {
     Worker::stopWorking();
 
     if ( m_skaleHost )
-        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to sart/stop all
+        m_skaleHost->stopWorking();  // TODO Find and document a systematic way to start/stop all
                                      // workers
     else
         cerror << "Instance of SkaleHost was not properly created.";
@@ -639,6 +639,10 @@ size_t Client::importTransactionsAsBlock(
         m_instanceMonitor->performRotation();
     }
 
+    // TEMPRORARY FIX!
+    // TODO: REVIEW
+    tick();
+
     return cntSucceeded;
     assert( false );
     return 0;
@@ -1004,7 +1008,9 @@ void Client::doWork( bool _doWait ) {
     //    m_syncTransactionQueue.compare_exchange_strong(t, false))
     //        syncTransactionQueue();
 
-    tick();
+    // TEMPRORARY FIX!
+    // TODO: REVIEW
+    // tick();
 
     // SKALE Mine only empty blocks! (for tests passing/account balancing)
     rejigSealing();

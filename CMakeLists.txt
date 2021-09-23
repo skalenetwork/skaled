@@ -168,6 +168,8 @@ include_directories( "${CMAKE_SOURCE_DIR}" )
 set( SKUTILS_INCLUDE_DIRS
     "${CMAKE_SOURCE_DIR}/libskutils/include"
     "${CMAKE_SOURCE_DIR}/libconsensus/thirdparty"
+    "${CMAKE_SOURCE_DIR}/libconsensus/cppzmq"
+    "${CMAKE_SOURCE_DIR}/libconsensus/libzmq/include"
     )
 include_directories( ${SKUTILS_INCLUDE_DIRS} )
 add_subdirectory( libskutils )

@@ -170,4 +170,55 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new_new" ) );
 }
 
+BOOST_AUTO_TEST_CASE( rotation_circle_test ){
+    TransientDirectory td;
+    const int nPieces = 3;
+
+    db::ManuallyRotatingLevelDB rdb( td.path(), nPieces );
+
+    rdb.insert( string( "a" ), string( "va1" ) );
+    rdb.rotate();
+    rdb.insert( string( "a" ), string( "va2" ) );
+
+    int cnt = 0;
+    for(int i=0; i<nPieces; ++i){
+        if(rdb.exists(string("a"))){
+            BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va2" ) );
+            cnt++;
+        }
+        rdb.rotate();
+    }// for
+
+    BOOST_REQUIRE(!rdb.exists(string("a")));
+    BOOST_REQUIRE_EQUAL(cnt, nPieces);
+}
+
+BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
+    TransientDirectory td;
+    const int nPieces = 5;
+
+    // pre_rotate = how many rotations do before reopen
+    for(int pre_rotate = 0; pre_rotate < nPieces; pre_rotate++){
+        // scope 1
+        {
+            db::ManuallyRotatingLevelDB rdb( td.path(), nPieces );
+
+            rdb.insert( string( "a" ), to_string(0) );
+            for(int i=1; i<=pre_rotate; ++i){
+                rdb.rotate();
+                rdb.insert( string( "a" ), to_string(i) );
+            }
+
+            BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(pre_rotate));
+        }
+
+        // scope 2
+        {
+            db::ManuallyRotatingLevelDB rdb( td.path(), nPieces );
+            BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(pre_rotate));
+        }
+
+    }// for pre_rotate
+}
+
 BOOST_AUTO_TEST_SUITE_END()

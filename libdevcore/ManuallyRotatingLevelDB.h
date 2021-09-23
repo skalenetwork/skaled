@@ -24,6 +24,7 @@ private:
 public:
     ManuallyRotatingLevelDB( const boost::filesystem::path& _path, size_t _nPieces );
     void rotate();
+    size_t piecesCount() const { return pieces.size(); }
 
     virtual std::string lookup( Slice _key ) const;
     virtual bool exists( Slice _key ) const;
@@ -32,6 +33,13 @@ public:
 
     virtual std::unique_ptr< WriteBatchFace > createWriteBatch() const;
     virtual void commit( std::unique_ptr< WriteBatchFace > _batch );
+    // batches don't survive rotation!
+    bool discardCreatedBatches() {
+        std::unique_lock< std::shared_mutex > lock( m_mutex );
+        size_t size = batch_cache.size();
+        batch_cache.clear();
+        return size > 0;
+    }
 
     virtual void forEach( std::function< bool( Slice, Slice ) > f ) const;
     virtual h256 hashBase() const;

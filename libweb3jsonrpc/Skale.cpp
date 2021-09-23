@@ -374,7 +374,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         ssl_options.client_key = sgx_cert_path + sgx_key_filename;
 
         skutils::rest::client cli;
-        cli.optsSSL = ssl_options;
+        cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
             std::cerr << cc::fatal( "FATAL:" )
@@ -411,7 +411,9 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             throw std::runtime_error( g_strErrMsg );
         }
 
-        nlohmann::json joResponse = nlohmann::json::parse( d.s_ )["result"];
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        nlohmann::json joResponse =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
         std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
@@ -495,6 +497,13 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         joParams["blockNumber"] = block_number;
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
+        if ( !d.err_s_.empty() ) {
+            if ( pStrErrorDescription )
+                ( *pStrErrorDescription ) = "REST call failed: " + d.err_s_;
+            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed: " )
+                      << cc::warn( d.err_s_ ) << "\n";
+            return false;
+        }
         if ( d.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed";
