@@ -25,6 +25,16 @@ public:
         assert(is_initialized());
         return counter != 0;
     }
+
+    class lock{
+    public:
+        lock(){
+            UnsafeRegion::start();
+        }
+        ~lock(){
+            UnsafeRegion::end();
+        }
+    };
 };
 
 #endif // UNSAFEREGION_H
