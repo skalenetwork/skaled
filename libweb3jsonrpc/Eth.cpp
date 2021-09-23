@@ -33,6 +33,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 
 #include <csignal>
+#include <exception>
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -43,8 +44,33 @@ using namespace dev;
 using namespace eth;
 using namespace dev::rpc;
 
-Eth::Eth( eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
-    : m_eth( _eth ), m_ethAccounts( _ethAccounts ) {}
+Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
+    : skutils::json_config_file_accessor( configPath ),
+      m_eth( _eth ),
+      m_ethAccounts( _ethAccounts ) {}
+
+bool Eth::isEnabledTransactionSending() const {
+    bool isEnabled = true;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "no-txn-sending" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"no-txn-sending\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
+            joSkaleConfig_nodeInfo["no-txn-sending"];
+        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >();
+    } catch ( ... ) {
+    }
+    return isEnabled;
+}
 
 string Eth::eth_protocolVersion() {
     return toJS( eth::c_protocolVersion );
@@ -209,6 +235,8 @@ void Eth::setTransactionDefaults( TransactionSkeleton& _t ) {
 
 string Eth::eth_sendTransaction( Json::Value const& _json ) {
     try {
+        if ( !isEnabledTransactionSending() )
+            throw std::runtime_error( "transacton sending feature is disabled on this instance" );
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         pair< bool, Secret > ar = m_ethAccounts.authenticate( t );
@@ -276,10 +304,16 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 // TODO Catch exceptions for all calls other eth_-calls in outer scope!
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    // Don't need to check the transaction signature (CheckTransaction::None) since it
-    // will be checked as a part of transaction import
-    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-    return toJS( client()->importTransaction( t ) );
+    try {
+        if ( !isEnabledTransactionSending() )
+            throw std::runtime_error( "transacton sending feature is disabled on this instance" );
+        // Don't need to check the transaction signature (CheckTransaction::None) since it
+        // will be checked as a part of transaction import
+        Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+        return toJS( client()->importTransaction( t ) );
+    } catch ( Exception const& ) {
+        throw JsonRpcException( exceptionToErrorMessage() );
+    }
 }
 
 string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
