@@ -1,5 +1,7 @@
 #include "ManuallyRotatingLevelDB.h"
 
+#include <libskale/UnsafeRegion.h>
+
 #include <secp256k1_sha256.h>
 
 namespace dev {
@@ -59,6 +61,7 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
 }
 
 void ManuallyRotatingLevelDB::rotate() {
+    UnsafeRegion::lock unsafe_region_lock;
     std::unique_lock< std::shared_mutex > lock( m_mutex );
 
     assert( this->batch_cache.empty() );

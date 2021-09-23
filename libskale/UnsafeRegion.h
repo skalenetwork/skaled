@@ -1,40 +1,43 @@
 #ifndef UNSAFEREGION_H
 #define UNSAFEREGION_H
 
-#include <boost/filesystem.hpp>
 #include <assert.h>
+#include <boost/filesystem.hpp>
+#include <chrono>
 
-class UnsafeRegion
-{
+class UnsafeRegion {
 private:
     static int counter;
     static boost::filesystem::path path;
-    static bool is_initialized(){
-        return !path.empty();
-    }
+    static std::chrono::system_clock::time_point last_start_time;
+    static std::chrono::system_clock::duration total_time;
+
+    static bool is_initialized() { return !path.empty(); }
     static void sync_with_file();
+
 public:
-    static void init(const boost::filesystem::path& _dirPath){
-        assert(path.empty());
+    static void init( const boost::filesystem::path& _dirPath ) {
+        assert( path.empty() );
         path = _dirPath / "skaled.lock";
-        counter = boost::filesystem::exists(path) ? 1 : 0;
+        counter = boost::filesystem::exists( path ) ? 1 : 0;
     }
     static void start();
     static void end();
-    static bool isActive(){
-        assert(is_initialized());
+    static bool isActive() {
+        assert( is_initialized() );
         return counter != 0;
     }
 
-    class lock{
+    static std::chrono::system_clock::duration getTotalTime() {
+        assert( !isActive() );
+        return total_time;
+    }
+
+    class lock {
     public:
-        lock(){
-            UnsafeRegion::start();
-        }
-        ~lock(){
-            UnsafeRegion::end();
-        }
+        lock() { UnsafeRegion::start(); }
+        ~lock() { UnsafeRegion::end(); }
     };
 };
 
-#endif // UNSAFEREGION_H
+#endif  // UNSAFEREGION_H

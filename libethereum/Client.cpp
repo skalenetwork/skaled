@@ -37,6 +37,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -539,12 +540,14 @@ size_t Client::importTransactionsAsBlock(
     }
     // end, detect partially executed block
     //
-
-    size_t cntSucceeded = syncTransactions(
-        _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
-    sealUnconditionally( false );
-    importWorkingBlock();
-
+    size_t cntSucceeded = 0;
+    {
+        UnsafeRegion::lock unsafe_region_lock;
+        cntSucceeded = syncTransactions(
+            _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
+        sealUnconditionally( false );
+        importWorkingBlock();
+    }
     if ( bIsPartial )
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {

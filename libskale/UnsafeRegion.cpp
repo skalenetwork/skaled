@@ -4,27 +4,29 @@
 
 int UnsafeRegion::counter = 0;
 boost::filesystem::path UnsafeRegion::path;
+std::chrono::system_clock::time_point UnsafeRegion::last_start_time;
+std::chrono::system_clock::duration UnsafeRegion::total_time;
 
-void UnsafeRegion::sync_with_file(){
-    assert(is_initialized());
-    if(counter == 1){
-        std::ofstream out(path.string());
-        assert(out.is_open());
-    }
-    else if(counter == 0){
+void UnsafeRegion::sync_with_file() {
+    assert( is_initialized() );
+    if ( counter == 1 ) {
+        std::ofstream out( path.string() );
+        assert( out.is_open() );
+        last_start_time = std::chrono::system_clock::now();
+    } else if ( counter == 0 ) {
         boost::system::error_code ec;
-        boost::filesystem::remove(path, ec);
+        boost::filesystem::remove( path, ec );
+        total_time += std::chrono::system_clock::now() - last_start_time;
     }
 }
 
-void UnsafeRegion::start(){
-    assert(is_initialized());
+void UnsafeRegion::start() {
+    assert( is_initialized() );
     ++counter;
     sync_with_file();
 }
-void UnsafeRegion::end(){
-    assert(is_initialized());
+void UnsafeRegion::end() {
+    assert( is_initialized() );
     --counter;
     sync_with_file();
 }
-

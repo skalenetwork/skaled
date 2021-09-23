@@ -15,9 +15,7 @@ target_link_libraries(
     PRIVATE
         ethereum
         skutils
-        skale
         devcore
-        skutils
         "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
     )
