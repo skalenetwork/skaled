@@ -2422,7 +2422,7 @@ then
 			mkdir -p build
 			cd build
 			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_SHARED_LIBS=OFF \
+				-DBUILD_SHARED_LIBS=OFF -DWITH_UNWIND=OFF \
 				..
 			cd ..
 		else
@@ -2624,7 +2624,7 @@ then
 			mkdir -p build2
 			cd build2
 			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_TESTS=OFF \
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
 				..
 			cd ..
 		else
@@ -2666,7 +2666,7 @@ then
 			mkdir -p build2
 			cd build2
 			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				..
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
 			cd ..
 		else
 			cd wangle/wangle
@@ -2709,7 +2709,7 @@ then
 			mkdir -p build2
 			cd build2
 			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				..
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
 			cd ..
 		else
 			cd proxygen
@@ -2721,7 +2721,7 @@ then
 		sed -i 's/if (FLAGS_request_number)/   \/*   if (FLAGS_request_number)   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd build2
-		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} proxygen
 		$MAKE ${PARALLEL_MAKE_OPTIONS} install
 		cd "$SOURCES_ROOT"
 	else
