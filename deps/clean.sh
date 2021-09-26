@@ -143,8 +143,10 @@ rm -rf ./libcryptopp
 rm -rf ./proxygen
 rm -rf ./wangle
 rm -rf ./zstd
+rm -rf ./liblzma
+rm -rf ./libunwind
 # rm -rf ./bzip2
-# rm -rf ./lzma
+# rm -rf xy./lzma
 # rm -rf ./SDL2-2.0.7
 # rm -rf ./SDL2_ttf-2.0.14
 # rm -rf ./shine

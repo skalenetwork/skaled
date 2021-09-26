@@ -49,6 +49,8 @@ class request_site : public proxygen::RequestHandler {
     static std::atomic_uint64_t g_instance_counter;
     uint64_t nInstanceNumber_;
     std::string strLogPrefix_;
+    size_t nBodyPartNumber_ = 0;
+    std::string strBody_;
 
 public:
     std::string strHttpMethod_, strOrigin_, strPath_, strDstAddress_;
