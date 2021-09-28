@@ -145,18 +145,6 @@ rm -rf ./wangle
 rm -rf ./zstd
 rm -rf ./liblzma
 rm -rf ./libunwind
-# rm -rf ./bzip2
-# rm -rf xy./lzma
-# rm -rf ./SDL2-2.0.7
-# rm -rf ./SDL2_ttf-2.0.14
-# rm -rf ./shine
-# rm -rf ./readline-7.0
-# rm -rf ./libxml2-2.9.7
-# rm -rf ./libarchive-3.3.2
-# rm -rf ./libev
-# rm -rf ./libevent
-# rm -rf l./ibwebsockets
-# rm -rf ./gtest
 rm -rf ./gmp-6.1.2
 rm -rf ./libff
 rm -rf ./pbc
