@@ -196,6 +196,8 @@ public:
         return RPCModules{RPCModule{"skaleStats", "1.0"}};
     }
 
+    bool isEnabledImaMessageSigning() const;
+
     virtual Json::Value skale_stats() override;
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;

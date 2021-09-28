@@ -762,6 +762,12 @@ void pg_accumulate_add( const pg_accumulate_entry& pge );
 wrapped_proxygen_server_handle pg_accumulate_start(
     pg_on_request_handler_t h, int32_t threads = 0, int32_t threads_limit = 0 );
 
+typedef void ( *logging_fail_func_t )();
+
+void install_logging_fail_func( logging_fail_func_t fn );
+
+void init_logging( const char* strProgramName );
+
 };  // namespace http_pg
 
 };  // namespace skutils

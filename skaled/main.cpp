@@ -1735,7 +1735,7 @@ int main( int argc, char** argv ) try {
         accountHolder.reset( new SimpleAccountHolder(
             [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        auto ethFace = new rpc::Eth( *g_client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         /// skale
         auto skaleFace = new rpc::Skale( *g_client, shared_space );
         /// skaleStatsFace

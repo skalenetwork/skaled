@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
             return false;  // user input goes here
         } );
     rpc::Personal personal( keyManager, accountHolder, client );
-    rpc::Eth eth( client, accountHolder );
+    rpc::Eth eth( std::string(""), client, accountHolder );
 
     // Create account
 

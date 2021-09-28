@@ -2053,6 +2053,17 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
     : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
+    //
+    //
+    // proxygen-related init
+    skutils::http_pg::init_logging( "skaled" );
+    skutils::http_pg::install_logging_fail_func( []() -> void {
+        clog( dev::VerbosityError, "generic" ) << ( cc::fatal( "CRITICAL ERROR:" ) + " " +
+                                                    cc::error( "Proxygen abort handler called." ) );
+    } );
+    //
+    //
+
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
             fnOnSunscriptionEvent =

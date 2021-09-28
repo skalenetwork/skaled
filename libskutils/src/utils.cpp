@@ -1631,6 +1631,8 @@ json_config_file_accessor::~json_config_file_accessor() {}
 
 void json_config_file_accessor::reloadConfigIfNeeded() {
     lock_type lock( mtx() );
+    if ( configPath_.empty() )
+        return;
     time_t tt = skutils::tools::getFileModificationTime( configPath_ );
     if ( tt == 0 )  // 0 is error
         throw std::runtime_error( "Failed to access modified configuration file" );
