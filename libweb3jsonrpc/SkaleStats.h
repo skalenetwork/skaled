@@ -190,7 +190,7 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
 
 public:
     SkaleStats( const std::string& configPath, eth::Interface& _eth,
-        const dev::eth::ChainParams& chainParams );
+        const dev::eth::ChainParams& chainParams, bool isDisableZMQ );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"skaleStats", "1.0"}};

@@ -26,6 +26,7 @@
 #define BOOST_TEST_NO_MAIN
 
 #include <libdevcore/microprofile.h>
+#include <libskale/UnsafeRegion.h>
 
 #include <boost/test/included/unit_test.hpp>
 
@@ -135,6 +136,7 @@ void setCLocale() {
 // Custom Boost Unit Test Main
 int main( int argc, const char* argv[] ) {
     MicroProfileSetEnableAllGroups( true );
+    UnsafeRegion::init(".");
 
     std::string const dynamicTestSuiteName = "customTestSuite";
     setCLocale();

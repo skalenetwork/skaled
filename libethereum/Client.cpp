@@ -37,6 +37,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -497,7 +498,6 @@ size_t Client::importTransactionsAsBlock(
     //
     // begin, detect partially executed block
     bool bIsPartial = false;
-    TransactionReceipts partialTransactionReceipts;
     size_t cntAll = _transactions.size();
     size_t cntExpected = cntAll;
     size_t cntMissing = 0;
@@ -518,7 +518,6 @@ size_t Client::importTransactionsAsBlock(
     cntMissing = vecMissing.size();
     cntExpected = cntMissing;
     if ( bIsPartial ) {
-        partialTransactionReceipts = m_state.safePartialTransactionReceipts();
         LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
                         << cc::warn( " found partially executed block, have " )
                         << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
@@ -533,22 +532,26 @@ size_t Client::importTransactionsAsBlock(
         LOG( m_logger ).flush();
         LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
                         << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
-        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
-                        << cc::size10( partialTransactionReceipts.size() )
-                        << cc::attention( " partial transaction receipt(s) inside " )
-                        << cc::notice( "SAFETY CACHE" );
+        //        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+        //                        << cc::size10( partialTransactionReceipts.size() )
+        //                        << cc::attention( " partial transaction receipt(s) inside " )
+        //                        << cc::notice( "SAFETY CACHE" );
         LOG( m_logger ).flush();
     }
     // end, detect partially executed block
     //
-
-    TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
-    bool isSaveLastTxHash = true;
-    size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash,
-        &accumulatedTransactionReceipts, bIsPartial ? &vecMissing : nullptr );
-    sealUnconditionally( false );
-    importWorkingBlock();
-
+    size_t cntSucceeded = 0;
+    {
+        UnsafeRegion::lock unsafe_region_lock;
+        cntSucceeded = syncTransactions(
+            _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
+        sealUnconditionally( false );
+        importWorkingBlock();
+    }
+    LOG( m_logger ) << "Total unsafe time so far = "
+                    << std::chrono::duration_cast< std::chrono::seconds >(
+                           UnsafeRegion::getTotalTime() )
+                           .count() << " seconds";
     if ( bIsPartial )
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {
@@ -648,8 +651,8 @@ size_t Client::importTransactionsAsBlock(
     return 0;
 }
 
-size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+size_t Client::syncTransactions(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp,
     Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
 ) {
     assert( m_skaleHost );
@@ -672,8 +675,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         assert( !m_working.isSealed() );
 
         // assert(m_state.m_db_write_lock.has_value());
-        tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
-            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts, vecMissing );
+        tie( newPendingReceipts, goodReceipts ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
         m_state = m_state.startNew();
     }
 

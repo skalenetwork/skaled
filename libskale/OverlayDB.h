@@ -31,6 +31,11 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/db.h>
 
+namespace dev {
+namespace eth {
+class TransactionReceipt;
+}
+}  // namespace dev
 
 namespace skale {
 
@@ -56,10 +61,13 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
-    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
-    dev::h256 safeLastExecutedTransactionHash();
-    static dev::bytes stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB );
-    dev::bytes safePartialTransactionReceipts();
+    dev::h256 getLastExecutedTransactionHash() const;
+    dev::bytes getPartialTransactionReceipts() const;
+    void setLastExecutedTransactionHash( const dev::h256& );
+    void setPartialTransactionReceipts( const dev::bytes& );
+
+    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
+    void clearPartialTransactionReceipts();
 
     typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
         std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
@@ -111,6 +119,10 @@ private:
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
+
+
+    mutable std::optional< dev::h256 > lastExecutedTransactionHash;
+    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
 public:
     std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }

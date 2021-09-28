@@ -149,14 +149,14 @@ State& State::operator=( const State& _s ) {
 dev::h256 State::safeLastExecutedTransactionHash() {
     dev::h256 shaLastTx;
     if ( m_db_ptr )
-        shaLastTx = m_db_ptr->safeLastExecutedTransactionHash();
+        shaLastTx = m_db_ptr->getLastExecutedTransactionHash();
     return shaLastTx;
 }
 
 dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
     dev::eth::TransactionReceipts partialTransactionReceipts;
     if ( m_db_ptr ) {
-        dev::bytes rawTransactionReceipts = m_db_ptr->safePartialTransactionReceipts();
+        dev::bytes rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts();
         if ( !rawTransactionReceipts.empty() ) {
             dev::RLP rlp( rawTransactionReceipts );
             dev::eth::BlockReceipts blockReceipts( rlp );
@@ -792,8 +792,8 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    bool isSaveLastTxHash, dev::eth::TransactionReceipts* accumulatedTransactionReceipts ) {
+    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
+    OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -826,47 +826,31 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         resetStorageChanges();
         m_cache.clear();
         break;
-    case Permanence::Committed:
+    case Permanence::Committed: {
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
         // TODO: review logic|^
 
+        h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
+                                     // dev::eth::WithoutSignature );
+        this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
+        // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
+        // shaLastTx.hex() << "\n";
+
+        TransactionReceipt receipt =
+            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+                TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+        receipt.setRevertReason( strRevertReason );
+        m_db_ptr->addReceiptToPartials( receipt );
+
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts,
-            [&]( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
-                std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) {
-                if ( isSaveLastTxHash ) {
-                    h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                                 // dev::eth::WithoutSignature );
-                    // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
-                    // shaLastTx.hex() << "\n";
-                    writeBatch->insert(
-                        skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
-                        skale::slicing::toSlice( shaLastTx ) );
-                    if ( accumulatedTransactionReceipts != nullptr ) {
-                        TransactionReceipt receipt =
-                            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
-                                TransactionReceipt(
-                                    statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                                TransactionReceipt(
-                                    EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
-                        receipt.setRevertReason( strRevertReason );
-                        accumulatedTransactionReceipts->push_back( receipt );
-                        dev::eth::BlockReceipts blockReceipts;
-                        for ( unsigned i = 0; i < accumulatedTransactionReceipts->size(); ++i )
-                            blockReceipts.receipts.push_back(
-                                ( *accumulatedTransactionReceipts )[i] );
-                        bytes const receipts = blockReceipts.rlp();
-                        writeBatch->insert(
-                            skale::slicing::toSlice( "safeLastTransactionReceipts" ),
-                            skale::slicing::toSlice( receipts ) );
-                    }
-                }
-            } );
+                                      State::CommitBehaviour::KeepEmptyAccounts );
         break;
+    }
     case Permanence::Uncommitted:
         resetStorageChanges();
         break;

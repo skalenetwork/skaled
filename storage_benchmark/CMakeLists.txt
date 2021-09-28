@@ -12,9 +12,13 @@ set(executable_name storage_benchmark)
 add_executable(${executable_name} ${sources} ${headers})
 target_link_libraries(
     ${executable_name}
-    PRIVATE ethereum skutils skale devcore skutils
-#    PRIVATE ethereum ethashseal evm web3jsonrpc Boost::program_options
-)
+    PRIVATE
+        ethereum
+        skutils
+        devcore
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+        "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+    )
 
 #target_include_directories(evm_benchmark PRIVATE ../utils)
 

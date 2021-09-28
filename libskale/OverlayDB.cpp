@@ -32,6 +32,7 @@ using std::vector;
 
 #include <libdevcore/Common.h>
 #include <libdevcore/db.h>
+#include <libethereum/BlockDetails.h>
 
 //#include "SHA3.h"
 
@@ -80,35 +81,65 @@ const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
     []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
         std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
 
-dev::h256 OverlayDB::stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB ) {
+dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
+    if ( lastExecutedTransactionHash.has_value() )
+        return lastExecutedTransactionHash.value();
+
     dev::h256 shaLastTx;
-    if ( pDB ) {
+    if ( m_db ) {
         const std::string l =
-            pDB->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
+            m_db->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
         if ( !l.empty() )
             shaLastTx = dev::h256( l, dev::h256::FromBinary );
     }
+
+    lastExecutedTransactionHash = shaLastTx;
     return shaLastTx;
 }
 
-dev::h256 OverlayDB::safeLastExecutedTransactionHash() {
-    return stat_safeLastExecutedTransactionHash( m_db.get() );
-}
+dev::bytes OverlayDB::getPartialTransactionReceipts() const {
+    if ( lastExecutedTransactionReceipts.has_value() )
+        return lastExecutedTransactionReceipts.value();
 
-dev::bytes OverlayDB::stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB ) {
     dev::bytes partialTransactionReceipts;
-    if ( pDB ) {
+    if ( m_db ) {
         const std::string l =
-            pDB->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+            m_db->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
         if ( !l.empty() )
             partialTransactionReceipts.insert(
                 partialTransactionReceipts.end(), l.begin(), l.end() );
     }
+
+    lastExecutedTransactionReceipts = partialTransactionReceipts;
     return partialTransactionReceipts;
 }
 
-dev::bytes OverlayDB::safePartialTransactionReceipts() {
-    return stat_safePartialTransactionReceipts( m_db.get() );
+void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
+    this->lastExecutedTransactionHash = _newHash;
+}
+void OverlayDB::setPartialTransactionReceipts( const dev::bytes& _newReceipts ) {
+    this->lastExecutedTransactionReceipts = _newReceipts;
+}
+
+void OverlayDB::addReceiptToPartials( const dev::eth::TransactionReceipt& _receipt ) {
+    auto rawTransactionReceipts = getPartialTransactionReceipts();
+
+    // TODO Temporary solution - do not (de)serialize forth and back!
+
+    dev::eth::BlockReceipts blockReceipts;
+    if ( !rawTransactionReceipts.empty() ) {
+        dev::RLP rlp( rawTransactionReceipts );
+        blockReceipts = dev::eth::BlockReceipts( rlp );
+    }  // if
+
+    blockReceipts.receipts.push_back( _receipt );
+
+    setPartialTransactionReceipts( blockReceipts.rlp() );
+}
+
+void OverlayDB::clearPartialTransactionReceipts() {
+    dev::eth::BlockReceipts blockReceipts;
+    setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
 void OverlayDB::commit() {
@@ -155,6 +186,12 @@ void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
                 }
                 writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
                     skale::slicing::toSlice( storageUsed_.str() ) );
+
+                writeBatch->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                    skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
+
+                writeBatch->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
+                    skale::slicing::toSlice( getPartialTransactionReceipts() ) );
             }
             bool bIsPreCommitCallbackPassed = false;
             try {

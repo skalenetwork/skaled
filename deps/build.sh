@@ -207,10 +207,14 @@ then
 	DEBUG=1
 	TOP_CMAKE_BUILD_TYPE="Debug"
 	DEBUG_D="d"
+	# DEBUG_DEBUG="_debug"
+	DEBUG__DEBUG="_debug"
 	CONF_DEBUG_OPTIONS="--enable-debug"
 else
 	DEBUG=0
 	DEBUG_D=""
+	# DEBUG_DEBUG=""
+	DEBUG__DEBUG=""
 	CONF_DEBUG_OPTIONS=""
 fi
 #
@@ -259,22 +263,23 @@ setup_variable() {
 setup_variable WITH_ZLIB "no"
 setup_variable WITH_OPENSSL "no"
 setup_variable WITH_CURL "no"
-setup_variable WITH_LZMA "no"
+setup_variable WITH_LZMA "yes"
 setup_variable WITH_SSH "no"
+setup_variable WITH_UNWIND "yes"
 
 setup_variable WITH_SDL "no"
 setup_variable WITH_SDL_TTF "no"
 
 # notice: WITH_EV and WITH_EVENT should not be used at a same time
 setup_variable WITH_EV "no"
-setup_variable WITH_EVENT "no"
+setup_variable WITH_EVENT "yes"
 setup_variable WITH_UV "yes"
 setup_variable WITH_LWS "yes"
 
 setup_variable WITH_V8 "no"
 setup_variable WITH_SOURCEY "no"
 
-setup_variable WITH_BOOST "no"
+setup_variable WITH_BOOST "yes"
 setup_variable WITH_PUPNP "no"
 setup_variable WITH_ARGTABLE2 "no"
 
@@ -296,6 +301,18 @@ setup_variable WITH_CRYPTOPP "no"
 setup_variable WITH_FF "no"
 setup_variable WITH_GMP "no"
 setup_variable WITH_PBC "no"
+
+setup_variable WITH_FMT "yes"
+setup_variable WITH_ZSTD "yes"
+setup_variable WITH_DOUBLE_CONVERSION "yes"
+setup_variable WITH_GOOGLE_LOG "yes"
+setup_variable WITH_GFLAGS "yes"
+setup_variable WITH_FOLLY "yes"
+setup_variable WITH_SODIUM "no"
+setup_variable WITH_WANGLE "yes"
+setup_variable WITH_GTEST "yes"
+setup_variable WITH_FIZZ "yes"
+setup_variable WITH_PROXYGEN "yes"
 
 if [ -z "${PARALLEL_COUNT}" ];
 then
@@ -574,10 +591,11 @@ echo -e "${COLOR_VAR_NAME}WITH_OPENSSL${COLOR_DOTS}...........${COLOR_VAR_DESC}O
 echo -e "${COLOR_VAR_NAME}WITH_CURL${COLOR_DOTS}..............${COLOR_VAR_DESC}CURL${COLOR_DOTS}...................................${COLOR_VAR_VAL}$WITH_CURL${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_LZMA${COLOR_DOTS}..............${COLOR_VAR_DESC}LZMA${COLOR_DOTS}...................................${COLOR_VAR_VAL}$WITH_LZMA${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_SSH${COLOR_DOTS}...............${COLOR_VAR_DESC}SSH${COLOR_DOTS}....................................${COLOR_VAR_VAL}$WITH_SSH${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_UNWIND${COLOR_DOTS}............${COLOR_VAR_DESC}Unwind${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_UNWIND${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_SDL${COLOR_DOTS}...............${COLOR_VAR_DESC}SDL${COLOR_DOTS}....................................${COLOR_VAR_VAL}$WITH_SDL${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_SDL_TTF${COLOR_DOTS}...........${COLOR_VAR_DESC}SDL-TTF${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_SDL_TTF${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_EV${COLOR_DOTS}................${COLOR_VAR_DESC}libEv${COLOR_DOTS}..................................${COLOR_VAR_VAL}$WITH_EV${COLOR_RESET}"
-#echo -e "${COLOR_VAR_NAME}WITH_EVENT${COLOR_DOTS}.............${COLOR_VAR_DESC}libEvent${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_EVENT${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_EVENT${COLOR_DOTS}.............${COLOR_VAR_DESC}libEvent${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_EVENT${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_UV${COLOR_DOTS}................${COLOR_VAR_DESC}libUV${COLOR_DOTS}..................................${COLOR_VAR_VAL}$WITH_UV${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_LWS${COLOR_DOTS}...............${COLOR_VAR_DESC}libWevSockets${COLOR_DOTS}..........................${COLOR_VAR_VAL}$WITH_LWS${COLOR_RESET}"
 #echo -e "${COLOR_VAR_NAME}WITH_SOURCEY${COLOR_DOTS}...........${COLOR_VAR_DESC}libSourcey${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_SOURCEY${COLOR_RESET}"
@@ -597,6 +615,17 @@ echo -e "${COLOR_VAR_NAME}WITH_CRYPTOPP${COLOR_DOTS}..........${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_GMP${COLOR_DOTS}...............${COLOR_VAR_DESC}LibGMP${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_GMP${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_FF${COLOR_DOTS}................${COLOR_VAR_DESC}LibFF${COLOR_DOTS}..................................${COLOR_VAR_VAL}$WITH_FF${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_PBC${COLOR_DOTS}...............${COLOR_VAR_DESC}LibPBC${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_PBC${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_FMT${COLOR_DOTS}...............${COLOR_VAR_DESC}LibFMT${COLOR_DOTS}.................................${COLOR_VAR_VAL}$WITH_FMT${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_ZSTD${COLOR_DOTS}..............${COLOR_VAR_DESC}LibZSTD${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_ZSTD${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_DOUBLE_CONVERSION${COLOR_DOTS}.${COLOR_VAR_DESC}LibDoubleConversion${COLOR_DOTS}....................${COLOR_VAR_VAL}$WITH_DOUBLE_CONVERSION${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GOOGLE_LOG${COLOR_DOTS}........${COLOR_VAR_DESC}LibGLOG${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_GOOGLE_LOG${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GFLAGS${COLOR_DOTS}............${COLOR_VAR_DESC}LibGFLAGS${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_GFLAGS${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_FOLLY${COLOR_DOTS}.............${COLOR_VAR_DESC}LibFolly${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_FOLLY${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_SODIUM${COLOR_DOTS}............${COLOR_VAR_DESC}LibSodium${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_SODIUM${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_WANGLE${COLOR_DOTS}............${COLOR_VAR_DESC}LibWangle${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_WANGLE${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_GTEST${COLOR_DOTS}.............${COLOR_VAR_DESC}LibGTEST${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_GTEST${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}LibFIZZ${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_FIZZ${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
 
 #
 #
@@ -681,41 +710,84 @@ env_save
 # 	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 # fi
 
-# if [ "$WITH_LZMA" = "yes" ];
-# then
-# 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}LZMA${COLOR_SEPARATOR} =========================================${COLOR_RESET}"
-# 	if [ ! -f "$INSTALL_ROOT/lib/liblzma.a" ];
-# 	then
-# 		env_restore
-# 		cd "$SOURCES_ROOT"
-# 		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
-# 		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
-# 		if [ ! -d "lzma" ];
-# 		then
-# 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-# 			tar -xzf $PREDOWNLOADED_ROOT/lzma-from-git.tar.gz
-# 			#
-# 			#
-# 			#
-# 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-# 			cd lzma
-# 			mkdir -p build
-# 			cd build
-# 			cmake "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
-# 			cd ../..
-# 		fi
-# 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-# 		cd lzma/build
-# 		$MAKE ${PARALLEL_MAKE_OPTIONS}
-# 		$MAKE ${PARALLEL_MAKE_OPTIONS} install
-# 		cd ..
-# 		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
-# 		export PKG_CONFIG_PATH_SAVED=
-# 		cd "$SOURCES_ROOT"
-# 	else
-# 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
-# 	fi
-# fi
+ if [ "$WITH_LZMA" = "yes" ];
+ then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}LZMA${COLOR_SEPARATOR} =========================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/liblzma.a" ];
+    then
+        env_restore
+        cd "$SOURCES_ROOT"
+        if [ ! -d "liblzma" ];
+        then
+            if [ ! -f "liblzma-from-git.tar.gz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                git clone https://github.com/kobolabs/liblzma.git
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -czf liblzma-from-git.tar.gz ./liblzma
+            else
+                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -xzf liblzma-from-git.tar.gz
+            fi
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+            cd liblzma
+            aclocal
+            autoconf
+            autoheader
+            automake --add-missing
+            ./configure --disable-shared --prefix="$INSTALL_ROOT"
+            cd ..
+        fi
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        cd liblzma
+        $MAKE ${PARALLEL_MAKE_OPTIONS}
+        $MAKE ${PARALLEL_MAKE_OPTIONS} install
+        cd ..
+        cd "$SOURCES_ROOT"
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
+
+if [ "$WITH_UNWIND" = "yes" ];
+ then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}UNWIND${COLOR_SEPARATOR} =======================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/libunwind.a" ];
+    then
+        env_restore
+        cd "$SOURCES_ROOT"
+        if [ ! -d "libunwind" ];
+        then
+            if [ ! -f "libunwind-from-git.tar.gz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                git clone https://github.com/libunwind/libunwind.git
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -czf libunwind-from-git.tar.gz ./libunwind
+            else
+                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                tar -xzf libunwind-from-git.tar.gz
+            fi
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+            cd libunwind
+            #aclocal
+            #autoconf
+            #autoheader
+            #automake --add-missing
+            autoreconf -i
+            ./configure --disable-shared --prefix="$INSTALL_ROOT"
+            cd ..
+        fi
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        cd libunwind
+        $MAKE ${PARALLEL_MAKE_OPTIONS}
+        $MAKE ${PARALLEL_MAKE_OPTIONS} install
+        cd ..
+        cd "$SOURCES_ROOT"
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
+fi
 
 if [ "$WITH_ZLIB" = "yes" ];
 then
@@ -1165,7 +1237,8 @@ then
 			if [ ! -f "libevent-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				git clone git@github.com:libevent/libevent.git
+				#git clone git@github.com:libevent/libevent.git
+				git clone https://github.com/libevent/libevent.git
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				tar -czf libevent-from-git.tar.gz ./libevent
 			else
@@ -1182,7 +1255,10 @@ then
 				OS_SPECIFIC_LIB_EVENT_FLAGS="-DEVENT__DISABLE_SAMPLES=ON -DEVENT__DISABLE_TESTS=ON -DEVENT__DISABLE_BENCHMARK=ON -DEVENT__DISABLE_REGRESS=ON"
 			fi
 			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" -DARCH=$ARCH ..
-			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" "${OS_SPECIFIC_LIB_EVENT_FLAGS}" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" "${OS_SPECIFIC_LIB_EVENT_FLAGS}" \
+				-DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				 -DEVENT__DISABLE_MBEDTLS=ON \
+				..
 			cd ../..
 		fi
 		cd libevent/build
@@ -1298,21 +1374,21 @@ then
 			##	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
 			#	echo " "
 			#fi
-			if [ "$WITH_EVENT" = "yes" ];
-			then
-				if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
-				then
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-					echo " "
-				else
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
-					LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
-				fi
-			else
-				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-				echo " "
-				LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
-			fi
+            #if [ "$WITH_EVENT" = "yes" ];
+            #then
+            #	if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
+            #	then
+            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
+            #		echo " "
+            #	else
+            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
+            #		LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
+            #	fi
+            #else
+            #	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
+            #	echo " "
+            #	LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
+            #fi
 			if [ "$WITH_UV" = "yes" ];
 			then
 				if [ ! -f "$INSTALL_ROOT/lib/libuv.a" ];
@@ -1496,7 +1572,8 @@ then
 		cd boost_1_68_0
 		echo -e "${COLOR_INFO}configuring and building it${COLOR_DOTS}...${COLOR_RESET}"
 
-		./bootstrap.sh --prefix="$INSTALL_ROOT" --with-libraries=system,thread,filesystem,regex,atomic
+		# ./bootstrap.sh --prefix="$INSTALL_ROOT" --with-libraries=system,thread,filesystem,regex,atomic
+		./bootstrap.sh --prefix="$INSTALL_ROOT" --with-libraries=atomic,context,filesystem,program_options,regex,system,thread,date_time,iostreams
 
 	if [ ${ARCH} = "arm" ]
 	then
@@ -2191,6 +2268,465 @@ then
     else
         echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
     fi
+fi
+
+#https://github.com/fmtlib/fmt
+#git@github.com:fmtlib/fmt.git
+#https://github.com/fmtlib/fmt.git
+if [ "$WITH_FMT" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libFmt++${COLOR_SEPARATOR} =====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libfmt${DEBUG_D}.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "fmt" ];
+		then
+			if [ ! -f "fmt-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/fmtlib/fmt.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf fmt-from-git.tar.gz ./fmt
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf fmt-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd fmt
+			mkdir -p build
+			cd build
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				..
+			cd ..
+		else
+			cd fmt
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/facebook/zstd
+#git@github.com:facebook/zstd.git
+#https://github.com/facebook/zstd.git
+if [ "$WITH_ZSTD" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libZSTD${COLOR_SEPARATOR} ======================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libzstd.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "zstd" ];
+		then
+			if [ ! -f "zstd-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/facebook/zstd.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf zstd-from-git.tar.gz ./zstd
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf zstd-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd zstd
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				../build/cmake
+			cd ..
+		else
+			cd zstd
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/google/double-conversion
+#git@github.com:google/double-conversion.git
+#https://github.com/google/double-conversion.git
+if [ "$WITH_DOUBLE_CONVERSION" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libDoubleConversion${COLOR_SEPARATOR} ==========================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libdouble-conversion.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "double-conversion" ];
+		then
+			if [ ! -f "double-conversion-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/google/double-conversion.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf double-conversion-from-git.tar.gz ./double-conversion
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf double-conversion-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd double-conversion
+			mkdir -p build
+			cd build
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				..
+			cd ..
+		else
+			cd double-conversion
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/google/glog
+#git@github.com:google/glog.git
+if [ "$WITH_GOOGLE_LOG" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libGLOG${COLOR_SEPARATOR} ======================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libglog${DEBUG_D}.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "glog" ];
+		then
+			if [ ! -f "glog-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/google/glog.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf glog-from-git.tar.gz ./glog
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf glog-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd glog
+			mkdir -p build
+			cd build
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				-DBUILD_SHARED_LIBS=OFF -DWITH_UNWIND=OFF \
+				..
+			cd ..
+		else
+			cd glog
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/gflags/gflags
+#git@github.com:gflags/gflags.git
+#https://github.com/gflags/gflags.git
+if [ "$WITH_GFLAGS" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libGFLAGS${COLOR_SEPARATOR} ====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libgflags${DEBUG__DEBUG}.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "gflags" ];
+		then
+			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+			unzip -o "$PREDOWNLOADED_ROOT/gflags-master.zip"
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd gflags-master
+			mkdir -p build
+			cd build
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				-DBUILD_SHARED_LIBS=OFF \
+				..
+			cd ..
+		else
+			cd gflags-master
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/facebook/folly
+#git@github.com:facebook/folly.git
+#https://github.com/facebook/folly.git
+if [ "$WITH_FOLLY" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libFolly${COLOR_SEPARATOR} =====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libfolly.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "folly" ];
+		then
+			if [ ! -f "folly-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/facebook/folly.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf folly-from-git.tar.gz ./folly
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf folly-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
+			sed -i 's/google::InstallFailureFunction(abort);/google::InstallFailureFunction( reinterpret_cast < google::logging_fail_func_t > ( abort ) );/g' ./folly/folly/init/Init.cpp
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd folly
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
+				..
+			cd ..
+		else
+			cd folly
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/jedisct1/libsodium
+#https://github.com/jedisct1/libsodium.git
+if [ "$WITH_SODIUM" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libSodium${COLOR_SEPARATOR} ====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libsodium.a" ];
+	then
+		## (required for libssh)
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "libsodium" ];
+		then
+			if [ ! -f "libsodium-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/jedisct1/libsodium.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf libsodium-from-git.tar.gz ./libsodium
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf libsodium-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd libsodium
+			./autogen.sh -s
+            ./configure --enable-static --disable-shared --disable-pie --prefix="$INSTALL_ROOT"
+			cd ..
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd libsodium
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd ..
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/google/googletest
+#https://github.com/google/googletest.git
+if [ "$WITH_GTEST" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libGTEST${COLOR_SEPARATOR} =====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libgtest${DEBUG_D}.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "googletest" ];
+		then
+			if [ ! -f "gtest-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/google/googletest.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf gtest-from-git.tar.gz ./googletest
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf gtest-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd googletest
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				..
+			cd ..
+		else
+			cd googletest
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/facebookincubator/fizz
+#https://github.com/facebookincubator/fizz.git
+if [ "$WITH_FIZZ" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libFIZZ${COLOR_SEPARATOR} ======================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libfizz.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "fizz" ];
+		then
+			if [ ! -f "fizz-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/facebookincubator/fizz.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf fizz-from-git.tar.gz ./fizz
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf fizz-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd fizz/fizz
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+				..
+			cd ..
+		else
+			cd fizz
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/facebook/wangle
+#https://github.com/facebook/wangle.git
+if [ "$WITH_WANGLE" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libWangle${COLOR_SEPARATOR} ====================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libwangle.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "wangle" ];
+		then
+			if [ ! -f "wangle-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/facebook/wangle.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf wangle-from-git.tar.gz ./wangle
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf wangle-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd wangle/wangle
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+			cd ..
+		else
+			cd wangle/wangle
+		fi
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
+fi
+
+#https://github.com/facebook/proxygen
+#https://habr.com/ru/company/infopulse/blog/243181/
+#git@github.com:facebook/proxygen.git
+#https://github.com/facebook/proxygen.git
+if [ "$WITH_PROXYGEN" = "yes" ];
+then
+	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libProxygen${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+	if [ ! -f "$INSTALL_ROOT/lib/libproxygen.a" ];
+	then
+		env_restore
+		cd "$SOURCES_ROOT"
+		if [ ! -d "proxygen" ];
+		then
+			if [ ! -f "proxygen-from-git.tar.gz" ];
+			then
+				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+				git clone https://github.com/facebook/proxygen.git --recursive
+				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -czf proxygen-from-git.tar.gz ./proxygen
+			else
+				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+				tar -xzf proxygen-from-git.tar.gz
+			fi
+			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+			cd proxygen
+			mkdir -p build2
+			cd build2
+			$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+			cd ..
+		else
+			cd proxygen
+		fi
+		
+		echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
+		sed -i 's/DEFINE_bool(/   \/*   DEFINE_bool(   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
+		sed -i 's/"Include request sequence number in response");/   "Include request sequence number in response");   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
+		sed -i 's/if (FLAGS_request_number)/   \/*   if (FLAGS_request_number)   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
+		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+		cd build2
+		$MAKE ${PARALLEL_MAKE_OPTIONS}
+		$MAKE ${PARALLEL_MAKE_OPTIONS} install
+		cd "$SOURCES_ROOT"
+	else
+		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+	fi
 fi
 
 echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
