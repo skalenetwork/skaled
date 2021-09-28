@@ -30,11 +30,11 @@
 
 #include <boost/filesystem/path.hpp>
 
+#include <libbatched-io/batched_io.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SplitDB.h>
-#include <libdevcore/batched_io.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethcore/SealEngine.h>

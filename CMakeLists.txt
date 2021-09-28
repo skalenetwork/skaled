@@ -224,6 +224,8 @@ else()
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 
+add_subdirectory( libbatched-io )
+
 set( SANITIZE "" CACHE STRING "contents of -fsanitize option")
 
 if ( SANITIZE )

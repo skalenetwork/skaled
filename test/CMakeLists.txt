@@ -83,6 +83,7 @@ target_link_libraries(testeth PRIVATE
     idn2
     ${DEPS_INSTALL_ROOT}/lib/liblzma.a
     ${DEPS_INSTALL_ROOT}/lib/libunwind.a
+    batched-io
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)

@@ -541,17 +541,17 @@ size_t Client::importTransactionsAsBlock(
     // end, detect partially executed block
     //
     size_t cntSucceeded = 0;
-    {
-        UnsafeRegion::lock unsafe_region_lock;
-        cntSucceeded = syncTransactions(
-            _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
-        sealUnconditionally( false );
-        importWorkingBlock();
-    }
+    cntSucceeded = syncTransactions(
+        _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
+    sealUnconditionally( false );
+    importWorkingBlock();
+
     LOG( m_logger ) << "Total unsafe time so far = "
                     << std::chrono::duration_cast< std::chrono::seconds >(
                            UnsafeRegion::getTotalTime() )
-                           .count() << " seconds";
+                           .count()
+                    << " seconds";
+
     if ( bIsPartial )
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {

@@ -3,7 +3,7 @@
 
 #include "LevelDB.h"
 
-#include "batched_io.h"
+#include <libbatched-io/batched_rotating_db_io.h>
 
 #include <deque>
 #include <set>
@@ -12,36 +12,15 @@
 namespace dev {
 namespace db {
 
-class batched_rotating_db_io : public batched_io::batched_face {
-private:
-    const boost::filesystem::path base_path;
-    std::deque< std::unique_ptr< DatabaseFace > > pieces;
-    size_t current_piece_file_no;
-
-public:
-    using const_iterator = std::deque< std::unique_ptr< DatabaseFace > >::const_iterator;
-    batched_rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces );
-    const_iterator begin() const { return pieces.begin(); }
-    const_iterator end() const { return pieces.end(); }
-    DatabaseFace* current_piece() const { return begin()->get(); }
-    size_t pieces_count() const { return pieces.size(); }
-    void rotate();
-    virtual void commit() { /*already implemented in rotate()*/
-    }
-
-protected:
-    virtual void recover();
-};
-
 class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
-    std::shared_ptr< batched_rotating_db_io > io_backend;
+    std::shared_ptr< batched_io::batched_rotating_db_io > io_backend;
 
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;
 
 public:
-    ManuallyRotatingLevelDB( std::shared_ptr< batched_rotating_db_io > _io_backend );
+    ManuallyRotatingLevelDB( std::shared_ptr< batched_io::batched_rotating_db_io > _io_backend );
     void rotate();
     size_t piecesCount() const { return io_backend->pieces_count(); }
 
