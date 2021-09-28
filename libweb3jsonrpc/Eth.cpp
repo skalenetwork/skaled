@@ -304,16 +304,12 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 // TODO Catch exceptions for all calls other eth_-calls in outer scope!
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    try {
-        if ( !isEnabledTransactionSending() )
-            throw std::runtime_error( "transacton sending feature is disabled on this instance" );
-        // Don't need to check the transaction signature (CheckTransaction::None) since it
-        // will be checked as a part of transaction import
-        Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-        return toJS( client()->importTransaction( t ) );
-    } catch ( Exception const& ) {
-        throw JsonRpcException( exceptionToErrorMessage() );
-    }
+    if ( !isEnabledTransactionSending() )
+        throw JsonRpcException( "transacton sending feature is disabled on this instance" );
+    // Don't need to check the transaction signature (CheckTransaction::None) since it
+    // will be checked as a part of transaction import
+    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+    return toJS( client()->importTransaction( t ) );
 }
 
 string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
