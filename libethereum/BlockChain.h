@@ -608,36 +608,6 @@ private:
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };
 
-class batched_blocks_and_extras : public batched_io::batched_face {
-private:
-    db::DatabaseFace* m_db;
-    std::unique_ptr< db::WriteBatchFace > m_batch;
-    void ensure_batch() {
-        if ( !m_batch )
-            m_batch = m_db->createWriteBatch();
-    }
-
-public:
-    void open( db::DatabaseFace* _db ) { m_db = _db; }
-    bool is_open() const { return !!m_db; }
-    void insert( db::Slice _key, db::Slice _value ) {
-        ensure_batch();
-        m_batch->insert( _key, _value );
-    }
-    void kill( db::Slice _key ) {
-        ensure_batch();
-        m_batch->kill( _key );
-    }
-    virtual void commit() {
-        ensure_batch();
-        m_db->commit( std::move( m_batch ) );
-    }
-
-protected:
-    void recover() { /*nothing*/
-    }
-};
-
 std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 
 }  // namespace eth
