@@ -865,18 +865,21 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
-static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isDisableZMQ ) {
+    if ( isDisableZMQ )
+        return strURL;
     if ( strURL.empty() )
-        return string();
+        return strURL;
     skutils::url u( strURL );
     u.scheme( "zmq" );
     u.port( "1031" );
     return u.str();
 }
 
-SkaleStats::SkaleStats(
-    const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : pending_ima_txns( configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl ) ),
+SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
+    const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
+    : pending_ima_txns(
+          configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
@@ -1304,9 +1307,34 @@ static std::string stat_encode_eth_call_data_chunck_size_t(
     return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
 }
 
+bool SkaleStats::isEnabledImaMessageSigning() const {
+    bool isEnabled = true;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "no-ima-signing" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"no-ima-signing\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
+            joSkaleConfig_nodeInfo["no-ima-signing"];
+        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >() ? false : true;
+    } catch ( ... ) {
+    }
+    return isEnabled;
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
+        if ( !isEnabledImaMessageSigning() )
+            throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
         nlohmann::json joConfig = getConfigJSON();
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -4225,7 +4253,8 @@ OutgoingMessageData.data
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "blsSignMessageHash";
-            joCall["type"] = "BLSSignReq";
+            if ( u.scheme() == "zmq" )
+                joCall["type"] = "BLSSignReq";
             joCall["params"] = nlohmann::json::object();
             joCall["params"]["keyShareName"] = keyShareName;
             joCall["params"]["messageHash"] = sh;

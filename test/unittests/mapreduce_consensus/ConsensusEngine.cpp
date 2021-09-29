@@ -232,7 +232,7 @@ public:
         using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::Web3Face,
             rpc::DebugFace, rpc::TestFace >;
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
 
         rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client ),
             new rpc::Web3( /*web3->clientVersion()*/ ), new rpc::Debug( *client ),  // TODO add

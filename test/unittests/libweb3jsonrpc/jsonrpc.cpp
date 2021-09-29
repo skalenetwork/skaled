@@ -275,7 +275,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         adminSession =
             sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
@@ -347,16 +347,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
         serverOpts.fn_eth_call_ = fn_eth_call;
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
-        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTP4_ = chainParams.nodeInfo.ip;
         // random port
         std::srand(std::time(nullptr));
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
-        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ = std::rand() % 64000 + 1025;
+        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
-        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ ) );
         client->SetTimeout(1000000000);
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );

@@ -333,10 +333,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             throw std::runtime_error(
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
+        std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+        skutils::url u( sgxServerURL );
+
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "blsSignMessageHash";
-        joCall["type"] = "BLSSignReq";
+        if ( u.scheme() == "zmq" )
+            joCall["type"] = "BLSSignReq";
         nlohmann::json obj = nlohmann::json::object();
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
@@ -352,8 +356,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         dev::eth::sChainNode schain_node = *it;
 
         joCall["params"] = obj;
-
-        std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
 
         // TODO deduplicate with SkaleHost!
         std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";

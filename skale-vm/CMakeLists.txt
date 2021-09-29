@@ -8,7 +8,19 @@ target_include_directories( skale PRIVATE
 	${SKUTILS_INCLUDE_DIRS}
 	)
 
-target_link_libraries(skale-vm PRIVATE ethereum evm ethashseal devcore skutils Boost::program_options pthread)
+target_link_libraries(
+    skale-vm
+    PRIVATE
+    ethereum
+    evm
+    ethashseal
+    devcore
+    skutils
+    Boost::program_options
+    "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+    "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+    pthread
+    )
 
 target_include_directories(skale-vm PRIVATE ../utils)
 

@@ -342,7 +342,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         adminSession =
             sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 1000, 1000 );
         client->setGasPricer(gasPricer);
