@@ -9,6 +9,7 @@ namespace batched_io {
 class batched_face {
 public:
     virtual void commit() = 0;
+    virtual void revert() = 0;
     virtual ~batched_face() {}
 
 protected:

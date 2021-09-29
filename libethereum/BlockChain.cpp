@@ -223,13 +223,15 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        auto batcher = std::make_shared< batched_io::batched_rotating_db_io >(
+        m_rotator = std::make_shared< batched_io::batched_rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5 );
-        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( batcher );
-        m_split_db = std::make_unique< db::SplitDB >(
-            std::static_pointer_cast< db::DatabaseFace >( m_rotating_db ) );
-        m_blocksDB = m_split_db->newInterface();
-        m_extrasDB = m_split_db->newInterface();
+        auto rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
+        auto db = std::make_shared< batched_io::batched_db >();
+        db->open( rotating_db );
+        m_db = db;
+        m_db_splitter = std::make_unique< batched_io::batched_db_splitter >( m_db );
+        m_blocksDB = m_db_splitter->new_interface();
+        m_extrasDB = m_db_splitter->new_interface();
         // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
         // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
@@ -276,7 +278,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    if ( !this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
+    if ( !this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
         recomputeExistingOccupiedSpaceForBlockRotation();
 }
 
@@ -291,7 +293,8 @@ void BlockChain::close() {
     // Not thread safe...
     m_extrasDB = nullptr;
     m_blocksDB = nullptr;
-    m_split_db.reset();
+    m_db_splitter.reset();
+    m_db.reset();
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
@@ -566,13 +569,13 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     }
 
     // account for size of 1 piece
-    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) {
+    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) {
         // remember genesis
         BlockDetails details = this->details( m_genesisHash );
 
         clearCaches();
-        this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
-        this->m_rotating_db->rotate();
+        m_db->revert();  // cancel pending changes
+        m_rotator->rotate();
 
         // re-insert genesis
         auto r = details.rlp();
@@ -584,25 +587,23 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
         return false;
 }
 
-struct SizeCountingWriteBatch {
-    SizeCountingWriteBatch( db::WriteBatchFace& _backend ) : backend( _backend ) {}
+struct DbWriteProxy {
+    DbWriteProxy( batched_io::batched_db_face& _backend ) : backend( _backend ) {}
     // HACK +1 is needed for SplitDB; of course, this should be redesigned!
     void insert( db::Slice _key, db::Slice _value ) {
         consumedBytes += _key.size() + _value.size() + 1;
         backend.insert( _key, _value );
     }
-    db::WriteBatchFace& backend;
+    batched_io::batched_db_face& backend;
     size_t consumedBytes = 0;
 };
 
 // TOOD ACHTUNG This function must be kept in sync with the next one!
-void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
-    u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
-    db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
-    size_t& _blocksBatchSize, size_t& _extrasBatchSize,
+size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
+    bytesConstRef _receipts, u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     ImportPerformanceLogger& _performanceLogger ) {
-    SizeCountingWriteBatch blocksWriteBatch( _originalBlocksWriteBatch );
-    SizeCountingWriteBatch extrasWriteBatch( _originalExtrasWriteBatch );
+    DbWriteProxy blocksWriteBatch( *m_blocksDB );
+    DbWriteProxy extrasWriteBatch( *m_extrasDB );
 
     try {
         MICROPROFILE_SCOPEI( "BlockChain", "write", MP_DARKKHAKI );
@@ -711,16 +712,16 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
             ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
     }
 
-    _blocksBatchSize = blocksWriteBatch.consumedBytes;
-    _extrasBatchSize = extrasWriteBatch.consumedBytes;
+    size_t writeSize = blocksWriteBatch.consumedBytes + extrasWriteBatch.consumedBytes;
 
     // HACK Since blooms are often re-used, let's adjust size for them
-    _extrasBatchSize -= ( 4147 + 34 ) * 2;  // 2 big blooms altered by block
-    _extrasBatchSize +=
-        ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+    writeSize -= ( 4147 + 34 ) * 2;                             // 2 big blooms altered by block
+    writeSize += ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
+
+    return writeSize;
 }
 
-// TOOD ACHTUNG This function must be kept in sync with prepareDbWriteBatches defined above!!
+// TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
 
@@ -789,9 +790,8 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     }  // for block
 
     uint64_t pieceUsageBytes = 0;
-    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
-        pieceUsageBytes =
-            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    if ( this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
     }
 
     LOG( m_logger ) << "pieceUsageBytes from DB = " << pieceUsageBytes
@@ -799,7 +799,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
 
     if ( pieceUsageBytes == 0 ) {
         pieceUsageBytes = blocksBatchSize + extrasBatchSize;
-        m_rotating_db->insert(
+        m_db->insert(
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
     } else {
         if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
@@ -822,10 +822,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
     // std::cout.flush();
 
-    // These batch wrappers can compute total insertion size in bytes
-    std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
-    std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
-
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
     BlockHeader tbi = _block.info;
@@ -841,29 +837,25 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     _performanceLogger.onStageFinished( "collation" );
 
-    size_t blocksWriteSize = 0;
-    size_t extrasWriteSize = 0;
-    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull, *blocksWriteBatch,
-        *extrasWriteBatch, blocksWriteSize, extrasWriteSize, _performanceLogger );
+    size_t writeSize = prepareDbDataAndReturnSize(
+        _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
 
     uint64_t pieceUsageBytes = 0;
-    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
-        pieceUsageBytes =
-            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    if ( this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
     }
-    pieceUsageBytes += blocksWriteSize + extrasWriteSize;
+    pieceUsageBytes += writeSize;
 
-    LOG( m_loggerDetail ) << "Block " << tbi.number() << " DB usage is "
-                          << blocksWriteSize + extrasWriteSize;
+    LOG( m_loggerDetail ) << "Block " << tbi.number() << " DB usage is " << writeSize;
     LOG( m_loggerDetail ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
         LOG( m_loggerDetail ) << "Rotated out some blocks";
-        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
-            *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
-            _performanceLogger );
-        pieceUsageBytes = blocksWriteSize + extrasWriteSize;
+        m_db->revert();
+        writeSize = prepareDbDataAndReturnSize(
+            _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
+        pieceUsageBytes = writeSize;
         LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
@@ -879,7 +871,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
-        m_blocksDB->commit( std::move( blocksWriteBatch ) );
+        m_blocksDB->commit();
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to blockchain database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -889,7 +881,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     try {
         MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
-        m_extrasDB->commit( std::move( extrasWriteBatch ) );
+        m_extrasDB->commit();
     } catch ( boost::exception& ex ) {
         cwarn << cc::error( "Error writing to extras database: " )
               << cc::warn( boost::diagnostic_information( ex ) );
@@ -922,21 +914,19 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         m_lastBlockHash = newLastBlockHash;
         m_lastBlockNumber = newLastBlockNumber;
         try {
-            std::unique_ptr< db::WriteBatchFace > wb = m_rotating_db->createWriteBatch();
-
             // update storage usage
-            wb->insert(
+            m_db->insert(
                 db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
             // HACK This is for backward compatibility
             // update totalStorageUsed only if schain already had it!
             if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
-                wb->insert( db::Slice( "\x0totalStorageUsed" ),
+                m_db->insert( db::Slice( "\x0totalStorageUsed" ),
                     db::Slice( to_string( _block.info.number() * 32 ) ) );
 
-            wb->insert( db::Slice( "\x1"
-                                   "best" ),
+            m_db->insert( db::Slice( "\x1"
+                                     "best" ),
                 db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-            m_rotating_db->commit( std::move( wb ) );
+            m_db->commit();
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"

@@ -25,6 +25,8 @@ public:
     dev::db::DatabaseFace* current_piece() const { return begin()->get(); }
     size_t pieces_count() const { return pieces.size(); }
     void rotate();
+    virtual void revert() { /* no need - as all write is in rotate() */
+    }
     virtual void commit() { /*already implemented in rotate()*/
     }
     virtual ~batched_rotating_db_io();

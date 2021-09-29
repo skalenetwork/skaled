@@ -262,6 +262,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
+        exit( 0 );
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
