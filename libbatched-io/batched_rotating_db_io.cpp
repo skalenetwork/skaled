@@ -52,25 +52,22 @@ batched_rotating_db_io::batched_rotating_db_io(
 
 void batched_rotating_db_io::rotate() {
     // 1 remove oldest
-    int old_db_no = current_piece_file_no - 1;
-    if ( old_db_no < 0 )
-        old_db_no += pieces.size();
-    boost::filesystem::path old_path = base_path / ( std::to_string( old_db_no ) + ".db" );
-    boost::filesystem::remove_all( old_path );
+    int oldest_db_no = current_piece_file_no - 1;
+    if ( oldest_db_no < 0 )
+        oldest_db_no += pieces.size();
+    boost::filesystem::path oldest_path = base_path / ( std::to_string( oldest_db_no ) + ".db" );
+    pieces.pop_back();                             // will delete here
+    boost::filesystem::remove_all( oldest_path );  // delete oldest
 
     // 2 recreate it as new current
-    DatabaseFace* new_db = new LevelDB( old_path );
+    DatabaseFace* new_db = new LevelDB( oldest_path );
     pieces.emplace_front( new_db );
 
-    current_piece_file_no = old_db_no;
+    current_piece_file_no = oldest_db_no;
 
     pieces[0]->insert( current_piece_mark_key, std::string( "" ) );
-
     // NB crash in this place (between insert() and kill() is handled in recover()!
-
-    // 3 clear previous current
-    pieces.back()->kill( current_piece_mark_key );
-    pieces.pop_back();  // will delete here
+    pieces[1]->kill( current_piece_mark_key );
 }
 
 void batched_rotating_db_io::recover() {
@@ -91,5 +88,7 @@ void batched_rotating_db_io::recover() {
         }  // if
     }      // for
 }
+
+batched_rotating_db_io::~batched_rotating_db_io() {}
 
 }  // namespace batched_io

@@ -27,6 +27,7 @@ public:
     void rotate();
     virtual void commit() { /*already implemented in rotate()*/
     }
+    virtual ~batched_rotating_db_io();
 
 protected:
     virtual void recover();
