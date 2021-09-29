@@ -95,8 +95,9 @@ public:
         const char* strErrorDescription, const nlohmann::json& joID );
     static std::string answer_from_error_text(
         const char* strErrorDescription, const nlohmann::json& joID );
-    virtual nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
-        int ipVer, const std::string& strDstAddress, int nDstPort ) = 0;
+    virtual skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
+        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
+        int nDstPort ) = 0;
 };  /// class server_side_request_handler
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,8 +119,9 @@ public:
     ~server() override;
     bool start();
     void stop();
-    nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
-        const std::string& strDstAddress, int nDstPort ) override;
+    skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
+        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
+        int nDstPort ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

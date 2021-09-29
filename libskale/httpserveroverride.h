@@ -458,7 +458,7 @@ public:
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 protected:
-    nlohmann::json implHandleHttpRequest( const nlohmann::json& joIn,
+    skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
         const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer,
         int nPort, e_server_mode_t esm );
 

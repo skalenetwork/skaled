@@ -245,7 +245,7 @@ public:
     void check_can_listen() override;
     virtual bool isSSL() const override;
 protected:
-    nlohmann::json implHandleHttpRequest(
+    skutils::result_of_http_request implHandleHttpRequest(
             const nlohmann::json & joIn,
             const std::string& strOrigin,
             int ipVer,

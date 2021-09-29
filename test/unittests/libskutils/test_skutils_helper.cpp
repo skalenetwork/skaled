@@ -624,8 +624,8 @@ test_server_proxygen::test_server_proxygen(
 {
     skutils::http_pg::pg_on_request_handler_t fnHandler = [=]( const nlohmann::json& joIn,
             const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort )
-            -> nlohmann::json {
-        nlohmann::json joOut =
+            -> skutils::result_of_http_request {
+        skutils::result_of_http_request rslt =
                 implHandleHttpRequest(
                     joIn,
                     strOrigin,
@@ -633,7 +633,7 @@ test_server_proxygen::test_server_proxygen(
                     strDstAddress,
                     nDstPort
                     );
-        return joOut;
+        return rslt;
     };
 //    auto& ssl_info = helper_ssl_info();
 //    BOOST_REQUIRE( (!ssl_info.strFilePathCert_.empty()) );
@@ -675,7 +675,7 @@ bool test_server_proxygen::isSSL() const {
     return false;
 }
 
-nlohmann::json test_server_proxygen::implHandleHttpRequest(
+skutils::result_of_http_request test_server_proxygen::implHandleHttpRequest(
         const nlohmann::json & joIn,
         const std::string& strOrigin,
         int /*ipVer*/,
@@ -683,7 +683,10 @@ nlohmann::json test_server_proxygen::implHandleHttpRequest(
         int /*nDstPort*/
         ) {
     test_log_p( cc::ws_tx_inv( "<<< PROXYGEN-TX-POST <<< " ) + cc::u( strOrigin ) + cc::ws_tx( " <<< " ) + cc::j( joIn ) );
-    return joIn;
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
+    rslt.joOut_ = joIn;
+    return rslt;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
