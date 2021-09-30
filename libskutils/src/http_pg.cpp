@@ -149,34 +149,52 @@ void request_site::onEOM() noexcept {
             "\n" );
     pg_log(
         strLogPrefix_ + cc::debug( "finally got body content " ) + cc::normal( strBody_ ) + "\n" );
-    nlohmann::json joID = "0xBADF00D", joIn, joOut;
+    nlohmann::json joID = "0xBADF00D", joIn;
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
     try {
         joIn = nlohmann::json::parse( strBody_ );
         pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
         if ( joIn.count( "id" ) > 0 )
             joID = joIn["id"];
-        joOut = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_, strDstAddress_, nDstPort_ );
-        pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( joOut ) + "\n" );
+        rslt = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_, strDstAddress_, nDstPort_ );
+        if ( rslt.isBinary_ )
+            pg_log( strLogPrefix_ + cc::debug( "got binary answer " ) +
+                    cc::binary_table( ( const void* ) ( void* ) rslt.vecBytes_.data(),
+                        size_t( rslt.vecBytes_.size() ) ) +
+                    "\n" );
+        else
+            pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
     } catch ( const std::exception& ex ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
                 cc::error( ", error info: " ) + cc::warn( ex.what() ) + "\n" );
-        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
-        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
+        rslt.isBinary_ = false;
+        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        pg_log(
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
     } catch ( ... ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
                 cc::error( ", error info: " ) + cc::warn( "unknown exception in HTTP handler" ) +
                 "\n" );
-        joOut = server_side_request_handler::json_from_error_text(
+        rslt.isBinary_ = false;
+        rslt.joOut_ = server_side_request_handler::json_from_error_text(
             "unknown exception in HTTP handler", joID );
-        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
+        pg_log(
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
     }
-    std::string strOut = joOut.dump();
-    proxygen::ResponseBuilder( downstream_ )
-        .status( 200, "OK" )
-        .header( "access-control-allow-origin", "*" )
-        .header( "content-length", skutils::tools::format( "%zu", strOut.size() ) )
-        .body( strOut )
-        .sendWithEOM();
+    proxygen::ResponseBuilder bldr( downstream_ );
+    bldr.status( 200, "OK" );
+    bldr.header( "access-control-allow-origin", "*" );
+    if ( rslt.isBinary_ ) {
+        bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
+        std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
+        bldr.body( buffer );
+    } else {
+        std::string strOut = rslt.joOut_.dump();
+        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
+        bldr.body( strOut );
+    }
+    bldr.sendWithEOM();
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept {
@@ -378,10 +396,10 @@ void server::stop() {
     }
 }
 
-nlohmann::json server::onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
-    int ipVer, const std::string& strDstAddress, int nDstPort ) {
-    nlohmann::json joOut = h_( joIn, strOrigin, ipVer, strDstAddress, nDstPort );
-    return joOut;
+skutils::result_of_http_request server::onRequest( const nlohmann::json& joIn,
+    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort ) {
+    skutils::result_of_http_request rslt = h_( joIn, strOrigin, ipVer, strDstAddress, nDstPort );
+    return rslt;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
