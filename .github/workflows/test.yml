@@ -27,8 +27,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Submodule update
         run: git submodule update --init --recursive
-      - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
