@@ -263,6 +263,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
         assert( isKnown( gb.hash() ) );
+        m_db->commit();
     }
 
 #if ETH_PARANOIA
@@ -801,6 +802,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         pieceUsageBytes = blocksBatchSize + extrasBatchSize;
         m_db->insert(
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+        m_db->commit();
     } else {
         if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
@@ -1061,6 +1063,7 @@ void BlockChain::rewind( unsigned _newHead ) {
         try {
             m_extrasDB->insert(
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
+            m_db->commit();
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
@@ -1669,6 +1672,7 @@ void BlockChain::setChainStartBlockNumber( unsigned _number ) {
     try {
         m_extrasDB->insert( c_sliceChainStart,
             db::Slice( reinterpret_cast< char const* >( hash.data() ), h256::size ) );
+        m_db->commit();
     } catch ( boost::exception const& ex ) {
         BOOST_THROW_EXCEPTION( FailedToWriteChainStart()
                                << errinfo_hash256( hash )
