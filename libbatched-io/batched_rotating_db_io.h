@@ -27,7 +27,9 @@ public:
     void rotate();
     virtual void revert() { /* no need - as all write is in rotate() */
     }
-    virtual void commit() { /*already implemented in rotate()*/
+    virtual void commit(
+        const std::string& test_crash_string = std::string() ) { /*already implemented in rotate()*/
+        ( void ) test_crash_string;
     }
     virtual ~batched_rotating_db_io();
 

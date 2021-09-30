@@ -24,6 +24,8 @@ batched_rotating_db_io::batched_rotating_db_io(
     // fix possible errors (i.e. duplicated mark key)
     recover();
 
+    test_crash_before_commit( "after_recover" );
+
     // find current
     size_t current_i = _nPieces;
     for ( size_t i = 0; i < _nPieces; ++i ) {
@@ -58,15 +60,20 @@ void batched_rotating_db_io::rotate() {
     boost::filesystem::path oldest_path = base_path / ( std::to_string( oldest_db_no ) + ".db" );
     pieces.pop_back();                             // will delete here
     boost::filesystem::remove_all( oldest_path );  // delete oldest
+    test_crash_before_commit( "after_remove_oldest" );
 
     // 2 recreate it as new current
     DatabaseFace* new_db = new LevelDB( oldest_path );
     pieces.emplace_front( new_db );
 
+    test_crash_before_commit( "after_open_leveldb" );
+
     current_piece_file_no = oldest_db_no;
 
     pieces[0]->insert( current_piece_mark_key, std::string( "" ) );
-    // NB crash in this place (between insert() and kill() is handled in recover()!
+
+    test_crash_before_commit( "with_two_keys" );
+
     pieces[1]->kill( current_piece_mark_key );
 }
 
@@ -83,10 +90,12 @@ void batched_rotating_db_io::recover() {
     for ( size_t i = 0; i < pieces.size(); ++i ) {
         if ( pieces[i]->exists( current_piece_mark_key ) ) {
             size_t prev_i = ( i + pieces.size() - 1 ) % pieces.size();
-            if ( pieces[prev_i]->exists( current_piece_mark_key ) )
+            if ( pieces[prev_i]->exists( current_piece_mark_key ) ) {
                 pieces[i]->kill( current_piece_mark_key );
-        }  // if
-    }      // for
+                test_crash_before_commit( "after_pieces_kill" );
+            }  // if
+        }      // if
+    }          // for
 }
 
 batched_rotating_db_io::~batched_rotating_db_io() {}

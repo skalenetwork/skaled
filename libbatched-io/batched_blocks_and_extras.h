@@ -50,9 +50,10 @@ public:
         if ( m_batch )
             m_batch.reset();
     }
-    virtual void commit() {
+    virtual void commit( const std::string& test_crash_string = std::string() ) {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
+        test_crash_before_commit( test_crash_string );
         m_db->commit( std::move( m_batch ) );
     }
 
@@ -92,7 +93,9 @@ private:
         virtual void insert( dev::db::Slice _key, dev::db::Slice _value );
         virtual void kill( dev::db::Slice _key );
         virtual void revert() { backend->revert(); }
-        virtual void commit() { backend->commit(); }
+        virtual void commit( const std::string& test_crash_string = std::string() ) {
+            backend->commit( test_crash_string );
+        }
 
         // readonly
         virtual std::string lookup( dev::db::Slice _key ) const;
