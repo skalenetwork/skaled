@@ -5,11 +5,29 @@
 
 #include <skutils/console_colors.h>
 
+#include <glog/logging.h>
+
 namespace skutils {
 namespace http_pg {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void init_logging( const char* strProgramName ) {
+    static bool g_bWasCalled = false;
+    if ( g_bWasCalled )
+        return;
+    g_bWasCalled = true;
+    google::InitGoogleLogging( strProgramName );
+}
+
+void install_logging_fail_func( logging_fail_func_t fn ) {
+    static bool g_bWasCalled = false;
+    if ( g_bWasCalled )
+        return;
+    g_bWasCalled = true;
+    google::InstallFailureFunction( reinterpret_cast< google::logging_fail_func_t >( fn ) );
+}
 
 void pg_log( const char* s ) {
     if ( s == nullptr || s[0] == '\0' )
@@ -61,6 +79,7 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
     sink_.OnRecordRequestCountIncrement();
     strHttpMethod_ =
         skutils::tools::to_upper( skutils::tools::trim_copy( req->getMethodString() ) );
+    pg_log( strLogPrefix_ + cc::info( strHttpMethod_ ) + cc::debug( " request query" ) + "\n" );
     const folly::SocketAddress& origin_address = req->getClientAddress();
     std::string strClientAddress = origin_address.getAddressStr();  // getFullyQualified()
     ipVer_ =
@@ -94,53 +113,88 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
             .send();
         return;
     }
-    //    proxygen::ResponseBuilder( downstream_ )
-    //        .status( 200, "OK" )
-    //        .header( "access-control-allow-origin", "*" )
-    //        .send();
 }
 
 void request_site::onBody( std::unique_ptr< folly::IOBuf > body ) noexcept {
-    pg_log( strLogPrefix_ + cc::debug( "body query" ) + "\n" );
+    pg_log( strLogPrefix_ + cc::info( strHttpMethod_ ) + cc::debug( " body query" ) + "\n" );
     if ( strHttpMethod_ == "OPTIONS" )
         return;
     auto cnt = body->computeChainDataLength();
     auto pData = body->data();
-    std::string strIn, strOut;
+    std::string strIn;
     strIn.insert( strIn.end(), pData, pData + cnt );
-    nlohmann::json joID = "0xBADF00D", joIn, joOut;
-    try {
-        joIn = nlohmann::json::parse( strIn );
-        pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
-        if ( joIn.count( "id" ) > 0 )
-            joID = joIn["id"];
-        joOut = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_, strDstAddress_, nDstPort_ );
-        pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( joOut ) + "\n" );
-    } catch ( const std::exception& ex ) {
-        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
-                cc::error( ", error info: " ) + cc::warn( ex.what() ) + "\n" );
-        joOut = server_side_request_handler::json_from_error_text( ex.what(), joID );
-        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
-    } catch ( ... ) {
-        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strIn ) +
-                cc::error( ", error info: " ) + cc::warn( "unknown exception in HTTP handler" ) +
-                "\n" );
-        joOut = server_side_request_handler::json_from_error_text(
-            "unknown exception in HTTP handler", joID );
-        pg_log( strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( joOut ) + "\n" );
-    }
-    strOut = joOut.dump();
-    proxygen::ResponseBuilder( downstream_ )
-        .status( 200, "OK" )
-        .header( "access-control-allow-origin", "*" )
-        .header( "content-length", skutils::tools::format( "%zu", strOut.size() ) )
-        .body( strOut )
-        .send();
+    pg_log( strLogPrefix_ + cc::debug( "got body part number " ) + cc::size10( nBodyPartNumber_ ) +
+            "\n" );
+    pg_log(
+        strLogPrefix_ + cc::debug( "got body part size " ) + cc::size10( strIn.size() ) + "\n" );
+    pg_log( strLogPrefix_ + cc::debug( "got body part content " ) + cc::normal( strIn ) + "\n" );
+    strBody_ += strIn;
+    pg_log( strLogPrefix_ + cc::debug( "accumulated so far body size " ) +
+            cc::size10( strBody_.size() ) + "\n" );
+    pg_log( strLogPrefix_ + cc::debug( "accumulated so far body content part(s) " ) +
+            cc::normal( strBody_ ) + "\n" );
+    ++nBodyPartNumber_;
 }
 
 void request_site::onEOM() noexcept {
-    pg_log( strLogPrefix_ + cc::debug( "EOM query" ) + "\n" );
-    proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
+    pg_log( strLogPrefix_ + cc::info( strHttpMethod_ ) + cc::debug( "EOM query" ) + "\n" );
+
+    if ( strHttpMethod_ == "OPTIONS" ) {
+        proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
+        return;
+    }
+    pg_log( strLogPrefix_ + cc::debug( "finally got " ) + cc::size10( nBodyPartNumber_ ) +
+            cc::debug( " body part(s)" ) + "\n" );
+    pg_log( strLogPrefix_ + cc::debug( "finally got body size " ) + cc::size10( strBody_.size() ) +
+            "\n" );
+    pg_log(
+        strLogPrefix_ + cc::debug( "finally got body content " ) + cc::normal( strBody_ ) + "\n" );
+    nlohmann::json joID = "0xBADF00D", joIn;
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
+    try {
+        joIn = nlohmann::json::parse( strBody_ );
+        pg_log( strLogPrefix_ + cc::debug( "got body JSON " ) + cc::j( joIn ) + "\n" );
+        if ( joIn.count( "id" ) > 0 )
+            joID = joIn["id"];
+        rslt = pSSRQ_->onRequest( joIn, strOrigin_, ipVer_, strDstAddress_, nDstPort_ );
+        if ( rslt.isBinary_ )
+            pg_log( strLogPrefix_ + cc::debug( "got binary answer " ) +
+                    cc::binary_table( ( const void* ) ( void* ) rslt.vecBytes_.data(),
+                        size_t( rslt.vecBytes_.size() ) ) +
+                    "\n" );
+        else
+            pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+    } catch ( const std::exception& ex ) {
+        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
+                cc::error( ", error info: " ) + cc::warn( ex.what() ) + "\n" );
+        rslt.isBinary_ = false;
+        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        pg_log(
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+    } catch ( ... ) {
+        pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
+                cc::error( ", error info: " ) + cc::warn( "unknown exception in HTTP handler" ) +
+                "\n" );
+        rslt.isBinary_ = false;
+        rslt.joOut_ = server_side_request_handler::json_from_error_text(
+            "unknown exception in HTTP handler", joID );
+        pg_log(
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+    }
+    proxygen::ResponseBuilder bldr( downstream_ );
+    bldr.status( 200, "OK" );
+    bldr.header( "access-control-allow-origin", "*" );
+    if ( rslt.isBinary_ ) {
+        bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
+        std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
+        bldr.body( buffer );
+    } else {
+        std::string strOut = rslt.joOut_.dump();
+        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
+        bldr.body( strOut );
+    }
+    bldr.sendWithEOM();
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept {
@@ -342,10 +396,10 @@ void server::stop() {
     }
 }
 
-nlohmann::json server::onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
-    int ipVer, const std::string& strDstAddress, int nDstPort ) {
-    nlohmann::json joOut = h_( joIn, strOrigin, ipVer, strDstAddress, nDstPort );
-    return joOut;
+skutils::result_of_http_request server::onRequest( const nlohmann::json& joIn,
+    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort ) {
+    skutils::result_of_http_request rslt = h_( joIn, strOrigin, ipVer, strDstAddress, nDstPort );
+    return rslt;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

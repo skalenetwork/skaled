@@ -49,6 +49,8 @@ class request_site : public proxygen::RequestHandler {
     static std::atomic_uint64_t g_instance_counter;
     uint64_t nInstanceNumber_;
     std::string strLogPrefix_;
+    size_t nBodyPartNumber_ = 0;
+    std::string strBody_;
 
 public:
     std::string strHttpMethod_, strOrigin_, strPath_, strDstAddress_;
@@ -93,8 +95,9 @@ public:
         const char* strErrorDescription, const nlohmann::json& joID );
     static std::string answer_from_error_text(
         const char* strErrorDescription, const nlohmann::json& joID );
-    virtual nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin,
-        int ipVer, const std::string& strDstAddress, int nDstPort ) = 0;
+    virtual skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
+        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
+        int nDstPort ) = 0;
 };  /// class server_side_request_handler
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,8 +119,9 @@ public:
     ~server() override;
     bool start();
     void stop();
-    nlohmann::json onRequest( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
-        const std::string& strDstAddress, int nDstPort ) override;
+    skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
+        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
+        int nDstPort ) override;
 };  /// class server
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

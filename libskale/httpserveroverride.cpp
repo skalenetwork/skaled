@@ -2009,23 +2009,9 @@ SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ip
       ca_path_( ca_path ? ca_path : "" ),
       threads_( threads ),
       threads_limit_( threads_limit ) {
-    //    skutils::http_pg::pg_on_request_handler_t fnHandler = [=]( const nlohmann::json& joIn,
-    //    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort )
-    //    -> nlohmann::json {
-    //        SkaleServerOverride* pSO = pso();
-    //        if ( pSO->isShutdownMode() )
-    //            throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-    //        nlohmann::json joOut =
-    //            pSO->implHandleHttpRequest( joIn, std::string( m_bHelperIsSSL ? "HTTPS" : "HTTP"
-    //            ),
-    //                serverIndex(), strOrigin, ipVer_, nPort_, esm_ );
-    //        return joOut;
-    //    };
     skutils::http_pg::pg_accumulate_entry pge = {ipVer_, strBindAddr_, nPort_,
         m_bHelperIsSSL ? cert_path_.c_str() : "", m_bHelperIsSSL ? private_key_path_.c_str() : "",
         m_bHelperIsSSL ? ca_path_.c_str() : ""};
-    //    hProxygenServer_ = skutils::http_pg::pg_start( fnHandler, pge, threads_, threads_limit_ );
-
     skutils::http_pg::pg_accumulate_add( pge );
 }
 
@@ -2034,15 +2020,10 @@ SkaleRelayProxygenHTTP::~SkaleRelayProxygenHTTP() {
 }
 
 bool SkaleRelayProxygenHTTP::is_running() const {
-    //    if ( !hProxygenServer_ )
-    //        return false;
     return true;
 }
 
-void SkaleRelayProxygenHTTP::stop() {
-    //    skutils::http_pg::pg_stop( hProxygenServer_ );
-    //    hProxygenServer_ = nullptr;
-}
+void SkaleRelayProxygenHTTP::stop() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2053,6 +2034,17 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
     : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
+    //
+    //
+    // proxygen-related init
+    skutils::http_pg::init_logging( "skaled" );
+    skutils::http_pg::install_logging_fail_func( []() -> void {
+        clog( dev::VerbosityError, "generic" ) << ( cc::fatal( "CRITICAL ERROR:" ) + " " +
+                                                    cc::error( "Proxygen abort handler called." ) );
+    } );
+    //
+    //
+
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
             fnOnSunscriptionEvent =
@@ -2086,7 +2078,6 @@ SkaleServerOverride::SkaleServerOverride(
             ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
     }  // block
 }
-
 
 SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
@@ -2329,10 +2320,11 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
-nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json& joIn,
-    const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer, int nPort,
-    e_server_mode_t esm ) {
-    nlohmann::json joOut;
+skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
+    const nlohmann::json& joIn, const std::string& strProtocol, int nServerIndex,
+    std::string strOrigin, int ipVer, int nPort, e_server_mode_t esm ) {
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
     std::string strMethod;
     nlohmann::json jarrRequest, joID = "-1";
     bool isBatch = false;
@@ -2452,8 +2444,9 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             if ( handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
                 stats::register_stats_answer( strProtocol.c_str(), "POST", buffer.size() );
                 rttElement->stop();
-                joOut = nlohmann::json::parse( buffer );
-                return joOut;
+                rslt.isBinary_ = true;
+                rslt.vecBytes_ = buffer;
+                return rslt;
             }
             if ( !handleHttpSpecificRequest( strOrigin, esm, strBody, strResponse ) ) {
                 handler->HandleRequest( strBody.c_str(), strResponse );
@@ -2464,8 +2457,10 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             stats::register_stats_answer( ( "RPC/" + strProtocol ).c_str(), joRequest, joResponse );
             stats::register_stats_answer( "RPC", joRequest, joResponse );
             //
-            if ( !isBatch )
-                joOut = nlohmann::json::parse( strResponse );
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = nlohmann::json::parse( strResponse );
+            }
             a.set_json_out( joResponse );
             bPassed = true;
         } catch ( const std::exception& ex ) {
@@ -2482,8 +2477,10 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
                 stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
                 stats::register_stats_exception( "RPC", strMethod.c_str() );
             }
-            if ( !isBatch )
-                joOut = joErrorResponce;
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
             a.set_json_err( joErrorResponce );
         } catch ( ... ) {
             rttElement->setError();
@@ -2500,8 +2497,10 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
                 stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
                 stats::register_stats_exception( "RPC", strMethod.c_str() );
             }
-            if ( !isBatch )
-                joOut = joErrorResponce;
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
             a.set_json_err( joErrorResponce );
         }
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
@@ -2511,7 +2510,8 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
             jarrBatchAnswer.push_back( joAnswerPart );
         } else {
-            joOut = nlohmann::json::parse( strResponse );
+            rslt.isBinary_ = false;
+            rslt.joOut_ = nlohmann::json::parse( strResponse );
         }
         if ( !bPassed )
             stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
@@ -2521,9 +2521,11 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             logPerformanceWarning( lfExecutionDuration, ipVer, strProtocol.c_str(), nServerIndex,
                 esm, strOrigin.c_str(), strMethod.c_str(), joID );
     }  // for( const nlohmann::json & joRequest : jarrRequest )
-    if ( isBatch )
-        joOut = jarrBatchAnswer;
-    return joOut;
+    if ( isBatch ) {
+        rslt.isBinary_ = false;  // batch request can be only text/JSON
+        rslt.joOut_ = jarrBatchAnswer;
+    }
+    return rslt;
 }
 
 bool SkaleServerOverride::implStartListening(  // mini HTTP
@@ -2579,13 +2581,18 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
                 nlohmann::json joIn = nlohmann::json::parse( req.body_ );
                 if ( joIn.count( "id" ) > 0 )
                     joID = joIn["id"];
-                nlohmann::json joOut = implHandleHttpRequest(
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, req.origin_, ipVer, nPort, esm );
-                std::string strOut = joOut.dump();
                 res.set_header( "access-control-allow-origin", "*" );
                 res.set_header( "vary", "Origin" );
-                res.set_content(
-                    ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
+                if ( rslt.isBinary_ ) {
+                    res.set_content( ( char* ) rslt.vecBytes_.data(), rslt.vecBytes_.size(),
+                        "application/octet-stream" );
+                } else {
+                    std::string strOut = rslt.joOut_.dump();
+                    res.set_content(
+                        ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
+                }
                 return true;
             } catch ( const std::exception& ex ) {
                 logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
@@ -3119,7 +3126,8 @@ bool SkaleServerOverride::StartListening() {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
                 [=]( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
-                    const std::string& strDstAddress, int nDstPort ) -> nlohmann::json {
+                    const std::string& strDstAddress,
+                    int nDstPort ) -> skutils::result_of_http_request {
                 if ( isShutdownMode() )
                     throw std::runtime_error( "query was cancelled due to server shutdown mode" );
                 skutils::url u( strOrigin );
@@ -3139,9 +3147,9 @@ bool SkaleServerOverride::StartListening() {
                     nPort = atoi( u.port().c_str() );
                 int nServerIndex = 0;  // TO-FIX: detect server index here
                 e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
-                nlohmann::json joOut = implHandleHttpRequest(
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
-                return joOut;
+                return rslt;
             };
             hProxygenServer_ =
                 skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
