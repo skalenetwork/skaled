@@ -193,6 +193,10 @@ public:
 private:
     void register_ws_conn_for_origin();
     void unregister_ws_conn_for_origin();
+
+public:
+    std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
+    std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
 };  /// class SkaleWsPeer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -605,6 +609,15 @@ protected:
         const std::string& strRequest, std::string& strResponse );
     bool handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
+
+public:
+    std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
+    std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
+    static size_t g_nMaxStringValueLengthForJsonLogs;
+    static size_t g_nMaxStringValueLengthForTransactionParams;
+    static void stat_transformJsonForLogOutput( nlohmann::json& jo, bool isRequest,
+        size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
+        size_t nCallIndent = 0 );
 
     friend class SkaleRelayMiniHTTP;
     friend class SkaleRelayProxygenHTTP;
