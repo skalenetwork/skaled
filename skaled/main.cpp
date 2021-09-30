@@ -718,6 +718,13 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
+    addGeneralOption( "log-json-string-limit",
+        po::value< size_t >()->value_name( "<number of chars>" ),
+        "JSON string value length limit for logging, specify 0 for unlimited" );
+    addGeneralOption( "log-tx-params-limit",
+        po::value< size_t >()->value_name( "<number of chars>" ),
+        "Transaction params length limit in eth_sendRawTransaction calls for logging, specify 0 "
+        "for unlimited" );
     addGeneralOption( "dispatch-threads", po::value< size_t >()->value_name( "<count>" ),
         "Number of threads to run task dispatcher, default is CPU count * 2" );
     addGeneralOption( "version,V", "Show the version and exit" );
@@ -772,9 +779,18 @@ int main( int argc, char** argv ) try {
         cout << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
+
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+    }
+    if ( vm.count( "log-json-string-limit" ) ) {
+        int n = vm["log-json-string-limit"].as< size_t >();
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+    }
+    if ( vm.count( "log-tx-params-limit" ) ) {
+        int n = vm["log-tx-params-limit"].as< size_t >();
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
     }
 
     if ( vm.count( "test-url" ) ) {
@@ -962,6 +978,24 @@ int main( int argc, char** argv ) try {
     if ( !chainConfigIsSet )
         // default to skale if not already set with `--config`
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+
+    if ( chainConfigParsed ) {
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-value-size-limit"].get< size_t >();
+            cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+        } catch ( ... ) {
+        }
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-json-string-limit"].get< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+        } catch ( ... ) {
+        }
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-tx-params-limit"].get< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
+        } catch ( ... ) {
+        }
+    }
 
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1225,6 +1259,19 @@ int main( int argc, char** argv ) try {
                 dev::db::c_maxOpenLeveldbFiles =
                     joConfig["skaleConfig"]["nodeInfo"]["maxOpenLeveldbFiles"].get< unsigned >();
         } catch ( ... ) {
+        }
+
+        if ( vm.count( "log-value-size-limit" ) ) {
+            int n = vm["log-value-size-limit"].as< size_t >();
+            cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+        }
+        if ( vm.count( "log-json-string-limit" ) ) {
+            int n = vm["log-json-string-limit"].as< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+        }
+        if ( vm.count( "log-tx-params-limit" ) ) {
+            int n = vm["log-tx-params-limit"].as< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
         }
     }
     ////////////// END CACHE PARAMS ////////////
