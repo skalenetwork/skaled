@@ -11,7 +11,7 @@
 
 namespace batched_io {
 
-class batched_rotating_db_io : public batched_face {
+class rotating_db_io : public batched_face {
 private:
     const boost::filesystem::path base_path;
     std::deque< std::unique_ptr< dev::db::DatabaseFace > > pieces;
@@ -19,7 +19,7 @@ private:
 
 public:
     using const_iterator = std::deque< std::unique_ptr< dev::db::DatabaseFace > >::const_iterator;
-    batched_rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces );
+    rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces );
     const_iterator begin() const { return pieces.begin(); }
     const_iterator end() const { return pieces.end(); }
     dev::db::DatabaseFace* current_piece() const { return begin()->get(); }
@@ -31,7 +31,7 @@ public:
         const std::string& test_crash_string = std::string() ) { /*already implemented in rotate()*/
         ( void ) test_crash_string;
     }
-    virtual ~batched_rotating_db_io();
+    virtual ~rotating_db_io();
 
 protected:
     virtual void recover();

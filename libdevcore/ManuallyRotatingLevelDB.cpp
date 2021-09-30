@@ -9,8 +9,7 @@ namespace db {
 
 using namespace batched_io;
 
-ManuallyRotatingLevelDB::ManuallyRotatingLevelDB(
-    std::shared_ptr< batched_rotating_db_io > _io_backend )
+ManuallyRotatingLevelDB::ManuallyRotatingLevelDB( std::shared_ptr< rotating_db_io > _io_backend )
     : io_backend( _io_backend ) {}
 
 void ManuallyRotatingLevelDB::rotate() {

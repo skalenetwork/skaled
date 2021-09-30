@@ -223,13 +223,13 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        m_rotator = std::make_shared< batched_io::batched_rotating_db_io >(
+        m_rotator = std::make_shared< batched_io::rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5 );
         auto rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( rotating_db );
         m_db = db;
-        m_db_splitter = std::make_unique< batched_io::batched_db_splitter >( m_db );
+        m_db_splitter = std::make_unique< batched_io::db_splitter >( m_db );
         m_blocksDB = m_db_splitter->new_interface();
         m_extrasDB = m_db_splitter->new_interface();
         // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
@@ -263,7 +263,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
         m_details[m_genesisHash] = details;
         m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
         assert( isKnown( gb.hash() ) );
-        m_db->commit();
+        m_db->commit( "insert_genesis" );
     }
 
 #if ETH_PARANOIA
@@ -589,13 +589,13 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
 }
 
 struct DbWriteProxy {
-    DbWriteProxy( batched_io::batched_db_face& _backend ) : backend( _backend ) {}
+    DbWriteProxy( batched_io::db_operations_face& _backend ) : backend( _backend ) {}
     // HACK +1 is needed for SplitDB; of course, this should be redesigned!
     void insert( db::Slice _key, db::Slice _value ) {
         consumedBytes += _key.size() + _value.size() + 1;
         backend.insert( _key, _value );
     }
-    batched_io::batched_db_face& backend;
+    batched_io::db_operations_face& backend;
     size_t consumedBytes = 0;
 };
 
@@ -802,7 +802,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         pieceUsageBytes = blocksBatchSize + extrasBatchSize;
         m_db->insert(
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
-        m_db->commit();
+        m_db->commit( "recompute_piece_usage" );
     } else {
         if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
@@ -871,26 +871,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
                           << cc::debug( " siblings." );
 
-    try {
-        MICROPROFILE_SCOPEI( "m_blocksDB", "commit", MP_PLUM );
-        m_blocksDB->commit();
-    } catch ( boost::exception& ex ) {
-        cwarn << cc::error( "Error writing to blockchain database: " )
-              << cc::warn( boost::diagnostic_information( ex ) );
-        cwarn << cc::error( "Fail writing to blockchain database. Bombing out." );
-        exit( -1 );
-    }
-
-    try {
-        MICROPROFILE_SCOPEI( "m_extrasDB", "commit", MP_PLUM );
-        m_extrasDB->commit();
-    } catch ( boost::exception& ex ) {
-        cwarn << cc::error( "Error writing to extras database: " )
-              << cc::warn( boost::diagnostic_information( ex ) );
-        cwarn << cc::error( "Fail writing to extras database. Bombing out." );
-        exit( -1 );
-    }
-
 #if ETH_PARANOIA
     if ( isKnown( _block.info.hash() ) && !details( _block.info.hash() ) ) {
         LOG( m_loggerError ) << "Known block just inserted has no details.";
@@ -928,12 +908,13 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             m_db->insert( db::Slice( "\x1"
                                      "best" ),
                 db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-            m_db->commit();
+            m_db->commit( "insertBlockAndExtras" );
         } catch ( boost::exception const& ex ) {
-            cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
+            cwarn << "Error writing to blocks_and_extras database: "
+                  << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
-            cwarn << "Fail writing to extras database. Bombing out.";
+            cwarn << "Fail writing to blocks_and_extras database. Bombing out.";
             exit( -1 );
         }
     }
@@ -1063,7 +1044,7 @@ void BlockChain::rewind( unsigned _newHead ) {
         try {
             m_extrasDB->insert(
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-            m_db->commit();
+            m_db->commit( "rewind" );
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
@@ -1672,7 +1653,7 @@ void BlockChain::setChainStartBlockNumber( unsigned _number ) {
     try {
         m_extrasDB->insert( c_sliceChainStart,
             db::Slice( reinterpret_cast< char const* >( hash.data() ), h256::size ) );
-        m_db->commit();
+        m_db->commit( "setChainStartBlockNumber" );
     } catch ( boost::exception const& ex ) {
         BOOST_THROW_EXCEPTION( FailedToWriteChainStart()
                                << errinfo_hash256( hash )

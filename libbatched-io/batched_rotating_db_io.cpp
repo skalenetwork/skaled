@@ -11,8 +11,7 @@ const std::string current_piece_mark_key =
     "ead48ec575aaa7127384dee432fc1c02d9f6a22950234e5ecf59f35ed9f6e78d";
 }
 
-batched_rotating_db_io::batched_rotating_db_io(
-    const boost::filesystem::path& _path, size_t _nPieces )
+rotating_db_io::rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces )
     : base_path( _path ) {
     // open all
     for ( size_t i = 0; i < _nPieces; ++i ) {
@@ -52,7 +51,7 @@ batched_rotating_db_io::batched_rotating_db_io(
     this->current_piece_file_no = current_i;
 }
 
-void batched_rotating_db_io::rotate() {
+void rotating_db_io::rotate() {
     // 1 remove oldest
     int oldest_db_no = current_piece_file_no - 1;
     if ( oldest_db_no < 0 )
@@ -77,7 +76,7 @@ void batched_rotating_db_io::rotate() {
     pieces[1]->kill( current_piece_mark_key );
 }
 
-void batched_rotating_db_io::recover() {
+void rotating_db_io::recover() {
     // delete 2nd mark
     // NB there can be 2 marked items in case of unfinished rotation
     // in this case do the following:
@@ -98,6 +97,6 @@ void batched_rotating_db_io::recover() {
     }          // for
 }
 
-batched_rotating_db_io::~batched_rotating_db_io() {}
+rotating_db_io::~rotating_db_io() {}
 
 }  // namespace batched_io

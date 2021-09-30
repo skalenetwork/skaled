@@ -12,7 +12,7 @@ class batched_face {
 public:
     virtual void commit( const std::string& test_crash_string = std::string() ) = 0;
     virtual void revert() = 0;
-    virtual ~batched_face() {}
+    virtual ~batched_face() = default;
 
 protected:
     // sometimes it's not needed

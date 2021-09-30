@@ -14,13 +14,13 @@ namespace db {
 
 class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
-    std::shared_ptr< batched_io::batched_rotating_db_io > io_backend;
+    std::shared_ptr< batched_io::rotating_db_io > io_backend;
 
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;
 
 public:
-    ManuallyRotatingLevelDB( std::shared_ptr< batched_io::batched_rotating_db_io > _io_backend );
+    ManuallyRotatingLevelDB( std::shared_ptr< batched_io::rotating_db_io > _io_backend );
     void rotate();
     size_t piecesCount() const { return io_backend->pieces_count(); }
 

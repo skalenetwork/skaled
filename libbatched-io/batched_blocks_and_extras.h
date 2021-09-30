@@ -9,7 +9,7 @@
 
 namespace batched_io {
 
-class batched_db_face : public batched_face {
+class db_operations_face {
 public:
     virtual void insert( dev::db::Slice _key, dev::db::Slice _value ) = 0;
     virtual void kill( dev::db::Slice _key ) = 0;
@@ -18,10 +18,13 @@ public:
     virtual std::string lookup( dev::db::Slice _key ) const = 0;
     virtual bool exists( dev::db::Slice _key ) const = 0;
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const = 0;
-    ;
+
+    virtual ~db_operations_face() = default;
 };
 
-class batched_db : public batched_db_face {
+class db_face : public db_operations_face, public batched_face {};
+
+class batched_db : public db_face {
 private:
     std::shared_ptr< dev::db::DatabaseFace > m_db;
     std::unique_ptr< dev::db::WriteBatchFace > m_batch;
@@ -72,24 +75,24 @@ protected:
     }
 };
 
-class batched_db_splitter {
+class db_splitter {
 private:
-    std::shared_ptr< batched_db_face > m_backend;
-    std::vector< std::shared_ptr< batched_db_face > > m_interfaces;
+    std::shared_ptr< db_face > m_backend;
+    std::vector< std::shared_ptr< db_face > > m_interfaces;
 
 public:
-    batched_db_splitter( std::shared_ptr< batched_db_face > _backend ) : m_backend( _backend ) {}
-    batched_db_face* new_interface();
-    batched_db_face* backend() const { return m_backend.get(); }
+    db_splitter( std::shared_ptr< db_face > _backend ) : m_backend( _backend ) {}
+    db_operations_face* new_interface();
+    db_face* backend() const { return m_backend.get(); }
 
 private:
-    class prefixed_batched_db : public batched_db_face {
+    class prefixed_db : public db_face {
     private:
         char prefix;
-        std::shared_ptr< batched_db_face > backend;
+        std::shared_ptr< db_face > backend;
 
     public:
-        prefixed_batched_db( char _prefix, std::shared_ptr< batched_db_face > _backend );
+        prefixed_db( char _prefix, std::shared_ptr< db_face > _backend );
         virtual void insert( dev::db::Slice _key, dev::db::Slice _value );
         virtual void kill( dev::db::Slice _key );
         virtual void revert() { backend->revert(); }
