@@ -577,7 +577,8 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                             subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
                                             "/TX <<< " ) +
                                subscriptionData.m_pPeer->desc() + cc::ws_tx( " <<< " ) +
-                               cc::j( strNotification ) );
+                               subscriptionData.m_pPeer->implPreformatTrafficJsonMessage(
+                                   strNotification, false ) );
                 skutils::dispatch::async( subscriptionData.m_pPeer->m_strPeerQueueID,
                     [subscriptionData, strNotification, idSubscription, this]() -> void {
                         bool bMessageSentOK = false;
@@ -925,7 +926,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/RX >>> " ) +
-                           pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
+                           pThis->desc() + cc::ws_rx( " >>> " ) +
+                           pThis->implPreformatTrafficJsonMessage( joRequest, true ) );
             std::string strResponse;
             bool bPassed = false;
             try {
@@ -1005,7 +1007,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+                           pThis->desc() + cc::ws_tx( " <<< " ) +
+                           pThis->implPreformatTrafficJsonMessage( strResponse, false ) );
             if ( isBatch ) {
                 nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
@@ -1288,7 +1291,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                         pThis->getRelay().nfoGetSchemeUC() +
                                                         "/TX <<< " ) )
                                                 << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                                       cc::j( strNotification ) );
+                                                       pThis->implPreformatTrafficJsonMessage(
+                                                           strNotification, false ) );
                                         // skutils::dispatch::async( pThis->m_strPeerQueueID,
                                         // [pThis, strNotification]() -> void {
                                         bool bMessageSentOK = false;
@@ -1415,7 +1419,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                     clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                               pThis->desc() + cc::ws_tx( " <<< " ) +
+                               pThis->implPreformatTrafficJsonMessage( strNotification, false ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
                 // void {
                 bool bMessageSentOK = false;
@@ -1540,7 +1545,8 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                     clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                               pThis->desc() + cc::ws_tx( " <<< " ) +
+                               pThis->implPreformatTrafficJsonMessage( strNotification, false ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
                 // void {
                 bool bMessageSentOK = false;
@@ -1805,6 +1811,29 @@ void SkaleWsPeer::eth_unsubscribe(
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
 }
 
+std::string SkaleWsPeer::implPreformatTrafficJsonMessage(
+    const std::string& strJSON, bool isRequest ) const {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJSON );
+        return implPreformatTrafficJsonMessage( jo, isRequest );
+    } catch ( ... ) {
+    }
+    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
+           cc::warn( strJSON );
+}
+
+std::string SkaleWsPeer::implPreformatTrafficJsonMessage(
+    const nlohmann::json& jo, bool isRequest ) const {
+    const SkaleServerOverride* pSO = pso();
+    if ( pSO )
+        return pSO->implPreformatTrafficJsonMessage( jo, isRequest );
+    nlohmann::json jo2 = jo;
+    SkaleServerOverride::stat_transformJsonForLogOutput( jo2, isRequest,
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs,
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams );
+    return cc::j( jo2 );
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2009,23 +2038,9 @@ SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ip
       ca_path_( ca_path ? ca_path : "" ),
       threads_( threads ),
       threads_limit_( threads_limit ) {
-    //    skutils::http_pg::pg_on_request_handler_t fnHandler = [=]( const nlohmann::json& joIn,
-    //    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort )
-    //    -> nlohmann::json {
-    //        SkaleServerOverride* pSO = pso();
-    //        if ( pSO->isShutdownMode() )
-    //            throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-    //        nlohmann::json joOut =
-    //            pSO->implHandleHttpRequest( joIn, std::string( m_bHelperIsSSL ? "HTTPS" : "HTTP"
-    //            ),
-    //                serverIndex(), strOrigin, ipVer_, nPort_, esm_ );
-    //        return joOut;
-    //    };
     skutils::http_pg::pg_accumulate_entry pge = {ipVer_, strBindAddr_, nPort_,
         m_bHelperIsSSL ? cert_path_.c_str() : "", m_bHelperIsSSL ? private_key_path_.c_str() : "",
         m_bHelperIsSSL ? ca_path_.c_str() : ""};
-    //    hProxygenServer_ = skutils::http_pg::pg_start( fnHandler, pge, threads_, threads_limit_ );
-
     skutils::http_pg::pg_accumulate_add( pge );
 }
 
@@ -2034,15 +2049,10 @@ SkaleRelayProxygenHTTP::~SkaleRelayProxygenHTTP() {
 }
 
 bool SkaleRelayProxygenHTTP::is_running() const {
-    //    if ( !hProxygenServer_ )
-    //        return false;
     return true;
 }
 
-void SkaleRelayProxygenHTTP::stop() {
-    //    skutils::http_pg::pg_stop( hProxygenServer_ );
-    //    hProxygenServer_ = nullptr;
-}
+void SkaleRelayProxygenHTTP::stop() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2097,7 +2107,6 @@ SkaleServerOverride::SkaleServerOverride(
             ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
     }  // block
 }
-
 
 SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
@@ -2340,10 +2349,11 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
-nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json& joIn,
-    const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer, int nPort,
-    e_server_mode_t esm ) {
-    nlohmann::json joOut;
+skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
+    const nlohmann::json& joIn, const std::string& strProtocol, int nServerIndex,
+    std::string strOrigin, int ipVer, int nPort, e_server_mode_t esm ) {
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
     std::string strMethod;
     nlohmann::json jarrRequest, joID = "-1";
     bool isBatch = false;
@@ -2438,7 +2448,8 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
         SkaleServerConnectionsTrackHelper sscth( *this );
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
             logTraceServerTraffic( true, methodTraceVerbosity( strMethod ), ipVer,
-                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(), cc::j( strBody ) );
+                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(),
+                implPreformatTrafficJsonMessage( strBody, true ) );
         std::string strResponse;
         bool bPassed = false;
         try {
@@ -2463,8 +2474,9 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             if ( handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
                 stats::register_stats_answer( strProtocol.c_str(), "POST", buffer.size() );
                 rttElement->stop();
-                joOut = nlohmann::json::parse( buffer );
-                return joOut;
+                rslt.isBinary_ = true;
+                rslt.vecBytes_ = buffer;
+                return rslt;
             }
             if ( !handleHttpSpecificRequest( strOrigin, esm, strBody, strResponse ) ) {
                 handler->HandleRequest( strBody.c_str(), strResponse );
@@ -2475,8 +2487,10 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             stats::register_stats_answer( ( "RPC/" + strProtocol ).c_str(), joRequest, joResponse );
             stats::register_stats_answer( "RPC", joRequest, joResponse );
             //
-            if ( !isBatch )
-                joOut = nlohmann::json::parse( strResponse );
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = nlohmann::json::parse( strResponse );
+            }
             a.set_json_out( joResponse );
             bPassed = true;
         } catch ( const std::exception& ex ) {
@@ -2493,8 +2507,10 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
                 stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
                 stats::register_stats_exception( "RPC", strMethod.c_str() );
             }
-            if ( !isBatch )
-                joOut = joErrorResponce;
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
             a.set_json_err( joErrorResponce );
         } catch ( ... ) {
             rttElement->setError();
@@ -2511,18 +2527,22 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
                 stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
                 stats::register_stats_exception( "RPC", strMethod.c_str() );
             }
-            if ( !isBatch )
-                joOut = joErrorResponce;
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
             a.set_json_err( joErrorResponce );
         }
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
             logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
-                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(), cc::j( strResponse ) );
+                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(),
+                implPreformatTrafficJsonMessage( strResponse, false ) );
         if ( isBatch ) {
             nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
             jarrBatchAnswer.push_back( joAnswerPart );
         } else {
-            joOut = nlohmann::json::parse( strResponse );
+            rslt.isBinary_ = false;
+            rslt.joOut_ = nlohmann::json::parse( strResponse );
         }
         if ( !bPassed )
             stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
@@ -2532,9 +2552,11 @@ nlohmann::json SkaleServerOverride::implHandleHttpRequest( const nlohmann::json&
             logPerformanceWarning( lfExecutionDuration, ipVer, strProtocol.c_str(), nServerIndex,
                 esm, strOrigin.c_str(), strMethod.c_str(), joID );
     }  // for( const nlohmann::json & joRequest : jarrRequest )
-    if ( isBatch )
-        joOut = jarrBatchAnswer;
-    return joOut;
+    if ( isBatch ) {
+        rslt.isBinary_ = false;  // batch request can be only text/JSON
+        rslt.joOut_ = jarrBatchAnswer;
+    }
+    return rslt;
 }
 
 bool SkaleServerOverride::implStartListening(  // mini HTTP
@@ -2590,13 +2612,18 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
                 nlohmann::json joIn = nlohmann::json::parse( req.body_ );
                 if ( joIn.count( "id" ) > 0 )
                     joID = joIn["id"];
-                nlohmann::json joOut = implHandleHttpRequest(
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, req.origin_, ipVer, nPort, esm );
-                std::string strOut = joOut.dump();
                 res.set_header( "access-control-allow-origin", "*" );
                 res.set_header( "vary", "Origin" );
-                res.set_content(
-                    ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
+                if ( rslt.isBinary_ ) {
+                    res.set_content( ( char* ) rslt.vecBytes_.data(), rslt.vecBytes_.size(),
+                        "application/octet-stream" );
+                } else {
+                    std::string strOut = rslt.joOut_.dump();
+                    res.set_content(
+                        ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
+                }
                 return true;
             } catch ( const std::exception& ex ) {
                 logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
@@ -3130,7 +3157,8 @@ bool SkaleServerOverride::StartListening() {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
                 [=]( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
-                    const std::string& strDstAddress, int nDstPort ) -> nlohmann::json {
+                    const std::string& strDstAddress,
+                    int nDstPort ) -> skutils::result_of_http_request {
                 if ( isShutdownMode() )
                     throw std::runtime_error( "query was cancelled due to server shutdown mode" );
                 skutils::url u( strOrigin );
@@ -3150,9 +3178,9 @@ bool SkaleServerOverride::StartListening() {
                     nPort = atoi( u.port().c_str() );
                 int nServerIndex = 0;  // TO-FIX: detect server index here
                 e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
-                nlohmann::json joOut = implHandleHttpRequest(
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
-                return joOut;
+                return rslt;
             };
             hProxygenServer_ =
                 skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
@@ -3837,6 +3865,89 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
 
 const SkaleServerOverride::http_rpc_map_t SkaleServerOverride::g_http_rpc_map = {};
 
+std::string SkaleServerOverride::implPreformatTrafficJsonMessage(
+    const std::string& strJSON, bool isRequest ) const {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJSON );
+        return implPreformatTrafficJsonMessage( jo, isRequest );
+    } catch ( ... ) {
+    }
+    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
+           cc::warn( strJSON );
+}
+
+std::string SkaleServerOverride::implPreformatTrafficJsonMessage(
+    const nlohmann::json& jo, bool isRequest ) const {
+    nlohmann::json jo2 = jo;
+    SkaleServerOverride::stat_transformJsonForLogOutput( jo2, isRequest,
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs,
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams );
+    return cc::j( jo2 );
+}
+
+size_t SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = 1024 * 32;
+size_t SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = 64;
+
+void SkaleServerOverride::stat_transformJsonForLogOutput( nlohmann::json& jo, bool isRequest,
+    size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
+    size_t nCallIndent ) {
+    if ( ( nMaxStringValueLengthForJsonLogs == 0 ||
+             nMaxStringValueLengthForJsonLogs == std::string::npos ) &&
+         ( nMaxStringValueLengthForTransactionParams == 0 ||
+             nMaxStringValueLengthForTransactionParams == std::string::npos ) )
+        return;
+    if ( jo.is_string() ) {
+        std::string strValue = jo.get< std::string >();
+        if ( strValue.size() > nMaxStringValueLengthForJsonLogs )
+            jo = strValue.substr( 0, nMaxStringValueLengthForJsonLogs ) + "...";
+        return;
+    }
+    if ( jo.is_array() ) {
+        if ( nMaxStringValueLengthForJsonLogs == 0 ||
+             nMaxStringValueLengthForJsonLogs == std::string::npos ) {
+            ++nCallIndent;
+            size_t cnt = jo.size();
+            for ( size_t i = 0; i < cnt; ++i )
+                stat_transformJsonForLogOutput( jo.at( i ), isRequest,
+                    nMaxStringValueLengthForJsonLogs, nMaxStringValueLengthForTransactionParams,
+                    nCallIndent );
+        }
+        return;
+    }
+    if ( !jo.is_object() )
+        return;
+    ++nCallIndent;
+    bool bSkipParams = false;
+    if ( ( !( nMaxStringValueLengthForTransactionParams == 0 ||
+              nMaxStringValueLengthForTransactionParams == std::string::npos ) ) &&
+         nCallIndent == 1 && isRequest && jo.count( "method" ) > 0 && jo["method"].is_string() &&
+         jo["method"].get< std::string >() == "eth_sendRawTransaction" &&
+         jo.count( "params" ) > 0 && jo["params"].is_array() ) {
+        bSkipParams = true;
+        nlohmann::json jarrNewParams = nlohmann::json::array();
+        for ( auto it : jo["params"].items() ) {
+            if ( it.value().is_string() ) {
+                std::string strValue = it.value().get< std::string >();
+                if ( strValue.size() > nMaxStringValueLengthForTransactionParams )
+                    jarrNewParams.push_back(
+                        strValue.substr( 0, nMaxStringValueLengthForTransactionParams ) + "..." );
+                else
+                    jarrNewParams.push_back( strValue );
+            } else
+                jarrNewParams.push_back( it.value() );
+        }
+        jo["params"] = jarrNewParams;
+    }
+    if ( nMaxStringValueLengthForJsonLogs == 0 ||
+         nMaxStringValueLengthForJsonLogs == std::string::npos ) {
+        for ( auto it : jo.items() ) {
+            if ( bSkipParams && it.key() == "params" )
+                continue;
+            stat_transformJsonForLogOutput( it.value(), isRequest, nMaxStringValueLengthForJsonLogs,
+                nMaxStringValueLengthForTransactionParams, nCallIndent );
+        }
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -104,7 +104,10 @@ static std::string const c_genesisInfoSkale = std::string() +
       "web3-trace": true,
       "pg-trace": false,
       "enable-debug-behavior-apis": false,
-	  "unsafe-transactions": false
+      "unsafe-transactions": false,
+      "log-value-size-limit": 0,
+      "log-json-string-limit": 0,
+      "log-tx-params-limit": 0
     },
     "sChain": {
         "schainName": "TestChain",

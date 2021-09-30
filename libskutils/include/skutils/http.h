@@ -727,10 +727,15 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 
 };  // namespace http
 
-namespace http_pg {
+struct result_of_http_request {
+    bool isBinary_ = false;
+    nlohmann::json joOut_;
+    std::vector< uint8_t > vecBytes_;
+};  /// struct result_of_http_request
 
-typedef std::function< nlohmann::json( const nlohmann::json&, const std::string& strOrigin,
-    int ipVer, const std::string& strDstAddress, int nDstPort ) >
+namespace http_pg {
+typedef std::function< skutils::result_of_http_request( const nlohmann::json&,
+    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort ) >
     pg_on_request_handler_t;
 
 typedef void* wrapped_proxygen_server_handle;
