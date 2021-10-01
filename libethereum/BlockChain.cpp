@@ -561,21 +561,28 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 }
 
 bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
-    if ( m_params.sChain.dbStorageLimit == 0 ) {
-        return false;
+    bool isRotate = false;
+    if ( m_params.sChain.dbStorageLimit > 0 ) {
+        // account for size of 1 piece
+        isRotate =
+            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ?
+                true :
+                false;
+        if ( isRotate ) {
+            clog( VerbosityTrace, "BlockChain" )
+                << ( cc::debug( "Will perform " ) + cc::notice( "storage-based block rotation" ) );
+        }
     }
-
-    // account for size of 1 piece
-    bool isRotate =
-        ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ? true :
-                                                                                              false;
     if ( clockLastDbRotation_ == 0 )
         clockLastDbRotation_ = clock();
     if ( ( !isRotate ) && clockDbRotationPeriod_ > 0 ) {
         // if time period based DB rotation is enabled
         clock_t clockNow = clock();
-        if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ )
+        if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ ) {
             isRotate = true;
+            clog( VerbosityTrace, "BlockChain" )
+                << ( cc::debug( "Will perform " ) + cc::notice( "timer-based block rotation" ) );
+        }
     }
     if ( !isRotate )
         return false;
