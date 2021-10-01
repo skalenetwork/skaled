@@ -197,6 +197,7 @@ BlockHeader const& BlockChain::genesis() const {
 }
 
 void BlockChain::init( ChainParams const& _p ) {
+    clockLastDbRotation_ = clock();
     // initialise deathrow.
     m_cacheUsage.resize( c_collectionQueueSize );
     m_lastCollection = chrono::system_clock::now();
@@ -565,22 +566,33 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     }
 
     // account for size of 1 piece
-    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) {
-        // remember genesis
-        BlockDetails details = this->details( m_genesisHash );
-
-        clearCaches();
-        this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
-        this->m_rotating_db->rotate();
-
-        // re-insert genesis
-        auto r = details.rlp();
-        m_details[m_genesisHash] = details;
-        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
-
-        return true;
-    } else
+    bool isRotate =
+        ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ? true :
+                                                                                              false;
+    if ( clockLastDbRotation_ == 0 )
+        clockLastDbRotation_ = clock();
+    if ( ( !isRotate ) && clockDbRotationPeriod_ > 0 ) {
+        // if time period based DB rotation is enabled
+        clock_t clockNow = clock();
+        if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ )
+            isRotate = true;
+    }
+    if ( !isRotate )
         return false;
+
+    clockLastDbRotation_ = clock();
+    // remember genesis
+    BlockDetails details = this->details( m_genesisHash );
+
+    clearCaches();
+    this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
+    this->m_rotating_db->rotate();
+
+    // re-insert genesis
+    auto r = details.rlp();
+    m_details[m_genesisHash] = details;
+    m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+    return true;
 }
 
 struct SizeCountingWriteBatch {

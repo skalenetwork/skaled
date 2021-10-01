@@ -36,6 +36,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <time.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -699,6 +701,8 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    addGeneralOption( "block-rotation-period", po::value< size_t >()->value_name( "<seconds>" ),
+        "Block rotation period in seconds, zero to disable timer based block rotation." );
     addGeneralOption( "shared-space-path", po::value< string >()->value_name( "<path>" ),
         ( "Use shared space folder for temporary files (default: " + getDataDir().string() +
             "/diffs)" )
@@ -1210,6 +1214,26 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
+
+    size_t clockDbRotationPeriodInSeconds = 0;
+    if ( chainConfigParsed ) {
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "block-rotation-period" ) )
+                clockDbRotationPeriodInSeconds =
+                    joConfig["skaleConfig"]["nodeInfo"]["block-rotation-period"].get< size_t >();
+        } catch ( ... ) {
+            clockDbRotationPeriodInSeconds = 0;
+        }
+    }
+    if ( vm.count( "block-rotation-period" ) )
+        clockDbRotationPeriodInSeconds = vm["block-rotation-period"].as< size_t >();
+    if ( clockDbRotationPeriodInSeconds > 0 )
+        clog( VerbosityInfo, "main" )
+            << cc::debug( "Timer-based " ) + cc::notice( "Block Rotation" ) +
+                   cc::debug( " period is: " )
+            << cc::size10( clockDbRotationPeriodInSeconds );
+
+
     ///////////////// CACHE PARAMS ///////////////
     extern chrono::system_clock::duration c_collectionDuration;
     extern unsigned c_collectionQueueSize;
@@ -1597,6 +1621,9 @@ int main( int argc, char** argv ) try {
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
+
+        g_client->dbRotationPeriod(
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();

@@ -182,6 +182,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"info-acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
             {"adminOrigins", {{js::array_type}, JsonFieldPresence::Optional}},
             {"db-path", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"block-rotation-period", {{js::int_type}, JsonFieldPresence::Optional}},
             {"ipcpath", {{js::str_type}, JsonFieldPresence::Optional}},
             {"enable-debug-behavior-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
