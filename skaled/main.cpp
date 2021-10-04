@@ -262,7 +262,6 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
         std::cout << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
-        exit( 0 );
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
@@ -703,6 +702,8 @@ int main( int argc, char** argv ) try {
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
         ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    addGeneralOption( "block-rotation-period", po::value< size_t >()->value_name( "<seconds>" ),
+        "Block rotation period in seconds, zero to disable timer based block rotation." );
     addGeneralOption( "shared-space-path", po::value< string >()->value_name( "<path>" ),
         ( "Use shared space folder for temporary files (default: " + getDataDir().string() +
             "/diffs)" )
@@ -722,6 +723,13 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "log-value-size-limit",
         po::value< size_t >()->value_name( "<size in bytes>" ),
         "Log value size limit(zero means unlimited)" );
+    addGeneralOption( "log-json-string-limit",
+        po::value< size_t >()->value_name( "<number of chars>" ),
+        "JSON string value length limit for logging, specify 0 for unlimited" );
+    addGeneralOption( "log-tx-params-limit",
+        po::value< size_t >()->value_name( "<number of chars>" ),
+        "Transaction params length limit in eth_sendRawTransaction calls for logging, specify 0 "
+        "for unlimited" );
     addGeneralOption( "dispatch-threads", po::value< size_t >()->value_name( "<count>" ),
         "Number of threads to run task dispatcher, default is CPU count * 2" );
     addGeneralOption( "version,V", "Show the version and exit" );
@@ -785,6 +793,14 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+    }
+    if ( vm.count( "log-json-string-limit" ) ) {
+        int n = vm["log-json-string-limit"].as< size_t >();
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+    }
+    if ( vm.count( "log-tx-params-limit" ) ) {
+        int n = vm["log-tx-params-limit"].as< size_t >();
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
     }
 
     if ( vm.count( "test-url" ) ) {
@@ -972,6 +988,24 @@ int main( int argc, char** argv ) try {
     if ( !chainConfigIsSet )
         // default to skale if not already set with `--config`
         chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+
+    if ( chainConfigParsed ) {
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-value-size-limit"].get< size_t >();
+            cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+        } catch ( ... ) {
+        }
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-json-string-limit"].get< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+        } catch ( ... ) {
+        }
+        try {
+            size_t n = joConfig["skaleConfig"]["nodeInfo"]["log-tx-params-limit"].get< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
+        } catch ( ... ) {
+        }
+    }
 
     // First, get "ipc" true/false from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1193,6 +1227,25 @@ int main( int argc, char** argv ) try {
         return int( ExitHandler::ec_state_root_mismatch );
     }  // if bad exit
 
+    size_t clockDbRotationPeriodInSeconds = 0;
+    if ( chainConfigParsed ) {
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "block-rotation-period" ) )
+                clockDbRotationPeriodInSeconds =
+                    joConfig["skaleConfig"]["nodeInfo"]["block-rotation-period"].get< size_t >();
+        } catch ( ... ) {
+            clockDbRotationPeriodInSeconds = 0;
+        }
+    }
+    if ( vm.count( "block-rotation-period" ) )
+        clockDbRotationPeriodInSeconds = vm["block-rotation-period"].as< size_t >();
+    if ( clockDbRotationPeriodInSeconds > 0 )
+        clog( VerbosityInfo, "main" )
+            << cc::debug( "Timer-based " ) + cc::notice( "Block Rotation" ) +
+                   cc::debug( " period is: " )
+            << cc::size10( clockDbRotationPeriodInSeconds );
+
+
     ///////////////// CACHE PARAMS ///////////////
     extern chrono::system_clock::duration c_collectionDuration;
     extern unsigned c_collectionQueueSize;
@@ -1242,6 +1295,19 @@ int main( int argc, char** argv ) try {
                 dev::db::c_maxOpenLeveldbFiles =
                     joConfig["skaleConfig"]["nodeInfo"]["maxOpenLeveldbFiles"].get< unsigned >();
         } catch ( ... ) {
+        }
+
+        if ( vm.count( "log-value-size-limit" ) ) {
+            int n = vm["log-value-size-limit"].as< size_t >();
+            cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
+        }
+        if ( vm.count( "log-json-string-limit" ) ) {
+            int n = vm["log-json-string-limit"].as< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = n;
+        }
+        if ( vm.count( "log-tx-params-limit" ) ) {
+            int n = vm["log-tx-params-limit"].as< size_t >();
+            SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = n;
         }
     }
     ////////////// END CACHE PARAMS ////////////
@@ -1567,6 +1633,9 @@ int main( int argc, char** argv ) try {
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
+
+        g_client->dbRotationPeriod(
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();

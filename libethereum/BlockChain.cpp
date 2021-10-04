@@ -197,6 +197,7 @@ BlockHeader const& BlockChain::genesis() const {
 }
 
 void BlockChain::init( ChainParams const& _p ) {
+    clockLastDbRotation_ = clock();
     // initialise deathrow.
     m_cacheUsage.resize( c_collectionQueueSize );
     m_lastCollection = chrono::system_clock::now();
@@ -565,28 +566,46 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 }
 
 bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
-    if ( m_params.sChain.dbStorageLimit == 0 ) {
-        return false;
+    bool isRotate = false;
+    if ( m_params.sChain.dbStorageLimit > 0 ) {
+        // account for size of 1 piece
+        isRotate =
+            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ?
+                true :
+                false;
+        if ( isRotate ) {
+            clog( VerbosityTrace, "BlockChain" )
+                << ( cc::debug( "Will perform " ) + cc::notice( "storage-based block rotation" ) );
+        }
     }
-
-    // account for size of 1 piece
-    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) {
-        // remember genesis
-        BlockDetails details = this->details( m_genesisHash );
-
-        clearCaches();
-        m_db->revert();  // cancel pending changes
-        m_rotator->rotate();
-
-        // re-insert genesis
-        auto r = details.rlp();
-        m_details[m_genesisHash] = details;
-        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
-        m_db->commit( "genesis_after_rotate" );
-
-        return true;
-    } else
+    if ( clockLastDbRotation_ == 0 )
+        clockLastDbRotation_ = clock();
+    if ( ( !isRotate ) && clockDbRotationPeriod_ > 0 ) {
+        // if time period based DB rotation is enabled
+        clock_t clockNow = clock();
+        if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ ) {
+            isRotate = true;
+            clog( VerbosityTrace, "BlockChain" )
+                << ( cc::debug( "Will perform " ) + cc::notice( "timer-based block rotation" ) );
+        }
+    }
+    if ( !isRotate )
         return false;
+
+    clockLastDbRotation_ = clock();
+    // remember genesis
+    BlockDetails details = this->details( m_genesisHash );
+
+    clearCaches();
+    m_db->revert();  // cancel pending changes
+    m_rotator->rotate();
+
+    // re-insert genesis
+    auto r = details.rlp();
+    m_details[m_genesisHash] = details;
+    m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+    m_db->commit( "genesis_after_rotate" );
+    return true;
 }
 
 struct DbWriteProxy {
@@ -1045,7 +1064,6 @@ void BlockChain::rewind( unsigned _newHead ) {
         try {
             m_extrasDB->insert(
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-            m_db->commit( "rewind" );
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"

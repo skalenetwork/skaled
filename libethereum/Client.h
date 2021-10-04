@@ -34,6 +34,8 @@
 #include <string>
 #include <thread>
 
+#include <time.h>
+
 #include <boost/filesystem/path.hpp>
 
 #include <libdevcore/Common.h>
@@ -94,6 +96,9 @@ public:
 
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
+
+    clock_t dbRotationPeriod() const { return bc().clockDbRotationPeriod_; }
+    void dbRotationPeriod( clock_t clockPeriod ) { bc().clockDbRotationPeriod_ = clockPeriod; }
 
     /// Resets the gas pricer to some other object.
     void setGasPricer( std::shared_ptr< GasPricer > _gp ) { m_gp = _gp; }

@@ -30,9 +30,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
       - name: Submodule update
-        run: rm -f /home/vagrant/actions-runner1/_work/skaled/skaled/.git/modules/libconsensus/index.lock && git submodule update --init --recursive 
-      - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
+        run: rm -f /home/vagrant/actions-runner*/_work/skaled/skaled/.git/modules/libconsensus/index.lock && git submodule update --init --recursive 
 
       - name: Cleanup containers
         run: docker system prune -a -f

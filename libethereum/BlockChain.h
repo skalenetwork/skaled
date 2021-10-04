@@ -28,6 +28,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <time.h>
+
 #include <boost/filesystem/path.hpp>
 
 #include <libbatched-io/batched_blocks_and_extras.h>
@@ -111,9 +113,11 @@ public:
  * @threadsafe
  */
 class BlockChain {
+    clock_t clockLastDbRotation_ = 0;  // 0 means never was initialized, DB was not open yet
 public:
-    uint64_t getTotalCacheMemory();
+    clock_t clockDbRotationPeriod_ = 0;  // 0 means disabled
 
+    uint64_t getTotalCacheMemory();
 
     class CreationException : public std::exception {
         virtual const char* what() const noexcept { return "Error creating blockchain"; }
