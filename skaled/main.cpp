@@ -492,6 +492,8 @@ int main( int argc, char** argv ) try {
     auto addClientOption = clientDefaultMode.add_options();
     addClientOption( "web3-shutdown",
         "Enable programmatic shutdown via \"skale_shutdownInstance\" web3 methd call" );
+    addClientOption( "test-enable-crash-at", po::value< std::string >()->value_name( "<id>" ),
+        "For testing purpuses, deliberately crash on specified named point" );
     addClientOption( "ssl-key", po::value< std::string >()->value_name( "<path>" ),
         "Specifies path to SSL key file" );
     addClientOption( "ssl-cert", po::value< std::string >()->value_name( "<path>" ),
@@ -774,6 +776,12 @@ int main( int argc, char** argv ) try {
         cout << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
+
+    if ( vm.count( "test-enable-crash-at" ) ) {
+        std::string crash_at = vm["test-enable-crash-at"].as< string >();
+        batched_io::test_enable_crash_at( crash_at );
+    }
+
     if ( vm.count( "log-value-size-limit" ) ) {
         int n = vm["log-value-size-limit"].as< size_t >();
         cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
