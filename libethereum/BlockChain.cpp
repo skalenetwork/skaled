@@ -570,7 +570,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     if ( m_params.sChain.dbStorageLimit > 0 ) {
         // account for size of 1 piece
         isRotate =
-            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ?
+            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) ?
                 true :
                 false;
         if ( isRotate ) {
