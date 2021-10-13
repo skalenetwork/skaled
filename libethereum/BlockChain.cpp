@@ -278,6 +278,11 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     if ( !this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
         recomputeExistingOccupiedSpaceForBlockRotation();
+
+    if ( this->number() == 0 ) {
+        m_rotating_db->insert(
+            std::string( "haveFixedWrongParentDetailsAfterRotation_SKALE-4651" ), std::string() );
+    }  // if
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -617,8 +622,8 @@ struct SizeCountingWriteBatch {
 void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
     u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     db::WriteBatchFace& _originalBlocksWriteBatch, db::WriteBatchFace& _originalExtrasWriteBatch,
-    size_t& _blocksBatchSize, size_t& _extrasBatchSize,
-    ImportPerformanceLogger& _performanceLogger ) {
+    size_t& _blocksBatchSize, size_t& _extrasBatchSize, ImportPerformanceLogger& _performanceLogger,
+    bool _HACK_calledAfterRotation ) {
     SizeCountingWriteBatch blocksWriteBatch( _originalBlocksWriteBatch );
     SizeCountingWriteBatch extrasWriteBatch( _originalExtrasWriteBatch );
 
@@ -633,8 +638,14 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
         // safe in practice since the caches don't get flushed nearly often enough to be done
         // here.
         details( _block.info.parentHash() );
-
         DEV_WRITE_GUARDED( x_details ) {
+            // HACK erase parent if we had old DB format!
+            if ( _HACK_calledAfterRotation &&
+                 !m_rotating_db->exists(
+                     std::string( "haveFixedWrongParentDetailsAfterRotation_SKALE-4651" ) ) ) {
+                m_details.erase( _block.info.parentHash() );
+            }
+
             m_details[_block.info.parentHash()].children.clear();
             m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
             extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
@@ -878,10 +889,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_loggerDetail ) << "Rotated out some blocks";
+        LOG( m_logger ) << "Rotated out some blocks";
         prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
             *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
-            _performanceLogger );
+            _performanceLogger, true );
         pieceUsageBytes = blocksWriteSize + extrasWriteSize;
         LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
