@@ -16,13 +16,13 @@ Using SKALE is easy! Don't worry about https://github.com/skalenetwork/SGXWallet
 
 You use your SKALE Chain as you work with Ethereum. SKALE Chain owners have a set of 16 available endpoints to receive Web3 transactions and data. Plug an endpoint into your Web3 client or Truffle config, and you are using SKALE.
 
-To work with other blockchains like Ethereum Testnets or Mainnet, you can use xref:ima::overview.adoc[a bridge called Interchain Messaging Agent (IMA)]. IMA allows the transfer of ETH, ERC20, ERC721, and other arbitrary messages between Ethereum and your SKALE Chain.
+To work with other blockchains like Ethereum Testnets or Mainnet, you can use xref:ima::index.adoc[a bridge called Interchain Messaging Agent (IMA)]. IMA allows the transfer of ETH, ERC20, ERC721, ERC1155, and other arbitrary messages between Ethereum and your SKALE Chain.
 
 == How to stake/create a SKALE Chain
 
 To stake a SKALE Chain, you stake SKALE tokens (SKL) into the Network over a length of time. Every month, a portion of your stake is distributed to the entire Network in return for receiving security and scalable resources powering your SKALE Chain. At the end of your stake, anyone can stake additional SKL tokens to extend the SKALE Chain's life .
 
-Creating a SKALE Chain requires SKL tokens and some ETH to fund the necessary transactions on Ethereum to create the SKALE Chain. When you create a SKALE Chain, you will fund some ETH to a special wallet. This wallet is used to reimburse transactions conducted by validator-nodes that form your SKALE Chain. Just as anyone can stake additional SKL to extend the SKALE Chain life, anyone with the wallet address can replenish ETH to fund additional SKALE Chain-related transactions. xref:validators::self-recharging-wallets.adoc[More on these transactions and special wallets here.]
+Creating a SKALE Chain requires SKL tokens and some ETH to fund the necessary transactions on Ethereum to create the SKALE Chain. When you create a SKALE Chain, you will fund some ETH to a special wallet. This wallet is used to reimburse transactions conducted by validator-nodes that form your SKALE Chain. Just as anyone can stake additional SKL to extend the SKALE Chain life, anyone with the wallet address can replenish ETH to fund additional SKALE Chain-related transactions. xref:validator-cli::self-recharging-wallets.adoc[More on these transactions and special wallets here.]
 
 == SKALE Chain Features
 
