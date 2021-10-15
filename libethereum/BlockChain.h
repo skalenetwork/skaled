@@ -464,7 +464,7 @@ private:
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         db::WriteBatchFace& _blocksWriteBatch, db::WriteBatchFace& _extrasWriteBatch,
         size_t& _blocksBatchSize, size_t& _extrasBatchSize,
-        ImportPerformanceLogger& _performanceLogger, bool _HACK_calledAfterRotation = false );
+        ImportPerformanceLogger& _performanceLogger );
 
     // auxiliary method for recomputing blocks inserted earlier
     void recomputeExistingOccupiedSpaceForBlockRotation();
