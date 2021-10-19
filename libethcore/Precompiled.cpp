@@ -988,6 +988,26 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
     return {false, response};  // 1st false - means bad error occur
 }
 
+ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
+    try {
+        dev::u256 uValue = 0;
+        bytes response = toBigEndian( uValue );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+                LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
+    } catch ( ... ) {
+                LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getBlockRandom()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
 // ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
 //    try {
 //        auto rawValue = _in.cropped( 0, 32 ).toBytes();
