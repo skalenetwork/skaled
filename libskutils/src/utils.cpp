@@ -1,3 +1,8 @@
+#include <libethereum/SkaleHost.h>
+
+#include <skutils/console_colors.h>
+#include <skutils/utils.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -5,8 +10,6 @@
 #include <inttypes.h>
 #include <memory.h>
 #include <signal.h>
-#include <skutils/console_colors.h>
-#include <skutils/utils.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

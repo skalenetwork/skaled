@@ -27,7 +27,8 @@
 #include <json.hpp>
 
 #include <skutils/url.h>
-#include <libethereum/SkaleHost.h>
+
+class SkaleHost;
 
 namespace skutils {
 
