@@ -192,7 +192,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts, OverlayDB::g_fn_pre_commit_empty );
+    commit( State::CommitBehaviour::KeepEmptyAccounts );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -328,7 +328,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t fn_pre_commit ) {
+void State::commit( CommitBehaviour _commitBehaviour ) {
     if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -373,7 +373,7 @@ void State::commit( CommitBehaviour _commitBehaviour, OverlayDB::fn_pre_commit_t
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit( fn_pre_commit );
+        m_db_ptr->commit();
         ++*m_storedVersion;
         m_currentVersion = *m_storedVersion;
     }

@@ -69,14 +69,7 @@ public:
     void addReceiptToPartials( const dev::eth::TransactionReceipt& );
     void clearPartialTransactionReceipts();
 
-    typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
-        std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
-        fn_pre_commit_t;
-
-    static const fn_pre_commit_t g_fn_pre_commit_empty;
-
     void commit();
-    void commit( fn_pre_commit_t fn_pre_commit );
     void rollback();
     void clearDB();
     bool connected() const;

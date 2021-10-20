@@ -143,9 +143,6 @@ void OverlayDB::clearPartialTransactionReceipts() {
 }
 
 void OverlayDB::commit() {
-    commit( g_fn_pre_commit_empty );
-}
-void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
     if ( m_db ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
             auto writeBatch = m_db->createWriteBatch();
@@ -195,8 +192,6 @@ void OverlayDB::commit( OverlayDB::fn_pre_commit_t fn_pre_commit ) {
             }
             bool bIsPreCommitCallbackPassed = false;
             try {
-                if ( fn_pre_commit )
-                    fn_pre_commit( m_db, writeBatch );
                 bIsPreCommitCallbackPassed = true;
                 m_db->commit( std::move( writeBatch ) );
                 break;

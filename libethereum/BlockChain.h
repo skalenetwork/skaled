@@ -442,8 +442,6 @@ public:
     /// @returns first block number of the chain, non-zero when we have partial chain e.g. after
     /// snapshot import.
     unsigned chainStartBlockNumber() const;
-    /// Change the chain start block.
-    void setChainStartBlockNumber( unsigned _number );
 
 private:
     static h256 chunkId( unsigned _level, unsigned _index ) {

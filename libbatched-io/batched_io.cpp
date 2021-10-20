@@ -1,6 +1,7 @@
 #include "batched_io.h"
 
 #include <assert.h>
+#include <unistd.h>
 #include <iostream>
 
 namespace {
@@ -11,7 +12,7 @@ namespace batched_io {
 void test_crash_before_commit( const std::string& id ) {
     if ( !id.empty() && id == test_crash_at ) {
         std::cerr << "Deliberately crashing at " << test_crash_at << std::endl;
-        exit( 33 );
+        _exit( 33 );
     }
 }
 void test_enable_crash_at( const std::string& id ) {

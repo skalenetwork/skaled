@@ -1664,22 +1664,6 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
     return res;
 }
 
-void BlockChain::setChainStartBlockNumber( unsigned _number ) {
-    h256 const hash = numberHash( _number );
-    if ( !hash )
-        BOOST_THROW_EXCEPTION( UnknownBlockNumber() );
-
-    try {
-        m_extrasDB->insert( c_sliceChainStart,
-            db::Slice( reinterpret_cast< char const* >( hash.data() ), h256::size ) );
-        m_db->commit( "setChainStartBlockNumber" );
-    } catch ( boost::exception const& ex ) {
-        BOOST_THROW_EXCEPTION( FailedToWriteChainStart()
-                               << errinfo_hash256( hash )
-                               << boost::errinfo_nested_exception( boost::copy_exception( ex ) ) );
-    }
-}
-
 unsigned BlockChain::chainStartBlockNumber() const {
     auto const value = m_extrasDB->lookup( c_sliceChainStart );
     return value.empty() ? 0 : number( h256( value, h256::FromBinary ) );
