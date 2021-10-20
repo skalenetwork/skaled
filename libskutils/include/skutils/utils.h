@@ -27,6 +27,7 @@
 #include <json.hpp>
 
 #include <skutils/url.h>
+#include <libethereum/SkaleHost.h>
 
 namespace skutils {
 
@@ -641,6 +642,15 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class skale_host_accessor {
+    const SkaleHost& m_skaleHost;
+
+public:
+    skale_host_accessor( const SkaleHost& _host );
+    virtual ~skale_host_accessor();
+    const SkaleHost& getSkaleHost();
+};  /// class skale_host_accessor
 
 };  // namespace skutils
 

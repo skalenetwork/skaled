@@ -997,11 +997,10 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-                LOG( getLogger( VerbosityError ) )
+        LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
     } catch ( ... ) {
-                LOG( getLogger( VerbosityError ) )
-            << "Unknown exception in precompiled/getBlockRandom()\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/getBlockRandom()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
