@@ -77,10 +77,6 @@ OverlayDB::OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db )
           delete db;
       } ) {}
 
-const OverlayDB::fn_pre_commit_t OverlayDB::g_fn_pre_commit_empty =
-    []( std::shared_ptr< dev::db::DatabaseFace > /*db*/,
-        std::unique_ptr< dev::db::WriteBatchFace >& /*writeBatch*/ ) {};
-
 dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
     if ( lastExecutedTransactionHash.has_value() )
         return lastExecutedTransactionHash.value();
