@@ -992,7 +992,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     try {
         if ( !g_skaleAccesssor )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
-        dev::u256 uValue = 0;
+        dev::u256 uValue = g_skaleAccesssor->getBlockRandom();
         bytes response = toBigEndian( uValue );
         return {true, response};
     } catch ( std::exception& ex ) {
