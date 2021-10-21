@@ -456,8 +456,8 @@ private:
     dev::s256 currentStorageUsed_ = 0;
 
 public:
-    std::shared_ptr< dev::db::DatabaseFace > db() {
-        std::shared_ptr< dev::db::DatabaseFace > pDB;
+    std::shared_ptr< batched_io::db_face > db() {
+        std::shared_ptr< batched_io::db_face > pDB;
         if ( m_db_ptr )
             pDB = m_db_ptr->db();
         return pDB;

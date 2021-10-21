@@ -577,10 +577,7 @@ private:
     std::unique_ptr< batched_io::db_splitter > m_db_splitter;  // new_interface()
     batched_io::db_operations_face* m_blocksDB;                // working horse 1!
     batched_io::db_operations_face* m_extrasDB;                // working horse 2!
-
-public:
-    std::shared_ptr< dev::db::DatabaseFace > m_stateDB;  // initialized in Client class, than
-                                                         // assigned here later in Client::init()
+                                                 // assigned here later in Client::init()
 private:
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash;  // should protect both m_lastBlockHash and

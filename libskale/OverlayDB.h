@@ -27,9 +27,9 @@
 #include <functional>
 #include <memory>
 
+#include <libbatched-io/batched_blocks_and_extras.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/db.h>
 
 namespace dev {
 namespace eth {
@@ -50,7 +50,7 @@ dev::db::Slice toSlice( std::string const& _s );
 
 class OverlayDB {
 public:
-    explicit OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db = nullptr );
+    explicit OverlayDB( std::unique_ptr< batched_io::db_face > _db_face = nullptr );
 
     virtual ~OverlayDB() = default;
 
@@ -108,7 +108,7 @@ private:
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
     dev::s256 storageUsed_ = 0;
 
-    std::shared_ptr< dev::db::DatabaseFace > m_db;
+    std::shared_ptr< batched_io::db_face > m_db_face;
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
@@ -118,7 +118,7 @@ private:
     mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
 public:
-    std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }
+    std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
 };
 
 }  // namespace skale

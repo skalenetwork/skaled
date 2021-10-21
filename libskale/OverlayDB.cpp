@@ -69,8 +69,8 @@ dev::db::Slice toSlice( std::string const& _s ) {
 
 };  // namespace slicing
 
-OverlayDB::OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db )
-    : m_db( _db.release(), []( dev::db::DatabaseFace* db ) {
+OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
+    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
           // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
           //        std::cerr << "!!! Closing state DB !!!" << std::endl;
           //        std::cerr.flush();
@@ -82,9 +82,9 @@ dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
         return lastExecutedTransactionHash.value();
 
     dev::h256 shaLastTx;
-    if ( m_db ) {
+    if ( m_db_face ) {
         const std::string l =
-            m_db->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
+            m_db_face->lookup( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ) );
         if ( !l.empty() )
             shaLastTx = dev::h256( l, dev::h256::FromBinary );
     }
@@ -98,9 +98,9 @@ dev::bytes OverlayDB::getPartialTransactionReceipts() const {
         return lastExecutedTransactionReceipts.value();
 
     dev::bytes partialTransactionReceipts;
-    if ( m_db ) {
+    if ( m_db_face ) {
         const std::string l =
-            m_db->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+            m_db_face->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
         if ( !l.empty() )
             partialTransactionReceipts.insert(
                 partialTransactionReceipts.end(), l.begin(), l.end() );
@@ -139,9 +139,9 @@ void OverlayDB::clearPartialTransactionReceipts() {
 }
 
 void OverlayDB::commit() {
-    if ( m_db ) {
+    if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
-            auto writeBatch = m_db->createWriteBatch();
+            m_db_face->revert();
 //      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
@@ -150,7 +150,7 @@ void OverlayDB::commit() {
                 for ( auto const& addressValuePair : m_cache ) {
                     h160 const& address = addressValuePair.first;
                     bytes const& value = addressValuePair.second;
-                    writeBatch->insert(
+                    m_db_face->insert(
                         skale::slicing::toSlice( address ), skale::slicing::toSlice( value ) );
                 }
                 for ( auto const& addressSpacePair : m_auxiliaryCache ) {
@@ -160,7 +160,7 @@ void OverlayDB::commit() {
                         _byte_ space = spaceValuePair.first;
                         bytes const& value = spaceValuePair.second;
 
-                        writeBatch->insert(
+                        m_db_face->insert(
                             skale::slicing::toSlice( getAuxiliaryKey( address, space ) ),
                             skale::slicing::toSlice( value ) );
                     }
@@ -172,24 +172,24 @@ void OverlayDB::commit() {
                         h256 const& storageAddress = stateAddressValuePair.first;
                         h256 const& value = stateAddressValuePair.second;
 
-                        writeBatch->insert(
+                        m_db_face->insert(
                             skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
                             skale::slicing::toSlice( value ) );
                     }
                 }
-                writeBatch->insert( skale::slicing::toSlice( "storageUsed" ),
+                m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
                     skale::slicing::toSlice( storageUsed_.str() ) );
 
-                writeBatch->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                     skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
 
-                writeBatch->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
+                m_db_face->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
                     skale::slicing::toSlice( getPartialTransactionReceipts() ) );
             }
             bool bIsPreCommitCallbackPassed = false;
             try {
                 bIsPreCommitCallbackPassed = true;
-                m_db->commit( std::move( writeBatch ) );
+                m_db_face->commit();
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
@@ -239,11 +239,11 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
             value = string( spaceValuePtr->second.begin(), spaceValuePtr->second.end() );
         }
     }
-    if ( !value.empty() || !m_db )
+    if ( !value.empty() || !m_db_face )
         return value;
 
     std::string const loadedValue =
-        m_db->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
+        m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
         cwarn << "Aux not found: " << _address;
 
@@ -264,10 +264,11 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
         }
     }
     if ( !cache_hit ) {
-        if ( m_db ) {
+        if ( m_db_face ) {
             bytes key = getAuxiliaryKey( _address, _space );
-            if ( m_db->exists( skale::slicing::toSlice( key ) ) ) {
-                m_db->kill( skale::slicing::toSlice( key ) );
+            if ( m_db_face->exists( skale::slicing::toSlice( key ) ) ) {
+                m_db_face->kill( skale::slicing::toSlice( key ) );
+                m_db_face->commit();
             } else {
                 cnote << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
@@ -292,8 +293,8 @@ void OverlayDB::insertAuxiliary(
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
     unordered_map< h160, string > accounts;
-    if ( m_db ) {
-        m_db->forEach( [&accounts]( Slice key, Slice value ) {
+    if ( m_db_face ) {
+        m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
             if ( key.size() == h160::size ) {
                 // key is account address
                 string keyString( key.begin(), key.end() );
@@ -310,8 +311,8 @@ std::unordered_map< h160, string > OverlayDB::accounts() const {
 
 std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address ) const {
     unordered_map< u256, u256 > storage;
-    if ( m_db ) {
-        m_db->forEach( [&storage, &_address]( Slice key, Slice value ) {
+    if ( m_db_face ) {
+        m_db_face->forEach( [&storage, &_address]( Slice key, Slice value ) {
             if ( key.size() == h160::size + h256::size ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
@@ -343,26 +344,27 @@ void OverlayDB::rollback() {
 }
 
 void OverlayDB::clearDB() {
-    if ( m_db ) {
+    if ( m_db_face ) {
         vector< Slice > keys;
-        m_db->forEach( [&keys]( Slice key, Slice ) {
+        m_db_face->forEach( [&keys]( Slice key, Slice ) {
             keys.push_back( key );
             return true;
         } );
         for ( const auto& key : keys ) {
-            m_db->kill( key );
+            m_db_face->kill( key );
         }
+        m_db_face->commit();
     }
 }
 
 bool OverlayDB::connected() const {
-    return m_db != nullptr;
+    return m_db_face != nullptr;
 }
 
 bool OverlayDB::empty() const {
-    if ( m_db ) {
+    if ( m_db_face ) {
         bool empty = true;
-        m_db->forEach( [&empty]( Slice, Slice ) {
+        m_db_face->forEach( [&empty]( Slice, Slice ) {
             empty = false;
             return false;
         } );
@@ -392,16 +394,16 @@ string OverlayDB::lookup( h160 const& _h ) const {
     if ( p != m_cache.end() ) {
         ret = string( p->second.begin(), p->second.end() );
     }
-    if ( !ret.empty() || !m_db )
+    if ( !ret.empty() || !m_db_face )
         return ret;
 
-    return m_db->lookup( skale::slicing::toSlice( _h ) );
+    return m_db_face->lookup( skale::slicing::toSlice( _h ) );
 }
 
 bool OverlayDB::exists( h160 const& _h ) const {
     if ( m_cache.find( _h ) != m_cache.end() )
         return true;
-    return m_db && m_db->exists( skale::slicing::toSlice( _h ) );
+    return m_db_face && m_db_face->exists( skale::slicing::toSlice( _h ) );
 }
 
 void OverlayDB::kill( h160 const& _h ) {
@@ -409,9 +411,10 @@ void OverlayDB::kill( h160 const& _h ) {
     if ( p != m_cache.end() ) {
         m_cache.erase( p );
     } else {
-        if ( m_db ) {
-            if ( m_db->exists( skale::slicing::toSlice( _h ) ) ) {
-                m_db->kill( skale::slicing::toSlice( _h ) );
+        if ( m_db_face ) {
+            if ( m_db_face->exists( skale::slicing::toSlice( _h ) ) ) {
+                m_db_face->kill( skale::slicing::toSlice( _h ) );
+                m_db_face->commit();
             } else {
                 cnote << "Try to delete non existing key " << _h;
             }
@@ -436,9 +439,9 @@ h256 OverlayDB::lookup( const dev::h160& _address, const dev::h256& _storageAddr
         }
     }
 
-    if ( m_db ) {
-        string value =
-            m_db->lookup( skale::slicing::toSlice( getStorageKey( _address, _storageAddress ) ) );
+    if ( m_db_face ) {
+        string value = m_db_face->lookup(
+            skale::slicing::toSlice( getStorageKey( _address, _storageAddress ) ) );
         return h256( value, h256::ConstructFromStringType::FromBinary );
     } else {
         return h256( 0 );
@@ -461,8 +464,8 @@ void OverlayDB::insert(
 }
 
 dev::s256 OverlayDB::storageUsed() const {
-    if ( m_db ) {
-        return dev::s256( m_db->lookup( skale::slicing::toSlice( "storageUsed" ) ) );
+    if ( m_db_face ) {
+        return dev::s256( m_db_face->lookup( skale::slicing::toSlice( "storageUsed" ) ) );
     }
     return 0;
 }
