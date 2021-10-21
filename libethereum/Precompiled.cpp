@@ -22,7 +22,7 @@
  */
 
 #include "Precompiled.h"
-#include "libethcore/ChainOperationParams.h"
+
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
@@ -33,8 +33,11 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/Hash.h>
 #include <libdevcrypto/LibSnark.h>
+#include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/SkaleHost.h>
 #include <boost/algorithm/hex.hpp>
+
 #include <mutex>
 
 #include <secp256k1_sha256.h>

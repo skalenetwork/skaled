@@ -35,7 +35,8 @@
 
 #include <skutils/multithreading.h>
 #include <skutils/utils.h>
-#include "SkaleHost.h"
+
+class SkaleHost;
 
 namespace dev {
 namespace eth {
