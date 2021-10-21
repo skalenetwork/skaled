@@ -1,5 +1,3 @@
-#include <libethereum/SkaleHost.h>
-
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
 
@@ -1922,10 +1920,4 @@ bool json_config_file_accessor::validateImaMainNetURL() const {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-skale_host_accessor::skale_host_accessor( const SkaleHost& _host ) : m_skaleHost( _host ) {}
-skale_host_accessor::~skale_host_accessor() {}
-
-const SkaleHost& skale_host_accessor::getSkaleHost() {
-    return m_skaleHost;
-}
 };  // namespace skutils

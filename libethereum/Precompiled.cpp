@@ -22,7 +22,7 @@
  */
 
 #include "Precompiled.h"
-#include "ChainOperationParams.h"
+#include "libethcore/ChainOperationParams.h"
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
@@ -46,12 +46,12 @@
 #include <sstream>
 #include <string>
 
-#include <time.h>
 
 namespace dev {
 namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+std::shared_ptr< SkaleHost > g_skaleAccesssor;
 
 };  // namespace eth
 };  // namespace dev
@@ -990,6 +990,8 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
 
 ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     try {
+        if ( !g_skaleAccesssor )
+            throw std::runtime_error( "Config accessor was not initialized" );
         dev::u256 uValue = 0;
         bytes response = toBigEndian( uValue );
         return {true, response};

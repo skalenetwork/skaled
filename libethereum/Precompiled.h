@@ -40,6 +40,7 @@ namespace dev {
 namespace eth {
 
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+extern std::shared_ptr< SkaleHost > g_skaleAccesssor;
 
 struct ChainOperationParams;
 
