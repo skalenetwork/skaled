@@ -658,7 +658,8 @@ void guarded_traffic_stats::unlock() {
 
 basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
     // interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
-    : timeout_pong_( 300 )  // seconds, default value in wspp is 5000, 0 means not use
+    : timeout_pong_( /*300*/ 60 * 60 * 24 * 365 )  // seconds, default value in wspp is 5000, 0
+                                                   // means not use
       ,
       timeout_handshake_open_( 60 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
