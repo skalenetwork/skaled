@@ -1,4 +1,4 @@
-#include <libconsensus/libBLS/bls/BLSutils.h>
+#include <libconsensus/libBLS/tools/utils.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcrypto/Hash.h>
 #include <libethcore/KeyManager.h>
@@ -64,23 +64,23 @@ public:
             }
         }
 
-        signatures::Bls obj =
-            signatures::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
+        libBLS::Bls obj =
+            libBLS::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
         std::vector< size_t > idx( _chainParams.sChain.t );
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;
         }
-        auto lagrange_coeffs = obj.LagrangeCoeffs( idx );
+        auto lagrange_coeffs = libBLS::ThresholdUtils::LagrangeCoeffs( idx, _chainParams.sChain.t );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
         keys.second.to_affine_coordinates();
         _chainParams.nodeInfo.commonBLSPublicKeys[0] =
-            BLSutils::ConvertToString( keys.second.X.c0 );
+            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
         _chainParams.nodeInfo.commonBLSPublicKeys[1] =
-            BLSutils::ConvertToString( keys.second.X.c1 );
+            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c1 );
         _chainParams.nodeInfo.commonBLSPublicKeys[2] =
-            BLSutils::ConvertToString( keys.second.Y.c0 );
+            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c0 );
         _chainParams.nodeInfo.commonBLSPublicKeys[3] =
-            BLSutils::ConvertToString( keys.second.Y.c1 );
+            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c1 );
 
         this->secret_as_is = keys.first;
 
@@ -94,8 +94,8 @@ public:
             this->hashAgent_->is_received_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
-            this->hashAgent_->signatures_[i] = signatures::Bls::Signing(
-                signatures::Bls::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
+            this->hashAgent_->signatures_[i] = libBLS::Bls::Signing(
+                libBLS::ThresholdUtils::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
                     this->hashAgent_->hashes_[i].asArray() ) ),
                 this->blsPrivateKeys_[i] );
         }
@@ -420,8 +420,8 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
     BOOST_REQUIRE( test_agent.getVotedHash().second ==
-                   signatures::Bls::Signing(
-                       signatures::Bls::HashtoG1(
+                   libBLS::Bls::Signing(
+                       libBLS::ThresholdUtils::HashtoG1(
                            std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
                        test_agent.secret_as_is ) );
 }
