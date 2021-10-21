@@ -991,7 +991,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
 ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     try {
         if ( !g_skaleAccesssor )
-            throw std::runtime_error( "Config accessor was not initialized" );
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
         dev::u256 uValue = 0;
         bytes response = toBigEndian( uValue );
         return {true, response};
