@@ -760,19 +760,6 @@ State State::startNew() {
     return copy;
 }
 
-void State::clearAll() {
-    if ( m_db_ptr ) {
-        if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
-        }
-        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
-        }
-        m_db_ptr->clearDB();
-    }
-}
-
 bool State::connected() const {
     if ( m_db_ptr ) {
         return m_db_ptr->connected();

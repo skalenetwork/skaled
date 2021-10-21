@@ -359,11 +359,6 @@ public:
     State startNew();
 
     /**
-     * @brief clearAll removes all data from database
-     */
-    void clearAll();
-
-    /**
      * @brief connected returns true if state is connected to database
      */
     bool connected() const;

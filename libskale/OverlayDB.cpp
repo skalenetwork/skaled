@@ -141,7 +141,6 @@ void OverlayDB::clearPartialTransactionReceipts() {
 void OverlayDB::commit() {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
-            m_db_face->revert();
 //      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
@@ -186,34 +185,27 @@ void OverlayDB::commit() {
                 m_db_face->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
                     skale::slicing::toSlice( getPartialTransactionReceipts() ) );
             }
-            bool bIsPreCommitCallbackPassed = false;
+
             try {
-                bIsPreCommitCallbackPassed = true;
-                m_db_face->commit();
+                m_db_face->commit("OverlayDB_comit");
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(1) writing to state database. Bombing out. "
-                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
-                                                            "(during pre-commit callback)" );
+                    cwarn << "Fail(1) writing to state database. Bombing out. ";
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during "
-                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
-                          << "): " << boost::diagnostic_information( ex ) << std::endl;
+                std::cerr << "Error(2) writing to state database (during DB commit): "
+                          << boost::diagnostic_information( ex ) << std::endl;
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(2) writing to state database. Bombing out. "
-                          << ( bIsPreCommitCallbackPassed ? "(during DB commit)" :
-                                                            "(during pre-commit callback)" );
+                    cwarn << "Fail(2) writing to state database. Bombing out. ";
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during "
-                          << ( bIsPreCommitCallbackPassed ? "DB commit" : "pre-commit callback" )
-                          << "): " << ex.what() << std::endl;
+                std::cerr << "Error(2) writing to state database (during DB commit): " << ex.what()
+                          << std::endl;
                 cwarn << "Error(2) writing to state database: " << ex.what();
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
@@ -226,6 +218,7 @@ void OverlayDB::commit() {
             m_cache.clear();
             m_auxiliaryCache.clear();
             m_storageCache.clear();
+            m_db_face->revert();
         }
     }
 }
@@ -267,8 +260,8 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
         if ( m_db_face ) {
             bytes key = getAuxiliaryKey( _address, _space );
             if ( m_db_face->exists( skale::slicing::toSlice( key ) ) ) {
+                // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
-                m_db_face->commit();
             } else {
                 cnote << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
@@ -353,7 +346,7 @@ void OverlayDB::clearDB() {
         for ( const auto& key : keys ) {
             m_db_face->kill( key );
         }
-        m_db_face->commit();
+        m_db_face->commit("clearDB");
     }
 }
 
@@ -413,8 +406,8 @@ void OverlayDB::kill( h160 const& _h ) {
     } else {
         if ( m_db_face ) {
             if ( m_db_face->exists( skale::slicing::toSlice( _h ) ) ) {
+                // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
-                m_db_face->commit();
             } else {
                 cnote << "Try to delete non existing key " << _h;
             }
