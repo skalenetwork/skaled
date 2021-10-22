@@ -46,19 +46,19 @@ jobs:
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           cd deps
           #######################################./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=1
+          ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
         run: |
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           mkdir -p build
           cd build
@@ -70,7 +70,7 @@ jobs:
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           cd build
           make format-check
@@ -80,7 +80,7 @@ jobs:
           export CC=gcc-7
           export CXX=g++-7
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           cd build
           make testeth -j$(nproc)
