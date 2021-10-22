@@ -1661,7 +1661,7 @@ int main( int argc, char** argv ) try {
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
 
-        dev::eth::g_skaleAccesssor = skaleHost;
+        dev::eth::g_skaleHost = skaleHost;
     }
 
     try {

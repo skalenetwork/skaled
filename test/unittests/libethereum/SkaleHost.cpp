@@ -127,7 +127,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // and will take all transaction fee after execution so we can't check money spent
         // for senderAddress correctly.
         client->setAuthor( Address( 5 ) );
-        dev::eth::g_skaleAccesssor = skaleHost;
+        dev::eth::g_skaleHost = skaleHost;
     }
 
     Transaction tx_from_json( const Json::Value& json ) {

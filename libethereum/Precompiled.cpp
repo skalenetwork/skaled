@@ -54,7 +54,7 @@ namespace dev {
 namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
-std::shared_ptr< SkaleHost > g_skaleAccesssor;
+std::shared_ptr< SkaleHost > g_skaleHost;
 
 };  // namespace eth
 };  // namespace dev
@@ -993,9 +993,9 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
 
 ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     try {
-        if ( !g_skaleAccesssor )
+        if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
-        dev::u256 uValue = g_skaleAccesssor->getBlockRandom();
+        dev::u256 uValue = g_skaleHost->getBlockRandom();
         bytes response = toBigEndian( uValue );
         return {true, response};
     } catch ( std::exception& ex ) {
