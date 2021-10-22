@@ -356,6 +356,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
+        sleep(1);
+
         auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ ) );
         client->SetTimeout(1000000000);
 

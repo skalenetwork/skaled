@@ -64,6 +64,10 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
+    u256 getRandomForBlockId( uint64_t _blockId ) const override {
+        return 0;
+    }
+
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )
