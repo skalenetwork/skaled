@@ -187,7 +187,7 @@ void OverlayDB::commit() {
             }
 
             try {
-                m_db_face->commit("OverlayDB_comit");
+                m_db_face->commit( "OverlayDB_comit" );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
@@ -346,7 +346,7 @@ void OverlayDB::clearDB() {
         for ( const auto& key : keys ) {
             m_db_face->kill( key );
         }
-        m_db_face->commit("clearDB");
+        m_db_face->commit( "clearDB" );
     }
 }
 
