@@ -825,6 +825,10 @@ u256 SkaleHost::getGasPrice() const {
     return m_consensus->getPriceForBlockId( m_client.number() );
 }
 
+u256 SkaleHost::getBlockRandom() const {
+    return m_consensus->getRandomForBlockId( m_client.number() );
+}
+
 void SkaleHost::forceEmptyBlock() {
     assert( !this->emptyBlockIntervalMsForRestore.has_value() );
     this->emptyBlockIntervalMsForRestore = this->m_consensus->getEmptyBlockIntervalMs();
