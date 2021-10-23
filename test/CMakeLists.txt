@@ -88,6 +88,8 @@ if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
 endif()
 
+add_compile_options( -Wno-error=maybe-uninitialized )
+
 if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
 	install( TARGETS testeth DESTINATION ${CMAKE_INSTALL_BINDIR} )
 endif()
