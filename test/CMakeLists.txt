@@ -61,7 +61,7 @@ hunter_add_package(yaml-cpp)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
-target_compile_options( testeth PRIVATE -Wno-error=unused-variable )
+target_compile_options( testeth PRIVATE -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
@@ -87,8 +87,6 @@ target_link_libraries(testeth PRIVATE
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
 endif()
-
-add_compile_options( -Wno-error=maybe-uninitialized )
 
 if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
 	install( TARGETS testeth DESTINATION ${CMAKE_INSTALL_BINDIR} )
