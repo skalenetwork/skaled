@@ -25,7 +25,7 @@
 #include "ValidationSchemes.h"
 #include <libdevcore/JsonUtils.h>
 #include <libethcore/ChainOperationParams.h>
-#include <libethcore/Precompiled.h>
+#include <libethereum/Precompiled.h>
 
 #include "ValidationSchemes.h"
 

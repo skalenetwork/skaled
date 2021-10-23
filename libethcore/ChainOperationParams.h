@@ -27,10 +27,10 @@
 #include <vector>
 
 #include <libdevcore/Common.h>
-#include <libethcore/Precompiled.h>
+#include <libethereum/Precompiled.h>
 
-#include "Common.h"
-#include "EVMSchedule.h"
+#include "libethcore/Common.h"
+#include "libethcore/EVMSchedule.h"
 
 namespace dev {
 namespace eth {
