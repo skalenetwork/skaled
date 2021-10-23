@@ -2628,7 +2628,7 @@ then
 				..
 			cd ..
 		else
-			cd fizz
+			cd fizz/fizz
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd build2
