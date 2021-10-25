@@ -6,7 +6,7 @@ Each block in SKALE chains is signed by at least 11/16 nodes. Each signature is 
 
 General steps:
 
-. The signatures for the current block is retrieved.
+. The signatures for the current block are retrieved.
 . The BLAKE3 hash of the signatures is created.
 . The resulting hex RNG is presented.
 
