@@ -197,7 +197,7 @@ bool SnapshotHashAgent::voteForHash() {
             try {
                 is_verified = this->bls_->Verification(
                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                    common_signature, this->common_public_key_ );
+                    common_signature, common_public_key_from_config );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 std::cerr << cc::error(
                                  "Exception while verifying common signature from other skaleds: " )
