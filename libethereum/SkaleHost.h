@@ -118,6 +118,7 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     dev::u256 getGasPrice() const;
+    dev::u256 getBlockRandom() const;
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
