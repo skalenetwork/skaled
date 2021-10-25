@@ -1,0 +1,79 @@
+= SKALE Chain Precompiles
+
+Each SKALE Chain comes with a set of precompiled contracts in addition to the precompiles included with Ethereum (i.e. `ecrecover`, `sha256`, `modexp`, ...).
+
+.SKALE Specific Precompiles
+[%header,cols="1,2,8a"]
+|===
+| Address
+| Function
+| Description
+
+| `0x0A`
+| readChunk
+| Reads chunk from file from specific position with specific length.
+
+| `0x0B`
+| createFile
+| Creates an address for an empty file.
+
+| `0x0C`
+| uploadChunk
+| Uploads 1MB chunk of data from specific position in specific file by file owner.
+
+| `0x0D`
+| getFileSize
+| Returns size of file.
+
+| `0x0E`
+| deleteFile
+| Deletes file from filestorage system.
+
+| `0x0F`
+| createDirectory
+| Creates directory in filestorage system.
+
+| `0x10`
+| deleteDirectory
+| Deletes directory in filestorage system.
+
+| `0x11`
+| calculateFileHash
+| Calculates SHA256 hash of file.
+
+| `0x12`
+| logTextMessage
+| Logs a message:
+
+* 0 - Normal
+* 1 - Debug
+* 2 - Trace
+* 3 - Warning
+* 4 - Error
+* 5 - Fatal
+
+| `0x13`
+| getConfigVariableUint256
+|
+
+| `0x14`
+| getConfigVariableAddress
+|
+
+| `0x15`
+| getConfigVariableString
+|
+
+| `0x16`
+| fnReserved0x16
+|
+
+| `0x17`
+| getConfigPermissionsFlag
+|
+
+| `0x18`
+| xref:random-number-generator.adoc[getBlockRandom]
+| Return a random number based on BLS threshold signature common coin.
+
+|===

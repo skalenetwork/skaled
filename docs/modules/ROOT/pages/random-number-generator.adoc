@@ -1,0 +1,43 @@
+= SKALE RNG Endpoint
+
+Each SKALE Chain supports a special random number generator (RNG) precompile. This RNG is based on the threshold signature shares of at least 11/16 SKALE nodes supporting any given SKALE Chain.
+
+Each block in SKALE chains is signed by at least 11/16 nodes. Each signature is glued together, such that no single party can influence the resulting signature.
+
+General steps:
+
+. The signatures for the current block is retrieved.
+. The BLAKE3 hash of the signatures is created.
+. The resulting hex RNG is presented.
+
+To use the RNG precompile, you can use the following code example to access the `getBlockRandom` precompile at address `0x18`:
+
+[source, javascript]
+----
+pragma solidity ^0.5.3;
+
+contract A {
+
+    function getRandom() public view returns (bytes32 addr) {
+        assembly {
+            let freemem := mload(0x40)
+            let start_addr := add(freemem, 0)
+            if iszero(staticcall(gas, 0x18, 0, 0, start_addr, 32)) {
+              invalid()
+            }
+            addr := mload(freemem)
+        }
+    }
+}
+----
+
+Running getRandom() from Remix several times will return the following example output:
+
+```
+0:bytes32: addr 0xb01da4532b80108eee3d00d48d6c617869eabfa39acbb58b7fd44e8369331501
+0:bytes32: addr 0x48e4af915a9cf211474c11fec16dd40164a1d6d82dec93a646b4b776261a9fe5
+0:bytes32: addr 0x7d95dd4d341e6bf27ce37e1dc531319daa1dfd75efe4a5f1b1de1f3062425155
+0:bytes32: addr 0x80494d5289618a28ca5ed57803404a4c3b379699d81ae1badf408fb8341c8ef7
+0:bytes32: addr 0xfd66a3c359c1c73f285f881105bb8ef5185cc04d5c8c7360c4386f0673ecc98b
+0:bytes32: addr 0xb95f1c2be3b13371115b8e6431461a24e960f0bb9881420993528ce68b019f75
+```
