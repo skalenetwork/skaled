@@ -6,6 +6,7 @@ on:
       - 'master'
       - 'beta'
       - 'stable'
+      - 'docs*'
 defaults:
   run:
     shell: bash

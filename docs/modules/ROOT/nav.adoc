@@ -3,3 +3,4 @@
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
 * xref:snapshots.adoc[Snapshots]
 * xref:block-rotation.adoc[Block Rotation]
+* xref:predeploys.adoc[Predeployed Contracts]

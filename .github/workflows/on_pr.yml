@@ -3,6 +3,8 @@ name: Comment in PR
 on:
   pull_request:
     types: [opened]
+    branches-ignore:
+      - 'docs*'
 jobs:
   main_job:
     runs-on: ubuntu-18.04

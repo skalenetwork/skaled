@@ -1,0 +1,26 @@
+= SKALE Chain Deploys
+
+SKALE Chains have several predeployed contracts.
+
+.Predeployed contracts
+[%header,cols="1,2,8a"]
+|===
+| Address
+| Contract
+| Description
+
+| `0xD2001000000000000000000000000000000000D2`
+| Context
+| Allows setting of new owner address, otherwise returns:
+
+* SKALE Chain Name
+* Owner address
+
+| `0xD2002000000000000000000000000000000000D2`
+| DeploymentController
+| Allows owner to:
+
+* add and remove addresses from the deployment whitelist,
+* to check whether an address is on the whitelist.
+
+|===
