@@ -26,8 +26,8 @@
  */
 
 #include <exception>
-#define RAPIDJSON_ASSERT( x )                                     \
-    if ( !( x ) ) {                                               \
+#define RAPIDJSON_ASSERT( x )                                       \
+    if ( !( x ) ) {                                                 \
         throw std::out_of_range( #x " failed with provided JSON" ); \
     }
 
@@ -2779,25 +2779,21 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
-                        //                        // validate params
-                        //                        if ( !joRequest["params"].IsArray() ) {
-                        //                            throw jsonrpc::JsonRpcException(
-                        //                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS
-                        //                                );
-                        //                        }
+                        // validate params
+                        if ( !joRequest["params"].IsArray() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
                         auto paramsArray = joRequest["params"].GetArray();
 
-                        //                        if ( paramsArray.Size() != 2 ) {
-                        //                            throw jsonrpc::JsonRpcException(
-                        //                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS
-                        //                                );
-                        //                        }
-                        //                        if ( !paramsArray[0].IsObject() ||
-                        //                        !paramsArray[1].IsString() ) {
-                        //                            throw jsonrpc::JsonRpcException(
-                        //                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS
-                        //                                );
-                        //                        }
+                        if ( paramsArray.Size() != 2 ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+                        if ( !paramsArray[0].IsObject() || !paramsArray[1].IsString() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
 
                         dev::eth::TransactionSkeleton _t =
                             dev::eth::rapidJsonToTransactionSkeleton( paramsArray[0] );
