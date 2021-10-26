@@ -38,7 +38,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch_name }}
       - name: Submodule update
-        run: rm -rf ./libconsensus; git submodule update --init --recursive
+        run: |
+          rm -rf ./libconsensus || true
+          ls -1
+          git submodule update --init --recursive 
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
