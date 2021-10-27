@@ -31,7 +31,7 @@ contract A {
 }
 ----
 
-Running getRandom() from Remix several times will return the following example output:
+Running getRandom() from Remix several times will return the following example output for each new block:
 
 ```
 0:bytes32: addr 0xb01da4532b80108eee3d00d48d6c617869eabfa39acbb58b7fd44e8369331501
