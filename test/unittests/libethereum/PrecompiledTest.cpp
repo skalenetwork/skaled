@@ -22,7 +22,7 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcrypto/Hash.h>
-#include <libethcore/Precompiled.h>
+#include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
