@@ -278,6 +278,14 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     if ( !this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
         recomputeExistingOccupiedSpaceForBlockRotation();
+
+    //    std::cerr << "BEGIN" << std::endl;
+    //    auto b = this->currentHash();
+    //    while ( b != dev::h256() ) {
+    //        std::cerr << this->details( b ).number << std::endl;
+    //        b = this->details( b ).parent;
+    //    }
+    //    std::cerr << "END" << std::endl;
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -627,9 +635,18 @@ void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesCon
 
         blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
 
-        DEV_READ_GUARDED( x_details )
-        extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
-            ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
+        // ensure parent is cached for later addition.
+        // TODO: this is a bit horrible would be better refactored into an enveloping
+        // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
+        // safe in practice since the caches don't get flushed nearly often enough to be done
+        // here.
+        details( _block.info.parentHash() );
+        DEV_WRITE_GUARDED( x_details ) {
+            m_details[_block.info.parentHash()].children.clear();
+            m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
+            extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+                ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
+        }
 
         BlockDetails details( ( unsigned ) _block.info.number(), _totalDifficulty,
             _block.info.parentHash(), {}, _block.block.size() );
@@ -848,15 +865,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     unsigned newLastBlockNumber = number();
     BlockHeader tbi = _block.info;
 
-    // ensure parent is cached for later addition.
-    // TODO: this is a bit horrible would be better refactored into an enveloping
-    // UpgradableGuard together with an "ensureCachedWithUpdatableLock(l)" method. This is
-    // safe in practice since the caches don't get flushed nearly often enough to be done
-    // here.
-    details( _block.info.parentHash() );
-    DEV_WRITE_GUARDED( x_details )
-    m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
-
     _performanceLogger.onStageFinished( "collation" );
 
     size_t blocksWriteSize = 0;
@@ -877,7 +885,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_loggerDetail ) << "Rotated out some blocks";
+        LOG( m_logger ) << "Rotated out some blocks";
         prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
             *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
             _performanceLogger );
