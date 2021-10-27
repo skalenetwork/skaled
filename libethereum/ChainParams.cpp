@@ -34,8 +34,8 @@
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/CommonJS.h>
-#include <libethcore/Precompiled.h>
 #include <libethcore/SealEngine.h>
+#include <libethereum/Precompiled.h>
 
 #include "Account.h"
 #include "GenesisInfo.h"

@@ -64,6 +64,10 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
+    u256 getRandomForBlockId( uint64_t _blockId ) const override {
+        return 0;
+    }
+
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )
@@ -123,6 +127,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // and will take all transaction fee after execution so we can't check money spent
         // for senderAddress correctly.
         client->setAuthor( Address( 5 ) );
+        dev::eth::g_skaleHost = skaleHost;
     }
 
     Transaction tx_from_json( const Json::Value& json ) {
@@ -988,6 +993,14 @@ BOOST_AUTO_TEST_CASE( partialCatchUp ) {
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+}
+
+BOOST_AUTO_TEST_CASE( getBlockRandom ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+    auto res = exec( bytesConstRef() );
+    u256 blockRandom = skaleHost->getBlockRandom();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
