@@ -1,2 +1,3 @@
 * @skalenetwork/codeowners
+/docs/ @skalenetwork/docowners
 *.md @skalenetwork/docowners
