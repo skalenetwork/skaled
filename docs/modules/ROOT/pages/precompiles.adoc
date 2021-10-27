@@ -3,43 +3,52 @@
 Each SKALE Chain comes with a set of precompiled contracts in addition to the precompiles included with Ethereum (i.e. `ecrecover`, `sha256`, `modexp`, ...).
 
 .SKALE Specific Precompiles
-[%header,cols="1,2,8a"]
+[%header,cols="1,2,8a,1"]
 |===
 | Address
 | Function
 | Description
+| Sender who can call
 
 | `0x0A`
 | readChunk
 | Reads chunk from file from specific position with specific length.
+| Any
 
 | `0x0B`
 | createFile
 | Creates an address for an empty file.
+| Filestorage only
 
 | `0x0C`
 | uploadChunk
 | Uploads 1MB chunk of data from specific position in specific file by file owner.
+| Filestorage only
 
 | `0x0D`
 | getFileSize
 | Returns size of file.
+| Any
 
 | `0x0E`
 | deleteFile
 | Deletes file from filestorage system.
+| Filestorage only
 
 | `0x0F`
 | createDirectory
 | Creates directory in filestorage system.
+| Filestorage only
 
 | `0x10`
 | deleteDirectory
 | Deletes directory in filestorage system.
+| Filestorage only
 
 | `0x11`
 | calculateFileHash
-| Calculates SHA256 hash of file.
+| Calculates and writes SHA256 hash of file in same directory `<NAME_OF_FILE>._hash`
+| Filestorage only
 
 | `0x12`
 | logTextMessage
@@ -52,24 +61,33 @@ Each SKALE Chain comes with a set of precompiled contracts in addition to the pr
 * 4 - Error
 * 5 - Fatal
 
+Used for IMA SKALE Chain testing.
+
+| Any
+
 | `0x13`
 | getConfigVariableUint256
-|
+| Returns SKALE Chain config uint256 for IMA SKALE Chain contracts. Used for reading BLS common public key.
+| Any
 
 | `0x14`
 | getConfigVariableAddress
-|
+| Returns SKALE Chain config address for IMA SKALE Chain testing.
+| Any
 
 | `0x15`
 | getConfigVariableString
-|
+| Returns SKALE Chain config string for IMA SKALE Chain testing.
+| Any
 
 | `0x16`
 | fnReserved0x16
-|
+| Reserved.
+| Any
 
 | `0x17`
 | getConfigPermissionsFlag
-|
+| Returns SKALE Chain config boolean for IMA SKALE Chain testing.
+| Any
 
 |===
