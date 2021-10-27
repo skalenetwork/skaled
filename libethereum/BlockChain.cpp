@@ -271,6 +271,25 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     checkConsistency();
 #endif
 
+    // HACK Unfortunate crash can leave us with rotated DB but not added pieceUsageBytes, best and
+    // genesis! So, finish possibly unfinished rotation ( though better to do it in batched_*
+    // classes :( )
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+    }
+    if ( m_params.sChain.dbStorageLimit > 0 &&
+         pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) {
+        // re-insert genesis
+        BlockDetails details = this->details( m_genesisHash );
+        auto r = details.rlp();
+        m_details[m_genesisHash] = details;
+        m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
+        // update storage usage
+        m_db->insert( db::Slice( "pieceUsageBytes" ), db::Slice( "0" ) );
+        m_db->commit( "fix_bad_rotation" );
+    }  // if
+
     // TODO: Implement ability to rebuild details map from DB.
     auto const l = m_extrasDB->lookup( db::Slice( "best" ) );
     m_lastBlockHash = l.empty() ? m_genesisHash : h256( l, h256::FromBinary );
