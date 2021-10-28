@@ -274,12 +274,8 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     // HACK Unfortunate crash can leave us with rotated DB but not added pieceUsageBytes, best and
     // genesis! So, finish possibly unfinished rotation ( though better to do it in batched_*
     // classes :( )
-    uint64_t pieceUsageBytes = 0;
-    if ( this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
-        pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
-    }
     if ( m_params.sChain.dbStorageLimit > 0 &&
-         pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) {
+         !m_rotator->current_piece()->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
         // re-insert genesis
         BlockDetails details = this->details( m_genesisHash );
         auto r = details.rlp();
