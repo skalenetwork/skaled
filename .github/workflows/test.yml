@@ -88,14 +88,29 @@ jobs:
           cd build
           make testeth -j$(nproc)
           cd ..
-      - name: Testeth
+      - name: Testeth - basic tests
         run : |
           cd build/test
           NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
+          cd ../..
+      - name: Testeth - BTRFS test suite
+        run : |
+          cd build/test
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          cd ../..
+      - name: Testeth - Hash snapshot test suite
+        run : |
+          cd build/test
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          cd ../..
+      - name: Testeth - Client snapshots suite
+        run : |
+          cd build/test
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
-          cd ..
+          cd ../..
+      - name: Coverage
+        run : |
+          cd build
           # Create lcov report
           lcov --capture --directory . --output-file coverage.info
           lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
@@ -104,10 +119,10 @@ jobs:
           lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
           #- lcov --list coverage.info # debug info
-
           # Uploading report to CodeCov
             bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
-      - run: |
+      - name: Cleanup BTRFS
+        run: |
           sudo umount build/test/btrfs || true
           sudo rm -rf /tmp/tmp*
           sudo rm -rf /tmp/*.db
