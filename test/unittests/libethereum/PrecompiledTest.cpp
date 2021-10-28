@@ -1589,7 +1589,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
 
     ~FilestorageFixture() override {
         remove( pathToFile.c_str() );
-        remove( pathToFile.c_str() + "._hash" );
+        remove( ( pathToFile.string() + "._hash" ).c_str() );
     }
 
     Address ownerAddress;
