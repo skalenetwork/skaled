@@ -646,3 +646,41 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
         std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
     }
 }
+
+uint64_t SnapshotManager::getBlockTimestamp(
+    unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( _blockNumber );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }
+
+    fs::path db_dir = this->snapshots_dir / std::to_string( _blockNumber );
+
+    int res = btrfs.btrfs_subvolume_property_set(
+        ( db_dir / this->volumes[0] ).string().c_str(), "ro", "false" );
+
+    if ( res != 0 ) {
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
+    dev::eth::BlockChain bc( chain_params, db_dir );
+    dev::h256 hash = bc.numberHash( _blockNumber );
+    std::cout << "DB DIR: " << bc.getChainDirName( chain_params ) << '\n';
+    std::cout << "DB DIR: " << this->volumes[0] << '\n';
+    std::cout << "HASH: " << hash << '\n';
+    uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
+
+
+    res = btrfs.btrfs_subvolume_property_set(
+        ( db_dir / this->volumes[0] ).string().c_str(), "ro", "true" );
+
+    if ( res != 0 ) {
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
+    return timestamp;
+}
