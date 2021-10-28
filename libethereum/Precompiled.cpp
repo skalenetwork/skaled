@@ -22,7 +22,7 @@
  */
 
 #include "Precompiled.h"
-#include "ChainOperationParams.h"
+
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
@@ -33,8 +33,11 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/Hash.h>
 #include <libdevcrypto/LibSnark.h>
+#include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/SkaleHost.h>
 #include <boost/algorithm/hex.hpp>
+
 #include <mutex>
 
 #include <secp256k1_sha256.h>
@@ -46,12 +49,12 @@
 #include <sstream>
 #include <string>
 
-#include <time.h>
 
 namespace dev {
 namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+std::shared_ptr< SkaleHost > g_skaleHost;
 
 };  // namespace eth
 };  // namespace dev
@@ -982,6 +985,27 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getConfigVariableString()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
+    try {
+        if ( !g_skaleHost )
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        dev::u256 uValue = g_skaleHost->getBlockRandom();
+        bytes response = toBigEndian( uValue );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/getBlockRandom()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );

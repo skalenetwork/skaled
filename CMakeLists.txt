@@ -24,6 +24,30 @@ if( NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
     set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic" )
 endif()
 
+option( SKALED_PROFILING "Build for profiling" OFF )
+if( SKALED_PROFILING )
+    set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -pg" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg" )
+    set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg" )
+    set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg" )
+endif()
+
+if( CMAKE_BUILD_TYPE STREQUAL "Release" )
+    set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
+elseif( CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" )
+    set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
+elseif( CMAKE_BUILD_TYPE STREQUAL "MinSizeRel" )
+    set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -Os" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os" )
+elseif( CMAKE_BUILD_TYPE STREQUAL "Debug" )
+    set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
+else()
+	message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
+endif()
+
 ############################################################################################################
 ############################################################################################################
 ############################################################################################################
