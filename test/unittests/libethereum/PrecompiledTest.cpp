@@ -1587,7 +1587,10 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
     }
 
-    ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
+    ~FilestorageFixture() override {
+        remove( pathToFile.c_str() );
+        remove( pathToFile.c_str() + "._hash" );
+    }
 
     Address ownerAddress;
     std::string hexAddress;
@@ -1669,12 +1672,28 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
+    std::cout
+        << "\"deleteFile\" test (1) - \"pathToFile\" is \"" << pathToFile.string()
+        << "\", file " << ( boost::filesystem::exists( pathToFile.string() ) ? "exists" : "does not exist" )
+        << "\n";
+    std::cout
+        << "\"deleteFile\" test (1) - \"pathToFile._hash\" is \"" << ( pathToFile.string() + "._hash" )
+        << "\", file " << ( boost::filesystem::exists( pathToFile.string() + "._hash" ) ? "exists" : "does not exist" )
+        << "\n";
     BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+    std::cout
+        << "\"deleteFile\" test (2) - \"pathToFile\" is \"" << pathToFile.string()
+        << "\", file " << ( boost::filesystem::exists( pathToFile.string() ) ? "exists" : "does not exist" )
+        << "\n";
+    std::cout
+        << "\"deleteFile\" test (2) - \"pathToFile._hash\" is \"" << ( pathToFile.string() + "._hash" )
+        << "\", file " << ( boost::filesystem::exists( pathToFile.string() + "._hash" ) ? "exists" : "does not exist" )
+        << "\n";
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile.string() + "._hash" ) );
 }
