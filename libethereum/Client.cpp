@@ -30,6 +30,8 @@
 #include "TransactionQueue.h"
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
+
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <thread>
@@ -496,25 +498,24 @@ size_t Client::importTransactionsAsBlock(
     //
     // begin, detect partially executed block
     bool bIsPartial = false;
-    size_t cntAll = _transactions.size();
-    size_t cntExpected = cntAll;
-    size_t cntMissing = 0;
-    Transactions vecPassed, vecMissing;
     dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
-    for ( const Transaction& txWalk : _transactions ) {
-        const h256 shaWalk = txWalk.sha3();
-        if ( bIsPartial )
-            vecMissing.push_back( txWalk );
-        else {
-            vecPassed.push_back( txWalk );
-            if ( shaWalk == shaLastTx ) {
-                bIsPartial = true;
-            }
-        }
+
+    auto iterFound = std::find_if( _transactions.begin(), _transactions.end(),
+        [&shaLastTx]( const Transaction& txWalk ) { return txWalk.sha3() == shaLastTx; } );
+
+    // detect partial ONLY if this transaction is not known!
+    bIsPartial = iterFound != _transactions.end() && !isKnownTransaction( shaLastTx );
+
+    Transactions vecPassed, vecMissing;
+    if ( bIsPartial ) {
+        vecPassed.insert( vecPassed.end(), _transactions.begin(), iterFound + 1 );
+        vecMissing.insert( vecMissing.end(), iterFound + 1, _transactions.end() );
     }
+
+    size_t cntAll = _transactions.size();
     size_t cntPassed = vecPassed.size();
-    cntMissing = vecMissing.size();
-    cntExpected = cntMissing;
+    size_t cntMissing = vecMissing.size();
+    size_t cntExpected = cntMissing;
     if ( bIsPartial ) {
         LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
                         << cc::warn( " found partially executed block, have " )

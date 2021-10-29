@@ -620,6 +620,9 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     m_details[m_genesisHash] = details;
     m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
     m_db->commit( "genesis_after_rotate" );
+
+    batched_io::test_crash_before_commit( "after_genesis_after_rotate" );
+
     return true;
 }
 
