@@ -197,6 +197,11 @@ ChainParams ChainParams::loadConfig(
         s.dbStorageLimit =
             sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
 
+
+        if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
+            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes").get_int64();
+        }
+
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
