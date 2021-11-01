@@ -24,6 +24,8 @@
 
 #include "SnapshotManager.h"
 
+#include "UnsafeRegion.h"
+
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
@@ -102,6 +104,8 @@ SnapshotManager::SnapshotManager( const fs::path& _dataDir,
 void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
     fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
 
+    UnsafeRegion::lock ur_lock;
+
     try {
         if ( fs::exists( snapshot_dir ) )
             throw SnapshotPresent( _blockNumber );
@@ -131,6 +135,8 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
     } catch ( const fs::filesystem_error& ) {
         std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
     }
+
+    UnsafeRegion::lock ur_lock;
 
     for ( const string& vol : volumes ) {
         if ( fs::exists( data_dir / vol ) ) {
@@ -228,6 +234,8 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
     if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) ) {
         throw SnapshotAbsent( _blockNumber );
     }
+
+    UnsafeRegion::lock ur_lock;
 
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.subvolume._delete(
@@ -608,6 +616,8 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
+
+    UnsafeRegion::lock ur_lock;
 
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.btrfs_subvolume_property_set(

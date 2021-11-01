@@ -27,7 +27,7 @@
 #include <functional>
 #include <memory>
 
-#include <libbatched-io/batched_blocks_and_extras.h>
+#include <libbatched-io/batched_db.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 

@@ -1,4 +1,4 @@
-#include "batched_blocks_and_extras.h"
+#include "batched_db.h"
 
 namespace batched_io {
 

@@ -32,7 +32,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include <libbatched-io/batched_blocks_and_extras.h>
+#include <libbatched-io/batched_db.h>
 #include <libbatched-io/batched_rotating_db_io.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
@@ -572,11 +572,11 @@ private:
     uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
-    std::shared_ptr< batched_io::rotating_db_io > m_rotator;   // rotate()
-    std::shared_ptr< batched_io::db_face > m_db;               // insert()/commit()
-    std::unique_ptr< batched_io::db_splitter > m_db_splitter;  // new_interface()
-    batched_io::db_operations_face* m_blocksDB;                // working horse 1!
-    batched_io::db_operations_face* m_extrasDB;                // working horse 2!
+    std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;  // rotate()
+    std::shared_ptr< batched_io::db_face > m_db;                   // insert()/commit()
+    std::unique_ptr< batched_io::db_splitter > m_db_splitter;      // new_interface()
+    batched_io::db_operations_face* m_blocksDB;                    // working horse 1!
+    batched_io::db_operations_face* m_extrasDB;                    // working horse 2!
                                                  // assigned here later in Client::init()
 private:
     /// Hash of the last (valid) block on the longest chain.

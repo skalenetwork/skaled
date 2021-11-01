@@ -224,11 +224,11 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        m_rotator = std::make_shared< batched_io::rotating_db_io >(
+        auto rotator = std::make_shared< batched_io::rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5 );
-        auto rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
         auto db = std::make_shared< batched_io::batched_db >();
-        db->open( rotating_db );
+        db->open( m_rotating_db );
         m_db = db;
         m_db_splitter = std::make_unique< batched_io::db_splitter >( m_db );
         m_blocksDB = m_db_splitter->new_interface();
@@ -275,7 +275,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     // genesis! So, finish possibly unfinished rotation ( though better to do it in batched_*
     // classes :( )
     if ( m_params.sChain.dbStorageLimit > 0 &&
-         !m_rotator->current_piece()->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+         !m_rotating_db->currentPiece()->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
         // re-insert genesis
         BlockDetails details = this->details( m_genesisHash );
         auto r = details.rlp();
@@ -585,7 +585,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     if ( m_params.sChain.dbStorageLimit > 0 ) {
         // account for size of 1 piece
         isRotate =
-            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotator->pieces_count() ) ?
+            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ?
                 true :
                 false;
         if ( isRotate ) {
@@ -613,7 +613,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
 
     clearCaches();
     m_db->revert();  // cancel pending changes
-    m_rotator->rotate();
+    m_rotating_db->rotate();
 
     // re-insert genesis
     auto r = details.rlp();

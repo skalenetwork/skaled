@@ -23,6 +23,7 @@ public:
     ManuallyRotatingLevelDB( std::shared_ptr< batched_io::rotating_db_io > _io_backend );
     void rotate();
     size_t piecesCount() const { return io_backend->pieces_count(); }
+    DatabaseFace* currentPiece() const { return io_backend->begin()->get(); }
 
     virtual std::string lookup( Slice _key ) const;
     virtual bool exists( Slice _key ) const;

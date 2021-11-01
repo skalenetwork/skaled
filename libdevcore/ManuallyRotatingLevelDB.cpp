@@ -13,7 +13,6 @@ ManuallyRotatingLevelDB::ManuallyRotatingLevelDB( std::shared_ptr< rotating_db_i
     : io_backend( _io_backend ) {}
 
 void ManuallyRotatingLevelDB::rotate() {
-    UnsafeRegion::lock unsafe_region_lock;
     std::unique_lock< std::shared_mutex > lock( m_mutex );
     assert( this->batch_cache.empty() );
     io_backend->rotate();
@@ -42,7 +41,7 @@ bool ManuallyRotatingLevelDB::exists( Slice _key ) const {
 
 void ManuallyRotatingLevelDB::insert( Slice _key, Slice _value ) {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
-    io_backend->current_piece()->insert( _key, _value );
+    currentPiece()->insert( _key, _value );
 }
 
 void ManuallyRotatingLevelDB::kill( Slice _key ) {
@@ -53,14 +52,14 @@ void ManuallyRotatingLevelDB::kill( Slice _key ) {
 
 std::unique_ptr< WriteBatchFace > ManuallyRotatingLevelDB::createWriteBatch() const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
-    std::unique_ptr< WriteBatchFace > wbf = io_backend->current_piece()->createWriteBatch();
+    std::unique_ptr< WriteBatchFace > wbf = currentPiece()->createWriteBatch();
     batch_cache.insert( wbf.get() );
     return wbf;
 }
 void ManuallyRotatingLevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
     batch_cache.erase( _batch.get() );
-    io_backend->current_piece()->commit( std::move( _batch ) );
+    currentPiece()->commit( std::move( _batch ) );
 }
 
 void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
