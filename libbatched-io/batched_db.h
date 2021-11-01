@@ -52,6 +52,7 @@ public:
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         if ( m_batch )
             m_batch.reset();
+        m_db->discardCreatedBatches();
     }
     virtual void commit( const std::string& test_crash_string = std::string() ) {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
