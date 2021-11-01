@@ -123,10 +123,11 @@ public:
     std::string name;
     u256 id;
     Address owner;
+    Address blockAuthor;
     std::vector< sChainNode > nodes;
     s256 contractStorageLimit = 1000000000;
     uint64_t dbStorageLimit = 0;
-    uint64_t consensusStorageLimit = 5000000000; // default consensus storage limit
+    uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
     bool freeContractDeployment = false;
     int emptyBlockIntervalMs = -1;
