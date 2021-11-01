@@ -131,7 +131,7 @@ public:
         return this->hashAgent_->getVotedHash();
     }
 
-    bool voteForHash() { return this->hashAgent_->voteForHash( this->hashAgent_->voted_hash_ ); }
+    bool voteForHash() { return this->hashAgent_->voteForHash(); }
 
     void spoilSignature( size_t idx ) {
         this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();

@@ -84,7 +84,7 @@ private:
     std::mutex hashes_mutex;
     libff::alt_bn128_G2 common_public_key_;
 
-    bool voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote );
+    bool voteForHash();
     void readPublicKeyFromConfig();
     std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
 
