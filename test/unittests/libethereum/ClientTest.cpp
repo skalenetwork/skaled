@@ -199,12 +199,12 @@ public:
 
         int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
         rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "mkdir " + m_tmpDir.path() ).c_str() );
 
         gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + m_tmpDir.path() )
                     .c_str() );
-        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( m_tmpDir.path().c_str(), sudo_uid, sudo_gid );
         ( void )rv;
         dropRoot();
 
@@ -217,7 +217,6 @@ public:
         chainParams = chainParams.loadConfig( _config );
 
         fs::path dir = m_tmpDir.path();
-        std::cout << "BC DIR: " << dir.string() << '\n';
 
         auto nodesState = contents( dir / fs::path( "network.rlp" ) );
 
@@ -226,15 +225,15 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
         std::shared_ptr< SnapshotManager > mgr;
-        mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2", "filestorage"} ) );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" );
-        std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" ) );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "blocks_and_extras" );
-        std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "blocks_and_extras" ) );
+        mgr.reset( new SnapshotManager( m_tmpDir.path(), { BlockChain::getChainDirName( chainParams ), "vol2", "filestorage"} ) );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "12041" );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "12041" / "state" );
+        // std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "state" ) );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "blocks_and_extras" );
+        // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
@@ -270,14 +269,16 @@ public:
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
+    fs::path getTmpDataDir() { return m_tmpDir.path(); }
+
     ~TestClientSnapshotsFixture() {
         m_ethereum.reset(0);
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
         gainRoot();
-        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "umount " + m_tmpDir.path() ).c_str() );
+        rv = system( ( "rmdir " + m_tmpDir.path() ).c_str() );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         ( void ) rv;
     }
@@ -825,7 +826,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -838,12 +839,10 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
     std::this_thread::sleep_for( 6000ms );
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
 
     dev::h256 hash = testClient->hashFromNumber( 3 );
-    std::cout << "HASH: " << hash << '\n';
     uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
-    std::cout << "TIMESTAMP: " << timestampFromBlockchain << '\n';
 
     BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 3 ) );
 }

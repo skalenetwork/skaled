@@ -669,9 +669,6 @@ uint64_t SnapshotManager::getBlockTimestamp(
 
     dev::eth::BlockChain bc( chain_params, db_dir );
     dev::h256 hash = bc.numberHash( _blockNumber );
-    std::cout << "DB DIR: " << bc.getChainDirName( chain_params ) << '\n';
-    std::cout << "DB DIR: " << this->volumes[0] << '\n';
-    std::cout << "HASH: " << hash << '\n';
     uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
 
 
