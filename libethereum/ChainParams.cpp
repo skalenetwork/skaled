@@ -199,7 +199,7 @@ ChainParams ChainParams::loadConfig(
 
 
         if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
-            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes").get_int64();
+            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
         }
 
         if ( sChainObj.count( "freeContractDeployment" ) )
