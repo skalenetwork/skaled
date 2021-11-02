@@ -12,7 +12,7 @@ defaults:
     shell: bash
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-18.04
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
