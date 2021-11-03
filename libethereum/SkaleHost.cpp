@@ -74,9 +74,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     std::cout.flush();
     //
     auto ts = nfo.timestamp();
-    auto consensus_engine_ptr =
-        make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
-            m_client.chainParams().sChain.consensusStorageLimit );
+    auto consensus_engine_ptr = make_unique< ConsensusEngine >(
+        _extFace, m_client.number(), ts, 0, m_client.chainParams().sChain.consensusStorageLimit );
 
     if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
         this->fillSgxInfo( *consensus_engine_ptr );
