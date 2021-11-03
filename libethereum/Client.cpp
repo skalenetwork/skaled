@@ -545,11 +545,11 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
-    LOG( m_logger ) << "Total unsafe time so far = "
-                    << std::chrono::duration_cast< std::chrono::seconds >(
-                           UnsafeRegion::getTotalTime() )
-                           .count()
-                    << " seconds";
+    LOG( m_loggerDetail ) << "Total unsafe time so far = "
+                          << std::chrono::duration_cast< std::chrono::seconds >(
+                                 UnsafeRegion::getTotalTime() )
+                                 .count()
+                          << " seconds";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;

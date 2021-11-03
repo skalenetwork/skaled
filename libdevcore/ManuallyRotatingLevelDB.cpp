@@ -1,7 +1,5 @@
 #include "ManuallyRotatingLevelDB.h"
 
-#include <libskale/UnsafeRegion.h>
-
 #include <secp256k1_sha256.h>
 
 namespace dev {
