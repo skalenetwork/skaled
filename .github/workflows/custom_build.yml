@@ -24,6 +24,17 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+      - name: install packages
+        run: |
+          sudo apt-get install software-properties-common
+          sudo apt-get install gcc-9 g++-9
+      - name: use g++-9 by default
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -60,8 +71,8 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: Build dependencies
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           cd deps
@@ -71,8 +82,8 @@ jobs:
           cd ..
       - name: Configure all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           mkdir -p build
@@ -81,12 +92,14 @@ jobs:
           cd ..
       - name: Build all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           cd build
           make skaled -j$(nproc)
+          echo "Ensure release mode skaled does not have any debug markers"
+          strip skaled/skaled
           cd ..
 
       - name: Build and publish container
