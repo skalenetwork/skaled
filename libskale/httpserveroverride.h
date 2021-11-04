@@ -383,6 +383,10 @@ public:
         fn_jsonrpc_call_t fn_eth_sendRawTransaction_;
         fn_jsonrpc_call_t fn_eth_getTransactionReceipt_;
         fn_jsonrpc_call_t fn_eth_call_;
+        fn_jsonrpc_call_t fn_eth_getBalance_;
+        fn_jsonrpc_call_t fn_eth_getStorageAt_;
+        fn_jsonrpc_call_t fn_eth_getTransactionCount_;
+        fn_jsonrpc_call_t fn_eth_getCode_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -520,6 +524,21 @@ protected:
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     void eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getBalance( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getStorageAt( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getTransactionCount( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getCode( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_getProof( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
