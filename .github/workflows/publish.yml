@@ -1,7 +1,7 @@
 name: Build and publish skaled container
 on:
   pull_request:
-    types: [closed]
+    types: [merged]
     branches:
       - master
       - develop
