@@ -269,7 +269,7 @@ setup_variable WITH_ARGTABLE2 "no"
 
 #
 # notice: nettle and gnutls are needed for microhttpd on ubuntu 18.04
-# sudo apt-get install nettle-dev gnutls-dev
+# sudo apt-get install -y nettle-dev gnutls-dev
 #
 setup_variable WITH_NETTLE "no"
 setup_variable WITH_TASN1 "no"
