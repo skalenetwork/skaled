@@ -1,15 +1,16 @@
 FROM ubuntu:bionic 
 
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
-RUN apt-get install -yq  libprocps-dev g++-7   ccache  \
+RUN apt-get install -yq libprocps-dev gcc-9 g++-9 ccache \
     flex bison yasm python python-pip texinfo clang-format-6.0 btrfs-progs \
     cmake libtool build-essential pkg-config autoconf wget git  libargtable2-dev \
     libmicrohttpd-dev libhiredis-dev redis-server openssl libssl-dev doxygen vim
 
 
 
-ENV CC gcc-7
-ENV CXX g++-7
+ENV CC gcc-9
+ENV CXX g++-9
 ENV TARGET all
 ENV TRAVIS_BUILD_TYPE Debug
 
