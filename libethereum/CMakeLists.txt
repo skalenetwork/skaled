@@ -2,7 +2,7 @@
 file( GLOB sources "*.cpp" "*.h" )
 add_library( ethereum ${sources} InstanceMonitor.cpp InstanceMonitor.h)
 
-target_compile_options( ethereum PRIVATE -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
+target_compile_options( ethereum PRIVATE -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized  )
 
 target_include_directories( ethereum PRIVATE "${UTILS_INCLUDE_DIR}" ${SKUTILS_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include

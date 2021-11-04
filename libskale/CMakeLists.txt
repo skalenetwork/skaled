@@ -47,6 +47,7 @@ target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils
         bls
         pthread
         )
+target_compile_options( skale PRIVATE -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized  )
 
 #target_compile_options( skale PRIVATE -Weffc++ )
 #target_compile_options( skale PRIVATE -Wno-error=effc++ )

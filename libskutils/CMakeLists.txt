@@ -34,6 +34,7 @@ add_library( skutils STATIC
 if( APPLE )
     target_compile_definitions( skutils PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
+target_compile_options( skutils PRIVATE -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
 target_include_directories( skutils PRIVATE
     ./include
     ${SKUTILS_INCLUDE_DIRS}

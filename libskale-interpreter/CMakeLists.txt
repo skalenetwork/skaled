@@ -24,7 +24,7 @@ set(
 )
 
 add_library(skale-interpreter STATIC ${sources})
-target_compile_options( skale-interpreter PRIVATE -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
+target_compile_options( skale-interpreter PRIVATE -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
 target_link_libraries(skale-interpreter PRIVATE ${dependencies})
 
 if(EVM_OPTIMIZE)
