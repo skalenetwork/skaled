@@ -2,7 +2,8 @@ FROM ubuntu:bionic
 
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends libprocps-dev "gcc-9" "g++-9" ccache \
+RUN apt-get install -y --no-install-recommends gcc-9 g++-9
+RUN apt-get install -y --no-install-recommends libprocps-dev ccache \
     flex bison yasm python python-pip texinfo clang-format-6.0 btrfs-progs \
     cmake libtool build-essential pkg-config autoconf wget git  libargtable2-dev \
     libmicrohttpd-dev libhiredis-dev redis-server openssl libssl-dev doxygen vim
