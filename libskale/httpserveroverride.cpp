@@ -3296,7 +3296,11 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
     {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
     {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
-    {"eth_call", &SkaleServerOverride::eth_call}};
+    {"eth_call", &SkaleServerOverride::eth_call},
+    {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
+    {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
+    {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
+    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3442,6 +3446,29 @@ void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
 void SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_call_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getBalance( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getBalance_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getStorageAt( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getTransactionCount( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getCode( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

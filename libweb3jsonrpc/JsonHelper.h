@@ -73,6 +73,9 @@ rapidjson::Document toRapidJson(
 rapidjson::Document toRapidJson(
     LocalisedTransactionReceipt const& _t, rapidjson::Document::AllocatorType& allocator );
 
+bool validateEIP1898Json( const rapidjson::Value& jo );
+std::string getBlockFromEIP1898Json( const rapidjson::Document& jo );
+
 void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
     const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
 
