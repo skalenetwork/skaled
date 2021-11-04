@@ -2739,10 +2739,12 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( const dev::Exception& ) {
                         wrapJsonRpcException( joRequest,
                             jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
                             joResponse );
+                        return true;
                     }
                 };
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
@@ -2766,14 +2768,17 @@ int main( int argc, char** argv ) try {
                         rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
                         joResponse.EraseMember( "result" );
                         joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::invalid_argument& ex ) {
                         // not known transaction - skip exception
                         joResponse.AddMember(
                             "result", rapidjson::Value(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( ... ) {
                         wrapJsonRpcException( joRequest,
                             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
                             joResponse );
+                        return true;
                     }
                 };
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
@@ -2803,6 +2808,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {
@@ -2831,6 +2837,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {
@@ -2861,6 +2868,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {
@@ -2889,6 +2897,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {
@@ -2917,6 +2926,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {
@@ -2939,6 +2949,7 @@ int main( int argc, char** argv ) try {
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
                             strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+                        return true;
                     } catch ( std::exception const& ex ) {
                         throw jsonrpc::JsonRpcException( ex.what() );
                     } catch ( ... ) {

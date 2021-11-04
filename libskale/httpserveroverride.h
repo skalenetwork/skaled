@@ -304,7 +304,7 @@ public:
 
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
-    typedef std::function< void(
+    typedef std::function< bool(
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) >
         fn_jsonrpc_call_t;
 
@@ -508,37 +508,34 @@ public:
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
 protected:
-    typedef void ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
+    typedef bool ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
         const std::string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
     typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
-    void setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getBalance( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getBalance( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getStorageAt( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getStorageAt( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getTransactionCount( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getTransactionCount( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getCode( SkaleServerHelper& sse, const std::string& strOrigin,
-        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
-
-    void eth_getProof( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getCode( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
