@@ -1,5 +1,6 @@
 FROM ubuntu:bionic 
 
+RUN apt-get install -yq software-properties-common
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
 RUN apt-get install -yq gcc-9 g++-9 libprocps-dev ccache \
