@@ -2056,6 +2056,82 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
     BOOST_REQUIRE_THROW(fixture.rpcClient->setSchainExitTime(requestJson), jsonrpc::JsonRpcException);
 }
 
+BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
+    JsonRpcFixture fixture;
+
+    Json::Value eip1898WellFormed;
+    eip1898WellFormed["blockHash"] = dev::h256::random().hex();
+    eip1898WellFormed["requireCanonical"] = true;
+
+    Json::Value eip1898WellFormed1;
+    eip1898WellFormed["blockHash"] = dev::h256::random().hex();
+
+    Json::Value eip1898WellFormed2;
+    eip1898WellFormed2["blockHash"] = dev::h256::random().hex();
+    eip1898WellFormed2["requireCanonical"] = false;
+
+    Json::Value eip1898BadFormed;
+    eip1898BadFormed["blockHashxxx"] = dev::h256::random().hex();
+    eip1898BadFormed["requireCanonical"] = false;
+
+    Json::Value eip1898BadFormed1;
+    eip1898BadFormed1["blockHash"] = dev::h256::random().hex();
+    eip1898BadFormed1["requireCanonical"] = false;
+    eip1898BadFormed1["smth"] = 1;
+
+    Json::Value eip1898BadFormed2;
+    eip1898BadFormed2["blockHash"] = 228;
+
+    Json::Value eip1898BadFormed3;
+    eip1898BadFormed3["blockHash"] = dev::h256::random().hex();
+    eip1898BadFormed3["requireCanonical"] = 228;
+
+    std::array<Json::Value, 3> wellFormedCalls = { eip1898WellFormed, eip1898WellFormed1, eip1898WellFormed2 };
+    std::array<Json::Value, 4> badFormedCalls = { eip1898BadFormed, eip1898BadFormed1, eip1898BadFormed2, eip1898BadFormed3 };
+    
+    auto address = fixture.coinbase.address();
+
+    for (const auto& call: wellFormedCalls) {
+        fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: badFormedCalls) {
+        fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: wellFormedCalls) {
+        fixture.rpcClient->eth_callEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: badFormedCalls) {
+        fixture.rpcClient->eth_callEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: wellFormedCalls) {
+        fixture.rpcClient->eth_getCodeEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: badFormedCalls) {
+        fixture.rpcClient->eth_getCodeEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: wellFormedCalls) {
+        fixture.rpcClient->eth_getStorageAtEIP1898( toJS( address ), toJS( address ), call );
+    }
+
+    for (const auto& call: badFormedCalls) {
+        fixture.rpcClient->eth_getStorageAtEIP1898( toJS( address ), toJS( address ), call );
+    }
+
+    for (const auto& call: wellFormedCalls) {
+        fixture.rpcClient->eth_getTransactionCountEIP1898( toJS( address ), call );
+    }
+
+    for (const auto& call: badFormedCalls) {
+        fixture.rpcClient->eth_getTransactionCountEIP1898( toJS( address ), call );
+    }
+}
+
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
