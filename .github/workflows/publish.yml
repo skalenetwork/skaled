@@ -24,10 +24,30 @@ jobs:
         run: |
           sudo apt-get -y install software-properties-common
           sudo apt-get -y install gcc-9 g++-9
-      - name: use g++-9 by default
+
+      - name: Use g++-9 and gcov-9 by default
         run: |
+          echo "Updating all needed alternatives"
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
+          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
+          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+          echo "Checking alternative for gcc"
+          which gcc
+          gcc --version
+          echo "Checking alternative for g++"
+          which g++
+          g++ --version
+          echo "Checking alternative for gcov"
+          which gcov
+          gcov --version
+          echo "Checking alternative for gcov-dump"
+          which gcov-dump
+          gcov-dump --version
+          echo "Checking alternative for gcov-tool"
+          which gcov-tool
+          gcov-tool --version
 
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
