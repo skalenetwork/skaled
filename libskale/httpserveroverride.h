@@ -400,6 +400,10 @@ public:
             fn_eth_sendRawTransaction_ = other.fn_eth_sendRawTransaction_;
             fn_eth_getTransactionReceipt_ = other.fn_eth_getTransactionReceipt_;
             fn_eth_call_ = other.fn_eth_call_;
+            fn_eth_getBalance_ = other.fn_eth_getBalance_;
+            fn_eth_getStorageAt_ = other.fn_eth_getStorageAt_;
+            fn_eth_getTransactionCount_ = other.fn_eth_getTransactionCount_;
+            fn_eth_getCode_ = other.fn_eth_getCode_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;

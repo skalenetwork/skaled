@@ -467,29 +467,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                         jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
                 }
             };
-        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getProof =
-            [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                try {
-                    if ( joRequest["params"].GetArray().Size() != 2 ) {
-                        throw jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                    }
-                    dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
-                        joRequest["params"].GetArray()[0] );
-                    std::string strResponse =
-                        ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
-
-                    rapidjson::Value& v = joResponse["result"];
-                    v.SetString(
-                        strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                    return true;
-                } catch ( std::exception const& ex ) {
-                    throw jsonrpc::JsonRpcException( ex.what() );
-                } catch ( ... ) {
-                    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                        jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                }
-            };
         //
         SkaleServerOverride::opts_t serverOpts;
         serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
@@ -2091,8 +2068,9 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     
     auto address = fixture.coinbase.address();
 
+    std::string response;
     for (const auto& call: wellFormedCalls) {
-        fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call );
+         response = fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call );
     }
 
     for (const auto& call: badFormedCalls) {
