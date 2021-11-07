@@ -616,10 +616,10 @@ bool validateEIP1898Json( const rapidjson::Value& jo ) {
     if ( !jo["blockHash"].IsString() )
         return false;
 
-    if ( jo.Size() == 2 ) {
+    if ( jo.MemberCount() == 2 ) {
         if ( !jo.HasMember( "requireCanonical" ) )
             return false;
-        return jo["requireCanonical"].IsString();
+        return jo["requireCanonical"].IsBool();
     }
 
     return true;
