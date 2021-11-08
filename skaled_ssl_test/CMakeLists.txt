@@ -3,7 +3,9 @@ set( sources
     main.cpp
     )
 add_executable( skaled_ssl_test ${sources} )
-target_compile_options( skaled_ssl_test PRIVATE -Wno-error=unused-variable )
+target_compile_options( skaled_ssl_test PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
 if( APPLE )
     target_compile_definitions( skaled_ssl_test
         PRIVATE __BUILDING_4_MAC_OS_X__=1

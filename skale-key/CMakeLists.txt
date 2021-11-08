@@ -4,6 +4,10 @@
 
 add_executable(skale-key KeyAux.h main.cpp)
 
+target_compile_options( skale-key PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
+
 target_link_libraries(
     skale-key
     ethcore
