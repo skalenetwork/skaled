@@ -2074,14 +2074,15 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     eip1898BadFormed5["blockNumber"] = dev::h256::random().hex();
     eip1898BadFormed5["requireCanonical"] = 228;
 
-    std::array<Json::Value, 3> wellFormedCalls = { eip1898WellFormed, eip1898WellFormed1, eip1898WellFormed2 };
-    std::array<Json::Value, 4> badFormedCalls = { eip1898BadFormed, eip1898BadFormed1, eip1898BadFormed2, eip1898BadFormed3 };
+    std::array<Json::Value, 4> wellFormedCalls = { eip1898WellFormed, eip1898WellFormed1, eip1898WellFormed2, eip1898WellFormed3 };
+    std::array<Json::Value, 6> badFormedCalls = { eip1898BadFormed, eip1898BadFormed1, eip1898BadFormed2, eip1898BadFormed3, eip1898BadFormed4, eip1898BadFormed5 };
     
     auto address = fixture.coinbase.address();
 
     std::string response;
     for (const auto& call: wellFormedCalls) {
         BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call ));
+        std::cout << "HERE\n";
     }
 
     for (const auto& call: badFormedCalls) {

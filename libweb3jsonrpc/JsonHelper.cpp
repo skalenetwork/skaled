@@ -648,12 +648,7 @@ bool validateEIP1898Json( const rapidjson::Value& jo ) {
             return false;
         return jo["requireCanonical"].IsBool();
     } else if ( jo.HasMember( "blockNumber" ) ) {
-        if ( !jo["blockNumber"].IsString() )
-            return false;
-
-        if ( jo.MemberCount() > 1 ) {
-            return false;
-        }
+        return jo["blockNumber"].IsString() && jo.MemberCount() == 1;
     }
 
     return false;
