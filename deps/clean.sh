@@ -96,7 +96,7 @@ WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
 cd "$WORKING_DIR_NEW"
 
 cd "$WORKING_DIR_NEW"/../libconsensus/deps
-./clean.sh
+eval bash ./clean.sh
 cd ../../deps
 
 echo -e " "

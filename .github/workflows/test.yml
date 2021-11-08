@@ -25,6 +25,56 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+      - name: install packages
+        run: |
+          sudo apt-get -y install software-properties-common
+          sudo apt-get -y install gcc-9 g++-9
+
+      - name: Use g++-9 and gcov-9 by default
+        run: |
+          echo "Updating all needed alternatives"
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
+          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
+          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+          echo "Checking alternative for gcc"
+          which gcc
+          gcc --version
+          echo "Checking alternative for g++"
+          which g++
+          g++ --version
+          echo "Checking alternative for gcov"
+          which gcov
+          gcov --version
+          echo "Checking alternative for gcov-dump"
+          which gcov-dump
+          gcov-dump --version
+          echo "Checking alternative for gcov-tool"
+          which gcov-tool
+          gcov-tool --version
+
+      - name: Get newest lcov
+        run: |
+          echo "Removing previous lcov version..."
+          sudo apt-get remove lcov || true
+          echo "Installing newest lcov version..."
+          rm -rf newer_lcov || true
+          mkdir newer_lcov
+          cd newer_lcov
+          git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
+          cd lcov
+          sudo make install
+          cd ..
+          cd ..
+          echo "Checking installed lcov version..."
+          which lcov
+          lcov --version
+
+
       - name: Submodule update
         run: |
           rm -rf ./libconsensus || true
@@ -46,8 +96,8 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: Build dependencies
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
@@ -58,8 +108,8 @@ jobs:
           cd ..
       - name: Configure all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
@@ -68,20 +118,20 @@ jobs:
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      - name: Format-check source code
-        run: |
-          export CC=gcc-7
-          export CXX=g++-7
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
-          cd build
-          make format-check
-          cd ..
+      # - name: Format-check source code
+      #   run: |
+      #     export CC=gcc-9
+      #     export CXX=g++-9
+      #     export TARGET=all
+      #     export CMAKE_BUILD_TYPE=Release
+      #     export CODE_COVERAGE=ON
+      #     cd build
+      #     make format-check
+      #     cd ..
       - name: Build all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON

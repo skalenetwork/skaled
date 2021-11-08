@@ -13,8 +13,8 @@ RUN apt-get -q update && \
         btrfs-progs
 
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
-    apt update && \
-    apt install g++-7 gdb -y
+    apt-get update && \
+    apt-get install -y gcc-9 g++-9 gdb
 
 RUN mkdir /skaled
 COPY ./executable /skaled
