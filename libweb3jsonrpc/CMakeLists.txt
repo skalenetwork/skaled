@@ -133,6 +133,10 @@ target_include_directories( web3jsonrpc PRIVATE
 	${SKUTILS_INCLUDE_DIRS}
 	)
 
+target_compile_options( web3jsonrpc PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
+
 target_link_libraries( web3jsonrpc
                 consensus
 #    bls

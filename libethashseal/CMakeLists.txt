@@ -13,6 +13,10 @@ set(sources
 )
 
 add_library(ethashseal ${sources})
+target_compile_options( ethashseal PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    -Wno-error=pessimizing-move
+    )
 target_include_directories(ethashseal PRIVATE ../utils
         ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
         ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/gen

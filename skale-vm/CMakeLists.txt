@@ -3,6 +3,10 @@
 
 add_executable(skale-vm main.cpp)
 
+target_compile_options( skale-vm PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
+
 target_include_directories( skale PRIVATE
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}
