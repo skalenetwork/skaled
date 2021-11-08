@@ -64,6 +64,7 @@ add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
 target_compile_options( testeth PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
     -Wno-error=pessimizing-move
+    -Wno-error=format-overflow
     -Wno-error=stringop-truncation
     )
 if( APPLE )
