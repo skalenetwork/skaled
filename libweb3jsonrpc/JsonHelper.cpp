@@ -634,27 +634,37 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avo
 }
 
 bool validateEIP1898Json( const rapidjson::Value& jo ) {
-    if ( !jo.HasMember( "blockHash" ) )
-        return false;
+    if ( jo.HasMember( "blockHash" ) ) {
+        if ( !jo["blockHash"].IsString() )
+            return false;
 
-    if ( !jo["blockHash"].IsString() )
-        return false;
+        if ( jo.MemberCount() > 2 )
+            return false;
 
-    if ( jo.MemberCount() == 2 ) {
+        if ( jo.MemberCount() == 1 )
+            return true;
+
         if ( !jo.HasMember( "requireCanonical" ) )
             return false;
         return jo["requireCanonical"].IsBool();
+    } else if ( jo.HasMember( "blockNumber" ) ) {
+        if ( !jo["blockNumber"].IsString() )
+            return false;
+
+        if ( jo.MemberCount() > 1 ) {
+            return false;
+        }
     }
 
-    return true;
+    return false;
 }
 
-std::string getBlockFromEIP1898Json( const rapidjson::Document& jo ) {
-    if ( jo["params"].GetArray()[1].IsString() ) {
-        return jo["params"].GetArray()[1].GetString();
+std::string getBlockFromEIP1898Json( const rapidjson::Value& jo ) {
+    if ( jo.IsString() ) {
+        return jo.GetString();
     }
 
-    if ( !dev::eth::validateEIP1898Json( jo["params"].GetArray()[1] ) )
+    if ( !dev::eth::validateEIP1898Json( jo ) )
         throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
 
     return "latest";
