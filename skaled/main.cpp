@@ -2791,7 +2791,8 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string block = dev::eth::getBlockFromEIP1898Json( joRequest );
+                        std::string block =
+                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
                         std::string strResponse = ethFace->eth_getBalance(
                             joRequest["params"].GetArray()[0].GetString(), block );
@@ -2821,7 +2822,8 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string block = dev::eth::getBlockFromEIP1898Json( joRequest );
+                        std::string block =
+                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[2] );
 
                         std::string strResponse = ethFace->eth_getStorageAt(
                             joRequest["params"].GetArray()[0].GetString(),
@@ -2851,7 +2853,8 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string block = dev::eth::getBlockFromEIP1898Json( joRequest );
+                        std::string block =
+                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
                         std::string strResponse = ethFace->eth_getTransactionCount(
                             joRequest["params"].GetArray()[0].GetString(), block );
@@ -2880,7 +2883,8 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string block = dev::eth::getBlockFromEIP1898Json( joRequest );
+                        std::string block =
+                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
                         std::string strResponse = ethFace->eth_getCode(
                             joRequest["params"].GetArray()[0].GetString(), block );
