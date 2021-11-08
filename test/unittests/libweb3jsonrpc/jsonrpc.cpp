@@ -2047,6 +2047,9 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     eip1898WellFormed2["blockHash"] = dev::h256::random().hex();
     eip1898WellFormed2["requireCanonical"] = false;
 
+    Json::Value eip1898WellFormed3;
+    eip1898WellFormed3["blockNumber"] = dev::h256::random().hex();
+
     Json::Value eip1898BadFormed;
     eip1898BadFormed["blockHashxxx"] = dev::h256::random().hex();
     eip1898BadFormed["requireCanonical"] = false;
@@ -2062,6 +2065,14 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     Json::Value eip1898BadFormed3;
     eip1898BadFormed3["blockHash"] = dev::h256::random().hex();
     eip1898BadFormed3["requireCanonical"] = 228;
+    
+    Json::Value eip1898BadFormed4;
+    eip1898BadFormed4["blockNumber"] = dev::h256::random().hex();
+    eip1898BadFormed4["requireCanonical"] = true;
+
+    Json::Value eip1898BadFormed5;
+    eip1898BadFormed5["blockNumber"] = dev::h256::random().hex();
+    eip1898BadFormed5["requireCanonical"] = 228;
 
     std::array<Json::Value, 3> wellFormedCalls = { eip1898WellFormed, eip1898WellFormed1, eip1898WellFormed2 };
     std::array<Json::Value, 4> badFormedCalls = { eip1898BadFormed, eip1898BadFormed1, eip1898BadFormed2, eip1898BadFormed3 };
