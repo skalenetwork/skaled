@@ -104,6 +104,7 @@ jobs:
           cd deps
           #######################################./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
+          ./clean.sh
           ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
