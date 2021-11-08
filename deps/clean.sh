@@ -96,7 +96,7 @@ WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
 cd "$WORKING_DIR_NEW"
 
 cd "$WORKING_DIR_NEW"/../libconsensus/deps
-./clean.sh
+eval bash ./clean.sh
 cd ../../deps
 
 echo -e " "
@@ -116,11 +116,20 @@ echo "Cleaning archive files..."
 rm -f ./*.tar.gz
 rm -f ./*.zip
 echo "Cleaning upacked library folders..."
+rm -rf ./double-conversion
+rm -rf ./fizz
+rm -rf ./fmt
+rm -rf ./folly
+rm -rf ./gflags-master
+rm -rf ./glog
+rm -rf ./googletest
 rm -rf ./libiconv-1.15
 rm -rf ./zlib
 rm -rf ./openssl
 rm -rf ./curl
 rm -rf ./libuv
+rm -rf ./libevent
+rm -rf ./libsodium
 rm -rf ./libwebsockets
 rm -rf ./boost_1_68_0
 rm -rf ./argtable2
@@ -131,18 +140,11 @@ rm -rf ./libmicrohttpd
 rm -rf ./jsoncpp
 rm -rf ./libjson-rpc-cpp
 rm -rf ./libcryptopp
-# rm -rf ./bzip2
-# rm -rf ./lzma
-# rm -rf ./SDL2-2.0.7
-# rm -rf ./SDL2_ttf-2.0.14
-# rm -rf ./shine
-# rm -rf ./readline-7.0
-# rm -rf ./libxml2-2.9.7
-# rm -rf ./libarchive-3.3.2
-# rm -rf ./libev
-# rm -rf ./libevent
-# rm -rf l./ibwebsockets
-# rm -rf ./gtest
+rm -rf ./proxygen
+rm -rf ./wangle
+rm -rf ./zstd
+rm -rf ./liblzma
+rm -rf ./libunwind
 rm -rf ./gmp-6.1.2
 rm -rf ./libff
 rm -rf ./pbc

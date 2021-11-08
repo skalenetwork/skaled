@@ -159,7 +159,7 @@ inline bool test(
     }
     if ( bIsVerbose && strTypeDescription && strTypeDescription[0] ) {
         if ( bOKay )
-            std::cout << cc::success( "Successfull conversion test of " )
+            std::cout << cc::success( "Successful conversion test of " )
                       << cc::info( strTypeDescription ) << cc::success( "." ) << "\n";
         else
             std::cout << cc::fatal( "FAILED" ) << cc::error( " conversion test of " )
@@ -187,7 +187,7 @@ inline bool test_limit_limbs_and_halves(
     }
     if ( bIsVerbose ) {
         if ( bOKay )
-            std::cout << cc::success( "Successfull conversion test of " ) << cc::size10( nBits )
+            std::cout << cc::success( "Successful conversion test of " ) << cc::size10( nBits )
                       << cc::success( " bit values." ) << "\n";
         else
             std::cout << cc::fatal( "FAILED" ) << cc::error( " conversion test of " )

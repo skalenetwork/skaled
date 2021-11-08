@@ -2,3 +2,4 @@
 exclude_paths:
   - 'scripts/**'
   - 'test/**'
+  - "Dockerfile"
