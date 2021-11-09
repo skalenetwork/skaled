@@ -12,7 +12,9 @@ set(EXECUTABLE_NAME skaled)
 
 add_executable(${EXECUTABLE_NAME} ${sources})
 
-target_compile_options( ${EXECUTABLE_NAME} PRIVATE -Wno-error=unused-variable )
+target_compile_options( ${EXECUTABLE_NAME} PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
 
 if( APPLE )
 	target_compile_definitions( ${EXECUTABLE_NAME} PRIVATE __BUILDING_4_MAC_OS_X__=1 )
@@ -20,8 +22,19 @@ endif()
 
 target_link_libraries(
     ${EXECUTABLE_NAME}
-    PRIVATE ethereum ethashseal evm web3jsonrpc devcore Boost::program_options pthread idn2
-)
+    PRIVATE
+        ethereum
+        ethashseal
+        evm
+        web3jsonrpc
+        devcore
+        Boost::program_options
+        skutils
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+        "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+        pthread
+        idn2
+    )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)
 endif()

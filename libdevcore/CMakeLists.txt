@@ -14,6 +14,10 @@ endif()
 add_library(devcore ${sources} ${headers})
 add_dependencies(devcore secp256k1)
 
+target_compile_options( devcore PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
+
 # Needed to prevent including system-level boost headers:
 target_include_directories(devcore SYSTEM PUBLIC ${Boost_INCLUDE_DIR} PRIVATE ../utils)
 target_include_directories( devcore PRIVATE
