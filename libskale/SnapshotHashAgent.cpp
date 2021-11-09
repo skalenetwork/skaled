@@ -32,6 +32,8 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libff/common/profiling.hpp>
 
+#include <libconsensus/libBLS/tools/utils.h>
+
 SnapshotHashAgent::SnapshotHashAgent(
     const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
     : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
@@ -43,7 +45,7 @@ SnapshotHashAgent::SnapshotHashAgent(
         this->is_received_[i] = false;
     }
 
-    this->bls_.reset( new signatures::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
+    this->bls_.reset( new libBLS::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
     if ( common_public_key == "" ) {
         this->readPublicKeyFromConfig();
     } else {
@@ -147,13 +149,14 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
         std::vector< libff::alt_bn128_Fr > lagrange_coeffs;
         libff::alt_bn128_G1 common_signature;
         try {
-            lagrange_coeffs = this->bls_->LagrangeCoeffs( idx );
+            lagrange_coeffs =
+                libBLS::ThresholdUtils::LagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
             common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
-        } catch ( signatures::Bls::IncorrectInput& ex ) {
+        } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             std::cerr << cc::error(
                              "Exception while recovering common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << std::endl;
-        } catch ( signatures::Bls::IsNotWellFormed& ex ) {
+        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while recovering common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << std::endl;
@@ -166,7 +169,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
             is_verified = this->bls_->Verification(
                 std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                 common_signature, this->common_public_key_ );
-        } catch ( signatures::Bls::IsNotWellFormed& ex ) {
+        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             std::cerr << cc::error(
                              "Exception while verifying common signature from other skaleds: " )
                       << cc::warn( ex.what() ) << std::endl;
@@ -195,7 +198,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
                 is_verified = this->bls_->Verification(
                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                     common_signature, this->common_public_key_ );
-            } catch ( signatures::Bls::IsNotWellFormed& ex ) {
+            } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 std::cerr << cc::error(
                                  "Exception while verifying common signature from other skaleds: " )
                           << cc::warn( ex.what() ) << std::endl;
