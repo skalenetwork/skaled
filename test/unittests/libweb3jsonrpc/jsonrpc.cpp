@@ -2101,11 +2101,17 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     }
     
     for (const auto& call: wellFormedCalls) {
-        BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_callEIP1898( toJS( address ), call ));
+        Json::Value transactionCallObject;
+        transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+        transactionCallObject["data"] = "0x0000000000000000000000000000000000000005";
+        BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_callEIP1898( transactionCallObject, call ));
     }
 
     for (const auto& call: badFormedCalls) {
-        fixture.rpcClient->eth_callEIP1898( toJS( address ), call );
+        Json::Value transactionCallObject;
+        transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+        transactionCallObject["data"] = "0x0000000000000000000000000000000000000005";
+        BOOST_REQUIRE_THROW(fixture.rpcClient->eth_callEIP1898( transactionCallObject, call ), jsonrpc::JsonRpcException);
     }
 
     for (const auto& call: wellFormedCalls) {

@@ -2800,8 +2800,7 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string block =
-                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
+                        std::string block = dev::eth::getBlockFromEIP1898Json( paramsArray[1] );
 
                         dev::eth::TransactionSkeleton _t =
                             dev::eth::rapidJsonToTransactionSkeleton( paramsArray[0] );
