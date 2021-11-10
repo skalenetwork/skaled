@@ -1,7 +1,7 @@
 name: Build and publish skaled container
 on:
   pull_request:
-    types: [merged]
+    types: [closed]
     branches:
       - master
       - develop
@@ -12,6 +12,7 @@ defaults:
     shell: bash
 jobs:
   build:
+    if: github.event.pull_request.merged == true
     runs-on: self-hosted
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
