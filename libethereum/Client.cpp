@@ -1234,9 +1234,12 @@ void Client::initHashes() {
 
         // ignore second as it was "in hash computation"
         // check that both are imported!!
-        h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        assert( h2 != h256() );
-        last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // assert( h2 != h256() );
+        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
@@ -1245,11 +1248,14 @@ void Client::initHashes() {
 
         // whether it is local or downloaded - we shall ignore it's hash but use it's time
         // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        uint64_t time_of_second = blockInfo( h2 ).timestamp();
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
 
         this->last_snapshoted_block_with_hash = -1;
-        last_snapshot_creation_time = time_of_second;
+        // last_snapshot_creation_time = time_of_second;
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
 
         // no snapshots yet
     } else {

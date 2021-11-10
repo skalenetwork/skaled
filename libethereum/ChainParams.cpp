@@ -439,6 +439,15 @@ const std::string& ChainParams::getOriginalJson() const {
     params[c_difficultyBoundDivisor] = toHex( toBigEndian( difficultyBoundDivisor ) );
     params[c_durationLimit] = toHex( toBigEndian( durationLimit ) );
 
+    params[c_skale16ForkBlock] = toHex( toBigEndian( skale16ForkBlock ) );
+    params[c_skale32ForkBlock] = toHex( toBigEndian( skale32ForkBlock ) );
+    params[c_skale64ForkBlock] = toHex( toBigEndian( skale64ForkBlock ) );
+    params[c_skale128ForkBlock] = toHex( toBigEndian( skale128ForkBlock ) );
+    params[c_skale256ForkBlock] = toHex( toBigEndian( skale256ForkBlock ) );
+    params[c_skale512ForkBlock] = toHex( toBigEndian( skale512ForkBlock ) );
+    params[c_skale1024ForkBlock] = toHex( toBigEndian( skale1024ForkBlock ) );
+    params[c_skaleUnlimitedForkBlock] = toHex( toBigEndian( skaleUnlimitedForkBlock ) );
+
     params[c_chainID] = toHex( toBigEndian( u256( chainID ) ) );
     params[c_networkID] = toHex( toBigEndian( u256( networkID ) ) );
     params[c_allowFutureBlocks] = allowFutureBlocks;
