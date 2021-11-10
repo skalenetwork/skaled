@@ -51,7 +51,7 @@
 
 #include <bls/bls.h>
 
-#include <bls/BLSutils.h>
+#include <tools/utils.h>
 
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>

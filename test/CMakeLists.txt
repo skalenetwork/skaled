@@ -61,7 +61,12 @@ hunter_add_package(yaml-cpp)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
-target_compile_options( testeth PRIVATE -Wno-error=unused-variable )
+target_compile_options( testeth PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    -Wno-error=pessimizing-move
+    -Wno-error=format-overflow
+    -Wno-error=stringop-truncation
+    )
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
@@ -81,6 +86,8 @@ target_link_libraries(testeth PRIVATE
     ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
     ${DEPS_INSTALL_ROOT}/lib/libz.a
     idn2
+    ${DEPS_INSTALL_ROOT}/lib/liblzma.a
+    ${DEPS_INSTALL_ROOT}/lib/libunwind.a
     )
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)

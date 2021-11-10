@@ -74,7 +74,7 @@ public:
 private:
     dev::eth::ChainParams chain_params_;
     unsigned n_;
-    std::shared_ptr< signatures::Bls > bls_;
+    std::shared_ptr< libBLS::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
     std::vector< libff::alt_bn128_G1 > signatures_;

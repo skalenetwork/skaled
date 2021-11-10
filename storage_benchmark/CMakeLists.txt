@@ -10,11 +10,20 @@ set(
 set(executable_name storage_benchmark)
 
 add_executable(${executable_name} ${sources} ${headers})
+target_compile_options( ${executable_name} PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
 target_link_libraries(
     ${executable_name}
-    PRIVATE ethereum skutils skale devcore skutils
-#    PRIVATE ethereum ethashseal evm web3jsonrpc Boost::program_options
-)
+    PRIVATE
+        ethereum
+        skutils
+        skale
+        devcore
+        skutils
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+        "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+    )
 
 #target_include_directories(evm_benchmark PRIVATE ../utils)
 
