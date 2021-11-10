@@ -2795,15 +2795,16 @@ int main( int argc, char** argv ) try {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
-                        if ( !paramsArray[0].IsObject() || !paramsArray[1].IsString() ) {
+                        if ( !paramsArray[0].IsObject() ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
+                        std::string block = dev::eth::getBlockFromEIP1898Json( paramsArray[1] );
+
                         dev::eth::TransactionSkeleton _t =
                             dev::eth::rapidJsonToTransactionSkeleton( paramsArray[0] );
-                        std::string strResponse =
-                            ethFace->eth_call( _t, paramsArray[1].GetString() );
+                        std::string strResponse = ethFace->eth_call( _t, block );
 
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
@@ -2926,29 +2927,6 @@ int main( int argc, char** argv ) try {
 
                         std::string strResponse = ethFace->eth_getCode(
                             joRequest["params"].GetArray()[0].GetString(), block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getProof =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( joRequest["params"].GetArray().Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-                        dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
-                            joRequest["params"].GetArray()[0] );
-                        std::string strResponse =
-                            ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
 
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(

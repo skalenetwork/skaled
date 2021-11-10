@@ -329,14 +329,26 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     if ( joRequest["params"].GetArray().Size() != 2 ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                     }
+
+                    if ( !joRequest["params"].GetArray()[0].IsObject() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
+                    std::string block = dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
+
                     dev::eth::TransactionSkeleton _t = dev::eth::rapidJsonToTransactionSkeleton(
                         joRequest["params"].GetArray()[0] );
-                    std::string strResponse =
-                        ethFace->eth_call( _t, joRequest["params"].GetArray()[1].GetString() );
+                    std::string strResponse = ethFace->eth_call( _t, block );
 
                     rapidjson::Value& v = joResponse["result"];
                     v.SetString(
@@ -2082,20 +2094,25 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     std::string response;
     for (const auto& call: wellFormedCalls) {
         BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call ));
-        std::cout << "HERE\n";
     }
 
     for (const auto& call: badFormedCalls) {
         BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call ), jsonrpc::JsonRpcException);
     }
     
-    // for (const auto& call: wellFormedCalls) {
-    //     BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_callEIP1898( toJS( address ), call ));
-    // }
+    for (const auto& call: wellFormedCalls) {
+        Json::Value transactionCallObject;
+        transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+        transactionCallObject["data"] = "0x0000000000000000000000000000000000000005";
+        BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_callEIP1898( transactionCallObject, call ));
+    }
 
-    // for (const auto& call: badFormedCalls) {
-    //     fixture.rpcClient->eth_callEIP1898( toJS( address ), call );
-    // }
+    for (const auto& call: badFormedCalls) {
+        Json::Value transactionCallObject;
+        transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
+        transactionCallObject["data"] = "0x0000000000000000000000000000000000000005";
+        BOOST_REQUIRE_THROW(fixture.rpcClient->eth_callEIP1898( transactionCallObject, call ), jsonrpc::JsonRpcException);
+    }
 
     for (const auto& call: wellFormedCalls) {
         BOOST_REQUIRE_NO_THROW(fixture.rpcClient->eth_getCodeEIP1898( toJS( address ), call ));
