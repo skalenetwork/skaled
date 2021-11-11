@@ -991,6 +991,100 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
+    if ( vm.count( "test-url" ) ) {
+        std::string strJSON, strURL = vm["test-url"].as< std::string >(), strPathCA, strPathCert,
+                             strPathKey;
+        if ( vm.count( "test-json" ) )
+            strJSON = vm["test-json"].as< std::string >();
+        if ( vm.count( "test-ca" ) )
+            strPathCA = vm["test-ca"].as< std::string >();
+        if ( vm.count( "test-cert" ) )
+            strPathCert = vm["test-cert"].as< std::string >();
+        if ( vm.count( "test-key" ) )
+            strPathKey = vm["test-key"].as< std::string >();
+        skutils::url u;
+        try {
+            u = skutils::url( strURL );
+            std::cout << ( cc::debug( "Using URL" ) + cc::debug( "................" ) +
+                           cc::u( u.str() ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        nlohmann::json joIn, joOut;
+        try {
+            if ( !strJSON.empty() ) {
+                joIn = nlohmann::json::parse( strJSON );
+                std::cout << ( cc::debug( "Input JSON is" ) + cc::debug( "............" ) +
+                               cc::j( joIn ) + "\n" );
+            } else
+                std::cout << ( cc::error( "NOTICE:" ) +
+                               cc::warn( " No valid JSON specified for test call" ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) +
+                           cc::error( " Failed to parse specified test JSON: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) +
+                           cc::error( " Failed to parse specified test JSON: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        skutils::http::SSL_client_options optsSSL;
+        if ( !strPathCA.empty() ) {
+            optsSSL.ca_file = skutils::tools::trim_copy( strPathCA );
+            std::cout << ( cc::debug( "Using CA file " ) + cc::debug( "..........." ) +
+                           cc::p( strPathCA ) + "\n" );
+        }
+        if ( !strPathCert.empty() ) {
+            optsSSL.client_cert = skutils::tools::trim_copy( strPathCert );
+            std::cout << ( cc::debug( "Using CERT file " ) + cc::debug( "........." ) +
+                           cc::p( strPathCert ) + "\n" );
+        }
+        if ( !strPathKey.empty() ) {
+            optsSSL.client_key = skutils::tools::trim_copy( strPathKey );
+            std::cout << ( cc::debug( "Using KEY file " ) + cc::debug( ".........." ) +
+                           cc::p( strPathKey ) + "\n" );
+        }
+        try {
+            skutils::rest::client cli;
+            cli.optsSSL_ = optsSSL;
+            cli.open( u );
+            const bool isAutoGenJsonID = true;
+            const skutils::rest::e_data_fetch_strategy edfs =
+                skutils::rest::e_data_fetch_strategy::edfs_default;
+            const std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 );
+            const size_t cntSteps = 1000;
+            const bool isReturnErrorResponse = true;
+            skutils::rest::data_t d =
+                cli.call( joIn, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponse );
+            if ( !d.err_s_.empty() )
+                throw std::runtime_error( "REST call error: " + d.err_s_ );
+            if ( d.empty() )
+                throw std::runtime_error( "EMPTY answer received" );
+            std::cout << ( cc::debug( "Raw received data is" ) + cc::debug( "....." ) +
+                           cc::normal( d.s_ ) + "\n" );
+            joOut = nlohmann::json::parse( d.s_ );
+            std::cout << ( cc::debug( "Output JSON is" ) + cc::debug( "..........." ) +
+                           cc::j( joOut ) + "\n" );
+        } catch ( const std::exception& ex ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
+                           cc::warn( ex.what() ) + "\n" );
+            return EX_TEMPFAIL;
+        } catch ( ... ) {
+            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
+                           cc::warn( "unknown exception" ) + "\n" );
+            return EX_TEMPFAIL;
+        }
+        return 0;
+    }
+
     cout << std::endl << "skaled " << Version << std::endl << std::endl;
 
     pid_t this_process_pid = getpid();

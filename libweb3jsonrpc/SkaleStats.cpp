@@ -51,6 +51,11 @@
 
 #include <bls/bls.h>
 
+<<<<<<< HEAD
+=======
+#include <tools/utils.h>
+
+>>>>>>> beta
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
 
@@ -863,21 +868,33 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
+<<<<<<< HEAD
 static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isDisableZMQ ) {
     if ( isDisableZMQ )
         return strURL;
     if ( strURL.empty() )
         return strURL;
+=======
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+    if ( strURL.empty() )
+        return string();
+>>>>>>> beta
     skutils::url u( strURL );
     u.scheme( "zmq" );
     u.port( "1031" );
     return u.str();
 }
 
+<<<<<<< HEAD
 SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
     : pending_ima_txns(
           configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
+=======
+SkaleStats::SkaleStats(
+    const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
+    : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+>>>>>>> beta
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();

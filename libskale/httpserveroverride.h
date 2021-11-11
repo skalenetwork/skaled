@@ -586,6 +586,7 @@ public:
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
 protected:
+<<<<<<< HEAD
     typedef bool ( SkaleServerOverride::*rpc_method_t )( const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
     typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
@@ -610,6 +611,36 @@ protected:
         rapidjson::Document& joResponse );
 
     bool eth_getTransactionCount( const std::string& strOrigin,
+=======
+    typedef bool ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
+        const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+    typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
+    static const protocol_rpc_map_t g_protocol_rpc_map;
+
+    bool setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getBalance( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getStorageAt( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getTransactionCount( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getCode( SkaleServerHelper& sse, const std::string& strOrigin,
+>>>>>>> beta
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     bool eth_getCode( const std::string& strOrigin, const rapidjson::Document& joRequest,

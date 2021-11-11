@@ -455,6 +455,7 @@ void SnapshotManager::proceedRegularFile(
     if ( boost::filesystem::extension( path ) == "._hash" ) {
         return;
     }
+<<<<<<< HEAD
 
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
@@ -550,6 +551,103 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
     }
 }
 
+=======
+
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
+
+    std::string fileHashPathStr = path.string() + "._hash";
+    if ( !is_checking ) {
+        dev::h256 fileHash;
+        if ( !boost::filesystem::exists( fileHashPathStr ) ) {
+            // file has not been downloaded fully
+            // calculate hash, add to global hash, do not create ._hash file
+            secp256k1_sha256_t fileData;
+            secp256k1_sha256_initialize( &fileData );
+
+            dev::h256 filePathHash = dev::sha256( relativePath );
+            secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+
+            std::ifstream originFile( path.string() );
+            originFile.seekg( 0, std::ios::end );
+            size_t fileContentSize = originFile.tellg();
+            std::string fileContent( fileContentSize, ' ' );
+            originFile.seekg( 0 );
+            originFile.read( &fileContent[0], fileContentSize );
+
+            dev::h256 fileContentHash = dev::sha256( fileContent );
+
+            secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+            secp256k1_sha256_finalize( &fileData, fileHash.data() );
+        } else {
+            std::ifstream hash_file( fileHashPathStr );
+            hash_file >> fileHash;
+        }
+
+        secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
+    } else {
+        secp256k1_sha256_t fileData;
+        secp256k1_sha256_initialize( &fileData );
+
+        dev::h256 filePathHash = dev::sha256( relativePath );
+        secp256k1_sha256_write( &fileData, filePathHash.data(), filePathHash.size );
+
+        std::ifstream originFile( path.string() );
+        originFile.seekg( 0, std::ios::end );
+        size_t fileContentSize = originFile.tellg();
+        std::string fileContent( fileContentSize, ' ' );
+        originFile.seekg( 0 );
+        originFile.read( &fileContent[0], fileContentSize );
+
+        dev::h256 fileContentHash = dev::sha256( fileContent );
+        secp256k1_sha256_write( &fileData, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 fileHash;
+        secp256k1_sha256_finalize( &fileData, fileHash.data() );
+
+        if ( boost::filesystem::exists( fileHashPathStr ) ) {
+            // write to ._hash if exists
+            // if no ._hash - file has not been fully downloaded
+            std::ofstream hash( fileHashPathStr );
+            hash.clear();
+            hash << fileHash;
+        }
+
+        secp256k1_sha256_write( ctx, fileHash.data(), fileHash.size );
+    }
+}
+
+void SnapshotManager::proceedDirectory(
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const {
+    std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
+    dev::h256 directoryHash = dev::sha256( relativePath );
+    secp256k1_sha256_write( ctx, directoryHash.data(), directoryHash.size );
+}
+
+void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
+    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    boost::filesystem::recursive_directory_iterator directory_it( _fileSystemDir ), end;
+
+    std::vector< boost::filesystem::path > contents;
+    while ( directory_it != end ) {
+        contents.push_back( *directory_it );
+        ++directory_it;
+    }
+    std::sort( contents.begin(), contents.end(),
+        []( const boost::filesystem::path& lhs, const boost::filesystem::path& rhs ) {
+            return lhs.string() < rhs.string();
+        } );
+
+    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
+        if ( boost::filesystem::is_regular_file( *it ) ) {
+            proceedRegularFile( *it, ctx, is_checking );
+        } else {
+            proceedDirectory( *it, ctx );
+        }
+    }
+}
+
+>>>>>>> beta
 void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
     secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
@@ -587,8 +685,13 @@ void SnapshotManager::computeAllVolumesHash(
             return lhs.string() < rhs.string();
         } );
 
+<<<<<<< HEAD
     for ( auto& content : contents ) {
         this->computeDatabaseHash( content, ctx );
+=======
+    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
+        this->computeDatabaseHash( *it, ctx );
+>>>>>>> beta
     }
 
     // filestorage

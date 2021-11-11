@@ -569,6 +569,7 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 }
 
 bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
+<<<<<<< HEAD
     bool isRotate = false;
     if ( m_params.sChain.dbStorageLimit > 0 ) {
         // account for size of 1 piece
@@ -591,13 +592,28 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
             clog( VerbosityTrace, "BlockChain" )
                 << ( cc::debug( "Will perform " ) + cc::notice( "timer-based block rotation" ) );
         }
+=======
+    if ( m_params.sChain.dbStorageLimit == 0 ) {
+        return false;
+>>>>>>> beta
     }
     if ( !isRotate )
         return false;
 
+<<<<<<< HEAD
     clockLastDbRotation_ = clock();
     // remember genesis
     BlockDetails details = this->details( m_genesisHash );
+=======
+    // account for size of 1 piece
+    if ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) {
+        // remember genesis
+        BlockDetails details = this->details( m_genesisHash );
+
+        clearCaches();
+        this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
+        this->m_rotating_db->rotate();
+>>>>>>> beta
 
     clearCaches();
     this->m_rotating_db->discardCreatedBatches();  // promise we won't use them!
@@ -608,6 +624,24 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     m_details[m_genesisHash] = details;
     m_extrasDB->insert( toSlice( m_genesisHash, ExtraDetails ), ( db::Slice ) dev::ref( r ) );
     return true;
+}
+
+<<<<<<< HEAD
+struct SizeCountingWriteBatch {
+    SizeCountingWriteBatch( db::WriteBatchFace& _backend ) : backend( _backend ) {}
+    // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+    void insert( db::Slice _key, db::Slice _value ) {
+        consumedBytes += _key.size() + _value.size() + 1;
+        backend.insert( _key, _value );
+    }
+    db::WriteBatchFace& backend;
+    size_t consumedBytes = 0;
+};
+
+=======
+        return true;
+    } else
+        return false;
 }
 
 struct SizeCountingWriteBatch {
@@ -621,6 +655,7 @@ struct SizeCountingWriteBatch {
     size_t consumedBytes = 0;
 };
 
+>>>>>>> beta
 // TOOD ACHTUNG This function must be kept in sync with the next one!
 void BlockChain::prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
     u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
@@ -860,6 +895,24 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     // These batch wrappers can compute total insertion size in bytes
     std::unique_ptr< db::WriteBatchFace > blocksWriteBatch( m_blocksDB->createWriteBatch() );
     std::unique_ptr< db::WriteBatchFace > extrasWriteBatch( m_extrasDB->createWriteBatch() );
+<<<<<<< HEAD
+
+    h256 newLastBlockHash = currentHash();
+    unsigned newLastBlockNumber = number();
+    BlockHeader tbi = _block.info;
+
+    _performanceLogger.onStageFinished( "collation" );
+
+    size_t blocksWriteSize = 0;
+    size_t extrasWriteSize = 0;
+    prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull, *blocksWriteBatch,
+        *extrasWriteBatch, blocksWriteSize, extrasWriteSize, _performanceLogger );
+
+    uint64_t pieceUsageBytes = 0;
+    if ( this->m_rotating_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+        pieceUsageBytes =
+            std::stoull( this->m_rotating_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+=======
 
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
@@ -891,7 +944,34 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             _performanceLogger );
         pieceUsageBytes = blocksWriteSize + extrasWriteSize;
         LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+>>>>>>> beta
     }
+    pieceUsageBytes += blocksWriteSize + extrasWriteSize;
+
+    LOG( m_logger ) << "Block " << tbi.number() << " DB usage is "
+                    << blocksWriteSize + extrasWriteSize;
+    LOG( m_logger ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
+
+<<<<<<< HEAD
+    // re-evaluate batches and reset total usage counter if rotated!
+    if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
+        LOG( m_logger ) << "Rotated out some blocks";
+        prepareDbWriteBatches( _block, _receipts, _totalDifficulty, pLogBloomFull,
+            *blocksWriteBatch, *extrasWriteBatch, blocksWriteSize, extrasWriteSize,
+            _performanceLogger );
+        pieceUsageBytes = blocksWriteSize + extrasWriteSize;
+        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+    }
+=======
+    // update storage usage
+    m_rotating_db->insert(
+        db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
+    // HACK This is for backward compatibility
+    // update totalStorageUsed only if schain already had it!
+    if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
+        m_blocksDB->insert(
+            db::Slice( "totalStorageUsed" ), db::Slice( to_string( _block.info.number() * 32 ) ) );
+>>>>>>> beta
 
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
@@ -948,6 +1028,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         m_lastBlockHash = newLastBlockHash;
         m_lastBlockNumber = newLastBlockNumber;
         try {
+<<<<<<< HEAD
             std::unique_ptr< db::WriteBatchFace > wb = m_rotating_db->createWriteBatch();
 
             // update storage usage
@@ -963,6 +1044,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                                    "best" ),
                 db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
             m_rotating_db->commit( std::move( wb ) );
+=======
+            m_extrasDB->insert(
+                db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
+>>>>>>> beta
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"

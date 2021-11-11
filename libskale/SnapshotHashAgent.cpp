@@ -33,6 +33,8 @@
 #include <libconsensus/libBLS/tools/utils.h>
 #include <libff/common/profiling.hpp>
 
+#include <libconsensus/libBLS/tools/utils.h>
+
 SnapshotHashAgent::SnapshotHashAgent(
     const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
     : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
@@ -197,7 +199,11 @@ bool SnapshotHashAgent::voteForHash() {
             try {
                 is_verified = this->bls_->Verification(
                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
+<<<<<<< HEAD
                     common_signature, common_public_key_from_config );
+=======
+                    common_signature, this->common_public_key_ );
+>>>>>>> beta
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 std::cerr << cc::error(
                                  "Exception while verifying common signature from other skaleds: " )
