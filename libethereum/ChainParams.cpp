@@ -179,8 +179,12 @@ ChainParams ChainParams::loadConfig(
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
         s.t = t;
-        if ( sChainObj.count( "schainOwner" ) )
+        if ( sChainObj.count( "schainOwner" ) ) {
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+            s.blockAuthor = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+        }
+        if ( sChainObj.count( "blockAuthor" ) )
+            s.blockAuthor = dev::jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
 
         s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
