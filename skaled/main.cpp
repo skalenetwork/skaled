@@ -1689,7 +1689,7 @@ int main( int argc, char** argv ) try {
             else
                 return "";
         } );
-        g_client->setAuthor( chainParams.sChain.owner );
+        g_client->setAuthor( chainParams.sChain.blockAuthor );
 
         DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
