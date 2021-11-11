@@ -35,18 +35,27 @@ public:
     std::string eth_blockNumber() noexcept( false );
     std::string eth_getBalance( const std::string& param1, const std::string& param2 ) noexcept(
         false );
+    std::string eth_getBalanceEIP1898( const std::string& param1, const Json::Value& param2 ) noexcept(
+        false );
     std::string eth_getStorageAt( const std::string& param1, const std::string& param2,
         const std::string& param3 ) noexcept( false );
+    std::string eth_getStorageAtEIP1898( const std::string& param1, const std::string& param2,
+        const Json::Value& param3 ) noexcept( false );
     std::string eth_getTransactionCount(
         const std::string& param1, const std::string& param2 ) noexcept( false );
+    std::string eth_getTransactionCountEIP1898(
+        const std::string& param1, const Json::Value& param2 ) noexcept( false );
     Json::Value eth_getBlockTransactionCountByHash( const std::string& param1 ) noexcept( false );
     Json::Value eth_getBlockTransactionCountByNumber( const std::string& param1 ) noexcept( false );
     Json::Value eth_getUncleCountByBlockHash( const std::string& param1 ) noexcept( false );
     Json::Value eth_getUncleCountByBlockNumber( const std::string& param1 ) noexcept( false );
     std::string eth_getCode( const std::string& param1, const std::string& param2 ) noexcept(
         false );
+    std::string eth_getCodeEIP1898( const std::string& param1, const Json::Value& param2 ) noexcept(
+        false );
     std::string eth_sendTransaction( const Json::Value& param1 ) noexcept( false );
     std::string eth_call( const Json::Value& param1, const std::string& param2 ) noexcept( false );
+    std::string eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) noexcept( false );
     bool eth_flush() noexcept( false );
     Json::Value eth_getBlockByHash( const std::string& param1, bool param2 ) noexcept( false );
     Json::Value eth_getBlockByNumber( const std::string& param1, bool param2 ) noexcept( false );
