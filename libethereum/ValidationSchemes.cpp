@@ -235,6 +235,7 @@ void validateConfigJson( js::mObject const& _obj ) {
         {{"schainName", {{js::str_type}, JsonFieldPresence::Required}},
             {"schainID", {{js::int_type}, JsonFieldPresence::Required}},
             {"schainOwner", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"blockAuthor", {{js::str_type}, JsonFieldPresence::Optional}},
             {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
             {"snapshotIntervalSec", {{js::int_type}, JsonFieldPresence::Optional}},
             {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
@@ -291,7 +292,8 @@ void validateConfigJson( js::mObject const& _obj ) {
                 {"blsPublicKey1", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey2", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey3", {{js::str_type}, JsonFieldPresence::Optional}},
-                {"owner", {{js::str_type}, JsonFieldPresence::Optional}}} );
+                {"owner", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blockAuthor", {{js::str_type}, JsonFieldPresence::Optional}}} );
     }
 }
 

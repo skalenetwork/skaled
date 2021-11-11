@@ -12,12 +12,44 @@ defaults:
     shell: bash
 jobs:
   build:
+    if: github.event.pull_request.merged == true
     runs-on: self-hosted
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
+      - name: update apt
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+      - name: install packages
+        run: |
+          sudo apt-get -y install software-properties-common
+          sudo apt-get -y install gcc-9 g++-9
+
+      - name: Use g++-9 and gcov-9 by default
+        run: |
+          echo "Updating all needed alternatives"
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
+          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
+          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+          echo "Checking alternative for gcc"
+          which gcc
+          gcc --version
+          echo "Checking alternative for g++"
+          which g++
+          g++ --version
+          echo "Checking alternative for gcov"
+          which gcov
+          gcov --version
+          echo "Checking alternative for gcov-dump"
+          which gcov-dump
+          gcov-dump --version
+          echo "Checking alternative for gcov-tool"
+          which gcov-tool
+          gcov-tool --version
+
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -53,8 +85,8 @@ jobs:
             ${ { matrix.config.name } }-ccache-
       - name: Build dependencies
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           cd deps
@@ -64,8 +96,8 @@ jobs:
           cd ..
       - name: Configure all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
@@ -76,13 +108,15 @@ jobs:
           cd ..
       - name: Build all
         run: |
-          export CC=gcc-7
-          export CXX=g++-7
+          export CC=gcc-9
+          export CXX=g++-9
           export TARGET=all
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           cd build
           make skaled -j$(nproc)
+          echo "Ensure release mode skaled does not have any debug markers"
+          strip skaled/skaled
           cd ..
       - name: Build and publish container
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')

@@ -289,6 +289,10 @@ public:
         // fall through other exceptions
     }
 
+    uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const {
+        return this->m_snapshotManager->getBlockTimestamp( _blockNumber, chainParams() );
+    }
+
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
 
     uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }

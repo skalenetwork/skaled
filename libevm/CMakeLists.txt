@@ -14,7 +14,9 @@ set(sources
 
 add_library(evm ${sources})
 
-target_compile_options( evm PRIVATE -Wno-error=unused-variable -Wno-error=maybe-uninitialized )
+target_compile_options( evm PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
 
 target_link_libraries(
     evm

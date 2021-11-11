@@ -12,7 +12,9 @@ set(EXECUTABLE_NAME skaled)
 
 add_executable(${EXECUTABLE_NAME} ${sources})
 
-target_compile_options( ${EXECUTABLE_NAME} PRIVATE -Wno-error=unused-variable )
+target_compile_options( ${EXECUTABLE_NAME} PRIVATE
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    )
 
 if( APPLE )
 	target_compile_definitions( ${EXECUTABLE_NAME} PRIVATE __BUILDING_4_MAC_OS_X__=1 )

@@ -123,6 +123,7 @@ public:
     std::string name;
     u256 id;
     Address owner;
+    Address blockAuthor;
     std::vector< sChainNode > nodes;
     s256 contractStorageLimit = 1000000000;
     uint64_t dbStorageLimit = 0;
