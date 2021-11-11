@@ -1286,6 +1286,7 @@ char getch_no_wait() {
 
 namespace signal {
 
+std::atomic_int g_nStopSignal{0};
 std::atomic_bool g_bStop{false};
 
 bool get_signal_description( int nSignalNo, std::string& strSignalName,
