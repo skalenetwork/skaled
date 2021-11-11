@@ -285,7 +285,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
             new rpc::Test( *client ) ) );
 
-         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
+        SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
                     std::string strResponse = ethFace->eth_sendRawTransaction(
