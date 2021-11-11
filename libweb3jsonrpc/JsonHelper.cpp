@@ -633,6 +633,38 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avo
     return filter;
 }
 
+bool validateEIP1898Json( const rapidjson::Value& jo ) {
+    if ( jo.HasMember( "blockHash" ) ) {
+        if ( !jo["blockHash"].IsString() )
+            return false;
+
+        if ( jo.MemberCount() > 2 )
+            return false;
+
+        if ( jo.MemberCount() == 1 )
+            return true;
+
+        if ( !jo.HasMember( "requireCanonical" ) )
+            return false;
+        return jo["requireCanonical"].IsBool();
+    } else if ( jo.HasMember( "blockNumber" ) ) {
+        return jo["blockNumber"].IsString() && jo.MemberCount() == 1;
+    }
+
+    return false;
+}
+
+std::string getBlockFromEIP1898Json( const rapidjson::Value& jo ) {
+    if ( jo.IsString() ) {
+        return jo.GetString();
+    }
+
+    if ( !dev::eth::validateEIP1898Json( jo ) )
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+
+    return "latest";
+}
+
 }  // namespace eth
 
 // ////////////////////////////////////////////////////////////////////////////////////
