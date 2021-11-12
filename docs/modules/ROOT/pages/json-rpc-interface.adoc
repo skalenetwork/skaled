@@ -36,7 +36,7 @@
 |Supported
 |
 
-| eth_coinbase
+|eth_coinbase
 |Supported
 |Returns sChainOwner address from config.json (it is used as coinbase address)
 
@@ -50,7 +50,7 @@
 
 |eth_gasPrice
 |Supported
-| Gas price is dynamically adjusted from 1000 wei and above as load grows
+|Gas price is dynamically adjusted from 1000 wei and above as load grows
 
 |eth_accounts
 |Supported
@@ -62,15 +62,15 @@
 
 |eth_getBalance
 |Partially supported 
-|Second parameter is ignored and always set to "latest"
+|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_getStorageAt
 |Partially supported 
-|Third parameter is ignored and always set to "latest"
+|Third parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_getTransactionCount
 |Partially supported
-|Second parameter is ignored and always set to "latest"
+|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_getBlockTransactionCountByHash
 |Supported
@@ -91,7 +91,7 @@
 
 |eth_getCode
 |Partially supported
-|Second parameter is ignored and always set to "latest"
+|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_sign
 |Not supported
@@ -107,7 +107,7 @@
 
 |eth_call
 |Partially supported
-|Second parameter is ignored and always set to "latest"
+|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_estimateGas
 |Supported
