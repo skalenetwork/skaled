@@ -32,7 +32,7 @@ Creating a SKALE Chain requires SKL tokens and some ETH to fund the necessary tr
 * **Customized for your dApp**: configure Web3 cloud resources specific to your dApp and end-users' needs. This includes various SKALE Chain sizes to support different levels of compute and storage resources and custom options for DDoS protection, node rotation, and more.
 * **Decentralized SKALE Chain Administration** that can be operated by a single entity, community, or a DAO. This provides a range of decentralization options for funding, operating, and maintaining SKALE Chains.
 
-== SKALE Chains Differences from Ethereum
+== SKALE Chain Differences from Ethereum
 
 SKALE Chains operate like Ethereum, and there are a few other features and differences that make SKALE Chains even more powerful and suitable to run your dApp. 
 
@@ -43,6 +43,14 @@ Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on 
 === Empty Block Intervals
 
 Your SKALE Chain will continue to mine blocks in the absence of transactions. Empty blocks are used to signal to the SKALE Network that your SKALE Chain is healthy and operational. The default empty block interval is 5 seconds. When transactions fill blocks, blocks are mined as fast as possible, up to sub-second blocks depending on validator-node performance.
+
+=== Block Gas Limit
+
+SKALE Chains have a block gas limit of 160 million.
+
+=== Contract Code Size Limit
+
+Ethereum has a contract code size limit of 24576 bytes. SKALE chains are configurable with code size limits of 16, 32, 64, 128, 256. 512. 1024 k-bytes and unlimited.
 
 === JSON-RPC Methods
 
