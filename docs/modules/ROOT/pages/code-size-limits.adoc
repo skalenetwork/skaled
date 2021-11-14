@@ -1,0 +1,20 @@
+= Contract Code Size limits
+
+The maximum deployable code size on SKALE Chains are configurable at deployment, and are set in the config.json file.
+
+== Examples
+
+Unlimited code size:
+```json
+"skaleUnlimitedForkBlock": "0x0"
+```
+
+16k code size:
+```json
+"skale16kForkBlock": "0x0"
+```
+
+256k code size:
+```json
+"skale256kForkBlock": "0x0"
+```
