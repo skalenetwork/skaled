@@ -192,10 +192,10 @@ public:
             bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
             if( bStatusFlag )
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::success( "Got positive transaction status" ) );
+                    ( cc::success( "SUCCESS: Got positive transaction status" ) );
             else
                 clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got positive negative transaction status" ) );
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got negative transaction status" ) );
             return bStatusFlag;
         } catch ( std::exception & ex ) {
             clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<

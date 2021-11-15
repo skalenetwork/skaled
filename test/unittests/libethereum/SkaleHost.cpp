@@ -163,12 +163,25 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define REQUIRE_BLOCK_INCREASE( increase ) \
     auto blockAfter = client->number();    \
     BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase )
+#define REQUIRE_BLOCK_INCREASE_THROW( increase, strErrorDescription ) \
+    {                                                                 \
+        auto blockAfter = client->number();                           \
+        if( ( blockAfter - blockBefore ) != increase )                \
+            throw std::runtime_error( strErrorDescription );          \
+    }
 
 #define REQUIRE_BLOCK_SIZE( number, s )                                             \
     {                                                                               \
         TransactionHashes blockTransactions =                                       \
             static_cast< Interface* >( client.get() )->transactionHashes( number ); \
         BOOST_REQUIRE_EQUAL( blockTransactions.size(), s );                         \
+    }
+#define REQUIRE_BLOCK_SIZE_THROW( number, s, strErrorDescription )                  \
+    {                                                                               \
+        TransactionHashes blockTransactions =                                       \
+            static_cast< Interface* >( client.get() )->transactionHashes( number ); \
+        if( blockTransactions.size() != s )                                         \
+            throw std::runtime_error( strErrorDescription );                        \
     }
 
 #define REQUIRE_BLOCK_TRANSACTION( blockNumber, txNumber, txHash )                       \
@@ -177,18 +190,37 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
             static_cast< Interface* >( client.get() )->transactionHashes( blockNumber ); \
         BOOST_REQUIRE_EQUAL( blockTransactions[txNumber], txHash );                      \
     }
+#define REQUIRE_BLOCK_TRANSACTION_THROW( blockNumber, txNumber, txHash, strErrorDescription ) \
+    {                                                                                         \
+        TransactionHashes blockTransactions =                                                 \
+            static_cast< Interface* >( client.get() )->transactionHashes( blockNumber );      \
+        if( blockTransactions[txNumber] != txHash )                                           \
+            throw std::runtime_error( strErrorDescription );                                  \
+    }
 
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
 
 #define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
     u256 nonceAfter = client->countAt( senderAddress );   \
     BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase )
+#define REQUIRE_NONCE_INCREASE_THROW( senderAddress, increase, strErrorDescription ) \
+    {                                                                                \
+        u256 nonceAfter = client->countAt( senderAddress );                          \
+        if( ( nonceAfter - nonceBefore ) != increase )                               \
+            throw std::runtime_error( strErrorDescription );                         \
+    }
 
 #define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
 
 #define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
     u256 balanceAfter = client->balanceAt( senderAddress ); \
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
+#define REQUIRE_BALANCE_DECREASE_THROW( senderAddress, decrease, strErrorDescription ) \
+    {                                                                                  \
+        u256 balanceAfter = client->balanceAt( senderAddress );                        \
+        if( ( balanceBefore - balanceAfter) != decrease )                              \
+            throw std::runtime_error( strErrorDescription );                           \
+    }
 
 #define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
     u256 balanceAfter = client->balanceAt( senderAddress );    \
@@ -196,7 +228,63 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
 
+static bool stat_impl_validTransaction(
+    const size_t idxAttempt,
+    size_t const cntAttempts,
+    dev::KeyPair & coinbase,
+    unique_ptr< Client > & client,
+    unique_ptr< FixedAccountHolder > & accountHolder,
+    ConsensusTestStub* stub
+    ) {
+std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test attempt " ) + cc::size10( idxAttempt ) + cc::debug( " of " ) + cc::size10( cntAttempts );
+    try {
+        auto senderAddress = coinbase.address();
+        auto receiver = KeyPair::create();
+
+        Json::Value json;
+        u256 gasPrice = 100 * dev::eth::shannon;  // 100b
+        u256 value = 10000 * dev::eth::szabo;
+        json["from"] = toJS( senderAddress );
+        json["to"] = toJS( receiver.address() );
+        json["value"] = jsToDecimal( toJS( value ) );
+        json["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
+
+        TransactionSkeleton ts = toTransactionSkeleton( json );
+        ts = client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = accountHolder->authenticate( ts );
+        Transaction tx( ts, ar.second );
+
+        RLPStream stream;
+        tx.streamRLP( stream );
+
+        h256 txHash = tx.sha3();
+
+        CHECK_NONCE_BEGIN( senderAddress );
+        CHECK_BALANCE_BEGIN( senderAddress );
+        CHECK_BLOCK_BEGIN;
+
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U );
+
+        REQUIRE_BLOCK_INCREASE_THROW( 1, "TEST validTransaction has failed check 1" );
+        REQUIRE_BLOCK_SIZE_THROW( 1, 1, "TEST validTransaction has failed check 2" );
+        REQUIRE_BLOCK_TRANSACTION_THROW( 1, 0, txHash, "TEST validTransaction has failed check 3" );
+
+        REQUIRE_NONCE_INCREASE_THROW( senderAddress, 1, "TEST validTransaction has failed check 4" );
+        REQUIRE_BALANCE_DECREASE_THROW( senderAddress, value + gasPrice * 21000, "TEST validTransaction has failed check 5" );
+        return true;
+    } catch ( std::exception & ex ) {
+        clog( VerbosityError, "TEST ATTEMPT" ) <<
+            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test exception:" ) + cc::warn( ex.what() ) );
+        return false;
+    } catch (...) {
+        clog( VerbosityError, "TEST ATTEMPT" ) <<
+            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test unknown exception" ) );
+        return false;
+    }
+}
+
 BOOST_AUTO_TEST_CASE( validTransaction ) {
+/*
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -231,6 +319,15 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
+*/
+    bool bSuccess = false;
+    size_t const cntAttempts = 10;
+    for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
+        bSuccess = stat_impl_validTransaction( idxAttempt, cntAttempts, coinbase, client, accountHolder, stub );
+        if( bSuccess )
+            break;
+    }
+    BOOST_CHECK( bSuccess );
 }
 
 // Transaction should be IGNORED during execution
