@@ -329,17 +329,58 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
-int main( int argc, char** argv ) try {
-    cc::_on_ = false;
-    cc::_max_value_size_ = 2048;
-    MicroProfileSetEnableAllGroups( true );
-    BlockHeader::useTimestampHack = false;
+static volatile bool g_bStopActionsComplete = false;
 
-    srand( time( nullptr ) );
+static void stat_handle_stop_actions() {
+    static volatile bool g_bStopActionsStarted = false;
+    if ( g_bStopActionsStarted )
+        return;
+    g_bStopActionsStarted = true;
+    std::thread( [&]() {
+        /*
+        if ( g_jsonrpcIpcServer.get() ) {
+            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                           cc::error( "Will stop RPC server now..." ) + "\n\n" );
+            g_jsonrpcIpcServer->StopListening();
+            g_jsonrpcIpcServer.reset( nullptr );
+            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                           cc::error( "Did stopped RPC server" ) + "\n\n" );
+        }
+        */
+        if ( g_client ) {
+            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                           cc::error( "Will stop client now..." ) + "\n\n" );
+            g_client->stopWorking();
+            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                           cc::error( "Did stopped client" ) + "\n\n" );
+        }
+        g_bStopActionsComplete = true;
+    } )
+        .detach();
+}
 
-    setCLocale();
+static void stat_wait_stop_actions_complete() {
+    if ( g_bStopActionsComplete )
+        return;
+    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                   cc::error( "Will wait for stop actions compete..." ) + "\n\n" );
+    while ( !g_bStopActionsComplete )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                   cc::error( "Done waiting for stop actions] compete" ) + "\n\n" );
+}
 
+static void stat_init_common_signal_handling() {
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
+        std::string strMessagePrefix = skutils::signal::g_bStop ?
+                                           cc::error( "\nStop flag was already raised on. " ) +
+                                               cc::fatal( "WILL FORCE TERMINATE." ) +
+                                               cc::error( " Caught (second) signal. " ) :
+                                           cc::error( "\nCaught (first) signal. " );
+        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
+                  << "\n\n";
+        std::cerr.flush();
+
         switch ( nSignalNo ) {
         case SIGINT:
         case SIGTERM:
@@ -368,53 +409,62 @@ int main( int argc, char** argv ) try {
             break;
         }  // switch
 
+        stat_handle_stop_actions();
+
         // try to exit nicely - then abort
         if ( !skutils::signal::g_bStop ) {
-            thread( [nSignalNo]() {
-                sleep( ExitHandler::KILL_TIMEOUT );
-                std::cerr << "KILLING ourselves after KILL_TIMEOUT = " << ExitHandler::KILL_TIMEOUT
-                          << std::endl;
+            static volatile bool g_bSelfKillStarted = false;
+            if ( !g_bSelfKillStarted ) {
+                g_bSelfKillStarted = true;
+                std::thread( [nSignalNo]() {
+                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
+                                   cc::error( "Will sleep " ) +
+                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
+                                   cc::error( " seconds before force exit..." ) + "\n\n" );
+                    std::cerr.flush();
+                    sleep( ExitHandler::KILL_TIMEOUT );
+                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
+                                   cc::error( "Will force exit after sleeping " ) +
+                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
+                                   cc::error( " second(s)" ) + "\n\n" );
+                    std::cerr.flush();
 
-                // TODO deduplicate this with main() before return
-                ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-                if ( ec == ExitHandler::ec_success ) {
-                    if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
-                        ec = ExitHandler::ec_failure;
-                }
+                    // TODO deduplicate this with main() before return
+                    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+                    if ( ec == ExitHandler::ec_success ) {
+                        if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
+                            ec = ExitHandler::ec_failure;
+                    }
 
-                _exit( ec );
-            } )
-                .detach();
-        }
+                    _exit( ec );
+                } )
+                    .detach();
+            }  // if( ! g_bSelfKillStarted )
+        }      // if ( !skutils::signal::g_bStop )
 
         // nice exit here:
 
-        std::string strMessagePrefix = skutils::signal::g_bStop ?
-                                           cc::error( "\nStop flag was already raised on. " ) +
-                                               cc::fatal( "WILL FORCE TERMINATE." ) +
-                                               cc::error( " Caught (second) signal. " ) :
-                                           cc::error( "\nCaught (first) signal. " );
-        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n\n";
-        std::cerr.flush();
-
-        if ( skutils::signal::g_bStop )
+        if ( skutils::signal::g_bStop ) {
+            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
+                           cc::error( "Will force exit now..." ) + "\n\n" );
             _exit( 13 );
+        }
 
         skutils::signal::g_bStop = true;
-
-        if ( g_jsonrpcIpcServer.get() ) {
-            g_jsonrpcIpcServer->StopListening();
-            g_jsonrpcIpcServer.reset( nullptr );
-        }
-        if ( g_client ) {
-            g_client->stopWorking();
-        }
+        skutils::signal::g_nStopSignal = nSignalNo;
 
         dev::ExitHandler::exitHandler( nSignalNo );
     } );
+}
 
-
+int main( int argc, char** argv ) try {
+    cc::_on_ = false;
+    cc::_max_value_size_ = 2048;
+    MicroProfileSetEnableAllGroups( true );
+    BlockHeader::useTimestampHack = false;
+    srand( time( nullptr ) );
+    setCLocale();
+    stat_init_common_signal_handling();  // ensure initialized
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -3078,6 +3128,7 @@ int main( int argc, char** argv ) try {
 
     dev::setThreadName( "main" );
 
+    stat_init_common_signal_handling();  // ensure initialized
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
@@ -3102,6 +3153,9 @@ int main( int argc, char** argv ) try {
     MicroProfileDumpFileImmediately(
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
+
+    stat_handle_stop_actions();
+    stat_wait_stop_actions_complete();
 
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
