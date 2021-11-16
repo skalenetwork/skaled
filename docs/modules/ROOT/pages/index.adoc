@@ -50,7 +50,7 @@ SKALE Chains have a block gas limit of 160 million.
 
 === Contract Code Size Limit
 
-Ethereum has a contract code size limit of 24576 bytes. SKALE chains are configurable with code size limits of 16, 32, 64, 128, 256. 512. 1024 k-bytes and unlimited.
+SKALE chains have a default code size limit of 24576 bytes, and are configurable at chain deployment to code size limits of 16, 32, 64, 128, 256, 512, 1024 kB and unlimited. (Ethereum has a contract code size limit of 24576 bytes.)
 
 === JSON-RPC Methods
 
