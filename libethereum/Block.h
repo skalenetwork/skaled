@@ -211,9 +211,7 @@ public:
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
-        bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
     /// we don't.
@@ -235,10 +233,8 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple< TransactionReceipts, unsigned > syncEveryone(
-        BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp,
-        u256 _gasPrice, bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr,
+    std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
         Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
     );
 

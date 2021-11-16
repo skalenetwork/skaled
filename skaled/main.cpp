@@ -42,8 +42,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <time.h>
-
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -64,6 +62,7 @@
 #include <libevm/VMFactory.h>
 
 #include <libskale/ConsensusGasPricer.h>
+#include <libskale/UnsafeRegion.h>
 
 #include <libdevcrypto/LibSnark.h>
 
@@ -548,6 +547,8 @@ int main( int argc, char** argv ) try {
     auto addClientOption = clientDefaultMode.add_options();
     addClientOption( "web3-shutdown",
         "Enable programmatic shutdown via \"skale_shutdownInstance\" web3 methd call" );
+    addClientOption( "test-enable-crash-at", po::value< std::string >()->value_name( "<id>" ),
+        "For testing purpuses, deliberately crash on specified named point" );
     addClientOption( "ssl-key", po::value< std::string >()->value_name( "<path>" ),
         "Specifies path to SSL key file" );
     addClientOption( "ssl-cert", po::value< std::string >()->value_name( "<path>" ),
@@ -838,6 +839,11 @@ int main( int argc, char** argv ) try {
         cout << clientDefaultMode << clientTransacting << clientNetworking;
         cout << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
+    }
+
+    if ( vm.count( "test-enable-crash-at" ) ) {
+        std::string crash_at = vm["test-enable-crash-at"].as< string >();
+        batched_io::test_enable_crash_at( crash_at );
     }
 
     if ( vm.count( "log-value-size-limit" ) ) {
@@ -1270,6 +1276,12 @@ int main( int argc, char** argv ) try {
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
+    UnsafeRegion::init( getDataDir() );
+    if ( UnsafeRegion::isActive() ) {
+        clog( VerbosityError, "main" ) << "FATAL "
+                                       << "Previous skaled shutdown was too hard, need to repair!";
+        return int( ExitHandler::ec_state_root_mismatch );
+    }  // if bad exit
 
     size_t clockDbRotationPeriodInSeconds = 0;
     if ( chainConfigParsed ) {

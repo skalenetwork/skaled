@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -425,7 +425,6 @@ pair< TransactionReceipts, bool > Block::sync(
 
 tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-    bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
     Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
 ) {
     if ( isSealed() )
@@ -442,11 +441,34 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     this->resetCurrent( _timestamp );
 
     m_state = m_state.delegateWrite();  // mainly for debugging
+    TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
+    if ( vecMissing ) {
+        assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
+    }
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
+            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
+
+                auto iterMissing = std::find_if( vecMissing->begin(), vecMissing->end(),
+                    [&tr]( const Transaction& trMissing ) -> bool {
+                        return trMissing.sha3() == tr.sha3();
+                    } );
+
+                if ( iterMissing == vecMissing->end() ) {
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
+                    // HACK TODO We assume but don't check that accumulated receipts contain
+                    // exactly receipts of first n txns!
+                    m_receipts.push_back( saved_receipts[i] );
+                    receipts.push_back( saved_receipts[i] );
+                    continue;  // skip this transaction, it was already executed before PARTIAL
+                               // CATCHUP
+                }              // if
+            }
+
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
@@ -471,27 +493,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
-                bool foundMissing = false;
-                for ( const Transaction& trMissing : ( *vecMissing ) ) {
-                    if ( trMissing.sha3() == tr.sha3() ) {
-                        foundMissing = true;
-                        break;
-                    }
-                }
-                if ( !foundMissing ) {
-                    m_transactions.push_back( tr );
-                    m_transactionSet.insert( tr.sha3() );
-                    // HACK TODO We assume but don't check that accumulated receipts contain
-                    // exactly receipts of first n txns!
-                    m_receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
-                    receipts.push_back( ( *accumulatedTransactionReceipts )[i] );
-                    continue;  // skip this transaction, it was already executed before PARTIAL
-                               // CATCHUP
-                }              // if
-            }
-            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, Permanence::Committed,
-                OnOpFunc(), isSaveLastTxHash, accumulatedTransactionReceipts );
+            ExecutionResult res =
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -766,9 +769,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     return tdIncrease;
 }
 
-ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-    Permanence _p, OnOpFunc const& _onOp, bool isSaveLastTxHash,
-    TransactionReceipts* accumulatedTransactionReceipts ) {
+ExecutionResult Block::execute(
+    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -796,8 +798,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         if ( _t.isInvalid() )
             throw - 1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp,
-            isSaveLastTxHash, accumulatedTransactionReceipts );
+        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
