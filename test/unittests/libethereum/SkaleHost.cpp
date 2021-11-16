@@ -336,7 +336,8 @@ BOOST_AUTO_TEST_CASE( validTransaction,
 // 1 Small amount of random bytes
 // 2 110 random bytes
 // 3 110 bytes of semi-correct RLP
-BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
+BOOST_AUTO_TEST_CASE( transactionRlpBad,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
 
     bytes small_tx1 = bytes();
