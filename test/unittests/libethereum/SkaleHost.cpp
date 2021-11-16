@@ -283,7 +283,8 @@ std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test att
     }
 }
 
-BOOST_AUTO_TEST_CASE( validTransaction ) {
+BOOST_AUTO_TEST_CASE( validTransaction,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
 /*
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
