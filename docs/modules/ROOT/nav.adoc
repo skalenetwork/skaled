@@ -1,6 +1,7 @@
 * xref:index.adoc[Overview]
 * xref:skale-chain-eth.adoc[SKALE Chain ETH]
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
+* xref:code-size-limits.adoc[Contract Code Size Limits]
 * xref:snapshots.adoc[Snapshots]
 * xref:block-rotation.adoc[Block Rotation]
 * xref:predeploys.adoc[Predeployed Contracts]
