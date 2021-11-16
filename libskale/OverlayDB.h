@@ -27,10 +27,15 @@
 #include <functional>
 #include <memory>
 
+#include <libbatched-io/batched_db.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/db.h>
 
+namespace dev {
+namespace eth {
+class TransactionReceipt;
+}
+}  // namespace dev
 
 namespace skale {
 
@@ -45,7 +50,7 @@ dev::db::Slice toSlice( std::string const& _s );
 
 class OverlayDB {
 public:
-    explicit OverlayDB( std::unique_ptr< dev::db::DatabaseFace > _db = nullptr );
+    explicit OverlayDB( std::unique_ptr< batched_io::db_face > _db_face = nullptr );
 
     virtual ~OverlayDB() = default;
 
@@ -56,19 +61,15 @@ public:
     OverlayDB( OverlayDB&& ) = default;
     OverlayDB& operator=( OverlayDB&& ) = default;
 
-    static dev::h256 stat_safeLastExecutedTransactionHash( dev::db::DatabaseFace* pDB );
-    dev::h256 safeLastExecutedTransactionHash();
-    static dev::bytes stat_safePartialTransactionReceipts( dev::db::DatabaseFace* pDB );
-    dev::bytes safePartialTransactionReceipts();
+    dev::h256 getLastExecutedTransactionHash() const;
+    dev::bytes getPartialTransactionReceipts() const;
+    void setLastExecutedTransactionHash( const dev::h256& );
+    void setPartialTransactionReceipts( const dev::bytes& );
 
-    typedef std::function< void( std::shared_ptr< dev::db::DatabaseFace > db,
-        std::unique_ptr< dev::db::WriteBatchFace >& writeBatch ) >
-        fn_pre_commit_t;
-
-    static const fn_pre_commit_t g_fn_pre_commit_empty;
+    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
+    void clearPartialTransactionReceipts();
 
     void commit();
-    void commit( fn_pre_commit_t fn_pre_commit );
     void rollback();
     void clearDB();
     bool connected() const;
@@ -107,13 +108,17 @@ private:
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
     dev::s256 storageUsed_ = 0;
 
-    std::shared_ptr< dev::db::DatabaseFace > m_db;
+    std::shared_ptr< batched_io::db_face > m_db_face;
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
+
+    mutable std::optional< dev::h256 > lastExecutedTransactionHash;
+    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
+
 public:
-    std::shared_ptr< dev::db::DatabaseFace > db() { return m_db; }
+    std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
 };
 
 }  // namespace skale
