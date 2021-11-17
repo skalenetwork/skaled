@@ -634,6 +634,9 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avo
 }
 
 bool validateEIP1898Json( const rapidjson::Value& jo ) {
+    if ( !jo.IsObject() )
+        return false;
+
     if ( jo.HasMember( "blockHash" ) ) {
         if ( !jo["blockHash"].IsString() )
             return false;
