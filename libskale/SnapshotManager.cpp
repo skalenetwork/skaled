@@ -24,6 +24,9 @@
 
 #include "SnapshotManager.h"
 
+#include "UnsafeRegion.h"
+#include <libbatched-io/batched_io.h>
+
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
@@ -102,6 +105,8 @@ SnapshotManager::SnapshotManager( const fs::path& _dataDir,
 void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
     fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
 
+    UnsafeRegion::lock ur_lock;
+
     try {
         if ( fs::exists( snapshot_dir ) )
             throw SnapshotPresent( _blockNumber );
@@ -115,11 +120,14 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
         std::throw_with_nested( CannotCreate( snapshot_dir ) );
     }  // catch
 
+    int dummy_counter = 0;
     for ( const string& vol : volumes ) {
         int res = btrfs.subvolume.snapshot_r( ( data_dir / vol ).c_str(), snapshot_dir.c_str() );
         if ( res )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    }
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
+    }  // for
 }
 
 // exceptions:
@@ -132,6 +140,9 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
         std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
     }
 
+    UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
     for ( const string& vol : volumes ) {
         if ( fs::exists( data_dir / vol ) ) {
             if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
@@ -140,7 +151,11 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
+
+    }  // for
 }
 
 // exceptions:
@@ -172,6 +187,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
         else
             volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string();
     }  // for cat
+
+    UnsafeRegion::lock ur_lock;
 
     if ( btrfs.send( NULL, path.c_str(), volumes_cat.str().c_str() ) ) {
         try {
@@ -229,6 +246,10 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
         throw SnapshotAbsent( _blockNumber );
     }
 
+    UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
+
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.subvolume._delete(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str() );
@@ -236,6 +257,9 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
@@ -609,6 +633,11 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
+    // TODO Think if we really need it
+    // UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
+
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.btrfs_subvolume_property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
@@ -617,6 +646,9 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
     this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );

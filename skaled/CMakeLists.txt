@@ -34,6 +34,7 @@ target_link_libraries(
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
         pthread
         idn2
+        batched-io
     )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)

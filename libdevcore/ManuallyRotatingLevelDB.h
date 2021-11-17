@@ -3,6 +3,8 @@
 
 #include "LevelDB.h"
 
+#include <libbatched-io/batched_rotating_db_io.h>
+
 #include <deque>
 #include <set>
 #include <shared_mutex>
@@ -12,19 +14,16 @@ namespace db {
 
 class ManuallyRotatingLevelDB : public DatabaseFace {
 private:
-    const boost::filesystem::path base_path;
-    DatabaseFace* current_piece;
-    size_t current_piece_file_no;
-    std::deque< std::unique_ptr< DatabaseFace > > pieces;
+    std::shared_ptr< batched_io::rotating_db_io > io_backend;
 
     mutable std::set< WriteBatchFace* > batch_cache;
-
     mutable std::shared_mutex m_mutex;
 
 public:
-    ManuallyRotatingLevelDB( const boost::filesystem::path& _path, size_t _nPieces );
+    ManuallyRotatingLevelDB( std::shared_ptr< batched_io::rotating_db_io > _io_backend );
     void rotate();
-    size_t piecesCount() const { return pieces.size(); }
+    size_t piecesCount() const { return io_backend->pieces_count(); }
+    DatabaseFace* currentPiece() const { return io_backend->begin()->get(); }
 
     virtual std::string lookup( Slice _key ) const;
     virtual bool exists( Slice _key ) const;
