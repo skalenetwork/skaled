@@ -626,7 +626,8 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
+BOOST_AUTO_TEST_CASE( transactionNonceSmall,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
