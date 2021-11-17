@@ -450,7 +450,8 @@ BOOST_AUTO_TEST_CASE( transactionSigZero,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // corrupted signature
-BOOST_AUTO_TEST_CASE( transactionSigBad ) {
+BOOST_AUTO_TEST_CASE( transactionSigBad,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
