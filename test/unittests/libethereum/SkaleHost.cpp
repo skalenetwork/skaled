@@ -407,7 +407,8 @@ public:
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // zero signature
-BOOST_AUTO_TEST_CASE( transactionSigZero ) {
+BOOST_AUTO_TEST_CASE( transactionSigZero,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
