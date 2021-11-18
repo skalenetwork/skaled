@@ -769,7 +769,8 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded,
 }
 
 // positive test for 4 next ones
-BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropReceive,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
