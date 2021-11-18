@@ -937,7 +937,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
