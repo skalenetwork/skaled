@@ -1002,7 +1002,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive,
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionRace ) {
+BOOST_AUTO_TEST_CASE( transactionRace,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
