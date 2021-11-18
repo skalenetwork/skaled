@@ -1720,6 +1720,7 @@ int main( int argc, char** argv ) try {
 
         gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
+        instanceMonitor->setSkaleHost( skaleHost );
         g_client->setGasPricer( gasPricer );
         g_client->injectSkaleHost( skaleHost );
 

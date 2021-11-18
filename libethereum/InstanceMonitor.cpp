@@ -38,6 +38,7 @@ const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 void InstanceMonitor::performRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
+    m_skaleHost->stopWorking();
     ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
     LOG( m_logger ) << "Rotation is completed. Instance is exiting";
 }
