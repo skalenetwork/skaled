@@ -638,7 +638,7 @@ size_t Client::importTransactionsAsBlock(
     }      // if snapshots enabled
 
     if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
-        m_instanceMonitor->performRotation();
+        m_instanceMonitor->prepareRotation();
     }
 
     // TEMPRORARY FIX!

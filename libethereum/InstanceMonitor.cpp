@@ -35,7 +35,7 @@ namespace fs = boost::filesystem;
 const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
 const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 
-void InstanceMonitor::performRotation() {
+void InstanceMonitor::prepareRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
     m_skaleHost->stopWorking();

@@ -42,7 +42,7 @@ public:
         restoreRotationParams();
         removeFlagFile();
     }
-    void performRotation();
+    void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
     bool isTimeToRotate( uint64_t _finishTimestamp );
     void setSkaleHost( std::shared_ptr< SkaleHost >& _skaleHost ) { m_skaleHost = _skaleHost; }

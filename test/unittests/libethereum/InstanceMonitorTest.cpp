@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 
 BOOST_AUTO_TEST_CASE( test_rotation ) {
     instanceMonitor.initRotationParams(0);
-    instanceMonitor.performRotation();
+        instanceMonitor.prepareRotation();
 
     BOOST_REQUIRE( fs::exists(instanceMonitor.getRotationFlagFilePath() ) );
     BOOST_REQUIRE( ExitHandler::getSignal() == SIGTERM );
