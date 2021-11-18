@@ -719,7 +719,8 @@ BOOST_AUTO_TEST_CASE( transactionBalanceBad,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
+BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
