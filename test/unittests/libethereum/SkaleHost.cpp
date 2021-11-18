@@ -1054,7 +1054,8 @@ BOOST_AUTO_TEST_CASE( transactionRace,
 }
 
 // test two blocks with overlapping transactions :)
-BOOST_AUTO_TEST_CASE( partialCatchUp ) {
+BOOST_AUTO_TEST_CASE( partialCatchUp,
+    *boost::unit_test::precondition( dev::test::run_not_express ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
