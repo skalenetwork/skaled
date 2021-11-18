@@ -532,7 +532,8 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect,
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
+BOOST_AUTO_TEST_CASE( transactionGasNotEnough,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
