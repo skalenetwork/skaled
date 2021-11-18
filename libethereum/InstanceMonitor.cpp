@@ -23,7 +23,6 @@
  */
 
 #include "InstanceMonitor.h"
-#include <csignal>
 #include <iostream>
 #include <json.hpp>
 
@@ -38,9 +37,6 @@ const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 void InstanceMonitor::prepareRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
-    m_skaleHost->stopWorking();
-    ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
-    LOG( m_logger ) << "Rotation is completed. Instance is exiting";
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {

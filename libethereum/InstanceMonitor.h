@@ -26,26 +26,22 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
-#include <libethereum/SkaleHost.h>
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
 
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath,
-                              std::shared_ptr< SkaleHost > _skaleHost = nullptr )
+    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath )
         : m_finishTimestamp( 0 ),
           m_rotationInfoFilePath( dev::getDataDir() / rotation_info_file_name ),
-          m_rotationFlagFilePath( _rotationFlagFileDirPath / rotation_flag_file_name ),
-          m_skaleHost( _skaleHost ) {
+          m_rotationFlagFilePath( _rotationFlagFileDirPath / rotation_flag_file_name ) {
         restoreRotationParams();
         removeFlagFile();
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
     bool isTimeToRotate( uint64_t _finishTimestamp );
-    void setSkaleHost( std::shared_ptr< SkaleHost >& _skaleHost ) { m_skaleHost = _skaleHost; }
 
 protected:
     void restoreRotationParams();
@@ -65,7 +61,6 @@ protected:
     void createFlagFile();
     void removeFlagFile();
 
-    std::shared_ptr< SkaleHost > m_skaleHost;
 private:
     dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};
 };
