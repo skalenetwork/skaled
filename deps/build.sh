@@ -3,7 +3,7 @@
 set -e
 export SKALED_DEPS_CHAIN=1
 
-#env_clear_all() {
+#env_clear_all() { 
 #	for i in $(env | awk -F"=" '{print $1}') ; do
 #	unset $i ; done
 #}
