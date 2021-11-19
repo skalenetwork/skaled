@@ -633,6 +633,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         this->m_lastBlockWithBornTransactions = _blockID;
 
     logState();
+
+    if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
+        m_instanceMonitor->prepareRotation();
+        this->stopWorking();
+        ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+        clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
+    }
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
