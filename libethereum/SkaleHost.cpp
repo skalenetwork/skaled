@@ -474,11 +474,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
-
-    // ACHTUNG! This is important when node rotation is initiated! (not to process next block)
-    if(dev::ExitHandler::shouldExit())
-        return;
-
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
@@ -641,7 +636,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
         m_instanceMonitor->prepareRotation();
-        this->stopWorking();
+        m_consensus->exitGracefully();
         ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
         clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
     }
