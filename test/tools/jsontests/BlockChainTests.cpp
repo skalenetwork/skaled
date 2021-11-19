@@ -1027,7 +1027,8 @@ BOOST_AUTO_TEST_CASE( bcWalletTest,
 BOOST_AUTO_TEST_CASE( bcForgedTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcRandomBlockhashTest ) {}
-BOOST_AUTO_TEST_CASE( bcExploitTest ) {}
+BOOST_AUTO_TEST_CASE( bcExploitTest,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 
