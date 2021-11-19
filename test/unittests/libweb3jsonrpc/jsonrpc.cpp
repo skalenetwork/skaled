@@ -1672,7 +1672,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
 
-BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
