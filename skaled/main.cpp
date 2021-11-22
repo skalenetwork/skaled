@@ -3128,7 +3128,11 @@ int main( int argc, char** argv ) try {
 
     dev::setThreadName( "main" );
 
-    stat_init_common_signal_handling();  // ensure initialized
+    std::thread( []() {
+        std::this_thread::sleep_for( chrono::seconds( 10 ) );
+        stat_init_common_signal_handling();  // ensure initialized
+    } )
+        .detach();
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
