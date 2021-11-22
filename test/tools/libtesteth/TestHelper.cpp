@@ -113,13 +113,23 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
 }
 
 void simulateMining( Client& client, size_t numBlocks ) {
-    State state = client.state().startWrite();
-    u256 reward = 0;
-    for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
-        reward += client.sealEngine()->blockReward( blockNumber );
+    const auto address = client.author();
+    const auto balanceBefore = client.balanceAt( address );
+    for( size_t idxAttempt = 1; true; ++ idxAttempt ) {
+        State state = client.state().startWrite();
+        u256 reward = 0;
+        for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
+            reward += client.sealEngine()->blockReward( blockNumber );
+        }
+        state.addBalance( client.author(), reward );
+        state.commit();
+        const auto balanceAfter = client.balanceAt( address );
+        if( balanceAfter > balanceBefore ) {
+            std::cout << "Mining simulation succeeded with attempt " << idxAttempt << " for address " << address.hex() << "\n";
+            break;
+        }
+        std::cout << "Mining simulation failed with attempt " << idxAttempt << " for address " << address.hex() << "\n";
     }
-    state.addBalance( client.author(), reward );
-    state.commit();
 }
 
 }  // namespace eth
