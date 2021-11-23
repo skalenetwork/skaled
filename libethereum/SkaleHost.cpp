@@ -199,7 +199,7 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-                      std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -635,11 +635,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     logState();
 
     if ( m_instanceMonitor != nullptr ) {
-        if (m_instanceMonitor->isTimeToRotate(_timeStamp)) {
+        if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
             m_consensus->exitGracefully();
-            ExitHandler::exitHandler(SIGTERM, ExitHandler::ec_rotation_complete);
-            clog(VerbosityInfo, "skale-host") << "Rotation is completed. Instance is exiting";
+            ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+            clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
 } catch ( const std::exception& ex ) {

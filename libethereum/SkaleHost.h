@@ -35,8 +35,8 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
-#include <libethereum/Transaction.h>
 #include <libethereum/InstanceMonitor.h>
+#include <libethereum/Transaction.h>
 #include <libskale/SkaleClient.h>
 
 #include <jsonrpccpp/client/client.h>
@@ -105,7 +105,7 @@ public:
     };
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
-               std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr );
+        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();
