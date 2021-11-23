@@ -111,6 +111,7 @@ public:
         throw std::logic_error( "setDefault is not supported" );
     }
 
+    virtual void clearBalanceCache() = 0;
     virtual u256 balanceAt( Address _a ) const = 0;
     virtual u256 countAt( Address _a ) const = 0;
     virtual u256 stateAt( Address _a, u256 _l ) const = 0;

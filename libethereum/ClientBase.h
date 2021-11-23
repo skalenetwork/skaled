@@ -94,6 +94,7 @@ public:
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
         GasEstimationCallback const& _callback ) override;
 
+    void clearBalanceCache() override;
     u256 balanceAt( Address _a ) const override;
     u256 countAt( Address _a ) const override;
     u256 stateAt( Address _a, u256 _l ) const override;
