@@ -634,11 +634,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
-    if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
-        m_instanceMonitor->prepareRotation();
-        m_consensus->exitGracefully();
-        ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
-        clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
+    if ( m_instanceMonitor != nullptr ) {
+        if (m_instanceMonitor->isTimeToRotate(_timeStamp)) {
+            m_instanceMonitor->prepareRotation();
+            m_consensus->exitGracefully();
+            ExitHandler::exitHandler(SIGTERM, ExitHandler::ec_rotation_complete);
+            clog(VerbosityInfo, "skale-host") << "Rotation is completed. Instance is exiting";
+        }
     }
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
