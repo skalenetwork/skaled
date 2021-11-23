@@ -703,47 +703,6 @@ std::string strTestDesc = cc::info( "consumptionWithRefunds2" ) + cc::debug( " t
 
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
-/*
-    TestClientFixture fixture( c_genesisInfoSkaleTest );
-    ClientTest* testClient = asClientTest( fixture.ethereum() );
-
-    //    This contract is predeployed on SKALE test network
-    //    on address 0xD2001300000000000000000000000000000000D3
-
-    //    pragma solidity 0.6.0;
-    //    contract Test {
-    //            mapping (uint => bool) public a;
-    //
-    //            function setA(uint x) public {
-    //                a[x] = true;
-    //                a[x] = false;
-    //            }
-    //    }
-
-    Address from = fixture.coinbase.address();
-    Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
-
-    // data to call method setA(0)
-    bytes data =
-            jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
-
-    int64_t maxGas = 100000;
-    u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
-
-    Json::Value estimateTransaction;
-    estimateTransaction["from"] = toJS(from );
-    estimateTransaction["to"] = toJS (contractAddress);
-    estimateTransaction["data"] = toJS (data);
-
-    estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
-
-    estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
-*/
     bool bSuccess = false;
     size_t const cntAttempts = 10;
     for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
@@ -755,56 +714,6 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
-/*
-    TestClientFixture fixture( c_genesisInfoSkaleTest );
-    ClientTest* testClient = asClientTest( fixture.ethereum() );
-
-    //    This contract is listed in c_genesisInfoSkaleTest, address:
-    //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
-
-    //    pragma solidity 0.6.0;
-    //    contract Test {
-    //        mapping (uint => bool)
-    //        public a;
-    //        uint public b;
-
-    //        function setA(uint x) public {
-    //            a[x] = true;
-    //        }
-
-    //        function getA(uint x) public {
-    //            if (true == a[x]){
-    //                a[x] = false;
-    //                b = b + 1;
-    //            }
-    //        }
-    //    }
-
-    Address from = fixture.coinbase.address();
-    Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
-
-    // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
-    // data to call getA(3)
-    bytes data =
-            jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
-
-    int64_t maxGas = 100000;
-    u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
-
-    Json::Value estimateTransaction;
-    estimateTransaction["from"] = toJS(from);
-    estimateTransaction["to"] = toJS(contractAddress);
-    estimateTransaction["data"] = toJS (data);
-
-    estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
-
-    estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
-*/
     bool bSuccess = false;
     size_t const cntAttempts = 10;
     for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {

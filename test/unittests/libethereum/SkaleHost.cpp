@@ -283,44 +283,9 @@ std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test att
     }
 }
 
-BOOST_AUTO_TEST_CASE( validTransaction,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-/*
-    auto senderAddress = coinbase.address();
-    auto receiver = KeyPair::create();
-
-    Json::Value json;
-    u256 gasPrice = 100 * dev::eth::shannon;  // 100b
-    u256 value = 10000 * dev::eth::szabo;
-    json["from"] = toJS( senderAddress );
-    json["to"] = toJS( receiver.address() );
-    json["value"] = jsToDecimal( toJS( value ) );
-    json["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
-
-    TransactionSkeleton ts = toTransactionSkeleton( json );
-    ts = client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
-
-    RLPStream stream;
-    tx.streamRLP( stream );
-
-    h256 txHash = tx.sha3();
-
-    CHECK_NONCE_BEGIN( senderAddress );
-    CHECK_BALANCE_BEGIN( senderAddress );
-    CHECK_BLOCK_BEGIN;
-
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
-
-    REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
-
-    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
-    REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
-*/
+BOOST_AUTO_TEST_CASE( validTransaction
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     bool bSuccess = false;
     size_t const cntAttempts = 10;
     for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
@@ -336,8 +301,9 @@ BOOST_AUTO_TEST_CASE( validTransaction,
 // 1 Small amount of random bytes
 // 2 110 random bytes
 // 3 110 bytes of semi-correct RLP
-BOOST_AUTO_TEST_CASE( transactionRlpBad,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionRlpBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
 
     bytes small_tx1 = bytes();
@@ -407,8 +373,9 @@ public:
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // zero signature
-BOOST_AUTO_TEST_CASE( transactionSigZero,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionSigZero
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -450,8 +417,9 @@ BOOST_AUTO_TEST_CASE( transactionSigZero,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // corrupted signature
-BOOST_AUTO_TEST_CASE( transactionSigBad,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionSigBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -492,8 +460,9 @@ BOOST_AUTO_TEST_CASE( transactionSigBad,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // gas < min_gas
-BOOST_AUTO_TEST_CASE( transactionGasIncorrect,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionGasIncorrect
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -532,8 +501,9 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect,
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_AUTO_TEST_CASE( transactionGasNotEnough,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionGasNotEnough
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -627,8 +597,9 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionNonceSmall
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -719,8 +690,9 @@ BOOST_AUTO_TEST_CASE( transactionBalanceBad,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -769,8 +741,9 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded,
 }
 
 // positive test for 4 next ones
-BOOST_AUTO_TEST_CASE( transactionDropReceive,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionDropReceive
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -881,8 +854,9 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -937,8 +911,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -1002,8 +977,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive,
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionRace,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionRace
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -1054,8 +1030,9 @@ BOOST_AUTO_TEST_CASE( transactionRace,
 }
 
 // test two blocks with overlapping transactions :)
-BOOST_AUTO_TEST_CASE( partialCatchUp,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( partialCatchUp
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
