@@ -1681,6 +1681,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow, *boost::unit_test::
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine, senderAddress );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     u256 initial_gasPrice = fixture.client->gasBidPrice();

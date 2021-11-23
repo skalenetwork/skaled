@@ -112,8 +112,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
         _sealer->verify( JustSeal, _bi );
 }
 
-void simulateMining( Client& client, size_t numBlocks ) {
-    const auto address = client.author();
+void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
     const auto balanceBefore = client.balanceAt( address );
     for( size_t idxAttempt = 1; true; ++ idxAttempt ) {
         State state = client.state().startWrite();
@@ -130,6 +129,11 @@ void simulateMining( Client& client, size_t numBlocks ) {
         }
         std::cout << "Mining simulation failed with attempt " << idxAttempt << " for address " << address.hex() << "\n";
     }
+}
+
+void simulateMining( Client& client, size_t numBlocks ) {
+    const dev::Address address = client.author();
+    simulateMining( client, numBlocks, address );
 }
 
 }  // namespace eth

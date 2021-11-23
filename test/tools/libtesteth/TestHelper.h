@@ -31,6 +31,8 @@
 #include <boost/progress.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <libdevcore/Address.h>
+
 #include <libethashseal/Ethash.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/GasPricer.h>
@@ -56,6 +58,7 @@ void mine( Client& c, int numBlocks );
  * @brief simulateMining gives money to miner but do not create block. Use it only for testing
  * instead of mine( Client& c, int numBlocks )
  */
+void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
 void simulateMining( Client& client, size_t numBlocks );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
