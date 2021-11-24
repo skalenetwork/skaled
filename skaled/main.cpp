@@ -1707,7 +1707,7 @@ int main( int argc, char** argv ) try {
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost =
-            std::make_shared< SkaleHost >( *g_client, &cons_fact );
+            std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor );
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();

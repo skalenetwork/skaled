@@ -23,7 +23,6 @@
  */
 
 #include "InstanceMonitor.h"
-#include <csignal>
 #include <iostream>
 #include <json.hpp>
 
@@ -35,11 +34,9 @@ namespace fs = boost::filesystem;
 const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
 const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 
-void InstanceMonitor::performRotation() {
+void InstanceMonitor::prepareRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
-    ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
-    LOG( m_logger ) << "Rotation is completed. Instance is exiting";
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {

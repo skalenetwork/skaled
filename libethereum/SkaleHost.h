@@ -35,6 +35,7 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/InstanceMonitor.h>
 #include <libethereum/Transaction.h>
 #include <libskale/SkaleClient.h>
 
@@ -103,7 +104,8 @@ public:
         virtual const char* what() const noexcept { return "Error creating SkaleHost"; }
     };
 
-    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr );
+    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -181,6 +183,7 @@ private:
                                 // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};
