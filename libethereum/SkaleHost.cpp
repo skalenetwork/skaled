@@ -309,6 +309,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    ConsensusExtFace::transactions_vector out_vector;
+
+    if ( m_exitNeeded )
+        return out_vector;
+
     // HACK this should be field (or better do it another way)
     static bool first_run = true;
     if ( first_run ) {
@@ -318,7 +323,13 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
+    if ( m_exitNeeded )
+        return out_vector;
+
     unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
+
+    if ( m_exitNeeded )
+        return out_vector;
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -329,8 +340,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 
     _stateRoot = dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() );
-
-    ConsensusExtFace::transactions_vector out_vector;
 
     h256Hash to_delete;
 
