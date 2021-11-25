@@ -304,7 +304,7 @@ public:
 
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
-    typedef std::function< void(
+    typedef std::function< bool(
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) >
         fn_jsonrpc_call_t;
 
@@ -383,6 +383,10 @@ public:
         fn_jsonrpc_call_t fn_eth_sendRawTransaction_;
         fn_jsonrpc_call_t fn_eth_getTransactionReceipt_;
         fn_jsonrpc_call_t fn_eth_call_;
+        fn_jsonrpc_call_t fn_eth_getBalance_;
+        fn_jsonrpc_call_t fn_eth_getStorageAt_;
+        fn_jsonrpc_call_t fn_eth_getTransactionCount_;
+        fn_jsonrpc_call_t fn_eth_getCode_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -396,6 +400,10 @@ public:
             fn_eth_sendRawTransaction_ = other.fn_eth_sendRawTransaction_;
             fn_eth_getTransactionReceipt_ = other.fn_eth_getTransactionReceipt_;
             fn_eth_call_ = other.fn_eth_call_;
+            fn_eth_getBalance_ = other.fn_eth_getBalance_;
+            fn_eth_getStorageAt_ = other.fn_eth_getStorageAt_;
+            fn_eth_getTransactionCount_ = other.fn_eth_getTransactionCount_;
+            fn_eth_getCode_ = other.fn_eth_getCode_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -504,22 +512,34 @@ public:
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
 protected:
-    typedef void ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
+    typedef bool ( SkaleServerOverride::*rpc_method_t )( SkaleServerHelper& sse,
         const std::string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
     typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
-    void setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool setSchainExitTime( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_sendRawTransaction( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_getTransactionReceipt( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+    bool eth_call( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getBalance( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getStorageAt( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getTransactionCount( SkaleServerHelper& sse, const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    bool eth_getCode( SkaleServerHelper& sse, const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );

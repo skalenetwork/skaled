@@ -248,6 +248,19 @@ std::string WebThreeStubClient::eth_getBalance(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+std::string WebThreeStubClient::eth_getBalanceEIP1898(
+    const std::string& param1, const Json::Value& param2 ) {
+    Json::Value p;
+    p.append( param1 );
+    p.append( param2 );
+    Json::Value result = this->CallMethod( "eth_getBalance", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 std::string WebThreeStubClient::eth_getStorageAt(
     const std::string& param1, const std::string& param2, const std::string& param3 ) {
     Json::Value p;
@@ -262,8 +275,35 @@ std::string WebThreeStubClient::eth_getStorageAt(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+std::string WebThreeStubClient::eth_getStorageAtEIP1898(
+    const std::string& param1, const std::string& param2, const Json::Value& param3 ) {
+    Json::Value p;
+    p.append( param1 );
+    p.append( param2 );
+    p.append( param3 );
+    Json::Value result = this->CallMethod( "eth_getStorageAt", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 std::string WebThreeStubClient::eth_getTransactionCount(
     const std::string& param1, const std::string& param2 ) {
+    Json::Value p;
+    p.append( param1 );
+    p.append( param2 );
+    Json::Value result = this->CallMethod( "eth_getTransactionCount", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
+std::string WebThreeStubClient::eth_getTransactionCountEIP1898(
+    const std::string& param1, const Json::Value& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );
@@ -332,6 +372,19 @@ std::string WebThreeStubClient::eth_getCode(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+std::string WebThreeStubClient::eth_getCodeEIP1898(
+    const std::string& param1, const Json::Value& param2 ) {
+    Json::Value p;
+    p.append( param1 );
+    p.append( param2 );
+    Json::Value result = this->CallMethod( "eth_getCode", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 std::string WebThreeStubClient::eth_sendTransaction( const Json::Value& param1 ) {
     Json::Value p;
     p.append( param1 );
@@ -344,6 +397,18 @@ std::string WebThreeStubClient::eth_sendTransaction( const Json::Value& param1 )
 }
 
 std::string WebThreeStubClient::eth_call( const Json::Value& param1, const std::string& param2 ) {
+    Json::Value p;
+    p.append( param1 );
+    p.append( param2 );
+    Json::Value result = this->CallMethod( "eth_call", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
+std::string WebThreeStubClient::eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );

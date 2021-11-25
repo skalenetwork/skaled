@@ -3296,12 +3296,16 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
     {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
     {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
-    {"eth_call", &SkaleServerOverride::eth_call}};
+    {"eth_call", &SkaleServerOverride::eth_call},
+    {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
+    {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
+    {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
+    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
+bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
     const std::string& strOrigin, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
@@ -3316,7 +3320,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
             joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-            return;
+            return false;
         } else {
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
@@ -3329,7 +3333,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
                 joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-                return;
+                return false;
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
@@ -3394,6 +3398,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
+        return true;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3409,7 +3414,7 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return;
+        return false;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3423,25 +3428,48 @@ void SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             "error in \"setSchainExitTime\" rpc method, unknown exception",
             joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return;
+        return false;
     }
 }
 
-void SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
+bool SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+    return opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
+bool SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
     const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
     rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+    return opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+bool SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_call_( joRequest, joResponse );
+    return opts_.fn_eth_call_( joRequest, joResponse );
+}
+
+bool SkaleServerOverride::eth_getBalance( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    return opts_.fn_eth_getBalance_( joRequest, joResponse );
+}
+
+bool SkaleServerOverride::eth_getStorageAt( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    return opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+}
+
+bool SkaleServerOverride::eth_getTransactionCount( SkaleServerHelper& /*sse*/,
+    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
+    rapidjson::Document& joResponse ) {
+    return opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+}
+
+bool SkaleServerOverride::eth_getCode( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    return opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

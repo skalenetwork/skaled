@@ -515,33 +515,57 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     if ( !_json.IsObject() )
         return ret;
 
-    if ( _json.HasMember( "from" ) && !_json["from"].IsNull() )
+    if ( _json.HasMember( "from" ) && !_json["from"].IsNull() ) {
+        if ( !_json["from"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.from = jsToAddress( _json["from"].GetString() );
+    }
 
     if ( _json.HasMember( "to" ) && strncmp( _json["to"].GetString(), "0x", 3 ) != 0 &&
-         strncmp( _json["to"].GetString(), "", 2 ) != 0 )
+         strncmp( _json["to"].GetString(), "", 2 ) != 0 ) {
+        if ( !_json["to"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.to = jsToAddress( _json["to"].GetString() );
-    else
+    } else
         ret.creation = true;
 
-    if ( _json.HasMember( "value" ) && !_json["value"].IsNull() )
+    if ( _json.HasMember( "value" ) && !_json["value"].IsNull() ) {
+        if ( !_json["value"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.value = jsToU256( _json["value"].GetString() );
+    }
 
-    if ( _json.HasMember( "gas" ) && !_json["gas"].IsNull() )
+    if ( _json.HasMember( "gas" ) && !_json["gas"].IsNull() ) {
+        if ( !_json["gas"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.gas = jsToU256( _json["gas"].GetString() );
+    }
 
-    if ( _json.HasMember( "gasPrice" ) && !_json["gasPrice"].IsNull() )
+    if ( _json.HasMember( "gasPrice" ) && !_json["gasPrice"].IsNull() ) {
+        if ( !_json["gasPrice"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
+    }
 
-    if ( _json.HasMember( "data" ) && !_json["data"].IsNull() )  // ethereum.js has preconstructed
-                                                                 // the data array
+    if ( _json.HasMember( "data" ) && !_json["data"].IsNull() ) {  // ethereum.js has preconstructed
+                                                                   // the data array
+        if ( !_json["data"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
+    }
 
-    if ( _json.HasMember( "code" ) && !_json["code"].IsNull() )
+    if ( _json.HasMember( "code" ) && !_json["code"].IsNull() ) {
+        if ( !_json["code"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
+    }
 
-    if ( _json.HasMember( "nonce" ) && !_json["nonce"].IsNull() )
+    if ( _json.HasMember( "nonce" ) && !_json["nonce"].IsNull() ) {
+        if ( !_json["nonce"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.nonce = jsToU256( _json["nonce"].GetString() );
+    }
+
     return ret;
 }
 /*
@@ -607,6 +631,41 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avo
                 filter.topic( i, jsToFixed< 32 >( _json["topics"][i].asString() ) );
         }
     return filter;
+}
+
+bool validateEIP1898Json( const rapidjson::Value& jo ) {
+    if ( !jo.IsObject() )
+        return false;
+
+    if ( jo.HasMember( "blockHash" ) ) {
+        if ( !jo["blockHash"].IsString() )
+            return false;
+
+        if ( jo.MemberCount() > 2 )
+            return false;
+
+        if ( jo.MemberCount() == 1 )
+            return true;
+
+        if ( !jo.HasMember( "requireCanonical" ) )
+            return false;
+        return jo["requireCanonical"].IsBool();
+    } else if ( jo.HasMember( "blockNumber" ) ) {
+        return jo["blockNumber"].IsString() && jo.MemberCount() == 1;
+    }
+
+    return false;
+}
+
+std::string getBlockFromEIP1898Json( const rapidjson::Value& jo ) {
+    if ( jo.IsString() ) {
+        return jo.GetString();
+    }
+
+    if ( !dev::eth::validateEIP1898Json( jo ) )
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+
+    return "latest";
 }
 
 }  // namespace eth
