@@ -257,7 +257,7 @@ unsigned ClientBase::installWatch(
     {
         Guard l( x_filtersWatches );
         if ( !m_filters.count( h ) ) {
-            LOG( m_loggerWatch ) << "FFF" << _f << h;
+            LOG( m_loggerWatch ) << "Adding filter: " << _f << h;
             m_filters.insert( make_pair( h, _f ) );
         }
     }
@@ -271,7 +271,7 @@ unsigned ClientBase::installWatch(
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
         m_watches[ret] = ClientWatch( isWS, _h, _r, fnOnNewChanges, ret );
-        LOG( m_loggerWatch ) << "+++" << ret << _h;
+        LOG( m_loggerWatch ) << "Installing watch: " << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
     auto ch = logs( ret );
@@ -286,7 +286,7 @@ unsigned ClientBase::installWatch(
 }
 
 bool ClientBase::uninstallWatch( unsigned _i ) {
-    LOG( m_loggerWatch ) << "XXX" << _i;
+    LOG( m_loggerWatch ) << "Uninstalling watch id: " << _i;
 
     Guard l( x_filtersWatches );
 
@@ -299,7 +299,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
     auto fit = m_filters.find( id );
     if ( fit != m_filters.end() )
         if ( !--fit->second.refCount ) {
-            LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
+            LOG( m_loggerWatch ) << "Removing filter: " << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
     return true;

@@ -969,12 +969,13 @@ void Client::noteChanged( h256Hash const& _filters ) {
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
-                LOG( m_loggerWatch ) << "!!! " << w.first << " " << w.second.id.abridged();
+                LOG( m_loggerWatch )
+                    << "Changes on filter: " << w.first << " " << w.second.id.abridged();
                 w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
                     LOG( m_loggerWatch )
-                        << "!!! " << w.first << " "
+                        << "Changes on filter: " << w.first << " "
                         << ( w.second.id == PendingChangedFilter ?
                                    "pending" :
                                    w.second.id == ChainChangedFilter ? "chain" : "???" );
