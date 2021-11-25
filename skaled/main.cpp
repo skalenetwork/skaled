@@ -23,7 +23,7 @@
  * licence, as specified by http://opensource.org/licenses/MIT.
  * @date 2014
  * Ethereum client.
- */
+ */ 
 
 #include <exception>
 #define RAPIDJSON_ASSERT( x )                                       \
