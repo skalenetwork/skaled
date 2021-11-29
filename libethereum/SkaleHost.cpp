@@ -306,7 +306,7 @@ public:
 };
 
 template < class M >
-class try_lock_timed_guard {
+class timed_guard_4_try_lock {
 private:
     M& mtx_;
     std::atomic_bool was_locked_;
@@ -318,11 +318,11 @@ private:
     }
 
 public:
-    explicit try_lock_timed_guard( M& mtx, const size_t nNumberOfMilliseconds = 1000 )
+    explicit timed_guard_4_try_lock( M& mtx, const size_t nNumberOfMilliseconds = 1000 )
         : mtx_( mtx ), was_locked_( false ) {
         was_locked_ = try_lock( nNumberOfMilliseconds );
     }
-    ~try_lock_timed_guard() {
+    ~timed_guard_4_try_lock() {
         if ( was_locked_ )
             mtx_.unlock();
     }
@@ -361,7 +361,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         return out_vector;
 
     // std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
-    try_lock_timed_guard< std::timed_mutex > pauseLock( m_consensusPauseMutex );
+    timed_guard_4_try_lock< std::timed_mutex > pauseLock( m_consensusPauseMutex );
     if ( !pauseLock.was_locked() )
         return out_vector;
 
