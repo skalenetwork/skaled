@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <string>
 
@@ -304,6 +305,40 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
+template < class M >
+class try_lock_timed_guard {
+private:
+    M& mtx_;
+    std::atomic_bool was_locked_;
+    bool try_lock( const size_t nNumberOfMilliseconds ) {
+        auto now = std::chrono::steady_clock::now();
+        if ( mtx_.try_lock_until( now + std::chrono::milliseconds( nNumberOfMilliseconds ) ) )
+            return true;  // was locked
+        return false;
+    }
+
+public:
+    explicit try_lock_timed_guard( M& mtx, const size_t nNumberOfMilliseconds = 1000 )
+        : mtx_( mtx ), was_locked_( false ) {
+        was_locked_ = try_lock( nNumberOfMilliseconds );
+    }
+    ~try_lock_timed_guard() {
+        if ( was_locked_ )
+            mtx_.unlock();
+    }
+    bool was_locked() const { return was_locked_; }
+};
+
+bool SkaleHost::lock_timed_mutex_with_exit_check(
+    std::timed_mutex& mtx, const size_t nNumberOfMilliseconds ) {
+    if ( m_exitNeeded )
+        return false;
+    auto now = std::chrono::steady_clock::now();
+    if ( mtx.try_lock_until( now + std::chrono::milliseconds( nNumberOfMilliseconds ) ) )
+        return true;  // was locked
+    return false;
+}
+
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
@@ -317,11 +352,18 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     // HACK this should be field (or better do it another way)
     static bool first_run = true;
     if ( first_run ) {
-        m_consensusWorkingMutex.lock();
+        // m_consensusWorkingMutex.lock();
+        if ( !lock_timed_mutex_with_exit_check( m_consensusWorkingMutex ) )
+            return out_vector;
         first_run = false;
     }
+    if ( m_exitNeeded )
+        return out_vector;
 
-    std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+    // std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+    try_lock_timed_guard< std::timed_mutex > pauseLock( m_consensusPauseMutex );
+    if ( !pauseLock.was_locked() )
+        return out_vector;
 
     if ( m_exitNeeded )
         return out_vector;
@@ -691,8 +733,11 @@ void SkaleHost::startWorking() {
 
     auto csus_func = [&]() {
         try {
-            dev::setThreadName( "bootStrapAll" );
+            static const char g_strThreadName[] = "bootStrapAll";
+            dev::setThreadName( g_strThreadName );
+            std::cout << "Thread " << g_strThreadName << " started\n";
             m_consensus->bootStrapAll();
+            std::cout << "Thread " << g_strThreadName << " will exit\n";
         } catch ( std::exception& ex ) {
             std::string s = ex.what();
             if ( s.empty() )
