@@ -101,7 +101,14 @@ void BlockQueue::verifierBody() try {
             unique_lock< Mutex > l( m_verification );
             {
                 MICROPROFILE_SCOPEI( "BlockQueue", "m_moreToVerify.wait", MP_DIMGRAY );
-                m_moreToVerify.wait( l, [&]() { return !m_unverified.isEmpty() || m_deleting; } );
+
+                // m_moreToVerify.wait( l, [&]() { return !m_unverified.isEmpty() || m_deleting; } );
+                for( ; true; ) {
+                    if( m_moreToVerify.wait_for( l, std::chrono::milliseconds( 500 ), [&]() { return !m_unverified.isEmpty() || m_deleting; } ) )
+                        break;
+                    if ( m_deleting )
+                        return;
+                }
             }
             if ( m_deleting )
                 return;
