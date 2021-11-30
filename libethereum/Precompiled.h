@@ -104,7 +104,6 @@ private:
             #Name, &__eth_registerPricerFunction##Name );                                        \
     static bigint __eth_registerPricerFunction##Name
 
-static constexpr size_t FILE_MAX_SIZE = 100000000;
 static constexpr size_t UINT256_SIZE = 32;
 
 }  // namespace eth
