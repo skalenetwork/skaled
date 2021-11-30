@@ -278,12 +278,6 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         bigint const byteFileSize( parseBigEndianRightPadded(
             _in, 64 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ) );
         size_t const fileSize = byteFileSize.convert_to< size_t >();
-        if ( fileSize > FILE_MAX_SIZE ) {
-            std::stringstream ss;
-            ss << "createFile() failed because requested file size " << fileSize
-               << " exceeds supported limit " << FILE_MAX_SIZE;
-            throw std::runtime_error( ss.str() );
-        }
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
