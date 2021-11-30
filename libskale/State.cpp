@@ -404,13 +404,6 @@ bool State::addressHasCode( Address const& _id ) const {
         return false;
 }
 
-void State::clearAllCaches() {
-    m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
-    m_nonExistingAccountsCache.clear();
-}
-
 u256 State::balance( Address const& _id ) const {
     if ( auto a = account( _id ) )
         return a->balance();
@@ -712,11 +705,8 @@ void State::rollback( size_t _savepoint ) {
 }
 
 void State::updateToLatestVersion() {
-    clearAllCaches();
-    {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
-        m_currentVersion = *m_storedVersion;
-    }
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    m_currentVersion = *m_storedVersion;
 }
 
 State State::startRead() const {

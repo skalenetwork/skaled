@@ -113,7 +113,6 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
 }
 
 void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
-    client.clearBalanceCache();
     const auto balanceBefore = client.balanceAt( address );
     for( size_t idxAttempt = 1; true; ++ idxAttempt ) {
         State state = client.state().startWrite();
@@ -123,7 +122,6 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
         }
         state.addBalance( client.author(), reward );
         state.commit();
-        client.clearBalanceCache();
         const auto balanceAfter = client.balanceAt( address );
         if( balanceAfter > balanceBefore ) {
             std::cout << "Mining simulation succeeded with attempt " << idxAttempt << " for address " << address.hex() << "\n";

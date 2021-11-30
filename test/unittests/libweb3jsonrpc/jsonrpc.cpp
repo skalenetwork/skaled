@@ -251,6 +251,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
         //                1024} ) );
 
+        client->setAuthor( coinbase.address() );
+
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = client->setOnBlockImport(
@@ -262,8 +264,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client->startWorking();
 
         block_promise.get_future().wait();
-
-        client->setAuthor( coinbase.address() );
 
         using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;

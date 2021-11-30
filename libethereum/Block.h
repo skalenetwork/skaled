@@ -125,8 +125,6 @@ public:
 
     // Account-getters. All operate on the final state.
 
-    void clearBalanceCache() { m_state.clearAllCaches(); }
-
     /// Get an account's balance.
     /// @returns 0 if the address has never been used.
     u256 balance( Address const& _address ) const { return m_state.balance( _address ); }
