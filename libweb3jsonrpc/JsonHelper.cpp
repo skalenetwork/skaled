@@ -550,7 +550,7 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
     }
-
+    std::cout << _json["data"].IsNull() << " DATA IS NULL\n";
     if ( _json.HasMember( "data" ) && !_json["data"].IsNull() ) {  // ethereum.js has preconstructed
                                                                    // the data array
         if ( !_json["data"].IsString() )
