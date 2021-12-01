@@ -288,6 +288,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
+                    if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     std::string strResponse = ethFace->eth_sendRawTransaction(
                         joRequest["params"].GetArray()[0].GetString() );
 
@@ -305,6 +315,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
+                    if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     dev::eth::LocalisedTransactionReceipt _t =
                         ethFace->eth_getTransactionReceipt(
                             joRequest["params"].GetArray()[0].GetString() );
@@ -329,7 +349,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
-                    if ( !joRequest["params"].IsArray() ) {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                     }
@@ -364,6 +384,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getBalance =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     if ( joRequest["params"].GetArray().Size() != 2 ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -393,6 +418,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getStorageAt =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     if ( joRequest["params"].GetArray().Size() != 3 ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -424,6 +454,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionCount =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     if ( joRequest["params"].GetArray().Size() != 2 ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -453,6 +488,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getCode =
             [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                 try {
+                    if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    }
+
                     if ( joRequest["params"].GetArray().Size() != 2 ) {
                         throw jsonrpc::JsonRpcException(
                             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
