@@ -521,11 +521,15 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         ret.from = jsToAddress( _json["from"].GetString() );
     }
 
-    if ( _json.HasMember( "to" ) && strncmp( _json["to"].GetString(), "0x", 3 ) != 0 &&
-         strncmp( _json["to"].GetString(), "", 2 ) != 0 ) {
-        if ( !_json["to"].IsString() )
+    if ( _json.HasMember( "to" ) && !_json["to"].IsNull() ) {
+        if ( _json["to"].IsString() ) {
+            if ( strncmp( _json["to"].GetString(), "0x", 3 ) == 0 ||
+                 strncmp( _json["to"].GetString(), "", 2 ) == 0 )
+                ret.creation = true;
+            else
+                ret.to = jsToAddress( _json["to"].GetString() );
+        } else
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-        ret.to = jsToAddress( _json["to"].GetString() );
     } else
         ret.creation = true;
 
