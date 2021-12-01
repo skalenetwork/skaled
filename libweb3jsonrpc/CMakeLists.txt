@@ -36,9 +36,9 @@ set(sources
     Web3Face.h
     WhisperFace.h
 
-    SkaleDebug.h
-    SkaleDebug.cpp
-    SkaleDebugFace.h
+    SkalePerformanceTracker.h
+    SkalePerformanceTracker.cpp
+    SkalePerformanceTrackerFace.h
 
     Skale.h
     Skale.cpp

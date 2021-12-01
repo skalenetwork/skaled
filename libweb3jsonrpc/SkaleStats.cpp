@@ -933,7 +933,7 @@ Json::Value SkaleStats::skale_stats() {
     try {
         nlohmann::json joStats = consumeSkaleStats();
 
-        // HACK Add stats from SkaleDebug
+        // HACK Add stats from SkalePerformanceTracker
         // TODO Why we need all this absatract infrastructure?
         const dev::eth::Client* c = dynamic_cast< dev::eth::Client* const >( this->client() );
         if ( c ) {
@@ -1061,12 +1061,33 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
         else
             joThisNode["acceptors"] = 0;
         //
+        if ( joSkaleConfig_nodeInfo.count( "enable-personal-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-personal-apis"].is_boolean() )
+            joThisNode["enable-personal-apis"] =
+                joSkaleConfig_nodeInfo["enable-personal-apis"].get< bool >();
+        else
+            joThisNode["enable-personal-apis"] = false;
+        //
+        if ( joSkaleConfig_nodeInfo.count( "enable-admin-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-admin-apis"].is_boolean() )
+            joThisNode["enable-admin-apis"] =
+                joSkaleConfig_nodeInfo["enable-admin-apis"].get< bool >();
+        else
+            joThisNode["enable-admin-apis"] = false;
+        //
         if ( joSkaleConfig_nodeInfo.count( "enable-debug-behavior-apis" ) > 0 &&
              joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].is_boolean() )
             joThisNode["enable-debug-behavior-apis"] =
                 joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].get< bool >();
         else
             joThisNode["enable-debug-behavior-apis"] = false;
+        //
+        if ( joSkaleConfig_nodeInfo.count( "enable-performance-tracker-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-performance-tracker-apis"].is_boolean() )
+            joThisNode["enable-performance-tracker-apis"] =
+                joSkaleConfig_nodeInfo["enable-performance-tracker-apis"].get< bool >();
+        else
+            joThisNode["enable-performance-tracker-apis"] = false;
         //
         if ( joSkaleConfig_nodeInfo.count( "unsafe-transactions" ) > 0 &&
              joSkaleConfig_nodeInfo["unsafe-transactions"].is_boolean() )

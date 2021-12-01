@@ -75,7 +75,7 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
-#include <libweb3jsonrpc/SkaleDebug.h>
+#include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
@@ -503,7 +503,10 @@ int main( int argc, char** argv ) try {
     int nExplicitPortProxygenHTTPS6nfo = -1;
     bool bTraceJsonRpcCalls = false;
     bool bTraceJsonRpcSpecialCalls = false;
-    bool bEnabledDebugBehaviorAPIs = false;
+    bool bEnabledAPIs_personal = false;
+    bool bEnabledAPIs_admin = false;
+    bool bEnabledAPIs_debug = false;
+    bool bEnabledAPIs_performanceTracker = false;
 
     const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
         get_machine_ip_addresses_4();  // IPv4
@@ -695,8 +698,12 @@ int main( int argc, char** argv ) try {
     addClientOption( "web3-trace", "Log HTTP/HTTPS/WS/WSS requests and responses" );
     addClientOption(
         "special-rpc-trace", "Log admin, miner, personal, and debug requests and responses" );
+    addClientOption( "enable-personal-apis", "Enables personal JSON RPC APIs" );
+    addClientOption( "enable-admin-apis", "Enables admi JSON RPC APIs" );
     addClientOption( "enable-debug-behavior-apis",
         "Enables debug set of JSON RPC APIs which are changing app behavior" );
+    addClientOption(
+        "enable-performance-tracker-apis", "Enables JSON RPC APIs for performance data recording" );
 
     addClientOption( "max-batch", po::value< size_t >()->value_name( "<count>" ),
         "Maximum count of requests in JSON RPC batch request array" );
@@ -1189,22 +1196,60 @@ int main( int argc, char** argv ) try {
         << cc::info( "Special JSON RPC" ) << cc::debug( " trace logging mode is " )
         << cc::flag_ed( bTraceJsonRpcSpecialCalls );
 
-    // First, get "enable-debug-behavior-apis" from config.json
-    // Second, get it from command line parameter (higher priority source)
+    // First, get "enable-personal-apis", "enable-admin-apis", "enable-debug-behavior-apis",
+    // "enable-performance-tracker-apis" from config.json Second, get it from command line parameter
+    // (higher priority source)
     if ( chainConfigParsed ) {
         try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-personal-apis" ) )
+                bEnabledAPIs_personal =
+                    joConfig["skaleConfig"]["nodeInfo"]["enable-personal-apis"].get< bool >();
+        } catch ( ... ) {
+        }
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-admin-apis" ) )
+                bEnabledAPIs_admin =
+                    joConfig["skaleConfig"]["nodeInfo"]["enable-admin-apis"].get< bool >();
+        } catch ( ... ) {
+        }
+        try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-debug-behavior-apis" ) )
-                bEnabledDebugBehaviorAPIs =
+                bEnabledAPIs_debug =
                     joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-performance-tracker-apis" ) )
+                bEnabledAPIs_performanceTracker =
+                    joConfig["skaleConfig"]["nodeInfo"]["enable-performance-tracker-apis"]
+                        .get< bool >();
+        } catch ( ... ) {
+        }
     }
+    if ( vm.count( "enable-personal-apis" ) )
+        bEnabledAPIs_personal = true;
+    if ( vm.count( "enable-admin-apis" ) )
+        bEnabledAPIs_admin = true;
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        bEnabledDebugBehaviorAPIs = true;
+        bEnabledAPIs_debug = true;
+    if ( vm.count( "enable-performance-tracker-apis" ) )
+        bEnabledAPIs_performanceTracker = true;
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
+        << cc::info( "enable-personal-apis" ) << cc::debug( " mode is " )
+        << cc::flag_ed( bEnabledAPIs_personal );
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
+        << cc::info( "enable-admin-apis" ) << cc::debug( " mode is " )
+        << cc::flag_ed( bEnabledAPIs_admin );
     clog( VerbosityWarning, "main" )
         << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledDebugBehaviorAPIs );
+        << cc::flag_ed( bEnabledAPIs_debug );
+    clog( VerbosityWarning, "main" )
+        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
+        << cc::info( "enable-performance-tracker-apis" ) << cc::debug( " mode is " )
+        << cc::flag_ed( bEnabledAPIs_performanceTracker );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1871,42 +1916,44 @@ int main( int argc, char** argv ) try {
         using FullServer = ModularServer< rpc::EthFace,
             rpc::SkaleFace,   /// skale
             rpc::SkaleStats,  /// skaleStats
-            rpc::NetFace, rpc::Web3Face, rpc::PersonalFace,
-            rpc::AdminEthFace,  // SKALE rpc::AdminNetFace,
-            rpc::DebugFace, rpc::SkaleDebug, rpc::TestFace >;
+            rpc::NetFace, rpc::Web3Face, rpc::PersonalFace, rpc::AdminEthFace,
+            // SKALE rpc::AdminNetFace,
+            rpc::DebugFace, rpc::SkalePerformanceTracker, rpc::TestFace >;
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
             [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        auto ethFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
-        /// skale
-        auto skaleFace = new rpc::Skale( *g_client, shared_space );
-        /// skaleStatsFace
-        auto skaleStatsFace =
-            new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
-
         std::string argv_string;
-        {
+        {  // block
             ostringstream ss;
             for ( int i = 1; i < argc; ++i )
                 ss << argv[i] << " ";
             argv_string = ss.str();
-        }
+        }  // block
 
-        g_jsonrpcIpcServer.reset( new FullServer( ethFace,
-            skaleFace,       /// skale
-            skaleStatsFace,  /// skaleStats
-            new rpc::Net( chainParams ), new rpc::Web3( clientVersion() ),
-            bEnabledDebugBehaviorAPIs ? new rpc::Personal( keyManager, *accountHolder, *g_client ) :
-                                        nullptr,
-            bEnabledDebugBehaviorAPIs ? new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager,
-                                            *sessionManager.get() ) :
-                                        nullptr,
-            bEnabledDebugBehaviorAPIs ? new rpc::Debug( *g_client, &debugInterface, argv_string ) :
-                                        nullptr,
-            bEnabledDebugBehaviorAPIs ? new rpc::SkaleDebug( configPath.string() ) : nullptr,
-            nullptr ) );
+        auto pNetFace = new rpc::Net( chainParams );
+        auto pWeb3Face = new rpc::Web3( clientVersion() );
+        auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
+        auto pSkaleFace = new rpc::Skale( *g_client, shared_space );
+        auto pSkaleStatsFace =
+            new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
+        auto pPersonalFace = bEnabledAPIs_personal ?
+                                 new rpc::Personal( keyManager, *accountHolder, *g_client ) :
+                                 nullptr;
+        auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
+                                                      keyManager, *sessionManager.get() ) :
+                                                  nullptr;
+        auto pDebugFace = bEnabledAPIs_debug ?
+                              new rpc::Debug( *g_client, &debugInterface, argv_string ) :
+                              nullptr;
+        auto pPerformanceTrackerFace = bEnabledAPIs_performanceTracker ?
+                                           new rpc::SkalePerformanceTracker( configPath.string() ) :
+                                           nullptr;
+
+        g_jsonrpcIpcServer.reset(
+            new FullServer( pEthFace, pSkaleFace, pSkaleStatsFace, pNetFace, pWeb3Face,
+                pPersonalFace, pAdminEthFace, pDebugFace, pPerformanceTrackerFace, nullptr ) );
 
         if ( is_ipc ) {
             try {
@@ -2305,7 +2352,7 @@ int main( int argc, char** argv ) try {
                 << cc::debug( "..... " ) << cc::size10( cntServersNfo );
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
-                return skaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
+                return pSkaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
@@ -2320,7 +2367,7 @@ int main( int argc, char** argv ) try {
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
 
-                        std::string strResponse = ethFace->eth_sendRawTransaction(
+                        std::string strResponse = pEthFace->eth_sendRawTransaction(
                             joRequest["params"].GetArray()[0].GetString() );
 
                         rapidjson::Value& v = joResponse["result"];
@@ -2348,7 +2395,7 @@ int main( int argc, char** argv ) try {
                         }
 
                         dev::eth::LocalisedTransactionReceipt _t =
-                            ethFace->eth_getTransactionReceipt(
+                            pEthFace->eth_getTransactionReceipt(
                                 joRequest["params"].GetArray()[0].GetString() );
 
                         rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
@@ -2391,7 +2438,7 @@ int main( int argc, char** argv ) try {
 
                         dev::eth::TransactionSkeleton _t =
                             dev::eth::rapidJsonToTransactionSkeleton( paramsArray[0] );
-                        std::string strResponse = ethFace->eth_call( _t, block );
+                        std::string strResponse = pEthFace->eth_call( _t, block );
 
                         rapidjson::Value& v = joResponse["result"];
                         v.SetString(
@@ -2420,7 +2467,7 @@ int main( int argc, char** argv ) try {
                         std::string block =
                             dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
-                        std::string strResponse = ethFace->eth_getBalance(
+                        std::string strResponse = pEthFace->eth_getBalance(
                             joRequest["params"].GetArray()[0].GetString(), block );
 
                         rapidjson::Value& v = joResponse["result"];
@@ -2451,7 +2498,7 @@ int main( int argc, char** argv ) try {
                         std::string block =
                             dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[2] );
 
-                        std::string strResponse = ethFace->eth_getStorageAt(
+                        std::string strResponse = pEthFace->eth_getStorageAt(
                             joRequest["params"].GetArray()[0].GetString(),
                             joRequest["params"].GetArray()[1].GetString(), block );
 
@@ -2482,7 +2529,7 @@ int main( int argc, char** argv ) try {
                         std::string block =
                             dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
-                        std::string strResponse = ethFace->eth_getTransactionCount(
+                        std::string strResponse = pEthFace->eth_getTransactionCount(
                             joRequest["params"].GetArray()[0].GetString(), block );
 
                         rapidjson::Value& v = joResponse["result"];
@@ -2512,7 +2559,7 @@ int main( int argc, char** argv ) try {
                         std::string block =
                             dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
-                        std::string strResponse = ethFace->eth_getCode(
+                        std::string strResponse = pEthFace->eth_getCode(
                             joRequest["params"].GetArray()[0].GetString(), block );
 
                         rapidjson::Value& v = joResponse["result"];
@@ -2650,8 +2697,8 @@ int main( int argc, char** argv ) try {
             skale_server_connector->pg_threads_ = pg_threads;
             skale_server_connector->pg_threads_limit_ = pg_threads_limit;
             //
-            skaleStatsFace->setProvider( skale_server_connector );
-            skale_server_connector->setConsumer( skaleStatsFace );
+            pSkaleStatsFace->setProvider( skale_server_connector );
+            skale_server_connector->setConsumer( pSkaleStatsFace );
             //
             skale_server_connector->opts_.isTraceCalls_ = bTraceJsonRpcCalls;
             skale_server_connector->opts_.isTraceSpecialCalls_ = bTraceJsonRpcSpecialCalls;
