@@ -25,12 +25,6 @@
  * Ethereum client.
  */
 
-#include <exception>
-#define RAPIDJSON_ASSERT( x )                                       \
-    if ( !( x ) ) {                                                 \
-        throw std::out_of_range( #x " failed with provided JSON" ); \
-    }
-
 #include <signal.h>
 #include <fstream>
 #include <iostream>
