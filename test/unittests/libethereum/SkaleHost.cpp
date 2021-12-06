@@ -22,7 +22,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <memory>
-#include <map>
 
 using namespace dev;
 using namespace dev::eth;
@@ -32,11 +31,12 @@ using namespace std;
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
-    std::map< uint64_t, u256 > block_gas_prices;
+    std::vector< u256 > block_gas_prices;
     bool need_exit = false;
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
+        block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
@@ -60,9 +60,8 @@ public:
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
-        auto itFind = block_gas_prices.find( _blockId );
-        assert( itFind != block_gas_prices.end() );
-        return itFind->second;
+        assert( _blockId < block_gas_prices.size() );
+        return block_gas_prices.at( _blockId );
     }
 
     u256 getRandomForBlockId( uint64_t _blockId ) const override {
@@ -70,7 +69,11 @@ public:
     }
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
-        block_gas_prices[_blockId] = _gasPrice;
+        assert( _blockId <= block_gas_prices.size() );
+        if ( _blockId == block_gas_prices.size() )
+            block_gas_prices.push_back( _gasPrice );
+        else
+            block_gas_prices[_blockId] = _gasPrice;
     }
 };
 
