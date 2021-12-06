@@ -15,10 +15,6 @@
 
 #include <skutils/utils.h>
 
-#include "thirdparty/rapidjson/document.h"
-#include "thirdparty/rapidjson/stringbuffer.h"
-#include "thirdparty/rapidjson/writer.h"
-
 #include <assert.h>
 
 #include <fcntl.h>

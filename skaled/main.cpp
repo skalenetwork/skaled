@@ -25,12 +25,6 @@
  * Ethereum client.
  */
 
-#include <exception>
-#define RAPIDJSON_ASSERT( x )                                       \
-    if ( !( x ) ) {                                                 \
-        throw std::out_of_range( #x " failed with provided JSON" ); \
-    }
-
 #include <signal.h>
 #include <fstream>
 #include <iostream>
@@ -2357,7 +2351,7 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
-                        if ( !joRequest["params"].IsArray() ) {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
@@ -2384,7 +2378,7 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
-                        if ( !joRequest["params"].IsArray() ) {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
@@ -2419,7 +2413,7 @@ int main( int argc, char** argv ) try {
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
                         // validate params
-                        if ( !joRequest["params"].IsArray() ) {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
@@ -2454,6 +2448,11 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getBalance =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+
                         if ( joRequest["params"].GetArray().Size() != 2 ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -2484,6 +2483,11 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getStorageAt =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+
                         if ( joRequest["params"].GetArray().Size() != 3 ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -2516,6 +2520,11 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionCount =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+
                         if ( joRequest["params"].GetArray().Size() != 2 ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -2546,6 +2555,11 @@ int main( int argc, char** argv ) try {
             SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getCode =
                 [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
                     try {
+                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                            throw jsonrpc::JsonRpcException(
+                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                        }
+
                         if ( joRequest["params"].GetArray().Size() != 2 ) {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
