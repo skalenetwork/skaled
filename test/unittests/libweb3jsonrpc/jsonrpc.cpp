@@ -35,6 +35,7 @@
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include "genesisGeneration2Config.h"
 // SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -175,7 +176,6 @@ static std::string const c_genesisConfigString =
 }
 )";
 
-
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
 public:
@@ -200,27 +200,34 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
         setenv("DATA_DIR", tempDir.path().c_str(), 1);
 
         if ( _config != "" ) {
-            Json::Value ret;
-            Json::Reader().parse( _config, ret );
-            if ( _owner ) {
-                ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( coinbase.address() );
-                if (_deploymentControl)
-                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( coinbase.address() );
+            if ( !_generation2 ) {
+                Json::Value ret;
+                Json::Reader().parse( _config, ret );
+                if ( _owner ) {
+                    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( coinbase.address() );
+                    if (_deploymentControl)
+                        ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( coinbase.address() );
+                } else {
+                    ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
+                    if (_deploymentControl)
+                        ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( account2.address() );
+                }
+                Json::FastWriter fastWriter;
+                std::string output = fastWriter.write( ret );
+                chainParams = chainParams.loadConfig( output );
             } else {
-                ret["skaleConfig"]["sChain"]["schainOwner"] = toJS( account2.address() );
-                if (_deploymentControl)
-                    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]["0x0"] = toJS( account2.address() );
+                chainParams = chainParams.loadConfig( _config );
+                // insecure schain owner private key
+                // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
+                coinbase = dev::KeyPair(dev::Secret("0x3dd85d854e41db7585080dfdb90f88a83f0c70e229c509a4a1da63d0c82d5ad0"));
             }
-            Json::FastWriter fastWriter;
-            std::string output = fastWriter.write( ret );
-            chainParams = chainParams.loadConfig( output );
         } else {
             chainParams.sealEngineName = NoProof::name();
             chainParams.allowFutureBlocks = true;
@@ -693,6 +700,39 @@ BOOST_AUTO_TEST_CASE( eth_coinbase,
     JsonRpcFixture fixture;
     string coinbase = fixture.rpcClient->eth_coinbase();
     BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), fixture.client->author() );
+}
+
+BOOST_AUTO_TEST_CASE( eth_etherbase ) {
+    JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
+    string etherbase = fixture.rpcClient->eth_coinbase();
+    string schainOwner;
+    BOOST_REQUIRE_EQUAL( jsToAddress( etherbase ), fixture.client->author() );
+
+    // before mining
+    u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    u256 schainOwnerBalance = fixture.client->balanceAt( jsToAddress( schainOwner ) );
+
+    BOOST_REQUIRE_EQUAL(etherbaseBalance, schainOwnerBalance);
+    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
+
+    // mine block without transactions
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    schainOwnerBalance = fixture.client->balanceAt( jsToAddress( schainOwner ) );
+    BOOST_REQUIRE_GT(etherbaseBalance, 0);
+    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
+
+    // mine transaction
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = toJS( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" );
+    sampleTx["to"] = toJS("0x5C4e11842E8be09264dc1976943571d7Af6d00F9");
+    sampleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    fixture.rpcClient->eth_sendTransaction( sampleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE_GT(fixture.client->balanceAt( jsToAddress( etherbase ) ), 0);
+    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
@@ -2058,10 +2098,6 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     string txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    auto t = fixture.rpcClient->eth_getTransactionByHash( txHash );
-    Json::FastWriter fastWriter;
-    std::cout << fastWriter.write( t ) << std::endl;
-    std::cout << fixture.client->state().storageUsedTotal() << std::endl;
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 
     Json::Value txZeroValue;
