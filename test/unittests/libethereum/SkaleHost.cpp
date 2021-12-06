@@ -61,7 +61,9 @@ public:
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
         auto itFind = block_gas_prices.find( _blockId );
-        assert( itFind != block_gas_prices.end() );
+        if( itFind == block_gas_prices.end() )
+            return u256( 0 );
+        // assert( itFind != block_gas_prices.end() );
         return itFind->second;
     }
 
