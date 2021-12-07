@@ -283,7 +283,7 @@ std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test att
 }
 
 BOOST_AUTO_TEST_CASE( validTransaction
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
     bool bSuccess = false;
     size_t const cntAttempts = 10;
