@@ -137,7 +137,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
           cd build
           make testeth -j$(nproc)
