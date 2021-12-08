@@ -2436,9 +2436,9 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
     for ( const nlohmann::json& joRequest : jarrRequest ) {
         std::string strBody = joRequest.dump();  // = req.body_;
         std::string strPerformanceQueueName =
-            skutils::tools::format( "rpc/%s/%zu", strProtocol, nServerIndex );
+            skutils::tools::format( "rpc/%s/%zu", strProtocol.c_str(), nServerIndex );
         std::string strPerformanceActionName = skutils::tools::format(
-            "%s task %zu, %s", strProtocol, nTaskNumberCall_++, strMethod.c_str() );
+            "%s task %zu, %s", strProtocol.c_str(), nTaskNumberCall_++, strMethod.c_str() );
         skutils::task::performance::action a(
             strPerformanceQueueName, strPerformanceActionName, joRequest );
         //

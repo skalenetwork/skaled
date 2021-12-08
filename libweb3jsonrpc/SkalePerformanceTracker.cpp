@@ -16,13 +16,13 @@
     You should have received a copy of the GNU General Public License
     along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file SkaleDebug.cpp
+/** @file SkalePerformanceTracker.cpp
  * @authors:
  *   Oleh Nikolaiev <oleg@skalelabs.com>
  * @date 2020
  */
 
-#include "SkaleDebug.h"
+#include "SkalePerformanceTracker.h"
 #include "Eth.h"
 #include <jsonrpccpp/common/exception.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -48,10 +48,11 @@
 namespace dev {
 namespace rpc {
 
-SkaleDebug::SkaleDebug( const std::string& configPath )
+SkalePerformanceTracker::SkalePerformanceTracker( const std::string& configPath )
     : skutils::json_config_file_accessor( configPath ) {}
 
-Json::Value SkaleDebug::skale_performanceTrackingStatus( const Json::Value& /*request*/ ) {
+Json::Value SkalePerformanceTracker::skale_performanceTrackingStatus(
+    const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "Performance tracking status" );
     try {
         skutils::task::performance::tracker_ptr pTracker =
@@ -87,7 +88,7 @@ Json::Value SkaleDebug::skale_performanceTrackingStatus( const Json::Value& /*re
     }
 }
 
-Json::Value SkaleDebug::skale_performanceTrackingStart( const Json::Value& request ) {
+Json::Value SkalePerformanceTracker::skale_performanceTrackingStart( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "Performance tracking start" );
     try {
         Json::FastWriter fastWriter;
@@ -134,7 +135,8 @@ Json::Value SkaleDebug::skale_performanceTrackingStart( const Json::Value& reque
     }
 }
 
-Json::Value SkaleDebug::skale_performanceTrackingStop( const Json::Value& /*request*/ ) {
+Json::Value SkalePerformanceTracker::skale_performanceTrackingStop(
+    const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "Performance tracking stop" );
     try {
         skutils::task::performance::tracker_ptr pTracker =
@@ -173,7 +175,7 @@ Json::Value SkaleDebug::skale_performanceTrackingStop( const Json::Value& /*requ
     }
 }
 
-Json::Value SkaleDebug::skale_performanceTrackingFetch( const Json::Value& request ) {
+Json::Value SkalePerformanceTracker::skale_performanceTrackingFetch( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "Performance tracking fetch" );
     try {
         Json::FastWriter fastWriter;
