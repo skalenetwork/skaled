@@ -12,6 +12,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
         "EIP158ForkBlock": "0x00",
         "byzantiumForkBlock": "0x0",
         "constantinopleForkBlock": "0x0",
+        "istanbulForkBlock": "0x0",
         "networkID": "12313219",
         "chainID": "0xe1481e3bb1004",
         "maximumExtraDataSize": "0x20",

@@ -224,9 +224,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 chainParams = chainParams.loadConfig( output );
             } else {
                 chainParams = chainParams.loadConfig( _config );
-                // insecure schain owner private key
+                // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
-                coinbase = dev::KeyPair(dev::Secret("0x3dd85d854e41db7585080dfdb90f88a83f0c70e229c509a4a1da63d0c82d5ad0"));
+                coinbase = dev::KeyPair(dev::Secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9"));
             }
         } else {
             chainParams.sealEngineName = NoProof::name();
@@ -270,7 +270,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         block_promise.get_future().wait();
 
-        client->setAuthor( coinbase.address() );
+        if ( !_generation2 )
+            client->setAuthor( coinbase.address() );
+        else
+            client->setAuthor( chainParams.sChain.blockAuthor );
 
         using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
@@ -702,37 +705,69 @@ BOOST_AUTO_TEST_CASE( eth_coinbase,
     BOOST_REQUIRE_EQUAL( jsToAddress( coinbase ), fixture.client->author() );
 }
 
-BOOST_AUTO_TEST_CASE( eth_etherbase ) {
+BOOST_AUTO_TEST_CASE( etherbase ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
     string etherbase = fixture.rpcClient->eth_coinbase();
-    string schainOwner;
-    BOOST_REQUIRE_EQUAL( jsToAddress( etherbase ), fixture.client->author() );
 
     // before mining
     u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-    u256 schainOwnerBalance = fixture.client->balanceAt( jsToAddress( schainOwner ) );
-
-    BOOST_REQUIRE_EQUAL(etherbaseBalance, schainOwnerBalance);
-    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-    schainOwnerBalance = fixture.client->balanceAt( jsToAddress( schainOwner ) );
-    BOOST_REQUIRE_GT(etherbaseBalance, 0);
-    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
+    BOOST_REQUIRE_GT( etherbaseBalance, 0 );
 
     // mine transaction
     Json::Value sampleTx;
     sampleTx["value"] = 1000000;
     sampleTx["data"] = toJS( bytes() );
-    sampleTx["from"] = toJS( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" );
-    sampleTx["to"] = toJS("0x5C4e11842E8be09264dc1976943571d7Af6d00F9");
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
     sampleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    fixture.rpcClient->eth_sendTransaction( sampleTx );
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE_GT(fixture.client->balanceAt( jsToAddress( etherbase ) ), 0);
-    BOOST_REQUIRE_EQUAL(schainOwnerBalance, 0);
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    // partially retrieve 1000000
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    u256 balance = fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) );
+
+    Json::Value partiallyRetrieveTx;
+    partiallyRetrieveTx["data"] = "0xc6427474000000000000000000000000d2c0deface0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000e4b61d27f6000000000000000000000000d2ba3e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044204a3e930000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f00000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    partiallyRetrieveTx["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    partiallyRetrieveTx["to"] = "0x00000000000000006B6176756E2d68757976756E";
+    partiallyRetrieveTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    partiallyRetrieveTx["gas"] = toJS( "1000000" );
+    txHash = fixture.rpcClient->eth_sendTransaction( partiallyRetrieveTx );
+    BOOST_REQUIRE( !txHash.empty() );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance + jsToU256( t["gasUsed"].asString() ) * jsToU256( partiallyRetrieveTx["gasPrice"].asString() )- u256( 1000000 ) );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ), balance + u256( 1000000 ) );
+
+    // retrieve all
+    u256 oldEtherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    balance = fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) );
+
+    Json::Value retrieveTx;
+    retrieveTx["data"] = "0xc6427474000000000000000000000000d2c0deface0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c4b61d27f6000000000000000000000000d2ba3e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000240a79309b0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    retrieveTx["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    retrieveTx["to"] = "0x00000000000000006B6176756E2d68757976756E";
+    retrieveTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    retrieveTx["gas"] = toJS( "1000000" );
+    txHash = fixture.rpcClient->eth_sendTransaction( retrieveTx );
+    BOOST_REQUIRE( !txHash.empty() );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    BOOST_REQUIRE_EQUAL( jsToU256( t["gasUsed"].asString() ) * jsToU256( retrieveTx["gasPrice"].asString() ), etherbaseBalance );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ), balance + oldEtherbaseBalance );
+}
+
+BOOST_AUTO_TEST_CASE( deploy_controller_generation2 ) {
+    BOOST_REQUIRE( true );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
