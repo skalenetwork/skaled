@@ -2372,6 +2372,11 @@ BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
 
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+
+    Json::Value getReservedSpaceCall;
+    hasRoleCall["data"] = "0xbb559d160000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f";
+    hasRoleCall["to"] = "0xD3002000000000000000000000000000000000d3";
+    BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleCall, "latest" ) ) == 100 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
