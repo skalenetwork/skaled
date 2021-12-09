@@ -2194,7 +2194,7 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE( etherbase ) {
+BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
     string etherbase = fixture.rpcClient->eth_coinbase();
 
@@ -2322,6 +2322,56 @@ BOOST_AUTO_TEST_CASE( deploy_controller_generation2 ) {
     BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
     code = fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
+}
+
+BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
+    JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
+
+    Json::Value hasRoleBeforeGrantingCall;
+    hasRoleBeforeGrantingCall["data"] = "0x91d1485468bf109b95a5c15fb2bb99041323c27d15f8675e11bf7420a1cd6ad64c394f460000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f";
+    hasRoleBeforeGrantingCall["to"] = "0xD3002000000000000000000000000000000000d3";
+    BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleBeforeGrantingCall, "latest" ) ) == 0 );
+
+    Json::Value reserveSpaceBeforeGrantRoleTx;
+    reserveSpaceBeforeGrantRoleTx["data"] = "0x1cfe4e3b0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000000000000000064";
+    reserveSpaceBeforeGrantRoleTx["from"] = "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f";
+    reserveSpaceBeforeGrantRoleTx["to"] = "0xD3002000000000000000000000000000000000d3";
+    reserveSpaceBeforeGrantRoleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    reserveSpaceBeforeGrantRoleTx["gas"] = toJS( "1000000" );
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( reserveSpaceBeforeGrantRoleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
+
+    Json::Value grantRoleTx;
+    grantRoleTx["data"] = "0xc6427474000000000000000000000000d2c0deface0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000e4b61d27f6000000000000000000000000d3002000000000000000000000000000000000d30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000442f2ff15d68bf109b95a5c15fb2bb99041323c27d15f8675e11bf7420a1cd6ad64c394f460000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    grantRoleTx["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    grantRoleTx["to"] = "0x00000000000000006B6176756E2d68757976756E";
+    grantRoleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    grantRoleTx["gas"] = toJS( "1000000" );
+    txHash = fixture.rpcClient->eth_sendTransaction( grantRoleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+
+    Json::Value hasRoleCall;
+    hasRoleCall["data"] = "0x91d1485468bf109b95a5c15fb2bb99041323c27d15f8675e11bf7420a1cd6ad64c394f460000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f";
+    hasRoleCall["to"] = "0xD3002000000000000000000000000000000000d3";
+    BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleCall, "latest" ) ) == 1 );
+
+    Json::Value reserveSpaceTx;
+    reserveSpaceTx["data"] = "0x1cfe4e3b0000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f0000000000000000000000000000000000000000000000000000000000000064";
+    reserveSpaceTx["from"] = "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f";
+    reserveSpaceTx["to"] = "0xD3002000000000000000000000000000000000d3";
+    reserveSpaceTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    reserveSpaceTx["gas"] = toJS( "1000000" );
+    txHash = fixture.rpcClient->eth_sendTransaction( reserveSpaceTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
