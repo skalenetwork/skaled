@@ -1992,10 +1992,11 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/*
 SkaleRelayMiniHTTP::SkaleRelayMiniHTTP( SkaleServerOverride* pSO, int ipVer,
     const char* strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
-    const char* /*ca_path*/, int nServerIndex, size_t a_max_http_handler_queues,
+    const char*, // ca_path
+    int nServerIndex, size_t a_max_http_handler_queues,
     bool is_async_http_transfer_mode )
     : SkaleServerHelper( nServerIndex ),
       m_pSO( pSO ),
@@ -2017,7 +2018,7 @@ SkaleRelayMiniHTTP::SkaleRelayMiniHTTP( SkaleServerOverride* pSO, int ipVer,
 SkaleRelayMiniHTTP::~SkaleRelayMiniHTTP() {
     m_pServer.reset();
 }
-
+*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2559,6 +2560,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
     return rslt;
 }
 
+/*
 bool SkaleServerOverride::implStartListening(  // mini HTTP
     std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, const std::string& strAddr, int nPort,
     const std::string& strPathSslKey, const std::string& strPathSslCert,
@@ -2694,6 +2696,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
     }
     return false;
 }
+*/
 
 bool SkaleServerOverride::implStartListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
@@ -2803,6 +2806,7 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
     return false;
 }
 
+/*
 bool SkaleServerOverride::implStopListening(  // mini HTTP
     std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
     try {
@@ -2838,6 +2842,7 @@ bool SkaleServerOverride::implStopListening(  // mini HTTP
     }
     return true;
 }
+*/
 
 bool SkaleServerOverride::implStopListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
@@ -2883,12 +2888,12 @@ bool SkaleServerOverride::implStopListening(  // proxygen HTTP
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
         std::string strAddr =
-            ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrProxygenHTTPS4_ : bo.strAddrProxygenHTTP4_ ) :
-                             ( bIsSSL ? bo.strAddrProxygenHTTPS6_ : bo.strAddrProxygenHTTP6_ );
+            ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
+                             ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
         int nPort =
             ( ( ipVer == 4 ) ?
-                    ( bIsSSL ? bo.nBasePortProxygenHTTPS4_ : bo.nBasePortProxygenHTTP4_ ) :
-                    ( bIsSSL ? bo.nBasePortProxygenHTTPS6_ : bo.nBasePortProxygenHTTP6_ ) ) +
+                    ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
+                    ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
             nServerIndex;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::notice( "Will stop " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
@@ -2916,73 +2921,81 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     size_t nServerIndex;
     //
     //
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ : serversMiniHTTP4nfo_;
-    if ( 0 <= bo.nBasePortMiniHTTP4_ && bo.nBasePortMiniHTTP4_ <= 65535 ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
-            if ( !implStartListening(  // mini HTTP
-                     pServer, 4, bo.strAddrMiniHTTP4_, bo.nBasePortMiniHTTP4_ + nServerIndex, "",
-                     "", "", nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversMiniHTTP4.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ : serversMiniHTTP6nfo_;
-    if ( 0 <= bo.nBasePortMiniHTTP6_ && bo.nBasePortMiniHTTP6_ <= 65535 ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
-            if ( !implStartListening(  // mini HTTP
-                     pServer, 6, bo.strAddrMiniHTTP6_, bo.nBasePortMiniHTTP6_ + nServerIndex, "",
-                     "", "", nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversMiniHTTP6.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ : serversMiniHTTPS4nfo_;
-    if ( 0 <= bo.nBasePortMiniHTTPS4_ && bo.nBasePortMiniHTTPS4_ <= 65535 &&
-         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
-         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortMiniHTTPS4_ != bo.nBasePortMiniHTTP4_ ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
-            if ( !implStartListening(  // mini HTTP
-                     pServer, 4, bo.strAddrMiniHTTPS4_, bo.nBasePortMiniHTTPS4_ + nServerIndex,
-                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
-                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversMiniHTTPS4.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ : serversMiniHTTPS6nfo_;
-    if ( 0 <= bo.nBasePortMiniHTTPS6_ && bo.nBasePortMiniHTTPS6_ <= 65535 &&
-         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
-         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortMiniHTTPS6_ != bo.nBasePortMiniHTTP6_ ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
-            if ( !implStartListening(  // mini HTTP
-                     pServer, 6, bo.strAddrMiniHTTPS6_, bo.nBasePortMiniHTTPS6_ + nServerIndex,
-                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
-                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversMiniHTTPS6.push_back( pServer );
-        }
-    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ :
+    //        serversMiniHTTP4nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTP4_ && bo.nBasePortMiniHTTP4_ <= 65535 ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 4, bo.strAddrMiniHTTP4_, bo.nBasePortMiniHTTP4_ + nServerIndex,
+    //                     "",
+    //                     "", "", nServerIndex, esm, max_http_handler_queues_,
+    //                     is_async_http_transfer_mode_ ) )
+    //                return false;
+    //            serversMiniHTTP4.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ :
+    //        serversMiniHTTP6nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTP6_ && bo.nBasePortMiniHTTP6_ <= 65535 ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 6, bo.strAddrMiniHTTP6_, bo.nBasePortMiniHTTP6_ + nServerIndex,
+    //                     "",
+    //                     "", "", nServerIndex, esm, max_http_handler_queues_,
+    //                     is_async_http_transfer_mode_ ) )
+    //                return false;
+    //            serversMiniHTTP6.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ :
+    //        serversMiniHTTPS4nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTPS4_ && bo.nBasePortMiniHTTPS4_ <= 65535 &&
+    //         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+    //         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+    //         bo.nBasePortMiniHTTPS4_ != bo.nBasePortMiniHTTP4_ ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 4, bo.strAddrMiniHTTPS4_, bo.nBasePortMiniHTTPS4_ +
+    //                     nServerIndex, opts_.netOpts_.strPathSslKey_,
+    //                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_,
+    //                     nServerIndex, esm, max_http_handler_queues_, is_async_http_transfer_mode_
+    //                     ) )
+    //                return false;
+    //            serversMiniHTTPS4.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ :
+    //        serversMiniHTTPS6nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTPS6_ && bo.nBasePortMiniHTTPS6_ <= 65535 &&
+    //         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+    //         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+    //         bo.nBasePortMiniHTTPS6_ != bo.nBasePortMiniHTTP6_ ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 6, bo.strAddrMiniHTTPS6_, bo.nBasePortMiniHTTPS6_ +
+    //                     nServerIndex, opts_.netOpts_.strPathSslKey_,
+    //                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_,
+    //                     nServerIndex, esm, max_http_handler_queues_, is_async_http_transfer_mode_
+    //                     ) )
+    //                return false;
+    //            serversMiniHTTPS6.push_back( pServer );
+    //        }
+    //    }
     //
     //
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
     if ( 0 <= bo.nBasePortWS4_ && bo.nBasePortWS4_ <= 65535 &&
-         bo.nBasePortWS4_ != bo.nBasePortMiniHTTP4_ &&
-         bo.nBasePortWS4_ != bo.nBasePortMiniHTTPS4_ ) {
+         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ &&
+         bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -2995,8 +3008,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS6std_ : serversWS6nfo_;
     if ( 0 <= bo.nBasePortWS6_ && bo.nBasePortWS6_ <= 65535 &&
-         bo.nBasePortWS6_ != bo.nBasePortMiniHTTP6_ &&
-         bo.nBasePortWS6_ != bo.nBasePortMiniHTTPS6_ ) {
+         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ &&
+         bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3011,8 +3024,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS4_ && bo.nBasePortWSS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS4_ != bo.nBasePortWS4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortMiniHTTP4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortMiniHTTPS4_ ) {
+         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ &&
+         bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3028,8 +3041,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS6_ && bo.nBasePortWSS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS6_ != bo.nBasePortWS6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortMiniHTTP6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortMiniHTTPS6_ ) {
+         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ &&
+         bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3045,12 +3058,12 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP4std_ :
                                                    serversProxygenHTTP4nfo_;
-    if ( 0 <= bo.nBasePortProxygenHTTP4_ && bo.nBasePortProxygenHTTP4_ <= 65535 ) {
+    if ( 0 <= bo.nBasePortHTTP4_ && bo.nBasePortHTTP4_ <= 65535 ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrProxygenHTTP4_,
-                     bo.nBasePortProxygenHTTP4_ + nServerIndex, "", "", "", nServerIndex, esm,
+                     pServer, 4, bo.strAddrHTTP4_,
+                     bo.nBasePortHTTP4_ + nServerIndex, "", "", "", nServerIndex, esm,
                      pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP4.push_back( pServer );
@@ -3059,12 +3072,12 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP6std_ :
                                                    serversProxygenHTTP6nfo_;
-    if ( 0 <= bo.nBasePortProxygenHTTP6_ && bo.nBasePortProxygenHTTP6_ <= 65535 ) {
+    if ( 0 <= bo.nBasePortHTTP6_ && bo.nBasePortHTTP6_ <= 65535 ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrProxygenHTTP6_,
-                     bo.nBasePortProxygenHTTP6_ + nServerIndex, "", "", "", nServerIndex, esm,
+                     pServer, 6, bo.strAddrHTTP6_,
+                     bo.nBasePortHTTP6_ + nServerIndex, "", "", "", nServerIndex, esm,
                      pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP6.push_back( pServer );
@@ -3073,15 +3086,15 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS4std_ :
                                                    serversProxygenHTTPS4nfo_;
-    if ( 0 <= bo.nBasePortProxygenHTTPS4_ && bo.nBasePortProxygenHTTPS4_ <= 65535 &&
+    if ( 0 <= bo.nBasePortHTTPS4_ && bo.nBasePortHTTPS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortProxygenHTTPS4_ != bo.nBasePortProxygenHTTP4_ ) {
+         bo.nBasePortHTTPS4_ != bo.nBasePortHTTP4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrProxygenHTTPS4_,
-                     bo.nBasePortProxygenHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
+                     pServer, 4, bo.strAddrHTTPS4_,
+                     bo.nBasePortHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
                      opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
                      esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
@@ -3091,15 +3104,15 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS6std_ :
                                                    serversProxygenHTTPS6nfo_;
-    if ( 0 <= bo.nBasePortProxygenHTTPS6_ && bo.nBasePortProxygenHTTPS6_ <= 65535 &&
+    if ( 0 <= bo.nBasePortHTTPS6_ && bo.nBasePortHTTPS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortProxygenHTTPS6_ != bo.nBasePortProxygenHTTP6_ ) {
+         bo.nBasePortHTTPS6_ != bo.nBasePortHTTP6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrProxygenHTTPS6_,
-                     bo.nBasePortProxygenHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
+                     pServer, 6, bo.strAddrHTTPS6_,
+                     bo.nBasePortHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
                      opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
                      esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
@@ -3206,34 +3219,38 @@ bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
     //
     //
     //
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ : serversMiniHTTP4nfo_;
-    for ( auto pServer : serversMiniHTTP4 ) {
-        if ( !implStopListening( pServer, 4, false, esm ) )
-            bRetVal = false;
-    }
-    serversMiniHTTP4.clear();
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ : serversMiniHTTP6nfo_;
-    for ( auto pServer : serversMiniHTTP6 ) {
-        if ( !implStopListening( pServer, 6, false, esm ) )
-            bRetVal = false;
-    }
-    serversMiniHTTP6.clear();
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ : serversMiniHTTPS4nfo_;
-    for ( auto pServer : serversMiniHTTPS4 ) {
-        if ( !implStopListening( pServer, 4, true, esm ) )
-            bRetVal = false;
-    }
-    serversMiniHTTPS4.clear();
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ : serversMiniHTTPS6nfo_;
-    for ( auto pServer : serversMiniHTTPS6 ) {
-        if ( !implStopListening( pServer, 6, true, esm ) )
-            bRetVal = false;
-    }
-    serversMiniHTTPS6.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ :
+    //        serversMiniHTTP4nfo_;
+    //    for ( auto pServer : serversMiniHTTP4 ) {
+    //        if ( !implStopListening( pServer, 4, false, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTP4.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ :
+    //        serversMiniHTTP6nfo_;
+    //    for ( auto pServer : serversMiniHTTP6 ) {
+    //        if ( !implStopListening( pServer, 6, false, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTP6.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ :
+    //        serversMiniHTTPS4nfo_;
+    //    for ( auto pServer : serversMiniHTTPS4 ) {
+    //        if ( !implStopListening( pServer, 4, true, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTPS4.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ :
+    //        serversMiniHTTPS6nfo_;
+    //    for ( auto pServer : serversMiniHTTPS6 ) {
+    //        if ( !implStopListening( pServer, 6, true, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTPS6.clear();
     //
     //
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
@@ -3310,6 +3327,7 @@ bool SkaleServerOverride::StopListening() {
     return b;
 }
 
+/*
 int SkaleServerOverride::getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
@@ -3340,6 +3358,7 @@ int SkaleServerOverride::getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_
     }
     return -1;
 }
+*/
 
 int SkaleServerOverride::getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
@@ -3384,7 +3403,7 @@ int SkaleServerOverride::getServerPortStatusProxygenHTTP( int ipVer, e_server_mo
                                                    serversProxygenHTTP6nfo_;
     for ( auto pServer : ( ( ipVer == 4 ) ? serversProxygenHTTP4 : serversProxygenHTTP6 ) ) {
         if ( pServer && pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortProxygenHTTP4_ : bo.nBasePortProxygenHTTP6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortHTTP4_ : bo.nBasePortHTTP6_ ) +
                    pServer->serverIndex();
     }
     return -1;
@@ -3401,7 +3420,7 @@ int SkaleServerOverride::getServerPortStatusProxygenHTTPS( int ipVer, e_server_m
                                                    serversProxygenHTTPS6nfo_;
     for ( auto pServer : ( ( ipVer == 4 ) ? serversProxygenHTTPS4 : serversProxygenHTTPS6 ) ) {
         if ( pServer && pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortProxygenHTTPS4_ : bo.nBasePortProxygenHTTPS6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTPS6_ ) +
                    pServer->serverIndex();
     }
     return -1;
@@ -3459,15 +3478,17 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
         skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();
     joStats["executionPerformance"] = joExecutionPerformance;
     joStats["protocols"]["http"]["listenerCount"] =
-        serversMiniHTTP4std_.size() + serversMiniHTTP4nfo_.size() + serversMiniHTTP6std_.size() +
-        serversMiniHTTP6nfo_.size() + serversProxygenHTTP4std_.size() +
-        serversProxygenHTTP4nfo_.size() + serversProxygenHTTP6std_.size() +
-        serversProxygenHTTP6nfo_.size();
+        // serversMiniHTTP4std_.size() + serversMiniHTTP4nfo_.size() +
+        // serversMiniHTTP6std_.size() + serversMiniHTTP6nfo_.size() +
+        serversProxygenHTTP4std_.size() + serversProxygenHTTP4nfo_.size() +
+        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size()
+        ;
     joStats["protocols"]["https"]["listenerCount"] =
-        serversMiniHTTPS4std_.size() + serversMiniHTTPS4nfo_.size() + serversMiniHTTPS6std_.size() +
-        serversMiniHTTPS6nfo_.size() + serversProxygenHTTPS4std_.size() +
-        serversProxygenHTTPS4nfo_.size() + serversProxygenHTTPS6std_.size() +
-        serversProxygenHTTPS6nfo_.size();
+        // serversMiniHTTPS4std_.size() + serversMiniHTTPS4nfo_.size() +
+        // serversMiniHTTPS6std_.size() + serversMiniHTTPS6nfo_.size() +
+        serversProxygenHTTPS4std_.size() + serversProxygenHTTPS4nfo_.size() +
+        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size()
+        ;
     joStats["protocols"]["wss"]["listenerCount"] = serversWSS4std_.size() + serversWSS4nfo_.size() +
                                                    serversWSS6std_.size() + serversWSS6nfo_.size();
     {  // block for subsystem stats using optimized locking only once
