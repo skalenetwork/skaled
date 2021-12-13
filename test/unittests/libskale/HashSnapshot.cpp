@@ -317,6 +317,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         // TODO creation order with dependencies, gasPricer etc..
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", BTRFS_DIR_PATH.c_str(), 1);
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
@@ -369,7 +371,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
         rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( "rm -rf /tmp/*.db*" );
         ( void ) rv;
     }
 

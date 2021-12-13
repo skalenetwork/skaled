@@ -104,6 +104,7 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
+
         ChainParams chainParams;
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
@@ -111,15 +112,13 @@ public:
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
-        fs::path dir = m_tmpDir.path();
-
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
         auto netPrefs = NetworkPreferences( listenIP, listenPort, false );
         netPrefs.discovery = false;
         netPrefs.pin = false;
 
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
@@ -127,8 +126,10 @@ public:
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -244,12 +245,11 @@ public:
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
+
         ChainParams chainParams;
         chainParams = chainParams.loadConfig( _config );
 
-        fs::path dir = m_tmpDir.path();
-
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
@@ -267,8 +267,10 @@ public:
         // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<

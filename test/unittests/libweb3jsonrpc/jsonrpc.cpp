@@ -204,8 +204,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
-        setenv("DATA_DIR", tempDir.path().c_str(), 1);
-
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
@@ -242,6 +240,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 

@@ -91,6 +91,7 @@ public:
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture() {
         dev::p2p::NetworkPreferences nprefs;
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -107,6 +108,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();

@@ -42,6 +42,7 @@
 
 #include <libdevcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
+#include <libdevcore/TransientDirectory.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -138,8 +139,6 @@ public:
         transaction_promise.set_value( transactions_vector() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
-        int rv = system( "rm -rf /tmp/*.db*" );
-        ( void ) rv;
     }
 
     std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
@@ -187,6 +186,7 @@ protected:  // remote peer
 
 public:
     ConsensusExtFaceFixture() {
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -217,9 +217,12 @@ public:
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        TransientDirectory tempDir;
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, monitor, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, monitor, tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
