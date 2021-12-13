@@ -1587,7 +1587,11 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
     }
 
-    ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
+    ~FilestorageFixture() override {
+        std::string pathToHashFile = pathToFile.string() + "._hash";
+        remove( pathToFile.c_str() );
+        remove( pathToHashFile.c_str() );
+    }
 
     Address ownerAddress;
     std::string hexAddress;
@@ -1669,6 +1673,15 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
+    PrecompiledExecutor execCreate = PrecompiledRegistrar::executor( "createFile" );
+    bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                            numberToHex( fileSize ) );
+    execCreate( bytesConstRef( inCreate.data(), inCreate.size() ) );
+    PrecompiledExecutor execHash = PrecompiledRegistrar::executor( "calculateFileHash" );
+    bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    execHash( bytesConstRef( inHash.data(), inHash.size() ) );
+
     BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 

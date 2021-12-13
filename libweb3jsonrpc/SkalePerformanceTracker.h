@@ -16,16 +16,16 @@
     You should have received a copy of the GNU General Public License
     along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file SkaleDebug.h
+/** @file SkalePerformanceTracker.h
  * @authors:
  *   Oleh Nikolaiev <oleg@skalelabs.com>
  * @date 2020
  */
 
-#ifndef SKALEDEBUGPERFORMANCE_H
-#define SKALEDEBUGPERFORMANCE_H
+#ifndef SkalePerformanceTracker_H
+#define SkalePerformanceTracker_H
 
-#include "SkaleDebugFace.h"
+#include "SkalePerformanceTrackerFace.h"
 #include "SkaleStatsSite.h"
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
@@ -44,14 +44,14 @@ namespace rpc {
 /**
  * @brief JSON-RPC api implementation
  */
-class SkaleDebug : public dev::rpc::SkaleDebugFace,
-                   public dev::rpc::SkaleStatsConsumerImpl,
-                   public skutils::json_config_file_accessor {
+class SkalePerformanceTracker : public dev::rpc::SkalePerformanceTrackerFace,
+                                public dev::rpc::SkaleStatsConsumerImpl,
+                                public skutils::json_config_file_accessor {
 public:
-    SkaleDebug( const std::string& configPath );
+    SkalePerformanceTracker( const std::string& configPath );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"skaleDebug", "1.0"}};
+        return RPCModules{RPCModule{"SkalePerformanceTracker", "1.0"}};
     }
 
     virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) override;
@@ -63,4 +63,4 @@ public:
 };  // namespace rpc
 };  // namespace dev
 
-#endif  // SKALEDEBUGPERFORMANCE_H
+#endif  // SkalePerformanceTracker_H
