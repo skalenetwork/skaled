@@ -1006,6 +1006,37 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     return {false, response};  // 1st false - means bad error occur
 }
 
+ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+        auto add = parseBigEndianRightPadded( _in, 32, 32 );
+
+        auto value = u256( add );
+
+        if ( !g_client )
+            throw std::runtime_error( "Client was not initialized" );
+        auto state = g_client->state();
+        state.addBalance( Address( address ), value );
+        
+        dev::u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/addBalance(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
 // ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
 //    try {
 //        auto rawValue = _in.cropped( 0, 32 ).toBytes();
