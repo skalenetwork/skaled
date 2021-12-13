@@ -1982,7 +1982,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/google/glog.git --recursive
-				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                cd glog
+                eval git checkout ee6faf13b20de9536f456bd84584f4ab4db1ceb4
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf glog-from-git.tar.gz ./glog
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2060,7 +2063,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/folly.git --recursive
-				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                cd folly
+                eval git checkout 5c8fc1b622422a1c73f46d6fb51ac1164d8efb0f
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf folly-from-git.tar.gz ./folly
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2143,7 +2149,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/google/googletest.git --recursive
-				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                cd googletest
+                eval git checkout 4c5650f68866e3c2e60361d5c4c95c6f335fb64b
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf gtest-from-git.tar.gz ./googletest
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2183,7 +2192,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebookincubator/fizz.git --recursive
-				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                cd fizz
+                eval git checkout 93003f4161f7cebe1c121b3232215db8314c2ce7
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf fizz-from-git.tar.gz ./fizz
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2225,7 +2237,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/wangle.git --recursive
-				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                cd wangle
+                eval git checkout 7249d3f8d18bcd4bc13649d13654ccb2a771f7b3
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf wangle-from-git.tar.gz ./wangle
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2269,7 +2284,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/proxygen.git --recursive
 				cd proxygen
-				eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
+                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf proxygen-from-git.tar.gz ./proxygen
@@ -2290,7 +2305,7 @@ then
 		echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
 		sed -i 's/DEFINE_bool(/   \/*   DEFINE_bool(   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
 		sed -i 's/"Include request sequence number in response");/   "Include request sequence number in response");   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
-		sed -i 's/if (FLAGS_request_number)/   \/*   if (FLAGS_request_number)   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
+        sed -i 's/if (FLAGS_request_number)/   \/*   if (FLAGS_request_number)   *\/   /g' ./proxygen/httpserver/samples/echo/EchoHandler.cpp
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd build2
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
