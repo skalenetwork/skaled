@@ -294,7 +294,7 @@ template < class M >
 class unlock_guard {
 private:
     M& mutex_ref;
-    bool m_will_exit = false;
+    std::atomic_bool m_will_exit = false;
 
 public:
     explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
