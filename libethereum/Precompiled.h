@@ -41,8 +41,11 @@ class SkaleHost;
 namespace dev {
 namespace eth {
 
+// class Client;
+
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 extern std::shared_ptr< SkaleHost > g_skaleHost;
+// extern std::unique_ptr< Client > g_client;
 
 struct ChainOperationParams;
 

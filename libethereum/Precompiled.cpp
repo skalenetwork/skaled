@@ -35,6 +35,7 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/Client.h>
 #include <libethereum/SkaleHost.h>
 #include <boost/algorithm/hex.hpp>
 
@@ -55,6 +56,7 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
+std::unique_ptr< Client > g_client;
 
 };  // namespace eth
 };  // namespace dev
@@ -1019,7 +1021,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
             throw std::runtime_error( "Client was not initialized" );
         auto state = g_client->state();
         state.addBalance( Address( address ), value );
-        
+
         dev::u256 code = 1;
         bytes response = toBigEndian( code );
         return {true, response};
