@@ -35,8 +35,8 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
-#include <libethereum/Client.h>
 #include <libethereum/SkaleHost.h>
+#include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
 
 #include <mutex>
@@ -56,7 +56,7 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-std::unique_ptr< Client > g_client;
+skale::State g_state;
 
 };  // namespace eth
 };  // namespace dev
@@ -1010,17 +1010,14 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 
 ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
     try {
-        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
+        auto rawAddress = _in.cropped( 0, 20 ).toBytes();
         std::string address;
         boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        auto add = parseBigEndianRightPadded( _in, 32, 32 );
+        auto add = parseBigEndianRightPadded( _in, 20, 32 );
 
         auto value = u256( add );
 
-        if ( !g_client )
-            throw std::runtime_error( "Client was not initialized" );
-        auto state = g_client->state();
-        state.addBalance( Address( address ), value );
+        g_state.addBalance( Address( address ), value );
 
         dev::u256 code = 1;
         bytes response = toBigEndian( code );
