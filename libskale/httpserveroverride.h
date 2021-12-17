@@ -269,7 +269,7 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/*
 class SkaleRelayMiniHTTP : public SkaleServerHelper {
 protected:
     SkaleServerOverride* m_pSO = nullptr;
@@ -289,7 +289,7 @@ public:
     SkaleServerOverride* pso() { return m_pSO; }
     const SkaleServerOverride* pso() const { return m_pSO; }
 };  /// class SkaleRelayMiniHTTP
-
+*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -346,14 +346,14 @@ public:
     struct net_bind_opts_t {
         size_t cntServers_ = 1;
 
-        std::string strAddrMiniHTTP4_;
-        int nBasePortMiniHTTP4_ = 0;
-        std::string strAddrMiniHTTP6_;
-        int nBasePortMiniHTTP6_ = 0;
-        std::string strAddrMiniHTTPS4_;
-        int nBasePortMiniHTTPS4_ = 0;
-        std::string strAddrMiniHTTPS6_;
-        int nBasePortMiniHTTPS6_ = 0;
+        std::string strAddrHTTP4_;
+        int nBasePortHTTP4_ = 0;
+        std::string strAddrHTTP6_;
+        int nBasePortHTTP6_ = 0;
+        std::string strAddrHTTPS4_;
+        int nBasePortHTTPS4_ = 0;
+        std::string strAddrHTTPS6_;
+        int nBasePortHTTPS6_ = 0;
 
         std::string strAddrWS4_;
         int nBasePortWS4_ = 0;
@@ -364,29 +364,20 @@ public:
         std::string strAddrWSS6_;
         int nBasePortWSS6_ = 0;
 
-        std::string strAddrProxygenHTTP4_;
-        int nBasePortProxygenHTTP4_ = 0;
-        std::string strAddrProxygenHTTP6_;
-        int nBasePortProxygenHTTP6_ = 0;
-        std::string strAddrProxygenHTTPS4_;
-        int nBasePortProxygenHTTPS4_ = 0;
-        std::string strAddrProxygenHTTPS6_;
-        int nBasePortProxygenHTTPS6_ = 0;
-
         net_bind_opts_t() {}
         net_bind_opts_t( const net_bind_opts_t& other ) { assign( other ); }
         net_bind_opts_t& operator=( const net_bind_opts_t& other ) { return assign( other ); }
         net_bind_opts_t& assign( const net_bind_opts_t& other ) {
             cntServers_ = other.cntServers_;
 
-            strAddrMiniHTTP4_ = other.strAddrMiniHTTP4_;
-            nBasePortMiniHTTP4_ = other.nBasePortMiniHTTP4_;
-            strAddrMiniHTTP6_ = other.strAddrMiniHTTP6_;
-            nBasePortMiniHTTP6_ = other.nBasePortMiniHTTP6_;
-            strAddrMiniHTTPS4_ = other.strAddrMiniHTTPS4_;
-            nBasePortMiniHTTPS4_ = other.nBasePortMiniHTTPS4_;
-            strAddrMiniHTTPS6_ = other.strAddrMiniHTTPS6_;
-            nBasePortMiniHTTPS6_ = other.nBasePortMiniHTTPS6_;
+            strAddrHTTP4_ = other.strAddrHTTP4_;
+            nBasePortHTTP4_ = other.nBasePortHTTP4_;
+            strAddrHTTP6_ = other.strAddrHTTP6_;
+            nBasePortHTTP6_ = other.nBasePortHTTP6_;
+            strAddrHTTPS4_ = other.strAddrHTTPS4_;
+            nBasePortHTTPS4_ = other.nBasePortHTTPS4_;
+            strAddrHTTPS6_ = other.strAddrHTTPS6_;
+            nBasePortHTTPS6_ = other.nBasePortHTTPS6_;
 
             strAddrWS4_ = other.strAddrWS4_;
             nBasePortWS4_ = other.nBasePortWS4_;
@@ -397,14 +388,6 @@ public:
             strAddrWSS6_ = other.strAddrWSS6_;
             nBasePortWSS6_ = other.nBasePortWSS6_;
 
-            strAddrProxygenHTTP4_ = other.strAddrProxygenHTTP4_;
-            nBasePortProxygenHTTP4_ = other.nBasePortProxygenHTTP4_;
-            strAddrProxygenHTTP6_ = other.strAddrProxygenHTTP6_;
-            nBasePortProxygenHTTP6_ = other.nBasePortProxygenHTTP6_;
-            strAddrProxygenHTTPS4_ = other.strAddrProxygenHTTPS4_;
-            nBasePortProxygenHTTPS4_ = other.nBasePortProxygenHTTPS4_;
-            strAddrProxygenHTTPS6_ = other.strAddrProxygenHTTPS6_;
-            nBasePortProxygenHTTPS6_ = other.nBasePortProxygenHTTPS6_;
             return ( *this );
         }
     };
@@ -482,12 +465,12 @@ protected:
         int nPort, e_server_mode_t esm );
 
 private:
-    bool implStartListening(  // mini HTTP
-        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, const std::string& strAddr,
-        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
-        const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm,
-        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-        bool is_async_http_transfer_mode = true );
+    //    bool implStartListening(  // mini HTTP
+    //        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, const std::string& strAddr,
+    //        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
+    //        const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm,
+    //        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+    //        bool is_async_http_transfer_mode = true );
     bool implStartListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
         const std::string& strPathSslKey, const std::string& strPathSslCert,
@@ -498,8 +481,9 @@ private:
         const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads = 0,
         int32_t threads_limit = 0 );
 
-    bool implStopListening(  // mini HTTP
-        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
+    //    bool implStopListening(  // mini HTTP
+    //        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t
+    //        esm );
     bool implStopListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
     bool implStopListening(  // proxygen HTTP
@@ -535,9 +519,10 @@ public:
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-    std::list< std::shared_ptr< SkaleRelayMiniHTTP > > serversMiniHTTP4std_, serversMiniHTTP6std_,
-        serversMiniHTTPS4std_, serversMiniHTTPS6std_, serversMiniHTTP4nfo_, serversMiniHTTP6nfo_,
-        serversMiniHTTPS4nfo_, serversMiniHTTPS6nfo_;
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > > serversMiniHTTP4std_,
+    //    serversMiniHTTP6std_,
+    //        serversMiniHTTPS4std_, serversMiniHTTPS6std_, serversMiniHTTP4nfo_,
+    //        serversMiniHTTP6nfo_, serversMiniHTTPS4nfo_, serversMiniHTTPS6nfo_;
     std::list< std::shared_ptr< SkaleRelayWS > > serversWS4std_, serversWS6std_, serversWSS4std_,
         serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > > serversProxygenHTTP4std_,
@@ -551,8 +536,8 @@ private:
 
 public:
     // status API, returns running server port or -1 if server is not started
-    int getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const;
-    int getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_t esm ) const;
+    //    int getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const;
+    //    int getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusWSS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusProxygenHTTP( int ipVer, e_server_mode_t esm ) const;
@@ -646,7 +631,7 @@ public:
         size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
         size_t nCallIndent = 0 );
 
-    friend class SkaleRelayMiniHTTP;
+    // friend class SkaleRelayMiniHTTP;
     friend class SkaleRelayProxygenHTTP;
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
