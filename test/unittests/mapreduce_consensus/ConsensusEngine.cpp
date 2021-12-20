@@ -115,6 +115,7 @@ public:
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
 
         m_consensusThread = std::thread( [this]() {
+            sleep(1);
             m_consensus->startAll();
             m_consensus->bootStrapAll();
         } );
