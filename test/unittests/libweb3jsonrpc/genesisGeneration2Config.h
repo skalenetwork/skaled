@@ -12,6 +12,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
         "EIP158ForkBlock": "0x00",
         "byzantiumForkBlock": "0x0",
         "constantinopleForkBlock": "0x0",
+        "istanbulForkBlock": "0x0",
         "networkID": "12313219",
         "chainID": "0x9333aec9e11d9",
         "maximumExtraDataSize": "0x20",
@@ -410,6 +411,9 @@ static std::string const c_genesisGeneration2ConfigString = R"(
                 },
                 "startingBlock": "0x0"
             }
+        },
+        "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F": {
+            "balance": "1000000000000000000000000000000"
         },
         "0x5C4e11842E8be09264dc1976943571d7Af6d00F9": {
             "balance": "1000000000000000000000000000000"
@@ -858,10 +862,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "wsRpcPort": 9567,
             "wssRpcPort": 9572,
             "infoHttpRpcPort": 9574,
-            "pgHttpRpcPort": 9575,
-            "pgHttpsRpcPort": 9576,
-            "infoPgHttpRpcPort": 9577,
-            "infoPgHttpsRpcPort": 9578,
             "bindIP": "0.0.0.0",
             "logLevel": "info",
             "logLevelConfig": "info",
@@ -902,7 +902,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "contractStorageLimit": 106874910,
             "dbStorageLimit": 71249940,
             "snapshotIntervalSec": 0,
-            "emptyBlockIntervalMs": 10,
+            "emptyBlockIntervalMs": 1000,
             "maxConsensusStorageBytes": 178124851,
             "maxSkaledLeveldbStorageBytes": 178124851,
             "maxFileStorageBytes": 178124851,
@@ -916,10 +916,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
                     "httpsRpcPort": 9573,
                     "wsRpcPort": 9567,
                     "wssRpcPort": 9572,
-                    "pgHttpRpcPort": 9575,
-                    "pgHttpsRpcPort": 9576,
-                    "infoPgHttpRpcPort": 9577,
-                    "infoPgHttpsRpcPort": 9578,
                     "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                     "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
                     "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
