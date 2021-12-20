@@ -85,6 +85,9 @@ private:
 };
 
 class SingleNodeConsensusFixture : public ConsensusExtFace {
+
+    TransientDirectory m_tempDir;
+
 protected:
     std::shared_ptr< ConsensusEngine > m_consensus;
     std::thread m_consensusThread;
@@ -104,6 +107,8 @@ public:
         chainParams.extraData = h256::random().asBytes();
 
         //////////////////////////////////////////////
+
+        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
@@ -176,6 +181,8 @@ protected:
 
     std::vector< int > m_arrived_blocks;
 
+    TransientDirectory m_tempDir;
+
 protected:  // remote peer
     unique_ptr< Client > client;
     unique_ptr< ModularServer<> > rpcServer;
@@ -218,11 +225,10 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >("test");
 
-        TransientDirectory tempDir;
-        setenv("DATA_DIR", tempDir.path().c_str(), 1);
+        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, monitor, tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
