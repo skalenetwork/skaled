@@ -164,11 +164,6 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
     return bc().attemptImport( _block, preSeal().mutableState() ).first;
 }
 
-
-void ClientBase::clearBalanceCache() {
-    latestBlock().clearBalanceCache();
-}
-
 u256 ClientBase::balanceAt( Address _a ) const {
     return latestBlock().balance( _a );
 }

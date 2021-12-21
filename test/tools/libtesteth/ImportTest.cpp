@@ -262,10 +262,8 @@ void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _mi
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
         preBalance += addr.second;
-    for ( auto const& addr : post.addresses() ){
-        std::cerr << "Balance " << addr.second << std::endl;
+    for ( auto const& addr : post.addresses() )
         postBalance += addr.second;
-    }
 
     // account could destroy ether if it suicides to itself
     BOOST_REQUIRE_MESSAGE( preBalance + _miningReward >= postBalance,

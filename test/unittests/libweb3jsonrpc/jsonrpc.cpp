@@ -1717,7 +1717,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
 
-BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
@@ -1726,7 +1726,6 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow, *boost::unit_test::
     const int blocksToMine = 1;
     const u256 blockReward = 3 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
-    // dev::eth::simulateMining( *( fixture.client ), blocksToMine, senderAddress );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     u256 initial_gasPrice = fixture.client->gasBidPrice();

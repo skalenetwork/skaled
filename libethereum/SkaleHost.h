@@ -147,8 +147,6 @@ private:
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
-    bool lock_timed_mutex_with_exit_check(
-        std::timed_mutex& mtx, const size_t nNumberOfMilliseconds = 1000 );
 
     virtual ConsensusExtFace::transactions_vector pendingTransactions(
         size_t _limit, u256& _stateRoot );
@@ -177,7 +175,7 @@ private:
 
     std::atomic_bool m_exitNeeded = false;
 
-    std::timed_mutex m_consensusPauseMutex;
+    std::mutex m_consensusPauseMutex;
     std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 

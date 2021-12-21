@@ -223,8 +223,6 @@ public:
     /// Check if the address contains executable code.
     bool addressHasCode( dev::Address const& _address ) const;
 
-    void clearAllCaches();
-
     /// Get an account's balance.
     /// @returns 0 if the address has never been used.
     dev::u256 balance( dev::Address const& _id ) const;

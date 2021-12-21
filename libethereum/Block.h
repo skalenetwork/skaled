@@ -123,8 +123,6 @@ public:
     /// Call this before using any non-const methods.
     void noteChain( BlockChain const& _bc );
 
-    void clearBalanceCache() { m_state.clearAllCaches(); }
-
     // Account-getters. All operate on the final state.
 
     /// Get an account's balance.
