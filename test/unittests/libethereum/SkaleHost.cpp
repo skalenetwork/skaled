@@ -22,7 +22,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <memory>
-#include <map>
 
 using namespace dev;
 using namespace dev::eth;
@@ -32,11 +31,12 @@ using namespace std;
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
-    std::map< uint64_t, u256 > block_gas_prices;
+    std::vector< u256 > block_gas_prices;
     bool need_exit = false;
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
+        block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
     void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
@@ -60,11 +60,8 @@ public:
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
-        auto itFind = block_gas_prices.find( _blockId );
-        if( itFind == block_gas_prices.end() )
-            return u256( 0 );
-        // assert( itFind != block_gas_prices.end() );
-        return itFind->second;
+        assert( _blockId < block_gas_prices.size() );
+        return block_gas_prices.at( _blockId );
     }
 
     u256 getRandomForBlockId( uint64_t _blockId ) const override {
@@ -72,7 +69,11 @@ public:
     }
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
-        block_gas_prices[_blockId] = _gasPrice;
+        assert( _blockId <= block_gas_prices.size() );
+        if ( _blockId == block_gas_prices.size() )
+            block_gas_prices.push_back( _gasPrice );
+        else
+            block_gas_prices[_blockId] = _gasPrice;
     }
 };
 
@@ -90,6 +91,7 @@ public:
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture() {
         dev::p2p::NetworkPreferences nprefs;
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -106,6 +108,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
@@ -283,7 +287,7 @@ std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test att
 }
 
 BOOST_AUTO_TEST_CASE( validTransaction
-                      , *boost::unit_test::precondition( dev::test::run_not_express )
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
     bool bSuccess = false;
     size_t const cntAttempts = 10;
@@ -741,7 +745,7 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
 
 // positive test for 4 next ones
 BOOST_AUTO_TEST_CASE( transactionDropReceive
-                      , *boost::unit_test::precondition( dev::test::run_not_express )
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();

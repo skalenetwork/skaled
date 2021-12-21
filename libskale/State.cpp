@@ -712,9 +712,15 @@ void State::rollback( size_t _savepoint ) {
 }
 
 void State::updateToLatestVersion() {
-    clearAllCaches();
-    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
-    m_currentVersion = *m_storedVersion;
+    m_changeLog.clear();
+    m_cache.clear();
+    m_unchangedCacheEntries.clear();
+    m_nonExistingAccountsCache.clear();
+
+    {
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        m_currentVersion = *m_storedVersion;
+    }
 }
 
 State State::startRead() const {

@@ -204,8 +204,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
-        setenv("DATA_DIR", tempDir.path().c_str(), 1);
-
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
@@ -242,6 +240,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
@@ -534,18 +534,18 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.fn_eth_getTransactionCount_ = fn_eth_getTransactionCount;
         serverOpts.fn_eth_getCode_ = fn_eth_getCode;
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
-        serverOpts.netOpts_.bindOptsStandard_.strAddrMiniHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         // random port
         std::srand(std::time(nullptr));
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ = std::rand() % 64000 + 1025;
-        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ << std::endl;
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
+        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
         sleep(1);
 
-        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortMiniHTTP4_ ) );
+        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
         client->SetTimeout(1000000000);
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
