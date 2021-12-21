@@ -145,6 +145,11 @@ public:
         transaction_promise.set_value( transactions_vector() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
+
+        while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+            timespec ms100{0, 100000000};
+            nanosleep( &ms100, nullptr );
+        }
     }
 
     std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
@@ -414,20 +419,20 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( ConsensusTests, *boost::unit_test::disabled() )
 
-BOOST_AUTO_TEST_CASE( OneTransaction, 
-    
+BOOST_AUTO_TEST_CASE( OneTransaction,
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( TwoTransactions, 
+BOOST_AUTO_TEST_CASE( TwoTransactions,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( DifferentTransactions, 
+BOOST_AUTO_TEST_CASE( DifferentTransactions,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction1, 
+BOOST_AUTO_TEST_CASE( MissingTransaction1,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction2, 
+BOOST_AUTO_TEST_CASE( MissingTransaction2,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
