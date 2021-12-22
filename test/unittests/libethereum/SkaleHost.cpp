@@ -91,6 +91,7 @@ public:
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture() {
         dev::p2p::NetworkPreferences nprefs;
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -107,6 +108,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
@@ -238,7 +241,9 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
 // 1 Small amount of random bytes
 // 2 110 random bytes
 // 3 110 bytes of semi-correct RLP
-BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
+BOOST_AUTO_TEST_CASE( transactionRlpBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
 
     bytes small_tx1 = bytes();
@@ -308,7 +313,9 @@ public:
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // zero signature
-BOOST_AUTO_TEST_CASE( transactionSigZero ) {
+BOOST_AUTO_TEST_CASE( transactionSigZero
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -350,7 +357,9 @@ BOOST_AUTO_TEST_CASE( transactionSigZero ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // corrupted signature
-BOOST_AUTO_TEST_CASE( transactionSigBad ) {
+BOOST_AUTO_TEST_CASE( transactionSigBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -391,7 +400,9 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // gas < min_gas
-BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
+BOOST_AUTO_TEST_CASE( transactionGasIncorrect
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -430,7 +441,9 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
+BOOST_AUTO_TEST_CASE( transactionGasNotEnough
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -524,7 +537,9 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
+BOOST_AUTO_TEST_CASE( transactionNonceSmall
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -615,7 +630,9 @@ BOOST_AUTO_TEST_CASE( transactionBalanceBad,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
+BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -664,7 +681,9 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
 }
 
 // positive test for 4 next ones
-BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropReceive
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -775,8 +794,9 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -831,7 +851,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -895,7 +917,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionRace ) {
+BOOST_AUTO_TEST_CASE( transactionRace
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -946,7 +970,9 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
 }
 
 // test two blocks with overlapping transactions :)
-BOOST_AUTO_TEST_CASE( partialCatchUp ) {
+BOOST_AUTO_TEST_CASE( partialCatchUp
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 

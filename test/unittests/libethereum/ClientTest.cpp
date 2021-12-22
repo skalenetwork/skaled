@@ -104,6 +104,7 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
+
         ChainParams chainParams;
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
@@ -111,15 +112,13 @@ public:
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
-        fs::path dir = m_tmpDir.path();
-
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
         auto netPrefs = NetworkPreferences( listenIP, listenPort, false );
         netPrefs.discovery = false;
         netPrefs.pin = false;
 
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
@@ -127,8 +126,10 @@ public:
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -167,12 +168,43 @@ public:
 
     bool getTransactionStatus(const Json::Value& json) {
         try {
+            { // block
+                Json::FastWriter fastWriter;
+                std::string s = fastWriter.write( json );
+                nlohmann::json jo = nlohmann::json::parse( s );
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Will compute status of transaction: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+            } // block
             Transaction tx = tx_from_json(json);
             auto txHash = m_ethereum->importTransaction(tx);
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Mining transaction..." ) );
             dev::eth::mineTransaction(*(m_ethereum), 1);
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Getting transaction receipt..." ) );
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            return receipt["status"] == "0x1";
+            { // block
+                Json::FastWriter fastWriter;
+                std::string s = fastWriter.write( receipt );
+                nlohmann::json jo = nlohmann::json::parse( s );
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Got transaction receipt: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+            } // block
+            bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
+            if( bStatusFlag )
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::success( "SUCCESS: Got positive transaction status" ) );
+            else
+                clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got negative transaction status" ) );
+            return bStatusFlag;
+        } catch ( std::exception & ex ) {
+            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "exception:" ) + cc::warn( ex.what() ) );
+            return false;
         } catch (...) {
+            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "unknown exception" ) );
             return false;
         }
     }
@@ -213,12 +245,11 @@ public:
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
+
         ChainParams chainParams;
         chainParams = chainParams.loadConfig( _config );
 
-        fs::path dir = m_tmpDir.path();
-
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
@@ -236,8 +267,10 @@ public:
         // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<

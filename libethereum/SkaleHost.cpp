@@ -25,6 +25,7 @@
 #include "SkaleHost.h"
 
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <string>
 
@@ -293,7 +294,7 @@ template < class M >
 class unlock_guard {
 private:
     M& mutex_ref;
-    bool m_will_exit = false;
+    std::atomic_bool m_will_exit = false;
 
 public:
     explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
@@ -309,16 +310,31 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
+    ConsensusExtFace::transactions_vector out_vector;
+
+    if ( m_exitNeeded )
+        return out_vector;
+
     // HACK this should be field (or better do it another way)
     static bool first_run = true;
     if ( first_run ) {
         m_consensusWorkingMutex.lock();
         first_run = false;
     }
+    if ( m_exitNeeded )
+        return out_vector;
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
+    if ( m_exitNeeded )
+        return out_vector;
+
     unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
+
+    if ( m_exitNeeded ){
+        unlocker.will_exit();
+        return out_vector;
+    }
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -329,8 +345,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 
     _stateRoot = dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() );
-
-    ConsensusExtFace::transactions_vector out_vector;
 
     h256Hash to_delete;
 
@@ -682,8 +696,11 @@ void SkaleHost::startWorking() {
 
     auto csus_func = [&]() {
         try {
-            dev::setThreadName( "bootStrapAll" );
+            static const char g_strThreadName[] = "bootStrapAll";
+            dev::setThreadName( g_strThreadName );
+            std::cout << "Thread " << g_strThreadName << " started\n";
             m_consensus->bootStrapAll();
+            std::cout << "Thread " << g_strThreadName << " will exit\n";
         } catch ( std::exception& ex ) {
             std::string s = ex.what();
             if ( s.empty() )
