@@ -204,8 +204,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
-        setenv("DATA_DIR", tempDir.path().c_str(), 1);
-
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
@@ -242,6 +240,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
@@ -250,6 +250,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         //            GasPricer >(),
         //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
         //                1024} ) );
+
+        client->setAuthor( coinbase.address() );
 
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
@@ -262,8 +264,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client->startWorking();
 
         block_promise.get_future().wait();
-
-        client->setAuthor( coinbase.address() );
 
         using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;

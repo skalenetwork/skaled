@@ -112,7 +112,8 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
         _sealer->verify( JustSeal, _bi );
 }
 
-void simulateMining( Client& client, size_t numBlocks ) {
+void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
+    const auto balanceBefore = client.balanceAt( address );
     State state = client.state().startWrite();
     u256 reward = 0;
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
@@ -120,6 +121,13 @@ void simulateMining( Client& client, size_t numBlocks ) {
     }
     state.addBalance( client.author(), reward );
     state.commit();
+    const auto balanceAfter = client.balanceAt( address );
+    assert( balanceAfter > balanceBefore );
+}
+
+void simulateMining( Client& client, size_t numBlocks ) {
+    const dev::Address address = client.author();
+    simulateMining( client, numBlocks, address );
 }
 
 }  // namespace eth
