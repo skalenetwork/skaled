@@ -2887,14 +2887,11 @@ bool SkaleServerOverride::implStopListening(  // proxygen HTTP
                                         opts_.netOpts_.bindOptsStandard_ :
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr =
-            ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
-                             ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
-        int nPort =
-            ( ( ipVer == 4 ) ?
-                    ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
-                    ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
-            nServerIndex;
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
+                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
+                                       ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
+                    nServerIndex;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::notice( "Will stop " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
                 cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::notice( " server on address " ) +
@@ -2994,8 +2991,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
     if ( 0 <= bo.nBasePortWS4_ && bo.nBasePortWS4_ <= 65535 &&
-         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ &&
-         bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3008,8 +3004,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS6std_ : serversWS6nfo_;
     if ( 0 <= bo.nBasePortWS6_ && bo.nBasePortWS6_ <= 65535 &&
-         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ &&
-         bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3024,8 +3019,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS4_ && bo.nBasePortWSS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS4_ != bo.nBasePortWS4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3041,8 +3035,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS6_ && bo.nBasePortWSS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS6_ != bo.nBasePortWS6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3062,9 +3055,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrHTTP4_,
-                     bo.nBasePortHTTP4_ + nServerIndex, "", "", "", nServerIndex, esm,
-                     pg_threads_, pg_threads_limit_ ) )
+                     pServer, 4, bo.strAddrHTTP4_, bo.nBasePortHTTP4_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP4.push_back( pServer );
         }
@@ -3076,9 +3068,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrHTTP6_,
-                     bo.nBasePortHTTP6_ + nServerIndex, "", "", "", nServerIndex, esm,
-                     pg_threads_, pg_threads_limit_ ) )
+                     pServer, 6, bo.strAddrHTTP6_, bo.nBasePortHTTP6_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP6.push_back( pServer );
         }
@@ -3093,10 +3084,10 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrHTTPS4_,
-                     bo.nBasePortHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
-                     esm, pg_threads_, pg_threads_limit_ ) )
+                     pServer, 4, bo.strAddrHTTPS4_, bo.nBasePortHTTPS4_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTPS4.push_back( pServer );
         }
@@ -3111,10 +3102,10 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrHTTPS6_,
-                     bo.nBasePortHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
-                     esm, pg_threads_, pg_threads_limit_ ) )
+                     pServer, 6, bo.strAddrHTTPS6_, bo.nBasePortHTTPS6_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTPS6.push_back( pServer );
         }
@@ -3481,14 +3472,12 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
         // serversMiniHTTP4std_.size() + serversMiniHTTP4nfo_.size() +
         // serversMiniHTTP6std_.size() + serversMiniHTTP6nfo_.size() +
         serversProxygenHTTP4std_.size() + serversProxygenHTTP4nfo_.size() +
-        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size()
-        ;
+        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size();
     joStats["protocols"]["https"]["listenerCount"] =
         // serversMiniHTTPS4std_.size() + serversMiniHTTPS4nfo_.size() +
         // serversMiniHTTPS6std_.size() + serversMiniHTTPS6nfo_.size() +
         serversProxygenHTTPS4std_.size() + serversProxygenHTTPS4nfo_.size() +
-        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size()
-        ;
+        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size();
     joStats["protocols"]["wss"]["listenerCount"] = serversWSS4std_.size() + serversWSS4nfo_.size() +
                                                    serversWSS6std_.size() + serversWSS6nfo_.size();
     {  // block for subsystem stats using optimized locking only once
