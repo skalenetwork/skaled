@@ -331,7 +331,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
 
-    if ( m_exitNeeded ){
+    if ( m_exitNeeded ) {
         unlocker.will_exit();
         return out_vector;
     }

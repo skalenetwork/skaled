@@ -2294,8 +2294,9 @@ int main( int argc, char** argv ) try {
                         return true;
                     } catch ( std::invalid_argument& ex ) {
                         // not known transaction - skip exception
-                        joResponse.AddMember(
-                            "result", rapidjson::Value(), joResponse.GetAllocator() );
+                        joResponse.EraseMember( "result" );
+                        joResponse.AddMember( "result", rapidjson::Value( rapidjson::kNullType ),
+                            joResponse.GetAllocator() );
                         return true;
                     } catch ( ... ) {
                         wrapJsonRpcException( joRequest,
