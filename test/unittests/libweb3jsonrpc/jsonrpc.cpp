@@ -2229,6 +2229,60 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth ) {
 
     balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
     BOOST_REQUIRE_EQUAL( balance, 16 );
+
+    Json::Value printFakeEthCall;    
+    printFakeEthCall["data"] = "0x5C4e11842E8Be09264DC1976943571D7AF6d00f80000000000000000000000000000000000000000000000000000000000000010";
+    printFakeEthCall["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    printFakeEthCall["to"] = "0000000000000000000000000000000000000006";
+    printFakeEthCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    fixture.rpcClient->eth_call( printFakeEthCall, "latest" );
+
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 16 );
+
+    // pragma solidity ^0.4.25;
+    
+    // contract Caller {
+    //     function call() public view {
+    //         bool status;
+    //         uint amount = 16;
+    //         address to = 0x5C4e11842E8Be09264DC1976943571D7AF6d00f8;
+    //         assembly{
+    //                 let ptr := mload(0x40)
+    //                 mstore(ptr, to)
+    //                 mstore(add(ptr, 0x20), amount)
+    //                 status := delegatecall(not(0), 0x06, ptr, 0x40, ptr, 32)
+    //         }
+    //     }
+    // }
+
+    string compiled = "0x6080604052348015600f57600080fd5b5060a78061001e6000396000f30060806040526004361060225760003560e01c63ffffffff16806328b5e32b146027575b600080fd5b348015603257600080fd5b506039603b565b005b600080600060109150735c4e11842e8be09264dc1976943571d7af6d00f890506040518181528260208201526020816040836006600019f49350505050505600a165627a7a72305820c99b5f7e9e41fb0fee1724d382ca0f2c003087f66b3b46037ca6c7d452b076f20029";
+
+    Json::Value create;
+    create["from"] = fixture.coinbase.address().hex();
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( create );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    fixture.rpcClient->eth_call( transactionCallObject, "latest" );
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 16 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
