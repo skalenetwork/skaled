@@ -135,7 +135,20 @@ static std::string const c_genesisConfigString =
                 }
             }
     */
-    R"("0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+    R"("0000000000000000000000000000000000000006": {
+            "precompiled": {
+                "name": "addBalance",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
+            }
+        },
+        "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
+            "balance" : "1000000000000000000000000000000"
+        },
+        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
             "balance" : "0x00",
             "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
             "nonce" : "0x00",
@@ -2184,6 +2197,92 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     for (const auto& call: badFormedCalls) {
         BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionCountEIP1898( toJS( address ), call ), jsonrpc::JsonRpcException);
     }
+}
+
+BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth ) {
+    JsonRpcFixture fixture(c_genesisConfigString, false, false);
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+
+    fixture.accountHolder->setAccounts( {fixture.coinbase, fixture.account2, dev::KeyPair(dev::Secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9"))} );
+
+    u256 balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 0 );
+
+    Json::Value printFakeEthFromDisallowedAddressTx;
+    printFakeEthFromDisallowedAddressTx["data"] = "0x5C4e11842E8Be09264DC1976943571D7AF6d00f80000000000000000000000000000000000000000000000000000000000000010";
+    printFakeEthFromDisallowedAddressTx["from"] = fixture.coinbase.address().hex();
+    printFakeEthFromDisallowedAddressTx["to"] = "0000000000000000000000000000000000000006";
+    printFakeEthFromDisallowedAddressTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    fixture.rpcClient->eth_sendTransaction( printFakeEthFromDisallowedAddressTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 0 );
+
+    Json::Value printFakeEthTx;
+    printFakeEthTx["data"] = "0x5C4e11842E8Be09264DC1976943571D7AF6d00f80000000000000000000000000000000000000000000000000000000000000010";
+    printFakeEthTx["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    printFakeEthTx["to"] = "0000000000000000000000000000000000000006";
+    printFakeEthTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    fixture.rpcClient->eth_sendTransaction( printFakeEthTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 16 );
+
+    Json::Value printFakeEthCall;    
+    printFakeEthCall["data"] = "0x5C4e11842E8Be09264DC1976943571D7AF6d00f80000000000000000000000000000000000000000000000000000000000000010";
+    printFakeEthCall["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
+    printFakeEthCall["to"] = "0000000000000000000000000000000000000006";
+    printFakeEthCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    fixture.rpcClient->eth_call( printFakeEthCall, "latest" );
+
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 16 );
+
+    // pragma solidity ^0.4.25;
+    
+    // contract Caller {
+    //     function call() public view {
+    //         bool status;
+    //         uint amount = 16;
+    //         address to = 0x5C4e11842E8Be09264DC1976943571D7AF6d00f8;
+    //         assembly{
+    //                 let ptr := mload(0x40)
+    //                 mstore(ptr, to)
+    //                 mstore(add(ptr, 0x20), amount)
+    //                 status := delegatecall(not(0), 0x06, ptr, 0x40, ptr, 32)
+    //         }
+    //     }
+    // }
+
+    string compiled = "0x6080604052348015600f57600080fd5b5060a78061001e6000396000f30060806040526004361060225760003560e01c63ffffffff16806328b5e32b146027575b600080fd5b348015603257600080fd5b506039603b565b005b600080600060109150735c4e11842e8be09264dc1976943571d7af6d00f890506040518181528260208201526020816040836006600019f49350505050505600a165627a7a72305820c99b5f7e9e41fb0fee1724d382ca0f2c003087f66b3b46037ca6c7d452b076f20029";
+
+    Json::Value create;
+    create["from"] = fixture.coinbase.address().hex();
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    TransactionSkeleton ts = toTransactionSkeleton( create );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    fixture.rpcClient->eth_call( transactionCallObject, "latest" );
+    balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
+    BOOST_REQUIRE_EQUAL( balance, 16 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
