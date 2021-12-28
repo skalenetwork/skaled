@@ -107,7 +107,8 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
     return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::import( Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
+ImportResult TransactionQueue::import(
+    Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
     if ( _transaction.hasZeroSignature() )
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
@@ -126,9 +127,9 @@ ImportResult TransactionQueue::import( Transaction const& _transaction, IfDroppe
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
             UpgradeGuard ul( l );
             ret = manageImport_WITH_LOCK( h, _transaction );
-            
+
             if ( _isFuture ) {
-                setFuture( h );
+                setFuture_WITH_LOCK( h );
             }
         }
     }
@@ -300,8 +301,7 @@ unsigned TransactionQueue::waiting( Address const& _a ) const {
     return ret;
 }
 
-void TransactionQueue::setFuture( h256 const& _txHash ) {
-    WriteGuard l( m_lock );
+void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     auto it = m_currentByHash.find( _txHash );
     if ( it == m_currentByHash.end() )
         return;
@@ -324,6 +324,11 @@ void TransactionQueue::setFuture( h256 const& _txHash ) {
     queue.erase( cutoff, queue.end() );
     if ( queue.empty() )
         m_currentByAddressAndNonce.erase( from );
+}
+
+void TransactionQueue::setFuture( h256 const& _txHash ) {
+    WriteGuard l( m_lock );
+    return setFuture_WITH_LOCK( _txHash );
 }
 
 void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {

@@ -79,8 +79,10 @@ public:
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx Transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
-    ImportResult import( Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
+    ImportResult import(
+        Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
 
     /// Remove transaction from the queue
     /// @param _txHash Transaction hash
@@ -273,6 +275,7 @@ private:
     void makeCurrent_WITH_LOCK( Transaction const& _t );
     bool remove_WITH_LOCK( h256 const& _txHash );
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
+    void setFuture_WITH_LOCK( h256 const& _t );
     void verifierBody();
 
     mutable SharedMutex m_lock;                    ///< General lock.
