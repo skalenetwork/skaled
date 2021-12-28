@@ -1167,7 +1167,13 @@ h256 Client::importTransaction( Transaction const& _t ) {
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         *bc().sealEngine(), 0, gasBidPrice );
 
-    ImportResult res = m_tq.import( _t );
+    ImportResult res;
+    if (state.getNonce(_t.sender()) < _t.nonce() ) {
+        res = m_tq.import( _t, IfDropped::Ignore, true );
+    } else {
+        res = m_tq.import( _t );
+    }
+    
     switch ( res ) {
     case ImportResult::Success:
         break;

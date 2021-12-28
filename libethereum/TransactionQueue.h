@@ -80,7 +80,7 @@ public:
     /// @param _tx Transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
     /// @returns Import result code.
-    ImportResult import( Transaction const& _tx, IfDropped _ik = IfDropped::Ignore );
+    ImportResult import( Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
 
     /// Remove transaction from the queue
     /// @param _txHash Transaction hash
