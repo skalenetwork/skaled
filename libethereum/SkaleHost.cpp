@@ -82,6 +82,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+    this->fillRotationHistory( *consensus_engine_ptr );
+
     return consensus_engine_ptr;
 #else
     unsigned block_number = m_client.number();
@@ -156,6 +158,25 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     try {
         consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
             ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( ex.what() );
+    } catch ( const boost::exception& ex ) {
+        std::throw_with_nested( boost::diagnostic_information( ex ) );
+    }
+}
+
+void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
+    std::vector< std::pair< uint64_t, std::vector< std::string > > > rh;
+    for ( const auto& previousGroup : m_client.chainParams().sChain.previousGroups ) {
+        std::vector< string > commonBLSPublicKey = {previousGroup.blsPublicKey[0],
+            previousGroup.blsPublicKey[1], previousGroup.blsPublicKey[2],
+            previousGroup.blsPublicKey[3]};
+        rh.push_back( {previousGroup.finishTs, commonBLSPublicKey} );
+    }
+    try {
+        consensus.setRotationHistory(
+            std::make_shared< std::vector< std::pair< uint64_t, std::vector< std::string > > > >(
+                rh ) );
     } catch ( const std::exception& ex ) {
         std::throw_with_nested( ex.what() );
     } catch ( const boost::exception& ex ) {
