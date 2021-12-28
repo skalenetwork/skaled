@@ -222,6 +222,8 @@ void OverlayDB::commit() {
             m_storageCache.clear();
             m_db_face->revert();
         }
+    } else {
+        cnote << "Try to commit into closed or not initialized DB";
     }
 }
 
