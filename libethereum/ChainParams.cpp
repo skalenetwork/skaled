@@ -211,9 +211,9 @@ ChainParams ChainParams::loadConfig(
 
         if ( sChainObj.count( "previousGroups" ) ) {
             std::vector< PreviousGroup > previousGroups;
-            for ( const auto& previousGroupConf : sChainObj["previousGroups"].get_array() ) {
+            for ( const auto& previousGroupConf : sChainObj["previousGroups"].get_obj() ) {
                 PreviousGroup previousGroup;
-                auto previousGroupObj = previousGroupConf.get_obj();
+                auto previousGroupObj = previousGroupConf.second.get_obj();
                 if ( previousGroupObj["bls_public_key"].is_null() )
                     // failed dkg, skip it
                     continue;
