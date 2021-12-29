@@ -97,7 +97,7 @@ static std::string const c_genesisConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
-            "previous_groups": {},
+            "previousGroups": {},
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
