@@ -2392,6 +2392,7 @@ BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
     hasRoleCall["data"] = "0xbb559d160000000000000000000000007aa5e36aa15e93d10f4f26357c30f052dacdde5f";
     hasRoleCall["to"] = "0xD3002000000000000000000000000000000000d3";
     BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleCall, "latest" ) ) == 100 );
+}
 
 BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth ) {
     JsonRpcFixture fixture(c_genesisConfigString, false, false);
