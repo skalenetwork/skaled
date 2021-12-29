@@ -62,9 +62,6 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     KeyManager keyManager( tempDir.path(), tempDir.path() + "/keys" );
     setDataDir( tempDir.path() );
 
-    // pass DATA_DIR to consensus
-    setenv("DATA_DIR", tempDir.path().c_str(), 1);
-
     // 'allowFutureBlocks = true' is required to mine multiple blocks,
     // otherwise mining will hang after the first block
     ChainParams chainParams;
@@ -77,6 +74,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     //    string(),
     //        chainParams, WithExisting::Kill, set< string >{"eth"} );
     auto monitor = make_shared< InstanceMonitor >("test");
+
+    setenv("DATA_DIR", getDataDir().c_str(), 1);
     Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL, monitor,
         getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
