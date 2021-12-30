@@ -139,7 +139,7 @@ public:
     Address owner;
     Address blockAuthor;
     std::vector< sChainNode > nodes;
-    std::vector< PreviousGroup > previousGroups;
+    std::vector< PreviousGroup > nodeGroups;
     s256 contractStorageLimit = 1000000000;
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
