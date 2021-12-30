@@ -209,9 +209,9 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
-        if ( sChainObj.count( "previousGroups" ) ) {
-            std::vector< PreviousGroup > previousGroups;
-            for ( const auto& previousGroupConf : sChainObj["previousGroups"].get_obj() ) {
+        if ( sChainObj.count( "nodeGroups" ) ) {
+            std::vector< PreviousGroup > nodeGroups;
+            for ( const auto& previousGroupConf : sChainObj["nodeGroups"].get_obj() ) {
                 PreviousGroup previousGroup;
                 auto previousGroupObj = previousGroupConf.second.get_obj();
                 if ( previousGroupObj["bls_public_key"].is_null() )
@@ -245,9 +245,9 @@ ChainParams ChainParams::loadConfig(
                     previousGroup.finishTs = previousGroupObj["finish_ts"].get_uint64();
                 else
                     previousGroup.finishTs = uint64_t( -1 );
-                previousGroups.push_back( previousGroup );
+                nodeGroups.push_back( previousGroup );
             }
-            s.previousGroups = previousGroups;
+            s.nodeGroups = nodeGroups;
         }
 
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
