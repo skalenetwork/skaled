@@ -589,3 +589,19 @@ void Executive::revert() {
     m_newAddress = {};
     m_s.rollback( m_savepoint );
 }
+
+bool Executive::checkMultitransactionMode() {
+    if ( m_ext ) {
+        bytes in = getMultitransactionCallData();
+        unique_ptr< CallParameters > callParams(
+            new CallParameters( SystemAddress, c_deploymentControllerContractAddress,
+                c_deploymentControllerContractAddress, 0, 0, m_gas,
+                bytesConstRef( in.data(), in.size() ), {} ) );
+        auto callResult = m_ext->call( *callParams );
+        auto callOutput = dev::toHex( callResult.output );
+        if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
+            return true;
+        }
+    }
+    return false;
+}

@@ -61,6 +61,9 @@ extern const Address c_deploymentControllerContractAddress;
 /// Formatting call data for deployment control contract
 bytes getDeploymentControllerCallData( Address const& _deployer );
 
+/// Formatting call data for multitransaction contract
+bytes getMultitransactionCallData();
+
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance( bigint const& _b );
 
