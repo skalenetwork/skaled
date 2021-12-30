@@ -209,6 +209,47 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
+        if ( sChainObj.count( "previousGroups" ) ) {
+            std::vector< PreviousGroup > previousGroups;
+            for ( const auto& previousGroupConf : sChainObj["previousGroups"].get_obj() ) {
+                PreviousGroup previousGroup;
+                auto previousGroupObj = previousGroupConf.second.get_obj();
+                if ( previousGroupObj["bls_public_key"].is_null() )
+                    // failed dkg, skip it
+                    continue;
+
+                std::vector< PreviousGroupNode > previousGroupNodes;
+                auto previousGroupNodesObj = previousGroupObj["nodes"].get_obj();
+                for ( const auto& previousGroupNodeConf : previousGroupNodesObj ) {
+                    auto previousGroupNodeConfObj = previousGroupNodeConf.second.get_array();
+                    u256 id = previousGroupNodeConfObj[0].get_uint64();
+                    u256 sChainIndex = previousGroupNodeConfObj[1].get_uint64();
+                    std::string publicKey = previousGroupNodeConfObj[2].get_str();
+                    previousGroupNodes.push_back( {id, sChainIndex, publicKey} );
+                }
+                previousGroup.nodes = previousGroupNodes;
+
+                std::array< std::string, 4 > previousGroupBlsPublicKey;
+                auto previousGroupBlsPublicKeyObj = previousGroupObj["bls_public_key"].get_obj();
+                previousGroupBlsPublicKey[0] =
+                    previousGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
+                previousGroupBlsPublicKey[1] =
+                    previousGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
+                previousGroupBlsPublicKey[2] =
+                    previousGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
+                previousGroupBlsPublicKey[3] =
+                    previousGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
+                previousGroup.blsPublicKey = previousGroupBlsPublicKey;
+
+                if ( !previousGroupObj["finish_ts"].is_null() )
+                    previousGroup.finishTs = previousGroupObj["finish_ts"].get_uint64();
+                else
+                    previousGroup.finishTs = uint64_t( -1 );
+                previousGroups.push_back( previousGroup );
+            }
+            s.previousGroups = previousGroups;
+        }
+
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
             sChainNode node{};
