@@ -54,6 +54,7 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
+#include <libdevcore/StatusAndControl.h>
 
 #include <libskale/ConsensusGasPricer.h>
 #include <libskale/UnsafeRegion.h>
@@ -457,6 +458,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -990,6 +992,10 @@ int main( int argc, char** argv ) try {
             return EX_CONFIG;
         }
     }
+
+    std::shared_ptr<StatusAndControl> g_stausAndControl = std::make_shared<StatusAndControl>(boost::filesystem::path(configPath).remove_filename());
+    ExitHandler::statusAndControl = g_stausAndControl;
+
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
             cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
@@ -1431,6 +1437,8 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
+        g_stausAndControl->setSubsystemRunning(StatusAndControl::StartFromSnapshot, true);
+
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
@@ -1580,6 +1588,8 @@ int main( int argc, char** argv ) try {
         }
     }  // if --download-snapshot
 
+    g_stausAndControl->setSubsystemRunning(StatusAndControl::StartFromSnapshot, false);
+
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
         snapshotManager = nullptr;
@@ -1713,6 +1723,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+        g_stausAndControl->setSubsystemRunning(StatusAndControl::Blockchain, true);
 
         dev::eth::g_skaleHost = skaleHost;
     }
@@ -2873,6 +2884,8 @@ int main( int argc, char** argv ) try {
             fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
         }  // if ( nExplicitPort ......
 
+        g_stausAndControl->setSubsystemRunning(StatusAndControl::Rpc, true);
+
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
                 sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
@@ -2919,9 +2932,11 @@ int main( int argc, char** argv ) try {
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );
+        g_stausAndControl->setSubsystemRunning(StatusAndControl::Rpc, false);
     }
     if ( g_client ) {
         g_client->stopWorking();
+        g_stausAndControl->setSubsystemRunning(StatusAndControl::Blockchain, false);
         g_client.reset( nullptr );
     }
 

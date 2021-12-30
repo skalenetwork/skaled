@@ -34,6 +34,8 @@ char const* Version = skale_get_buildinfo()->project_version;
 bytes const NullBytes;
 std::string const EmptyString;
 
+std::shared_ptr<StatusAndControl> ExitHandler::statusAndControl;
+
 bool ExitHandler::shouldExit() {
     return skutils::signal::g_bStop;
 }
@@ -50,6 +52,12 @@ void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
     if ( ec != ec_success ) {
         g_ec = ec;
     }
+
+    if(statusAndControl){
+        statusAndControl->exitState.StartAgain = (ec != ec_success);
+        statusAndControl->exitState.StartFromSnapshot = (ec == ec_state_root_mismatch);
+    }// if
+
     skutils::signal::g_bStop = true;
     // HACK wait for loop in main to send exit call to consensus et al.
     std::this_thread::sleep_for( chrono::milliseconds( 2000 ) );
