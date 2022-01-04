@@ -4453,7 +4453,14 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         // compute hash of u256 value
         //
-        const dev::h256 h = dev::sha3( uValueToSign );
+        static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
+            while ( v.size() < cnt )
+                v.push_back( 0 );
+        };
+        bytes v = dev::BMPBN::encode2vec< dev::u256 >( uValueToSign, true );
+        fnAlignRight( v, 32 );
+        const dev::h256 h = dev::sha3( v );
+        // const dev::h256 h = dev::sha3( uValueToSign );
         const std::string sh = h.hex();
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
