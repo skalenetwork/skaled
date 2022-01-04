@@ -167,11 +167,10 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
 
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
     std::vector< std::pair< uint64_t, std::vector< std::string > > > rh;
-    for ( const auto& previousGroup : m_client.chainParams().sChain.previousGroups ) {
-        std::vector< string > commonBLSPublicKey = {previousGroup.blsPublicKey[0],
-            previousGroup.blsPublicKey[1], previousGroup.blsPublicKey[2],
-            previousGroup.blsPublicKey[3]};
-        rh.push_back( {previousGroup.finishTs, commonBLSPublicKey} );
+    for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
+        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        rh.push_back( {nodeGroup.finishTs, commonBLSPublicKey} );
     }
     try {
         consensus.setRotationHistory(
