@@ -7,11 +7,10 @@
 
 class StatusAndControl {
 public:
-    enum Subsystem {StartFromSnapshot, Blockchain, Rpc, Consensus, Snapshotting};
+    enum Subsystem {SnapshotDownloader, Blockchain, Rpc, Consensus, Snapshotting};
     enum ConsensusRunningState {None, WaitingForPeers, Bootstrapping, Operation};
 
-    StatusAndControl(const boost::filesystem::path& _dirPath, const std::string& _statusFile = "skaled.status");
-    ~StatusAndControl();
+    virtual ~StatusAndControl();
 
     void setSubsystemRunning(Subsystem _ss, bool _run){
         subsystemRunning[_ss] = _run;
@@ -30,15 +29,23 @@ public:
         bool ClearDataDir;
         bool StartAgain = true;
         bool StartFromSnapshot;
+        bool ExitTimeReached;
     };
 
     ExitState exitState;
 private:
-    const boost::filesystem::path statusFilePath;
 
     std::map<Subsystem, bool> subsystemRunning;
 
     ConsensusRunningState consensusRunningState;
+};
+
+class StatusAndControlFile: public StatusAndControl {
+public:
+    StatusAndControlFile(const boost::filesystem::path& _dirPath, const std::string& _statusFile = "skaled.status");
+    virtual ~StatusAndControlFile();
+private:
+    const boost::filesystem::path statusFilePath;
 };
 
 #endif // STATUSANDCONTROL_H

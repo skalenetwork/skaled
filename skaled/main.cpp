@@ -993,8 +993,8 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    std::shared_ptr<StatusAndControl> g_stausAndControl = std::make_shared<StatusAndControl>(boost::filesystem::path(configPath).remove_filename());
-    ExitHandler::statusAndControl = g_stausAndControl;
+    std::shared_ptr<StatusAndControl> statusAndControl = std::make_shared<StatusAndControlFile>(boost::filesystem::path(configPath).remove_filename());
+    ExitHandler::statusAndControl = statusAndControl;
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
@@ -1437,7 +1437,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
-        g_stausAndControl->setSubsystemRunning(StatusAndControl::StartFromSnapshot, true);
+        statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, true);
 
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
@@ -1588,7 +1588,7 @@ int main( int argc, char** argv ) try {
         }
     }  // if --download-snapshot
 
-    g_stausAndControl->setSubsystemRunning(StatusAndControl::StartFromSnapshot, false);
+    statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, false);
 
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
@@ -1664,7 +1664,7 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< GasPricer > gasPricer;
 
     auto rotationFlagDirPath = configPath.parent_path();
-    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
     SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
@@ -1723,7 +1723,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
-        g_stausAndControl->setSubsystemRunning(StatusAndControl::Blockchain, true);
+        statusAndControl->setSubsystemRunning(StatusAndControl::Blockchain, true);
 
         dev::eth::g_skaleHost = skaleHost;
     }
@@ -2884,7 +2884,7 @@ int main( int argc, char** argv ) try {
             fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
         }  // if ( nExplicitPort ......
 
-        g_stausAndControl->setSubsystemRunning(StatusAndControl::Rpc, true);
+        statusAndControl->setSubsystemRunning(StatusAndControl::Rpc, true);
 
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
@@ -2932,11 +2932,11 @@ int main( int argc, char** argv ) try {
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );
-        g_stausAndControl->setSubsystemRunning(StatusAndControl::Rpc, false);
+        statusAndControl->setSubsystemRunning(StatusAndControl::Rpc, false);
     }
     if ( g_client ) {
         g_client->stopWorking();
-        g_stausAndControl->setSubsystemRunning(StatusAndControl::Blockchain, false);
+        statusAndControl->setSubsystemRunning(StatusAndControl::Blockchain, false);
         g_client.reset( nullptr );
     }
 
