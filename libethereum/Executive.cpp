@@ -189,7 +189,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
     const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
-    const u256& _gasPrice, const bool _isExecuting ) {
+    const u256& _gasPrice, const bool _mtmEnabled ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
@@ -207,8 +207,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
             // Avoid invalid transactions.
             u256 nonceReq;
             nonceReq = _state.getNonce( _transaction.sender() );
-            if ( ( _transaction.nonce() != nonceReq && _isExecuting ) ||
-                 ( _transaction.nonce() < nonceReq && !_isExecuting ) ) {
+            if ( ( _transaction.nonce() != nonceReq && !_mtmEnabled ) ||
+                 ( _transaction.nonce() < nonceReq && _mtmEnabled ) ) {
                 std::cout << "WARNING: Transaction " << _transaction.sha3() << " nonce "
                           << _transaction.nonce() << " is not equal to required nonce " << nonceReq
                           << "\n";

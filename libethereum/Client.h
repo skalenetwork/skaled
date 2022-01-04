@@ -303,6 +303,8 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+    bool checkMultitransactionMode();
+    
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -418,6 +420,7 @@ protected:
 
     /// Executes the pending functions in m_functionQueue
     void callQueuedFunctions();
+
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
