@@ -241,7 +241,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"maxFileStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxReservedStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxSkaledLeveldbStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}}} );
+            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"nodeGroups", {{js::obj_type}, JsonFieldPresence::Optional}}} );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {
