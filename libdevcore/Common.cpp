@@ -50,13 +50,13 @@ void ExitHandler::exitHandler( int s ) {
 void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
     skutils::signal::g_nStopSignal = s;
 
-    // indicate failure if signal is not INT or TERM!
-    if ( ec == ec_success && s != SIGINT && s != SIGTERM )
-        ec = ExitHandler::ec_failure;
-
     if ( ec != ec_success ) {
         g_ec = ec;
     }
+
+    // indicate failure if signal is not INT or TERM!
+    if ( g_ec == ec_success && s != SIGINT && s != SIGTERM )
+        g_ec = ExitHandler::ec_failure;
 
     if(statusAndControl){
         statusAndControl->setExitState(StatusAndControl::StartAgain, (g_ec != ec_success));
