@@ -2954,11 +2954,6 @@ int main( int argc, char** argv ) try {
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-    if ( ec == ExitHandler::ec_success ) {
-        int sig_no = ExitHandler::getSignal();
-        if ( sig_no != SIGINT && sig_no != SIGTERM )
-            ec = ExitHandler::ec_failure;
-    }
     if ( ec != ExitHandler::ec_success ) {
         std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
                   << cc::error( "...\n" );

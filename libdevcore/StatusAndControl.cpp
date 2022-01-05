@@ -9,8 +9,7 @@ StatusAndControlFile::StatusAndControlFile(const boost::filesystem::path& _dirPa
 
 }
 
-StatusAndControlFile::~StatusAndControlFile(){
-    // NEXT Write to file!
+void StatusAndControlFile::on_change(){
     /* JSON:
      * {
      *     subsystemRunning:{
@@ -39,21 +38,25 @@ StatusAndControlFile::~StatusAndControlFile(){
 
     {
     std::ofstream ofs(tmpPath.string());
-    ofs << \
-    "{\
-       'subsystemRunning':{\
-           'SnapshotDownloader': " << isSubsystemRunning(SnapshotDownloader) << ",\
-           'Blockchain': " << isSubsystemRunning(Blockchain) << ",\
-           'Rpc': " << isSubsystemRunning(Rpc) << "\
-       },\
-       exitState:{\
-           'ClearDataDir': " << exitState.ClearDataDir << ",\
-           'StartAgain': " << exitState.StartAgain << ",\
-           'StartFromSnapshot': " << exitState.StartFromSnapshot << "\
-           'ExitTimeReached': " << exitState.ExitTimeReached << "\
-       }\
+    ofs << "\
+    {\n\
+       \"subsystemRunning\":{\n\
+           \"SnapshotDownloader\": " << (isSubsystemRunning(SnapshotDownloader)?"true":"false") << ",\n\
+           \"Blockchain\": " << (isSubsystemRunning(Blockchain)?"true":"false") << ",\n\
+           \"Rpc\": " << (isSubsystemRunning(Rpc)?"true":"false") << "\n\
+       },\n\
+       \"exitState\":{\n\
+           \"ClearDataDir\": " << (getExitState(ClearDataDir)?"true":"false") << ",\n\
+           \"StartAgain\": " << (getExitState(StartAgain)?"true":"false") << ",\n\
+           \"StartFromSnapshot\": " << (getExitState(StartFromSnapshot)?"true":"false") << "\n\
+           \"ExitTimeReached\": " << (getExitState(ExitTimeReached)?"true":"false") << "\n\
+       }\n\
     }\n";
     }
 
     boost::filesystem::rename(tmpPath, statusFilePath);
+}
+
+StatusAndControlFile::~StatusAndControlFile(){
+    on_change();
 }

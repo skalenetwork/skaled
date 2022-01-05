@@ -49,13 +49,18 @@ void ExitHandler::exitHandler( int s ) {
 
 void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
     skutils::signal::g_nStopSignal = s;
+
+    // indicate failure if signal is not INT or TERM!
+    if ( ec == ec_success && s != SIGINT && s != SIGTERM )
+        ec = ExitHandler::ec_failure;
+
     if ( ec != ec_success ) {
         g_ec = ec;
     }
 
     if(statusAndControl){
-        statusAndControl->exitState.StartAgain = (ec != ec_success);
-        statusAndControl->exitState.StartFromSnapshot = (ec == ec_state_root_mismatch);
+        statusAndControl->setExitState(StatusAndControl::StartAgain, (g_ec != ec_success));
+        statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, (g_ec == ec_state_root_mismatch));
     }// if
 
     skutils::signal::g_bStop = true;

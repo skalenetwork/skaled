@@ -104,13 +104,13 @@ BOOST_AUTO_TEST_CASE( test_rotation ) {
     instanceMonitor->initRotationParams(0);
         instanceMonitor->prepareRotation();
 
-    BOOST_REQUIRE( statusAndControlFile->exitState.ExitTimeReached );
+    BOOST_REQUIRE( statusAndControlFile->getExitState(StatusAndControl::ExitTimeReached) );
     BOOST_REQUIRE( !( fs::exists(instanceMonitor->getRotationInfoFilePath() ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( test_create_remove_flag_file ) {
     instanceMonitor->createFlagFileTest();
-    BOOST_REQUIRE( statusAndControlFile->exitState.ExitTimeReached );
+    BOOST_REQUIRE( statusAndControlFile->getExitState(StatusAndControl::ExitTimeReached) );
 
     instanceMonitor->removeFlagFileTest();
     BOOST_REQUIRE( !( fs::exists(instanceMonitor->getRotationInfoFilePath() ) ) );
