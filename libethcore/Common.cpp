@@ -113,7 +113,7 @@ bytes getDeploymentControllerCallData( Address const& _deployer ) {
 }
 
 bytes getMultitransactionCallData() {
-    return fromHex( "" );
+    return fromHex( "0xbad0396e" );
 }
 
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {

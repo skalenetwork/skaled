@@ -1166,7 +1166,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     bool multitransactionMode = checkMultitransactionMode();
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice );
+        *bc().sealEngine(), 0, gasBidPrice, multitransactionMode );
 
     ImportResult res;
     if ( multitransactionMode && 
@@ -1298,7 +1298,8 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
 
 bool Client::checkMultitransactionMode() {
     bytes in = getMultitransactionCallData();
-    auto callResult = call( SystemAddress, 0, c_deploymentControllerContractAddress, bytes(), 100000, 0);
+    auto callResult = call( SystemAddress, 0, c_deploymentControllerContractAddress, 
+                            in, 1000000, 0);
     auto callOutput = dev::toHex( callResult.output );
     if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
         return true;
