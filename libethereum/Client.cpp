@@ -1163,12 +1163,13 @@ h256 Client::importTransaction( Transaction const& _t ) {
         gasBidPrice = this->gasBidPrice();
     }
 
+    bool multitransactionMode = checkMultitransactionMode();
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice );
+        *bc().sealEngine(), 0, gasBidPrice, multitransactionMode );
 
     ImportResult res;
-    if ( state.getNonce( _t.sender() ) < _t.nonce() ) {
+    if ( multitransactionMode && state.getNonce( _t.sender() ) < _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
@@ -1292,6 +1293,17 @@ unsigned Client::installNewPendingTransactionWatch(
 }
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
+}
+
+bool Client::checkMultitransactionMode() {
+    bytes in = getMultitransactionCallData();
+    auto callResult =
+        call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
+    auto callOutput = dev::toHex( callResult.output );
+    if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
+        return true;
+    }
+    return false;
 }
 
 const dev::h256 Client::empty_str_hash =

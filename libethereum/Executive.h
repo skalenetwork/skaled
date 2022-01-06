@@ -204,7 +204,7 @@ public:
 
     static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
         const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
-        const u256& _gasPrice, const bool _isExecuting = false );
+        const u256& _gasPrice, const bool _allowFuture = false );
 
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
