@@ -2395,7 +2395,7 @@ BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
     BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleCall, "latest" ) ) == 100 );
 }
 
-BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth ) {
+BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( []( unsigned long ) -> bool { return false; } ) ) {
     JsonRpcFixture fixture(c_genesisConfigString, false, false);
     dev::eth::simulateMining( *( fixture.client ), 20 );
 
