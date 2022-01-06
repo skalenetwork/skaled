@@ -304,7 +304,7 @@ public:
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
     bool checkMultitransactionMode();
-    
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
