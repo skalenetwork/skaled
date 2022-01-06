@@ -202,9 +202,6 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
-    /// Check whether multitransaction mode is turned on
-    bool checkMultitransactionMode();
-
     static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
         const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
         const u256& _gasPrice, const bool _mtmEnabled = false );
