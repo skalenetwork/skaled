@@ -56,10 +56,10 @@ extern const Address c_blockhashContractAddress;
 extern const bytes c_blockhashContractCode;
 
 /// Address of the special contract for deployment control
-extern const Address c_deploymentControllerContractAddress;
+extern const Address c_configControllerContractAddress;
 
 /// Formatting call data for deployment control contract
-bytes getDeploymentControllerCallData( Address const& _deployer );
+bytes isAddressWhitelistedCallData( Address const& _deployer );
 
 /// Formatting call data for multitransaction contract
 bytes getMultitransactionCallData();

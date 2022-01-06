@@ -463,10 +463,10 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-                bytes in = getDeploymentControllerCallData( m_ext->caller );
+                bytes in = isAddressWhitelistedCallData( m_ext->caller );
                 unique_ptr< CallParameters > deploymentCallParams(
-                    new CallParameters( SystemAddress, c_deploymentControllerContractAddress,
-                        c_deploymentControllerContractAddress, 0, 0, m_gas,
+                    new CallParameters( SystemAddress, c_configControllerContractAddress,
+                        c_configControllerContractAddress, 0, 0, m_gas,
                         bytesConstRef( in.data(), in.size() ), {} ) );
                 auto deploymentCallResult = m_ext->call( *deploymentCallParams );
                 auto deploymentCallOutput = dev::toHex( deploymentCallResult.output );
