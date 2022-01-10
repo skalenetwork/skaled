@@ -1349,6 +1349,21 @@ bool SkaleStats::isEnabledImaMessageSigning() const {
     return isEnabled;
 }
 
+// static void stat_array_invert( uint8_t* arr, size_t cnt ) {
+//    size_t n = cnt / 2;
+//    for ( size_t i = 0; i < n; ++i ) {
+//        uint8_t b1 = arr[i];
+//        uint8_t b2 = arr[cnt - i - 1];
+//        arr[i] = b2;
+//        arr[cnt - i - 1] = b1;
+//    }
+//}
+
+static void stat_array_align_right( bytes& v, size_t cnt ) {
+    while ( v.size() < cnt )
+        v.push_back( 0 );
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
@@ -4207,44 +4222,31 @@ OutgoingMessageData.data
             if ( !bOnlyVerify ) {
                 // One more message is valid, concatenate it for further in-wallet signing
                 // Compose message to sign
-                //    static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
-                //        size_t n = cnt / 2;
-                //        for ( size_t i = 0; i < n; ++i ) {
-                //            uint8_t b1 = arr[i];
-                //            uint8_t b2 = arr[cnt - i - 1];
-                //            arr[i] = b2;
-                //            arr[cnt - i - 1] = b1;
-                //        }
-                //    };
-                static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
-                    while ( v.size() < cnt )
-                        v.push_back( 0 );
-                };
                 // uint8_t arr[32];
                 bytes v;
                 // const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
-                fnAlignRight( v, 32 );
+                stat_array_align_right( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationContract, true );
-                fnAlignRight( v, 32 );
+                stat_array_align_right( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
                 // v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
-                // fnAlignRight( v, 32 );
+                // stat_array_align_right( v, 32 );
                 // vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end()
                 // );
                 //
                 // dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
-                // fnInvert( arr, cntArr );
+                // stat_array_invert( arr, cntArr );
                 // vecAllTogetherMessages.insert(
                 //    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
                 //
                 v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
-                // fnInvert( v.data(), v.size() ); // do not invert byte order data field (see
-                // SKALE-3554 for details)
+                // stat_array_invert( v.data(), v.size() ); // do not invert byte order data field
+                // (see SKALE-3554 for details)
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             }  // if( !bOnlyVerify )
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
@@ -4283,9 +4285,9 @@ OutgoingMessageData.data
             clog( VerbosityDebug, "IMA" )
                 << ( strLogPrefix + cc::debug( " Contacting " ) + cc::notice( "SGX Wallet" ) +
                        cc::debug( " server at " ) + cc::u( u ) );
-            clog( VerbosityDebug, "IMA" )
-                << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "sign query" ) +
-                       cc::debug( " to wallet: " ) + cc::j( joCall ) );
+            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( " Will send " ) +
+                                               cc::notice( "messages sign query" ) +
+                                               cc::debug( " to wallet: " ) + cc::j( joCall ) );
             skutils::rest::client cli;
             cli.optsSSL_ = optsSSL;
             cli.open( u );
@@ -4304,8 +4306,9 @@ OutgoingMessageData.data
             //
             std::string s = jo.dump();
             clog( VerbosityDebug, "IMA" )
-                << ( strLogPrefix + cc::success( " Success, got " ) + cc::notice( "sign result" ) +
-                       cc::success( " from wallet: " ) + cc::j( joSignResult ) );
+                << ( strLogPrefix + cc::success( " Success, got messages " ) +
+                       cc::notice( "sign result" ) + cc::success( " from wallet: " ) +
+                       cc::j( joSignResult ) );
             Json::Value ret;
             Json::Reader().parse( s, ret );
             return ret;
@@ -4340,6 +4343,190 @@ OutgoingMessageData.data
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }  // skale_imaVerifyAndSign()
+
+Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA BLS Sign U256" );
+    try {
+        // if ( !isEnabledImaMessageSigning() )
+        //     throw std::runtime_error( "IMA message signing feature is disabled on this instance"
+        //     );
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "sign" ) +
+                   cc::debug( " request: " ) + cc::j( joRequest ) );
+        //
+        std::string strReason;
+        if ( joRequest.count( "reason" ) > 0 )
+            strReason = skutils::tools::trim_copy( joRequest["reason"].get< std::string >() );
+        if ( strReason.empty() )
+            strReason = "<<<empty>>>";
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Sign reason description is: " ) +
+                   cc::info( strReason ) );
+        //
+        if ( joRequest.count( "valueToSign" ) == 0 )
+            throw std::runtime_error( "missing \"valueToSign\" in call parameters" );
+        const nlohmann::json& joValueToSign = joRequest["valueToSign"];
+        if ( !joValueToSign.is_string() )
+            throw std::runtime_error( "bad value type of \"valueToSign\" must be string" );
+        std::string strValueToSign =
+            skutils::tools::trim_copy( joValueToSign.get< std::string >() );
+        if ( strValueToSign.empty() )
+            throw std::runtime_error( "value of \"valueToSign\" must be non-EMPTY string" );
+        if ( strValueToSign.length() >= 2 &&
+             ( !( strValueToSign[0] == '0' &&
+                  ( strValueToSign[1] == 'x' || strValueToSign[1] == 'X' ) ) ) )
+            strValueToSign = "0x" + strValueToSign;
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " + cc::notice( "U256 value" ) + cc::debug( " to sign is " ) +
+                   cc::info( strValueToSign ) );
+        dev::u256 uValueToSign( strValueToSign );
+        //
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            throw std::runtime_error(
+                "error config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        //
+        // Check wallet URL and keyShareName for future use,
+        // fetch SSL options for SGX
+        //
+        skutils::url u;
+        skutils::http::SSL_client_options optsSSL;
+        const std::string strWalletURL = strSgxWalletURL_;
+        u = skutils::url( strWalletURL );
+        if ( u.scheme().empty() || u.host().empty() )
+            throw std::runtime_error( "bad SGX wallet url" );
+        //
+        //
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "caFile" ) > 0 )
+                optsSSL.ca_file = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.ca_file.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) + cc::info( optsSSL.ca_file ) );
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
+                optsSSL.client_cert = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_cert.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
+                   cc::info( optsSSL.client_cert ) );
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
+                optsSSL.client_key = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_key.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
+                   cc::info( optsSSL.client_key ) );
+        const std::string keyShareName =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
+                "";
+        if ( keyShareName.empty() )
+            throw std::runtime_error(
+                "error config.json file, cannot find valid value for "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"keyShareName\" parameter" );
+        //
+        // compute hash of u256 value
+        //
+        bytes v = dev::BMPBN::encode2vec< dev::u256 >( uValueToSign, true );
+        stat_array_align_right( v, 32 );
+        const dev::h256 h = dev::sha3( v );
+        // const dev::h256 h = dev::sha3( uValueToSign );
+        const std::string sh = h.hex();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        //
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "blsSignMessageHash";
+        if ( u.scheme() == "zmq" )
+            joCall["type"] = "BLSSignReq";
+        joCall["params"] = nlohmann::json::object();
+        joCall["params"]["keyShareName"] = keyShareName;
+        joCall["params"]["messageHash"] = sh;
+        joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
+        joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
+        joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Contacting " ) + cc::notice( "SGX Wallet" ) +
+                   cc::debug( " server at " ) + cc::u( u ) );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "u256 value sign query" ) +
+                   cc::debug( " to wallet: " ) + cc::j( joCall ) );
+        skutils::rest::client cli;
+        cli.optsSSL_ = optsSSL;
+        cli.open( u );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "failed to BLS sign u256 value with wallet: " + d.err_s_ );
+        if ( d.empty() )
+            throw std::runtime_error(
+                "failed to BLS sign u256 value with wallet, EMPTY data received" );
+        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        nlohmann::json joSignResult =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
+        jo["signResult"] = joSignResult;
+        //
+        // Done, provide result to caller
+        //
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::success( " Success, got u256 value " ) +
+                   cc::notice( "sign result" ) + cc::success( " from wallet: " ) +
+                   cc::j( joSignResult ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}  // skale_imaBSU256()
+
 
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );

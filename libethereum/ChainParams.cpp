@@ -209,6 +209,43 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
+        if ( sChainObj.count( "nodeGroups" ) ) {
+            std::vector< NodeGroup > nodeGroups;
+            for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
+                NodeGroup nodeGroup;
+                auto nodeGroupObj = nodeGroupConf.second.get_obj();
+                if ( nodeGroupObj["bls_public_key"].is_null() )
+                    // failed dkg, skip it
+                    continue;
+
+                std::vector< GroupNode > groupNodes;
+                auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
+                for ( const auto& groupNodeConf : groupNodesObj ) {
+                    auto groupNodeConfObj = groupNodeConf.second.get_array();
+                    u256 id = groupNodeConfObj[0].get_uint64();
+                    u256 sChainIndex = groupNodeConfObj[1].get_uint64();
+                    std::string publicKey = groupNodeConfObj[2].get_str();
+                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                }
+                nodeGroup.nodes = groupNodes;
+
+                std::array< std::string, 4 > nodeGroupBlsPublicKey;
+                auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
+                nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
+                nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
+                nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
+                nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
+                nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
+
+                if ( !nodeGroupObj["finish_ts"].is_null() )
+                    nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
+                else
+                    nodeGroup.finishTs = uint64_t( -1 );
+                nodeGroups.push_back( nodeGroup );
+            }
+            s.nodeGroups = nodeGroups;
+        }
+
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
             sChainNode node{};
