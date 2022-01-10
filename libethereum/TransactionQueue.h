@@ -71,9 +71,10 @@ public:
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
-    ImportResult import( bytes const& _tx, IfDropped _ik = IfDropped::Ignore ) {
-        return import( &_tx, _ik );
+    ImportResult import( bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false ) {
+        return import( &_tx, _ik, _isFuture );
     }
 
     /// Verify and add transaction to the queue synchronously.
@@ -260,7 +261,7 @@ private:
     // account min account nonce. Updating it does not affect the order.
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
-    ImportResult import( bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore );
+    ImportResult import( bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction );
 

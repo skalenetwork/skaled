@@ -229,6 +229,26 @@ BOOST_AUTO_TEST_CASE( tqImport ) {
     BOOST_REQUIRE( tq.waiting( from ) == 1 );
 }
 
+BOOST_AUTO_TEST_CASE( tqImportFuture ) {
+    TestTransaction testTransaction = TestTransaction::defaultTransaction();
+    TransactionQueue tq;
+    h256Hash known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 0 );
+
+    ImportResult ir = tq.import( testTransaction.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 1 );
+
+    ir = tq.import( testTransaction.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir == ImportResult::AlreadyKnown );
+
+    bytes rlp = testTransaction.transaction().rlp();
+    rlp.at( 0 ) = 03;
+    ir = tq.import( rlp, IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir == ImportResult::Malformed );
+}
+
 BOOST_AUTO_TEST_CASE( tqDrop ) {
     TransactionQueue tq;
     TestTransaction testTransaction = TestTransaction::defaultTransaction();
