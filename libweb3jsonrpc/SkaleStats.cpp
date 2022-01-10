@@ -1349,6 +1349,21 @@ bool SkaleStats::isEnabledImaMessageSigning() const {
     return isEnabled;
 }
 
+// static void stat_array_invert( uint8_t* arr, size_t cnt ) {
+//    size_t n = cnt / 2;
+//    for ( size_t i = 0; i < n; ++i ) {
+//        uint8_t b1 = arr[i];
+//        uint8_t b2 = arr[cnt - i - 1];
+//        arr[i] = b2;
+//        arr[cnt - i - 1] = b1;
+//    }
+//}
+
+static void stat_array_align_right( bytes& v, size_t cnt ) {
+    while ( v.size() < cnt )
+        v.push_back( 0 );
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
@@ -4207,44 +4222,31 @@ OutgoingMessageData.data
             if ( !bOnlyVerify ) {
                 // One more message is valid, concatenate it for further in-wallet signing
                 // Compose message to sign
-                //    static auto fnInvert = []( uint8_t* arr, size_t cnt ) -> void {
-                //        size_t n = cnt / 2;
-                //        for ( size_t i = 0; i < n; ++i ) {
-                //            uint8_t b1 = arr[i];
-                //            uint8_t b2 = arr[cnt - i - 1];
-                //            arr[i] = b2;
-                //            arr[cnt - i - 1] = b1;
-                //        }
-                //    };
-                static auto fnAlignRight = []( bytes& v, size_t cnt ) -> void {
-                    while ( v.size() < cnt )
-                        v.push_back( 0 );
-                };
                 // uint8_t arr[32];
                 bytes v;
                 // const size_t cntArr = sizeof( arr ) / sizeof( arr[0] );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uMessageSender, true );
-                fnAlignRight( v, 32 );
+                stat_array_align_right( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
                 v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationContract, true );
-                fnAlignRight( v, 32 );
+                stat_array_align_right( v, 32 );
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
                 //
                 // v = dev::BMPBN::encode2vec< dev::u256 >( uDestinationAddressTo, true );
-                // fnAlignRight( v, 32 );
+                // stat_array_align_right( v, 32 );
                 // vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end()
                 // );
                 //
                 // dev::BMPBN::encode< dev::u256 >( uMessageAmount, arr, cntArr );
-                // fnInvert( arr, cntArr );
+                // stat_array_invert( arr, cntArr );
                 // vecAllTogetherMessages.insert(
                 //    vecAllTogetherMessages.end(), arr + 0, arr + cntArr );
                 //
                 v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
-                // fnInvert( v.data(), v.size() ); // do not invert byte order data field (see
-                // SKALE-3554 for details)
+                // stat_array_invert( v.data(), v.size() ); // do not invert byte order data field
+                // (see SKALE-3554 for details)
                 vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             }  // if( !bOnlyVerify )
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
@@ -4453,7 +4455,10 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         // compute hash of u256 value
         //
-        const dev::h256 h = dev::sha3( uValueToSign );
+        bytes v = dev::BMPBN::encode2vec< dev::u256 >( uValueToSign, true );
+        stat_array_align_right( v, 32 );
+        const dev::h256 h = dev::sha3( v );
+        // const dev::h256 h = dev::sha3( uValueToSign );
         const std::string sh = h.hex();
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
