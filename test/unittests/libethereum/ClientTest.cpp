@@ -406,7 +406,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "schainID": 1,
         "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
-        "previousGroups": {},
+        "nodeGroups": {},
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
