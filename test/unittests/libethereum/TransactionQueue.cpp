@@ -230,23 +230,78 @@ BOOST_AUTO_TEST_CASE( tqImport ) {
 }
 
 BOOST_AUTO_TEST_CASE( tqImportFuture ) {
-    TestTransaction testTransaction = TestTransaction::defaultTransaction();
     TransactionQueue tq;
     h256Hash known = tq.knownTransactions();
     BOOST_REQUIRE( known.size() == 0 );
+    TransactionQueue::Status status = tq.status();
+    BOOST_REQUIRE( status.future == 0 );
 
-    ImportResult ir = tq.import( testTransaction.transaction().rlp(), IfDropped::Ignore, true );
-    BOOST_REQUIRE( ir == ImportResult::Success );
+    TestTransaction tx1 = TestTransaction::defaultTransaction(4);
+    Address sender = tx1.transaction().sender();
+    u256 maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 0 );
+    u256 waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 0 );
+
+    ImportResult ir1 = tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir1 == ImportResult::Success );
     known = tq.knownTransactions();
     BOOST_REQUIRE( known.size() == 1 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 1 );
 
-    ir = tq.import( testTransaction.transaction().rlp(), IfDropped::Ignore, true );
-    BOOST_REQUIRE( ir == ImportResult::AlreadyKnown );
+    ir1 = tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir1 == ImportResult::AlreadyKnown );
 
-    bytes rlp = testTransaction.transaction().rlp();
+    bytes rlp = tx1.transaction().rlp();
     rlp.at( 0 ) = 03;
-    ir = tq.import( rlp, IfDropped::Ignore, true );
-    BOOST_REQUIRE( ir == ImportResult::Malformed );
+    ir1 = tq.import( rlp, IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir1 == ImportResult::Malformed );
+
+    TestTransaction tx2 = TestTransaction::defaultTransaction(2);
+    ImportResult ir2 = tq.import( tx2.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir2 == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 2 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 2 );
+    BOOST_CHECK( ( Transactions{} ) == tq.topTransactions( 256 ) );
+
+    TestTransaction tx3 = TestTransaction::defaultTransaction(1);
+    ImportResult ir3 = tq.import( tx3.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir3 == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 3 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 3 );
+    BOOST_CHECK( ( Transactions{} ) == tq.topTransactions( 256 ) );
+
+    TestTransaction tx4 = TestTransaction::defaultTransaction(0);
+    ImportResult ir4 = tq.import( tx4.transaction().rlp(), IfDropped::Ignore );
+    BOOST_REQUIRE( ir4 == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 4 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 4 );
+    BOOST_CHECK( ( Transactions{ tx4.transaction(), tx3.transaction(), tx2.transaction() } ) == tq.topTransactions( 256 ) );
+
+    // TestTransaction testTransaction2 = TestTransaction::defaultTransaction(1);
+    // ImportResult ir2 = tq.import( testTransaction2.transaction().rlp(), IfDropped::Ignore, true );
+
+    // TestTransaction testTransaction3 = TestTransaction::defaultTransaction(0);
+    // ImportResult ir3 = tq.import( testTransaction3.transaction().rlp(), IfDropped::Ignore );
+    // // auto t = tq.topTransactions( 3 );
+    // BOOST_CHECK( ( Transactions{ testTransaction3.transaction(), testTransaction2.transaction(), testTransaction.transaction() } ) == tq.topTransactions( 3 ) );
 }
 
 BOOST_AUTO_TEST_CASE( tqDrop ) {

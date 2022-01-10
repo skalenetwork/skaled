@@ -255,7 +255,7 @@ private:
                            ( height1 == height2 &&
                                _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
         }
-    };
+    }; 
 
     // Use a set with dynamic comparator for minmax priority queue. The comparator takes into
     // account min account nonce. Updating it does not affect the order.
