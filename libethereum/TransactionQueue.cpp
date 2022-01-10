@@ -88,7 +88,8 @@ void TransactionQueue::HandleDestruction() {
     }
 }
 
-ImportResult TransactionQueue::import( bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
+ImportResult TransactionQueue::import(
+    bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything );
         return import( t, _ik, _isFuture );

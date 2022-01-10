@@ -73,7 +73,8 @@ public:
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
     /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
-    ImportResult import( bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false ) {
+    ImportResult import(
+        bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false ) {
         return import( &_tx, _ik, _isFuture );
     }
 
@@ -255,13 +256,14 @@ private:
                            ( height1 == height2 &&
                                _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
         }
-    }; 
+    };
 
     // Use a set with dynamic comparator for minmax priority queue. The comparator takes into
     // account min account nonce. Updating it does not affect the order.
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
-    ImportResult import( bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
+    ImportResult import(
+        bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction );
 

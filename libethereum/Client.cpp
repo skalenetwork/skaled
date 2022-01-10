@@ -1297,8 +1297,7 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
 
 bool Client::checkMultitransactionMode() {
     bytes in = getMultitransactionCallData();
-    auto callResult =
-        call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
+    auto callResult = call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
     auto callOutput = dev::toHex( callResult.output );
     if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
         return true;
