@@ -293,15 +293,36 @@ BOOST_AUTO_TEST_CASE( tqImportFuture ) {
     BOOST_REQUIRE( maxNonce == 5 );
     waiting = tq.waiting(sender);
     BOOST_REQUIRE( waiting == 4 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );
+    BOOST_REQUIRE( status.current == 3 );
     BOOST_CHECK( ( Transactions{ tx4.transaction(), tx3.transaction(), tx2.transaction() } ) == tq.topTransactions( 256 ) );
 
-    // TestTransaction testTransaction2 = TestTransaction::defaultTransaction(1);
-    // ImportResult ir2 = tq.import( testTransaction2.transaction().rlp(), IfDropped::Ignore, true );
+    TestTransaction tx5 = TestTransaction::defaultTransaction(3);
+    ImportResult ir5 = tq.import( tx5.transaction().rlp(), IfDropped::Ignore );
+    BOOST_REQUIRE( ir5 == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 5 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 5 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 0 );
+    BOOST_REQUIRE( status.current == 5 );
+    BOOST_CHECK( ( Transactions{ tx4.transaction(), tx3.transaction(), tx2.transaction(), tx5.transaction(), tx1.transaction() } ) == tq.topTransactions( 256 ) );
 
-    // TestTransaction testTransaction3 = TestTransaction::defaultTransaction(0);
-    // ImportResult ir3 = tq.import( testTransaction3.transaction().rlp(), IfDropped::Ignore );
-    // // auto t = tq.topTransactions( 3 );
-    // BOOST_CHECK( ( Transactions{ testTransaction3.transaction(), testTransaction2.transaction(), testTransaction.transaction() } ) == tq.topTransactions( 3 ) );
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender2 = Secret( "0x4444444444444444444444444444444444444444444444444444444444444444" );
+    Transaction tx0( 0, gasCostMed, gas, dest, bytes(), 4, sender2 );
+    ImportResult ir0 = tq.import( tx0, IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir0 == ImportResult::Success );
+    waiting = tq.waiting(dev::toAddress(sender2));
+    BOOST_REQUIRE( waiting == 1 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );
 }
 
 BOOST_AUTO_TEST_CASE( tqDrop ) {
