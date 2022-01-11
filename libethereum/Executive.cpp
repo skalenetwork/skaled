@@ -249,7 +249,7 @@ void Executive::initialize( Transaction const& _transaction ) {
 
     try {
         verifyTransaction( _transaction, m_envInfo.header(), m_s, m_sealEngine, m_envInfo.gasUsed(),
-            m_systemGasPrice, true );
+            m_systemGasPrice );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;
