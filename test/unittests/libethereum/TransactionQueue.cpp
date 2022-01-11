@@ -349,6 +349,46 @@ BOOST_AUTO_TEST_CASE( tqImportFutureLimits ) {
     BOOST_CHECK( ( h256Hash{ tx3.transaction().sha3(), tx2.transaction().sha3() } ) == known );
 }
 
+BOOST_AUTO_TEST_CASE( tqImportFutureLimits2 ) {
+    dev::eth::TransactionQueue tq( 1024, 2 );
+
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender2 = Secret( "0x4444444444444444444444444444444444444444444444444444444444444444" );
+    Transaction tx0( 0, gasCostMed, gas, dest, bytes(), 4, sender2 );
+    ImportResult ir0 = tq.import( tx0, IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir0 == ImportResult::Success );
+ 
+    auto waiting = tq.waiting(toAddress(sender2));
+    BOOST_REQUIRE( waiting == 1 );
+    auto known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 1 ); 
+    auto status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );  
+
+    TestTransaction tx1 = TestTransaction::defaultTransaction(3);
+    tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
+
+    waiting = tq.waiting(toAddress(sender2));
+    BOOST_REQUIRE( waiting == 1 );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 2 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 2 );  
+
+    TestTransaction tx2 = TestTransaction::defaultTransaction(2);
+    tq.import( tx2.transaction().rlp(), IfDropped::Ignore, true );
+
+    waiting = tq.waiting(toAddress(sender2));
+    BOOST_REQUIRE( waiting == 0 );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 2 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );  
+    BOOST_CHECK( ( h256Hash{ tx2.transaction().sha3(), tx1.transaction().sha3() } ) == known );
+}
+
 BOOST_AUTO_TEST_CASE( tqDrop ) {
     TransactionQueue tq;
     TestTransaction testTransaction = TestTransaction::defaultTransaction();
