@@ -61,6 +61,7 @@ void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
     if(statusAndControl){
         statusAndControl->setExitState(StatusAndControl::StartAgain, (g_ec != ec_success));
         statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, (g_ec == ec_state_root_mismatch));
+        statusAndControl->setExitState(StatusAndControl::ClearDataDir,      (g_ec == ec_state_root_mismatch));
     }// if
 
     skutils::signal::g_bStop = true;
