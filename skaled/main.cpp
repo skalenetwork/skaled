@@ -1294,6 +1294,7 @@ int main( int argc, char** argv ) try {
     extern unsigned c_minCacheSize;
 
     unsigned c_transactionQueueSize = 100000;
+    unsigned c_futureTransactionQueueSize = 16000;
 
     if ( chainConfigParsed ) {
         try {
@@ -1328,6 +1329,14 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
                 c_transactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueSize" ) )
+                c_futureTransactionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueSize"]
+                        .get< unsigned >();
         } catch ( ... ) {
         }
 
@@ -1666,11 +1675,13 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
