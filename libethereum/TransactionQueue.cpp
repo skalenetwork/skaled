@@ -325,6 +325,18 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     queue.erase( cutoff, queue.end() );
     if ( queue.empty() )
         m_currentByAddressAndNonce.erase( from );
+
+    while ( m_futureSize > m_futureLimit ) {
+        // TODO: priority queue for future transactions
+        // For now just drop random chain end
+        --m_futureSize;
+        auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
+        LOG( m_loggerDetail ) << "Dropping out of bounds future transaction " << erasedHash;
+        m_known.erase( erasedHash );
+        m_future.begin()->second.erase( --m_future.begin()->second.end() );
+        if ( m_future.begin()->second.empty() )
+            m_future.erase( m_future.begin() );
+    }
 }
 
 void TransactionQueue::setFuture( h256 const& _txHash ) {
@@ -357,17 +369,6 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
             if ( fs->second.empty() )
                 m_future.erase( _t.from() );
         }
-    }
-
-    while ( m_futureSize > m_futureLimit ) {
-        // TODO: priority queue for future transactions
-        // For now just drop random chain end
-        --m_futureSize;
-        LOG( m_loggerDetail ) << "Dropping out of bounds future transaction "
-                              << m_future.begin()->second.rbegin()->second.transaction.sha3();
-        m_future.begin()->second.erase( --m_future.begin()->second.end() );
-        if ( m_future.begin()->second.empty() )
-            m_future.erase( m_future.begin() );
     }
 
     if ( newCurrent )

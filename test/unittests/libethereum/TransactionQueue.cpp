@@ -325,6 +325,30 @@ BOOST_AUTO_TEST_CASE( tqImportFuture ) {
     BOOST_REQUIRE( status.future == 1 );
 }
 
+BOOST_AUTO_TEST_CASE( tqImportFutureLimits ) {
+    dev::eth::TransactionQueue tq( 1024, 2 );
+    TestTransaction tx1 = TestTransaction::defaultTransaction(3);
+    tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
+
+    TestTransaction tx2 = TestTransaction::defaultTransaction(2);
+    tq.import( tx2.transaction().rlp(), IfDropped::Ignore, true );
+
+    auto waiting = tq.waiting(tx1.transaction().sender());
+    BOOST_REQUIRE( waiting == 2 );
+    auto known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 2 );
+
+    TestTransaction tx3 = TestTransaction::defaultTransaction(1);
+    ImportResult ir = tq.import( tx3.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir == ImportResult::Success );
+
+    waiting = tq.waiting(tx1.transaction().sender());
+    BOOST_REQUIRE( waiting == 2 );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 2 );
+    BOOST_CHECK( ( h256Hash{ tx3.transaction().sha3(), tx2.transaction().sha3() } ) == known );
+}
+
 BOOST_AUTO_TEST_CASE( tqDrop ) {
     TransactionQueue tq;
     TestTransaction testTransaction = TestTransaction::defaultTransaction();
