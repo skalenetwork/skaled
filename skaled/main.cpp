@@ -995,6 +995,7 @@ int main( int argc, char** argv ) try {
 
     std::shared_ptr<StatusAndControl> statusAndControl = std::make_shared<StatusAndControlFile>(boost::filesystem::path(configPath).remove_filename());
     ExitHandler::statusAndControl = statusAndControl;
+    // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
@@ -1437,6 +1438,8 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
+        statusAndControl->setExitState(StatusAndControl::StartAgain, true);
+        statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, true);
         statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, true);
 
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
@@ -1589,6 +1592,9 @@ int main( int argc, char** argv ) try {
     }  // if --download-snapshot
 
     statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, false);
+
+    statusAndControl->setExitState(StatusAndControl::StartAgain, true);
+    statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, false);
 
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
