@@ -1295,12 +1295,19 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
+// TODO: Remove try/catch, fix AttemptToReadFromStateInThePast
 bool Client::checkMultitransactionMode() {
-    bytes in = getMultitransactionCallData();
-    auto callResult = call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
-    auto callOutput = dev::toHex( callResult.output );
-    if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
-        return true;
+    try {
+        bytes in = getMultitransactionCallData();
+        auto callResult =
+            call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
+        auto callOutput = dev::toHex( callResult.output );
+        if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
+            return true;
+        }
+    } catch ( ... ) {
+        LOG( m_logger ) << "exception in checkMultitransactionMode: "
+                        << boost::current_exception_diagnostic_information() << std::endl;
     }
     return false;
 }
