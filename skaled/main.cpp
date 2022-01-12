@@ -54,6 +54,7 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/SnapshotStorage.h>
 #include <libevm/VMFactory.h>
+#include <libdevcore/StatusAndControl.h>
 
 #include <libskale/ConsensusGasPricer.h>
 #include <libskale/UnsafeRegion.h>
@@ -457,6 +458,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -990,6 +992,11 @@ int main( int argc, char** argv ) try {
             return EX_CONFIG;
         }
     }
+
+    std::shared_ptr<StatusAndControl> statusAndControl = std::make_shared<StatusAndControlFile>(boost::filesystem::path(configPath).remove_filename());
+    ExitHandler::statusAndControl = statusAndControl;
+    // for now, leave previous values in file (for case of crash)
+
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
             cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
@@ -1431,6 +1438,10 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
+        statusAndControl->setExitState(StatusAndControl::StartAgain, true);
+        statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, true);
+        statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, true);
+
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
@@ -1580,6 +1591,11 @@ int main( int argc, char** argv ) try {
         }
     }  // if --download-snapshot
 
+    statusAndControl->setSubsystemRunning(StatusAndControl::SnapshotDownloader, false);
+
+    statusAndControl->setExitState(StatusAndControl::StartAgain, true);
+    statusAndControl->setExitState(StatusAndControl::StartFromSnapshot, false);
+
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
         snapshotManager = nullptr;
@@ -1654,7 +1670,7 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< GasPricer > gasPricer;
 
     auto rotationFlagDirPath = configPath.parent_path();
-    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
     SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
@@ -1713,6 +1729,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+        statusAndControl->setSubsystemRunning(StatusAndControl::Blockchain, true);
 
         dev::eth::g_skaleHost = skaleHost;
     }
@@ -2873,6 +2890,8 @@ int main( int argc, char** argv ) try {
             fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
         }  // if ( nExplicitPort ......
 
+        statusAndControl->setSubsystemRunning(StatusAndControl::Rpc, true);
+
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
                 sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
@@ -2919,9 +2938,11 @@ int main( int argc, char** argv ) try {
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );
+        statusAndControl->setSubsystemRunning(StatusAndControl::Rpc, false);
     }
     if ( g_client ) {
         g_client->stopWorking();
+        statusAndControl->setSubsystemRunning(StatusAndControl::Blockchain, false);
         g_client.reset( nullptr );
     }
 
@@ -2939,11 +2960,6 @@ int main( int argc, char** argv ) try {
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-    if ( ec == ExitHandler::ec_success ) {
-        int sig_no = ExitHandler::getSignal();
-        if ( sig_no != SIGINT && sig_no != SIGTERM )
-            ec = ExitHandler::ec_failure;
-    }
     if ( ec != ExitHandler::ec_success ) {
         std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
                   << cc::error( "...\n" );
