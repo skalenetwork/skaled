@@ -187,6 +187,7 @@ void request_site::onEOM() noexcept {
     bldr.header( "access-control-allow-origin", "*" );
     if ( rslt.isBinary_ ) {
         bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
+        bldr.header( "Content-Type", "application/octet-stream" );
         std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
         bldr.body( buffer );
     } else {

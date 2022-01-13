@@ -39,6 +39,8 @@
 #pragma warning( disable : 3682 )  // call through incomplete class
 #endif
 
+#include "StatusAndControl.h"
+
 #include <chrono>
 #include <functional>
 #include <map>
@@ -350,6 +352,8 @@ public:
     static bool shouldExit();
     static int getSignal();
     static exit_code_t requestedExitCode() { return g_ec; }
+
+    static std::shared_ptr<StatusAndControl> statusAndControl;
 
 private:
     static volatile exit_code_t g_ec;

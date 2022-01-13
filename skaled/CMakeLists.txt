@@ -1,12 +1,6 @@
 set( CMAKE_CXX_STANDARD 17 )
 
-
-set(
-    sources
-    AccountManager.cpp AccountManager.h
-    main.cpp
-    MinerAux.h
-)
+file( GLOB sources "*.cpp" "*.h" )
 
 set(EXECUTABLE_NAME skaled)
 
