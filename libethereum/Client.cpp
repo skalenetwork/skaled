@@ -1162,7 +1162,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().startRead();
         gasBidPrice = this->gasBidPrice();
-        multitransactionMode = this->checkMultitransactionMode(state, gasBidPrice);
+        multitransactionMode = this->checkMultitransactionMode( state, gasBidPrice );
     }
 
     Executive::verifyTransaction( _t,
@@ -1296,13 +1296,16 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
-bool Client::checkMultitransactionMode(skale::State _state, u256 _gasPrice) {
-    EnvInfo const env( Block( bc(), bc().currentHash(), _state ).info() , bc().lastBlockHashes(), 0, 100000 );
-    auto t = Transaction( 0, _gasPrice, 100000, c_configControllerContractAddress, getMultitransactionCallData(), _state.getNonce( SystemAddress ) );
+bool Client::checkMultitransactionMode( skale::State _state, u256 _gasPrice ) {
+    EnvInfo const env(
+        Block( bc(), bc().currentHash(), _state ).info(), bc().lastBlockHashes(), 0, 100000 );
+    auto t = Transaction( 0, _gasPrice, 100000, c_configControllerContractAddress,
+        getMultitransactionCallData(), _state.getNonce( SystemAddress ) );
     t.forceSender( SystemAddress );
-    t.checkOutExternalGas(~u256( 0 ));
+    t.checkOutExternalGas( ~u256( 0 ) );
     _state.addBalance( SystemAddress, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-    ExecutionResult executionResult = _state.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
+    ExecutionResult executionResult =
+        _state.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
     auto callOutput = dev::toHex( executionResult.output );
     if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
         return true;
