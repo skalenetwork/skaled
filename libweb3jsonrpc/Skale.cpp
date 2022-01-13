@@ -294,7 +294,9 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        clog( VerbosityInfo, "skale_downloadSnapshotFragment" ) << cc::success( "Sent all chunks for " + currentSnapshotPath ) << "\n" <<
+        clog( VerbosityInfo, "skale_downloadSnapshotFragment" )
+            << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
+            << "\n";
 
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
