@@ -1157,13 +1157,14 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // throws in case of error
     State state;
     u256 gasBidPrice;
+    bool multitransactionMode;
 
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().startRead();
         gasBidPrice = this->gasBidPrice();
+        multitransactionMode = this->checkMultitransactionMode(state, gasBidPrice);
     }
 
-    bool multitransactionMode = checkMultitransactionMode();
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         *bc().sealEngine(), 0, gasBidPrice, multitransactionMode );
@@ -1295,19 +1296,16 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
-// TODO: Remove try/catch, fix AttemptToReadFromStateInThePast
-bool Client::checkMultitransactionMode() {
-    try {
-        bytes in = getMultitransactionCallData();
-        auto callResult =
-            call( SystemAddress, 0, c_configControllerContractAddress, in, 1000000, 0 );
-        auto callOutput = dev::toHex( callResult.output );
-        if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
-            return true;
-        }
-    } catch ( ... ) {
-        LOG( m_logger ) << "exception in checkMultitransactionMode: "
-                        << boost::current_exception_diagnostic_information() << std::endl;
+bool Client::checkMultitransactionMode(skale::State _state, u256 _gasPrice) {
+    EnvInfo const env( Block( bc(), bc().currentHash(), _state ).info() , bc().lastBlockHashes(), 0, 100000 );
+    auto t = Transaction( 0, _gasPrice, 100000, c_configControllerContractAddress, getMultitransactionCallData(), _state.getNonce( SystemAddress ) );
+    t.forceSender( SystemAddress );
+    t.checkOutExternalGas(~u256( 0 ));
+    _state.addBalance( SystemAddress, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+    ExecutionResult executionResult = _state.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
+    auto callOutput = dev::toHex( executionResult.output );
+    if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
+        return true;
     }
     return false;
 }

@@ -2499,7 +2499,7 @@ BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config );
-    bool mtm = fixture.client->checkMultitransactionMode();
+    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
     BOOST_REQUIRE( mtm );
 }
 
@@ -2521,13 +2521,13 @@ BOOST_AUTO_TEST_CASE( check_multitransaction_mode_false ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config );
-    bool mtm = fixture.client->checkMultitransactionMode();
+    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
     BOOST_REQUIRE( !mtm );
 }
 
 BOOST_AUTO_TEST_CASE( check_multitransaction_mode_empty ) {
     JsonRpcFixture fixture( c_genesisConfigString );
-    bool mtm = fixture.client->checkMultitransactionMode();
+    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
     BOOST_REQUIRE( !mtm );
 }
 

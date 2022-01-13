@@ -303,7 +303,7 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-    bool checkMultitransactionMode();
+    bool checkMultitransactionMode( skale::State _state, u256 _gasPrice);
 
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
