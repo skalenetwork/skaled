@@ -245,11 +245,13 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                 // just ask block number in this special case
                 if ( block_number == 0 ) {
-                    skaleClient.skale_getLatestSnapshotBlockNumber();
-                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                    this->nodes_to_download_snapshot_from_.push_back( i );
-                    delete jsonRpcClient;
-                    return;
+                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
+                    if ( n == 0 ) {
+                        const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+                        this->nodes_to_download_snapshot_from_.push_back( i );
+                        delete jsonRpcClient;
+                        return;
+                    }
                 }
 
                 Json::Value joSignatureResponse;

@@ -521,6 +521,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             std::string s;
             s += "skale_getSnapshot error: ";
             s += joSnapshotInfo["error"].get< std::string >();
+            if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
+                s += "; Invalid time to download snapshot. Valid time is ";
+                s += joSnapshotInfo["timeValid"].get< time_t >();
+            }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
             std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
