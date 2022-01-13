@@ -66,19 +66,17 @@ void InstanceMonitor::restoreRotationParams() {
 }
 
 void InstanceMonitor::createFlagFile() {
-    if(m_statusAndControl){
+    if ( m_statusAndControl ) {
         LOG( m_logger ) << "Setting ExitTimeReached = true";
-        m_statusAndControl->setExitState(StatusAndControl::ExitTimeReached, true);
-    }
-    else
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, true );
+    } else
         LOG( m_logger ) << "Simulating setting ExitTimeReached = true";
 }
 
 void InstanceMonitor::removeFlagFile() {
-    if(m_statusAndControl){
+    if ( m_statusAndControl ) {
         LOG( m_logger ) << "Setting ExitTimeReached = false";
-        m_statusAndControl->setExitState(StatusAndControl::ExitTimeReached, false);
-    }
-    else
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, false );
+    } else
         LOG( m_logger ) << "Simulating setting ExitTimeReached = false";
 }
