@@ -47,6 +47,7 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libdevcore/SharedSpace.h>
+#include <libdevcore/StatusAndControl.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
@@ -231,8 +232,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     fs::path saveTo;
     try {
-        std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
-                  << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" )
+            << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 ) << std::endl;
+        ;
 
         try {
             bool isBinaryDownload = true;
@@ -240,9 +242,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             saveTo = snapshotManager->getDiffPath( block_number );
             bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-                    std::cout << cc::normal( "... download progress ... " )
-                              << cc::size10( idxChunck ) << cc::normal( " of " )
-                              << cc::size10( cntChunks ) << "\r";
+                    clog( VerbosityInfo, "downloadSnapshot" )
+                        << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
+                        << cc::normal( " of " ) << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
                 isBinaryDownload, &strErrorDescription );
@@ -258,7 +260,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
-        std::cout << cc::success( "Snapshot download success for block " )
+        clog( VerbosityInfo, "downloadSnapshot" ) << cc::success( "Snapshot download success for block " )
                   << cc::u( to_string( block_number ) ) << std::endl;
         try {
             snapshotManager->importDiff( block_number );
@@ -457,6 +459,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -990,6 +993,12 @@ int main( int argc, char** argv ) try {
             return EX_CONFIG;
         }
     }
+
+    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
+        boost::filesystem::path( configPath ).remove_filename() );
+    ExitHandler::statusAndControl = statusAndControl;
+    // for now, leave previous values in file (for case of crash)
+
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
             cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
@@ -1440,6 +1449,10 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
+        statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
@@ -1589,6 +1602,11 @@ int main( int argc, char** argv ) try {
         }
     }  // if --download-snapshot
 
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+
+    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
+
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
         snapshotManager = nullptr;
@@ -1663,7 +1681,7 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< GasPricer > gasPricer;
 
     auto rotationFlagDirPath = configPath.parent_path();
-    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
     SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
@@ -1724,6 +1742,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
 
         dev::eth::g_skaleHost = skaleHost;
     }
@@ -2884,6 +2903,8 @@ int main( int argc, char** argv ) try {
             fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
         }  // if ( nExplicitPort ......
 
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, true );
+
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
                 sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
@@ -2930,9 +2951,11 @@ int main( int argc, char** argv ) try {
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
     }
     if ( g_client ) {
         g_client->stopWorking();
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
         g_client.reset( nullptr );
     }
 
@@ -2950,11 +2973,6 @@ int main( int argc, char** argv ) try {
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-    if ( ec == ExitHandler::ec_success ) {
-        int sig_no = ExitHandler::getSignal();
-        if ( sig_no != SIGINT && sig_no != SIGTERM )
-            ec = ExitHandler::ec_failure;
-    }
     if ( ec != ExitHandler::ec_success ) {
         std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
                   << cc::error( "...\n" );
