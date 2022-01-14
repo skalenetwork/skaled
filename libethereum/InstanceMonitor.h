@@ -34,7 +34,8 @@ class StatusAndControl;
 
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath, std::shared_ptr<StatusAndControl> _statusAndControl = nullptr)
+    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath,
+        std::shared_ptr< StatusAndControl > _statusAndControl = nullptr )
         : m_finishTimestamp( 0 ),
           m_rotationInfoFilePath( dev::getDataDir() / rotation_info_file_name ),
           m_statusAndControl( _statusAndControl ) {
@@ -55,7 +56,7 @@ protected:
 
     uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;
-    std::shared_ptr<StatusAndControl> m_statusAndControl;
+    std::shared_ptr< StatusAndControl > m_statusAndControl;
 
     static const std::string rotation_info_file_name;
 

@@ -260,8 +260,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
-        clog( VerbosityInfo, "downloadSnapshot" ) << cc::success( "Snapshot download success for block " )
-                  << cc::u( to_string( block_number ) ) << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" )
+            << cc::success( "Snapshot download success for block " )
+            << cc::u( to_string( block_number ) ) << std::endl;
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
@@ -2922,12 +2923,6 @@ int main( int argc, char** argv ) try {
     }
 
     dev::setThreadName( "main" );
-
-    std::thread( []() {
-        std::this_thread::sleep_for( chrono::seconds( 10 ) );
-        stat_init_common_signal_handling();  // ensure initialized
-    } )
-        .detach();
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;

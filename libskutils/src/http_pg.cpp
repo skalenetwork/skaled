@@ -360,7 +360,8 @@ bool server::start() {
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
     options.idleTimeout = std::chrono::milliseconds( 60000 );
-    options.shutdownOn = {SIGINT, SIGTERM};
+    // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
+    // here
     options.enableContentCompression = false;
     options.handlerFactories =
         proxygen::RequestHandlerChain().addThen< request_site_factory >( this ).build();
