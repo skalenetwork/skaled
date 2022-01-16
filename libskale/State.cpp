@@ -170,6 +170,12 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
     return partialTransactionReceipts;
 }
 
+void State::clearPartialTransactionReceiptsAndCommit(){
+    dev::eth::BlockReceipts blockReceipts;
+    m_db_ptr->setPartialTransactionReceipts( blockReceipts.rlp() );
+    m_db_ptr->commit();
+}
+
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
