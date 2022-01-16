@@ -1386,9 +1386,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "bad value type of \"messages\"/\"direction\" must be string" );
         const std::string strDirection = skutils::tools::to_upper(
             skutils::tools::trim_copy( joDirection.get< std::string >() ) );
-        if ( !( strDirection == "M2S" || strDirection == "S2M" ) )
+        if ( !( strDirection == "M2S" || strDirection == "S2M" || strDirection == "S2S" ) )
             throw std::runtime_error(
-                "value of \"messages\"/\"direction\" must be \"M2S\" or \"S2M\"" );
+                "value of \"messages\"/\"direction\" must be \"M2S\" or \"S2M\" or \"S2S\"" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Message direction is " ) + cc::sunny( strDirection ) );
         // from now on strLogPrefix includes strDirection
@@ -3912,8 +3912,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 } else {  // ( strDirection == "M2S" )
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + " " +
-                               cc::debug( "Will use contract call based verification of S->M IMA "
-                                          "message(s)" ) );
+                               cc::debug( "Will use contract call based verification of " +
+                                          strDirection + " IMA message(s)" ) );
 
 
                     /*
