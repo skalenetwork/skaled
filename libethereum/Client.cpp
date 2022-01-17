@@ -106,7 +106,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l, 
+    bool _multiTransactionMode )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -116,7 +117,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ) {
+      m_dbPath( _dbPath ),
+      m_multiTransactionMode( _multiTransactionMode ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -1157,20 +1159,18 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // throws in case of error
     State state;
     u256 gasBidPrice;
-    bool multitransactionMode;
 
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().startRead();
         gasBidPrice = this->gasBidPrice();
-        multitransactionMode = this->checkMultitransactionMode( state, gasBidPrice );
     }
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice, multitransactionMode );
+        *bc().sealEngine(), 0, gasBidPrice, m_multiTransactionMode );
 
     ImportResult res;
-    if ( multitransactionMode && state.getNonce( _t.sender() ) < _t.nonce() ) {
+    if ( m_multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
@@ -1296,6 +1296,7 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
+// TODO: Enable in future
 bool Client::checkMultitransactionMode( skale::State _state, u256 _gasPrice ) {
     EnvInfo const env(
         Block( bc(), bc().currentHash(), _state ).info(), bc().lastBlockHashes(), 0, 100000 );

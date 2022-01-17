@@ -86,7 +86,8 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
+        bool _multiTransactionMode = false );
     /// Destructor.
     virtual ~Client();
 
@@ -499,6 +500,8 @@ protected:
 
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;
+
+    bool m_multiTransactionMode;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
