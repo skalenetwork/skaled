@@ -48,7 +48,7 @@ void StatusAndControlFile::on_change(){
        \"exitState\":{\n\
            \"ClearDataDir\": " << (getExitState(ClearDataDir)?"true":"false") << ",\n\
            \"StartAgain\": " << (getExitState(StartAgain)?"true":"false") << ",\n\
-           \"StartFromSnapshot\": " << (getExitState(StartFromSnapshot)?"true":"false") << "\n\
+           \"StartFromSnapshot\": " << (getExitState(StartFromSnapshot)?"true":"false") << ",\n\
            \"ExitTimeReached\": " << (getExitState(ExitTimeReached)?"true":"false") << "\n\
        }\n\
     }\n";
