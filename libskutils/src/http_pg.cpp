@@ -187,6 +187,7 @@ void request_site::onEOM() noexcept {
     bldr.header( "access-control-allow-origin", "*" );
     if ( rslt.isBinary_ ) {
         bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
+        bldr.header( "Content-Type", "application/octet-stream" );
         std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
         bldr.body( buffer );
     } else {
@@ -359,7 +360,8 @@ bool server::start() {
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
     options.idleTimeout = std::chrono::milliseconds( 60000 );
-    options.shutdownOn = {SIGINT, SIGTERM};
+    // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
+    // here
     options.enableContentCompression = false;
     options.handlerFactories =
         proxygen::RequestHandlerChain().addThen< request_site_factory >( this ).build();

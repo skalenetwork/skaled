@@ -292,6 +292,12 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::vector< uint8_t > buffer =
         Skale::ll_impl_skale_downloadSnapshotFragment( fp, idxFrom, sizeOfChunk );
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
+
+    if ( sizeOfChunk + idxFrom == sizeOfFile )
+        clog( VerbosityInfo, "skale_downloadSnapshotFragment" )
+            << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
+            << "\n";
+
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -521,6 +527,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             std::string s;
             s += "skale_getSnapshot error: ";
             s += joSnapshotInfo["error"].get< std::string >();
+            if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
+                s += "; Invalid time to download snapshot. Valid time is ";
+                s += joSnapshotInfo["timeValid"].get< time_t >();
+            }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
             std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";

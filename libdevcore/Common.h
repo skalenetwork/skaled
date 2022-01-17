@@ -353,7 +353,7 @@ public:
     static int getSignal();
     static exit_code_t requestedExitCode() { return g_ec; }
 
-    static std::shared_ptr<StatusAndControl> statusAndControl;
+    static std::shared_ptr< StatusAndControl > statusAndControl;
 
 private:
     static volatile exit_code_t g_ec;
