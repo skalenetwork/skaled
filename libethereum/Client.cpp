@@ -1146,6 +1146,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     return importTransaction( t );
 }
 
+// TODO: Check whether multiTransactionMode enabled
 h256 Client::importTransaction( Transaction const& _t ) {
     prepareForTransaction();
 
