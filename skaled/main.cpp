@@ -260,8 +260,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
-        clog( VerbosityInfo, "downloadSnapshot" ) << cc::success( "Snapshot download success for block " )
-                  << cc::u( to_string( block_number ) ) << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" )
+            << cc::success( "Snapshot download success for block " )
+            << cc::u( to_string( block_number ) ) << std::endl;
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
@@ -1694,12 +1695,14 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize},
+                chainParams.sChain.multiTransactionMode ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize},
+                chainParams.sChain.multiTransactionMode ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );

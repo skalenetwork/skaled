@@ -106,8 +106,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l, 
-    bool _multiTransactionMode )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool _multiTransactionMode )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
