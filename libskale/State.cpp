@@ -170,10 +170,9 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
     return partialTransactionReceipts;
 }
 
-void State::clearPartialTransactionReceiptsAndCommit(){
+void State::clearPartialTransactionReceipts(){
     dev::eth::BlockReceipts blockReceipts;
     m_db_ptr->setPartialTransactionReceipts( blockReceipts.rlp() );
-    m_db_ptr->commit();
 }
 
 void State::populateFrom( eth::AccountMap const& _map ) {
@@ -382,8 +381,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit();
-        ++*m_storedVersion;
+        m_db_ptr->commit(std::to_string(++*m_storedVersion));
         m_currentVersion = *m_storedVersion;
     }
 
