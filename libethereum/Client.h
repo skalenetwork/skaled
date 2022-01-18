@@ -86,8 +86,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
-        bool _multiTransactionMode = false );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     /// Destructor.
     virtual ~Client();
 
@@ -304,8 +303,6 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-    bool checkMultitransactionMode( skale::State _state, u256 _gasPrice );
-
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -500,8 +497,6 @@ protected:
 
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;
-
-    bool m_multiTransactionMode;
 
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;

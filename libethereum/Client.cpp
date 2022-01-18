@@ -106,7 +106,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l, bool _multiTransactionMode )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, _forceAction ),
       m_tq( _l ),
@@ -116,8 +116,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_working( chainParams().accountStartNonce ),
       m_snapshotManager( _snapshotManager ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ),
-      m_multiTransactionMode( _multiTransactionMode ) {
+      m_dbPath( _dbPath ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -1145,7 +1144,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     return importTransaction( t );
 }
 
-// TODO: Check whether multiTransactionMode enabled
+// TODO: Check whether multiTransactionMode enabled on contracts
 h256 Client::importTransaction( Transaction const& _t ) {
     prepareForTransaction();
 
@@ -1167,10 +1166,11 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice, m_multiTransactionMode );
+        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
     ImportResult res;
-    if ( m_multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() ) {
+    if ( chainParams().sChain.multiTransactionMode && 
+        state.getNonce( _t.sender() ) < _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
@@ -1294,24 +1294,6 @@ unsigned Client::installNewPendingTransactionWatch(
 }
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
-}
-
-// TODO: Enable in future
-bool Client::checkMultitransactionMode( skale::State _state, u256 _gasPrice ) {
-    EnvInfo const env(
-        Block( bc(), bc().currentHash(), _state ).info(), bc().lastBlockHashes(), 0, 100000 );
-    auto t = Transaction( 0, _gasPrice, 100000, c_configControllerContractAddress,
-        getMultitransactionCallData(), _state.getNonce( SystemAddress ) );
-    t.forceSender( SystemAddress );
-    t.checkOutExternalGas( ~u256( 0 ) );
-    _state.addBalance( SystemAddress, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-    ExecutionResult executionResult =
-        _state.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
-    auto callOutput = dev::toHex( executionResult.output );
-    if ( !callOutput.empty() && u256( callOutput ) == 1 ) {
-        return true;
-    }
-    return false;
 }
 
 const dev::h256 Client::empty_str_hash =

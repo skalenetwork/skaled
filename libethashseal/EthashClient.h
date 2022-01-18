@@ -43,8 +43,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = {},
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024},
-        bool _multiTransactionMode = false );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
     ~EthashClient();
 
     Ethash* ethash() const;

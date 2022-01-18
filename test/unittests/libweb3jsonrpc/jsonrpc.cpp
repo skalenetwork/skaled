@@ -2481,55 +2481,53 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     BOOST_REQUIRE_EQUAL( balance, 16 );
 }
 
-BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
-    auto _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
+// TODO: Enable for multitransaction mode checking
 
-    /* Test contract
-        pragma solidity ^0.8.9;
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
+//     auto _config = c_genesisConfigString;
+//     Json::Value ret;
+//     Json::Reader().parse( _config, ret );
+//     /* Test contract
+//         pragma solidity ^0.8.9;
+//         contract Test {
+//             function isMTMEnabled() external pure returns (bool) {
+//                 return true;
+//             }
+//         }
+//     */
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033"; 
+//     Json::FastWriter fastWriter;
+//     std::string config = fastWriter.write( ret );
+//     JsonRpcFixture fixture( config );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( mtm );
+// }
 
-        contract Test {
-            function isMTMEnabled() external pure returns (bool) {
-                return true;
-            }
-        }
-    */
-    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033"; 
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
-    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-    BOOST_REQUIRE( mtm );
-}
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_false ) {
+//     auto _config = c_genesisConfigString;
+//     Json::Value ret;
+//     Json::Reader().parse( _config, ret );
+//     /* Test contract
+//         pragma solidity ^0.8.9;
+//         contract Test {
+//             function isMTMEnabled() external pure returns (bool) {
+//                 return false;
+//             }
+//         }
+//     */
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033"; 
+//     Json::FastWriter fastWriter;
+//     std::string config = fastWriter.write( ret );
+//     JsonRpcFixture fixture( config );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( !mtm );
+// }
 
-BOOST_AUTO_TEST_CASE( check_multitransaction_mode_false ) {
-    auto _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-
-    /* Test contract
-        pragma solidity ^0.8.9;
-
-        contract Test {
-            function isMTMEnabled() external pure returns (bool) {
-                return false;
-            }
-        }
-    */
-    ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033"; 
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
-    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-    BOOST_REQUIRE( !mtm );
-}
-
-BOOST_AUTO_TEST_CASE( check_multitransaction_mode_empty ) {
-    JsonRpcFixture fixture( c_genesisConfigString );
-    bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-    BOOST_REQUIRE( !mtm );
-}
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_empty ) {
+//     JsonRpcFixture fixture( c_genesisConfigString );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( !mtm );
+// }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 

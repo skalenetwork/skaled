@@ -1695,14 +1695,12 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize},
-                chainParams.sChain.multiTransactionMode ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize},
-                chainParams.sChain.multiTransactionMode ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
