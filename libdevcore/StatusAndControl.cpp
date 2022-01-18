@@ -2,14 +2,13 @@
 
 #include <fstream>
 
-StatusAndControl::~StatusAndControl(){}
+StatusAndControl::~StatusAndControl() {}
 
-StatusAndControlFile::StatusAndControlFile(const boost::filesystem::path& _dirPath, const std::string& _statusFile)
-    :statusFilePath(_dirPath / _statusFile){
+StatusAndControlFile::StatusAndControlFile(
+    const boost::filesystem::path& _dirPath, const std::string& _statusFile )
+    : statusFilePath( _dirPath / _statusFile ) {}
 
-}
-
-void StatusAndControlFile::on_change(){
+void StatusAndControlFile::on_change() {
     /* JSON:
      * {
      *     subsystemRunning:{
@@ -31,32 +30,39 @@ void StatusAndControlFile::on_change(){
      *         Consensus: None|WaitingForPeers|Bootstrapping|Operation
      *     }
      * }
-    */
+     */
 
     boost::filesystem::path tmpPath = this->statusFilePath;
     tmpPath += ".tmp";
 
     {
-    std::ofstream ofs(tmpPath.string());
-    ofs << "\
+        std::ofstream ofs( tmpPath.string() );
+        ofs << "\
     {\n\
        \"subsystemRunning\":{\n\
-           \"SnapshotDownloader\": " << (isSubsystemRunning(SnapshotDownloader)?"true":"false") << ",\n\
-           \"Blockchain\": " << (isSubsystemRunning(Blockchain)?"true":"false") << ",\n\
-           \"Rpc\": " << (isSubsystemRunning(Rpc)?"true":"false") << "\n\
+           \"SnapshotDownloader\": "
+            << ( isSubsystemRunning( SnapshotDownloader ) ? "true" : "false" ) << ",\n\
+           \"Blockchain\": "
+            << ( isSubsystemRunning( Blockchain ) ? "true" : "false" ) << ",\n\
+           \"Rpc\": "
+            << ( isSubsystemRunning( Rpc ) ? "true" : "false" ) << "\n\
        },\n\
        \"exitState\":{\n\
-           \"ClearDataDir\": " << (getExitState(ClearDataDir)?"true":"false") << ",\n\
-           \"StartAgain\": " << (getExitState(StartAgain)?"true":"false") << ",\n\
-           \"StartFromSnapshot\": " << (getExitState(StartFromSnapshot)?"true":"false") << "\n\
-           \"ExitTimeReached\": " << (getExitState(ExitTimeReached)?"true":"false") << "\n\
+           \"ClearDataDir\": "
+            << ( getExitState( ClearDataDir ) ? "true" : "false" ) << ",\n\
+           \"StartAgain\": "
+            << ( getExitState( StartAgain ) ? "true" : "false" ) << ",\n\
+           \"StartFromSnapshot\": "
+            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << ",\n\
+           \"ExitTimeReached\": "
+            << ( getExitState( ExitTimeReached ) ? "true" : "false" ) << "\n\
        }\n\
     }\n";
     }
 
-    boost::filesystem::rename(tmpPath, statusFilePath);
+    boost::filesystem::rename( tmpPath, statusFilePath );
 }
 
-StatusAndControlFile::~StatusAndControlFile(){
+StatusAndControlFile::~StatusAndControlFile() {
     on_change();
 }
