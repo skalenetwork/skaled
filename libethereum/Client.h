@@ -157,9 +157,6 @@ public:
     TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
     TransactionQueue* debugGetTransactionQueue() { return &m_tq; }
 
-    /// Get multiTransactionMode status.
-    bool multiTransactionMode() const { return m_multiTransactionMode; }
-
     /// Freeze worker thread and sync some of the block queue.
     std::tuple< ImportRoute, bool, unsigned > syncQueue( unsigned _max = 1 );
 
