@@ -53,7 +53,7 @@ void StatusAndControlFile::on_change() {
            \"StartAgain\": "
             << ( getExitState( StartAgain ) ? "true" : "false" ) << ",\n\
            \"StartFromSnapshot\": "
-            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << "\n\
+            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << ",\n\
            \"ExitTimeReached\": "
             << ( getExitState( ExitTimeReached ) ? "true" : "false" ) << "\n\
        }\n\
