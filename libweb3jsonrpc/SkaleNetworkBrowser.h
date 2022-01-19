@@ -68,11 +68,13 @@ nlohmann::json to_json( const s_chain_t& s_chain );
 
 nlohmann::json to_json( const vec_s_chains_t& vec );
 
-nlohmann::json refreshing_cached();
+vec_s_chains_t refreshing_cached();
 
 bool refreshing_start( const std::string& configPath );
 
 void refreshing_stop();
+
+skutils::url refreshing_pick_s_chain_url( const std::string& strSChainName );
 
 }  // namespace browser
 }  // namespace network

@@ -670,15 +670,15 @@ static std::recursive_mutex g_mtx;
 static const char g_queue_id[] = "skale-network-browser";
 static skutils::dispatch::job_id_t g_idDispatchJob;
 static std::shared_ptr< skutils::json_config_file_accessor > g_json_config_file_accessor;
-static nlohmann::json g_last_cached = nlohmann::json::array();
+static vec_s_chains_t g_last_cached;
 
-nlohmann::json refreshing_cached() {
-    nlohmann::json jo;
+vec_s_chains_t refreshing_cached() {
+    vec_s_chains_t vec;
     {  // block
         std::lock_guard lock( g_mtx );
-        jo = g_last_cached;
+        vec = g_last_cached;
     }  // block
-    return jo;
+    return vec;
 }
 
 bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
@@ -687,7 +687,7 @@ bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
         vec_s_chains_t vec = load_schains( u, addressFrom, addressSchainsInternal, addressNodes );
         nlohmann::json jarr = to_json( vec );
         std::lock_guard lock( g_mtx );
-        g_last_cached = jarr;
+        g_last_cached = vec;
         std::cout << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " cached data: " ) +
                        cc::j( jarr ) + "\n" );
         return true;
@@ -857,6 +857,31 @@ void refreshing_stop() {
         g_json_config_file_accessor.reset();
 }
 
+skutils::url refreshing_pick_s_chain_url( const std::string& strSChainName ) {
+    if ( strSChainName.empty() )
+        throw std::runtime_error(
+            "SKALE NETWORK BROWSER FAILURE: Cannot pick S-Chain URL by empty S-Chain name" );
+    vec_s_chains_t vec = refreshing_cached();
+    if ( vec.empty() )
+        throw std::runtime_error( "SKALE NETWORK BROWSER FAILURE: Cannot pick S-Chain \"" +
+                                  strSChainName + "\" URL from empty cache" );
+    const size_t cnt = vec.size();
+    for ( size_t i = 0; i < cnt; ++i ) {
+        const s_chain_t& s_chain = vec[i];
+        if ( s_chain.name == strSChainName ) {
+            const size_t cntNodes = s_chain.vecNodes.size();
+            if ( cntNodes == 0 )
+                throw std::runtime_error( "SKALE NETWORK BROWSER FAILURE: Cannot pick S-Chain \"" +
+                                          strSChainName +
+                                          "\" URL because there are no nodes in cache" );
+            const size_t idxNode = rand() % cntNodes;
+            const node_t& node = s_chain.vecNodes[idxNode];
+            return node.http_endpoint_ip;
+        }
+    }
+    throw std::runtime_error( "SKALE NETWORK BROWSER FAILURE: Cannot pick S-Chain \"" +
+                              strSChainName + "\" URL because it's not in cache" );
+}
 
 }  // namespace browser
 }  // namespace network

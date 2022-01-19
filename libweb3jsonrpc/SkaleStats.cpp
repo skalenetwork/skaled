@@ -57,6 +57,8 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/crypto/OpenSSLECDSAKey.h>
 
+#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
+
 namespace dev {
 
 namespace tracking {
@@ -1468,6 +1470,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         const std::string strAddressImaMessageProxyMainNetLC =
             skutils::tools::to_lower( strAddressImaMessageProxyMainNet );
         //
+        if ( joSkaleConfig.count( "sChain" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find "
+                "\"skaleConfig\"/\"sChain\"" );
+        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
+        if ( joSkaleConfig_sChain.count( "schainName" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find "
+                "\"skaleConfig\"/\"sChain\"/\"schainName\"" );
+        std::string strSChainName = joSkaleConfig_sChain["schainName"].get< std::string >();
+        //
+        //
         //
         // if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressSChain" ) == 0 )
         //    throw std::runtime_error(
@@ -1521,17 +1535,47 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         skutils::url urlMainNet = getImaMainNetURL();
         //
         //
-        const nlohmann::json& joFromChainURL = joRequest["fromChainURL"];
-        if ( !joFromChainURL.is_string() )
+        // const nlohmann::json& joFromChainURL = joRequest["fromChainURL"];
+        // if ( !joFromChainURL.is_string() )
+        //     throw std::runtime_error(
+        //         "bad value type of \"params\"/\"fromChainURL\" must be string" );
+        // const std::string strFromChainURL = skutils::tools::trim_copy( joFromChainURL.get<
+        // std::string >() ); clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( " Source
+        // chain URL is " ) + cc::sunny( strFromChainURL ) ); skutils::url urlSourceChain(
+        // strFromChainURL.c_str() );
+
+        const nlohmann::json& joFromChainName = joRequest["srcChainName"];
+        if ( !joFromChainName.is_string() )
             throw std::runtime_error(
-                "bad value type of \"params\"/\"fromChainURL\" must be string" );
-        const std::string strFromChainURL = skutils::tools::to_upper(
-            skutils::tools::trim_copy( joFromChainURL.get< std::string >() ) );
-        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( " Source chain URL is " ) +
-                                           cc::sunny( strFromChainURL ) );
-        skutils::url urlSourceChain( strFromChainURL.c_str() );
+                "bad value type of \"params\"/\"srcChainName\" must be string" );
+        const std::string strFromChainName =
+            skutils::tools::trim_copy( joFromChainName.get< std::string >() );
+        if ( strFromChainName.empty() )
+            throw std::runtime_error(
+                "bad value of \"params\"/\"srcChainName\" must be non-empty string" );
+
+        const nlohmann::json& joTargetChainName = joRequest["dstChainName"];
+        if ( !joTargetChainName.is_string() )
+            throw std::runtime_error(
+                "bad value type of \"params\"/\"dstChainName\" must be string" );
+        const std::string strTargetChainName =
+            skutils::tools::trim_copy( joTargetChainName.get< std::string >() );
+        if ( strTargetChainName.empty() )
+            throw std::runtime_error(
+                "bad value of \"params\"/\"dstChainName\" must be non-empty string" );
+
+        skutils::url urlSourceChain;
         if ( strDirection == "M2S" )
             urlSourceChain = urlMainNet;
+        else if ( strDirection == "S2M" )
+            urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url(
+                strSChainName );  // not used very much in "S2M" case
+        else if ( strDirection == "S2S" )
+            urlSourceChain =
+                skale::network::browser::refreshing_pick_s_chain_url( strFromChainName );
+        else
+            throw std::runtime_error( "unknown direction \"" + strDirection + "\"" );
+
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
@@ -1545,18 +1589,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
-        //
-        if ( joSkaleConfig.count( "sChain" ) == 0 )
-            throw std::runtime_error(
-                "error in config.json file, cannot find "
-                "\"skaleConfig\"/\"sChain\"" );
-        const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
-        if ( joSkaleConfig_sChain.count( "schainName" ) == 0 )
-            throw std::runtime_error(
-                "error in config.json file, cannot find "
-                "\"skaleConfig\"/\"sChain\"/\"schainName\"" );
-        std::string strSChainName = joSkaleConfig_sChain["schainName"].get< std::string >();
-        //
         //
         // Extract needed request arguments, ensure they are all present and valid
         //
