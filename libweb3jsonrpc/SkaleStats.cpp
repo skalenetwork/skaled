@@ -347,27 +347,27 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         nlohmann::json joConfig = getConfigJSON();
         //
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_ecdsaKeyName =
             joSkaleConfig_nodeInfo["ecdsaKeyName"];
         std::string strEcdsaKeyName = joSkaleConfig_nodeInfo_ecdsaKeyName.get< std::string >();
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
@@ -485,19 +485,19 @@ std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) 
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         // const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
         const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
         for ( auto& joNode : joSkaleConfig_sChain_nodes ) {
             if ( !joNode.is_object() )
@@ -531,15 +531,15 @@ int pending_ima_txns::broadcast_txn_get_node_id() {
         nlohmann::json joConfig = getConfigJSON();
         //
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig_nodeInfo.count( "nodeID" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"nodeID\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_nodeID = joSkaleConfig_nodeInfo["nodeID"];
         node_id = joSkaleConfig_nodeInfo_nodeID.get< int >();
@@ -893,22 +893,22 @@ int SkaleStats::findThisNodeIndex() {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         //
         if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
         const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
         //
         int nID = joSkaleConfig_nodeInfo["nodeID"].get< int >();
@@ -966,22 +966,22 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         //
         if ( joSkaleConfig_sChain.count( "nodes" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"sChain\"/\"nodes\"" );
         const nlohmann::json& joSkaleConfig_sChain_nodes = joSkaleConfig_sChain["nodes"];
         //
         nlohmann::json jo = nlohmann::json::object();
@@ -1203,22 +1203,22 @@ Json::Value SkaleStats::skale_imaInfo() {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         //
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
@@ -1234,21 +1234,21 @@ Json::Value SkaleStats::skale_imaInfo() {
             std::string strFieldName = g_arrMustHaveWalletFields[i];
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( strFieldName ) == 0 )
                 throw std::runtime_error(
-                    "error config.json file, cannot find field "
+                    "error in config.json file, cannot find field "
                     "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
                     strFieldName );
             const nlohmann::json& joField = joSkaleConfig_nodeInfo_wallets_ima[strFieldName];
             if ( strFieldName == "t" || strFieldName == "n" ) {
                 if ( !joField.is_number() )
                     throw std::runtime_error(
-                        "error config.json file, field "
+                        "error in config.json file, field "
                         "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
                         strFieldName + " must be a number" );
                 continue;
             }
             if ( !joField.is_string() )
                 throw std::runtime_error(
-                    "error config.json file, field "
+                    "error in config.json file, field "
                     "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
                     strFieldName + " must be a string" );
         }
@@ -1331,15 +1331,15 @@ bool SkaleStats::isEnabledImaMessageSigning() const {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig_nodeInfo.count( "no-ima-signing" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"no-ima-signing\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
             joSkaleConfig_nodeInfo["no-ima-signing"];
@@ -1397,12 +1397,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         // Extract needed config.json parameters, ensure they are all present and valid
         //
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         bool bIsVerifyImaMessagesViaLogsSearch = ( strDirection == "M2S" ) ? true : false;
@@ -1423,19 +1423,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         if ( joSkaleConfig_nodeInfo.count( "imaMessageProxySChain" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxySChain\"" );
         const nlohmann::json& joAddressImaMessageProxySChain =
             joSkaleConfig_nodeInfo["imaMessageProxySChain"];
         if ( !joAddressImaMessageProxySChain.is_string() )
             throw std::runtime_error(
-                "error config.json file, bad type of value in "
+                "error in config.json file, bad type of value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxySChain\"" );
         std::string strAddressImaMessageProxySChain =
             joAddressImaMessageProxySChain.get< std::string >();
         if ( strAddressImaMessageProxySChain.empty() )
             throw std::runtime_error(
-                "error config.json file, bad EMPTY value in "
+                "error in config.json file, bad EMPTY value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxySChain\"" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Using " ) + cc::notice( "IMA Message Proxy/S-Chain" ) +
@@ -1447,19 +1447,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         if ( joSkaleConfig_nodeInfo.count( "imaMessageProxyMainNet" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxyMainNet\"" );
         const nlohmann::json& joAddressImaMessageProxyMainNet =
             joSkaleConfig_nodeInfo["imaMessageProxyMainNet"];
         if ( !joAddressImaMessageProxyMainNet.is_string() )
             throw std::runtime_error(
-                "error config.json file, bad type of value in "
+                "error in config.json file, bad type of value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxyMainNet\"" );
         std::string strAddressImaMessageProxyMainNet =
             joAddressImaMessageProxyMainNet.get< std::string >();
         if ( strAddressImaMessageProxyMainNet.empty() )
             throw std::runtime_error(
-                "error config.json file, bad EMPTY value in "
+                "error in config.json file, bad EMPTY value in "
                 "\"skaleConfig\"/\"nodeInfo\"/\"imaMessageProxyMainNet\"" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Using " ) + cc::notice( "IMA Message Proxy/MainNet" ) +
@@ -1471,19 +1471,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         // if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressSChain" ) == 0 )
         //    throw std::runtime_error(
-        //        "error config.json file, cannot find "
+        //        "error in config.json file, cannot find "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
         // const nlohmann::json& joAddressimaCallerAddressSChain =
         //    joSkaleConfig_nodeInfo["imaCallerAddressSChain"];
         // if ( !joAddressimaCallerAddressSChain.is_string() )
         //    throw std::runtime_error(
-        //        "error config.json file, bad type of value in "
+        //        "error in config.json file, bad type of value in "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
         // std::string strImaCallerAddressSChain =
         //    joAddressimaCallerAddressSChain.get< std::string >();
         // if ( strImaCallerAddressSChain.empty() )
         //    throw std::runtime_error(
-        //        "error config.json file, bad empty value in "
+        //        "error in config.json file, bad empty value in "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressSChain\"" );
         // clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::notice( "IMA S-Chain caller" )
         //          + cc::debug( " address is " ) + cc::info( strImaCallerAddressSChain ) );
@@ -1492,19 +1492,19 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         // if ( joSkaleConfig_nodeInfo.count( "imaCallerAddressMainNet" ) == 0 )
         //    throw std::runtime_error(
-        //        "error config.json file, cannot find "
+        //        "error in config.json file, cannot find "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
         // const nlohmann::json& joAddressimaCallerAddressMainNet =
         //    joSkaleConfig_nodeInfo["imaCallerAddressMainNet"];
         // if ( !joAddressimaCallerAddressMainNet.is_string() )
         //    throw std::runtime_error(
-        //        "error config.json file, bad type of value in "
+        //        "error in config.json file, bad type of value in "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
         // std::string strImaCallerAddressMainNet =
         //    joAddressimaCallerAddressMainNet.get< std::string >();
         // if ( strImaCallerAddressMainNet.empty() )
         //    throw std::runtime_error(
-        //        "error config.json file, bad empty value in "
+        //        "error in config.json file, bad empty value in "
         //        "\"skaleConfig\"/\"nodeInfo\"/\"imaCallerAddressMainNet\"" );
         // clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::notice( "IMA S-Chain caller" )
         //          + cc::debug( " address is " ) + cc::info( strImaCallerAddressMainNet ) );
@@ -1535,25 +1535,25 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         //
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
         if ( joSkaleConfig.count( "sChain" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"sChain\"" );
         const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
         if ( joSkaleConfig_sChain.count( "schainName" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"sChain\"/\"schainName\"" );
         std::string strSChainName = joSkaleConfig_sChain["schainName"].get< std::string >();
         //
@@ -1778,7 +1778,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 "";
         if ( keyShareName.empty() )
             throw std::runtime_error(
-                "error config.json file, cannot find valid value for "
+                "error in config.json file, cannot find valid value for "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"keyShareName\" parameter" );
         //
         //
@@ -4450,20 +4450,20 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
-                "error config.json file, cannot find "
+                "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
@@ -4514,7 +4514,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
                 "";
         if ( keyShareName.empty() )
             throw std::runtime_error(
-                "error config.json file, cannot find valid value for "
+                "error in config.json file, cannot find valid value for "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"keyShareName\" parameter" );
         //
         // compute hash of u256 value

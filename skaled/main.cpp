@@ -70,6 +70,7 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
+#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
@@ -332,6 +333,7 @@ static void stat_handle_stop_actions() {
         return;
     g_bStopActionsStarted = true;
     std::thread( [&]() {
+        skale::network::browser::refreshing_stop();
         /*
         if ( g_jsonrpcIpcServer.get() ) {
             std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
@@ -2922,6 +2924,8 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
+    skale::network::browser::refreshing_start( configPath.string() );
+
     dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
@@ -2932,6 +2936,9 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
+
+    skale::network::browser::refreshing_stop();
+
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );

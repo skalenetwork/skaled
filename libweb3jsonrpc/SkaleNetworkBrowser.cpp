@@ -2,14 +2,20 @@
 
 #include <json.hpp>
 
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <sstream>
 
 #include <stdlib.h>
 
 #include <skutils/console_colors.h>
+#include <skutils/dispatch.h>
 #include <skutils/eth_utils.h>
+#include <skutils/multithreading.h>
 #include <skutils/rest_call.h>
 #include <skutils/task_performance.h>
+#include <skutils/utils.h>
 
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonJS.h>
@@ -658,6 +664,197 @@ nlohmann::json to_json( const vec_s_chains_t& vec ) {
         jarr.push_back( to_json( s_chain ) );
     }
     return jarr;
+}
+
+static std::recursive_mutex g_mtx;
+static const char g_queue_id[] = "skale-network-browser";
+static skutils::dispatch::job_id_t g_idDispatchJob;
+static std::shared_ptr< skutils::json_config_file_accessor > g_json_config_file_accessor;
+static nlohmann::json g_last_cached = nlohmann::json::array();
+
+nlohmann::json refreshing_cached() {
+    nlohmann::json jo;
+    {  // block
+        std::lock_guard lock( g_mtx );
+        jo = g_last_cached;
+    }  // block
+    return jo;
+}
+
+bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
+    const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
+    try {
+        vec_s_chains_t vec = load_schains( u, addressFrom, addressSchainsInternal, addressNodes );
+        nlohmann::json jarr = to_json( vec );
+        std::lock_guard lock( g_mtx );
+        g_last_cached = jarr;
+        std::cout << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " cached data: " ) +
+                       cc::j( jarr ) + "\n" );
+        return true;
+    } catch ( std::exception& ex ) {
+        std::string strErrorDescription = ex.what();
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
+                       cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) + "\n" );
+    } catch ( ... ) {
+        std::string strErrorDescription = "unknown exception";
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
+                       cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) + "\n" );
+    }
+    std::lock_guard lock( g_mtx );
+    return false;
+}
+
+bool refreshing_start( const std::string& configPath ) {
+    std::lock_guard lock( g_mtx );
+    refreshing_stop();
+    g_json_config_file_accessor.reset( new skutils::json_config_file_accessor( configPath ) );
+    if ( skutils::json_config_file_accessor::g_strImaMainNetURL.empty() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Main Net URL is unknown" ) + "\n" );
+        return false;
+    }
+    nlohmann::json joConfig = g_json_config_file_accessor->getConfigJSON();
+    if ( joConfig.count( "skaleConfig" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find \"skaleConfig\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+    if ( joSkaleConfig.count( "nodeInfo" ) == 0 ) {
+        std::cerr
+            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                   cc::error(
+                       " Error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" ) +
+                   "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+    if ( joSkaleConfig_nodeInfo.count( "skale-manager" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_nodeInfo_sm = joSkaleConfig_nodeInfo["skale-manager"];
+
+    if ( joSkaleConfig_nodeInfo_sm.count( "SchainsInternal" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error(
+                           " Error in config.json file, cannot find "
+                           "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"SchainsInternal\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_nodeInfo_sm_SchainsInternal =
+        joSkaleConfig_nodeInfo_sm["SchainsInternal"];
+    if ( !joSkaleConfig_nodeInfo_sm_SchainsInternal.is_string() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/"
+                                  "\"SchainsInternal\" as string value" ) +
+                       "\n" );
+        return false;
+    }
+    if ( joSkaleConfig_nodeInfo_sm.count( "Nodes" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"Nodes\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_nodeInfo_sm_NodesInternal =
+        joSkaleConfig_nodeInfo_sm["Nodes"];
+    if ( !joSkaleConfig_nodeInfo_sm_NodesInternal.is_string() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"Nodes\" as "
+                                  "string value" ) +
+                       "\n" );
+        return false;
+    }
+    if ( joSkaleConfig.count( "sChain" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error(
+                           " Error in config.json file, cannot find \"skaleConfig\"/\"sChain\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
+    if ( joSkaleConfig_sChain.count( "schainOwner" ) == 0 ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"sChain\"\"schainOwner\"" ) +
+                       "\n" );
+        return false;
+    }
+    const nlohmann::json& joSkaleConfig_sChain_schainOwner = joSkaleConfig_sChain["schainOwner"];
+    if ( !joSkaleConfig_sChain_schainOwner.is_string() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"sChain\"\"schainOwner\" as string value" ) +
+                       "\n" );
+        return false;
+    }
+    size_t nIntervalSeconds = 15 * 60;
+    if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-refresh" ) > 0 ) {
+        const nlohmann::json& joSkaleConfig_nodeInfo_refresh =
+            joSkaleConfig_nodeInfo["skale-network-browser-refresh"];
+        if ( joSkaleConfig_nodeInfo_refresh.is_number() )
+            nIntervalSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
+    }
+    const std::string strAddressFrom =
+        skutils::tools::trim_copy( joSkaleConfig_sChain_schainOwner.get< std::string >() );
+    const std::string strAddressSchainsInternal =
+        skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
+    const std::string strAddressNodes =
+        skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_NodesInternal.get< std::string >() );
+    if ( strAddressFrom.empty() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error(
+                           " Error in config.json file, cannot find "
+                           "\"skaleConfig\"/\"sChain\"\"schainOwner\" as non-empty string value" ) +
+                       "\n" );
+        return false;
+    }
+    if ( strAddressSchainsInternal.empty() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/"
+                                  "\"SchainsInternal\" as non-empty string value" ) +
+                       "\n" );
+        return false;
+    }
+    if ( strAddressNodes.empty() ) {
+        std::cerr << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                       cc::error( " Error in config.json file, cannot find "
+                                  "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"Nodes\" as "
+                                  "non-empty string value" ) +
+                       "\n" );
+        return false;
+    }
+    const skutils::url u( skutils::json_config_file_accessor::g_strImaMainNetURL );
+    const dev::u256 addressFrom( strAddressFrom );
+    const dev::u256 addressSchainsInternal( strAddressSchainsInternal );
+    const dev::u256 addressNodes( strAddressNodes );
+    stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
+    skutils::dispatch::repeat( g_queue_id,
+        [=]() -> void { stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes ); },
+        skutils::dispatch::duration_from_seconds( nIntervalSeconds ), &g_idDispatchJob );
+    return true;
+}
+
+void refreshing_stop() {
+    std::lock_guard lock( g_mtx );
+    if ( !g_idDispatchJob.empty() ) {
+        skutils::dispatch::stop( g_idDispatchJob );
+        g_idDispatchJob.clear();
+    }
+    if ( g_json_config_file_accessor )
+        g_json_config_file_accessor.reset();
 }
 
 
