@@ -75,6 +75,14 @@ public:
         else
             block_gas_prices[_blockId] = _gasPrice;
     }
+
+    uint64_t submitOracleRequest(string _spec, string& _receipt) {
+        return 0;
+    }
+
+    uint64_t checkOracleResult(string& _receipt, string& _result) {
+        return 0;
+    }
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
