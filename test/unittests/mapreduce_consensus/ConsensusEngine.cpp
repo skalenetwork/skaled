@@ -112,7 +112,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             sleep(1);
@@ -213,7 +213,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();

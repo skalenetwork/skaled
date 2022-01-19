@@ -200,10 +200,11 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      m_gethURL( _gethURL ),
       total_sent( 0 ),
       total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -240,7 +241,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), m_gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }
