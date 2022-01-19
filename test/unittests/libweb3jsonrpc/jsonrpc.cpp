@@ -214,7 +214,7 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -256,6 +256,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // TODO: better make it use ethemeral in-memory databases
             chainParams.extraData = h256::random().asBytes();
         }
+        chainParams.sChain.multiTransactionMode = _mtmEnabled;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -2479,6 +2480,40 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
     BOOST_REQUIRE_EQUAL( balance, 16 );
+}
+
+BOOST_AUTO_TEST_CASE( mtm_import_sequential_txs ) {
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    Json::Value txJson;
+    txJson["from"] = fixture.coinbase.address().hex();
+    txJson["gas"] = "100000";
+
+    txJson["nonce"] = "0";
+    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+    Transaction tx1( ts1, ar1.second );
+
+    txJson["nonce"] = "1";
+    TransactionSkeleton ts2 = toTransactionSkeleton( txJson );
+    ts2 = fixture.client->populateTransactionWithDefaults( ts2 );
+    pair< bool, Secret > ar2 = fixture.accountHolder->authenticate( ts2 );
+    Transaction tx2( ts2, ar2.second );
+
+    txJson["nonce"] = "2";
+    TransactionSkeleton ts3 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts3 );
+    pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
+    Transaction tx3( ts3, ar3.second );
+
+    h256 h1 = fixture.client->importTransaction( tx1 );
+    h256 h2 = fixture.client->importTransaction( tx2 );
+    h256 h3 = fixture.client->importTransaction( tx3 );
+    BOOST_REQUIRE( h1 );
+    BOOST_REQUIRE( h2 );
+    BOOST_REQUIRE( h3 );
 }
 
 // TODO: Enable for multitransaction mode checking
