@@ -30,7 +30,7 @@ public:
         return counter != 0;
     }
 
-    static std::chrono::system_clock::duration getTotalTime() {
+    static std::chrono::high_resolution_clock::duration getTotalTime() {
         assert( !isActive() );
         return total_time;
     }
