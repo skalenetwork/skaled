@@ -241,7 +241,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), m_gethURL );
+    m_consensus->parseFullConfigAndCreateNode(
+        m_client.chainParams().getOriginalJson(), m_gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }

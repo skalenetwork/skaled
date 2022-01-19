@@ -105,7 +105,8 @@ public:
     };
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
-        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr, const std::string& _gethURL = "" );
+        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
+        const std::string& _gethURL = "" );
     virtual ~SkaleHost();
 
     void startWorking();
