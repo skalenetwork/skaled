@@ -39,7 +39,7 @@ class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:
     ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot );
     ~ConsensusStub() override;
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override;
+    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, string& _gethURL ) override;
     void startAll() override;
     void bootStrapAll() override;
     void exitGracefully() override;
