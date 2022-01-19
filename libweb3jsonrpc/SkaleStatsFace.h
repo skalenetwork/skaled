@@ -49,6 +49,14 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaTxnListAll",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_imaTxnListAllI );
+
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_browseEntireNetwork",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_browseEntireNetworkI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_cachedEntireNetwork",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleStatsFace::skale_cachedEntireNetworkI );
     }
 
     inline virtual void skale_statsI( const Json::Value& request, Json::Value& response ) {
@@ -94,6 +102,16 @@ public:
         response = this->skale_imaTxnListAll( request );
     }
 
+    inline virtual void skale_browseEntireNetworkI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_browseEntireNetwork( request );
+    }
+    inline virtual void skale_cachedEntireNetworkI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_cachedEntireNetwork( request );
+    }
+
+
     virtual Json::Value skale_stats() = 0;
     virtual Json::Value skale_nodesRpcInfo() = 0;
     virtual Json::Value skale_imaInfo() = 0;
@@ -106,6 +124,9 @@ public:
     virtual Json::Value skale_imaTxnClear( const Json::Value& request ) = 0;
     virtual Json::Value skale_imaTxnFind( const Json::Value& request ) = 0;
     virtual Json::Value skale_imaTxnListAll( const Json::Value& request ) = 0;
+
+    virtual Json::Value skale_browseEntireNetwork( const Json::Value& request ) = 0;
+    virtual Json::Value skale_cachedEntireNetwork( const Json::Value& request ) = 0;
 };  /// class SkaleStatsFace
 
 }  // namespace rpc

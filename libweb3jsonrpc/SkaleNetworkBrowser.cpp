@@ -670,6 +670,7 @@ static std::recursive_mutex g_mtx;
 static const char g_queue_id[] = "skale-network-browser";
 static skutils::dispatch::job_id_t g_idDispatchJob;
 static std::shared_ptr< skutils::json_config_file_accessor > g_json_config_file_accessor;
+static skutils::dispatch::job_t g_dispatch_job;
 static vec_s_chains_t g_last_cached;
 
 vec_s_chains_t refreshing_cached() {
@@ -841,8 +842,10 @@ bool refreshing_start( const std::string& configPath ) {
     const dev::u256 addressSchainsInternal( strAddressSchainsInternal );
     const dev::u256 addressNodes( strAddressNodes );
     stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
-    skutils::dispatch::repeat( g_queue_id,
-        [=]() -> void { stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes ); },
+    g_dispatch_job = [=]() -> void {
+        stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
+    };
+    skutils::dispatch::repeat( g_queue_id, g_dispatch_job,
         skutils::dispatch::duration_from_seconds( nIntervalSeconds ), &g_idDispatchJob );
     return true;
 }
@@ -855,6 +858,14 @@ void refreshing_stop() {
     }
     if ( g_json_config_file_accessor )
         g_json_config_file_accessor.reset();
+    g_dispatch_job = skutils::dispatch::job_t();  // clear
+}
+
+vec_s_chains_t refreshing_do_now() {
+    std::lock_guard lock( g_mtx );
+    if ( ( !g_idDispatchJob.empty() ) && g_json_config_file_accessor && g_dispatch_job )
+        g_dispatch_job();
+    return refreshing_cached();
 }
 
 skutils::url refreshing_pick_s_chain_url( const std::string& strSChainName ) {

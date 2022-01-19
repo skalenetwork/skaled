@@ -74,6 +74,8 @@ bool refreshing_start( const std::string& configPath );
 
 void refreshing_stop();
 
+vec_s_chains_t refreshing_do_now();
+
 skutils::url refreshing_pick_s_chain_url( const std::string& strSChainName );
 
 }  // namespace browser

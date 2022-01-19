@@ -4969,5 +4969,71 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
     }
 }
 
+Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "BROWSE SKALE NETWORK" );
+    try {
+        skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_do_now();
+        nlohmann::json jo = skale::network::browser::to_json( vec );
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "CACHED SKALE NETWORK" );
+    try {
+        skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_cached();
+        nlohmann::json jo = skale::network::browser::to_json( vec );
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
 };  // namespace rpc
 };  // namespace dev
