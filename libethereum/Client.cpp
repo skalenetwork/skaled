@@ -1288,5 +1288,23 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
+std::string Client::submitOracleRequest( const string& _spec ) {
+    string receipt = "";
+    if ( m_skaleHost )
+        receipt = m_skaleHost->submitOracleRequest( _spec, receipt ); 
+    else
+        cerror << "Instance of SkaleHost was not properly created.";
+    return receipt;
+}
+
+std::string Client::checkOracleResult( string& _receipt ) {
+    string result = "";
+    if ( m_skaleHost )
+        result = m_skaleHost->checkOracleResult( _receipt, result ); 
+    else
+        cerror << "Instance of SkaleHost was not properly created.";
+    return result;
+}
+
 const dev::h256 Client::empty_str_hash =
     dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

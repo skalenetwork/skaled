@@ -301,6 +301,9 @@ public:
         return this->snapshot_hash_calculation_time_ms;
     }
 
+    std::string submitOracleRequest( const std::string& _spec );
+    std::string checkOracleResult( std::string& _receipt );
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
