@@ -1612,10 +1612,12 @@ int main( int argc, char** argv ) try {
     }
 
     if ( time( NULL ) < startTimestamp ) {
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
         std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, false );
     }
 
     if ( loggingOptions.verbosity > 0 )
