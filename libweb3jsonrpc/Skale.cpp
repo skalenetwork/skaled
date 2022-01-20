@@ -450,6 +450,32 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+Json::Value Skale::oracle_submitOracleRequest( const Json::Value& request ) {
+    try {
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        std::string strResponse = this->m_client.submitOracleRequest(strRequest);
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
+Json::Value Skale::oracle_checkOracleResult( const Json::Value& request ) {
+    try {
+        Json::FastWriter fastWriter;
+        std::string strRequest = fastWriter.write( request );
+        std::string strResponse = this->m_client.checkOracleResult(strRequest);
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
