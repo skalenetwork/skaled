@@ -42,22 +42,27 @@ void StatusAndControlFile::on_change() {
        \"subsystemRunning\":{\n\
            \"SnapshotDownloader\": "
             << ( isSubsystemRunning( SnapshotDownloader ) ? "true" : "false" ) << ",\n\
-           \"WaitingForTimestamp\": "
-            << ( isSubsystemRunning( WaitingForTimestamp ) ? "true" : "false" ) << ",\n\
            \"Blockchain\": "
             << ( isSubsystemRunning( Blockchain ) ? "true" : "false" ) << ",\n\
            \"Rpc\": "
             << ( isSubsystemRunning( Rpc ) ? "true" : "false" ) << "\n\
        },\n\
        \"exitState\":{\n\
+<<<<<<< HEAD
+           \"ClearDataDir\": " << (getExitState(ClearDataDir)?"true":"false") << ",\n\
+           \"StartAgain\": " << (getExitState(StartAgain)?"true":"false") << ",\n\
+           \"StartFromSnapshot\": " << (getExitState(StartFromSnapshot)?"true":"false") << ",\n\
+           \"ExitTimeReached\": " << (getExitState(ExitTimeReached)?"true":"false") << "\n\
+=======
            \"ClearDataDir\": "
             << ( getExitState( ClearDataDir ) ? "true" : "false" ) << ",\n\
            \"StartAgain\": "
             << ( getExitState( StartAgain ) ? "true" : "false" ) << ",\n\
            \"StartFromSnapshot\": "
-            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << ",\n\
+            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << "\n\
            \"ExitTimeReached\": "
             << ( getExitState( ExitTimeReached ) ? "true" : "false" ) << "\n\
+>>>>>>> develop
        }\n\
     }\n";
     }
