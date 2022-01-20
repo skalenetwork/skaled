@@ -1270,6 +1270,38 @@ void Client::initHashes() {
     LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
 }
 
+void Client::initIMABLSPublicKey() {
+    if ( number() == 0 ) {
+        return;
+    }
+
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+
+    // always returns it != end() because current finish ts equals to uint64_t(-1)
+    auto it = std::find_if( chainParams().sChain.nodeGroups.begin(),
+        chainParams().sChain.nodeGroups.end(),
+        [&currentBlockTimestamp](
+            const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
+    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it != chainParams().sChain.nodeGroups.begin() ) {
+        auto prevIt = std::prev( it );
+        if ( currentBlockTimestamp >= prevIt->finishTs &&
+             previousBlockTimestamp < prevIt->finishTs )
+            it = prevIt;
+    }
+
+    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+}
+
+void Client::updateIMABLSPublicKey() {
+    uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    if ( blockTimestamp >= currentFinishTs )
+        ++imaBLSPublicKeyGroupIndex;
+}
+
 // new block watch
 unsigned Client::installNewBlockWatch(
     std::function< void( const unsigned&, const Block& ) >& fn ) {

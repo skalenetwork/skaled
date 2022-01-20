@@ -301,6 +301,10 @@ public:
         return this->snapshot_hash_calculation_time_ms;
     }
 
+    std::array< std::string, 4 > getIMABLSPublicKey() const {
+        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+    }
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
@@ -510,6 +514,11 @@ private:
 
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
+
+    void initIMABLSPublicKey();
+    void updateIMABLSPublicKey();
+
+    unsigned imaBLSPublicKeyGroupIndex = 0;
 
 public:
     FILE* performance_fd;
