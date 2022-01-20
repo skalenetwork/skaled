@@ -77,12 +77,14 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 
     inline virtual void oracle_submitOracleRequestI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->oracle_submitOracleRequest( request );
+        std::string strRequest = request[0u].asString();
+        response = this->oracle_submitOracleRequest( strRequest );
     }
 
     inline virtual void oracle_checkOracleResultI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->oracle_checkOracleResult( request );
+        std::string receipt = request[0u].asString();
+        response = this->oracle_checkOracleResult( receipt );
     }
 
     virtual std::string skale_protocolVersion() = 0;
@@ -93,8 +95,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
-    virtual Json::Value oracle_submitOracleRequest( const Json::Value& request ) = 0;
-    virtual Json::Value oracle_checkOracleResult( const Json::Value& request ) = 0;
+    virtual std::string oracle_submitOracleRequest( std::string& request ) = 0;
+    virtual std::string oracle_checkOracleResult( std::string& receipt ) = 0;
 
 public:
     SkaleFace() {

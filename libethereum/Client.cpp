@@ -1291,7 +1291,7 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
 std::string Client::submitOracleRequest( const string& _spec ) {
     string receipt = "";
     if ( m_skaleHost )
-        receipt = m_skaleHost->submitOracleRequest( _spec, receipt ); 
+        m_skaleHost->submitOracleRequest( _spec, receipt ); 
     else
         cerror << "Instance of SkaleHost was not properly created.";
     return receipt;
@@ -1300,7 +1300,7 @@ std::string Client::submitOracleRequest( const string& _spec ) {
 std::string Client::checkOracleResult( string& _receipt ) {
     string result = "";
     if ( m_skaleHost )
-        result = m_skaleHost->checkOracleResult( _receipt, result ); 
+        m_skaleHost->checkOracleResult( _receipt, result ); 
     else
         cerror << "Instance of SkaleHost was not properly created.";
     return result;

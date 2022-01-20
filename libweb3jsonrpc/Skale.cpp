@@ -450,27 +450,17 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
-Json::Value Skale::oracle_submitOracleRequest( const Json::Value& request ) {
+std::string Skale::oracle_submitOracleRequest( std::string& request ) {
     try {
-        Json::FastWriter fastWriter;
-        std::string strRequest = fastWriter.write( request );
-        std::string strResponse = this->m_client.submitOracleRequest(strRequest);
-        Json::Value response;
-        Json::Reader().parse( strResponse, response );
-        return response;
+        return this->m_client.submitOracleRequest( request );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
 }
 
-Json::Value Skale::oracle_checkOracleResult( const Json::Value& request ) {
+std::string Skale::oracle_checkOracleResult( std::string& receipt ) {
     try {
-        Json::FastWriter fastWriter;
-        std::string strRequest = fastWriter.write( request );
-        std::string strResponse = this->m_client.checkOracleResult(strRequest);
-        Json::Value response;
-        Json::Reader().parse( strResponse, response );
-        return response;
+        return this->m_client.checkOracleResult( receipt );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
