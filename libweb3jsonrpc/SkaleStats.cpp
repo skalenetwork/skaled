@@ -1607,46 +1607,46 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::notice( "Start message index" ) + cc::debug( " is " ) +
                    cc::size10( nStartMessageIdx ) );
         //
-        if ( joRequest.count( "srcChainID" ) == 0 )
-            throw std::runtime_error( "missing \"messages\"/\"srcChainID\" in call parameters" );
-        const nlohmann::json& joSrcChainID = joRequest["srcChainID"];
-        if ( !joSrcChainID.is_string() )
+        if ( joRequest.count( "srcChainName" ) == 0 )
+            throw std::runtime_error( "missing \"messages\"/\"srcChainName\" in call parameters" );
+        const nlohmann::json& joSrcChainName = joRequest["srcChainName"];
+        if ( !joSrcChainName.is_string() )
             throw std::runtime_error(
-                "bad value type of \"messages\"/\"srcChainID\" must be string" );
-        const std::string strSrcChainID = joSrcChainID.get< std::string >();
-        if ( strSrcChainID.empty() )
+                "bad value type of \"messages\"/\"srcChainName\" must be string" );
+        const std::string strSrcChainName = joSrcChainName.get< std::string >();
+        if ( strSrcChainName.empty() )
             throw std::runtime_error(
-                "value of \"messages\"/\"dstChainID\" must be non-EMPTY string" );
-        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::notice( "Source Chain ID" ) +
-                                           cc::debug( " is " ) + cc::info( strSrcChainID ) );
+                "value of \"messages\"/\"srcChainName\" must be non-EMPTY string" );
+        clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + " " + cc::notice( "Source Chain Name" ) +
+                                           cc::debug( " is " ) + cc::info( strSrcChainName ) );
         //
-        if ( joRequest.count( "dstChainID" ) == 0 )
-            throw std::runtime_error( "missing \"messages\"/\"dstChainID\" in call parameters" );
-        const nlohmann::json& joDstChainID = joRequest["dstChainID"];
-        if ( !joDstChainID.is_string() )
+        if ( joRequest.count( "dstChainName" ) == 0 )
+            throw std::runtime_error( "missing \"messages\"/\"dstChainName\" in call parameters" );
+        const nlohmann::json& joDstChainName = joRequest["dstChainName"];
+        if ( !joDstChainName.is_string() )
             throw std::runtime_error(
-                "bad value type of \"messages\"/\"dstChainID\" must be string" );
-        const std::string strDstChainID = joDstChainID.get< std::string >();
-        if ( strDstChainID.empty() )
+                "bad value type of \"messages\"/\"dstChainName\" must be string" );
+        const std::string strDstChainName = joDstChainName.get< std::string >();
+        if ( strDstChainName.empty() )
             throw std::runtime_error(
-                "value of \"messages\"/\"dstChainID\" must be non-EMPTY string" );
+                "value of \"messages\"/\"dstChainName\" must be non-EMPTY string" );
         clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + " " + cc::notice( "Destination Chain ID" ) + cc::debug( " is " ) +
-                   cc::info( strDstChainID ) );
+            << ( strLogPrefix + " " + cc::notice( "Destination Chain Name" ) + cc::debug( " is " ) +
+                   cc::info( strDstChainName ) );
         //
-        std::string strDstChainID_hex_32;
+        std::string strDstChainName_hex_32;
         size_t tmp = 0;
-        for ( const char& c : strDstChainID ) {
-            strDstChainID_hex_32 += skutils::tools::format( "%02x", int( c ) );
+        for ( const char& c : strDstChainName ) {
+            strDstChainName_hex_32 += skutils::tools::format( "%02x", int( c ) );
             ++tmp;
             if ( tmp == 32 )
                 break;
         }
         while ( tmp < 32 ) {
-            strDstChainID_hex_32 += "00";
+            strDstChainName_hex_32 += "00";
             ++tmp;
         }
-        dev::u256 uDestinationChainID_32_max( "0x" + strDstChainID_hex_32 );
+        dev::u256 uDestinationChainID_32_max( "0x" + strDstChainName_hex_32 );
         //
         if ( joRequest.count( "messages" ) == 0 )
             throw std::runtime_error( "missing \"messages\" in call parameters" );
@@ -1661,9 +1661,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             << ( strLogPrefix + cc::debug( " Composing summary message to sign from " ) +
                    cc::size10( cntMessagesToSign ) +
                    cc::debug( " message(s), IMA index of first message is " ) +
-                   cc::size10( nStartMessageIdx ) + cc::debug( ", src chain id is " ) +
-                   cc::info( strSrcChainID ) + cc::debug( ", dst chain id is " ) +
-                   cc::info( strDstChainID ) + cc::debug( "(" ) +
+                   cc::size10( nStartMessageIdx ) + cc::debug( ", src chain name is " ) +
+                   cc::info( strSrcChainName ) + cc::debug( ", dst chain name is " ) +
+                   cc::info( strDstChainName ) + cc::debug( "(" ) +
                    cc::info( dev::toJS( uDestinationChainID_32_max ) ) + cc::debug( ")..." ) );
         //
         //
@@ -3161,7 +3161,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 dev::toJS( dev::sha3( strSignature_event_OutgoingMessage ) );
             static const dev::u256 uTopic_event_OutgoingMessage( strTopic_event_OutgoingMessage );
             //
-            const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainID ) );
+            const std::string strTopic_dstChainHash = dev::toJS( dev::sha3( strDstChainName ) );
             const dev::u256 uTopic_dstChainHash( strTopic_dstChainHash );
             static const size_t nPaddoingZeroesForUint256 = 64;
             const std::string strTopic_msgCounter =
