@@ -450,7 +450,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
-std::string Skale::oracle_submitOracleRequest( std::string& request ) {
+std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
         std::string receipt;
         uint64_t status = this->m_client.submitOracleRequest( request, receipt );
@@ -464,7 +464,7 @@ std::string Skale::oracle_submitOracleRequest( std::string& request ) {
     }
 }
 
-std::string Skale::oracle_checkOracleResult( std::string& receipt ) {
+std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
         std::string result;
         uint64_t status = this->m_client.checkOracleResult( receipt, result );
