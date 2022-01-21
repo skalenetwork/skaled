@@ -857,6 +857,10 @@ u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
 
+std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
+    return m_client.getIMABLSPublicKey();
+}
+
 void SkaleHost::forceEmptyBlock() {
     assert( !this->emptyBlockIntervalMsForRestore.has_value() );
     this->emptyBlockIntervalMsForRestore = this->m_consensus->getEmptyBlockIntervalMs();

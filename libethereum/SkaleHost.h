@@ -121,6 +121,7 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    std::array< std::string, 4 > getIMABLSPublicKey() const;
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {

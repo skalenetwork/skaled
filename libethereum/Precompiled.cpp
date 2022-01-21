@@ -1036,6 +1036,31 @@ ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
     return {false, response};  // 1st false - means bad error occur
 }
 
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
+    try {
+        if ( !g_skaleHost )
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        auto imaBLSPublicKey = g_skaleHost->getIMABLSPublicKey();
+        bytes response = toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[3] ) );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getIMABLSPublicKey(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getIMABLSPublicKey()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
 // ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
 //    try {
 //        auto rawValue = _in.cropped( 0, 32 ).toBytes();
