@@ -250,6 +250,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         this->initHashes();
     }
 
+    if ( ChainParams().sChain.nodeGroups.size() > 0 )
+        initIMABLSPublicKey();
+
     doWork( false );
 }
 
@@ -567,6 +570,8 @@ size_t Client::importTransactionsAsBlock(
                         << cc::success( " missing" );
         LOG( m_logger ).flush();
     }
+
+    updateIMABLSPublicKey();
 
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
