@@ -452,7 +452,13 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
 std::string Skale::oracle_submitOracleRequest( std::string& request ) {
     try {
-        return this->m_client.submitOracleRequest( request );
+        std::string receipt;
+        uint64_t status = this->m_client.submitOracleRequest( request, receipt );
+        if ( status != 0 ) {
+            throw std::runtime_error(
+                skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return receipt;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
@@ -460,7 +466,18 @@ std::string Skale::oracle_submitOracleRequest( std::string& request ) {
 
 std::string Skale::oracle_checkOracleResult( std::string& receipt ) {
     try {
-        return this->m_client.checkOracleResult( receipt );
+        std::string result;
+        uint64_t status = this->m_client.checkOracleResult( receipt, result );
+        switch ( status ) {
+        case 0:
+            break;
+        case 5:
+            throw std::runtime_error( "Oracle result is not ready" );
+        default:
+            throw std::runtime_error(
+                skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return result;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
