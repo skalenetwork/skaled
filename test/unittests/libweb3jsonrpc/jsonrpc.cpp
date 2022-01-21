@@ -2116,6 +2116,24 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
     BOOST_REQUIRE_THROW(fixture.rpcClient->setSchainExitTime(requestJson), jsonrpc::JsonRpcException);
 }
 
+BOOST_AUTO_TEST_CASE( oracle ) {
+    JsonRpcFixture fixture;
+    std::string receipt;
+    std::string result;
+    std::time_t current = std::time(nullptr);
+    std::string request = skutils::tools::format("{\"cid\":1,\"uri\":\"http://worldtimeapi.org/api/timezone/Europe/Kiev\",\"jsps\":[\"/unixtime\",\"/day_of_year\",\"/xxx\"],\"trims\":[1,1,1],\"time\":%zu000,\"pow\":1234}", current);
+    uint64_t status = fixture.client->submitOracleRequest(request, receipt);
+
+    BOOST_REQUIRE_EQUAL(status, 0);
+    BOOST_CHECK(receipt != "");
+
+    sleep(5);
+
+    uint64_t resultStatus = fixture.client->checkOracleResult(receipt, result);
+    BOOST_REQUIRE_EQUAL(resultStatus, 5);
+    BOOST_CHECK(result == "");
+}
+
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
 
