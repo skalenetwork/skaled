@@ -1170,7 +1170,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     ImportResult res;
     if ( chainParams().sChain.multiTransactionMode && 
-        state.getNonce( _t.sender() ) < _t.nonce() ) {
+        state.getNonce( _t.sender() ) < _t.nonce() &&
+        m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce()) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
