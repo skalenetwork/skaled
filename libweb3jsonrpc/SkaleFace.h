@@ -75,14 +75,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getLatestBlockNumber();
     }
 
-    inline virtual void oracle_submitRequestI(
-        const Json::Value& request, Json::Value& response ) {
+    inline virtual void oracle_submitRequestI( const Json::Value& request, Json::Value& response ) {
         std::string strRequest = request[0u].asString();
         response = this->oracle_submitRequest( strRequest );
     }
 
-    inline virtual void oracle_checkResultI(
-        const Json::Value& request, Json::Value& response ) {
+    inline virtual void oracle_checkResultI( const Json::Value& request, Json::Value& response ) {
         std::string receipt = request[0u].asString();
         response = this->oracle_checkResult( receipt );
     }

@@ -138,8 +138,7 @@ void OverlayDB::clearPartialTransactionReceipts() {
     setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
-void OverlayDB::commit(const std::string& _debugCommitId) {
-
+void OverlayDB::commit( const std::string& _debugCommitId ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
