@@ -124,6 +124,10 @@ public:
     /// @returns Max transaction nonce for account in the queue
     u256 maxNonce( Address const& _a ) const;
 
+    /// Get max nonce from current queue for an account
+    /// @returns Max transaction nonce for account in the queue
+    u256 maxCurrentNonce( Address const& _a ) const;
+
     /// Mark transaction as future. It wont be returned in topTransactions list until a transaction
     /// with a preceeding nonce is imported or marked with dropGood
     /// @param _t Transaction hash
@@ -153,6 +157,9 @@ public:
 
     /// @returns the transaction limits on current/future.
     Limits limits() const { return Limits{m_limit, m_futureLimit}; }
+
+    /// @returns the number of tx in future queue.
+    size_t futureSize() const { return m_futureSize; }
 
     /// Clear the queue
     void clear();
@@ -278,6 +285,7 @@ private:
     void makeCurrent_WITH_LOCK( Transaction const& _t );
     bool remove_WITH_LOCK( h256 const& _txHash );
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
+    u256 maxCurrentNonce_WITH_LOCK( Address const& _a ) const;
     void setFuture_WITH_LOCK( h256 const& _t );
     void verifierBody();
 

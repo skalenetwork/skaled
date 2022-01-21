@@ -2514,6 +2514,68 @@ BOOST_AUTO_TEST_CASE( mtm_import_sequential_txs ) {
     BOOST_REQUIRE( h1 );
     BOOST_REQUIRE( h2 );
     BOOST_REQUIRE( h3 );
+    BOOST_REQUIRE( fixture.client->transactionQueueStatus().current == 3);
+}
+
+BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    auto tq = fixture.client->debugGetTransactionQueue();
+
+    Json::Value txJson;
+    txJson["from"] = fixture.coinbase.address().hex();
+    txJson["gas"] = "100000";
+
+    txJson["nonce"] = "0";
+    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+    Transaction tx1( ts1, ar1.second );
+
+    txJson["nonce"] = "1";
+    TransactionSkeleton ts2 = toTransactionSkeleton( txJson );
+    ts2 = fixture.client->populateTransactionWithDefaults( ts2 );
+    pair< bool, Secret > ar2 = fixture.accountHolder->authenticate( ts2 );
+    Transaction tx2( ts2, ar2.second );
+
+    txJson["nonce"] = "2";
+    TransactionSkeleton ts3 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts3 );
+    pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
+    Transaction tx3( ts3, ar3.second );
+
+    txJson["nonce"] = "3";
+    TransactionSkeleton ts4 = toTransactionSkeleton( txJson );
+    ts4 = fixture.client->populateTransactionWithDefaults( ts4 );
+    pair< bool, Secret > ar4 = fixture.accountHolder->authenticate( ts4 );
+    Transaction tx4( ts4, ar4.second );
+
+    txJson["nonce"] = "4";
+    TransactionSkeleton ts5 = toTransactionSkeleton( txJson );
+    ts5 = fixture.client->populateTransactionWithDefaults( ts5 );
+    pair< bool, Secret > ar5 = fixture.accountHolder->authenticate( ts5 );
+    Transaction tx5( ts5, ar5.second );
+
+    h256 h1 = fixture.client->importTransaction( tx5 );
+    BOOST_REQUIRE( h1 );
+    BOOST_REQUIRE( tq->futureSize() == 1);
+
+    h256 h2 = fixture.client->importTransaction( tx3 );
+    BOOST_REQUIRE( h2 );
+    BOOST_REQUIRE( tq->futureSize() == 2);
+    h256 h3 = fixture.client->importTransaction( tx2 );
+    BOOST_REQUIRE( h3 );
+    BOOST_REQUIRE( tq->futureSize() == 3);
+
+    h256 h4 = fixture.client->importTransaction( tx1 );
+    BOOST_REQUIRE( h4 );
+    BOOST_REQUIRE( tq->futureSize() == 1);
+    BOOST_REQUIRE( tq->status().current == 3);
+
+    h256 h5 = fixture.client->importTransaction( tx4 );
+    BOOST_REQUIRE( h5 );
+    BOOST_REQUIRE( tq->futureSize() == 0);
+    BOOST_REQUIRE( tq->status().current == 5);
 }
 
 // TODO: Enable for multitransaction mode checking

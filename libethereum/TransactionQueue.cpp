@@ -241,6 +241,11 @@ u256 TransactionQueue::maxNonce( Address const& _a ) const {
     return maxNonce_WITH_LOCK( _a );
 }
 
+u256 TransactionQueue::maxCurrentNonce( Address const& _a ) const {
+    ReadGuard l( m_lock );
+    return maxCurrentNonce_WITH_LOCK( _a );
+}
+
 u256 TransactionQueue::maxNonce_WITH_LOCK( Address const& _a ) const {
     u256 ret = 0;
     auto cs = m_currentByAddressAndNonce.find( _a );
@@ -249,6 +254,14 @@ u256 TransactionQueue::maxNonce_WITH_LOCK( Address const& _a ) const {
     auto fs = m_future.find( _a );
     if ( fs != m_future.end() && !fs->second.empty() )
         ret = std::max( ret, fs->second.rbegin()->first + 1 );
+    return ret;
+}
+
+u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
+    u256 ret = 0;
+    auto cs = m_currentByAddressAndNonce.find( _a );
+    if ( cs != m_currentByAddressAndNonce.end() && !cs->second.empty() )
+        ret = cs->second.rbegin()->first + 1;
     return ret;
 }
 
