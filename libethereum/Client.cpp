@@ -1305,6 +1305,7 @@ void Client::updateIMABLSPublicKey() {
     uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
     if ( blockTimestamp >= currentFinishTs )
         ++imaBLSPublicKeyGroupIndex;
+    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
 }
 
 // new block watch
