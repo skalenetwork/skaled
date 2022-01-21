@@ -247,7 +247,7 @@ nlohmann::json server_side_request_handler::json_from_error_text(
     if ( strErrorDescription == nullptr || ( *strErrorDescription ) == '\0' )
         strErrorDescription = "unknown error";
     nlohmann::json jo = nlohmann::json::object();
-    jo["error"] = strErrorDescription;
+    jo["error"] = skutils::tools::safe_ascii( strErrorDescription );
     jo["id"] = joID;
     return jo;
 }
