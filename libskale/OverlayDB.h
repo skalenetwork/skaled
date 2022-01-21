@@ -69,7 +69,7 @@ public:
     void addReceiptToPartials( const dev::eth::TransactionReceipt& );
     void clearPartialTransactionReceipts();
 
-    void commit();
+    void commit(const std::string& _debugCommitId);
     void rollback();
     void clearDB();
     bool connected() const;
