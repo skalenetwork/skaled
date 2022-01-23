@@ -1289,20 +1289,16 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
 }
 
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
+    assert( m_skaleHost );
     uint64_t status = -1;
-    if ( m_skaleHost )
-        status = m_skaleHost->submitOracleRequest( _spec, _receipt );
-    else
-        cerror << "Instance of SkaleHost was not properly created.";
+    status = m_skaleHost->submitOracleRequest( _spec, _receipt );
     return status;
 }
 
 uint64_t Client::checkOracleResult( string& _receipt, string& _result ) {
+    assert( m_skaleHost );
     uint64_t status = -1;
-    if ( m_skaleHost )
-        status = m_skaleHost->checkOracleResult( _receipt, _result );
-    else
-        cerror << "Instance of SkaleHost was not properly created.";
+    status = m_skaleHost->checkOracleResult( _receipt, _result );
     return status;
 }
 
