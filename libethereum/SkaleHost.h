@@ -188,7 +188,6 @@ private:
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
-    const std::string& m_gethURL;
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};
