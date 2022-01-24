@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright (C) 2018-present, SKALE Labs
 
     This file is part of skaled.
@@ -166,16 +166,15 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
 }
 
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
-    std::vector< std::pair< uint64_t, std::vector< std::string > > > rh;
+    std::map< uint64_t, std::vector< std::string > > rh;
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
         std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
             nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
-        rh.push_back( {nodeGroup.finishTs, commonBLSPublicKey} );
+        rh[nodeGroup.finishTs] = commonBLSPublicKey;
     }
     try {
         consensus.setRotationHistory(
-            std::make_shared< std::vector< std::pair< uint64_t, std::vector< std::string > > > >(
-                rh ) );
+            std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
     } catch ( const std::exception& ex ) {
         std::throw_with_nested( ex.what() );
     } catch ( const boost::exception& ex ) {
