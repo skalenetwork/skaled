@@ -53,7 +53,7 @@ ConsensusStub::~ConsensusStub() {
     // TODO Auto-generated destructor stub
 }
 
-void ConsensusStub::parseFullConfigAndCreateNode( const std::string& ) {
+void ConsensusStub::parseFullConfigAndCreateNode( const std::string&, const std::string& ) {
     // TODO think this architecture thoroughly
 }
 
