@@ -243,6 +243,10 @@ ChainParams ChainParams::loadConfig(
                     nodeGroup.finishTs = uint64_t( -1 );
                 nodeGroups.push_back( nodeGroup );
             }
+            std::sort( nodeGroups.begin(), nodeGroups.end(),
+                []( const NodeGroup& lhs, const NodeGroup& rhs ) {
+                    return lhs.finishTs < rhs.finishTs;
+                } );
             s.nodeGroups = nodeGroups;
         }
 
