@@ -444,8 +444,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
     if ( vecMissing ) {
         assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
-    }
-    else{
+    } else {
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
     }

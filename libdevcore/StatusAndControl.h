@@ -7,7 +7,14 @@
 
 class StatusAndControl {
 public:
-    enum Subsystem { SnapshotDownloader, Blockchain, Rpc, Consensus, Snapshotting };
+    enum Subsystem {
+        SnapshotDownloader,
+        Blockchain,
+        Rpc,
+        Consensus,
+        Snapshotting,
+        WaitingForTimestamp
+    };
     enum ExitState { ClearDataDir, StartAgain, StartFromSnapshot, ExitTimeReached };
     enum ConsensusRunningState { None, WaitingForPeers, Bootstrapping, Operation };
 

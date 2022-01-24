@@ -72,6 +72,9 @@ public:
     std::string skale_getLatestSnapshotBlockNumber() override;
     std::string skale_getLatestBlockNumber() override;
 
+    std::string oracle_submitRequest( std::string& request ) override;
+    std::string oracle_checkResult( std::string& receipt ) override;
+
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
     static bool isShutdownNeeded();
