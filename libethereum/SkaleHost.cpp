@@ -200,7 +200,7 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -240,7 +240,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }
@@ -855,6 +855,14 @@ u256 SkaleHost::getGasPrice() const {
 
 u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
+}
+
+uint64_t SkaleHost::submitOracleRequest( const string& _spec, string& _receipt ) {
+    return m_consensus->submitOracleRequest( _spec, _receipt );
+}
+
+uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
+    return m_consensus->checkOracleResult( _receipt, _result );
 }
 
 void SkaleHost::forceEmptyBlock() {
