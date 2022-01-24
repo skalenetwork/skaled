@@ -1298,7 +1298,7 @@ uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     return status;
 }
 
-uint64_t Client::checkOracleResult( string& _receipt, string& _result ) {
+uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
     assert( m_skaleHost );
     uint64_t status = -1;
     if ( m_skaleHost )
