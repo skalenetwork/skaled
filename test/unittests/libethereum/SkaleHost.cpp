@@ -102,6 +102,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
+        chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
@@ -1027,6 +1028,14 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     u256 blockRandom = skaleHost->getBlockRandom();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
+    auto res = exec( bytesConstRef() );
+    std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

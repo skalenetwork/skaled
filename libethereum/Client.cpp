@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -1277,6 +1277,7 @@ void Client::initHashes() {
 
 void Client::initIMABLSPublicKey() {
     if ( number() == 0 ) {
+        imaBLSPublicKeyGroupIndex = 0;
         return;
     }
 

@@ -98,40 +98,7 @@ static std::string const c_genesisConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
-            "nodeGroups": {
-                "1": {
-                    "nodes": {
-                        "30": [
-                            0,
-                            30,
-                            "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
-                        ]
-                    },
-                    "finish_ts": null,
-                    "bls_public_key": {
-                        "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
-                        "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
-                        "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
-                        "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
-                    }
-                },
-                "0": {
-                    "nodes": {
-                        "26": [
-                            3,
-                            26,
-                            "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
-                        ]
-                    },
-                    "finish_ts": 1642515241,
-                    "bls_public_key": {
-                        "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
-                        "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
-                        "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
-                        "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
-                    }
-                }
-            },
+            "nodeGroups": {},
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
@@ -2521,17 +2488,6 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
     BOOST_REQUIRE_EQUAL( balance, 16 );
-}
-
-BOOST_AUTO_TEST_CASE( PrecompiledGetIMABLSPUblicKey ) {
-    JsonRpcFixture fixture(c_genesisConfigString, false, false);
-    dev::eth::simulateMining( *( fixture.client ), 20 );
-
-    Json::Value getIMABLSPublicKeyCall;
-    getIMABLSPublicKeyCall["data"] = "0x";
-    getIMABLSPublicKeyCall["to"] = "0000000000000000000000000000000000000007";
-
-    BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( getIMABLSPublicKeyCall, "latest" ) ) == 1 );
 }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
