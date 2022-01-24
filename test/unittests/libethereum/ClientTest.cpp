@@ -152,8 +152,6 @@ public:
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase} );
-
-        dev::eth::simulateMining( *( m_ethereum ), 10 );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -471,6 +469,8 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -508,6 +508,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -543,6 +545,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -582,6 +586,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xd40B3c51D0ECED279b1697DbdF45d4D19b872164
 
@@ -615,6 +621,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D3
@@ -657,6 +665,8 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
@@ -709,6 +719,8 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
 
@@ -758,6 +770,8 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
@@ -902,7 +916,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
                         "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
                     ]
                 },
-                "finish_ts": 1642515241,
+                "finish_ts": 4294967290,
                 "bls_public_key": {
                     "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
                     "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
@@ -935,12 +949,12 @@ BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
 
     std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
 
-//    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
+    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
 
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
     testClient->importTransactionsAsBlock(
-        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
+        Transactions(), 1000, 4294967294 );
 
     std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = { "10860211539819517237363395256510340030868592687836950245163587507107792195621", "2419969454136313127863904023626922181546178935031521540751337209075607503568", "3399776985251727272800732947224655319335094876742988846345707000254666193993", "16982202412630419037827505223148517434545454619191931299977913428346639096984" };
 
