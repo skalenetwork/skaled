@@ -76,11 +76,11 @@ public:
             block_gas_prices[_blockId] = _gasPrice;
     }
 
-    uint64_t submitOracleRequest(string _spec, string& _receipt) {
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
         return 0;
     }
 
-    uint64_t checkOracleResult(string& _receipt, string& _result) {
+    uint64_t checkOracleResult( const string& _receipt, string& _result) {
         return 0;
     }
 };

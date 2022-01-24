@@ -123,8 +123,8 @@ public:
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
 
-    uint64_t submitOracleRequest( string _spec, string& _receipt );
-    uint64_t checkOracleResult( string& _receipt, string& _result );
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
