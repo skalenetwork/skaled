@@ -1293,7 +1293,7 @@ uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     if ( m_skaleHost )
         status = m_skaleHost->submitOracleRequest( _spec, _receipt );
     else
-        cerror << "Instance of SkaleHost was not properly created.";
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
 }
 
@@ -1302,7 +1302,7 @@ uint64_t Client::checkOracleResult( string& _receipt, string& _result ) {
     if ( m_skaleHost )
         status = m_skaleHost->checkOracleResult( _receipt, _result );
     else
-        cerror << "Instance of SkaleHost was not properly created.";
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
 }
 

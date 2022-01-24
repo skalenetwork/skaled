@@ -455,12 +455,14 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         std::string receipt;
         uint64_t status = this->m_client.submitOracleRequest( request, receipt );
         if ( status != 0 ) {
-            throw std::runtime_error(
-                skutils::tools::format( "Oracle request failed with status %zu", status ) );
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
         return receipt;
-    } catch ( Exception const& ) {
-        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
     }
 }
 
@@ -472,14 +474,16 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         case 0:
             break;
         case 5:
-            throw std::runtime_error( "Oracle result is not ready" );
+            throw jsonrpc::JsonRpcException( status, "Oracle result is not ready" );
         default:
-            throw std::runtime_error(
-                skutils::tools::format( "Oracle request failed with status %zu", status ) );
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
         return result;
-    } catch ( Exception const& ) {
-        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
     }
 }
 
