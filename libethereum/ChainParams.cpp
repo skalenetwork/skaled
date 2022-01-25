@@ -212,8 +212,6 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        if ( sChainObj.count( "mainnetParameters") )
-
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
