@@ -48,6 +48,9 @@ set(sources
     SkaleStats.cpp
     SkaleStatsFace.h
     SkaleStatsSite.h
+
+    SkaleNetworkBrowser.h
+    SkaleNetworkBrowser.cpp
 )
 
 if(WIN32)
