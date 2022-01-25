@@ -138,9 +138,7 @@ void OverlayDB::clearPartialTransactionReceipts() {
     setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
-void OverlayDB::commit() {
-    static int debug_commit_counter = 0;
-
+void OverlayDB::commit( const std::string& _debugCommitId ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -189,7 +187,7 @@ void OverlayDB::commit() {
             }
 
             try {
-                m_db_face->commit( "OverlayDB_commit_" + std::to_string( ++debug_commit_counter ) );
+                m_db_face->commit( "OverlayDB_commit_" + _debugCommitId );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {

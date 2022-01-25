@@ -48,6 +48,9 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <libconsensus/SkaleCommon.h>
+#include <libconsensus/oracle/OracleRequestSpec.h>
+
 #include <cstdlib>
 
 // This is defined by some weird windows header - workaround for now.
@@ -2115,6 +2118,31 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
     Json::Value requestJson;
     requestJson["finishTime"] = 100;
     BOOST_REQUIRE_THROW(fixture.rpcClient->setSchainExitTime(requestJson), jsonrpc::JsonRpcException);
+}
+
+BOOST_AUTO_TEST_CASE( oracle ) {
+    JsonRpcFixture fixture;
+    std::string receipt;
+    std::string result;
+    std::time_t current = std::time(nullptr);
+    std::string request;
+    for (int i = 0; i < 1000000; ++i) {
+        request = skutils::tools::format("{\"cid\":1,\"uri\":\"http://worldtimeapi.org/api/timezone/Europe/Kiev\",\"jsps\":[\"/unixtime\",\"/day_of_year\",\"/xxx\"],\"trims\":[1,1,1],\"time\":%zu000,\"pow\":%zu}", current, i);
+        auto os = make_shared<OracleRequestSpec>(request);
+        if ( os->verifyPow() ) {
+            break;
+        }
+    }
+    uint64_t status = fixture.client->submitOracleRequest(request, receipt);
+
+    BOOST_REQUIRE_EQUAL(status, 0);
+    BOOST_CHECK(receipt != "");
+
+    sleep(5);
+
+    uint64_t resultStatus = fixture.client->checkOracleResult(receipt, result);
+    BOOST_REQUIRE_EQUAL(resultStatus, 5);
+    BOOST_CHECK(result == "");
 }
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {

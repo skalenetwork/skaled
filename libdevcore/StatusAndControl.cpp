@@ -42,6 +42,8 @@ void StatusAndControlFile::on_change() {
        \"subsystemRunning\":{\n\
            \"SnapshotDownloader\": "
             << ( isSubsystemRunning( SnapshotDownloader ) ? "true" : "false" ) << ",\n\
+           \"WaitingForTimestamp\": "
+            << ( isSubsystemRunning( WaitingForTimestamp ) ? "true" : "false" ) << ",\n\
            \"Blockchain\": "
             << ( isSubsystemRunning( Blockchain ) ? "true" : "false" ) << ",\n\
            \"Rpc\": "

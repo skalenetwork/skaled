@@ -170,6 +170,15 @@ std::string ensure_no_slash_at_end_copy( const std::string& s ) {
     return ensure_no_slash_at_end_copy( s.c_str() );
 }
 
+// kills everything beyond plain old ASCII
+std::string safe_ascii(const std::string& in){
+    std::stringstream sout;
+    for(char c: in){
+        sout.put(c&0x80 ? '?' : c);
+    }
+    return sout.str();
+}
+
 std::string get_tmp_folder_path() {  // without slash at end
     std::string strPath;
 #if ( defined WIN32 )
