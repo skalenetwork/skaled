@@ -422,6 +422,7 @@ protected:
     /// Executes the pending functions in m_functionQueue
     void callQueuedFunctions();
 
+
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
                       ///< imported).

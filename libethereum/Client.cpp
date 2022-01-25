@@ -1144,6 +1144,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     return importTransaction( t );
 }
 
+// TODO: Check whether multiTransactionMode enabled on contracts
 h256 Client::importTransaction( Transaction const& _t ) {
     prepareForTransaction();
 
@@ -1165,9 +1166,17 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice );
+        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
-    ImportResult res = m_tq.import( _t );
+    ImportResult res;
+    if ( chainParams().sChain.multiTransactionMode && 
+        state.getNonce( _t.sender() ) < _t.nonce() &&
+        m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce()) {
+        res = m_tq.import( _t, IfDropped::Ignore, true );
+    } else {
+        res = m_tq.import( _t );
+    }
+
     switch ( res ) {
     case ImportResult::Success:
         break;

@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright (C) 2018-present, SKALE Labs
 
     This file is part of skaled.
@@ -82,6 +82,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+    this->fillRotationHistory( *consensus_engine_ptr );
+
     return consensus_engine_ptr;
 #else
     unsigned block_number = m_client.number();
@@ -156,6 +158,23 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     try {
         consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
             ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( ex.what() );
+    } catch ( const boost::exception& ex ) {
+        std::throw_with_nested( boost::diagnostic_information( ex ) );
+    }
+}
+
+void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
+    std::map< uint64_t, std::vector< std::string > > rh;
+    for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
+        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        rh[nodeGroup.finishTs] = commonBLSPublicKey;
+    }
+    try {
+        consensus.setRotationHistory(
+            std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
     } catch ( const std::exception& ex ) {
         std::throw_with_nested( ex.what() );
     } catch ( const boost::exception& ex ) {

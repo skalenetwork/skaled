@@ -147,6 +147,7 @@ public:
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
     bool freeContractDeployment = false;
+    bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
 

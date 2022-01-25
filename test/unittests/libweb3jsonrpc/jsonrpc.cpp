@@ -217,7 +217,7 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -259,6 +259,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // TODO: better make it use ethemeral in-memory databases
             chainParams.extraData = h256::random().asBytes();
         }
+        chainParams.sChain.multiTransactionMode = _mtmEnabled;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -2508,6 +2509,150 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
     BOOST_REQUIRE_EQUAL( balance, 16 );
 }
+
+BOOST_AUTO_TEST_CASE( mtm_import_sequential_txs ) {
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    Json::Value txJson;
+    txJson["from"] = fixture.coinbase.address().hex();
+    txJson["gas"] = "100000";
+
+    txJson["nonce"] = "0";
+    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+    Transaction tx1( ts1, ar1.second );
+
+    txJson["nonce"] = "1";
+    TransactionSkeleton ts2 = toTransactionSkeleton( txJson );
+    ts2 = fixture.client->populateTransactionWithDefaults( ts2 );
+    pair< bool, Secret > ar2 = fixture.accountHolder->authenticate( ts2 );
+    Transaction tx2( ts2, ar2.second );
+
+    txJson["nonce"] = "2";
+    TransactionSkeleton ts3 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts3 );
+    pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
+    Transaction tx3( ts3, ar3.second );
+
+    h256 h1 = fixture.client->importTransaction( tx1 );
+    h256 h2 = fixture.client->importTransaction( tx2 );
+    h256 h3 = fixture.client->importTransaction( tx3 );
+    BOOST_REQUIRE( h1 );
+    BOOST_REQUIRE( h2 );
+    BOOST_REQUIRE( h3 );
+    BOOST_REQUIRE( fixture.client->transactionQueueStatus().current == 3);
+}
+
+BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    auto tq = fixture.client->debugGetTransactionQueue();
+
+    Json::Value txJson;
+    txJson["from"] = fixture.coinbase.address().hex();
+    txJson["gas"] = "100000";
+
+    txJson["nonce"] = "0";
+    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+    Transaction tx1( ts1, ar1.second );
+
+    txJson["nonce"] = "1";
+    TransactionSkeleton ts2 = toTransactionSkeleton( txJson );
+    ts2 = fixture.client->populateTransactionWithDefaults( ts2 );
+    pair< bool, Secret > ar2 = fixture.accountHolder->authenticate( ts2 );
+    Transaction tx2( ts2, ar2.second );
+
+    txJson["nonce"] = "2";
+    TransactionSkeleton ts3 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts3 );
+    pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
+    Transaction tx3( ts3, ar3.second );
+
+    txJson["nonce"] = "3";
+    TransactionSkeleton ts4 = toTransactionSkeleton( txJson );
+    ts4 = fixture.client->populateTransactionWithDefaults( ts4 );
+    pair< bool, Secret > ar4 = fixture.accountHolder->authenticate( ts4 );
+    Transaction tx4( ts4, ar4.second );
+
+    txJson["nonce"] = "4";
+    TransactionSkeleton ts5 = toTransactionSkeleton( txJson );
+    ts5 = fixture.client->populateTransactionWithDefaults( ts5 );
+    pair< bool, Secret > ar5 = fixture.accountHolder->authenticate( ts5 );
+    Transaction tx5( ts5, ar5.second );
+
+    h256 h1 = fixture.client->importTransaction( tx5 );
+    BOOST_REQUIRE( h1 );
+    BOOST_REQUIRE( tq->futureSize() == 1);
+
+    h256 h2 = fixture.client->importTransaction( tx3 );
+    BOOST_REQUIRE( h2 );
+    BOOST_REQUIRE( tq->futureSize() == 2);
+    h256 h3 = fixture.client->importTransaction( tx2 );
+    BOOST_REQUIRE( h3 );
+    BOOST_REQUIRE( tq->futureSize() == 3);
+
+    h256 h4 = fixture.client->importTransaction( tx1 );
+    BOOST_REQUIRE( h4 );
+    BOOST_REQUIRE( tq->futureSize() == 1);
+    BOOST_REQUIRE( tq->status().current == 3);
+
+    h256 h5 = fixture.client->importTransaction( tx4 );
+    BOOST_REQUIRE( h5 );
+    BOOST_REQUIRE( tq->futureSize() == 0);
+    BOOST_REQUIRE( tq->status().current == 5);
+}
+
+// TODO: Enable for multitransaction mode checking
+
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
+//     auto _config = c_genesisConfigString;
+//     Json::Value ret;
+//     Json::Reader().parse( _config, ret );
+//     /* Test contract
+//         pragma solidity ^0.8.9;
+//         contract Test {
+//             function isMTMEnabled() external pure returns (bool) {
+//                 return true;
+//             }
+//         }
+//     */
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033"; 
+//     Json::FastWriter fastWriter;
+//     std::string config = fastWriter.write( ret );
+//     JsonRpcFixture fixture( config );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( mtm );
+// }
+
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_false ) {
+//     auto _config = c_genesisConfigString;
+//     Json::Value ret;
+//     Json::Reader().parse( _config, ret );
+//     /* Test contract
+//         pragma solidity ^0.8.9;
+//         contract Test {
+//             function isMTMEnabled() external pure returns (bool) {
+//                 return false;
+//             }
+//         }
+//     */
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033"; 
+//     Json::FastWriter fastWriter;
+//     std::string config = fastWriter.write( ret );
+//     JsonRpcFixture fixture( config );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( !mtm );
+// }
+
+// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_empty ) {
+//     JsonRpcFixture fixture( c_genesisConfigString );
+//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
+//     BOOST_REQUIRE( !mtm );
+// }
 
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
