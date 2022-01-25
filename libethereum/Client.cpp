@@ -571,7 +571,8 @@ size_t Client::importTransactionsAsBlock(
         LOG( m_logger ).flush();
     }
 
-    updateIMABLSPublicKey();
+    if ( chainParams().sChain.nodeGroups.size() > 0 )
+        updateIMABLSPublicKey();
 
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
@@ -1174,9 +1175,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
         *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
     ImportResult res;
-    if ( chainParams().sChain.multiTransactionMode && 
-        state.getNonce( _t.sender() ) < _t.nonce() &&
-        m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce()) {
+    if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
+         m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
