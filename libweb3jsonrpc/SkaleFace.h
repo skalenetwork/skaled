@@ -75,6 +75,16 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getLatestBlockNumber();
     }
 
+    inline virtual void oracle_submitRequestI( const Json::Value& request, Json::Value& response ) {
+        std::string strRequest = request[0u].asString();
+        response = this->oracle_submitRequest( strRequest );
+    }
+
+    inline virtual void oracle_checkResultI( const Json::Value& request, Json::Value& response ) {
+        std::string receipt = request[0u].asString();
+        response = this->oracle_checkResult( receipt );
+    }
+
     virtual std::string skale_protocolVersion() = 0;
     virtual std::string skale_receiveTransaction( std::string const& _rlp ) = 0;
     virtual std::string skale_shutdownInstance() = 0;
@@ -83,6 +93,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
+    virtual std::string oracle_submitRequest( std::string& request ) = 0;
+    virtual std::string oracle_checkResult( std::string& receipt ) = 0;
 
 public:
     SkaleFace() {
@@ -115,6 +127,12 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestBlockNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getLatestBlockNumberI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::oracle_submitRequestI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "oracle_checkResult",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::oracle_checkResultI );
     }
 };
 

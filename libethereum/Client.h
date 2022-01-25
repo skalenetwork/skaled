@@ -305,6 +305,9 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
@@ -422,6 +425,7 @@ protected:
 
     /// Executes the pending functions in m_functionQueue
     void callQueuedFunctions();
+
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be

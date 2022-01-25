@@ -39,7 +39,7 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
+    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
@@ -74,6 +74,14 @@ public:
             block_gas_prices.push_back( _gasPrice );
         else
             block_gas_prices[_blockId] = _gasPrice;
+    }
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
+        return 0;
+    }
+
+    uint64_t checkOracleResult( const string& _receipt, string& _result) {
+        return 0;
     }
 };
 

@@ -1304,6 +1304,7 @@ int main( int argc, char** argv ) try {
     extern unsigned c_minCacheSize;
 
     unsigned c_transactionQueueSize = 100000;
+    unsigned c_futureTransactionQueueSize = 16000;
 
     if ( chainConfigParsed ) {
         try {
@@ -1338,6 +1339,14 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
                 c_transactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueSize" ) )
+                c_futureTransactionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueSize"]
+                        .get< unsigned >();
         } catch ( ... ) {
         }
 
@@ -1610,10 +1619,12 @@ int main( int argc, char** argv ) try {
     }
 
     if ( time( NULL ) < startTimestamp ) {
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
         std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, false );
     }
 
     if ( loggingOptions.verbosity > 0 )
@@ -1685,11 +1696,13 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1710,8 +1723,8 @@ int main( int argc, char** argv ) try {
         DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
-        std::shared_ptr< SkaleHost > skaleHost =
-            std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor );
+        std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();

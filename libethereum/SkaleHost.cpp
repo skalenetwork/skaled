@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright (C) 2018-present, SKALE Labs
 
     This file is part of skaled.
@@ -82,6 +82,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+    this->fillRotationHistory( *consensus_engine_ptr );
+
     return consensus_engine_ptr;
 #else
     unsigned block_number = m_client.number();
@@ -162,6 +164,23 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
         std::throw_with_nested( boost::diagnostic_information( ex ) );
     }
 }
+
+void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
+    std::map< uint64_t, std::vector< std::string > > rh;
+    for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
+        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        rh[nodeGroup.finishTs] = commonBLSPublicKey;
+    }
+    try {
+        consensus.setRotationHistory(
+            std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
+    } catch ( const std::exception& ex ) {
+        std::throw_with_nested( ex.what() );
+    } catch ( const boost::exception& ex ) {
+        std::throw_with_nested( boost::diagnostic_information( ex ) );
+    }
+}
 #endif
 
 class ConsensusExtImpl : public ConsensusExtFace {
@@ -200,7 +219,7 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -240,7 +259,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }
@@ -859,6 +878,13 @@ u256 SkaleHost::getBlockRandom() const {
 
 std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
     return m_client.getIMABLSPublicKey();
+
+uint64_t SkaleHost::submitOracleRequest( const string& _spec, string& _receipt ) {
+    return m_consensus->submitOracleRequest( _spec, _receipt );
+}
+
+uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
+    return m_consensus->checkOracleResult( _receipt, _result );
 }
 
 void SkaleHost::forceEmptyBlock() {

@@ -1149,6 +1149,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     return importTransaction( t );
 }
 
+// TODO: Check whether multiTransactionMode enabled on contracts
 h256 Client::importTransaction( Transaction const& _t ) {
     prepareForTransaction();
 
@@ -1170,9 +1171,17 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice );
+        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
-    ImportResult res = m_tq.import( _t );
+    ImportResult res;
+    if ( chainParams().sChain.multiTransactionMode && 
+        state.getNonce( _t.sender() ) < _t.nonce() &&
+        m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce()) {
+        res = m_tq.import( _t, IfDropped::Ignore, true );
+    } else {
+        res = m_tq.import( _t );
+    }
+
     switch ( res ) {
     case ImportResult::Success:
         break;
@@ -1325,6 +1334,26 @@ unsigned Client::installNewPendingTransactionWatch(
 }
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
+}
+
+uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
+    assert( m_skaleHost );
+    uint64_t status = -1;
+    if ( m_skaleHost )
+        status = m_skaleHost->submitOracleRequest( _spec, _receipt );
+    else
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
+    return status;
+}
+
+uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
+    assert( m_skaleHost );
+    uint64_t status = -1;
+    if ( m_skaleHost )
+        status = m_skaleHost->checkOracleResult( _receipt, _result );
+    else
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
+    return status;
 }
 
 const dev::h256 Client::empty_str_hash =

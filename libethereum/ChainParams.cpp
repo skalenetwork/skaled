@@ -209,6 +209,11 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
+        if ( sChainObj.count( "multiTransactionMode" ) )
+            s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+        if ( sChainObj.count( "mainnetParameters") )
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
@@ -520,6 +525,7 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
+    sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
