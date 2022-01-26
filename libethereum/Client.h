@@ -301,6 +301,10 @@ public:
         return this->snapshot_hash_calculation_time_ms;
     }
 
+    std::array< std::string, 4 > getIMABLSPublicKey() const {
+        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+    }
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
@@ -514,6 +518,11 @@ private:
 
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
+
+    void initIMABLSPublicKey();
+    void updateIMABLSPublicKey();
+
+    unsigned imaBLSPublicKeyGroupIndex = 0;
 
 public:
     FILE* performance_fd;

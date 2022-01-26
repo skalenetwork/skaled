@@ -123,6 +123,7 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    std::array< std::string, 4 > getIMABLSPublicKey() const;
 
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );

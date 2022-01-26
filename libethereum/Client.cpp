@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -249,6 +249,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
                         << chainParams().sChain.snapshotIntervalSec;
         this->initHashes();
     }
+
+    if ( ChainParams().sChain.nodeGroups.size() > 0 )
+        initIMABLSPublicKey();
 
     doWork( false );
 }
@@ -567,6 +570,9 @@ size_t Client::importTransactionsAsBlock(
                         << cc::success( " missing" );
         LOG( m_logger ).flush();
     }
+
+    if ( chainParams().sChain.nodeGroups.size() > 0 )
+        updateIMABLSPublicKey();
 
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
@@ -1169,9 +1175,8 @@ h256 Client::importTransaction( Transaction const& _t ) {
         *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
     ImportResult res;
-    if ( chainParams().sChain.multiTransactionMode && 
-        state.getNonce( _t.sender() ) < _t.nonce() &&
-        m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce()) {
+    if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
+         m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
         res = m_tq.import( _t );
@@ -1277,6 +1282,40 @@ void Client::initHashes() {
     LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
                     << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
     LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
+}
+
+void Client::initIMABLSPublicKey() {
+    if ( number() == 0 ) {
+        imaBLSPublicKeyGroupIndex = 0;
+        return;
+    }
+
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+
+    // always returns it != end() because current finish ts equals to uint64_t(-1)
+    auto it = std::find_if( chainParams().sChain.nodeGroups.begin(),
+        chainParams().sChain.nodeGroups.end(),
+        [&currentBlockTimestamp](
+            const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
+    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it != chainParams().sChain.nodeGroups.begin() ) {
+        auto prevIt = std::prev( it );
+        if ( currentBlockTimestamp >= prevIt->finishTs &&
+             previousBlockTimestamp < prevIt->finishTs )
+            it = prevIt;
+    }
+
+    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+}
+
+void Client::updateIMABLSPublicKey() {
+    uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    if ( blockTimestamp >= currentFinishTs )
+        ++imaBLSPublicKeyGroupIndex;
+    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
 }
 
 // new block watch

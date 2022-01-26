@@ -212,8 +212,6 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        if ( sChainObj.count( "mainnetParameters") )
-
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
@@ -248,6 +246,10 @@ ChainParams ChainParams::loadConfig(
                     nodeGroup.finishTs = uint64_t( -1 );
                 nodeGroups.push_back( nodeGroup );
             }
+            std::sort( nodeGroups.begin(), nodeGroups.end(),
+                []( const NodeGroup& lhs, const NodeGroup& rhs ) {
+                    return lhs.finishTs < rhs.finishTs;
+                } );
             s.nodeGroups = nodeGroups;
         }
 

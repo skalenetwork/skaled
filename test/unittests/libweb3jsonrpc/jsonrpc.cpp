@@ -150,6 +150,15 @@ static std::string const c_genesisConfigString =
                 "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
             }
         },
+        "0000000000000000000000000000000000000007": {
+            "precompiled": {
+                "name": "getIMABLSPublicKey",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                }
+            }
+        },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
