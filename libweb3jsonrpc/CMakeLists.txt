@@ -36,9 +36,9 @@ set(sources
     Web3Face.h
     WhisperFace.h
 
-    SkaleDebug.h
-    SkaleDebug.cpp
-    SkaleDebugFace.h
+    SkalePerformanceTracker.h
+    SkalePerformanceTracker.cpp
+    SkalePerformanceTrackerFace.h
 
     Skale.h
     Skale.cpp
@@ -48,6 +48,9 @@ set(sources
     SkaleStats.cpp
     SkaleStatsFace.h
     SkaleStatsSite.h
+
+    SkaleNetworkBrowser.h
+    SkaleNetworkBrowser.cpp
 )
 
 if(WIN32)

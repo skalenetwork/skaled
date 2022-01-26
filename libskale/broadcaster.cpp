@@ -97,6 +97,13 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
+
+        val = 16;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_RCVHWM, &val, sizeof( val ) );
+        val = 16;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
+
+
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
         // connect server to clients
@@ -126,6 +133,11 @@ void* ZmqBroadcaster::client_socket() const {
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_CNT, &value, sizeof( value ) );
         value = 300;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
+
+        value = 16;
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
+        value = 16;
+        zmq_setsockopt( m_zmq_client_socket, ZMQ_SNDHWM, &value, sizeof( value ) );
 
 
         const dev::eth::ChainParams& ch = m_client.chainParams();

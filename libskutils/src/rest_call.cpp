@@ -271,15 +271,20 @@ std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
     mdctx = EVP_MD_CTX_create();
     assert( mdctx );
     auto rv1 = EVP_DigestSignInit( mdctx, NULL, EVP_sha256(), NULL, pKey );
-    assert( rv1 == 1 );
+    if ( rv1 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 1" );
     auto rv2 = EVP_DigestSignUpdate( mdctx, msgToSign.c_str(), msgToSign.size() );
-    assert( rv2 == 1 );
+    if ( rv2 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 2" );
     auto rv3 = EVP_DigestSignFinal( mdctx, NULL, &slen );
-    assert( rv3 == 1 );
+    if ( rv3 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 3" );
     signature = ( unsigned char* ) OPENSSL_malloc( sizeof( unsigned char ) * slen );
-    assert( signature );
+    if ( !signature )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 5" );
     auto rv4 = EVP_DigestSignFinal( mdctx, signature, &slen );
-    assert( rv4 == 1 );
+    if ( rv4 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 4" );
     auto hexSig = stat_a2h( signature, slen );
     std::string hexStringSig( hexSig.begin(), hexSig.end() );
     // cleanup

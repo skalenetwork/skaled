@@ -292,6 +292,12 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::vector< uint8_t > buffer =
         Skale::ll_impl_skale_downloadSnapshotFragment( fp, idxFrom, sizeOfChunk );
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
+
+    if ( sizeOfChunk + idxFrom == sizeOfFile )
+        clog( VerbosityInfo, "skale_downloadSnapshotFragment" )
+            << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
+            << "\n";
+
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -333,9 +339,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             throw std::runtime_error(
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
+        std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+        skutils::url u( sgxServerURL );
+
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "blsSignMessageHash";
+        if ( u.scheme() == "zmq" )
+            joCall["type"] = "BLSSignReq";
         nlohmann::json obj = nlohmann::json::object();
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
@@ -351,8 +362,6 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         dev::eth::sChainNode schain_node = *it;
 
         joCall["params"] = obj;
-
-        std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
 
         // TODO deduplicate with SkaleHost!
         std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
@@ -441,6 +450,43 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+std::string Skale::oracle_submitRequest( std::string& request ) {
+    try {
+        std::string receipt;
+        uint64_t status = this->m_client.submitOracleRequest( request, receipt );
+        if ( status != 0 ) {
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return receipt;
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+    }
+}
+
+std::string Skale::oracle_checkResult( std::string& receipt ) {
+    try {
+        std::string result;
+        uint64_t status = this->m_client.checkOracleResult( receipt, result );
+        switch ( status ) {
+        case 0:
+            break;
+        case 5:
+            throw jsonrpc::JsonRpcException( status, "Oracle result is not ready" );
+        default:
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return result;
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+    }
+}
+
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
@@ -476,8 +522,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 return false;
             }
             // TODO catch?
-            block_number = dev::eth::jsToBlockNumber(
-                nlohmann::json::parse( d.s_ )["result"].get< std::string >() );
+            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+            block_number = dev::eth::jsToBlockNumber( joAnswer["result"].get< std::string >() );
         }
         //
         //
@@ -518,6 +564,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             std::string s;
             s += "skale_getSnapshot error: ";
             s += joSnapshotInfo["error"].get< std::string >();
+            if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
+                s += "; Invalid time to download snapshot. Valid time is ";
+                s += joSnapshotInfo["timeValid"].get< time_t >();
+            }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
             std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";

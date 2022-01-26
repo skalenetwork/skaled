@@ -42,6 +42,7 @@
 
 #include <libdevcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
+#include <libdevcore/TransientDirectory.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -84,6 +85,9 @@ private:
 };
 
 class SingleNodeConsensusFixture : public ConsensusExtFace {
+
+    TransientDirectory m_tempDir;
+
 protected:
     std::shared_ptr< ConsensusEngine > m_consensus;
     std::thread m_consensusThread;
@@ -104,11 +108,14 @@ public:
 
         //////////////////////////////////////////////
 
+        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
+
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
+            sleep(1);
             m_consensus->startAll();
             m_consensus->bootStrapAll();
         } );
@@ -138,8 +145,11 @@ public:
         transaction_promise.set_value( transactions_vector() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
-        int rv = system( "rm -rf /tmp/*.db*" );
-        ( void ) rv;
+
+        while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+            timespec ms100{0, 100000000};
+            nanosleep( &ms100, nullptr );
+        }
     }
 
     std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
@@ -177,6 +187,8 @@ protected:
 
     std::vector< int > m_arrived_blocks;
 
+    TransientDirectory m_tempDir;
+
 protected:  // remote peer
     unique_ptr< Client > client;
     unique_ptr< ModularServer<> > rpcServer;
@@ -187,6 +199,7 @@ protected:  // remote peer
 
 public:
     ConsensusExtFaceFixture() {
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -200,7 +213,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson() );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
@@ -217,9 +230,11 @@ public:
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
         client.reset(
             new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
-                NULL, monitor, "", WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+                NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
         client->startWorking();
@@ -232,7 +247,7 @@ public:
         using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::Web3Face,
             rpc::DebugFace, rpc::TestFace >;
 
-        auto ethFace = new rpc::Eth( *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
 
         rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client ),
             new rpc::Web3( /*web3->clientVersion()*/ ), new rpc::Debug( *client ),  // TODO add
@@ -404,20 +419,20 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( ConsensusTests, *boost::unit_test::disabled() )
 
-BOOST_AUTO_TEST_CASE( OneTransaction, 
-    
+BOOST_AUTO_TEST_CASE( OneTransaction,
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( TwoTransactions, 
+BOOST_AUTO_TEST_CASE( TwoTransactions,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( DifferentTransactions, 
+BOOST_AUTO_TEST_CASE( DifferentTransactions,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction1, 
+BOOST_AUTO_TEST_CASE( MissingTransaction1,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction2, 
+BOOST_AUTO_TEST_CASE( MissingTransaction2,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()

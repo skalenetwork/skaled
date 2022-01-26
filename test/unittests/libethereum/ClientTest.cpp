@@ -104,6 +104,7 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
+
         ChainParams chainParams;
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
@@ -111,15 +112,13 @@ public:
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
-        fs::path dir = m_tmpDir.path();
-
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
         auto netPrefs = NetworkPreferences( listenIP, listenPort, false );
         netPrefs.discovery = false;
         netPrefs.pin = false;
 
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
@@ -127,8 +126,10 @@ public:
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), NULL, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -151,8 +152,6 @@ public:
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase} );
-
-        dev::eth::simulateMining( *( m_ethereum ), 10 );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -167,12 +166,43 @@ public:
 
     bool getTransactionStatus(const Json::Value& json) {
         try {
+            { // block
+                Json::FastWriter fastWriter;
+                std::string s = fastWriter.write( json );
+                nlohmann::json jo = nlohmann::json::parse( s );
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Will compute status of transaction: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+            } // block
             Transaction tx = tx_from_json(json);
             auto txHash = m_ethereum->importTransaction(tx);
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Mining transaction..." ) );
             dev::eth::mineTransaction(*(m_ethereum), 1);
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Getting transaction receipt..." ) );
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            return receipt["status"] == "0x1";
+            { // block
+                Json::FastWriter fastWriter;
+                std::string s = fastWriter.write( receipt );
+                nlohmann::json jo = nlohmann::json::parse( s );
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::debug( "Got transaction receipt: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+            } // block
+            bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
+            if( bStatusFlag )
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::success( "SUCCESS: Got positive transaction status" ) );
+            else
+                clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got negative transaction status" ) );
+            return bStatusFlag;
+        } catch ( std::exception & ex ) {
+            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "exception:" ) + cc::warn( ex.what() ) );
+            return false;
         } catch (...) {
+            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
+                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "unknown exception" ) );
             return false;
         }
     }
@@ -199,12 +229,12 @@ public:
 
         int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
         rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
+        rv = system( ( "mkdir " + m_tmpDir.path() ).c_str() );
 
         gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
+        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + m_tmpDir.path() )
                     .c_str() );
-        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
+        rv = chown( m_tmpDir.path().c_str(), sudo_uid, sudo_gid );
         ( void )rv;
         dropRoot();
 
@@ -213,31 +243,32 @@ public:
         // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
 
         gainRoot();
+
         ChainParams chainParams;
         chainParams = chainParams.loadConfig( _config );
 
-        fs::path dir = m_tmpDir.path();
-
-        auto nodesState = contents( dir / fs::path( "network.rlp" ) );
+        auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
         //        bool testingMode = true;
         //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
         std::shared_ptr< SnapshotManager > mgr;
-        mgr.reset( new SnapshotManager( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2", "filestorage"} ) );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" );
-        std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "state" ) );
-        boost::filesystem::create_directory(
-            boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "blocks_and_extras" );
-        std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( boost::filesystem::path( BTRFS_DIR_PATH ) / "vol1" / "12041" / "blocks_and_extras" ) );
+        mgr.reset( new SnapshotManager( m_tmpDir.path(), { BlockChain::getChainDirName( chainParams ), "vol2", "filestorage"} ) );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "12041" );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "12041" / "state" );
+        // std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "state" ) );
+        // boost::filesystem::create_directory(
+        //     m_tmpDir.path() / "vol1" / "blocks_and_extras" );
+        // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-            shared_ptr< GasPricer >(), mgr, monitor, dir, WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -269,14 +300,16 @@ public:
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
 
+    fs::path getTmpDataDir() { return m_tmpDir.path(); }
+
     ~TestClientSnapshotsFixture() {
         m_ethereum.reset(0);
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
         gainRoot();
-        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
+        int rv = system( ( "umount " + m_tmpDir.path() ).c_str() );
+        rv = system( ( "rmdir " + m_tmpDir.path() ).c_str() );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         ( void ) rv;
     }
@@ -402,6 +435,8 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -439,6 +474,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -474,6 +511,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -513,6 +552,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xd40B3c51D0ECED279b1697DbdF45d4D19b872164
 
@@ -546,6 +587,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D3
@@ -588,6 +631,8 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
@@ -640,6 +685,8 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
 
@@ -689,6 +736,8 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
@@ -754,6 +803,129 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
             .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( 121944 ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE( IMABLSPublicKey )
+
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
+                                                  R"E(
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "networkID" : "12313219",
+        "chainID": "0x01",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0x1388",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x020000",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0x47E7C4"
+    },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": 1231,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "ecdsaKeyName": "NEK:fa112"
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "1": {
+                "nodes": {
+                    "30": [
+                        0,
+                        30,
+                        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+                    "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+                    "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+                    "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+                }
+            },
+            "0": {
+                "nodes": {
+                    "26": [
+                        3,
+                        26,
+                        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
+                    ]
+                },
+                "finish_ts": 4294967290,
+                "bls_public_key": {
+                    "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+                    "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+                    "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+                    "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+                }
+            }
+        },
+        "nodes": [
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
+        ]
+    }
+  },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "modexp", "startingBlock" : "0x2dc6c0" } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "alt_bn128_G1_add", "startingBlock" : "0x2dc6c0", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } }
+    }
+}
+)E";
+
+BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
+    TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
+
+    std::cout << "HERE\n";
+    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
+    std::cout << "HERE\n";
+
+    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
+
+    testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
+
+    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = { "10860211539819517237363395256510340030868592687836950245163587507107792195621", "2419969454136313127863904023626922181546178935031521540751337209075607503568", "3399776985251727272800732947224655319335094876742988846345707000254666193993", "16982202412630419037827505223148517434545454619191931299977913428346639096984" };
+
+    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyAfterBlock );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -824,7 +996,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     testClient->importTransactionsAsBlock(
         Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -836,8 +1008,13 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
     secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
-    std::this_thread::sleep_for( 2000ms );
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.BTRFS_DIR_PATH ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
+    std::this_thread::sleep_for( 6000ms );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
+
+    dev::h256 hash = testClient->hashFromNumber( 3 );
+    uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
+
+    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 3 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

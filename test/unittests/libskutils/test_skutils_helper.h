@@ -110,6 +110,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class test_server : public test_ssl_cert_and_key_provider {
+protected:
     std::atomic_bool thread_is_running_ = false;
 
 public:
@@ -121,11 +122,11 @@ public:
     virtual bool isSSL() const = 0;
     virtual void stop() = 0;
     virtual void run() = 0;
-    void run_parallel();
+    virtual void run_parallel();
     void wait_parallel();
     static void stat_check_port_availability_to_start_listen(
         int ipVer, const char* strAddr, int nPort, const char* strScheme );
-    void check_can_listen();
+    virtual void check_can_listen();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +226,32 @@ public:
     test_server_https( int nListenPort, bool is_async_http_transfer_mode = true );
     ~test_server_https() override;
     bool isSSL() const override;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class test_server_proxygen : public test_server {
+    skutils::http_pg::wrapped_proxygen_server_handle hProxygenServer_ = nullptr;
+public:
+    test_server_proxygen( const char* strBindAddr4, const char* strBindAddr6,
+                          int nListenPortHTTP4, int nListenPortHTTPS4, int nListenPortHTTP6, int nListenPortHTTPS6,
+                          int32_t threads, int32_t threads_limit
+                          );
+    virtual ~test_server_proxygen();
+    void stop() override;
+    void run() override;
+    void run_parallel() override;
+    void check_can_listen() override;
+    virtual bool isSSL() const override;
+protected:
+    skutils::result_of_http_request implHandleHttpRequest(
+            const nlohmann::json & joIn,
+            const std::string& strOrigin,
+            int ipVer,
+            const std::string& strDstAddress,
+            int nDstPort
+            );
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,6 +413,7 @@ extern void with_test_client_server( fn_with_test_client_server_t fn,
 extern void test_print_header_name( const char* s );
 
 extern int g_nDefaultPort;
+extern int g_nDefaultPortProxygen;
 
 extern std::vector< std::string > g_vecTestClientNamesA;
 extern std::vector< std::string > g_vecTestClientNamesB;

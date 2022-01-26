@@ -25,6 +25,8 @@
 
 #include <thread>
 
+#include <skutils/utils.h>
+
 using namespace std;
 
 namespace dev {
@@ -32,16 +34,39 @@ char const* Version = skale_get_buildinfo()->project_version;
 bytes const NullBytes;
 std::string const EmptyString;
 
+std::shared_ptr< StatusAndControl > ExitHandler::statusAndControl;
+
+bool ExitHandler::shouldExit() {
+    return skutils::signal::g_bStop;
+}
+int ExitHandler::getSignal() {
+    return skutils::signal::g_nStopSignal;
+}
+
 void ExitHandler::exitHandler( int s ) {
     exitHandler( s, ec_success );
 }
 
 void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
-    m_signal = s;
+    skutils::signal::g_nStopSignal = s;
+
     if ( ec != ec_success ) {
         g_ec = ec;
     }
-    s_shouldExit = true;
+
+    // indicate failure if signal is not INT or TERM!
+    if ( g_ec == ec_success && s != SIGINT && s != SIGTERM )
+        g_ec = ExitHandler::ec_failure;
+
+    if ( statusAndControl ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain, ( g_ec != ec_success ) );
+        statusAndControl->setExitState(
+            StatusAndControl::StartFromSnapshot, ( g_ec == ec_state_root_mismatch ) );
+        statusAndControl->setExitState(
+            StatusAndControl::ClearDataDir, ( g_ec == ec_state_root_mismatch ) );
+    }  // if
+
+    skutils::signal::g_bStop = true;
     // HACK wait for loop in main to send exit call to consensus et al.
     std::this_thread::sleep_for( chrono::milliseconds( 2000 ) );
 }
@@ -101,8 +126,6 @@ string inUnits( bigint const& _b, strings const& _units ) {
     return ret.str();
 }
 
-volatile bool ExitHandler::s_shouldExit = false;
-volatile int ExitHandler::m_signal = -1;
 volatile ExitHandler::exit_code_t ExitHandler::g_ec = ExitHandler::ec_success;
 
 }  // namespace dev

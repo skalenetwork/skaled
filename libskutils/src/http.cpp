@@ -1336,6 +1336,7 @@ async_query_handler::~async_query_handler() {
     std::cout << skutils::tools::format( "http task dtor %p\n", this );
     std::cout.flush();
 #endif
+    remove_this_task();
 }
 
 void async_query_handler::was_added() {
@@ -1480,7 +1481,12 @@ bool async_read_and_close_socket::step() {
         if ( retry_index_ > retry_count_ )
             throw std::runtime_error( "max attempt count done" );
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ > retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1502,6 +1508,10 @@ bool async_read_and_close_socket::step() {
         }
         schedule_next_step();
         return true;
+    } catch ( const common_network_exception& nx ) {
+        if ( nx.what() && nx.what()[0] )
+            strErrorDescription =
+                std::string( nx.what() ) + " (errcode=" + std::to_string( nx.ei_.ec_ ) + ")";
     } catch ( std::exception& ex ) {
         strErrorDescription = ex.what();
     } catch ( ... ) {
@@ -1571,7 +1581,12 @@ bool async_read_and_close_socket_SSL::step() {
                 detail::SSL_accept_wrapper( ssl_ );
         }
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ >= retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             SSL_socket_stream strm( socket_, ssl_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1651,6 +1666,7 @@ server::server( size_t a_max_handler_queues, bool is_async_http_transfer_mode )
 }
 
 server::~server() {
+    remove_all_tasks();
     close_all_handler_queues();
 }
 
@@ -2153,7 +2169,7 @@ void server::read_and_close_socket_async( socket_t sock ) {
             throw std::runtime_error( "failed to process request" );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket " << sock
+        std::cout << "failed to process http request from socket " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )
@@ -2227,7 +2243,7 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
         return process_request( origin, strm, last_connection, connection_close );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket(SSL) " << sock
+        std::cout << "failed to process http request from socket(SSL) " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )

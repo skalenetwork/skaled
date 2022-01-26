@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -30,6 +30,8 @@
 #include "TransactionQueue.h"
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
+
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <thread>
@@ -37,6 +39,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -175,7 +178,7 @@ void Client::stopWorking() {
         LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
                         << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
                                   std::string( "/skaled.lock" ) )
-                        << cc::error( " after foreceful exit" );
+                        << cc::error( " after forceful exit" );
     }
     LOG( m_logger ).flush();
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -210,7 +213,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         m_state.startWrite().populateFrom( bc().chainParams().genesisState );
         m_state = m_state.startNew();
     };
-    // LAZY. TODO: move genesis state construction/commiting to stateDB openning and have this
+    // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;
@@ -241,13 +244,14 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    bc().m_stateDB = m_state.db();
-
     if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
                         << chainParams().sChain.snapshotIntervalSec;
         this->initHashes();
     }
+
+    if ( ChainParams().sChain.nodeGroups.size() > 0 )
+        initIMABLSPublicKey();
 
     doWork( false );
 }
@@ -455,7 +459,7 @@ static std::string stat_transactions2str(
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
-    // HACK here was m_blockImportMutex - but now it is aquired in SkaleHost!!!
+    // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
     int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
@@ -497,28 +501,25 @@ size_t Client::importTransactionsAsBlock(
     //
     // begin, detect partially executed block
     bool bIsPartial = false;
-    TransactionReceipts partialTransactionReceipts;
-    size_t cntAll = _transactions.size();
-    size_t cntExpected = cntAll;
-    size_t cntMissing = 0;
-    Transactions vecPassed, vecMissing;
     dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
-    for ( const Transaction& txWalk : _transactions ) {
-        const h256 shaWalk = txWalk.sha3();
-        if ( bIsPartial )
-            vecMissing.push_back( txWalk );
-        else {
-            vecPassed.push_back( txWalk );
-            if ( shaWalk == shaLastTx ) {
-                bIsPartial = true;
-            }
-        }
-    }
-    size_t cntPassed = vecPassed.size();
-    cntMissing = vecMissing.size();
-    cntExpected = cntMissing;
+
+    auto iterFound = std::find_if( _transactions.begin(), _transactions.end(),
+        [&shaLastTx]( const Transaction& txWalk ) { return txWalk.sha3() == shaLastTx; } );
+
+    // detect partial ONLY if this transaction is not known!
+    bIsPartial = iterFound != _transactions.end() && !isKnownTransaction( shaLastTx );
+
+    Transactions vecPassed, vecMissing;
     if ( bIsPartial ) {
-        partialTransactionReceipts = m_state.safePartialTransactionReceipts();
+        vecPassed.insert( vecPassed.end(), _transactions.begin(), iterFound + 1 );
+        vecMissing.insert( vecMissing.end(), iterFound + 1, _transactions.end() );
+    }
+
+    size_t cntAll = _transactions.size();
+    size_t cntPassed = vecPassed.size();
+    size_t cntMissing = vecMissing.size();
+    size_t cntExpected = cntMissing;
+    if ( bIsPartial ) {
         LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
                         << cc::warn( " found partially executed block, have " )
                         << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
@@ -533,21 +534,25 @@ size_t Client::importTransactionsAsBlock(
         LOG( m_logger ).flush();
         LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
                         << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
-        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
-                        << cc::size10( partialTransactionReceipts.size() )
-                        << cc::attention( " partial transaction receipt(s) inside " )
-                        << cc::notice( "SAFETY CACHE" );
+        //        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
+        //                        << cc::size10( partialTransactionReceipts.size() )
+        //                        << cc::attention( " partial transaction receipt(s) inside " )
+        //                        << cc::notice( "SAFETY CACHE" );
         LOG( m_logger ).flush();
     }
     // end, detect partially executed block
     //
-
-    TransactionReceipts accumulatedTransactionReceipts = partialTransactionReceipts;
-    bool isSaveLastTxHash = true;
-    size_t cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, isSaveLastTxHash,
-        &accumulatedTransactionReceipts, bIsPartial ? &vecMissing : nullptr );
+    size_t cntSucceeded = 0;
+    cntSucceeded = syncTransactions(
+        _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
     sealUnconditionally( false );
     importWorkingBlock();
+
+    LOG( m_loggerDetail ) << "Total unsafe time so far = "
+                          << std::chrono::duration_cast< std::chrono::seconds >(
+                                 UnsafeRegion::getTotalTime() )
+                                 .count()
+                          << " seconds";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;
@@ -565,6 +570,9 @@ size_t Client::importTransactionsAsBlock(
                         << cc::success( " missing" );
         LOG( m_logger ).flush();
     }
+
+    if ( chainParams().sChain.nodeGroups.size() > 0 )
+        updateIMABLSPublicKey();
 
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
@@ -635,10 +643,6 @@ size_t Client::importTransactionsAsBlock(
         }  // if thread
     }      // if snapshots enabled
 
-    if ( m_instanceMonitor->isTimeToRotate( _timestamp ) ) {
-        m_instanceMonitor->performRotation();
-    }
-
     // TEMPRORARY FIX!
     // TODO: REVIEW
     tick();
@@ -648,8 +652,8 @@ size_t Client::importTransactionsAsBlock(
     return 0;
 }
 
-size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, bool isSaveLastTxHash, TransactionReceipts* accumulatedTransactionReceipts,
+size_t Client::syncTransactions(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp,
     Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
 ) {
     assert( m_skaleHost );
@@ -672,8 +676,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         assert( !m_working.isSealed() );
 
         // assert(m_state.m_db_write_lock.has_value());
-        tie( newPendingReceipts, goodReceipts ) = m_working.syncEveryone( bc(), _transactions,
-            _timestamp, _gasPrice, isSaveLastTxHash, accumulatedTransactionReceipts, vecMissing );
+        tie( newPendingReceipts, goodReceipts ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
         m_state = m_state.startNew();
     }
 
@@ -1094,7 +1098,7 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement whis when syncing will be needed
+    // TODO implement this when syncing will be needed
     SyncStatus s;
     s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
     return s;
@@ -1146,6 +1150,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     return importTransaction( t );
 }
 
+// TODO: Check whether multiTransactionMode enabled on contracts
 h256 Client::importTransaction( Transaction const& _t ) {
     prepareForTransaction();
 
@@ -1167,9 +1172,16 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice );
+        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
-    ImportResult res = m_tq.import( _t );
+    ImportResult res;
+    if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
+         m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
+        res = m_tq.import( _t, IfDropped::Ignore, true );
+    } else {
+        res = m_tq.import( _t );
+    }
+
     switch ( res ) {
     case ImportResult::Success:
         break;
@@ -1234,9 +1246,12 @@ void Client::initHashes() {
 
         // ignore second as it was "in hash computation"
         // check that both are imported!!
-        h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        assert( h2 != h256() );
-        last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // assert( h2 != h256() );
+        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
@@ -1245,11 +1260,14 @@ void Client::initHashes() {
 
         // whether it is local or downloaded - we shall ignore it's hash but use it's time
         // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        uint64_t time_of_second = blockInfo( h2 ).timestamp();
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
 
         this->last_snapshoted_block_with_hash = -1;
-        last_snapshot_creation_time = time_of_second;
+        // last_snapshot_creation_time = time_of_second;
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
 
         // no snapshots yet
     } else {
@@ -1264,6 +1282,40 @@ void Client::initHashes() {
     LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
                     << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
     LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
+}
+
+void Client::initIMABLSPublicKey() {
+    if ( number() == 0 ) {
+        imaBLSPublicKeyGroupIndex = 0;
+        return;
+    }
+
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+
+    // always returns it != end() because current finish ts equals to uint64_t(-1)
+    auto it = std::find_if( chainParams().sChain.nodeGroups.begin(),
+        chainParams().sChain.nodeGroups.end(),
+        [&currentBlockTimestamp](
+            const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
+    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it != chainParams().sChain.nodeGroups.begin() ) {
+        auto prevIt = std::prev( it );
+        if ( currentBlockTimestamp >= prevIt->finishTs &&
+             previousBlockTimestamp < prevIt->finishTs )
+            it = prevIt;
+    }
+
+    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+}
+
+void Client::updateIMABLSPublicKey() {
+    uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    if ( blockTimestamp >= currentFinishTs )
+        ++imaBLSPublicKeyGroupIndex;
+    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
 }
 
 // new block watch
@@ -1282,6 +1334,26 @@ unsigned Client::installNewPendingTransactionWatch(
 }
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
+}
+
+uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
+    assert( m_skaleHost );
+    uint64_t status = -1;
+    if ( m_skaleHost )
+        status = m_skaleHost->submitOracleRequest( _spec, _receipt );
+    else
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
+    return status;
+}
+
+uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
+    assert( m_skaleHost );
+    uint64_t status = -1;
+    if ( m_skaleHost )
+        status = m_skaleHost->checkOracleResult( _receipt, _result );
+    else
+        throw runtime_error( "Instance of SkaleHost was not properly created." );
+    return status;
 }
 
 const dev::h256 Client::empty_str_hash =

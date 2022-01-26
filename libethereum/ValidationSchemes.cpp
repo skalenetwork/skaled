@@ -174,9 +174,16 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"info-acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
             {"adminOrigins", {{js::array_type}, JsonFieldPresence::Optional}},
             {"db-path", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"block-rotation-period", {{js::int_type}, JsonFieldPresence::Optional}},
             {"ipcpath", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"enable-personal-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"enable-admin-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"enable-debug-behavior-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"enable-performance-tracker-apis", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"pg-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"pg-threads", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"pg-threads-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"web3-trace", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"web3-shutdown", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"unsafe-transactions", {{js::bool_type}, JsonFieldPresence::Optional}},
@@ -184,9 +191,14 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"max-http-queues", {{js::int_type}, JsonFieldPresence::Optional}},
             {"ws-mode", {{js::str_type}, JsonFieldPresence::Optional}},
             {"ws-log", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"log-value-size-limit", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"log-json-string-limit", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"log-tx-params-limit", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"no-txn-sending", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"no-ima-signing", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"skale-manager", {{js::obj_type}, JsonFieldPresence::Optional}},
+            {"skale-network-browser-refresh", {{js::int_type}, JsonFieldPresence::Optional}},
             {"imaMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
-            {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
-            {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaCallerAddressSChain", {{js::str_type}, JsonFieldPresence::Optional}},
@@ -218,6 +230,7 @@ void validateConfigJson( js::mObject const& _obj ) {
         {{"schainName", {{js::str_type}, JsonFieldPresence::Required}},
             {"schainID", {{js::int_type}, JsonFieldPresence::Required}},
             {"schainOwner", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"blockAuthor", {{js::str_type}, JsonFieldPresence::Optional}},
             {"emptyBlockIntervalMs", {{js::int_type}, JsonFieldPresence::Optional}},
             {"snapshotIntervalSec", {{js::int_type}, JsonFieldPresence::Optional}},
             {"rotateAfterBlock", {{js::int_type}, JsonFieldPresence::Optional}},
@@ -228,7 +241,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"maxFileStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxReservedStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxSkaledLeveldbStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}}} );
+            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"multiTransactionMode", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"nodeGroups", {{js::obj_type}, JsonFieldPresence::Optional}}} );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {
@@ -250,13 +265,24 @@ void validateConfigJson( js::mObject const& _obj ) {
                 {"wsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
                 {"wssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
                 {"wssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoHttpRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoHttpRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoHttpsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoHttpsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoWsRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoWsRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoWssRpcPort", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"infoWssRpcPort6", {{js::int_type}, JsonFieldPresence::Optional}},
+                {"info-acceptors", {{js::int_type}, JsonFieldPresence::Optional}},
                 {"schainIndex", {{js::int_type}, JsonFieldPresence::Required}},
                 {"publicKey", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey0", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey1", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey2", {{js::str_type}, JsonFieldPresence::Optional}},
                 {"blsPublicKey3", {{js::str_type}, JsonFieldPresence::Optional}},
-                {"owner", {{js::str_type}, JsonFieldPresence::Optional}}} );
+                {"owner", {{js::str_type}, JsonFieldPresence::Optional}},
+                {"blockAuthor", {{js::str_type}, JsonFieldPresence::Optional}}} );
     }
 }
 

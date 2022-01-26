@@ -24,6 +24,9 @@
 
 #include "SnapshotManager.h"
 
+#include "UnsafeRegion.h"
+#include <libbatched-io/batched_io.h>
+
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
@@ -102,6 +105,8 @@ SnapshotManager::SnapshotManager( const fs::path& _dataDir,
 void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
     fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
 
+    UnsafeRegion::lock ur_lock;
+
     try {
         if ( fs::exists( snapshot_dir ) )
             throw SnapshotPresent( _blockNumber );
@@ -115,11 +120,14 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
         std::throw_with_nested( CannotCreate( snapshot_dir ) );
     }  // catch
 
+    int dummy_counter = 0;
     for ( const string& vol : volumes ) {
         int res = btrfs.subvolume.snapshot_r( ( data_dir / vol ).c_str(), snapshot_dir.c_str() );
         if ( res )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    }
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
+    }  // for
 }
 
 // exceptions:
@@ -132,6 +140,9 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
         std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
     }
 
+    UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
     for ( const string& vol : volumes ) {
         if ( fs::exists( data_dir / vol ) ) {
             if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
@@ -140,7 +151,11 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
         if ( btrfs.subvolume.snapshot(
                  ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-    }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
+
+    }  // for
 }
 
 // exceptions:
@@ -163,43 +178,27 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
         std::throw_with_nested( CannotRead( ex.path1() ) );
     }
 
-    stringstream cat_cmd;
-    cat_cmd << "cat ";
-    vector< string > created;
+    stringstream volumes_cat;
 
-    for ( const string& vol : volumes ) {
-        string part_path = path.string() + "_" + vol;
-        cat_cmd << part_path << " ";
+    for ( auto it = volumes.begin(); it != volumes.end(); ++it ) {
+        const string& vol = *it;
+        if ( it + 1 != volumes.end() )
+            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string() << " ";
+        else
+            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string();
+    }  // for cat
 
-        created.push_back( part_path );  // file is created even in case of error
+    UnsafeRegion::lock ur_lock;
 
-        if ( btrfs.send( NULL, part_path.c_str(),
-                 ( snapshots_dir / to_string( _toBlock ) / vol ).c_str() ) ) {
-            try {
-                fs::remove( path );
-                for ( const string& vol : created )
-                    fs::remove( vol );
-            } catch ( const fs::filesystem_error& ex ) {
-                throw_with_nested( CannotDelete( ex.path1() ) );
-            }  // catch
-
-            throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
-        }  // if error
-
-    }  // for
-
-    cat_cmd << ">" << path;
-    int cat_res = system( cat_cmd.str().c_str() );
-
-    for ( const string& vol : created )
+    if ( btrfs.send( NULL, path.c_str(), volumes_cat.str().c_str() ) ) {
         try {
-            fs::remove( vol );
+            fs::remove( path );
         } catch ( const fs::filesystem_error& ex ) {
             throw_with_nested( CannotDelete( ex.path1() ) );
-        }
+        }  // catch
 
-    if ( cat_res != 0 )
-        throw CannotWrite( path );
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }  // if error
 
     return path;
 }
@@ -229,8 +228,10 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
     }  // catch
 
     if ( btrfs.receive( diffPath.c_str(), ( snapshots_dir / to_string( _toBlock ) ).c_str() ) ) {
+        auto ex = CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        cleanupDirectory( snapshot_dir );
         fs::remove_all( snapshot_dir );
-        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+        throw ex;
     }  // if
 }
 
@@ -245,6 +246,10 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
         throw SnapshotAbsent( _blockNumber );
     }
 
+    UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
+
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.subvolume._delete(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str() );
@@ -252,6 +257,9 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
     fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
@@ -557,11 +565,11 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
             return lhs.string() < rhs.string();
         } );
 
-    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
-        if ( boost::filesystem::is_regular_file( *it ) ) {
-            proceedRegularFile( *it, ctx, is_checking );
+    for ( auto& content : contents ) {
+        if ( boost::filesystem::is_regular_file( content ) ) {
+            proceedRegularFile( content, ctx, is_checking );
         } else {
-            proceedDirectory( *it, ctx );
+            proceedDirectory( content, ctx );
         }
     }
 }
@@ -603,8 +611,8 @@ void SnapshotManager::computeAllVolumesHash(
             return lhs.string() < rhs.string();
         } );
 
-    for ( auto it = contents.begin(); it != contents.end(); ++it ) {
-        this->computeDatabaseHash( *it, ctx );
+    for ( auto& content : contents ) {
+        this->computeDatabaseHash( content, ctx );
     }
 
     // filestorage
@@ -625,6 +633,11 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
+    // TODO Think if we really need it
+    // UnsafeRegion::lock ur_lock;
+
+    int dummy_counter = 0;
+
     for ( const auto& volume : this->volumes ) {
         int res = btrfs.btrfs_subvolume_property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
@@ -633,6 +646,9 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
+
+        if ( dummy_counter++ == 1 )
+            batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
     this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
@@ -661,4 +677,39 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     } catch ( const std::exception& ex ) {
         std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
     }
+}
+
+uint64_t SnapshotManager::getBlockTimestamp(
+    unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const {
+    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+
+    try {
+        if ( !fs::exists( snapshot_dir ) )
+            throw SnapshotAbsent( _blockNumber );
+    } catch ( const fs::filesystem_error& ) {
+        std::throw_with_nested( CannotRead( snapshot_dir ) );
+    }
+
+    fs::path db_dir = this->snapshots_dir / std::to_string( _blockNumber );
+
+    int res = btrfs.btrfs_subvolume_property_set(
+        ( db_dir / this->volumes[0] ).string().c_str(), "ro", "false" );
+
+    if ( res != 0 ) {
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
+    dev::eth::BlockChain bc( chain_params, db_dir );
+    dev::h256 hash = bc.numberHash( _blockNumber );
+    uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
+
+
+    res = btrfs.btrfs_subvolume_property_set(
+        ( db_dir / this->volumes[0] ).string().c_str(), "ro", "true" );
+
+    if ( res != 0 ) {
+        throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+    }
+
+    return timestamp;
 }

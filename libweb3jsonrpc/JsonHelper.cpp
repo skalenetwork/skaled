@@ -528,8 +528,9 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
                 ret.creation = true;
             else
                 ret.to = jsToAddress( _json["to"].GetString() );
-        } else
+        } else {
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        }
     } else
         ret.creation = true;
 

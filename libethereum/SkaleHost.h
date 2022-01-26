@@ -35,6 +35,7 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/InstanceMonitor.h>
 #include <libethereum/Transaction.h>
 #include <libskale/SkaleClient.h>
 
@@ -79,6 +80,7 @@ private:
     const dev::eth::Client& m_client;
 #if CONSENSUS
     void fillSgxInfo( ConsensusEngine& consensus ) const;
+    void fillRotationHistory( ConsensusEngine& consensus ) const;
 #endif
 };
 
@@ -103,7 +105,9 @@ public:
         virtual const char* what() const noexcept { return "Error creating SkaleHost"; }
     };
 
-    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr );
+    SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
+        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
+        const std::string& _gethURL = "" );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -118,6 +122,11 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     dev::u256 getGasPrice() const;
+    dev::u256 getBlockRandom() const;
+    std::array< std::string, 4 > getIMABLSPublicKey() const;
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
@@ -180,6 +189,7 @@ private:
                                 // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};

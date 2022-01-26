@@ -30,9 +30,8 @@
 #include <skutils/rest_call.h>
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#include <libff/common/profiling.hpp>
-
 #include <libconsensus/libBLS/tools/utils.h>
+#include <libff/common/profiling.hpp>
 
 SnapshotHashAgent::SnapshotHashAgent(
     const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
@@ -108,7 +107,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
     return verified;
 }
 
-bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >& to_vote ) {
+bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
     if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 ) {
@@ -127,6 +126,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
 
     auto it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
+    cnote << "Snapshot hash is: " << ( *it ).first << " .Verifying it...\n";
 
     if ( it == map_hash.end() ) {
         throw NotEnoughVotesException( "note enough votes to choose hash" );
@@ -197,7 +197,7 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
             try {
                 is_verified = this->bls_->Verification(
                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                    common_signature, this->common_public_key_ );
+                    common_signature, common_public_key_from_config );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 std::cerr << cc::error(
                                  "Exception while verifying common signature from other skaleds: " )
@@ -219,8 +219,8 @@ bool SnapshotHashAgent::voteForHash( std::pair< dev::h256, libff::alt_bn128_G1 >
             }
         }
 
-        to_vote.first = ( *it ).first;
-        to_vote.second = common_signature;
+        this->voted_hash_.first = ( *it ).first;
+        this->voted_hash_.second = common_signature;
 
         return true;
     }
@@ -245,14 +245,25 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                 // just ask block number in this special case
                 if ( block_number == 0 ) {
-                    skaleClient.skale_getLatestSnapshotBlockNumber();
-                    const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                    this->nodes_to_download_snapshot_from_.push_back( i );
-                    return;
+                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
+                    if ( n == 0 ) {
+                        const std::lock_guard< std::mutex > lock( this->hashes_mutex );
+                        this->nodes_to_download_snapshot_from_.push_back( i );
+                        delete jsonRpcClient;
+                        return;
+                    }
                 }
 
-                Json::Value joSignatureResponse =
-                    skaleClient.skale_getSnapshotSignature( block_number );
+                Json::Value joSignatureResponse;
+                try {
+                    joSignatureResponse = skaleClient.skale_getSnapshotSignature( block_number );
+                } catch ( jsonrpc::JsonRpcException& ex ) {
+                    cerror << "WARNING "
+                           << "Error while trying to get snapshot signature from "
+                           << this->chain_params_.sChain.nodes[i].ip << " : " << ex.what();
+                    delete jsonRpcClient;
+                    return;
+                }
 
                 if ( !joSignatureResponse.get( "hash", 0 ) || !joSignatureResponse.get( "X", 0 ) ||
                      !joSignatureResponse.get( "Y", 0 ) ) {
@@ -267,6 +278,11 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     this->is_received_[i] = true;
 
                     std::string str_hash = joSignatureResponse["hash"].asString();
+                    cnote << "Received snapshot hash from "
+                          << "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
+                                 ( this->chain_params_.sChain.nodes[i].port + 3 )
+                                     .convert_to< std::string >()
+                          << " : " << str_hash << '\n';
 
                     libff::alt_bn128_G1 signature = libff::alt_bn128_G1(
                         libff::alt_bn128_Fq( joSignatureResponse["X"].asCString() ),
@@ -311,7 +327,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
     else
         try {
-            result = this->voteForHash( this->voted_hash_ );
+            result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
             std::cerr << cc::error(
                              "Exception while voting for snapshot hash from other skaleds: " )
@@ -323,6 +339,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         }  // catch
 
     if ( !result ) {
+        cnote << "Not enough nodes to choose snapshot hash for block "
+              << std::to_string( block_number );
         return {};
     }
 

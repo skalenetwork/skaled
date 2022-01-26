@@ -188,8 +188,9 @@ h256 LevelDB::hashBase() const {
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         std::string key_ = it->key().ToString();
         std::string value_ = it->value().ToString();
-        // HACK! For backward compatibility!
-        // TODO Move this logic to separated "compatiliblity layer"!
+        // HACK! For backward compatibility! When snapshot could happen between update of two nodes
+        // - it would lead to stateRoot mismatch
+        // TODO Move this logic to separate "compatiliblity layer"!
         if ( key_ == "pieceUsageBytes" )
             continue;
         std::string key_value = key_ + value_;

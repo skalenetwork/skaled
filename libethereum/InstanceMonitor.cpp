@@ -23,23 +23,20 @@
  */
 
 #include "InstanceMonitor.h"
-#include <csignal>
 #include <iostream>
 #include <json.hpp>
 
 #include <libdevcore/Common.h>
+#include <libdevcore/StatusAndControl.h>
 
 using namespace dev;
 namespace fs = boost::filesystem;
 
 const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
-const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 
-void InstanceMonitor::performRotation() {
+void InstanceMonitor::prepareRotation() {
     createFlagFile();
     fs::remove( m_rotationInfoFilePath );
-    ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
-    LOG( m_logger ) << "Rotation is completed. Instance is exiting";
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
@@ -69,13 +66,17 @@ void InstanceMonitor::restoreRotationParams() {
 }
 
 void InstanceMonitor::createFlagFile() {
-    LOG( m_logger ) << "Creating flag file " << m_rotationFlagFilePath.string();
-    std::ofstream( m_rotationFlagFilePath.string() );
+    if ( m_statusAndControl ) {
+        LOG( m_logger ) << "Setting ExitTimeReached = true";
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, true );
+    } else
+        LOG( m_logger ) << "Simulating setting ExitTimeReached = true";
 }
 
 void InstanceMonitor::removeFlagFile() {
-    LOG( m_logger ) << "Removing flag file " << m_rotationFlagFilePath.string();
-    if ( fs::exists( m_rotationFlagFilePath ) ) {
-        fs::remove( m_rotationFlagFilePath );
-    }
+    if ( m_statusAndControl ) {
+        LOG( m_logger ) << "Setting ExitTimeReached = false";
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, false );
+    } else
+        LOG( m_logger ) << "Simulating setting ExitTimeReached = false";
 }
