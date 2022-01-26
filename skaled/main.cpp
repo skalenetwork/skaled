@@ -2348,6 +2348,7 @@ int main( int argc, char** argv ) try {
                             throw jsonrpc::JsonRpcException(
                                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
                         }
+
                         auto paramsArray = joRequest["params"].GetArray();
 
                         if ( paramsArray.Size() != 2 ) {
