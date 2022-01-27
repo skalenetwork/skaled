@@ -94,7 +94,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 }
 
 #if CONSENSUS
-void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
+void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const try {
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
@@ -155,31 +155,23 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    try {
-        consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-            ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
-    } catch ( const std::exception& ex ) {
-        std::throw_with_nested( ex.what() );
-    } catch ( const boost::exception& ex ) {
-        std::throw_with_nested( boost::diagnostic_information( ex ) );
-    }
+    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+        ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
 
-void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const {
+void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
     std::map< uint64_t, std::vector< std::string > > rh;
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
         std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
             nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
         rh[nodeGroup.finishTs] = commonBLSPublicKey;
     }
-    try {
-        consensus.setRotationHistory(
-            std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
-    } catch ( const std::exception& ex ) {
-        std::throw_with_nested( ex.what() );
-    } catch ( const boost::exception& ex ) {
-        std::throw_with_nested( boost::diagnostic_information( ex ) );
-    }
+    consensus.setRotationHistory(
+        std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
 #endif
 
