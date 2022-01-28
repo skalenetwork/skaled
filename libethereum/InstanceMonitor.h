@@ -34,13 +34,13 @@ class StatusAndControl;
 
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath,
+    explicit InstanceMonitor( const boost::filesystem::path& _rotationInfoFileDirPath,
         std::shared_ptr< StatusAndControl > _statusAndControl = nullptr )
         : m_finishTimestamp( 0 ),
-          m_rotationInfoFilePath( dev::getDataDir() / rotation_info_file_name ),
+          m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
           m_statusAndControl( _statusAndControl ) {
         restoreRotationParams();
-        removeFlagFile();
+        reportExitTimeReached( false );
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
@@ -60,8 +60,7 @@ protected:
 
     static const std::string rotation_info_file_name;
 
-    void createFlagFile();
-    void removeFlagFile();
+    void reportExitTimeReached(bool _reached);
 
 private:
     dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};
