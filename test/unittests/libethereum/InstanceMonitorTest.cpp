@@ -26,11 +26,11 @@ public:
     }
 
     void createFlagFileTest(){
-        this->createFlagFile();
+        this->reportExitTimeReached( true );
     }
 
     void removeFlagFileTest(){
-        this->createFlagFile();
+        this->reportExitTimeReached( false );
     }
 };
 
@@ -114,6 +114,7 @@ BOOST_AUTO_TEST_CASE( test_create_remove_flag_file ) {
 
     instanceMonitor->removeFlagFileTest();
     BOOST_REQUIRE( !( fs::exists(instanceMonitor->getRotationInfoFilePath() ) ) );
+    BOOST_REQUIRE( !statusAndControlFile->getExitState(StatusAndControl::ExitTimeReached) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

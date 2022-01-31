@@ -35,7 +35,7 @@ namespace fs = boost::filesystem;
 const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
 
 void InstanceMonitor::prepareRotation() {
-    createFlagFile();
+    reportExitTimeReached( true );
     fs::remove( m_rotationInfoFilePath );
 }
 
@@ -65,18 +65,10 @@ void InstanceMonitor::restoreRotationParams() {
     }
 }
 
-void InstanceMonitor::createFlagFile() {
+void InstanceMonitor::reportExitTimeReached(bool _reached) {
     if ( m_statusAndControl ) {
-        LOG( m_logger ) << "Setting ExitTimeReached = true";
-        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, true );
+        LOG( m_logger ) << "Setting ExitTimeReached = " << _reached;
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, _reached );
     } else
-        LOG( m_logger ) << "Simulating setting ExitTimeReached = true";
-}
-
-void InstanceMonitor::removeFlagFile() {
-    if ( m_statusAndControl ) {
-        LOG( m_logger ) << "Setting ExitTimeReached = false";
-        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, false );
-    } else
-        LOG( m_logger ) << "Simulating setting ExitTimeReached = false";
+        LOG( m_logger ) << "Simulating setting ExitTimeReached = " << _reached;
 }
