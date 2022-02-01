@@ -23,7 +23,16 @@
  */
 
 #include "encryption.h"
+#include <algorithm>
+
 
 std::shared_ptr<std::vector<uint8_t>> EncryptedTransactionAnalyzer::getEncryptedData( const std::vector<uint8_t>& data ) {
+    std::vector<uint8_t> start(TE_MAGIC_START.begin(), TE_MAGIC_START.end());
+    std::vector<uint8_t> end(TE_MAGIC_END.begin(), TE_MAGIC_END.end());
+    auto a = std::search(data.begin(), data.end(), start.begin(), start.end());
+    auto b = std::search(data.begin(), data.end(), end.begin(), end.end());
+    if (a != data.end() && b != data.end() && a < b) {
+        return nullptr;
+    }
     return nullptr;
 }; 

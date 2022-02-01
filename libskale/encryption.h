@@ -30,4 +30,8 @@ class EncryptedTransactionAnalyzer {
     public:  
         static std::shared_ptr< std::vector< uint8_t > > getEncryptedData( const std::vector<uint8_t>& data ); 
 
+    private:
+        inline static const std::string TE_MAGIC_START="f84a1cf7214ae051cae8";
+        inline static const std::string TE_MAGIC_END="98a773d884b2f1c4ac27";
+        // inline std::vector<uint8_t> myVector(TE_MAGIC_START.begin(), TE_MAGIC_START.end());
 };
