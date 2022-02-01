@@ -1,5 +1,5 @@
 * xref:index.adoc[Overview]
-* xref:skale-chain-eth.adoc[SKALE Chain ETH]
+* xref:skale-chain-fuel.adoc[SKALE Chain FUEL]
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
 * xref:code-size-limits.adoc[Contract Code Size Limits]
 * xref:snapshots.adoc[Snapshots]

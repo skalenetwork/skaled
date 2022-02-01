@@ -38,7 +38,7 @@ SKALE Chains operate like Ethereum, and there are a few other features and diffe
 
 === Gas-free transactions
 
-Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on SKALE Chains just like on Ethereum, but it's powered by what's called SKALE ETH (skETH), which has no monetary value. In this way,executing transactions and state changes don't incur costs, but require consuming gas in skETH, which is value-less. SKALE Chain gas provides a way to meter or limit transactions on the SKALE Chain to prevent malicious execution.
+Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on SKALE Chains just like on Ethereum, but it's powered by what's called SKALE FUEL (sFUEL), which has no monetary value. In this way,executing transactions and state changes don't incur costs, but require consuming gas in sFUEL, which is value-less. SKALE Chain gas provides a way to meter or limit transactions on the SKALE Chain to prevent malicious execution.
 
 === Empty Block Intervals
 
