@@ -23,7 +23,6 @@
  */
 
 #include "encryption.h"
-#include <libdevcore/CommonData.h>
 #include <libethereum/Transaction.h>
 #include <libethcore/TransactionBase.h>
 #include <algorithm>
@@ -31,12 +30,10 @@
 std::shared_ptr<std::vector<uint8_t>> EncryptedTransactionAnalyzer::getEncryptedData( const std::vector<uint8_t>& _transaction ) {
     dev::eth::Transaction t( _transaction, dev::eth::CheckTransaction::None );
     auto data = t.data();
-    auto start = dev::fromHex(TE_MAGIC_START);
-    auto end = dev::fromHex(TE_MAGIC_END);
-    auto a = std::search(data.begin(), data.end(), start.begin(), start.end());
-    auto b = std::search(data.begin(), data.end(), end.begin(), end.end());
-    if (a != data.end() && b != data.end() && std::distance(a, b) > 0) {
-        return nullptr;
+    auto first = std::search(data.begin(), data.end(), TE_MAGIC_START.begin(), TE_MAGIC_START.end());
+    auto last = std::search(data.begin(), data.end(), TE_MAGIC_END.begin(), TE_MAGIC_END.end());
+    if (first != data.end() && last != data.end() && std::distance(first, last) > 0) {
+        return std::make_shared<std::vector<uint8_t>> (first + TE_MAGIC_START.size(), last);
     }
     return nullptr;
 }; 
