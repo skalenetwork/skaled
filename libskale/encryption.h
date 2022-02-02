@@ -22,17 +22,19 @@
  * @date 2022
  */
 
+#pragma once
+
 #include <memory>
 #include <vector>
 #include <libdevcore/CommonData.h>
+#include <libconsensus/node/ConsensusInterface.h>
 
-class EncryptedTransactionAnalyzer { 
+class EncryptedTransactionAnalyzer : public EncryptedTransactionAnalyzerInterface { 
 
     public:  
-        static std::shared_ptr< std::vector< uint8_t > > getEncryptedData( const std::vector<uint8_t>& data ); 
+        std::shared_ptr<std::vector<uint8_t>> getEncryptedData( const std::vector<uint8_t>& transaction ) override; 
 
     private:
-        inline static const std::vector< uint8_t > TE_MAGIC_START = dev::fromHex("f84a1cf7214ae051cae8");
-        inline static const std::vector< uint8_t > TE_MAGIC_END = dev::fromHex("98a773d884b2f1c4ac27");
-        // inline std::vector<uint8_t> myVector(TE_MAGIC_START.begin(), TE_MAGIC_START.end());
+        inline static const std::vector< uint8_t > ms = dev::fromHex(TE_MAGIC_START);
+        inline static const std::vector< uint8_t > me = dev::fromHex(TE_MAGIC_END);
 };
