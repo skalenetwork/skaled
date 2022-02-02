@@ -39,9 +39,8 @@ class ConsensusStub : private dev::Worker, public ConsensusInterface {
 public:
     ConsensusStub( ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot );
     ~ConsensusStub() override;
-    void parseFullConfigAndCreateNode(
-        const std::string& _jsonConfig, const string& _gethURL,
-        std::shared_ptr<EncryptedTransactionAnalyzerInterface> _analyzer ) override;
+    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL,
+        std::shared_ptr< EncryptedTransactionAnalyzerInterface > _analyzer ) override;
     void startAll() override;
     void bootStrapAll() override;
     void exitGracefully() override;

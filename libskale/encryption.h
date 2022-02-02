@@ -24,17 +24,17 @@
 
 #pragma once
 
+#include <libconsensus/node/ConsensusInterface.h>
+#include <libdevcore/CommonData.h>
 #include <memory>
 #include <vector>
-#include <libdevcore/CommonData.h>
-#include <libconsensus/node/ConsensusInterface.h>
 
-class EncryptedTransactionAnalyzer : public EncryptedTransactionAnalyzerInterface { 
+class EncryptedTransactionAnalyzer : public EncryptedTransactionAnalyzerInterface {
+public:
+    std::shared_ptr< std::vector< uint8_t > > getEncryptedData(
+        const std::vector< uint8_t >& transaction ) override;
 
-    public:  
-        std::shared_ptr<std::vector<uint8_t>> getEncryptedData( const std::vector<uint8_t>& transaction ) override; 
-
-    private:
-        inline static const std::vector< uint8_t > ms = dev::fromHex(TE_MAGIC_START);
-        inline static const std::vector< uint8_t > me = dev::fromHex(TE_MAGIC_END);
+private:
+    inline static const std::vector< uint8_t > ms = dev::fromHex( TE_MAGIC_START );
+    inline static const std::vector< uint8_t > me = dev::fromHex( TE_MAGIC_END );
 };

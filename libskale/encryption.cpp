@@ -23,17 +23,18 @@
  */
 
 #include "encryption.h"
-#include <libethereum/Transaction.h>
 #include <libethcore/TransactionBase.h>
+#include <libethereum/Transaction.h>
 #include <algorithm>
 
-std::shared_ptr<std::vector<uint8_t>> EncryptedTransactionAnalyzer::getEncryptedData( const std::vector<uint8_t>& transaction ) {
+std::shared_ptr< std::vector< uint8_t > > EncryptedTransactionAnalyzer::getEncryptedData(
+    const std::vector< uint8_t >& transaction ) {
     dev::eth::Transaction t( transaction, dev::eth::CheckTransaction::None );
     auto data = t.data();
-    auto first = std::search(data.begin(), data.end(), ms.begin(), ms.end());
-    auto last = std::search(data.begin(), data.end(), me.begin(), me.end());
-    if (first != data.end() && last != data.end() && std::distance(first, last) > 0) {
-        return std::make_shared<std::vector<uint8_t>> (first + ms.size(), last);
+    auto first = std::search( data.begin(), data.end(), ms.begin(), ms.end() );
+    auto last = std::search( data.begin(), data.end(), me.begin(), me.end() );
+    if ( first != data.end() && last != data.end() && std::distance( first, last ) > 0 ) {
+        return std::make_shared< std::vector< uint8_t > >( first + ms.size(), last );
     }
     return nullptr;
-}; 
+};

@@ -108,7 +108,7 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-        const std::string& _gethURL = "",  
+        const std::string& _gethURL = "",
         std::shared_ptr< EncryptedTransactionAnalyzer > _analyzer = nullptr );
     virtual ~SkaleHost();
 
@@ -192,7 +192,6 @@ private:
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
-    std::shared_ptr< EncryptedTransactionAnalyzer > m_analyzer;
 
     dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
     dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};

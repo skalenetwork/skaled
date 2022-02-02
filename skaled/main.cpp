@@ -58,6 +58,7 @@
 
 #include <libskale/ConsensusGasPricer.h>
 #include <libskale/UnsafeRegion.h>
+#include <libskale/encryption.h>
 
 #include <libdevcrypto/LibSnark.h>
 
@@ -1726,7 +1727,8 @@ int main( int argc, char** argv ) try {
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
+            std::shared_ptr< EncryptedTransactionAnalyzer >() );
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();

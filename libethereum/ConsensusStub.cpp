@@ -53,7 +53,8 @@ ConsensusStub::~ConsensusStub() {
     // TODO Auto-generated destructor stub
 }
 
-void ConsensusStub::parseFullConfigAndCreateNode( const std::string&, const std::string&, std::shared_ptr<EncryptedTransactionAnalyzerInterface> ) {
+void ConsensusStub::parseFullConfigAndCreateNode( const std::string&, const std::string&,
+    std::shared_ptr< EncryptedTransactionAnalyzerInterface > ) {
     // TODO think this architecture thoroughly
 }
 
