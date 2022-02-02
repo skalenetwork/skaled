@@ -65,7 +65,7 @@ void InstanceMonitor::restoreRotationParams() {
     }
 }
 
-void InstanceMonitor::reportExitTimeReached(bool _reached) {
+void InstanceMonitor::reportExitTimeReached( bool _reached ) {
     if ( m_statusAndControl ) {
         LOG( m_logger ) << "Setting ExitTimeReached = " << _reached;
         m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, _reached );

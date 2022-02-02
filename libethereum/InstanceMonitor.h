@@ -60,7 +60,7 @@ protected:
 
     static const std::string rotation_info_file_name;
 
-    void reportExitTimeReached(bool _reached);
+    void reportExitTimeReached( bool _reached );
 
 private:
     dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};
