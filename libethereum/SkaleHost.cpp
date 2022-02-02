@@ -181,7 +181,8 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
         uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-        uint64_t _winningNodeIndex ) override;
+        uint64_t _winningNodeIndex, 
+        const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> decryptedArgs ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -200,7 +201,8 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
     uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-    uint64_t _winningNodeIndex ) {
+    uint64_t _winningNodeIndex,
+    const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> decryptedArgs ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock(
         _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
@@ -211,10 +213,12 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    std::shared_ptr< EncryptedTransactionAnalyzer > _analyzer ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      m_analyzer( _analyzer ),
       total_sent( 0 ),
       total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -251,7 +255,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
+    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL, m_analyzer );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }

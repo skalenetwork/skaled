@@ -112,7 +112,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "", nullptr );
 
         m_consensusThread = std::thread( [this]() {
             sleep(1);
@@ -131,7 +131,8 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/, 
+        const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> /*decryptedArgs*/) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -213,7 +214,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "", nullptr );
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
@@ -278,7 +279,8 @@ public:
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
         uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
-        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
+        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/, 
+        const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> /*decryptedArgs*/) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
