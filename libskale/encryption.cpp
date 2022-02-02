@@ -17,21 +17,25 @@
     along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 /**
- * @file State.h
+ * @file encryption.cpp
  * @author Dmytro Nazarenko
  * @date 2022
  */
 
 #include "encryption.h"
+#include <libdevcore/CommonData.h>
+#include <libethereum/Transaction.h>
+#include <libethcore/TransactionBase.h>
 #include <algorithm>
 
-
-std::shared_ptr<std::vector<uint8_t>> EncryptedTransactionAnalyzer::getEncryptedData( const std::vector<uint8_t>& data ) {
-    std::vector<uint8_t> start(TE_MAGIC_START.begin(), TE_MAGIC_START.end());
-    std::vector<uint8_t> end(TE_MAGIC_END.begin(), TE_MAGIC_END.end());
+std::shared_ptr<std::vector<uint8_t>> EncryptedTransactionAnalyzer::getEncryptedData( const std::vector<uint8_t>& _transaction ) {
+    dev::eth::Transaction t( _transaction, dev::eth::CheckTransaction::None );
+    auto data = t.data();
+    auto start = dev::fromHex(TE_MAGIC_START);
+    auto end = dev::fromHex(TE_MAGIC_END);
     auto a = std::search(data.begin(), data.end(), start.begin(), start.end());
     auto b = std::search(data.begin(), data.end(), end.begin(), end.end());
-    if (a != data.end() && b != data.end() && a < b) {
+    if (a != data.end() && b != data.end() && std::distance(a, b) > 0) {
         return nullptr;
     }
     return nullptr;

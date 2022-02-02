@@ -17,7 +17,7 @@
     along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 /**
- * @file State.h
+ * @file encryption.h
  * @author Dmytro Nazarenko
  * @date 2022
  */
