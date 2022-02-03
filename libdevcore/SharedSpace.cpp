@@ -6,7 +6,13 @@
 
 static const std::string LOCK_FILE = ".lock";
 
-SharedSpace::SharedSpace( const std::string& _path ) : path( _path ), lock_fd( -1 ) {}
+SharedSpace::SharedSpace( const std::string& _path ) : path( _path ), lock_fd( -1 ) {
+    if ( try_lock() ) {
+        boost::filesystem::remove_all( path );
+        boost::filesystem::create_directory( path );
+    }
+}
+
 const std::string& SharedSpace::getPath() const {
     return path;
 }
