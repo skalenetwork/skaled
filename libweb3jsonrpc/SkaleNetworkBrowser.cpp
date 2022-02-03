@@ -284,7 +284,7 @@ dev::u256 get_schains_count(
 }
 
 s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
-    const dev::u256& idxSChain, const dev::u256& cntSChains,
+    const dev::u256& idxSChain, const dev::u256& /*cntSChains*/,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     //
     // load s-chain
@@ -786,21 +786,14 @@ bool refreshing_start( const std::string& configPath ) {
                        " Error in config.json file, cannot find \"skaleConfig\"/\"sChain\"" ) );
         return false;
     }
+    std::string strAddressFrom;
     const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
-    if ( joSkaleConfig_sChain.count( "schainOwner" ) == 0 ) {
-        clog( dev::VerbosityError, "snb" )
-            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                   cc::error( " Error in config.json file, cannot find "
-                              "\"skaleConfig\"/\"sChain\"\"schainOwner\"" ) );
-        return false;
-    }
-    const nlohmann::json& joSkaleConfig_sChain_schainOwner = joSkaleConfig_sChain["schainOwner"];
-    if ( !joSkaleConfig_sChain_schainOwner.is_string() ) {
-        clog( dev::VerbosityError, "snb" )
-            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                   cc::error( " Error in config.json file, cannot find "
-                              "\"skaleConfig\"/\"sChain\"\"schainOwner\" as string value" ) );
-        return false;
+    if ( joSkaleConfig_sChain.count( "schainOwner" ) != 0 ) {
+        const nlohmann::json& joSkaleConfig_sChain_schainOwner =
+            joSkaleConfig_sChain["schainOwner"];
+        if ( joSkaleConfig_sChain_schainOwner.is_string() )
+            strAddressFrom =
+                skutils::tools::trim_copy( joSkaleConfig_sChain_schainOwner.get< std::string >() );
     }
     size_t nIntervalSeconds = 15 * 60;
     if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-refresh" ) > 0 ) {
@@ -809,19 +802,18 @@ bool refreshing_start( const std::string& configPath ) {
         if ( joSkaleConfig_nodeInfo_refresh.is_number() )
             nIntervalSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
     }
-    const std::string strAddressFrom =
-        skutils::tools::trim_copy( joSkaleConfig_sChain_schainOwner.get< std::string >() );
     const std::string strAddressSchainsInternal =
         skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
     const std::string strAddressNodes =
         skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_NodesInternal.get< std::string >() );
     if ( strAddressFrom.empty() ) {
-        clog( dev::VerbosityError, "snb" )
-            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                   cc::error(
-                       " Error in config.json file, cannot find "
-                       "\"skaleConfig\"/\"sChain\"\"schainOwner\" as non-empty string value" ) );
-        return false;
+        strAddressFrom = "0xaa0f3d9f62271ef8d668947af98e51487ba3f26b";
+        clog( dev::VerbosityWarning, "snb" )
+            << ( cc::warn( "SKALE NETWORK BROWSER WARNING:" ) +
+                   cc::debug( "Using static address " ) + cc::info( strAddressFrom ) +
+                   cc::debug( " for contract calls because no " ) + cc::info( "skaleConfig" ) +
+                   cc::debug( "/" ) + cc::info( "sChain" ) + cc::debug( "/" ) +
+                   cc::info( "schainOwner" ) + cc::debug( " value is provided" ) );
     }
     if ( strAddressSchainsInternal.empty() ) {
         clog( dev::VerbosityError, "snb" )
