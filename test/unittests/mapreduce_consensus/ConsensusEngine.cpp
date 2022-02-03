@@ -112,7 +112,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "", nullptr );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             sleep(1);
@@ -141,6 +141,9 @@ public:
         block_promise.set_value(
             std::make_tuple( tmp_vec, _timeStamp, _timeStampMs, _blockID, _gasPrice ) );
     }
+
+    virtual std::shared_ptr<std::vector<uint8_t>> getEncryptedData(
+            const std::vector<uint8_t>& transaction) { return nullptr; }
 
     virtual ~SingleNodeConsensusFixture() override {
         transaction_promise.set_value( transactions_vector() );
@@ -214,7 +217,7 @@ public:
 
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "", nullptr );
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
@@ -286,6 +289,11 @@ public:
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
         m_arrived_blocks.push_back( _approvedTransactions.size() );
         m_blockCond.notify_one();
+    }
+
+    virtual std::shared_ptr<std::vector<uint8_t>> getEncryptedData(
+            const std::vector<uint8_t>& transaction) override {
+        return nullptr;
     }
 
     virtual ~ConsensusExtFaceFixture() override {

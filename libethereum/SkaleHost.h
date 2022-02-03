@@ -38,7 +38,6 @@
 #include <libethereum/InstanceMonitor.h>
 #include <libethereum/Transaction.h>
 #include <libskale/SkaleClient.h>
-#include <libskale/encryption.h>
 
 #include <jsonrpccpp/client/client.h>
 
@@ -108,8 +107,7 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-        const std::string& _gethURL = "",
-        std::shared_ptr< EncryptedTransactionAnalyzer > _analyzer = nullptr );
+        const std::string& _gethURL = "" );
     virtual ~SkaleHost();
 
     void startWorking();

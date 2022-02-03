@@ -185,6 +185,7 @@ public:
         const shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > decryptedArgs )
         override;
     virtual void terminateApplication() override;
+    std::shared_ptr< std::vector< uint8_t > > getEncryptedData( const std::vector< uint8_t >& transaction );
     virtual ~ConsensusExtImpl() override = default;
 
 private:
@@ -213,9 +214,24 @@ void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
+std::shared_ptr< std::vector< uint8_t > > ConsensusExtImpl::getEncryptedData(
+    const std::vector< uint8_t >& transaction ) {
+
+    static const std::vector< uint8_t > ms = dev::fromHex( TE_MAGIC_START );
+    static const std::vector< uint8_t > me = dev::fromHex( TE_MAGIC_END );
+
+    dev::eth::Transaction t( transaction, dev::eth::CheckTransaction::None );
+    auto data = t.data();
+    auto first = std::search( data.begin(), data.end(), ms.begin(), ms.end() );
+    auto last = std::search( data.begin(), data.end(), me.begin(), me.end() );
+    if ( first != data.end() && last != data.end() && std::distance( first, last ) > 0 ) {
+        return std::make_shared< std::vector< uint8_t > >( first + ms.size(), last );
+    }
+    return nullptr;
+}
+
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    std::shared_ptr< EncryptedTransactionAnalyzer > _analyzer ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -256,7 +272,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus = _consFactory->create( *m_extFace );
 
     m_consensus->parseFullConfigAndCreateNode(
-        m_client.chainParams().getOriginalJson(), _gethURL, _analyzer );
+        m_client.chainParams().getOriginalJson(), _gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }
