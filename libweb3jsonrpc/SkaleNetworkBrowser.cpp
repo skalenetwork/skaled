@@ -804,8 +804,8 @@ bool refreshing_start( const std::string& configPath ) {
     }
     const std::string strAddressSchainsInternal =
         skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
-    const std::string strAddressNodes = "0xaa0f3d9f62271ef8d668947af98e51487ba3f26b";
-    skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_NodesInternal.get< std::string >() );
+    const std::string strAddressNodes =
+        skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_NodesInternal.get< std::string >() );
     if ( strAddressFrom.empty() ) {
         strAddressFrom = "0xaa0f3d9f62271ef8d668947af98e51487ba3f26b";
         clog( dev::VerbosityWarning, "snb" )
