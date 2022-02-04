@@ -171,10 +171,10 @@ std::string ensure_no_slash_at_end_copy( const std::string& s ) {
 }
 
 // kills everything beyond plain old ASCII
-std::string safe_ascii(const std::string& in){
+std::string safe_ascii( const std::string& in ) {
     std::stringstream sout;
-    for(char c: in){
-        sout.put(c&0x80 ? '?' : c);
+    for ( char c : in ) {
+        sout.put( c & 0x80 ? '?' : c );
     }
     return sout.str();
 }

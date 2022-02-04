@@ -79,6 +79,8 @@ class sz_cli {
 public:
     skutils::url u_;
     skutils::http::SSL_client_options optsSSL_;
+    size_t cntAttemptsToSendMessage_ = 10;
+    size_t timeoutMilliseconds_ = 10 * 1000;
 
 private:
     std::string cert_;
@@ -94,8 +96,10 @@ private:
     static std::string stat_f2s( const std::string& strFileName );
     static std::pair< EVP_PKEY*, X509* > stat_cert_2_public_key(
         const std::string& strCertificate );
-    nlohmann::json stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout );
-    std::string stat_sendMessageZMQ( std::string& _req, bool bExceptionOnTimeout );
+    nlohmann::json stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout,
+        size_t cntAttempts, size_t timeoutMilliseconds );
+    std::string stat_sendMessageZMQ( std::string& _req, bool bExceptionOnTimeout,
+        size_t cntAttempts, size_t timeoutMilliseconds );
     static std::string stat_a2h( const uint8_t* ptr, size_t cnt );
     static std::string stat_sign( EVP_PKEY* pKey, const std::string& s );
 

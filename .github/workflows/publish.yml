@@ -23,6 +23,7 @@ jobs:
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
       - name: install packages
         run: |
+          sudo apt-get -y remove libzmq* || true
           sudo apt-get -y install software-properties-common
           sudo apt-get -y install gcc-9 g++-9
 
