@@ -78,8 +78,10 @@ SnapshotManager::SnapshotManager( const fs::path& _dataDir,
 
     try {
         fs::create_directory( snapshots_dir );
-        fs::remove_all( diffs_dir );
-        fs::create_directory( diffs_dir );
+        if ( _diffsDir.empty() ) {
+            fs::remove_all( diffs_dir );
+            fs::create_directory( diffs_dir );
+        }
     } catch ( const fs::filesystem_error& ex ) {
         std::throw_with_nested( CannotWrite( ex.path1() ) );
     }  // catch
