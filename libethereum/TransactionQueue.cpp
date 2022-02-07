@@ -89,10 +89,10 @@ void TransactionQueue::HandleDestruction() {
 }
 
 ImportResult TransactionQueue::import(
-    bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
+    bytesConstRef _transactionRLP, IfDropped _ik, bool _hasHigherNonce ) {
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything );
-        return import( t, _ik, _isFuture );
+        return import( t, _ik, _hasHigherNonce );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
     }
@@ -109,7 +109,7 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
 }
 
 ImportResult TransactionQueue::import(
-    Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
+    Transaction const& _transaction, IfDropped _ik, bool _hasHigherNonce ) {
     if ( _transaction.hasZeroSignature() )
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
@@ -126,10 +126,14 @@ ImportResult TransactionQueue::import(
 
         {
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
+            Address from = _transaction.sender();
+            u256 needed_nonce = maxCurrentNonce( from );
+
             UpgradeGuard ul( l );
             ret = manageImport_WITH_LOCK( h, _transaction );
 
-            if ( _isFuture ) {
+            // tx is in future if it has gap with nonce in queue or in state!
+            if ( (needed_nonce == 0 && _hasHigherNonce) || _transaction.nonce() > needed_nonce ) {
                 setFuture_WITH_LOCK( h );
             }
         }
