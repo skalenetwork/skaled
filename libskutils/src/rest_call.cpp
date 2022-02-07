@@ -217,7 +217,8 @@ static void stat_params_trick( nlohmann::json& jo ) {
     }
 }
 
-nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout ) {
+nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout,
+    size_t cntAttempts, size_t timeoutMilliseconds ) {
     if ( is_sign() )
         joRequest["cert"] = cert_;  // skutils::tools::replace_all_copy( cert_, "\n", "" );
     stat_params_trick( joRequest );
@@ -229,33 +230,38 @@ nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExcept
         stat_append_msgSig( reqStr, sig );
     }
     // reqStr = joRequest.dump();
-    auto resultStr = stat_sendMessageZMQ( reqStr, bExceptionOnTimeout );
+    auto resultStr =
+        stat_sendMessageZMQ( reqStr, bExceptionOnTimeout, cntAttempts, timeoutMilliseconds );
     try {
         nlohmann::json joAnswer = nlohmann::json::parse( resultStr );
         return joAnswer;
     } catch ( std::exception& e ) {
         throw std::runtime_error(
-            std::string( "sz_cli: stat_sendMessage() failed, exception is: " ) + e.what() );
+            std::string( "sz_cli: ZMQ message sending failed, exception is: " ) + e.what() );
     } catch ( ... ) {
-        throw std::runtime_error( "sz_cli: stat_sendMessage() failed, unknown exception" );
+        throw std::runtime_error( "sz_cli: ZMQ message sending failed, unknown exception" );
     }
 }  // namespace rest
 
-std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bExceptionOnTimeout ) {
+std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bExceptionOnTimeout,
+    size_t cntAttempts, size_t timeoutMilliseconds ) {
+    reconnect();
+    size_t idxAttempt = 0;
     std::stringstream request;
     s_send( *pClientSocket_, jvRequest );
+    ++idxAttempt;
     while ( true ) {
         zmq::pollitem_t items[] = {{static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0}};
-        const int REQUEST_TIMEOUT = 10000;
-        zmq::poll( &items[0], 1, REQUEST_TIMEOUT );
+        zmq::poll( &items[0], 1, timeoutMilliseconds );
         if ( items[0].revents & ZMQ_POLLIN ) {
             std::string reply = s_recv( *pClientSocket_ );
             return reply;
         } else {
-            if ( bExceptionOnTimeout )
+            if ( bExceptionOnTimeout && ( idxAttempt >= cntAttempts ) )
                 throw std::runtime_error( "sz_cli: no response from sgx server" );
             reconnect();
             s_send( *pClientSocket_, jvRequest );  // send again
+            ++idxAttempt;
         }
     }
 }
@@ -320,13 +326,14 @@ bool sz_cli::is_ssl() const {
 }
 
 bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer ) {
-    if ( !isConnected() ) {
-        reconnect();
-        if ( !isConnected() )
-            return false;
-    }
+    // if ( !isConnected() ) {
+    //     reconnect();
+    //     if ( !isConnected() )
+    //         return false;
+    // }
     nlohmann::json joMessage = nlohmann::json::parse( strMessage );
-    nlohmann::json joAnswer = stat_sendMessage( joMessage, true );
+    nlohmann::json joAnswer =
+        stat_sendMessage( joMessage, true, cntAttemptsToSendMessage_, timeoutMilliseconds_ );
     strAnswer = joAnswer.dump();
     return true;
 }
