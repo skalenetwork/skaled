@@ -71,20 +71,20 @@ public:
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
-    /// @param _hasHigherNonce True if transaction cannot be immediately mined (and POSSIBLY may be put to future queue)
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
     ImportResult import(
-        bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _hasHigherNonce = false ) {
-        return import( &_tx, _ik, _hasHigherNonce );
+        bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false ) {
+        return import( &_tx, _ik, _isFuture );
     }
 
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx Transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
-    /// @param _hasHigherNonce True if transaction cannot be immediately mined (and POSSIBLY may be put to future queue)
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
     ImportResult import(
-        Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _hasHigherNonce = false );
+        Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
 
     /// Remove transaction from the queue
     /// @param _txHash Transaction hash
@@ -156,7 +156,7 @@ public:
     }
 
     /// @returns the transaction limits on current/future.
-    Limits limits() const { return Limits{m_limit, m_futureLimit}; }
+    Limits limits() const { return Limits{ m_limit, m_futureLimit }; }
 
     /// @returns the number of tx in future queue.
     size_t futureSize() const { return m_futureSize; }
@@ -270,7 +270,7 @@ private:
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
     ImportResult import(
-        bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _hasHigherNonce = false );
+        bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction );
 
