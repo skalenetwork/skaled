@@ -254,8 +254,17 @@ BOOST_AUTO_TEST_CASE( tqImportFuture ) {
     waiting = tq.waiting(sender);
     BOOST_REQUIRE( waiting == 1 );
 
+    // HACK it's now allowed to repeat future transaction (can put it to current)
     ir1 = tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
-    BOOST_REQUIRE( ir1 == ImportResult::AlreadyKnown );
+    BOOST_REQUIRE( ir1 == ImportResult::Success );
+    known = tq.knownTransactions();
+    BOOST_REQUIRE( known.size() == 1 );
+    status = tq.status();
+    BOOST_REQUIRE( status.future == 1 );
+    maxNonce = tq.maxNonce(sender);
+    BOOST_REQUIRE( maxNonce == 5 );
+    waiting = tq.waiting(sender);
+    BOOST_REQUIRE( waiting == 1 );
 
     bytes rlp = tx1.transaction().rlp();
     rlp.at( 0 ) = 03;
@@ -323,6 +332,24 @@ BOOST_AUTO_TEST_CASE( tqImportFuture ) {
     BOOST_REQUIRE( waiting == 1 );
     status = tq.status();
     BOOST_REQUIRE( status.future == 1 );
+}
+
+BOOST_AUTO_TEST_CASE( dropFromFutureToCurrent ) {
+    TransactionQueue tq;
+
+    TestTransaction tx1 = TestTransaction::defaultTransaction(1);
+
+    // put transaction to future
+    ImportResult ir1 = tq.import( tx1.transaction().rlp(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( ir1 == ImportResult::Success );
+    TransactionQueue::Status status = tq.status();
+    BOOST_REQUIRE( status.current == 0 && status.future == 1 );
+
+    // push it to current and see it fall back from future to current
+    ir1 = tq.import( tx1.transaction().rlp(), IfDropped::Ignore, false );
+    BOOST_REQUIRE( ir1 == ImportResult::Success );
+    status = tq.status();
+    BOOST_REQUIRE( status.current == 1 && status.future == 0 );
 }
 
 BOOST_AUTO_TEST_CASE( tqImportFutureLimits ) {
