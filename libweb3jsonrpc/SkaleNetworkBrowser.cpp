@@ -26,6 +26,8 @@ namespace skale {
 namespace network {
 namespace browser {
 
+static bool g_bDebugVerboseSNB = false;
+
 // see: https://docs.soliditylang.org/en/develop/abi-spec.html#abi
 // see: https://docs.soliditylang.org/en/develop/internals/layout_in_memory.html
 
@@ -36,6 +38,30 @@ struct item256_t {
 };  // struct item256_t
 
 typedef std::vector< item256_t > vec256_t;
+
+static std::string stat_list_ids( const vec256_t& schains_ids_on_node ) {
+    std::string s;
+    const size_t cnt = schains_ids_on_node.size();
+    for ( size_t i = 0; i < cnt; ++i ) {
+        const item256_t& schain_id_on_node = schains_ids_on_node[i];
+        if ( i > 0 )
+            s += ", ";
+        s += dev::toJS( schain_id_on_node.u256 );
+    }
+    return s;
+}
+
+static std::string stat_list_raw_vec( const vec256_t& vec ) {
+    std::string s;
+    const size_t cnt = vec.size();
+    for ( size_t i = 0; i < cnt; ++i ) {
+        const item256_t& val = vec[i];
+        if ( i > 0 )
+            s += ", ";
+        s += val.strRaw;
+    }
+    return s;
+}
 
 static vec256_t stat_split_raw_answer( const std::string& strIn ) {
     std::string s = skutils::tools::to_lower( skutils::tools::trim_copy( strIn ) );
@@ -53,6 +79,11 @@ static vec256_t stat_split_raw_answer( const std::string& strIn ) {
         ss << std::hex << item.strRaw;
         ss >> item.n;
         vec.push_back( item );
+    }
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " split raw answer result: " ) +
+                   cc::normal( stat_list_raw_vec( vec ) ) );
     }
     return vec;
 }
@@ -166,27 +197,43 @@ static int stat_calc_schain_base_port( int node_base_port, int schain_index ) {
     return node_base_port + schain_index * PORTS_PER_SCHAIN;
 }
 
-static std::string stat_list_ids( const vec256_t& schains_ids_on_node ) {
-    std::string s;
-    const size_t cnt = schains_ids_on_node.size();
-    for ( size_t i = 0; i < cnt; ++i ) {
-        const item256_t& schain_id_on_node = schains_ids_on_node[i];
-        if ( i > 0 )
-            s += ", ";
-        s += dev::toJS( schain_id_on_node.u256 );
-    }
-    return s;
-}
-
 static int stat_get_schain_index_in_node(
     dev::h256 schain_id, const vec256_t& schains_ids_on_node ) {
+    const std::string strFindWhat = stat_to_appendable_string( schain_id );
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " finding S-Chain index on node for S-Chain ID: " ) +
+                   cc::normal( strFindWhat ) );
+    }
     const size_t cnt = schains_ids_on_node.size();
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will review " ) +
+                   cc::size10( cnt ) + cc::debug( " chain ID(s) " ) );
+    }
     for ( size_t i = 0; i < cnt; ++i ) {
         const item256_t& schain_id_on_node = schains_ids_on_node[i];
-        if ( stat_to_appendable_string( schain_id ) ==
-             stat_to_appendable_string( schain_id_on_node.u256 ) )
+        const std::string strCompareWith = stat_to_appendable_string( schain_id_on_node.u256 );
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " reviewing S-Chain ID #" ) +
+                       cc::size10( i ) + cc::debug( " : " ) + cc::normal( strCompareWith ) );
+        }
+        if ( strFindWhat == strCompareWith ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                           cc::success( " found S-Chain index on node: " ) + cc::size10( i ) );
+            }
             return i;
-        ++i;
+        }
+    }
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::error( " failed to find S-Chain index on node for S-Chain ID: " ) +
+                   cc::normal( strFindWhat ) );
     }
     throw new std::runtime_error(
         "S-Chain " + dev::toJS( schain_id ) +
@@ -198,20 +245,6 @@ static int stat_get_schain_base_port_on_node(
     int schain_index = stat_get_schain_index_in_node( schain_id, schains_ids_on_node );
     return stat_calc_schain_base_port( node_base_port, schain_index );
 }
-
-// function compose_endpoints( jo_schain, node_dict, endpoint_type ) {
-//    node_dict["http_endpoint_" + endpoint_type] =
-//        "http://" + node_dict[endpoint_type] + ":" + jo_schain.data.computed.ports.httpRpcPort;
-//    node_dict["https_endpoint_" + endpoint_type] =
-//        "https://" + node_dict[endpoint_type] + ":" + jo_schain.data.computed.ports.httpsRpcPort;
-//    node_dict["ws_endpoint_" + endpoint_type] =
-//        "ws://" + node_dict[endpoint_type] + ":" + jo_schain.data.computed.ports.wsRpcPort;
-//    node_dict["wss_endpoint_" + endpoint_type] =
-//        "wss://" + node_dict[endpoint_type] + ":" + jo_schain.data.computed.ports.wssRpcPort;
-//    node_dict["info_http_endpoint_" + endpoint_type] =
-//        "http://" + node_dict[endpoint_type] + ":" +
-//        jo_schain.data.computed.ports.infoHttpRpcPort;
-//}
 
 void stat_compute_endpoints( node_t& node ) {
     std::string ip = node.ip, domain = node.domainName;
@@ -263,20 +296,46 @@ dev::u256 get_schains_count(
     // 0x77ad87c1
     nlohmann::json joCall = stat_create_basic_call();
     nlohmann::json joParamsItem = nlohmann::json::object();
-    joParamsItem["from"] = dev::toJS( addressFrom );
+    // joParamsItem["from"] = dev::toJS( addressFrom );
     joParamsItem["to"] = dev::toJS( addressSchainsInternal );
     joParamsItem["data"] = "0x77ad87c1";
     joCall["params"].push_back( joParamsItem );
+    joCall["params"].push_back( std::string( "latest" ) );
     skutils::rest::client cli;
     // cli.optsSSL_ = optsSSL;
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                   cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
+                   cc::debug( " with " ) + cc::j( joCall ) );
+    }
     cli.open( u );
     skutils::rest::data_t d = cli.call( joCall );
-    if ( !d.err_s_.empty() )
+    if ( !d.err_s_.empty() ) {
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                       cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
+                       cc::warn( d.err_s_ ) );
+        }
         throw std::runtime_error(
             std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
-    if ( d.empty() )
+    }
+    if ( d.empty() ) {
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                       cc::info( g_strContractMethodName ) + cc::error( ", EMPTY data received" ) );
+        }
         throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                   "\", EMPTY data received" );
+    }
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                   cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                   cc::j( d.s_ ) );
+    }
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
     const nlohmann::json& joResult_numberOfSchains = joAnswer["result"];
     dev::u256 cntSChains( joResult_numberOfSchains.get< std::string >() );
@@ -302,16 +361,43 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         joParamsItem["to"] = dev::toJS( addressSchainsInternal );
         joParamsItem["data"] = "0xec79b501" + stat_to_appendable_string( idxSChain );
         joCall["params"].push_back( joParamsItem );
+        joCall["params"].push_back( std::string( "latest" ) );
         skutils::rest::client cli;
         // cli.optsSSL_ = optsSSL;
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
+                       cc::debug( " with " ) + cc::j( joCall ) );
+        }
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
-        if ( !d.err_s_.empty() )
+        if ( !d.err_s_.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
+                           cc::warn( d.err_s_ ) );
+            }
             throw std::runtime_error(
                 std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
-        if ( d.empty() )
+        }
+        if ( d.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) +
+                           cc::error( ", EMPTY data received" ) );
+            }
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", EMPTY data received" );
+        }
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                       cc::j( d.s_ ) );
+        }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
         const nlohmann::json& joResult = joAnswer["result"];
         hash = dev::u256( joResult.get< std::string >() );
@@ -354,20 +440,47 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         // 426f623130303000000000000000000000000000000000000000000000000000 "name":"Bob1000"
         nlohmann::json joCall = stat_create_basic_call();
         nlohmann::json joParamsItem = nlohmann::json::object();
-        joParamsItem["from"] = dev::toJS( addressFrom );
+        // joParamsItem["from"] = dev::toJS( addressFrom );
         joParamsItem["to"] = dev::toJS( addressSchainsInternal );
         joParamsItem["data"] = "0xb340c4b3" + stat_to_appendable_string( hash );
         joCall["params"].push_back( joParamsItem );
+        joCall["params"].push_back( std::string( "latest" ) );
         skutils::rest::client cli;
         // cli.optsSSL_ = optsSSL;
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
+                       cc::debug( " with " ) + cc::j( joCall ) );
+        }
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
-        if ( !d.err_s_.empty() )
+        if ( !d.err_s_.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
+                           cc::warn( d.err_s_ ) );
+            }
             throw std::runtime_error(
                 std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
-        if ( d.empty() )
+        }
+        if ( d.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) +
+                           cc::error( ", EMPTY data received" ) );
+            }
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", EMPTY data received" );
+        }
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                       cc::j( d.s_ ) );
+        }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
         const nlohmann::json& joResult = joAnswer["result"];
         std::string strResult = joResult.get< std::string >();
@@ -401,20 +514,47 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         // 0060 0000000000000000000000000000000000000000000000000000000000000000 // item[0]
         nlohmann::json joCall = stat_create_basic_call();
         nlohmann::json joParamsItem = nlohmann::json::object();
-        joParamsItem["from"] = dev::toJS( addressFrom );
+        // joParamsItem["from"] = dev::toJS( addressFrom );
         joParamsItem["to"] = dev::toJS( addressSchainsInternal );
         joParamsItem["data"] = "0xb70a4223" + stat_to_appendable_string( s_chain.schain_id );
         joCall["params"].push_back( joParamsItem );
+        joCall["params"].push_back( std::string( "latest" ) );
         skutils::rest::client cli;
         // cli.optsSSL_ = optsSSL;
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
+                       cc::debug( " with " ) + cc::j( joCall ) );
+        }
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
-        if ( !d.err_s_.empty() )
+        if ( !d.err_s_.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
+                           cc::warn( d.err_s_ ) );
+            }
             throw std::runtime_error(
                 std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
-        if ( d.empty() )
+        }
+        if ( d.empty() ) {
+            if ( g_bDebugVerboseSNB ) {
+                clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) +
+                           cc::error( ", EMPTY data received" ) );
+            }
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", EMPTY data received" );
+        }
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                       cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                       cc::j( d.s_ ) );
+        }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
         const nlohmann::json& joResult = joAnswer["result"];
         std::string strResult = joResult.get< std::string >();
@@ -459,20 +599,49 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 // "name" value "Bear"
                 nlohmann::json joCall = stat_create_basic_call();
                 nlohmann::json joParamsItem = nlohmann::json::object();
-                joParamsItem["from"] = dev::toJS( addressFrom );
+                // joParamsItem["from"] = dev::toJS( addressFrom );
                 joParamsItem["to"] = dev::toJS( addressNodes );
                 joParamsItem["data"] = "0x1c53c280" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
+                joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
                 // cli.optsSSL_ = optsSSL;
                 cli.open( u );
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " at " ) +
+                               cc::u( u ) + cc::debug( " with " ) + cc::j( joCall ) );
+                }
                 skutils::rest::data_t d = cli.call( joCall );
-                if ( !d.err_s_.empty() )
+                if ( !d.err_s_.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", got error: " ) + cc::warn( d.err_s_ ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\": " + d.err_s_ );
-                if ( d.empty() )
+                }
+                if ( d.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", EMPTY data received" ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\", EMPTY data received" );
+                }
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                               cc::j( d.s_ ) );
+                }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                 const nlohmann::json& joResult = joAnswer["result"];
                 std::string strResult = joResult.get< std::string >();
@@ -500,16 +669,45 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 joParamsItem["to"] = dev::toJS( addressNodes );
                 joParamsItem["data"] = "0xd31c48ed" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
+                joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
                 // cli.optsSSL_ = optsSSL;
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " at " ) +
+                               cc::u( u ) + cc::debug( " with " ) + cc::j( joCall ) );
+                }
                 cli.open( u );
                 skutils::rest::data_t d = cli.call( joCall );
-                if ( !d.err_s_.empty() )
+                if ( !d.err_s_.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", got error: " ) + cc::warn( d.err_s_ ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\": " + d.err_s_ );
-                if ( d.empty() )
+                }
+                if ( d.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", EMPTY data received" ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\", EMPTY data received" );
+                }
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                               cc::j( d.s_ ) );
+                }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                 const nlohmann::json& joResult = joAnswer["result"];
                 std::string strResult = joResult.get< std::string >();
@@ -530,16 +728,45 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 joParamsItem["to"] = dev::toJS( addressNodes );
                 joParamsItem["data"] = "0x5990e3cb" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
+                joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
                 // cli.optsSSL_ = optsSSL;
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " at " ) +
+                               cc::u( u ) + cc::debug( " with " ) + cc::j( joCall ) );
+                }
                 cli.open( u );
                 skutils::rest::data_t d = cli.call( joCall );
-                if ( !d.err_s_.empty() )
+                if ( !d.err_s_.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", got error: " ) + cc::warn( d.err_s_ ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\": " + d.err_s_ );
-                if ( d.empty() )
+                }
+                if ( d.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", EMPTY data received" ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\", EMPTY data received" );
+                }
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                               cc::j( d.s_ ) );
+                }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                 const nlohmann::json& joResult = joAnswer["result"];
                 std::string strResult = joResult.get< std::string >();
@@ -564,21 +791,62 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 joParamsItem["to"] = dev::toJS( addressSchainsInternal );
                 joParamsItem["data"] = "0xe6695e68" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
+                joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
                 // cli.optsSSL_ = optsSSL;
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " at " ) +
+                               cc::u( u ) + cc::debug( " with " ) + cc::j( joCall ) );
+                }
                 cli.open( u );
                 skutils::rest::data_t d = cli.call( joCall );
-                if ( !d.err_s_.empty() )
+                if ( !d.err_s_.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", got error: " ) + cc::warn( d.err_s_ ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\": " + d.err_s_ );
-                if ( d.empty() )
+                }
+                if ( d.empty() ) {
+                    if ( g_bDebugVerboseSNB ) {
+                        clog( dev::VerbosityTrace, "snb" )
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", EMPTY data received" ) );
+                    }
                     throw std::runtime_error( std::string( "Failed call to \"" ) +
                                               g_strContractMethodName + "\", EMPTY data received" );
+                }
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
+                               cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
+                               cc::j( d.s_ ) );
+                }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
                 const nlohmann::json& joResult = joAnswer["result"];
                 std::string strResult = joResult.get< std::string >();
                 vec256_t vec = stat_split_raw_answer( strResult );
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                               cc::debug( " pre-split vector dats for chain ID(s): " ) +
+                               stat_list_raw_vec( vec ) );
+                }
                 vecSChainIds = stat_extract_vector( vec, 0 );
+                if ( g_bDebugVerboseSNB ) {
+                    clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                               cc::debug( " extracted vector of chain ID(s): " ) +
+                               stat_list_raw_vec( vecSChainIds ) );
+                }
             }  // block
             node.schain_base_port = stat_get_schain_base_port_on_node( s_chain.schain_id,
                 vecSChainIds,  // schain_ids
@@ -802,6 +1070,18 @@ bool refreshing_start( const std::string& configPath ) {
         if ( joSkaleConfig_nodeInfo_refresh.is_number() )
             nIntervalSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
     }
+    if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-verbose" ) > 0 ) {
+        const nlohmann::json& joSkaleConfig_nodeInfo_verbose =
+            joSkaleConfig_nodeInfo["skale-network-browser-verbose"];
+        if ( joSkaleConfig_nodeInfo_verbose.is_boolean() )
+            g_bDebugVerboseSNB = joSkaleConfig_nodeInfo_verbose.get< bool >();
+        else if ( joSkaleConfig_nodeInfo_verbose.is_number() )
+            g_bDebugVerboseSNB =
+                ( joSkaleConfig_nodeInfo_verbose.get< size_t >() != 0 ) ? true : false;
+        else
+            g_bDebugVerboseSNB = false;
+    } else
+        g_bDebugVerboseSNB = false;
     const std::string strAddressSchainsInternal =
         skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
     const std::string strAddressNodes =
