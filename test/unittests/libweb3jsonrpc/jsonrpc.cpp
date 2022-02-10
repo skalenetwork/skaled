@@ -2558,6 +2558,7 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
     JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
     dev::eth::simulateMining( *( fixture.client ), 1 );
     auto tq = fixture.client->debugGetTransactionQueue();
+    fixture.client->skaleHost()->pauseConsensus( true );
 
     Json::Value txJson;
     txJson["from"] = fixture.coinbase.address().hex();
@@ -2595,24 +2596,26 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 
     h256 h1 = fixture.client->importTransaction( tx5 );
     BOOST_REQUIRE( h1 );
-    BOOST_REQUIRE( tq->futureSize() == 1);
+    BOOST_REQUIRE_EQUAL( tq->futureSize(), 1);
 
     h256 h2 = fixture.client->importTransaction( tx3 );
     BOOST_REQUIRE( h2 );
-    BOOST_REQUIRE( tq->futureSize() == 2);
+    BOOST_REQUIRE_EQUAL( tq->futureSize(), 2);
     h256 h3 = fixture.client->importTransaction( tx2 );
     BOOST_REQUIRE( h3 );
-    BOOST_REQUIRE( tq->futureSize() == 3);
+    BOOST_REQUIRE_EQUAL( tq->futureSize(), 3);
 
     h256 h4 = fixture.client->importTransaction( tx1 );
     BOOST_REQUIRE( h4 );
-    BOOST_REQUIRE( tq->futureSize() == 1);
-    BOOST_REQUIRE( tq->status().current == 3);
+    BOOST_REQUIRE_EQUAL( tq->futureSize(), 1);
+    BOOST_REQUIRE_EQUAL( tq->status().current, 3);
 
     h256 h5 = fixture.client->importTransaction( tx4 );
     BOOST_REQUIRE( h5 );
-    BOOST_REQUIRE( tq->futureSize() == 0);
-    BOOST_REQUIRE( tq->status().current == 5);
+    BOOST_REQUIRE_EQUAL( tq->futureSize(), 0);
+    BOOST_REQUIRE_EQUAL( tq->status().current, 5);
+
+    fixture.client->skaleHost()->pauseConsensus( false );
 }
 
 // TODO: Enable for multitransaction mode checking
