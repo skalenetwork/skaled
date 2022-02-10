@@ -836,8 +836,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -875,8 +877,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -964,8 +968,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( ex.what() );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( ex.what() );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
@@ -987,8 +993,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( e );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
@@ -2500,8 +2508,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( ex.what() );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( ex.what() );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
@@ -2520,8 +2530,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( e );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( e );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
