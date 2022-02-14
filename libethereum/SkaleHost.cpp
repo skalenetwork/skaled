@@ -181,8 +181,11 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
         uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-        uint64_t _winningNodeIndex ) override;
+        uint64_t _winningNodeIndex,
+        const shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > decryptedArgs )
+        override;
     virtual void terminateApplication() override;
+    std::shared_ptr< std::vector< uint8_t > > getEncryptedData( const std::vector< uint8_t >& transaction );
     virtual ~ConsensusExtImpl() override = default;
 
 private:
@@ -200,7 +203,8 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
     uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-    uint64_t _winningNodeIndex ) {
+    uint64_t _winningNodeIndex,
+    const shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > decryptedArgs ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock(
         _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
@@ -208,6 +212,22 @@ void ConsensusExtImpl::createBlock(
 
 void ConsensusExtImpl::terminateApplication() {
     dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
+}
+
+std::shared_ptr< std::vector< uint8_t > > ConsensusExtImpl::getEncryptedData(
+    const std::vector< uint8_t >& transaction ) {
+
+    static const std::vector< uint8_t > ms = dev::fromHex( TE_MAGIC_START );
+    static const std::vector< uint8_t > me = dev::fromHex( TE_MAGIC_END );
+
+    dev::eth::Transaction t( transaction, dev::eth::CheckTransaction::None );
+    auto data = t.data();
+    auto first = std::search( data.begin(), data.end(), ms.begin(), ms.end() );
+    auto last = std::search( data.begin(), data.end(), me.begin(), me.end() );
+    if ( first != data.end() && last != data.end() && std::distance( first, last ) > 0 ) {
+        return std::make_shared< std::vector< uint8_t > >( first + ms.size(), last );
+    }
+    return nullptr;
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
@@ -251,7 +271,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
+    m_consensus->parseFullConfigAndCreateNode(
+        m_client.chainParams().getOriginalJson(), _gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }

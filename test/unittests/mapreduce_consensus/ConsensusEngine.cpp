@@ -131,7 +131,8 @@ public:
     }
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
+        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/, 
+        const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> /*decryptedArgs*/) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -140,6 +141,9 @@ public:
         block_promise.set_value(
             std::make_tuple( tmp_vec, _timeStamp, _timeStampMs, _blockID, _gasPrice ) );
     }
+
+    virtual std::shared_ptr<std::vector<uint8_t>> getEncryptedData(
+            const std::vector<uint8_t>& transaction) { return nullptr; }
 
     virtual ~SingleNodeConsensusFixture() override {
         transaction_promise.set_value( transactions_vector() );
@@ -278,12 +282,18 @@ public:
 
     virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
         uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
-        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
+        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/, 
+        const shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> /*decryptedArgs*/) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
         m_arrived_blocks.push_back( _approvedTransactions.size() );
         m_blockCond.notify_one();
+    }
+
+    virtual std::shared_ptr<std::vector<uint8_t>> getEncryptedData(
+            const std::vector<uint8_t>& transaction) override {
+        return nullptr;
     }
 
     virtual ~ConsensusExtFaceFixture() override {

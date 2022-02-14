@@ -2618,6 +2618,62 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
     fixture.client->skaleHost()->pauseConsensus( false );
 }
 
+//BOOST_AUTO_TEST_CASE( test_analyzer ) {
+//    JsonRpcFixture fixture( c_genesisConfigString );
+
+//    Json::Value txJson;
+//    txJson["from"] = fixture.coinbase.address().hex();
+//    txJson["gas"] = "100000";
+//    txJson["nonce"] = "0";
+//    txJson["data"] = "0xf84a1cf7214ae051cae8aaaa98a773d884b2f1c4ac27";
+//    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+//    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+//    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+//    Transaction tx1( ts1, ar1.second );
+
+//    auto res = fixture.analyzer->getEncryptedData(tx1.rlp());
+//    auto strResult = toHex( *res );
+//    BOOST_REQUIRE( strResult == "aaaa" );
+
+//    txJson["data"] = "0xaaaaf84a1cf7214ae051cae8aaaa98a773d884b2f1c4ac27bbbb";
+//    ts1 = toTransactionSkeleton( txJson );
+//    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+//    ar1 = fixture.accountHolder->authenticate( ts1 );
+
+//    Transaction tx2( ts1, ar1.second );
+//    res = fixture.analyzer->getEncryptedData(tx2.rlp());
+//    strResult = toHex( *res );
+//    BOOST_REQUIRE( strResult == "aaaa" );
+
+//    txJson["data"] = "0xaaaaf84a1cf7214ae051cae898a773d884b2f1c4ac27bbbb";
+//    ts1 = toTransactionSkeleton( txJson );
+//    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+//    ar1 = fixture.accountHolder->authenticate( ts1 );
+
+//    Transaction tx3( ts1, ar1.second );
+//    res = fixture.analyzer->getEncryptedData(tx3.rlp());
+//    strResult = toHex( *res );
+//    BOOST_REQUIRE( strResult == "" );
+
+//    txJson["data"] = "0xaaaa98a773d884b2f1c4ac27aaaaf84a1cf7214ae051cae8bbbb";
+//    ts1 = toTransactionSkeleton( txJson );
+//    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+//    ar1 = fixture.accountHolder->authenticate( ts1 );
+
+//    Transaction tx4( ts1, ar1.second );
+//    res = fixture.analyzer->getEncryptedData(tx4.rlp());
+//    BOOST_REQUIRE( res == nullptr );
+
+//    txJson["data"] = "0xaaaa98a773d884b2fdddddddddddddf84a1cf74ae051cae8bbbb";
+//    ts1 = toTransactionSkeleton( txJson );
+//    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+//    ar1 = fixture.accountHolder->authenticate( ts1 );
+
+//    Transaction tx5( ts1, ar1.second );
+//    res = fixture.analyzer->getEncryptedData(tx5.rlp());
+//    BOOST_REQUIRE( res == nullptr );
+//}
+
 // TODO: Enable for multitransaction mode checking
 
 // BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
