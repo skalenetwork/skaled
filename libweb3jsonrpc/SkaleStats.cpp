@@ -4348,6 +4348,32 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
 
         if ( !bOnlyVerify ) {
+            bytes v;
+            // append first message nonce into vecAllTogetherMessages
+            dev::u256 uStartMessageIdx( nStartMessageIdx );
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " Appending start message index " ) +
+                       cc::size10( nStartMessageIdx ) + cc::debug( "/" ) +
+                       cc::notice( dev::toJS( uStartMessageIdx ) ) +
+                       cc::debug( " into bytes to BLS-sign" ) );
+            v = dev::BMPBN::encode2vec< dev::u256 >( uStartMessageIdx, true );
+            stat_array_align_right( v, 32 );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
+            // append sha3 of source chain name into vecAllTogetherMessages
+            const dev::h256 hFromChainName = dev::sha3( strFromChainName );
+            std::string shFromChainName = hFromChainName.hex();
+            if ( shFromChainName.length() < 2 ||
+                 ( !( shFromChainName[0] == '0' &&
+                      ( shFromChainName[1] == 'x' || shFromChainName[1] == 'X' ) ) ) )
+                shFromChainName = "0x" + shFromChainName;
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " Appending hash " ) + cc::info( shFromChainName ) +
+                       cc::debug( " of source chain name " ) + cc::attention( strFromChainName ) +
+                       cc::debug( " into bytes to BLS-sign" ) );
+            dev::u256 uhFromChainName( shFromChainName );
+            v = dev::BMPBN::encode2vec< dev::u256 >( uhFromChainName, true );
+            stat_array_align_right( v, 32 );
+            vecAllTogetherMessages.insert( vecAllTogetherMessages.end(), v.begin(), v.end() );
             //
             //
             const dev::h256 h = dev::sha3( vecAllTogetherMessages );
