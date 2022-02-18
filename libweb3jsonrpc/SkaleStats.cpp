@@ -1554,8 +1554,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( strDirection == "M2S" )
             urlSourceChain = urlMainNet;
         else if ( strDirection == "S2M" )
-            urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url(
-                strSChainName );  // not used very much in "S2M" case
+            urlSourceChain = "N/A";
+            // skale::network::browser::refreshing_pick_s_chain_url(
+            //    strSChainName );  // not used very much in "S2M" case
         else
             throw std::runtime_error( "unknown direction \"" + strDirection + "\"" );
 
