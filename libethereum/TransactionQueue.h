@@ -156,7 +156,7 @@ public:
     }
 
     /// @returns the transaction limits on current/future.
-    Limits limits() const { return Limits{ m_limit, m_futureLimit }; }
+    Limits limits() const { return Limits{m_limit, m_futureLimit}; }
 
     /// @returns the number of tx in future queue.
     size_t futureSize() const { return m_futureSize; }
