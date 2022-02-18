@@ -90,4 +90,9 @@ Used for IMA SKALE Chain testing.
 | Returns SKALE Chain config boolean for IMA SKALE Chain testing.
 | Any
 
+| `0x18`
+| xref:random-number-generator.adoc[getBlockRandom]
+| Return a random number based on BLS threshold signature common coin of the current block.
+| Any
+
 |===
