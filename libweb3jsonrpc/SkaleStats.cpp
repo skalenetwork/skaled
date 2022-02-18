@@ -1351,15 +1351,15 @@ bool SkaleStats::isEnabledImaMessageSigning() const {
     return isEnabled;
 }
 
-// static void stat_array_invert( uint8_t* arr, size_t cnt ) {
-//    size_t n = cnt / 2;
-//    for ( size_t i = 0; i < n; ++i ) {
-//        uint8_t b1 = arr[i];
-//        uint8_t b2 = arr[cnt - i - 1];
-//        arr[i] = b2;
-//        arr[cnt - i - 1] = b1;
-//    }
-//}
+static void stat_array_invert( uint8_t* arr, size_t cnt ) {
+    size_t n = cnt / 2;
+    for ( size_t i = 0; i < n; ++i ) {
+        uint8_t b1 = arr[i];
+        uint8_t b2 = arr[cnt - i - 1];
+        arr[i] = b2;
+        arr[cnt - i - 1] = b1;
+    }
+}
 
 static dev::bytes& stat_bytes_align_left( dev::bytes& vec, size_t cnt ) {
     while ( vec.size() < cnt )
@@ -1437,6 +1437,7 @@ static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::strin
 static dev::bytes& stat_append_u256_2_vec( dev::bytes& vec, const dev::u256& val ) {
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
     stat_array_align_right( v, 32 );
+    stat_array_invert( v.data(), v.size() );
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
@@ -2625,6 +2626,10 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 bytes v = dev::fromHex( strMessageData, dev::WhenError::DontThrow );
                 // stat_array_invert( v.data(), v.size() ); // do not invert byte order data field
                 // (see SKALE-3554 for details)
+                clog( VerbosityDebug, "IMA" )
+                    << ( strLogPrefix + cc::debug( " Appending message data " ) +
+                           cc::binary_singleline( ( void* ) v.data(), v.size(), "" ) +
+                           cc::debug( " to summary vector" ) );
                 vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v.begin(), v.end() );
                 // re-compute hash of vecComputeMessagesHash
                 clog( VerbosityDebug, "IMA" )
