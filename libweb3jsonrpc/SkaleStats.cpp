@@ -1382,11 +1382,12 @@ static std::string stat_data_2_hex_string( const uint8_t* p, size_t cnt ) {
         sprintf( hs, "%02x", p[i] );
         s += hs;
     }
-    return s;
+    return s;  // there is no "0x" prefix at start of return value
 }
 
 static std::string stat_bytes_2_hex_string( const dev::bytes& vec ) {
-    return stat_data_2_hex_string( ( uint8_t* ) vec.data(), vec.size() );
+    return stat_data_2_hex_string(
+        ( uint8_t* ) vec.data(), vec.size() );  // there is no "0x" prefix at start of return value
 }
 
 static dev::bytes stat_hex_string_2_bytes( const std::string& src ) {
@@ -2640,7 +2641,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         }      // for ( size_t idxMessage = 0; idxMessage < cntMessagesToSign; ++idxMessage ) {
 
         if ( !bOnlyVerify ) {
-            const std::string sh = "0x" + stat_bytes_2_hex_string( vecComputeMessagesHash );
+            const std::string sh = stat_bytes_2_hex_string(
+                vecComputeMessagesHash );  // there is no "0x" prefix at start of return value
             clog( VerbosityDebug, "IMA" )
                 << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
             //
@@ -2663,7 +2665,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 joCall["type"] = "BLSSignReq";
             joCall["params"] = nlohmann::json::object();
             joCall["params"]["keyShareName"] = keyShareName;
-            joCall["params"]["messageHash"] = sh;
+            joCall["params"]["messageHash"] = sh;  // there is no "0x" prefix at start
             joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
             joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
             joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
@@ -2843,8 +2845,8 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         bytes v = dev::BMPBN::encode2vec< dev::u256 >( uValueToSign, true );
         stat_array_align_right( v, 32 );
         const dev::h256 h = dev::sha3( v );
-        // const dev::h256 h = dev::sha3( uValueToSign );
-        const std::string sh = h.hex();
+        std::string sh = h.hex();
+        sh = stat_remove_0x_from_start( sh );  // there is no "0x" prefix at start
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
         //
@@ -2857,7 +2859,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
             joCall["type"] = "BLSSignReq";
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["keyShareName"] = keyShareName;
-        joCall["params"]["messageHash"] = sh;
+        joCall["params"]["messageHash"] = sh;  // there is no "0x" prefix at start
         joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
         joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
