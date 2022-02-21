@@ -97,7 +97,7 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture() {
+    SkaleHostFixture( const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
         dev::p2p::NetworkPreferences nprefs;
 
         ChainParams chainParams;
@@ -111,6 +111,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
         chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+
+        if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
+            chainParams.sChain.multiTransactionMode = true;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
@@ -1044,6 +1047,101 @@ BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
+}
+
+struct dummy{};
+
+// Test behavior of MTM if tx with big nonce was already mined as erroneous
+BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"multiTransactionMode", "1"}} ) );
+
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& accountHolder = fixture.accountHolder;
+    auto& skaleHost = fixture.skaleHost;
+    auto& stub = fixture.stub;
+
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // 1 tx nonce = 1
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+
+    // future nonce
+    json["nonce"] = 1;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    h256 tx1Hash = tx1.sha3();
+
+    // it will be put to "future" queue
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    sleep( 1 );
+    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    // and not proposed
+    BOOST_REQUIRE_EQUAL(proposal.size(), 0);
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    // simulate it coming from another node
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+
+    // 2 tx nonce = 0
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 tx2Hash = tx2.sha3();
+
+    // post it to queue for "realism"
+    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 2);
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 2 );
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, tx2Hash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+
+    // 3 submit nonce = 1 again!
+    // it should go to proposal
+    BOOST_REQUIRE_THROW(
+        skaleHost->receiveTransaction( toJS( stream1.out() ) ),
+        dev::eth::PendingTransactionAlreadyExists
+    );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 1);
+
+    // submit it for sure
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 3U ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
