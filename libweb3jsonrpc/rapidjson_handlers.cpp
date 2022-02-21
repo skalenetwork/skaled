@@ -71,23 +71,20 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
                 rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
                 joResponse.EraseMember( "result" );
                 joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-                return true;
             } catch ( std::invalid_argument& ex ) {
                 // not known transaction - skip exception
                 joResponse.EraseMember( "result" );
                 joResponse.AddMember(
                     "result", rapidjson::Value( rapidjson::kNullType ), joResponse.GetAllocator() );
-                return true;
             } catch ( ... ) {
                 wrapJsonRpcException( joRequest,
                     jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
                     joResponse );
-                return true;
             }
         };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call = [=]( const rapidjson::Document& joRequest,
-                                                             rapidjson::Document& joResponse ) {
+                                                             rapidjson::Document& joResponse ) -> void {
         try {
             // validate params
             if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
@@ -111,12 +108,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
             rapidjson::Value& v = joResponse["result"];
             v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-            return true;
-        } catch ( std::exception const& ex ) {
-            throw jsonrpc::JsonRpcException( ex.what() );
         } catch ( ... ) {
-            BOOST_THROW_EXCEPTION(
-                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
         }
     };
 
@@ -143,13 +137,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
                 rapidjson::Value& v = joResponse["result"];
                 v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                return true;
-            } catch ( std::exception const& ex ) {
-                throw jsonrpc::JsonRpcException( ex.what() );
             } catch ( ... ) {
-                BOOST_THROW_EXCEPTION(
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-            }
+                wrapJsonRpcException( joRequest,
+                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );            }
         };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getStorageAt =
@@ -177,12 +167,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
                 rapidjson::Value& v = joResponse["result"];
                 v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                return true;
-            } catch ( std::exception const& ex ) {
-                throw jsonrpc::JsonRpcException( ex.what() );
             } catch ( ... ) {
-                BOOST_THROW_EXCEPTION(
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                wrapJsonRpcException( joRequest,
+                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
             }
         };
 
@@ -209,12 +196,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
                 rapidjson::Value& v = joResponse["result"];
                 v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                return true;
-            } catch ( std::exception const& ex ) {
-                throw jsonrpc::JsonRpcException( ex.what() );
             } catch ( ... ) {
-                BOOST_THROW_EXCEPTION(
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                wrapJsonRpcException( joRequest,
+                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
             }
         };
 
@@ -241,12 +225,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
                 rapidjson::Value& v = joResponse["result"];
                 v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                return true;
-            } catch ( std::exception const& ex ) {
-                throw jsonrpc::JsonRpcException( ex.what() );
             } catch ( ... ) {
-                BOOST_THROW_EXCEPTION(
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+                wrapJsonRpcException( joRequest,
+                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
             }
         };
 
