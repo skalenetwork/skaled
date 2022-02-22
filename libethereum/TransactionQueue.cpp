@@ -120,18 +120,39 @@ ImportResult TransactionQueue::import(
         MICROPROFILE_SCOPEI( "TransactionQueue", "import", MP_THISTLE );
         // WriteGuard l2( m_lock );
         UpgradableGuard l( m_lock );
+
+        // HACK remove it from future and re-insert (allows to "push" stuck transaction)
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+
+            // if transaction found:
+            if ( t != fs->second.end() ) {
+                //                if( t == fs->second.begin() ){
+                UpgradeGuard ul( l );
+                --m_futureSize;
+                auto erasedHash = t->second.transaction.sha3();
+                LOG( m_loggerDetail ) << "Re-inserting future transaction " << erasedHash;
+                m_known.erase( erasedHash );
+                fs->second.erase( t->second.transaction.nonce() );
+                if ( fs->second.empty() )
+                    m_future.erase( fs );
+                //                }
+            }  // if found
+        }      // if fs->second
+
         auto ir = check_WITH_LOCK( h, _ik );
         if ( ir != ImportResult::Success )
             return ir;
 
         {
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
+
             UpgradeGuard ul( l );
             ret = manageImport_WITH_LOCK( h, _transaction );
 
-            if ( _isFuture ) {
+            if ( _isFuture )
                 setFuture_WITH_LOCK( h );
-            }
         }
     }
     return ret;
@@ -208,13 +229,15 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
                 return ImportResult::SameNonceAlreadyInQueue;
             }
         }
+
         auto fs = m_future.find( _transaction.from() );
         if ( fs != m_future.end() ) {
             auto t = fs->second.find( _transaction.nonce() );
             if ( t != fs->second.end() ) {
                 return ImportResult::SameNonceAlreadyInQueue;
-            }
-        }
+            }  // if found
+        }      // if fs->second
+
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
         LOG( m_loggerDetail ) << "Queued vaguely legit-looking transaction " << _h;
