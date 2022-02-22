@@ -30,61 +30,59 @@ void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
 
 void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rpc::Eth* pEthFace ) {
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                std::string strResponse = pEthFace->eth_sendRawTransaction(
-                    joRequest["params"].GetArray()[0].GetString() );
-
-                rapidjson::Value& v = joResponse["result"];
-                v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                return true;
-            } catch ( const dev::Exception& ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
-                return true;
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
-        };
+
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string strResponse =
+                pEthFace->eth_sendRawTransaction( joRequest["params"].GetArray()[0].GetString() );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        }
+    };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                dev::eth::LocalisedTransactionReceipt _t = pEthFace->eth_getTransactionReceipt(
-                    joRequest["params"].GetArray()[0].GetString() );
-
-                rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
-                rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
-                joResponse.EraseMember( "result" );
-                joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-            } catch ( std::invalid_argument& ex ) {
-                // not known transaction - skip exception
-                joResponse.EraseMember( "result" );
-                joResponse.AddMember(
-                    "result", rapidjson::Value( rapidjson::kNullType ), joResponse.GetAllocator() );
-            } catch ( ... ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
-                    joResponse );
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
-        };
 
-    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call = [=]( const rapidjson::Document& joRequest,
-                                                             rapidjson::Document& joResponse ) -> void {
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            dev::eth::LocalisedTransactionReceipt _t = pEthFace->eth_getTransactionReceipt(
+                joRequest["params"].GetArray()[0].GetString() );
+
+            rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+            rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
+            joResponse.EraseMember( "result" );
+            joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+        } catch ( std::invalid_argument& ex ) {
+            // not known transaction - skip exception
+            joResponse.EraseMember( "result" );
+            joResponse.AddMember(
+                "result", rapidjson::Value( rapidjson::kNullType ), joResponse.GetAllocator() );
+        } catch ( ... ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
+                joResponse );
+        }
+    };
+
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
         try {
             // validate params
             if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
@@ -115,121 +113,122 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
     };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getBalance =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
 
-                if ( joRequest["params"].GetArray().Size() != 2 ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
+            if ( joRequest["params"].GetArray().Size() != 2 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
 
-                if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
 
-                std::string block =
-                    dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
+            std::string block =
+                dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
 
-                std::string strResponse = pEthFace->eth_getBalance(
-                    joRequest["params"].GetArray()[0].GetString(), block );
+            std::string strResponse =
+                pEthFace->eth_getBalance( joRequest["params"].GetArray()[0].GetString(), block );
 
-                rapidjson::Value& v = joResponse["result"];
-                v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-            } catch ( ... ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );            }
-        };
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( ... ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        }
+    };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getStorageAt =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( joRequest["params"].GetArray().Size() != 3 ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( !joRequest["params"].GetArray()[0].IsString() ||
-                     !joRequest["params"].GetArray()[1].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                std::string block =
-                    dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[2] );
-
-                std::string strResponse =
-                    pEthFace->eth_getStorageAt( joRequest["params"].GetArray()[0].GetString(),
-                        joRequest["params"].GetArray()[1].GetString(), block );
-
-                rapidjson::Value& v = joResponse["result"];
-                v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-            } catch ( ... ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
-        };
+
+            if ( joRequest["params"].GetArray().Size() != 3 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( !joRequest["params"].GetArray()[0].IsString() ||
+                 !joRequest["params"].GetArray()[1].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string block =
+                dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[2] );
+
+            std::string strResponse =
+                pEthFace->eth_getStorageAt( joRequest["params"].GetArray()[0].GetString(),
+                    joRequest["params"].GetArray()[1].GetString(), block );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( ... ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        }
+    };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionCount =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( joRequest["params"].GetArray().Size() != 2 ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                std::string block =
-                    dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
-
-                std::string strResponse = pEthFace->eth_getTransactionCount(
-                    joRequest["params"].GetArray()[0].GetString(), block );
-
-                rapidjson::Value& v = joResponse["result"];
-                v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-            } catch ( ... ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
-        };
+
+            if ( joRequest["params"].GetArray().Size() != 2 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string block =
+                dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
+
+            std::string strResponse = pEthFace->eth_getTransactionCount(
+                joRequest["params"].GetArray()[0].GetString(), block );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( ... ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        }
+    };
 
     SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getCode =
-        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-            try {
-                if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( joRequest["params"].GetArray().Size() != 2 ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                }
-
-                std::string block =
-                    dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
-
-                std::string strResponse =
-                    pEthFace->eth_getCode( joRequest["params"].GetArray()[0].GetString(), block );
-
-                rapidjson::Value& v = joResponse["result"];
-                v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-            } catch ( ... ) {
-                wrapJsonRpcException( joRequest,
-                    jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
-        };
+
+            if ( joRequest["params"].GetArray().Size() != 2 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string block =
+                dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
+
+            std::string strResponse =
+                pEthFace->eth_getCode( joRequest["params"].GetArray()[0].GetString(), block );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( ... ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ), joResponse );
+        }
+    };
 
     serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
     serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
