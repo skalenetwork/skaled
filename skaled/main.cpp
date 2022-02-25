@@ -1439,8 +1439,14 @@ int main( int argc, char** argv ) try {
     }
 
     std::shared_ptr< SharedSpace > shared_space;
-    if ( vm.count( "shared-space-path" ) )
+    if ( vm.count( "shared-space-path" ) ) {
+        try {
+            fs::create_directory( vm["shared-space-path"].as< string >() );
+        } catch ( const fs::filesystem_error& ex ) {
+        }
+
         shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
+    }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
