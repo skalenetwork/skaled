@@ -836,8 +836,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -875,8 +877,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -964,8 +968,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( ex.what() );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( ex.what() );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
@@ -987,8 +993,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( e );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
@@ -2500,8 +2508,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( ex.what() );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( ex.what() );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
@@ -2520,8 +2530,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( e );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( e );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
@@ -3678,7 +3690,7 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
+void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
@@ -3692,7 +3704,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
             joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-            return false;
         } else {
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
@@ -3705,7 +3716,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
                 joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-                return false;
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
@@ -3770,7 +3780,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
-        return true;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3786,7 +3795,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
         v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3800,43 +3808,42 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             "error in \"setSchainExitTime\" rpc method, unknown exception",
             joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     }
 }
 
-bool SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_call_( joRequest, joResponse );
+    opts_.fn_eth_call_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getBalance_( joRequest, joResponse );
+    opts_.fn_eth_getBalance_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getCode_( joRequest, joResponse );
+    opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,
