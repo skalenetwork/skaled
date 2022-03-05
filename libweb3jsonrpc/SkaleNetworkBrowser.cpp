@@ -235,7 +235,7 @@ static int stat_get_schain_index_in_node(
                    cc::error( " failed to find S-Chain index on node for S-Chain ID: " ) +
                    cc::normal( strFindWhat ) );
     }
-    throw new std::runtime_error(
+    throw std::runtime_error(
         "S-Chain " + dev::toJS( schain_id ) +
         " is not found in the list: " + stat_list_ids( schains_ids_on_node ) );
 }

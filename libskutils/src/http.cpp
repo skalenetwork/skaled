@@ -7,10 +7,13 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 
 #endif  // (!defined _WIN32)
 
@@ -129,6 +132,13 @@ bool poll_write( socket_t sock, int timeout_milliseconds ) {
     return ( poll_impl( sock, POLLOUT, timeout_milliseconds ) > 0 ) ? true : false;
 }
 
+bool is_handle_a_socket( socket_t fd ) {
+    struct stat statbuf;
+    fstat(fd, &statbuf);
+    bool bIsSocket = ( S_ISSOCK(statbuf.st_mode) ) ? true : false;
+    return bIsSocket;
+}
+
 bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds ) {
     //
     // TO-DO: l_sergiy: switch HTTP/client to poll() later
@@ -144,7 +154,8 @@ bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds 
     //    } else
     //        return false;
     //    return true;
-
+    if( ! is_handle_a_socket( sock ) )
+        return false;
     fd_set fdsr;
     FD_ZERO( &fdsr );
     FD_SET( sock, &fdsr );
@@ -171,9 +182,13 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
     ei.clear();
     bool ret = false;
     try {
+        if( ! detail::is_handle_a_socket( sock ) )
+            throw std::runtime_error( "cannot read(and close) broken socket handle(1)" );
         if ( keep_alive_max_count > 0 ) {
             size_t cnt = keep_alive_max_count;
             for ( ; cnt > 0; --cnt ) {
+                if( ! detail::is_handle_a_socket( sock ) )
+                    throw std::runtime_error( "cannot read(and close) broken socket handle(2)" );
                 if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
                     continue;
                 socket_stream strm( sock );
@@ -298,6 +313,8 @@ socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0
 }
 
 void set_nonblocking( socket_t sock, bool nonblocking ) {
+    if( ! is_handle_a_socket( sock ) )
+        return;
 #ifdef _WIN32
     auto flags = nonblocking ? 1UL : 0UL;
     ioctlsocket( sock, FIONBIO, &flags );
