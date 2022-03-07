@@ -57,6 +57,7 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ```
 sudo apt-get update
 sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs
+apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev
 ```
 
 ### Build dependencies
