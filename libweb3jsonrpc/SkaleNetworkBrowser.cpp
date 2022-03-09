@@ -862,12 +862,20 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
 
 vec_s_chains_t load_schains( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will load all S-Chains" ) );
+    }
     vec_s_chains_t vec;
     dev::u256 cntSChains = get_schains_count( u, addressFrom, addressSchainsInternal );
     for ( dev::u256 idxSChain; idxSChain < cntSChains; ++idxSChain ) {
         s_chain_t s_chain = load_schain(
             u, addressFrom, idxSChain, cntSChains, addressSchainsInternal, addressNodes );
         vec.push_back( s_chain );
+    }
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did loaded all S-Chains" ) );
     }
     return vec;
 }
@@ -982,11 +990,6 @@ bool refreshing_start( const std::string& configPath ) {
     std::lock_guard lock( g_mtx );
     refreshing_stop();
     g_json_config_file_accessor.reset( new skutils::json_config_file_accessor( configPath ) );
-    if ( skutils::json_config_file_accessor::g_strImaMainNetURL.empty() ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                                                cc::error( " Main Net URL is unknown" ) );
-        return false;
-    }
     nlohmann::json joConfig = g_json_config_file_accessor->getConfigJSON();
     if ( joConfig.count( "skaleConfig" ) == 0 ) {
         clog( dev::VerbosityError, "snb" )
@@ -1111,7 +1114,16 @@ bool refreshing_start( const std::string& configPath ) {
                               "non-empty string value" ) );
         return false;
     }
-    const skutils::url u( skutils::json_config_file_accessor::g_strImaMainNetURL );
+    //
+    skutils::url u;
+    try {
+        u = g_json_config_file_accessor->getImaMainNetURL();
+    } catch( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                cc::error( " Main Net URL is unknown" ) );
+        return false;
+    }
+    //
     const dev::u256 addressFrom( strAddressFrom );
     const dev::u256 addressSchainsInternal( strAddressSchainsInternal );
     const dev::u256 addressNodes( strAddressNodes );
