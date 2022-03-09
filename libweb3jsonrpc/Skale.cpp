@@ -48,6 +48,7 @@
 
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
+#include <libconsensus/exceptions/InvalidStateException.h>
 
 #include <exception>
 #include <fstream>
@@ -461,6 +462,8 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         return receipt;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
+    } catch ( InvalidStateException const& e ) {
+        throw e;
     } catch ( const std::exception& e ) {
         throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
     }
@@ -481,6 +484,8 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         }
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( InvalidStateException const& e ) {
         throw e;
     } catch ( const std::exception& e ) {
         throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
