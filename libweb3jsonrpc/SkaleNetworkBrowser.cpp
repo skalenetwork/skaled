@@ -345,6 +345,11 @@ dev::u256 get_schains_count(
 s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& idxSChain, const dev::u256& /*cntSChains*/,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " will load S-Chain #" ) + cc::info( dev::toJS( idxSChain ) ) +
+                                                cc::debug( " from URL " ) + cc::u( u ) );
+    }
     //
     // load s-chain
     //
@@ -862,12 +867,20 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
 
 vec_s_chains_t load_schains( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will load all S-Chains" ) );
+    }
     vec_s_chains_t vec;
     dev::u256 cntSChains = get_schains_count( u, addressFrom, addressSchainsInternal );
     for ( dev::u256 idxSChain; idxSChain < cntSChains; ++idxSChain ) {
         s_chain_t s_chain = load_schain(
             u, addressFrom, idxSChain, cntSChains, addressSchainsInternal, addressNodes );
         vec.push_back( s_chain );
+    }
+    if ( g_bDebugVerboseSNB ) {
+        clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did loaded all S-Chains" ) );
     }
     return vec;
 }
@@ -954,6 +967,9 @@ vec_s_chains_t refreshing_cached() {
 bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     try {
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will perform cache refreshing" ) );
+        }
         vec_s_chains_t vec = load_schains( u, addressFrom, addressSchainsInternal, addressNodes );
         nlohmann::json jarr = to_json( vec );
         std::lock_guard lock( g_mtx );
@@ -982,11 +998,6 @@ bool refreshing_start( const std::string& configPath ) {
     std::lock_guard lock( g_mtx );
     refreshing_stop();
     g_json_config_file_accessor.reset( new skutils::json_config_file_accessor( configPath ) );
-    if ( skutils::json_config_file_accessor::g_strImaMainNetURL.empty() ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                                                cc::error( " Main Net URL is unknown" ) );
-        return false;
-    }
     nlohmann::json joConfig = g_json_config_file_accessor->getConfigJSON();
     if ( joConfig.count( "skaleConfig" ) == 0 ) {
         clog( dev::VerbosityError, "snb" )
@@ -1037,9 +1048,9 @@ bool refreshing_start( const std::string& configPath ) {
                               "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"Nodes\"" ) );
         return false;
     }
-    const nlohmann::json& joSkaleConfig_nodeInfo_sm_NodesInternal =
+    const nlohmann::json& joSkaleConfig_nodeInfo_sm_Nodes =
         joSkaleConfig_nodeInfo_sm["Nodes"];
-    if ( !joSkaleConfig_nodeInfo_sm_NodesInternal.is_string() ) {
+    if ( !joSkaleConfig_nodeInfo_sm_Nodes.is_string() ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " Error in config.json file, cannot find "
@@ -1082,10 +1093,19 @@ bool refreshing_start( const std::string& configPath ) {
             g_bDebugVerboseSNB = false;
     } else
         g_bDebugVerboseSNB = false;
-    const std::string strAddressSchainsInternal =
-        skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
-    const std::string strAddressNodes =
-        skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_NodesInternal.get< std::string >() );
+    std::string strAddressSchainsInternal, strAddressNodes;
+    try {
+        strAddressSchainsInternal = skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
+    } catch( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to get \"SchainsInternal\" contract address" ) );
+        return false;
+    }
+    try {
+        strAddressNodes = skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_Nodes.get< std::string >() );
+    } catch( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to get \"Nodes\" contract address" ) );
+        return false;
+    }
     if ( strAddressFrom.empty() ) {
         strAddressFrom = "0xaa0f3d9f62271ef8d668947af98e51487ba3f26b";
         clog( dev::VerbosityWarning, "snb" )
@@ -1111,10 +1131,36 @@ bool refreshing_start( const std::string& configPath ) {
                               "non-empty string value" ) );
         return false;
     }
-    const skutils::url u( skutils::json_config_file_accessor::g_strImaMainNetURL );
-    const dev::u256 addressFrom( strAddressFrom );
-    const dev::u256 addressSchainsInternal( strAddressSchainsInternal );
-    const dev::u256 addressNodes( strAddressNodes );
+    //
+    skutils::url u;
+    try {
+        u = g_json_config_file_accessor->getImaMainNetURL();
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use Main Net URL " ) + cc::u( u ) );
+        }
+    } catch( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " Main Net URL is unknown" ) );
+        return false;
+    }
+    //
+    dev::u256 addressFrom, addressSchainsInternal, addressNodes;
+    try {
+        addressFrom = dev::u256( strAddressFrom );
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"from\" call address " ) + cc::info( dev::toJS( addressFrom ) ) );
+        }
+        addressSchainsInternal = dev::u256( strAddressSchainsInternal );
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"SchainsInternal\" contract address " ) + cc::info( dev::toJS( addressSchainsInternal ) ) );
+        }
+        addressNodes = dev::u256( strAddressNodes );
+        if ( g_bDebugVerboseSNB ) {
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"Nodes\" contract address " ) + cc::info( dev::toJS( addressNodes ) ) );
+        }
+    } catch( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to construct needed addresses" ) );
+        return false;
+    }
     stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
     g_dispatch_job = [=]() -> void {
         stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
