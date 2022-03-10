@@ -26,7 +26,7 @@ namespace skale {
 namespace network {
 namespace browser {
 
-static bool g_bDebugVerboseSNB = false;
+static bool g_bDebugVerboseSNB = true; // false;
 
 // see: https://docs.soliditylang.org/en/develop/abi-spec.html#abi
 // see: https://docs.soliditylang.org/en/develop/internals/layout_in_memory.html
