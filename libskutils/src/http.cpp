@@ -140,6 +140,9 @@ bool is_handle_a_socket( socket_t fd ) {
 }
 
 bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds ) {
+    if( ! is_handle_a_socket( sock ) )
+        return false;
+
     //
     // TO-DO: l_sergiy: switch HTTP/client to poll() later
     //
@@ -154,26 +157,47 @@ bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds 
     //    } else
     //        return false;
     //    return true;
-    if( ! is_handle_a_socket( sock ) )
-        return false;
-    fd_set fdsr;
-    FD_ZERO( &fdsr );
-    FD_SET( sock, &fdsr );
-    auto fdsw = fdsr;
-    auto fdse = fdsr;
-    timeval tv;
-    tv.tv_sec = static_cast< long >( timeout_milliseconds / 1000 );
-    tv.tv_usec = static_cast< long >( ( timeout_milliseconds % 1000 ) * 1000 );
-    if ( select( static_cast< int >( sock + 1 ), &fdsr, &fdsw, &fdse, &tv ) < 0 )
-        return false;
-    if ( FD_ISSET( sock, &fdsr ) || FD_ISSET( sock, &fdsw ) ) {
-        int error = 0;
-        socklen_t len = sizeof( error );
-        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
-            return false;
-    } else
-        return false;
-    return true;
+
+    //    fd_set fdsr;
+    //    FD_ZERO( &fdsr );
+    //    FD_SET( sock, &fdsr );
+    //    auto fdsw = fdsr;
+    //    auto fdse = fdsr;
+    //    timeval tv;
+    //    tv.tv_sec = static_cast< long >( timeout_milliseconds / 1000 );
+    //    tv.tv_usec = static_cast< long >( ( timeout_milliseconds % 1000 ) * 1000 );
+    //    if ( select( static_cast< int >( sock + 1 ), &fdsr, &fdsw, &fdse, &tv ) < 0 )
+    //        return false;
+    //    if ( FD_ISSET( sock, &fdsr ) || FD_ISSET( sock, &fdsw ) ) {
+    //        int error = 0;
+    //        socklen_t len = sizeof( error );
+    //        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
+    //            return false;
+    //    } else
+    //        return false;
+    //    return true;
+
+    struct pollfd fds;
+    fds.fd = sock;
+    fds.events = POLLIN | POLLOUT;
+    for( ; true; ) {
+        int r = poll( &fds, 1, timeout_milliseconds );
+        if( r == -1 ) {
+            if( errno == EINTR )
+                continue;
+            // call to poll() failed
+            break;
+        } else if( r == 0 ) {
+            // timeout expired
+            break;
+        } else if( fds.revents & ( POLLIN | POLLOUT ) ) {
+            return true;
+        } else if( fds.revents & ( POLLERR | POLLNVAL ) ) {
+            // socket error
+            break;
+        }
+    } // for( ; true; )
+    return false;
 }
 
 template < typename T >
