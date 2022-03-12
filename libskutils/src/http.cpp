@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <curl/curl.h>
 
 #endif  // (!defined _WIN32)
 
@@ -2677,4 +2678,206 @@ bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& r
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace http
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace http_curl {
+
+client::client( const skutils::url& u,
+        int timeout_milliseconds, // = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__
+        skutils::http::SSL_client_options* pOptsSSL // = nullptr
+        )
+        : u_( u )
+        , timeout_milliseconds_( timeout_milliseconds )
+{
+    if( pOptsSSL )
+        optsSSL = (*pOptsSSL);
+}
+
+client::~client() {
+
+}
+
+bool client::is_valid() const {
+    if( u_.host().empty() )
+        return false;
+const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u_.scheme() ) );
+    if( !( strScheme == "http" || strScheme == "https" ) )
+        return false;
+    return true;
+}
+
+bool client::is_ssl() const {
+const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u_.scheme() ) );
+    if( strScheme != "https" )
+        return false;
+    //if ( optsSSL.ca_file.empty() )
+    //    return false;
+    //if ( optsSSL.ca_path.empty() )
+    //    return false;
+    if ( optsSSL.client_cert.empty() )
+        return false;
+    if ( optsSSL.client_key.empty() )
+        return false;
+    return true;
+}
+
+struct MemoryStruct {
+    char *memory;
+    size_t size;
+};
+
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    size_t realsize = size * nmemb;
+    struct MemoryStruct *mem = (struct MemoryStruct *) userp;
+
+    char *ptr = (char *) realloc(mem->memory, mem->size + realsize + 1);
+    if( ! ptr )
+        return 0;
+    mem->memory = ptr;
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+
+    return realsize;
+}
+
+bool client::query(
+        const char * strInData,
+        const char * strInContentType, // i.e. "application/json"
+        std::string & strOutData,
+        std::string & strOutContentType,
+        skutils::http::common_network_exception::error_info& ei
+        ) {
+    ei.clear();
+    strOutData.clear();
+    strOutContentType.clear();
+    bool ret = false;
+    // curl_global_init( CURL_GLOBAL_DEFAULT );
+    CURL * curl = nullptr;
+    struct curl_slist * headers = nullptr;
+    // char errbuf[CURL_ERROR_SIZE] = { 0, };
+    //
+    struct MemoryStruct chunk;
+    chunk.memory = (char *) malloc( 1 );
+    chunk.size = 0;
+    try {
+        if( ! chunk.memory )
+            throw std::runtime_error( "CURL failed to alloc initial memory chunk" );
+        const char *pKeyType  = "PEM";
+        curl = curl_easy_init();
+        if( ! curl )
+            throw std::runtime_error( "CURL easy init failed" );
+        //
+        std::string strHeaderContentType = skutils::tools::format(
+                    "Content-Type: %s",
+                    strInContentType ? strInContentType : "application/json"
+                    );
+        headers = curl_slist_append( headers, "Expect:" );
+        headers = curl_slist_append( headers, strHeaderContentType.c_str() );
+        //
+        std::string strURL = u_.str();
+        curl_easy_setopt( curl, CURLOPT_URL, strURL.c_str() );
+        // FILE * headerfile = stdout; // fopen( "dumpit.txt", "wb");
+        // curl_easy_setopt( curl, CURLOPT_HEADERDATA, headerfile );
+        if( ! strUserAgent_.empty() )
+            curl_easy_setopt( curl, CURLOPT_USERAGENT, strUserAgent_.c_str() );
+        if( ! strDnsServers_.empty() )
+            curl_easy_setopt( curl, CURLOPT_DNS_SERVERS, strDnsServers_.c_str() );
+        curl_easy_setopt( curl, CURLOPT_COOKIEFILE, "" );
+        curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, timeout_milliseconds_ );
+        curl_easy_setopt( curl, CURLOPT_POST, 1L );
+        curl_easy_setopt( curl, CURLOPT_HTTPHEADER, headers );
+        curl_easy_setopt( curl, CURLOPT_POSTFIELDS, strInData );
+        curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE, -1L );
+        curl_easy_setopt( curl, CURLOPT_VERBOSE, isVerboseInsideCURL_ ? 1L : 0L );
+        // curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errbuf );
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *) &chunk );
+        //
+        if( is_ssl() ) {
+            if( pCurlCryptoEngine_ ) {
+                // use crypto engine
+                if( curl_easy_setopt( curl, CURLOPT_SSLENGINE, pCurlCryptoEngine_ ) != CURLE_OK )
+                    throw std::runtime_error( "CURL cannot set crypto engine" );
+                // set the crypto engine as default, only needed for the first time you load a engine in a curl object
+                if( curl_easy_setopt( curl, CURLOPT_SSLENGINE_DEFAULT, 1L ) != CURLE_OK )
+                    throw std::runtime_error( "CURL cannot set crypto engine as default" );
+            } // if( pCurlCryptoEngine_ )
+            // cert is stored PEM coded in file... since PEM is default, we needn't set it for PEM
+            curl_easy_setopt( curl, CURLOPT_SSLCERTTYPE, "PEM" );
+            // set the cert for client authentication
+            curl_easy_setopt( curl, CURLOPT_SSLCERT, optsSSL.client_cert.c_str() ); // like "cert.pem"
+            // for engine we must set the passphrase (if the key has one...)
+            if( pCryptoEnginePassphrase_ )
+                curl_easy_setopt( curl, CURLOPT_KEYPASSWD, pCryptoEnginePassphrase_ );
+            // if we use a key stored in a crypto engine, we must set the key type to "ENG"
+            curl_easy_setopt( curl, CURLOPT_SSLKEYTYPE, pKeyType );
+            // set the private key (file or ID in engine)
+            curl_easy_setopt( curl, CURLOPT_SSLKEY, optsSSL.client_key.c_str() ); // like "key.pem"
+            // set the file with the certs vaildating the server
+            if ( ! optsSSL.ca_path.empty() )
+                curl_easy_setopt( curl, CURLOPT_CAINFO, optsSSL.ca_path.c_str() );
+            // disconnect if we cannot validate server's cert?
+            curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, isSslVerifyPeer_ ? 1L : 0L );
+            curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, isSslVerifyHost_ ? 1L : 0L );
+        } // if( is_ssl() )
+        CURLcode curl_code = curl_easy_perform( curl );
+        if( curl_code != CURLE_OK )
+            throw std::runtime_error(
+                    std::string( "CURL easy perform failed: " ) +
+                    curl_easy_strerror( curl_code )
+                    );
+        long http_code;
+        curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &http_code );
+        if( !( http_code == 200 && curl_code != CURLE_ABORTED_BY_CALLBACK ) ) {
+            throw std::runtime_error(
+                    skutils::tools::format( "CURL failed with code %d=0x%X, HTTP status is  %d=0x%X",
+                                            int(curl_code), int(curl_code),
+                                            int(http_code), int(http_code)
+                                            )
+                    );
+        }
+        char * ct = nullptr;
+        curl_easy_getinfo( curl, CURLINFO_CONTENT_TYPE, &ct );
+        strOutContentType = ct ? ct : ( strInContentType ? strInContentType : "application/json" );
+        strOutData = std::string( chunk.memory, chunk.size );
+        //
+        ret = true;
+    } catch ( skutils::http::common_network_exception& ex ) {
+        ei = ex.ei_;
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+    } catch ( std::exception& ex ) {
+        ei.strError_ = ex.what();
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+    } catch ( ... ) {
+        ei.strError_ = "unknown exception";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+    }
+    if( headers ) {
+        curl_slist_free_all( headers );
+        headers = nullptr;
+    }
+    if( curl ) {
+        curl_easy_cleanup( curl );
+        curl = nullptr;
+    }
+    if( chunk.memory ) {
+        free( chunk.memory );
+        chunk.memory = nullptr;
+    }
+    // curl_global_cleanup();
+    return ret;
+}
+
+}; // namespace http_curl
+
 };  // namespace skutils
