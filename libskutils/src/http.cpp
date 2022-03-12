@@ -2765,7 +2765,6 @@ bool client::query(
     try {
         if( ! chunk.memory )
             throw std::runtime_error( "CURL failed to alloc initial memory chunk" );
-        const char *pKeyType  = "PEM";
         curl = curl_easy_init();
         if( ! curl )
             throw std::runtime_error( "CURL easy init failed" );
@@ -2813,7 +2812,8 @@ bool client::query(
             if( pCryptoEnginePassphrase_ )
                 curl_easy_setopt( curl, CURLOPT_KEYPASSWD, pCryptoEnginePassphrase_ );
             // if we use a key stored in a crypto engine, we must set the key type to "ENG"
-            curl_easy_setopt( curl, CURLOPT_SSLKEYTYPE, pKeyType );
+            if( ! strKeyType_.empty() )
+                curl_easy_setopt( curl, CURLOPT_SSLKEYTYPE, strKeyType_.c_str() );
             // set the private key (file or ID in engine)
             curl_easy_setopt( curl, CURLOPT_SSLKEY, optsSSL.client_key.c_str() ); // like "key.pem"
             // set the file with the certs vaildating the server

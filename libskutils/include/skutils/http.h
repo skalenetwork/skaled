@@ -789,6 +789,8 @@ public:
     bool isSslVerifyHost_ = false;
     std::string strUserAgent_ = "libcurl-agent/1.0";
     std::string strDnsServers_ = "8.8.8.8,4.4.4.4,8.8.4.4";
+    std::string strKeyType_ = "PEM";
+    //
     client( const skutils::url& u,
         int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__,
         skutils::http::SSL_client_options* pOptsSSL = nullptr );
