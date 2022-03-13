@@ -935,7 +935,7 @@ int main( int argc, char** argv ) try {
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
               << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent built intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
     std::cout.flush();
     version();
 
