@@ -1279,40 +1279,40 @@ bool refreshing_start( const std::string& configPath ) {
                                                     cc::debug( " value " ) + cc::num10( nIntervalSeconds ) + cc::debug( "(in seconds)" ) );
         }
     }
-    if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-verbose" ) > 0 ) {
-        const nlohmann::json& joSkaleConfig_nodeInfo_verbose =
-            joSkaleConfig_nodeInfo["skale-network-browser-verbose"];
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                cc::debug( " in config" ) );
-        if ( joSkaleConfig_nodeInfo_verbose.is_boolean() ) {
-            g_bDebugVerboseSNB = joSkaleConfig_nodeInfo_verbose.get< bool >();
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as boolean)" ) );
-        } else if ( joSkaleConfig_nodeInfo_verbose.is_number() ) {
-            g_bDebugVerboseSNB =
-                ( joSkaleConfig_nodeInfo_verbose.get< size_t >() != 0 ) ? true : false;
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as number)" ) );
-        } else {
-            // g_bDebugVerboseSNB = false;
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as unparsed, left previous)" ) );
-        }
-    } else {
-        // g_bDebugVerboseSNB = false;
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as absent, left previous)" ) );
-    }
+    //    if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-verbose" ) > 0 ) {
+    //        const nlohmann::json& joSkaleConfig_nodeInfo_verbose =
+    //            joSkaleConfig_nodeInfo["skale-network-browser-verbose"];
+    //        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+    //                                                cc::debug( " refreshing(start) have " ) +
+    //                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
+    //                                                cc::debug( " in config" ) );
+    //        if ( joSkaleConfig_nodeInfo_verbose.is_boolean() ) {
+    //            g_bDebugVerboseSNB = joSkaleConfig_nodeInfo_verbose.get< bool >();
+    //            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+    //                                                    cc::debug( " refreshing(start) have " ) +
+    //                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
+    //                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as boolean)" ) );
+    //        } else if ( joSkaleConfig_nodeInfo_verbose.is_number() ) {
+    //            g_bDebugVerboseSNB =
+    //                ( joSkaleConfig_nodeInfo_verbose.get< size_t >() != 0 ) ? true : false;
+    //            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+    //                                                    cc::debug( " refreshing(start) have " ) +
+    //                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
+    //                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as number)" ) );
+    //        } else {
+    //            // g_bDebugVerboseSNB = false;
+    //            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+    //                                                    cc::debug( " refreshing(start) have " ) +
+    //                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
+    //                                                    cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as unparsed, left previous)" ) );
+    //        }
+    //    } else {
+    //        // g_bDebugVerboseSNB = false;
+    //        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+    //                                                cc::debug( " refreshing(start) have " ) +
+    //                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
+    //                                                cc::debug( " value " ) + cc::flag( g_bDebugVerboseSNB ) + cc::debug( "(as absent, left previous)" ) );
+    //    }
     std::string strAddressSchainsInternal, strAddressNodes;
     try {
         strAddressSchainsInternal = skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
