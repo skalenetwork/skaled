@@ -783,6 +783,13 @@ class client {
     skutils::http::SSL_client_options optsSSL;
     const char * pCurlCryptoEngine_ = nullptr;
     const char *pCryptoEnginePassphrase_ = nullptr;
+    //
+    struct MemoryStruct {
+        char * memory;
+        size_t size;
+    };
+    static size_t stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp );
+    //
 public:
     bool isVerboseInsideCURL_ = false;
     bool isSslVerifyPeer_ = false;
@@ -797,6 +804,7 @@ public:
     virtual ~client();
     virtual bool is_valid() const;
     virtual bool is_ssl() const;
+    virtual bool is_ssl_with_explicit_cert_key() const;
     virtual bool query(
             const char * strInData,
             const char * strInContentType, // i.e. "application/json"

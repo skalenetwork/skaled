@@ -2712,6 +2712,12 @@ bool client::is_ssl() const {
 const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u_.scheme() ) );
     if( strScheme != "https" )
         return false;
+    return true;
+}
+
+bool client::is_ssl_with_explicit_cert_key() const {
+    if( ! is_ssl() )
+        return false;
     //if ( optsSSL.ca_file.empty() )
     //    return false;
     //if ( optsSSL.ca_path.empty() )
@@ -2723,15 +2729,9 @@ const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_cop
     return true;
 }
 
-struct MemoryStruct {
-    char *memory;
-    size_t size;
-};
-
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+size_t client::stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp ) {
     size_t realsize = size * nmemb;
     struct MemoryStruct *mem = (struct MemoryStruct *) userp;
-
     char *ptr = (char *) realloc(mem->memory, mem->size + realsize + 1);
     if( ! ptr )
         return 0;
@@ -2739,7 +2739,6 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
     memcpy(&(mem->memory[mem->size]), contents, realsize);
     mem->size += realsize;
     mem->memory[mem->size] = 0;
-
     return realsize;
 }
 
@@ -2792,10 +2791,10 @@ bool client::query(
         curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE, -1L );
         curl_easy_setopt( curl, CURLOPT_VERBOSE, isVerboseInsideCURL_ ? 1L : 0L );
         // curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errbuf );
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, stat_WriteMemoryCallback );
         curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *) &chunk );
         //
-        if( is_ssl() ) {
+        if( is_ssl_with_explicit_cert_key() ) {
             if( pCurlCryptoEngine_ ) {
                 // use crypto engine
                 if( curl_easy_setopt( curl, CURLOPT_SSLENGINE, pCurlCryptoEngine_ ) != CURLE_OK )
@@ -2819,6 +2818,8 @@ bool client::query(
             // set the file with the certs vaildating the server
             if ( ! optsSSL.ca_path.empty() )
                 curl_easy_setopt( curl, CURLOPT_CAINFO, optsSSL.ca_path.c_str() );
+        } // if( is_ssl_with_explicit_cert_key() )
+        if( is_ssl() ) {
             // disconnect if we cannot validate server's cert?
             curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, isSslVerifyPeer_ ? 1L : 0L );
             curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, isSslVerifyHost_ ? 1L : 0L );
