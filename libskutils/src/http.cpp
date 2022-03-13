@@ -2852,16 +2852,22 @@ bool client::query(
             ei.strError_ = "exception without description";
         if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
             ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(1): " << ei.strError_ << "\n";
+std::cout.flush();
     } catch ( std::exception& ex ) {
         ei.strError_ = ex.what();
         if ( ei.strError_.empty() )
             ei.strError_ = "exception without description";
         if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
             ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(2): " << ei.strError_ << "\n";
+std::cout.flush();
     } catch ( ... ) {
         ei.strError_ = "unknown exception";
         if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
             ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(3): " << ei.strError_ << "\n";
+std::cout.flush();
     }
     if( headers ) {
         curl_slist_free_all( headers );

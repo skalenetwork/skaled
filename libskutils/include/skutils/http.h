@@ -791,7 +791,7 @@ class client {
     static size_t stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp );
     //
 public:
-    bool isVerboseInsideCURL_ = false;
+    bool isVerboseInsideCURL_ = true; // false;
     bool isSslVerifyPeer_ = false;
     bool isSslVerifyHost_ = false;
     std::string strUserAgent_ = "libcurl-agent/1.0";
