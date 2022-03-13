@@ -28,7 +28,7 @@ namespace skale {
 namespace network {
 namespace browser {
 
-static bool g_bDebugVerboseSNB = false;
+static bool g_bDebugVerboseSNB = true; // false;
 
 // see: https://docs.soliditylang.org/en/develop/abi-spec.html#abi
 // see: https://docs.soliditylang.org/en/develop/internals/layout_in_memory.html
@@ -305,43 +305,71 @@ dev::u256 get_schains_count(
     joCall["params"].push_back( std::string( "latest" ) );
     skutils::rest::client cli;
     // cli.optsSSL_ = optsSSL;
-    if ( g_bDebugVerboseSNB ) {
+    if ( g_bDebugVerboseSNB )
         clog( dev::VerbosityTrace, "snb" )
             << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
                    cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
                    cc::debug( " with " ) + cc::j( joCall ) );
-    }
     cli.open( u );
     skutils::rest::data_t d = cli.call( joCall );
     if ( !d.err_s_.empty() ) {
-        if ( g_bDebugVerboseSNB ) {
+        if ( g_bDebugVerboseSNB )
             clog( dev::VerbosityTrace, "snb" )
                 << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
                        cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
                        cc::warn( d.err_s_ ) );
-        }
         throw std::runtime_error(
             std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
     }
     if ( d.empty() ) {
-        if ( g_bDebugVerboseSNB ) {
+        if ( g_bDebugVerboseSNB )
             clog( dev::VerbosityTrace, "snb" )
                 << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
                        cc::info( g_strContractMethodName ) + cc::error( ", EMPTY data received" ) );
-        }
         throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                   "\", EMPTY data received" );
     }
-    if ( g_bDebugVerboseSNB ) {
+    if ( g_bDebugVerboseSNB )
         clog( dev::VerbosityTrace, "snb" )
             << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
                    cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
                    cc::j( d.s_ ) );
-    }
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+    if( joAnswer.count( "result" ) == 0 ) {
+        if ( g_bDebugVerboseSNB )
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                       cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                       cc::warn( "result" ) + cc::error( " field provided" ) );
+        throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                  "\", no \"result\" field provided" );
+    }
     const nlohmann::json& joResult_numberOfSchains = joAnswer["result"];
-    dev::u256 cntSChains( joResult_numberOfSchains.get< std::string >() );
-    return cntSChains;
+    if( joResult_numberOfSchains.is_null() ) {
+        if ( g_bDebugVerboseSNB )
+            clog( dev::VerbosityTrace, "snb" )
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                         cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                         cc::warn( "result" ) + cc::error( " field is null, will return zero value" ) );
+        dev::u256 cntSChains( 0 );
+        return cntSChains;
+    }
+    if( joResult_numberOfSchains.is_number() ) {
+        dev::u256 cntSChains( joResult_numberOfSchains.get< int >() );
+        return cntSChains;
+    }
+    if( joResult_numberOfSchains.is_string() ) {
+        dev::u256 cntSChains( joResult_numberOfSchains.get< std::string >() );
+        return cntSChains;
+    }
+    // error, final
+    if ( g_bDebugVerboseSNB )
+        clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                     cc::warn( "result" ) + cc::error( " field is not string or number type" ) );
+    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                              "\", provided \"result\" field is not string or number type" );
 }
 
 s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
@@ -371,42 +399,56 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         joCall["params"].push_back( std::string( "latest" ) );
         skutils::rest::client cli;
         // cli.optsSSL_ = optsSSL;
-        if ( g_bDebugVerboseSNB ) {
+        if ( g_bDebugVerboseSNB )
             clog( dev::VerbosityTrace, "snb" )
                 << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will call " ) +
                        cc::info( g_strContractMethodName ) + cc::debug( " at " ) + cc::u( u ) +
                        cc::debug( " with " ) + cc::j( joCall ) );
-        }
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() ) {
-            if ( g_bDebugVerboseSNB ) {
+            if ( g_bDebugVerboseSNB )
                 clog( dev::VerbosityTrace, "snb" )
                     << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
                            cc::info( g_strContractMethodName ) + cc::error( ", got error: " ) +
                            cc::warn( d.err_s_ ) );
-            }
             throw std::runtime_error(
                 std::string( "Failed call to \"" ) + g_strContractMethodName + "\": " + d.err_s_ );
         }
         if ( d.empty() ) {
-            if ( g_bDebugVerboseSNB ) {
+            if ( g_bDebugVerboseSNB )
                 clog( dev::VerbosityTrace, "snb" )
                     << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
                            cc::info( g_strContractMethodName ) +
                            cc::error( ", EMPTY data received" ) );
-            }
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", EMPTY data received" );
         }
-        if ( g_bDebugVerboseSNB ) {
+        if ( g_bDebugVerboseSNB )
             clog( dev::VerbosityTrace, "snb" )
                 << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did called " ) +
                        cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
                        cc::j( d.s_ ) );
-        }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        if( joAnswer.count( "result" ) == 0 ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                             cc::warn( "result" ) + cc::error( " field provided" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", no \"result\" field provided" );
+        }
         const nlohmann::json& joResult = joAnswer["result"];
+        if( ! joResult.is_string() ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", provided \"result\" field is not string type" );
+        }
         hash = dev::u256( joResult.get< std::string >() );
     }  // block
     //
@@ -489,7 +531,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                        cc::j( d.s_ ) );
         }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        if( joAnswer.count( "result" ) == 0 ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                             cc::warn( "result" ) + cc::error( " field provided" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", no \"result\" field provided" );
+        }
         const nlohmann::json& joResult = joAnswer["result"];
+        if( ! joResult.is_string() ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", provided \"result\" field is not string type" );
+        }
         std::string strResult = joResult.get< std::string >();
         vec256_t vec = stat_split_raw_answer( strResult );
         size_t i = 0;
@@ -563,7 +623,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                        cc::j( d.s_ ) );
         }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+        if( joAnswer.count( "result" ) == 0 ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                             cc::warn( "result" ) + cc::error( " field provided" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", no \"result\" field provided" );
+        }
         const nlohmann::json& joResult = joAnswer["result"];
+        if( ! joResult.is_string() ) {
+            if ( g_bDebugVerboseSNB )
+                clog( dev::VerbosityTrace, "snb" )
+                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+            throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                      "\", provided \"result\" field is not string type" );
+        }
         std::string strResult = joResult.get< std::string >();
         vec256_t vec = stat_split_raw_answer( strResult );
         vec256_t vecNodeIds = stat_extract_vector( vec, 0 );
@@ -650,7 +728,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                if( joAnswer.count( "result" ) == 0 ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                     cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", no \"result\" field provided" );
+                }
                 const nlohmann::json& joResult = joAnswer["result"];
+                if( ! joResult.is_string() ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", provided \"result\" field is not string type" );
+                }
                 std::string strResult = joResult.get< std::string >();
                 vec256_t vec = stat_split_raw_answer( strResult );
                 size_t i = 0;
@@ -716,7 +812,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                if( joAnswer.count( "result" ) == 0 ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                     cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", no \"result\" field provided" );
+                }
                 const nlohmann::json& joResult = joAnswer["result"];
+                if( ! joResult.is_string() ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", provided \"result\" field is not string type" );
+                }
                 std::string strResult = joResult.get< std::string >();
                 vec256_t vec = stat_split_raw_answer( strResult );
                 size_t i = 0;
@@ -775,7 +889,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                if( joAnswer.count( "result" ) == 0 ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                     cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", no \"result\" field provided" );
+                }
                 const nlohmann::json& joResult = joAnswer["result"];
+                if( ! joResult.is_string() ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", provided \"result\" field is not string type" );
+                }
                 std::string strResult = joResult.get< std::string >();
                 vec256_t vec = stat_split_raw_answer( strResult );
                 node.isMaintenance = ( vec[0].u256.is_zero() ) ? false : true;
@@ -838,7 +970,25 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                if( joAnswer.count( "result" ) == 0 ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                     cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", no \"result\" field provided" );
+                }
                 const nlohmann::json& joResult = joAnswer["result"];
+                if( ! joResult.is_string() ) {
+                    if ( g_bDebugVerboseSNB )
+                        clog( dev::VerbosityTrace, "snb" )
+                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                                              "\", provided \"result\" field is not string type" );
+                }
                 std::string strResult = joResult.get< std::string >();
                 vec256_t vec = stat_split_raw_answer( strResult );
                 if ( g_bDebugVerboseSNB ) {
