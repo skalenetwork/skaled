@@ -32,6 +32,8 @@
 #include <jsonrpccpp/client.h>
 #include <thirdparty/zguide/zhelpers.hpp>
 
+#define __SKUTIS_REST_USE_CURL_FOR_HTTP 1
+
 namespace skutils {
 namespace rest {
 
@@ -118,7 +120,11 @@ public:
 class client {
 private:
     skutils::url u_;
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+    std::unique_ptr< skutils::http_curl::client > ch_;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::http::client > ch_;
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::ws::client > cw_;
     std::unique_ptr< sz_cli > cz_;
 
@@ -131,6 +137,7 @@ private:
 
 public:
     skutils::http::SSL_client_options optsSSL_;
+    bool isVerboseInsideNetworkLayer_ = false;
     client();
     client( const skutils::url& u );
     client( const std::string& url_str );

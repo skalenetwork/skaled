@@ -47,6 +47,9 @@
 #include <iostream>
 #include <set>
 
+#include <stdio.h>
+#include <time.h>
+
 //#include "../libconsensus/libBLS/bls/bls.h"
 
 #include <bls/bls.h>
@@ -3333,13 +3336,33 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
 }
 
 Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*/ ) {
-    std::string strLogPrefix = cc::deep_info( "BROWSE SKALE NETWORK" );
+    std::string strLogPrefix = cc::deep_info( "BROWSE/NOW SKALE NETWORK" );
     try {
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " incoming refreshing(now) call to " ) +
+                                                cc::bright( "skale_browseEntireNetwork" ) +
+                                                cc::debug( "..." ) );
+        clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_do_now();
+        tt = clock() - tt;
+        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) done, " ) +
+                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                                                cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) result is: " ) +
+                                                cc::j( jo ) );
         std::string s = jo.dump();
         Json::Value ret;
         Json::Reader().parse( s, ret );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
         return ret;
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3366,13 +3389,33 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
 }
 
 Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*/ ) {
-    std::string strLogPrefix = cc::deep_info( "CACHED SKALE NETWORK" );
+    std::string strLogPrefix = cc::deep_info( "CACHED/FETCH SKALE NETWORK" );
     try {
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " incoming refreshing(cached) call to " ) +
+                                                cc::bright( "skale_cachedEntireNetwork" ) +
+                                                cc::debug( "..." ) );
+        clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_cached();
+        tt = clock() - tt;
+        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) done, " ) +
+                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                                                cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) result is: " ) +
+                                                cc::j( jo ) );
         std::string s = jo.dump();
         Json::Value ret;
         Json::Reader().parse( s, ret );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) result is ready to sent back to client/caller" ) );
         return ret;
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )

@@ -392,11 +392,21 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         //
         if ( strScheme == "http" ) {
             close();
-            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort ) );
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, nullptr ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "https" ) {
             close();
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
                 __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             close();
             cw_.reset( new skutils::ws::client );
@@ -621,6 +631,25 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            std::string strOutData, strOutContentType;
+            skutils::http::common_network_exception::error_info ei;
+            bool ret = ch_->query(
+               strJsonIn.c_str(), "application/json",
+               strOutData, strOutContentType,
+               ei
+               );
+            d.ei_ = ei;
+            if( ( ! ret ) || strOutData.empty() ) {
+                d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
+                return d;  // data_t();
+            }
+            d.s_ = strOutData;
+            std::string h;
+            if( ! strOutContentType.empty() )
+                h = stat_extract_short_content_type_string( strOutContentType );
+            d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp = ch_->Post(
                 strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
@@ -638,9 +667,9 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
             d.s_ = resp->body_;
             std::string h;
             if ( resp->has_header( "Content-Type" ) )
-                h = stat_extract_short_content_type_string(
-                    resp->get_header_value( "Content-Type" ) );
+                h = stat_extract_short_content_type_string( resp->get_header_value( "Content-Type" ) );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             handle_data_arrived( d );
         }
     } else if ( cw_ ) {
@@ -762,6 +791,26 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            std::string strOutData, strOutContentType;
+            skutils::http::common_network_exception::error_info ei;
+            bool ret = ch_->query(
+               strJsonIn.c_str(), "application/json",
+               strOutData, strOutContentType,
+               ei
+               );
+            d.ei_ = ei;
+            if( ( ! ret ) || strOutData.empty() ) {
+                d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
+                onError( jo, d.err_s_.c_str() );
+                return;
+            }
+            d.s_ = strOutData;
+            std::string h;
+            if( ! strOutContentType.empty() )
+                h = stat_extract_short_content_type_string( strOutContentType );
+            d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
                 ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );
@@ -780,6 +829,7 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
                 h = stat_extract_short_content_type_string(
                     resp->get_header_value( "Content-Type" ) );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             handle_data_arrived( d );
             data_t dataOut = fetch_data_with_strategy( edfs );
             onData( jo, dataOut );
