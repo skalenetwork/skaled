@@ -137,6 +137,7 @@ private:
 
 public:
     skutils::http::SSL_client_options optsSSL_;
+    bool isVerboseInsideNetworkLayer_ = false;
     client();
     client( const skutils::url& u );
     client( const std::string& url_str );

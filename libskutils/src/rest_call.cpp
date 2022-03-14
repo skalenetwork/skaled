@@ -394,6 +394,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             close();
 #if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, nullptr ) );
 #endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
@@ -401,6 +402,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             close();
 #if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
                 __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
