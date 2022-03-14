@@ -719,6 +719,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
+    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -1449,6 +1452,14 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "sgx-url-no-zmq" ) ) {
         isDisableZMQ = true;
     }
+
+    if ( vm.count( "skale-network-browser-verbose" ) ) {
+        skale::network::browser::g_bVerboseLogging = true;
+    }
+    if ( vm.count( "skale-network-browser-refresh" ) ) {
+        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
+    }
+
 
     std::shared_ptr< SharedSpace > shared_space;
     if ( vm.count( "shared-space-path" ) )

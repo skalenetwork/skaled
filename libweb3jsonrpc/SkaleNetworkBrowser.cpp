@@ -29,6 +29,7 @@ namespace network {
 namespace browser {
 
 bool g_bVerboseLogging = false;
+size_t g_nRefreshIntervalInSeconds = 15 * 60;
 
 // see: https://docs.soliditylang.org/en/develop/abi-spec.html#abi
 // see: https://docs.soliditylang.org/en/develop/internals/layout_in_memory.html
@@ -1271,7 +1272,7 @@ bool refreshing_start( const std::string& configPath ) {
                                                     cc::debug( " value " ) + cc::attention( strAddressFrom ) );
         }
     }
-    size_t nIntervalSeconds = 15 * 60;
+    size_t nIntervalSeconds = g_nRefreshIntervalInSeconds;
     if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-refresh" ) > 0 ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_refresh =
             joSkaleConfig_nodeInfo["skale-network-browser-refresh"];
@@ -1280,7 +1281,7 @@ bool refreshing_start( const std::string& configPath ) {
                                                 cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-refresh" ) +
                                                 cc::debug( " in config" ) );
         if ( joSkaleConfig_nodeInfo_refresh.is_number() ) {
-            nIntervalSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
+            nIntervalSeconds = g_nRefreshIntervalInSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
             clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
                                                     cc::debug( " refreshing(start) have " ) +
                                                     cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-refresh" ) +
