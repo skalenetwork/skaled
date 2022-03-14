@@ -775,6 +775,47 @@ void init_logging( const char* strProgramName );
 
 };  // namespace http_pg
 
+namespace http_curl {
+
+class client {
+    const skutils::url u_;
+    int timeout_milliseconds_;
+    skutils::http::SSL_client_options optsSSL;
+    const char * pCurlCryptoEngine_ = nullptr;
+    const char *pCryptoEnginePassphrase_ = nullptr;
+    //
+    struct MemoryStruct {
+        char * memory;
+        size_t size;
+    };
+    static size_t stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp );
+    //
+public:
+    bool isVerboseInsideCURL_ = false;
+    bool isSslVerifyPeer_ = false;
+    bool isSslVerifyHost_ = false;
+    std::string strUserAgent_ = "libcurl-agent/1.0";
+    std::string strDnsServers_ = "8.8.8.8,4.4.4.4,8.8.4.4";
+    std::string strKeyType_ = "PEM";
+    //
+    client( const skutils::url& u,
+        int timeout_milliseconds = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__,
+        skutils::http::SSL_client_options* pOptsSSL = nullptr );
+    virtual ~client();
+    virtual bool is_valid() const;
+    virtual bool is_ssl() const;
+    virtual bool is_ssl_with_explicit_cert_key() const;
+    virtual bool query(
+            const char * strInData,
+            const char * strInContentType, // i.e. "application/json"
+            std::string & strOutData,
+            std::string & strOutContentType,
+            skutils::http::common_network_exception::error_info& ei
+            );
+}; // class client
+
+}; // namespace http_curl
+
 };  // namespace skutils
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

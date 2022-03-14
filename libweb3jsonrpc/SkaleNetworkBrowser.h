@@ -15,6 +15,9 @@ namespace skale {
 namespace network {
 namespace browser {
 
+extern bool g_bVerboseLogging;
+extern size_t g_nRefreshIntervalInSeconds;
+
 struct node_t {
     dev::u256 node_id;
     std::string name, ip, publicIP;

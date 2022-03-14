@@ -133,20 +133,27 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    cout << "Skaled............................" << ver << "\n";
-    if ( !commit.empty() ) {
-        cout << "Commit............................" << commit << "\n";
-    }
-    cout << "Skale network protocol version...." << dev::eth::c_protocolVersion << "\n";
-    cout << "Client database version..........." << dev::eth::c_databaseVersion << "\n";
-    cout << "Build............................." << buildinfo->system_name << "/"
-         << buildinfo->build_type << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" ) << cc::attention( ver ) << "\n";
+    if ( !commit.empty() )
+        cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
+    std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug(".") << cc::num10( c_minorProtocolVersion ) << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) <<cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::attention( buildinfo->build_type ) << "\n";
+    std::cout.flush();
 }
 
 static std::string clientVersion() {
     const auto* buildinfo = skale_get_buildinfo();
     return std::string( "skaled/" ) + buildinfo->project_version + "/" + buildinfo->system_name +
            "/" + buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
+}
+
+static std::string clientVersionColorized() {
+    const auto* buildinfo = skale_get_buildinfo();
+    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) + cc::debug( "/" ) + cc::attention( buildinfo->system_name ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) + cc::debug( "/" ) + cc::attention( buildinfo->build_type );
 }
 
 /*
@@ -713,6 +720,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
+    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -927,11 +937,16 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
-    cout << std::endl << "skaled " << Version << std::endl << std::endl;
+    std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
+              << cc::bright( "client " ) << clientVersionColorized() << "\n"
+              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+    std::cout.flush();
+    version();
 
     pid_t this_process_pid = getpid();
     std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
-              << cc::size10( size_t( this_process_pid ) ) << std::endl;
+              << cc::size10( size_t( this_process_pid ) ) << "\n";
+    std::cout.flush();
 
     setupLogging( loggingOptions );
 
@@ -1437,6 +1452,13 @@ int main( int argc, char** argv ) try {
     bool isDisableZMQ = false;
     if ( vm.count( "sgx-url-no-zmq" ) ) {
         isDisableZMQ = true;
+    }
+
+    if ( vm.count( "skale-network-browser-verbose" ) ) {
+        skale::network::browser::g_bVerboseLogging = true;
+    }
+    if ( vm.count( "skale-network-browser-refresh" ) ) {
+        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > shared_space;
