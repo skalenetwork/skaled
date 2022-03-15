@@ -299,8 +299,8 @@ dev::u256 get_schains_count(
     // 0x77ad87c1
     nlohmann::json joCall = stat_create_basic_call();
     nlohmann::json joParamsItem = nlohmann::json::object();
-    // joParamsItem["from"] = dev::toJS( addressFrom );
-    joParamsItem["to"] = dev::toJS( addressSchainsInternal );
+    // joParamsItem["from"] = dev::address_to_js( addressFrom );
+    joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
     joParamsItem["data"] = "0x77ad87c1";
     joCall["params"].push_back( joParamsItem );
     joCall["params"].push_back( std::string( "latest" ) );
@@ -394,8 +394,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         // 0xec79b501
         nlohmann::json joCall = stat_create_basic_call();
         nlohmann::json joParamsItem = nlohmann::json::object();
-        joParamsItem["from"] = dev::toJS( addressFrom );
-        joParamsItem["to"] = dev::toJS( addressSchainsInternal );
+        joParamsItem["from"] = dev::address_to_js( addressFrom );
+        joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
         joParamsItem["data"] = "0xec79b501" + stat_to_appendable_string( idxSChain );
         joCall["params"].push_back( joParamsItem );
         joCall["params"].push_back( std::string( "latest" ) );
@@ -492,8 +492,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         // 426f623130303000000000000000000000000000000000000000000000000000 "name":"Bob1000"
         nlohmann::json joCall = stat_create_basic_call();
         nlohmann::json joParamsItem = nlohmann::json::object();
-        // joParamsItem["from"] = dev::toJS( addressFrom );
-        joParamsItem["to"] = dev::toJS( addressSchainsInternal );
+        // joParamsItem["from"] = dev::address_to_js( addressFrom );
+        joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
         joParamsItem["data"] = "0xb340c4b3" + stat_to_appendable_string( hash );
         joCall["params"].push_back( joParamsItem );
         joCall["params"].push_back( std::string( "latest" ) );
@@ -585,8 +585,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         // 0060 0000000000000000000000000000000000000000000000000000000000000000 // item[0]
         nlohmann::json joCall = stat_create_basic_call();
         nlohmann::json joParamsItem = nlohmann::json::object();
-        // joParamsItem["from"] = dev::toJS( addressFrom );
-        joParamsItem["to"] = dev::toJS( addressSchainsInternal );
+        // joParamsItem["from"] = dev::address_to_js( addressFrom );
+        joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
         joParamsItem["data"] = "0xb70a4223" + stat_to_appendable_string( s_chain.schain_id );
         joCall["params"].push_back( joParamsItem );
         joCall["params"].push_back( std::string( "latest" ) );
@@ -689,8 +689,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 // "name" value "Bear"
                 nlohmann::json joCall = stat_create_basic_call();
                 nlohmann::json joParamsItem = nlohmann::json::object();
-                // joParamsItem["from"] = dev::toJS( addressFrom );
-                joParamsItem["to"] = dev::toJS( addressNodes );
+                // joParamsItem["from"] = dev::address_to_js( addressFrom );
+                joParamsItem["to"] = dev::address_to_js( addressNodes );
                 joParamsItem["data"] = "0x1c53c280" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
@@ -774,8 +774,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 // 746573742e646f6d61696e2e6e616d652e686572650000000000000000000000 // string data
                 nlohmann::json joCall = stat_create_basic_call();
                 nlohmann::json joParamsItem = nlohmann::json::object();
-                joParamsItem["from"] = dev::toJS( addressFrom );
-                joParamsItem["to"] = dev::toJS( addressNodes );
+                joParamsItem["from"] = dev::address_to_js( addressFrom );
+                joParamsItem["to"] = dev::address_to_js( addressNodes );
                 joParamsItem["data"] = "0xd31c48ed" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
@@ -852,8 +852,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 // 0000 0000000000000000000000000000000000000000000000000000000000000000 bool
                 nlohmann::json joCall = stat_create_basic_call();
                 nlohmann::json joParamsItem = nlohmann::json::object();
-                joParamsItem["from"] = dev::toJS( addressFrom );
-                joParamsItem["to"] = dev::toJS( addressNodes );
+                joParamsItem["from"] = dev::address_to_js( addressFrom );
+                joParamsItem["to"] = dev::address_to_js( addressNodes );
                 joParamsItem["data"] = "0x5990e3cb" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
@@ -934,8 +934,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 // // array item[0]
                 nlohmann::json joCall = stat_create_basic_call();
                 nlohmann::json joParamsItem = nlohmann::json::object();
-                joParamsItem["from"] = dev::toJS( addressFrom );
-                joParamsItem["to"] = dev::toJS( addressSchainsInternal );
+                joParamsItem["from"] = dev::address_to_js( addressFrom );
+                joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
                 joParamsItem["data"] = "0xe6695e68" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
@@ -1376,15 +1376,15 @@ bool refreshing_start( const std::string& configPath ) {
     try {
         addressFrom = dev::u256( strAddressFrom );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"from\" call address " ) + cc::info( dev::toJS( addressFrom ) ) );
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"from\" call address " ) + cc::info( dev::address_to_js( addressFrom ) ) );
         }
         addressSchainsInternal = dev::u256( strAddressSchainsInternal );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"SchainsInternal\" contract address " ) + cc::info( dev::toJS( addressSchainsInternal ) ) );
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"SchainsInternal\" contract address " ) + cc::info( dev::address_to_js( addressSchainsInternal ) ) );
         }
         addressNodes = dev::u256( strAddressNodes );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"Nodes\" contract address " ) + cc::info( dev::toJS( addressNodes ) ) );
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"Nodes\" contract address " ) + cc::info( dev::address_to_js( addressNodes ) ) );
         }
     } catch( ... ) {
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to construct needed addresses" ) );
