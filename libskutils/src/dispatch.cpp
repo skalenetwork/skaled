@@ -283,21 +283,42 @@ void loop::run() {
     std::cout.flush();
 #endif
     pending_timer_remove_all();
+    //
+    bool bHaveLoop = false;
     uv_loop_t uvLoop;
-    uv_idle_t uvIdler;
+    //
+    // bool bHaveIdler = false;
+    // uv_idle_t uvIdler;
+    //
+    bool bHaveTimerStateCheck = false;
     uv_timer_t uvTimerStateCheck;
+    auto fnCleanupHere = [&]() ->void {
+        lock_type lock( loop_mtx() );
+        // if( bHaveIdler ) {
+        //     bHaveIdler = false;
+        //     uv_idle_stop( &uvIdler );
+        // }
+        if( bHaveTimerStateCheck ) {
+            bHaveTimerStateCheck = false;
+            uv_timer_stop( &uvTimerStateCheck );
+        }
+        if( bHaveLoop ) {
+            bHaveLoop = false;
+            uv_loop_close( &uvLoop );
+        }
+    };
     {  // block
         lock_type lock( loop_mtx() );
         if ( is_running() )
-            throw std::runtime_error(
-                skutils::tools::format( "loop %p is already running", this ) );
+            throw std::runtime_error( skutils::tools::format( "loop %p is already running", this ) );
         isAlive_ = false;
         try {
             uv_loop_init( &uvLoop );
             uvLoop.data = ( void* ) this;
             //
-            uv_idle_init( &uvLoop, &uvIdler );
-            uvIdler.data = ( void* ) this;
+            // uv_idle_init( &uvLoop, &uvIdler );
+            // uvIdler.data = ( void* ) this;
+            // bHaveIdler = true;
             //
             uv_timer_init( &uvLoop, &uvTimerStateCheck );
             uvTimerStateCheck.data = ( void* ) this;
@@ -305,33 +326,33 @@ void loop::run() {
             p_uvLoop_ = ( &uvLoop );
             cancelMode_ = false;
             //
-            uv_idle_start( &uvIdler, []( uv_idle_t* p_uvIdler ) {
-                loop* pLoop = ( loop* ) ( p_uvIdler->data );
-                pLoop->on_idle();
-            } );
+            // uv_idle_start( &uvIdler, []( uv_idle_t* p_uvIdler ) {
+            //     loop* pLoop = ( loop* ) ( p_uvIdler->data );
+            //     pLoop->on_idle();
+            // } );
+            //
             uv_timer_start( &uvTimerStateCheck,
                 []( uv_timer_t* p_uvTimer ) {
                     loop* pLoop = ( loop* ) ( p_uvTimer->data );
                     pLoop->on_state_check();
                 },
-                200,  // timeout milliseconds
-                200   // repeat milliseconds
+                100, // 200,  // timeout milliseconds
+                100  // 200   // repeat milliseconds
             );
+            bHaveTimerStateCheck = true;
             //
 #if ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__ )
             if ( p_uvAsyncInitForTimers_ != nullptr ) {
                 uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInitForTimers_;
                 p_uvAsyncInit->data = ( void* ) this;
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-                std::cout << skutils::tools::format(
-                    "dispatch loop initiate pending timer init %p\n", this );
+                std::cout << skutils::tools::format( "dispatch loop initiate pending timer init %p\n", this );
                 std::cout.flush();
 #endif
                 uv_async_init( &uvLoop, p_uvAsyncInit, []( uv_async_t* h ) -> void {
                     loop* pLoop = ( loop* ) ( h->data );
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-                    std::cout << skutils::tools::format(
-                        "dispatch loop pending timer callback %p\n", pLoop );
+                    std::cout << skutils::tools::format( "dispatch loop pending timer callback %p\n", pLoop );
                     std::cout.flush();
 #endif
                     if ( pLoop )
@@ -350,13 +371,15 @@ void loop::run() {
         {  // block
             loop_ptr_t ptr( this );
             one_per_thread_t::make_current curr( g_one_per_thread, ptr );
+            bHaveLoop = true;
             uv_run( &uvLoop, UV_RUN_DEFAULT );
         }  // block
         p_uvLoop_ = nullptr;
-        uv_loop_close( &uvLoop );
+        fnCleanupHere();
         cancelMode_ = false;
     } catch ( ... ) {
         p_uvLoop_ = nullptr;
+        fnCleanupHere();
         throw;
     }
     p_uvLoop_ = nullptr;
@@ -439,17 +462,18 @@ void loop::pending_timer_init() {
     pending_timer_list_.clear();
 }
 
-void loop::on_idle() {
-    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop idle %p\n", this );
-    //    std::cout.flush();
-    //#endif
-    isAlive_ = true;
-    if ( on_check_cancel_mode() )
-        return;
-    pending_timer_init();
-    on_check_jobs();
-}
+//void loop::on_idle() {
+//    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+//    //    std::cout << skutils::tools::format( "dispatch loop idle %p\n", this );
+//    //    std::cout.flush();
+//    //#endif
+//    isAlive_ = true;
+//    if ( on_check_cancel_mode() )
+//        return;
+//    pending_timer_init();
+//    on_check_jobs();
+//}
+
 void loop::on_state_check() {
     //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     //    std::cout << skutils::tools::format( "dispatch loop state check %p\n",
@@ -458,8 +482,10 @@ void loop::on_state_check() {
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
+    pending_timer_init(); // l_sergiy: we need this called here because on_idle() was removed
     on_check_jobs();
 }
+
 bool loop::on_check_cancel_mode() {
     //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
     //    std::cout << skutils::tools::format( "dispatch loop check cancel mode
@@ -474,6 +500,7 @@ bool loop::on_check_cancel_mode() {
     }
     return false;
 }
+
 void loop::on_check_jobs() {
     if ( cancelMode_ )
         return;
