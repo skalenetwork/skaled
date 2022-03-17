@@ -19,8 +19,9 @@ void setThreadName( const char* name ) {
     // if ( strlen( name ) > 15 )
     //    name += strlen( name ) - 15;
     std::string effective_name( name );
-    if( effective_name.length() > 15 )
-        effective_name = effective_name.substr( 0, 15 );
+    size_t len = effective_name.length();
+    if( len > 15 )
+        effective_name = effective_name.substr( len-15 );
 #if defined( __APPLE__ )
     pthread_setname_np( effective_name.c_str() );
 #else
