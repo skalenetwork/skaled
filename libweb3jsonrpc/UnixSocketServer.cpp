@@ -117,7 +117,7 @@ void UnixDomainSocketServer::Listen() {
             // Handle the request in a new detached thread.
             std::thread{[this, connection] {
                 try {
-                    setThreadName( "UnixDomainSocketServer" );
+                    setThreadName( "UDSocketSrv" );
                     GenerateResponse( connection );
                     CloseConnection( connection );
                 } catch ( const std::exception& ex ) {

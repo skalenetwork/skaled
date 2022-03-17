@@ -4,6 +4,7 @@
 #include <proxygen/httpserver/ResponseBuilder.h>
 
 #include <skutils/console_colors.h>
+#include <skutils/multithreading.h>
 
 #include <glog/logging.h>
 
@@ -374,7 +375,10 @@ bool server::start() {
     server_.reset( new proxygen::HTTPServer( std::move( options ) ) );
     server_->bind( IPs );
     // start HTTPServer main loop in a separate thread
-    thread_ = std::move( std::thread( [&]() { server_->start(); } ) );
+    thread_ = std::move( std::thread( [&]() {
+        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        server_->start();
+    } ) );
 
     pg_log( strLogPrefix_ + cc::debug( "did started server thread" ) + "\n" );
     return true;
