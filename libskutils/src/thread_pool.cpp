@@ -9,7 +9,7 @@ thread_pool::worker::worker( thread_pool* p, const size_t i ) : pool_( p ), id_(
 thread_pool::worker::~worker() {}
 
 void thread_pool::worker::invoke() {
-    skutils::multithreading::threadNamer tn( skutils::tools::format( "p%zu", id_ ) );
+    skutils::multithreading::setThreadName( skutils::tools::format( "dPool%zu", id_ ) );
     std::function< void() > func;
     bool was_dequeued = false;
     for ( ;; ) {

@@ -1954,7 +1954,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     }
     std::thread( [pThis]() {
         pThis->m_isRunning = true;
-        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
+        skutils::multithreading::setThreadName( pThis->m_strSchemeUC + "-listener" );
         try {
             pThis->run( [pThis]() -> bool {
                 if ( !pThis->m_isRunning )
@@ -2663,8 +2663,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::threadNameAppender tn(
-                "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
+            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
             if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
