@@ -974,7 +974,7 @@ bool queue::impl_job_run() {  // fetch first asynchronously stored job and run
         return false;
     job_t fn;
     {  // block
-        skutils::multithreading::threadNameAppender tn( "/q-" + get_id() );
+        skutils::multithreading::setThreadName( "dq-" + get_id() );
         lock_type lock( mtx_jobs() );
         if ( jobs_.empty() )
             return false;
@@ -1024,7 +1024,7 @@ bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicitly specified job sy
     queue_id_t queue_id = get_id();
     try {
         try {
-            skutils::multithreading::threadNameAppender tn( "/q-" + get_id() );
+            skutils::multithreading::setThreadName( "dq-" + get_id() );
             lock_type lock( mtx_run() );
             is_running_ = true;
             queue_ptr_t ptr( this );
