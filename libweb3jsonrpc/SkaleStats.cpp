@@ -1384,6 +1384,29 @@ static std::string stat_encode_eth_call_data_chunck_size_t(
     return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
 }
 
+bool SkaleStats::isEnabledImaMessageSigning() const {
+    bool isEnabled = true;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "no-ima-signing" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"no-ima-signing\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
+            joSkaleConfig_nodeInfo["no-ima-signing"];
+        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >() ? false : true;
+    } catch ( ... ) {
+    }
+    return isEnabled;
+}
+
 static void stat_array_invert( uint8_t* arr, size_t cnt ) {
     size_t n = cnt / 2;
     for ( size_t i = 0; i < n; ++i ) {
