@@ -1,12 +1,6 @@
 set( CMAKE_CXX_STANDARD 17 )
 
-
-set(
-    sources
-    AccountManager.cpp AccountManager.h
-    main.cpp
-    MinerAux.h
-)
+file( GLOB sources "*.cpp" "*.h" )
 
 set(EXECUTABLE_NAME skaled)
 
@@ -34,6 +28,7 @@ target_link_libraries(
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
         pthread
         idn2
+        batched-io
     )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)

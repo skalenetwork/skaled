@@ -1,3 +1,7 @@
+#include <skutils/console_colors.h>
+#include <skutils/utils.h>
+#include <skutils/multithreading.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -5,8 +9,6 @@
 #include <inttypes.h>
 #include <memory.h>
 #include <signal.h>
-#include <skutils/console_colors.h>
-#include <skutils/utils.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -167,6 +169,15 @@ std::string ensure_no_slash_at_end_copy( const char* s ) {
 }
 std::string ensure_no_slash_at_end_copy( const std::string& s ) {
     return ensure_no_slash_at_end_copy( s.c_str() );
+}
+
+// kills everything beyond plain old ASCII
+std::string safe_ascii( const std::string& in ) {
+    std::stringstream sout;
+    for ( char c : in ) {
+        sout.put( c & 0x80 ? '?' : c );
+    }
+    return sout.str();
 }
 
 std::string get_tmp_folder_path() {  // without slash at end
@@ -726,7 +737,10 @@ load_monitor::load_monitor( size_t
       cpu_load_( 0.0 ),
       nSleepMillisecondsBetweenCpuLoadMeasurements_(
           nSleepMillisecondsBetweenCpuLoadMeasurements ) {
-    thread_ = std::thread( [this]() { thread_proc(); } );
+    thread_ = std::thread( [this]() {
+        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        thread_proc();
+    } );
 }
 load_monitor::~load_monitor() {
     try {
@@ -1285,6 +1299,7 @@ char getch_no_wait() {
 
 namespace signal {
 
+std::atomic_int g_nStopSignal{0};
 std::atomic_bool g_bStop{false};
 
 bool get_signal_description( int nSignalNo, std::string& strSignalName,
@@ -1631,6 +1646,8 @@ json_config_file_accessor::~json_config_file_accessor() {}
 
 void json_config_file_accessor::reloadConfigIfNeeded() {
     lock_type lock( mtx() );
+    if ( configPath_.empty() )
+        return;
     time_t tt = skutils::tools::getFileModificationTime( configPath_ );
     if ( tt == 0 )  // 0 is error
         throw std::runtime_error( "Failed to access modified configuration file" );

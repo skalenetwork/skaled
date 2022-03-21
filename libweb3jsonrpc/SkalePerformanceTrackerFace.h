@@ -16,35 +16,35 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file SkaleDebugFace.h
+/** @file SkalePerformanceTrackerFace.h
  * @authors:
  *   Oleh Nikolaiev <oleg@skalelabs.com>
  * @date 2020
  */
 
-#ifndef SKALEDEBUGFACE_H
-#define SKALEDEBUGFACE_H
+#ifndef SkalePerformanceTrackerFace_H
+#define SkalePerformanceTrackerFace_H
 
 #include "ModularServer.h"
 
 namespace dev {
 namespace rpc {
 
-class SkaleDebugFace : public ServerInterface< SkaleDebugFace > {
+class SkalePerformanceTrackerFace : public ServerInterface< SkalePerformanceTrackerFace > {
 public:
-    SkaleDebugFace() {
+    SkalePerformanceTrackerFace() {
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStatus",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleDebugFace::skale_performanceTrackingStatusI );
+            &dev::rpc::SkalePerformanceTrackerFace::skale_performanceTrackingStatusI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStart",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleDebugFace::skale_performanceTrackingStartI );
+            &dev::rpc::SkalePerformanceTrackerFace::skale_performanceTrackingStartI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingStop",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleDebugFace::skale_performanceTrackingStopI );
+            &dev::rpc::SkalePerformanceTrackerFace::skale_performanceTrackingStopI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_performanceTrackingFetch",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleDebugFace::skale_performanceTrackingFetchI );
+            &dev::rpc::SkalePerformanceTrackerFace::skale_performanceTrackingFetchI );
     }
 
     inline virtual void skale_performanceTrackingStatusI(
@@ -69,9 +69,9 @@ public:
     virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) = 0;
     virtual Json::Value skale_performanceTrackingFetch( const Json::Value& request ) = 0;
 
-};  /// class SkaleDebugFace
+};  /// class SkalePerformanceTrackerFace
 
 }  // namespace rpc
 }  // namespace dev
 
-#endif  // SKALEDEBUGFACE_H
+#endif  // SkalePerformanceTrackerFace_H

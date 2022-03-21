@@ -27,10 +27,10 @@
 #include <vector>
 
 #include <libdevcore/Common.h>
-#include <libethcore/Precompiled.h>
+#include <libethereum/Precompiled.h>
 
-#include "Common.h"
-#include "EVMSchedule.h"
+#include "libethcore/Common.h"
+#include "libethcore/EVMSchedule.h"
 
 namespace dev {
 namespace eth {
@@ -118,16 +118,36 @@ public:
 };
 
 /// skale
+/// one node from previous or current group
+struct GroupNode {
+    u256 id;
+    u256 schainIndex;
+    std::string publicKey;
+};
+
+/// skale
+/// previous or current group information
+struct NodeGroup {
+    std::vector< GroupNode > nodes;
+    uint64_t finishTs;
+    std::array< std::string, 4 > blsPublicKey;
+};
+
+/// skale
 struct SChain {
 public:
     std::string name;
     u256 id;
     Address owner;
+    Address blockAuthor;
     std::vector< sChainNode > nodes;
-    s256 contractStorageLimit;
-    uint64_t dbStorageLimit;
+    std::vector< NodeGroup > nodeGroups;
+    s256 contractStorageLimit = 1000000000;
+    uint64_t dbStorageLimit = 0;
+    uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
     bool freeContractDeployment = false;
+    bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
 

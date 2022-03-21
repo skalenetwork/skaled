@@ -47,11 +47,12 @@
 #include <iostream>
 #include <set>
 
+#include <stdio.h>
+#include <time.h>
+
 //#include "../libconsensus/libBLS/bls/bls.h"
 
 #include <bls/bls.h>
-
-#include <tools/utils.h>
 
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
@@ -59,7 +60,51 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/crypto/OpenSSLECDSAKey.h>
 
+#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
+
 namespace dev {
+
+static nlohmann::json stat_parse_json_with_error_conversion( const std::string & s, bool isThrowException = false ) {
+    nlohmann::json joAnswer;
+    std::string strError;
+    try {
+        joAnswer = nlohmann::json::parse( s );
+        return joAnswer;
+    } catch ( std::exception const & ex ) {
+        strError = ex.what();
+        if( strError.empty() )
+            strError = "exception without description";
+    } catch ( ... ) {
+        strError = "unknown exception";
+    }
+    if( strError.empty() )
+        strError = "unknown error";
+    std::string strErrorDescription = "JSON parser error \"" + strError + "\" while parsing JSON text \"" + s + "\"";
+    if( isThrowException )
+        throw std::runtime_error( strErrorDescription );
+    joAnswer = nlohmann::json::object();
+    joAnswer[ "error" ] = strErrorDescription;
+    return joAnswer;
+}
+
+static bool stat_trim_func_with_quotes( unsigned char ch ) {
+    return skutils::tools::default_trim_what( ch ) || ch == '\"' || ch == '\'';
+}
+
+static void stat_check_rpc_call_error_and_throw( const nlohmann::json & joAnswer, const std::string & strMethodName ) {
+    if( joAnswer.count( "error" ) > 0 ) {
+        std::string strError = joAnswer[ "error" ].dump();
+        strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
+        if( ! strError.empty() )
+            throw std::runtime_error( "Got \"" + strMethodName +  "\" call error \"" + strError + "\"" );
+    }
+    if( joAnswer.count( "errorMessage" ) > 0 ) {
+        std::string strError = joAnswer[ "errorMessage" ].dump();
+        strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
+        if( ! strError.empty() )
+            throw std::runtime_error( "Got \"" + strMethodName +  "\" call error \"" + strError + "\"" );
+    }
+}
 
 namespace tracking {
 
@@ -416,6 +461,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         nlohmann::json joCall = nlohmann::json::object();
         joCall["jsonrpc"] = "2.0";
         joCall["method"] = "ecdsaSignMessageHash";
+        joCall["type"] = "ECDSASignReq";
         joCall["params"] = nlohmann::json::object();
         joCall["params"]["base"] = 16;
         joCall["params"]["keyName"] = strEcdsaKeyName;
@@ -431,13 +477,20 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() )
-            throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
+            throw std::runtime_error( "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
         if ( d.empty() )
             throw std::runtime_error(
-                "failed to sign message(s) with wallet, EMPTY data received" );
-        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet, EMPTY data received" );
+        const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+        dev::stat_check_rpc_call_error_and_throw( joAnswer, "ecdsaSignMessageHash" );
         nlohmann::json joSignResult =
             ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
+        if( joSignResult.count( "signature_r" ) == 0
+            || joSignResult.count( "signature_v" ) == 0
+            || joSignResult.count( "signature_s" ) == 0
+            ) {
+            throw std::runtime_error( "Got \"ecdsaSignMessageHash\" bad answer without \"signature_r\"+\"signature_s\"+\"signature_v\" fields, answer is \"" + joAnswer.dump() + "\"" );
+        }
         clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
                                            cc::debug( " result: " ) + cc::j( joSignResult ) );
         std::string r = joSignResult["signature_r"].get< std::string >();
@@ -663,7 +716,7 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                         throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
-                    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                    nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_, true );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
                     clog( VerbosityTrace, "IMA" )
@@ -742,7 +795,7 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                         throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
-                    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                    nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_, true );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
                     clog( VerbosityTrace, "IMA" )
@@ -845,10 +898,14 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
         skutils::rest::client cli( urlMainNet );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() )
-            throw std::runtime_error( "Main Net call to eth_getLogs failed: " + d.err_s_ );
+            throw std::runtime_error( "Main Net call to \"eth_getTransactionReceipt\" failed: " + d.err_s_ );
         if ( d.empty() )
-            throw std::runtime_error( "Main Net call to eth_getLogs failed, EMPTY data received" );
-        nlohmann::json joReceipt = nlohmann::json::parse( d.s_ )["result"];
+            throw std::runtime_error( "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data received" );
+        const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+        dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionReceipt" );
+        if( joAnswer.count( "result" ) == 0 )
+            throw std::runtime_error( "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+        nlohmann::json joReceipt = joAnswer["result"];
         if ( joReceipt.is_object() && joReceipt.count( "transactionHash" ) > 0 &&
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
@@ -864,18 +921,21 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
 
 namespace rpc {
 
-static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL ) {
+static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isDisableZMQ ) {
+    if ( isDisableZMQ )
+        return strURL;
     if ( strURL.empty() )
-        return string();
+        return strURL;
     skutils::url u( strURL );
     u.scheme( "zmq" );
     u.port( "1031" );
     return u.str();
 }
 
-SkaleStats::SkaleStats(
-    const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : pending_ima_txns( configPath, chainParams.nodeInfo.sgxServerUrl ),
+SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
+    const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
+    : pending_ima_txns(
+          configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
       chainParams_( chainParams ),
       m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
@@ -931,7 +991,7 @@ Json::Value SkaleStats::skale_stats() {
     try {
         nlohmann::json joStats = consumeSkaleStats();
 
-        // HACK Add stats from SkaleDebug
+        // HACK Add stats from SkalePerformanceTracker
         // TODO Why we need all this absatract infrastructure?
         const dev::eth::Client* c = dynamic_cast< dev::eth::Client* const >( this->client() );
         if ( c ) {
@@ -1059,12 +1119,33 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
         else
             joThisNode["acceptors"] = 0;
         //
+        if ( joSkaleConfig_nodeInfo.count( "enable-personal-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-personal-apis"].is_boolean() )
+            joThisNode["enable-personal-apis"] =
+                joSkaleConfig_nodeInfo["enable-personal-apis"].get< bool >();
+        else
+            joThisNode["enable-personal-apis"] = false;
+        //
+        if ( joSkaleConfig_nodeInfo.count( "enable-admin-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-admin-apis"].is_boolean() )
+            joThisNode["enable-admin-apis"] =
+                joSkaleConfig_nodeInfo["enable-admin-apis"].get< bool >();
+        else
+            joThisNode["enable-admin-apis"] = false;
+        //
         if ( joSkaleConfig_nodeInfo.count( "enable-debug-behavior-apis" ) > 0 &&
              joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].is_boolean() )
             joThisNode["enable-debug-behavior-apis"] =
                 joSkaleConfig_nodeInfo["enable-debug-behavior-apis"].get< bool >();
         else
             joThisNode["enable-debug-behavior-apis"] = false;
+        //
+        if ( joSkaleConfig_nodeInfo.count( "enable-performance-tracker-apis" ) > 0 &&
+             joSkaleConfig_nodeInfo["enable-performance-tracker-apis"].is_boolean() )
+            joThisNode["enable-performance-tracker-apis"] =
+                joSkaleConfig_nodeInfo["enable-performance-tracker-apis"].get< bool >();
+        else
+            joThisNode["enable-performance-tracker-apis"] = false;
         //
         if ( joSkaleConfig_nodeInfo.count( "unsafe-transactions" ) > 0 &&
              joSkaleConfig_nodeInfo["unsafe-transactions"].is_boolean() )
@@ -1420,10 +1501,12 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     try {
+        if ( !isEnabledImaMessageSigning() )
+            throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
         nlohmann::json joConfig = getConfigJSON();
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         strLogPrefix = cc::bright( "Startup" ) + " " + cc::deep_info( "IMA Verify+Sign" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "IMA Verify and Sign" ) +
@@ -1851,13 +1934,16 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             skutils::rest::data_t d = cli.call( joCall );
                             if ( !d.err_s_.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_blockNumber failed: " + d.err_s_ );
+                                    "Main Net call to \"eth_blockNumber\" failed: " + d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_blockNumber failed, EMPTY data "
+                                    "Main Net call to \"eth_blockNumber\" failed, EMPTY data "
                                     "received" );
-                            nlohmann::json joMainNetBlockNumber =
-                                nlohmann::json::parse( d.s_ )["result"];
+                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                            dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_blockNumber" );
+                            if( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error( "Got \"eth_blockNumber\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            nlohmann::json joMainNetBlockNumber = joAnswer["result"];
                             if ( joMainNetBlockNumber.is_string() ) {
                                 dev::u256 uBN =
                                     dev::u256( joMainNetBlockNumber.get< std::string >() );
@@ -1931,19 +2017,22 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         skutils::rest::data_t d = cli.call( joCall );
                         if ( !d.err_s_.empty() )
                             throw std::runtime_error(
-                                "Main Net call to eth_getLogs failed: " + d.err_s_ );
+                                "Main Net call to \"eth_getLogs\" failed: " + d.err_s_ );
                         if ( d.empty() )
                             throw std::runtime_error(
-                                "Main Net call to eth_getLogs failed, EMPTY data received" );
-                        jarrFoundLogRecords = nlohmann::json::parse( d.s_ )["result"];
+                                "Main Net call to \"eth_getLogs\" failed, EMPTY data received" );
+                        const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                        dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getLogs" );
+                        if( joAnswer.count( "result" ) == 0 )
+                            throw std::runtime_error( "Got \"eth_getLogs\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                        jarrFoundLogRecords = joAnswer["result"];
                     }  // if ( strDirection == "M2S" || strDirection == "S2S" )
                     else {
                         Json::Value jvLogsQuery;
                         Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
                         Json::Value jvLogs = dev::toJson(
                             this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
-                        jarrFoundLogRecords =
-                            nlohmann::json::parse( Json::FastWriter().write( jvLogs ) );
+                        jarrFoundLogRecords = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvLogs ), true );
                     }  // else from if ( strDirection == "M2S" || strDirection == "S2S" )
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + cc::debug( " Got " ) +
@@ -2213,13 +2302,17 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             skutils::rest::data_t d = cli.call( joCall );
                             if ( !d.err_s_.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionByHash failed: " +
+                                    "Main Net call to \"eth_getTransactionByHash\" failed: " +
                                     d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionByHash failed, EMPTY data "
+                                    "Main Net call to \"eth_getTransactionByHash\" failed, EMPTY data "
                                     "received" );
-                            joTransaction = nlohmann::json::parse( d.s_ )["result"];
+                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                            dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionByHash" );
+                            if( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error( "Got \"eth_getTransactionByHash\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            joTransaction = joAnswer["result"];
                         } else {
                             Json::Value jvTransaction;
                             h256 h = dev::jsToFixed< 32 >( strTransactionHash );
@@ -2227,8 +2320,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 jvTransaction = Json::Value( Json::nullValue );
                             else
                                 jvTransaction = toJson( this->client()->localisedTransaction( h ) );
-                            joTransaction =
-                                nlohmann::json::parse( Json::FastWriter().write( jvTransaction ) );
+                            joTransaction = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvTransaction ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
                         clog( VerbosityError, "IMA" )
@@ -2322,13 +2414,17 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             skutils::rest::data_t d = cli.call( joCall );
                             if ( !d.err_s_.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionReceipt failed: " +
+                                    "Main Net call to \"eth_getTransactionReceipt\" failed: " +
                                     d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to eth_getTransactionReceipt failed, EMPTY data "
+                                    "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data "
                                     "received" );
-                            joTransactionReceipt = nlohmann::json::parse( d.s_ )["result"];
+                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                            dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionReceipt" );
+                            if( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error( "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            joTransactionReceipt = joAnswer["result"];
                         } else {
                             Json::Value jvTransactionReceipt;
                             const h256 h = dev::jsToFixed< 32 >( strTransactionHash );
@@ -2337,8 +2433,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             else
                                 jvTransactionReceipt = dev::eth::toJson(
                                     this->client()->localisedTransactionReceipt( h ) );
-                            joTransactionReceipt = nlohmann::json::parse(
-                                Json::FastWriter().write( jvTransactionReceipt ) );
+                            joTransactionReceipt = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvTransactionReceipt ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
                         clog( VerbosityError, "IMA" )
@@ -2614,6 +2709,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             nlohmann::json joCall = nlohmann::json::object();
             joCall["jsonrpc"] = "2.0";
             joCall["method"] = "blsSignMessageHash";
+            if ( u.scheme() == "zmq" )
+                joCall["type"] = "BLSSignReq";
             joCall["params"] = nlohmann::json::object();
             joCall["params"]["keyShareName"] = keyShareName;
             joCall["params"]["messageHash"] = sh;  // there is no "0x" prefix at start
@@ -2631,11 +2728,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
             if ( !d.err_s_.empty() )
-                throw std::runtime_error( "failed to sign message(s) with wallet: " + d.err_s_ );
+                throw std::runtime_error( "failed to \"blsSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error(
-                    "failed to sign message(s) with wallet, EMPTY data received" );
-            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+                    "failed to \"blsSignMessageHash\" sign message(s) with wallet, EMPTY data received" );
+            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+            dev::stat_check_rpc_call_error_and_throw( joAnswer, "blsSignMessageHash" );
             nlohmann::json joSignResult =
                 ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
             jo["signResult"] = joSignResult;
@@ -2682,12 +2780,197 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     }
 }  // skale_imaVerifyAndSign()
 
+Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
+    std::string strLogPrefix = cc::deep_info( "IMA BLS Sign U256" );
+    try {
+        // if ( !isEnabledImaMessageSigning() )
+        //     throw std::runtime_error( "IMA message signing feature is disabled on this instance"
+        //     );
+        Json::FastWriter fastWriter;
+        const std::string strRequest = fastWriter.write( request );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "sign" ) +
+                   cc::debug( " request: " ) + cc::j( joRequest ) );
+        //
+        std::string strReason;
+        if ( joRequest.count( "reason" ) > 0 )
+            strReason = skutils::tools::trim_copy( joRequest["reason"].get< std::string >() );
+        if ( strReason.empty() )
+            strReason = "<<<empty>>>";
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Sign reason description is: " ) +
+                   cc::info( strReason ) );
+        //
+        if ( joRequest.count( "valueToSign" ) == 0 )
+            throw std::runtime_error( "missing \"valueToSign\" in call parameters" );
+        const nlohmann::json& joValueToSign = joRequest["valueToSign"];
+        if ( !joValueToSign.is_string() )
+            throw std::runtime_error( "bad value type of \"valueToSign\" must be string" );
+        std::string strValueToSign =
+            skutils::tools::trim_copy( joValueToSign.get< std::string >() );
+        if ( strValueToSign.empty() )
+            throw std::runtime_error( "value of \"valueToSign\" must be non-EMPTY string" );
+        if ( strValueToSign.length() >= 2 &&
+             ( !( strValueToSign[0] == '0' &&
+                  ( strValueToSign[1] == 'x' || strValueToSign[1] == 'X' ) ) ) )
+            strValueToSign = "0x" + strValueToSign;
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + " " + cc::notice( "U256 value" ) + cc::debug( " to sign is " ) +
+                   cc::info( strValueToSign ) );
+        dev::u256 uValueToSign( strValueToSign );
+        //
+        nlohmann::json joConfig = getConfigJSON();
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "ecdsaKeyName" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"ecdsaKeyName\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
+        if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
+            joSkaleConfig_nodeInfo_wallets["ima"];
+        //
+        // Check wallet URL and keyShareName for future use,
+        // fetch SSL options for SGX
+        //
+        skutils::url u;
+        skutils::http::SSL_client_options optsSSL;
+        const std::string strWalletURL = strSgxWalletURL_;
+        u = skutils::url( strWalletURL );
+        if ( u.scheme().empty() || u.host().empty() )
+            throw std::runtime_error( "bad SGX wallet url" );
+        //
+        //
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "caFile" ) > 0 )
+                optsSSL.ca_file = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.ca_file.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) + cc::info( optsSSL.ca_file ) );
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
+                optsSSL.client_cert = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_cert.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
+                   cc::info( optsSSL.client_cert ) );
+        try {
+            if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
+                optsSSL.client_key = skutils::tools::trim_copy(
+                    joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
+        } catch ( ... ) {
+            optsSSL.client_key.clear();
+        }
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
+                   cc::info( optsSSL.client_key ) );
+        const std::string keyShareName =
+            ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
+                joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
+                "";
+        if ( keyShareName.empty() )
+            throw std::runtime_error(
+                "error in config.json file, cannot find valid value for "
+                "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"keyShareName\" parameter" );
+        //
+        // compute hash of u256 value
+        //
+        bytes v = dev::BMPBN::encode2vec< dev::u256 >( uValueToSign, true );
+        stat_array_align_right( v, 32 );
+        const dev::h256 h = dev::sha3( v );
+        std::string sh = h.hex();
+        sh = stat_remove_0x_from_start( sh );  // there is no "0x" prefix at start
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Got hash to sign " ) + cc::info( sh ) );
+        //
+        nlohmann::json jo = nlohmann::json::object();
+        //
+        nlohmann::json joCall = nlohmann::json::object();
+        joCall["jsonrpc"] = "2.0";
+        joCall["method"] = "blsSignMessageHash";
+        if ( u.scheme() == "zmq" )
+            joCall["type"] = "BLSSignReq";
+        joCall["params"] = nlohmann::json::object();
+        joCall["params"]["keyShareName"] = keyShareName;
+        joCall["params"]["messageHash"] = sh;  // there is no "0x" prefix at start
+        joCall["params"]["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
+        joCall["params"]["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
+        joCall["params"]["signerIndex"] = nThisNodeIndex_;  // 1-based
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Contacting " ) + cc::notice( "SGX Wallet" ) +
+                   cc::debug( " server at " ) + cc::u( u ) );
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::debug( " Will send " ) + cc::notice( "u256 value sign query" ) +
+                   cc::debug( " to wallet: " ) + cc::j( joCall ) );
+        skutils::rest::client cli;
+        cli.optsSSL_ = optsSSL;
+        cli.open( u );
+        skutils::rest::data_t d = cli.call( joCall );
+        if ( !d.err_s_.empty() )
+            throw std::runtime_error( "failed to \"blsSignMessageHash\"/u256 value with wallet: " + d.err_s_ );
+        if ( d.empty() )
+            throw std::runtime_error(
+                "failed to \"blsSignMessageHash\"/u256 value with wallet, EMPTY data received" );
+        const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+        dev::stat_check_rpc_call_error_and_throw( joAnswer, "blsSignMessageHash/u256" );
+        nlohmann::json joSignResult =
+            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
+        jo["signResult"] = joSignResult;
+        //
+        // Done, provide result to caller
+        //
+        std::string s = jo.dump();
+        clog( VerbosityDebug, "IMA" )
+            << ( strLogPrefix + cc::success( " Success, got u256 value " ) +
+                   cc::notice( "sign result" ) + cc::success( " from wallet: " ) +
+                   cc::j( joSignResult ) );
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}  // skale_imaBSU256()
+
+
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Got external broadcast/insert request " ) +
                    cc::j( joRequest ) );
@@ -2753,7 +3036,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Got external broadcast/erase request " ) +
                    cc::j( joRequest ) );
@@ -2820,7 +3103,7 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
@@ -2866,7 +3149,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
@@ -2947,7 +3230,7 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = nlohmann::json::parse( strRequest );
+        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
@@ -3027,5 +3310,151 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
     }
 }
 
+Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "BROWSE/NOW SKALE NETWORK" );
+    try {
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " incoming refreshing(now) call to " ) +
+                                                cc::bright( "skale_browseEntireNetwork" ) +
+                                                cc::debug( "..." ) );
+        clock_t tt = clock();
+        skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_do_now();
+        tt = clock() - tt;
+        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) done, " ) +
+                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                                                cc::debug( " second(s) spent" ) );
+        nlohmann::json jo = skale::network::browser::to_json( vec );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) result is: " ) +
+                                                cc::j( jo ) );
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_browseEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
+Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*/ ) {
+    std::string strLogPrefix = cc::deep_info( "CACHED/FETCH SKALE NETWORK" );
+    try {
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " incoming refreshing(cached) call to " ) +
+                                                cc::bright( "skale_cachedEntireNetwork" ) +
+                                                cc::debug( "..." ) );
+        clock_t tt = clock();
+        skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_cached();
+        tt = clock() - tt;
+        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) done, " ) +
+                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                                                cc::debug( " second(s) spent" ) );
+        nlohmann::json jo = skale::network::browser::to_json( vec );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) result is: " ) +
+                                                cc::j( jo ) );
+        std::string s = jo.dump();
+        Json::Value ret;
+        Json::Reader().parse( s, ret );
+        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
+                                                cc::notice( "SKALE NETWORK BROWSER" ) +
+                                                cc::debug( " refreshing(cached) result is ready to sent back to client/caller" ) );
+        return ret;
+    } catch ( Exception const& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& ex ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        throw jsonrpc::JsonRpcException( ex.what() );
+    } catch ( ... ) {
+        clog( VerbosityError, "IMA" )
+            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
+                   cc::error( " Exception while processing " ) +
+                   cc::info( "skale_cachedEntireNetwork" ) +
+                   cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        throw jsonrpc::JsonRpcException( "unknown exception" );
+    }
+}
+
 };  // namespace rpc
 };  // namespace dev
+
+// void ttt123() {
+//    const char strLogPrefix[] = "----------- ";
+//    dev::bytes vecComputeMessagesHash;
+//    vecComputeMessagesHash.push_back( 'M' );
+//    vecComputeMessagesHash.push_back( 'a' );
+//    vecComputeMessagesHash.push_back( 'i' );
+//    vecComputeMessagesHash.push_back( 'n' );
+//    vecComputeMessagesHash.push_back( 'n' );
+//    vecComputeMessagesHash.push_back( 'e' );
+//    vecComputeMessagesHash.push_back( 't' );
+//    std::cout << ( strLogPrefix + cc::debug( " Accumulated vector " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                         vecComputeMessagesHash.size(), "" ) )
+//              << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( " Computed hash from vector " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                         vecComputeMessagesHash.size(), "" ) )
+//              << "\n";
+//    // we should get 8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26
+//}
+
+// void ttt123() {
+//    const char strLogPrefix[] = "----------- ";
+//    dev::bytes vecComputeMessagesHash;
+//    dev::u256 uAddr( "0xd2aaa00300000000000000000000000000000000" );
+//    std::cout << ( strLogPrefix + cc::debug( " Test address " ) + cc::notice( dev::toJS( uAddr ) )
+//    )
+//              << "\n";
+//    std::cout << ( strLogPrefix + cc::debug( " Initial vector " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                         vecComputeMessagesHash.size(), "" ) )
+//              << "\n";
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, uAddr );
+//    std::cout << ( strLogPrefix + cc::debug( " Vector with appended address " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                         vecComputeMessagesHash.size(), "" ) )
+//              << "\n";
+//}

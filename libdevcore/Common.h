@@ -39,6 +39,8 @@
 #pragma warning( disable : 3682 )  // call through incomplete class
 #endif
 
+#include "StatusAndControl.h"
+
 #include <chrono>
 #include <functional>
 #include <map>
@@ -347,13 +349,13 @@ public:
 
     static void exitHandler( int s );
     static void exitHandler( int s, ExitHandler::exit_code_t ec );
-    static bool shouldExit() { return s_shouldExit; }
-    static int getSignal() { return m_signal; }
+    static bool shouldExit();
+    static int getSignal();
     static exit_code_t requestedExitCode() { return g_ec; }
 
+    static std::shared_ptr< StatusAndControl > statusAndControl;
+
 private:
-    static volatile bool s_shouldExit;
-    static volatile int m_signal;
     static volatile exit_code_t g_ec;
 
     ExitHandler() = delete;

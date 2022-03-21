@@ -577,7 +577,8 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                             subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
                                             "/TX <<< " ) +
                                subscriptionData.m_pPeer->desc() + cc::ws_tx( " <<< " ) +
-                               cc::j( strNotification ) );
+                               subscriptionData.m_pPeer->implPreformatTrafficJsonMessage(
+                                   strNotification, false ) );
                 skutils::dispatch::async( subscriptionData.m_pPeer->m_strPeerQueueID,
                     [subscriptionData, strNotification, idSubscription, this]() -> void {
                         bool bMessageSentOK = false;
@@ -835,8 +836,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -874,8 +877,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -925,7 +930,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/RX >>> " ) +
-                           pThis->desc() + cc::ws_rx( " >>> " ) + cc::j( joRequest ) );
+                           pThis->desc() + cc::ws_rx( " >>> " ) +
+                           pThis->implPreformatTrafficJsonMessage( joRequest, true ) );
             std::string strResponse;
             bool bPassed = false;
             try {
@@ -962,8 +968,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( ex.what() );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( ex.what() );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
@@ -985,8 +993,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( e );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
@@ -1005,7 +1015,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strResponse ) );
+                           pThis->desc() + cc::ws_tx( " <<< " ) +
+                           pThis->implPreformatTrafficJsonMessage( strResponse, false ) );
             if ( isBatch ) {
                 nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
@@ -1145,7 +1156,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
     if ( !pso()->handleProtocolSpecificRequest(
-             getRelay(), getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
+             getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
         if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
             strResponse = joResponse.dump();
             return false;
@@ -1288,7 +1299,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                         pThis->getRelay().nfoGetSchemeUC() +
                                                         "/TX <<< " ) )
                                                 << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                                       cc::j( strNotification ) );
+                                                       pThis->implPreformatTrafficJsonMessage(
+                                                           strNotification, false ) );
                                         // skutils::dispatch::async( pThis->m_strPeerQueueID,
                                         // [pThis, strNotification]() -> void {
                                         bool bMessageSentOK = false;
@@ -1415,7 +1427,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                     clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                               pThis->desc() + cc::ws_tx( " <<< " ) +
+                               pThis->implPreformatTrafficJsonMessage( strNotification, false ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
                 // void {
                 bool bMessageSentOK = false;
@@ -1540,7 +1553,8 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                     clog( dev::VerbosityDebug, cc::info( pThis->getRelay().nfoGetSchemeUC() ) )
                         << ( cc::ws_tx_inv(
                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                               pThis->desc() + cc::ws_tx( " <<< " ) + cc::j( strNotification ) );
+                               pThis->desc() + cc::ws_tx( " <<< " ) +
+                               pThis->implPreformatTrafficJsonMessage( strNotification, false ) );
                 // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
                 // void {
                 bool bMessageSentOK = false;
@@ -1805,6 +1819,29 @@ void SkaleWsPeer::eth_unsubscribe(
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
 }
 
+std::string SkaleWsPeer::implPreformatTrafficJsonMessage(
+    const std::string& strJSON, bool isRequest ) const {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJSON );
+        return implPreformatTrafficJsonMessage( jo, isRequest );
+    } catch ( ... ) {
+    }
+    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
+           cc::warn( strJSON );
+}
+
+std::string SkaleWsPeer::implPreformatTrafficJsonMessage(
+    const nlohmann::json& jo, bool isRequest ) const {
+    const SkaleServerOverride* pSO = pso();
+    if ( pSO )
+        return pSO->implPreformatTrafficJsonMessage( jo, isRequest );
+    nlohmann::json jo2 = jo;
+    SkaleServerOverride::stat_transformJsonForLogOutput( jo2, isRequest,
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs,
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams );
+    return cc::j( jo2 );
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1963,10 +2000,12 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-SkaleRelayHTTP::SkaleRelayHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr,
-    int nPort, const char* cert_path, const char* private_key_path, int nServerIndex,
-    size_t a_max_http_handler_queues, bool is_async_http_transfer_mode )
+/*
+SkaleRelayMiniHTTP::SkaleRelayMiniHTTP( SkaleServerOverride* pSO, int ipVer,
+    const char* strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
+    const char*, // ca_path
+    int nServerIndex, size_t a_max_http_handler_queues,
+    bool is_async_http_transfer_mode )
     : SkaleServerHelper( nServerIndex ),
       m_pSO( pSO ),
       ipVer_( ipVer ),
@@ -1984,70 +2023,45 @@ SkaleRelayHTTP::SkaleRelayHTTP( SkaleServerOverride* pSO, int ipVer, const char*
     m_pServer->ipVer_ = ipVer_;  // not known before listen
 }
 
-SkaleRelayHTTP::~SkaleRelayHTTP() {
+SkaleRelayMiniHTTP::~SkaleRelayMiniHTTP() {
     m_pServer.reset();
 }
+*/
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
-    const std::string& strRequest, std::string& strResponse ) {
-    strResponse.clear();
-    rapidjson::Document joRequest;
-    joRequest.SetObject();
-    try {
-        joRequest.Parse( strRequest.data() );
-    } catch ( ... ) {
-        return false;
-    }
-    rapidjson::Document joResponse;
-    joResponse.SetObject();
-    joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
-    if ( joRequest.HasMember( "id" ) ) {
-        joResponse.AddMember( "id", rapidjson::Value(), joResponse.GetAllocator() );
-        joResponse["id"] = joRequest["id"];
-    }
-    rapidjson::Value d;
-    d.SetObject();
-    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-    if ( !pso()->handleProtocolSpecificRequest( *this, strOrigin, joRequest, joResponse ) ) {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joRequest.Accept( writer );
-        std::string strRequest = buffer.GetString();
-        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ipVer,
+    const char* strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
+    const char* ca_path, int nServerIndex, e_server_mode_t esm, int32_t threads,
+    int32_t threads_limit )
+    : SkaleServerHelper( nServerIndex ),
+      m_pSO( pSO ),
+      ipVer_( ipVer ),
+      strBindAddr_( strBindAddr ),
+      nPort_( nPort ),
+      m_bHelperIsSSL(
+          ( cert_path && cert_path[0] && private_key_path && private_key_path[0] ) ? true : false ),
+      esm_( esm ),
+      cert_path_( cert_path ? cert_path : "" ),
+      private_key_path_( private_key_path ? private_key_path : "" ),
+      ca_path_( ca_path ? ca_path : "" ),
+      threads_( threads ),
+      threads_limit_( threads_limit ) {
+    skutils::http_pg::pg_accumulate_entry pge = {ipVer_, strBindAddr_, nPort_,
+        m_bHelperIsSSL ? cert_path_.c_str() : "", m_bHelperIsSSL ? private_key_path_.c_str() : "",
+        m_bHelperIsSSL ? ca_path_.c_str() : ""};
+    skutils::http_pg::pg_accumulate_add( pge );
+}
 
-        rapidjson::StringBuffer bufferResponse;
-        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
-        joResponse.Accept( writerResponse );
-        std::string strResponseCopy = bufferResponse.GetString();
-        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
-        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
-            return false;
-        } else {
-            strResponse = joResponseObj.dump();
-        }
-    } else {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joResponse.Accept( writer );
-        strResponse = buffer.GetString();
-    }
+SkaleRelayProxygenHTTP::~SkaleRelayProxygenHTTP() {
+    stop();
+}
+
+bool SkaleRelayProxygenHTTP::is_running() const {
     return true;
 }
 
-bool SkaleRelayHTTP::handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
-    const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
-    if ( esm == e_server_mode_t::esm_informational &&
-         pso()->handleInformationalRequest( joRequest, joResponse ) )
-        return true;
-    std::string strMethod = joRequest["method"].get< std::string >();
-    http_rpc_map_t::const_iterator itFind = g_http_rpc_map.find( strMethod );
-    if ( itFind == g_http_rpc_map.end() )
-        return false;
-    ( ( *this ).*( itFind->second ) )( strOrigin, esm, joRequest, joResponse );
-    return true;
-}
-
-const SkaleRelayHTTP::http_rpc_map_t SkaleRelayHTTP::g_http_rpc_map = {};
+void SkaleRelayProxygenHTTP::stop() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2058,6 +2072,17 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
 SkaleServerOverride::SkaleServerOverride(
     dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts )
     : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
+    //
+    //
+    // proxygen-related init
+    skutils::http_pg::init_logging( "skaled" );
+    skutils::http_pg::install_logging_fail_func( []() -> void {
+        clog( dev::VerbosityError, "generic" ) << ( cc::fatal( "CRITICAL ERROR:" ) + " " +
+                                                    cc::error( "Proxygen abort handler called." ) );
+    } );
+    //
+    //
+
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
             fnOnSunscriptionEvent =
@@ -2091,7 +2116,6 @@ SkaleServerOverride::SkaleServerOverride(
             ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
     }  // block
 }
-
 
 SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
@@ -2334,10 +2358,225 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
+skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
+    const nlohmann::json& joIn, const std::string& strProtocol, int nServerIndex,
+    std::string strOrigin, int ipVer, int nPort, e_server_mode_t esm ) {
+    skutils::result_of_http_request rslt;
+    rslt.isBinary_ = false;
+    std::string strMethod;
+    nlohmann::json jarrRequest, joID = "-1";
+    bool isBatch = false;
+    try {
+        // fetch method name and id earlier
+        if ( joIn.is_array() ) {
+            isBatch = true;
+            jarrRequest = joIn;
+        } else {
+            jarrRequest = nlohmann::json::array();
+            jarrRequest.push_back( joIn );
+        }
+        for ( const nlohmann::json& joRequest : jarrRequest ) {
+            std::string strMethodWalk =
+                skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+            if ( strMethodWalk.empty() )
+                throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
+            strMethod = strMethodWalk;
+            if ( joRequest.count( "id" ) == 0 )
+                throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
+            joID = joRequest["id"];
+        }  // for( const nlohmann::json & joRequest : jarrRequest )
+        if ( isBatch ) {
+            size_t cntInBatch = jarrRequest.size();
+            if ( cntInBatch > maxCountInBatchJsonRpcRequest_ )
+                throw std::runtime_error( "Bad JSON RPC request, too much requests in batch" );
+        }
+    } catch ( ... ) {
+        //                if ( strMethod.empty() ) {
+        //                    if ( isBatch )
+        //                        strMethod = "batch_json_rpc_request";
+        //                    else
+        //                        strMethod = "unknown_json_rpc_method";
+        //                }
+        std::string e = "Bad JSON RPC request: " + joIn.dump();
+        throw std::runtime_error( e );
+    }
+    //
+    // unddos
+    skutils::url url_unddos_origin( strOrigin );
+    const std::string str_unddos_origin = url_unddos_origin.host();
 
-bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer,
-    const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm,
+    static string mainnet_proxy_ip_address = hostname_to_ip( "api.skalenodes.com" );
+    static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
+
+    skutils::unddos::e_high_load_detection_result_t ehldr;
+    if ( str_unddos_origin == mainnet_proxy_ip_address ||
+         str_unddos_origin == testnet_proxy_ip_address ) {
+        ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
+    } else {
+        ehldr = unddos_.register_call_from_origin( str_unddos_origin, strMethod );
+    }
+    switch ( ehldr ) {
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
+                                                                          // load per minute
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high
+                                                                          // load per second
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
+        if ( strMethod.empty() )
+            strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
+        std::string reason_part =
+            ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin ) ?
+                "bad origin" :
+                "high load";
+        std::string e = "Banned due to " + reason_part + " JSON RPC request: " + joIn.dump();
+        throw std::runtime_error( e );
+    }
+        // break;
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_no_error:
+    default: {
+        // no error
+    } break;
+    }  // switch( ehldr )
+    //
+    //
+    nlohmann::json jarrBatchAnswer;
+    if ( isBatch )
+        jarrBatchAnswer = nlohmann::json::array();
+    for ( const nlohmann::json& joRequest : jarrRequest ) {
+        std::string strBody = joRequest.dump();  // = req.body_;
+        std::string strPerformanceQueueName =
+            skutils::tools::format( "rpc/%s/%zu", strProtocol.c_str(), nServerIndex );
+        std::string strPerformanceActionName = skutils::tools::format(
+            "%s task %zu, %s", strProtocol.c_str(), nTaskNumberCall_++, strMethod.c_str() );
+        skutils::task::performance::action a(
+            strPerformanceQueueName, strPerformanceActionName, joRequest );
+        //
+        skutils::stats::time_tracker::element_ptr_t rttElement;
+        rttElement.emplace( "RPC", strProtocol.c_str(), strMethod.c_str(), nServerIndex, ipVer );
+        //
+        SkaleServerConnectionsTrackHelper sscth( *this );
+        if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+            logTraceServerTraffic( true, methodTraceVerbosity( strMethod ), ipVer,
+                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(),
+                implPreformatTrafficJsonMessage( strBody, true ) );
+        std::string strResponse;
+        bool bPassed = false;
+        try {
+            if ( is_connection_limit_overflow() ) {
+                on_connection_overflow_peer_closed(
+                    ipVer, strProtocol.c_str(), nServerIndex, nPort, esm );
+                throw std::runtime_error( "server too busy" );
+            }
+            strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
+            if ( !handleAdminOriginFilter( strMethod, strOrigin ) ) {
+                throw std::runtime_error( "origin not allowed for call attempt" );
+            }
+            jsonrpc::IClientConnectionHandler* handler = GetHandler( "/" );
+            if ( handler == nullptr )
+                throw std::runtime_error( "No client connection handler found" );
+            //
+            stats::register_stats_message( strProtocol.c_str(), "POST", strBody.size() );
+            stats::register_stats_message( ( "RPC/" + strProtocol ).c_str(), joRequest );
+            stats::register_stats_message( "RPC", joRequest );
+            //
+            std::vector< uint8_t > buffer;
+            if ( handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
+                stats::register_stats_answer( strProtocol.c_str(), "POST", buffer.size() );
+                rttElement->stop();
+                rslt.isBinary_ = true;
+                rslt.vecBytes_ = buffer;
+                return rslt;
+            }
+            if ( !handleHttpSpecificRequest( strOrigin, esm, strBody, strResponse ) ) {
+                handler->HandleRequest( strBody.c_str(), strResponse );
+            }
+            //
+            stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
+            nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+            stats::register_stats_answer( ( "RPC/" + strProtocol ).c_str(), joRequest, joResponse );
+            stats::register_stats_answer( "RPC", joRequest, joResponse );
+            //
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = nlohmann::json::parse( strResponse );
+            }
+            a.set_json_out( joResponse );
+            bPassed = true;
+        } catch ( const std::exception& ex ) {
+            rttElement->setError();
+            logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
+                nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
+            nlohmann::json joErrorResponce;
+            joErrorResponce["id"] = joID;
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( ex.what() );
+            joErrorResponce["error"] = joErrorObj;
+            strResponse = joErrorResponce.dump();
+            stats::register_stats_exception( strProtocol.c_str(), "POST" );
+            if ( !strMethod.empty() ) {
+                stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
+                stats::register_stats_exception( "RPC", strMethod.c_str() );
+            }
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
+            a.set_json_err( joErrorResponce );
+        } catch ( ... ) {
+            rttElement->setError();
+            const char* e = "unknown exception in SkaleServerOverride";
+            logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
+                nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
+            nlohmann::json joErrorResponce;
+            joErrorResponce["id"] = joID;
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( e );
+            joErrorResponce["error"] = joErrorObj;
+            strResponse = joErrorResponce.dump();
+            stats::register_stats_exception( strProtocol.c_str(), "POST" );
+            if ( !strMethod.empty() ) {
+                stats::register_stats_exception( strProtocol.c_str(), strMethod.c_str() );
+                stats::register_stats_exception( "RPC", strMethod.c_str() );
+            }
+            if ( !isBatch ) {
+                rslt.isBinary_ = false;
+                rslt.joOut_ = joErrorResponce;
+            }
+            a.set_json_err( joErrorResponce );
+        }
+        if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
+            logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
+                strProtocol.c_str(), nServerIndex, esm, strOrigin.c_str(),
+                implPreformatTrafficJsonMessage( strResponse, false ) );
+        if ( isBatch ) {
+            nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
+            jarrBatchAnswer.push_back( joAnswerPart );
+        } else {
+            rslt.isBinary_ = false;
+            rslt.joOut_ = nlohmann::json::parse( strResponse );
+        }
+        if ( !bPassed )
+            stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
+        rttElement->stop();
+        double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+        if ( lfExecutionDuration >= opts_.lfExecutionDurationMaxForPerformanceWarning_ )
+            logPerformanceWarning( lfExecutionDuration, ipVer, strProtocol.c_str(), nServerIndex,
+                esm, strOrigin.c_str(), strMethod.c_str(), joID );
+    }  // for( const nlohmann::json & joRequest : jarrRequest )
+    if ( isBatch ) {
+        rslt.isBinary_ = false;  // batch request can be only text/JSON
+        rslt.joOut_ = jarrBatchAnswer;
+    }
+    return rslt;
+}
+
+/*
+bool SkaleServerOverride::implStartListening(  // mini HTTP
+    std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, const std::string& strAddr, int nPort,
+    const std::string& strPathSslKey, const std::string& strPathSslCert,
+    const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm,
     size_t a_max_http_handler_queues, bool is_async_http_transfer_mode ) {
     bool bIsSSL = false;
     SkaleServerOverride* pSO = this;
@@ -2348,24 +2587,26 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
         if ( strAddr.empty() || nPort <= 0 )
             return true;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", -1, esm,
-            cc::debug( "starting " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+            cc::debug( "starting " ) + cc::attention( "mini" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
                 cc::num10( nServerIndex ) + cc::debug( "/" ) + cc::notice( esm2str( esm ) ) +
                 cc::debug( " server on address " ) + cc::info( strAddr ) +
                 cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
         if ( bIsSSL )
-            pSrv.reset( new SkaleRelayHTTP( pSO, ipVer, strAddr.c_str(), nPort,
-                strPathSslCert.c_str(), strPathSslKey.c_str(), nServerIndex,
+            pSrv.reset( new SkaleRelayMiniHTTP( pSO, ipVer, strAddr.c_str(), nPort,
+                strPathSslCert.c_str(), strPathSslKey.c_str(), strPathSslCA.c_str(), nServerIndex,
                 a_max_http_handler_queues, is_async_http_transfer_mode ) );
         else
-            pSrv.reset( new SkaleRelayHTTP( pSO, ipVer, strAddr.c_str(), nPort, nullptr, nullptr,
-                nServerIndex, a_max_http_handler_queues, is_async_http_transfer_mode ) );
+            pSrv.reset( new SkaleRelayMiniHTTP( pSO, ipVer, strAddr.c_str(), nPort, nullptr,
+                nullptr, nullptr, nServerIndex, a_max_http_handler_queues,
+                is_async_http_transfer_mode ) );
         pSrv->m_pServer->Options(
             "/", [=]( const skutils::http::request& req, skutils::http::response& res ) {
                 stats::register_stats_message(
                     bIsSSL ? "HTTPS" : "HTTP", "query options", req.body_.size() );
                 if ( opts_.isTraceCalls_ )
                     logTraceServerTraffic( true, dev::VerbosityTrace, ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
+                        bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm, req.origin_.c_str(),
                         cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) );
                 res.set_header( "access-control-allow-headers", "Content-Type" );
                 res.set_header( "access-control-allow-methods", "POST" );
@@ -2376,268 +2617,62 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
                 stats::register_stats_answer(
                     bIsSSL ? "HTTPS" : "HTTP", "query options", res.body_.size() );
             } );
-        pSrv->m_pServer->Post( "/", [=]( const skutils::http::request& req,
+        pSrv->m_pServer->Post( "/", [=, &pSrv]( const skutils::http::request& req,
                                         skutils::http::response& res ) {
-            if ( isShutdownMode() ) {
-                logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(),
-                    esm,
-                    cc::notice( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
-                        cc::num10( pSrv->serverIndex() ) + " " + cc::debug( " from  " ) +
-                        cc::info( req.origin_ ) + " " + cc::warn( "" ) );
-                pSrv->m_pServer->close_all_handler_queues();  // remove queues earlier
-                return true;
-            }
-            //
-            //
-            //
-            std::string strMethod;
-            nlohmann::json jarrRequest, joID = "-1";
-            bool isBatch = false;
+            nlohmann::json joID = "-1";
             try {
-                // fetch method name and id earlier
-                nlohmann::json joRequestOriginal = nlohmann::json::parse( req.body_ );
-                if ( joRequestOriginal.is_array() ) {
-                    isBatch = true;
-                    jarrRequest = joRequestOriginal;
+                if ( isShutdownMode() )
+                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+                nlohmann::json joIn = nlohmann::json::parse( req.body_ );
+                if ( joIn.count( "id" ) > 0 )
+                    joID = joIn["id"];
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
+                    joIn, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, req.origin_, ipVer, nPort, esm );
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "vary", "Origin" );
+                if ( rslt.isBinary_ ) {
+                    res.set_content( ( char* ) rslt.vecBytes_.data(), rslt.vecBytes_.size(),
+                        "application/octet-stream" );
                 } else {
-                    jarrRequest = nlohmann::json::array();
-                    jarrRequest.push_back( joRequestOriginal );
+                    std::string strOut = rslt.joOut_.dump();
+                    res.set_content(
+                        ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
                 }
-                for ( const nlohmann::json& joRequest : jarrRequest ) {
-                    std::string strMethodWalk =
-                        skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-                    if ( strMethodWalk.empty() )
-                        throw std::runtime_error(
-                            "Bad JSON RPC request, \"method\" name is missing" );
-                    strMethod = strMethodWalk;
-                    if ( joRequest.count( "id" ) == 0 )
-                        throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
-                    joID = joRequest["id"];
-                }  // for( const nlohmann::json & joRequest : jarrRequest )
-                if ( isBatch ) {
-                    size_t cntInBatch = jarrRequest.size();
-                    if ( cntInBatch > maxCountInBatchJsonRpcRequest_ )
-                        throw std::runtime_error(
-                            "Bad JSON RPC request, too much requests in batch" );
-                }
+                return true;
+            } catch ( const std::exception& ex ) {
+                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+                    nServerIndex, esm, req.origin_.c_str(), cc::warn( ex.what() ) );
+                nlohmann::json joErrorResponce;
+                joErrorResponce["id"] = joID;
+                joErrorResponce["result"] = "error";
+                joErrorResponce["error"] = std::string( ex.what() );
+                std::string strOut = joErrorResponce.dump();
+                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
+                res.set_header( "access-control-allow-origin", "*" );
+                res.set_header( "vary", "Origin" );
+                res.set_content(
+                    ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
+                return true;
             } catch ( ... ) {
-                if ( strMethod.empty() ) {
-                    if ( isBatch )
-                        strMethod = "batch_json_rpc_request";
-                    else
-                        strMethod = "unknown_json_rpc_method";
-                }
-                std::string e = "Bad JSON RPC request: " + req.body_;
+                const char* e = "unknown exception in SkaleServerOverride";
                 logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
+                    nServerIndex, esm, req.origin_.c_str(), cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 joErrorResponce["result"] = "error";
                 joErrorResponce["error"] = std::string( e );
-                std::string strResponse = joErrorResponce.dump();
+                std::string strOut = joErrorResponce.dump();
                 stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                stats::register_stats_exception( "RPC", strMethod.c_str() );
                 res.set_header( "access-control-allow-origin", "*" );
                 res.set_header( "vary", "Origin" );
-                res.set_content( strResponse.c_str(), "application/json" );
-                stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
+                res.set_content(
+                    ( char* ) strOut.c_str(), strOut.size(), "application/octet-stream" );
                 return true;
             }
-            //
-            // unddos
-            skutils::url url_unddos_origin( req.origin_ );
-            const std::string str_unddos_origin = url_unddos_origin.host();
-
-
-            skutils::unddos::e_high_load_detection_result_t ehldr;
-
-            static string mainnet_proxy_ip_address = hostname_to_ip( "api.skalenodes.com" );
-            static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
-
-            if ( str_unddos_origin == mainnet_proxy_ip_address ||
-                 str_unddos_origin == testnet_proxy_ip_address ) {
-                ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
-            } else {
-                ehldr = pSO->unddos_.register_call_from_origin( str_unddos_origin, strMethod );
-            }
-            switch ( ehldr ) {
-            case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
-                                                                                  // load per minute
-            case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high
-                                                                                  // load per second
-            case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
-            case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
-                if ( strMethod.empty() )
-                    strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
-                std::string reason_part =
-                    ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin ) ?
-                        "bad origin" :
-                        "high load";
-                std::string e = "Banned due to " + reason_part + " JSON RPC request: " + req.body_;
-                logTraceServerTraffic( false, dev::VerbosityError, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-                    pSrv->serverIndex(), esm, req.origin_.c_str(), cc::warn( e ) );
-                nlohmann::json joErrorResponce;
-                joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
-                std::string strResponse = joErrorResponce.dump();
-                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                stats::register_stats_exception( "RPC", strMethod.c_str() );
-                res.set_header( "access-control-allow-origin", "*" );
-                res.set_header( "vary", "Origin" );
-                res.set_content( strResponse.c_str(), "application/json" );
-                stats::register_stats_answer( bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
-            }
-                return true;
-            case skutils::unddos::e_high_load_detection_result_t::ehldr_no_error:
-            default: {
-                // no error
-            } break;
-            }  // switch( ehldr )
-            //
-            //
-            nlohmann::json jarrBatchAnswer;
-            if ( isBatch )
-                jarrBatchAnswer = nlohmann::json::array();
-            for ( const nlohmann::json& joRequest : jarrRequest ) {
-                std::string strBody = joRequest.dump();  // = req.body_;
-                std::string strPerformanceQueueName = skutils::tools::format(
-                    "rpc/%s/%zu", bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex() );
-                std::string strPerformanceActionName = skutils::tools::format( "%s task %zu, %s",
-                    bIsSSL ? "HTTPS" : "HTTP", nTaskNumberCall_++, strMethod.c_str() );
-                skutils::task::performance::action a(
-                    strPerformanceQueueName, strPerformanceActionName, joRequest );
-                //
-                skutils::stats::time_tracker::element_ptr_t rttElement;
-                rttElement.emplace( "RPC", bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str(),
-                    pSrv->serverIndex(), ipVer );
-                //
-                SkaleServerConnectionsTrackHelper sscth( *this );
-                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
-                    logTraceServerTraffic( true, pSO->methodTraceVerbosity( strMethod ), ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                        cc::j( strBody ) );
-                std::string strResponse;
-                bool bPassed = false;
-                try {
-                    if ( is_connection_limit_overflow() ) {
-                        on_connection_overflow_peer_closed(
-                            ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), nPort, esm );
-                        throw std::runtime_error( "server too busy" );
-                    }
-                    strMethod = skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
-                    if ( !handleAdminOriginFilter( strMethod, req.origin_ ) ) {
-                        throw std::runtime_error( "origin not allowed for call attempt" );
-                    }
-                    jsonrpc::IClientConnectionHandler* handler = this->GetHandler( "/" );
-                    if ( handler == nullptr )
-                        throw std::runtime_error( "No client connection handler found" );
-                    //
-                    stats::register_stats_message(
-                        bIsSSL ? "HTTPS" : "HTTP", "POST", strBody.size() );
-                    stats::register_stats_message(
-                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
-                        joRequest );
-                    stats::register_stats_message( "RPC", joRequest );
-                    //
-                    std::vector< uint8_t > buffer;
-                    if ( handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
-                        res.set_header( "access-control-allow-origin", "*" );
-                        res.set_header( "vary", "Origin" );
-                        res.set_content(
-                            ( char* ) buffer.data(), buffer.size(), "application/octet-stream" );
-                        stats::register_stats_answer(
-                            bIsSSL ? "HTTPS" : "HTTP", "POST", buffer.size() );
-                        rttElement->stop();
-                        return true;
-                    }
-                    if ( !pSrv->handleHttpSpecificRequest(
-                             req.origin_, esm, strBody, strResponse ) ) {
-                        handler->HandleRequest( strBody.c_str(), strResponse );
-                    }
-                    //
-                    stats::register_stats_answer(
-                        bIsSSL ? "HTTPS" : "HTTP", "POST", strResponse.size() );
-                    nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-                    stats::register_stats_answer(
-                        ( std::string( "RPC/" ) + ( bIsSSL ? "HTTPS" : "HTTP" ) ).c_str(),
-                        joRequest, joResponse );
-                    stats::register_stats_answer( "RPC", joRequest, joResponse );
-                    //
-                    a.set_json_out( joResponse );
-                    bPassed = true;
-                } catch ( const std::exception& ex ) {
-                    rttElement->setError();
-                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                        cc::warn( ex.what() ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = joID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( ex.what() );
-                    strResponse = joErrorResponce.dump();
-                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                    if ( !strMethod.empty() ) {
-                        stats::register_stats_exception(
-                            bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                        stats::register_stats_exception( "RPC", strMethod.c_str() );
-                    }
-                    a.set_json_err( joErrorResponce );
-                } catch ( ... ) {
-                    rttElement->setError();
-                    const char* e = "unknown exception in SkaleServerOverride";
-                    logTraceServerTraffic( false, dev::VerbosityError, ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                        cc::warn( e ) );
-                    nlohmann::json joErrorResponce;
-                    joErrorResponce["id"] = joID;
-                    joErrorResponce["result"] = "error";
-                    joErrorResponce["error"] = std::string( e );
-                    strResponse = joErrorResponce.dump();
-                    stats::register_stats_exception( bIsSSL ? "HTTPS" : "HTTP", "POST" );
-                    if ( !strMethod.empty() ) {
-                        stats::register_stats_exception(
-                            bIsSSL ? "HTTPS" : "HTTP", strMethod.c_str() );
-                        stats::register_stats_exception( "RPC", strMethod.c_str() );
-                    }
-                    a.set_json_err( joErrorResponce );
-                }
-                if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
-                    logTraceServerTraffic( false, methodTraceVerbosity( strMethod ), ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                        cc::j( strResponse ) );
-                if ( isBatch ) {
-                    nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
-                    jarrBatchAnswer.push_back( joAnswerPart );
-                } else {
-                    res.set_header( "access-control-allow-origin", "*" );
-                    res.set_header( "vary", "Origin" );
-                    res.set_content( strResponse.c_str(), "application/json" );
-                }
-                if ( !bPassed )
-                    stats::register_stats_answer(
-                        bIsSSL ? "HTTPS" : "HTTP", "POST", res.body_.size() );
-                rttElement->stop();
-                double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
-                if ( lfExecutionDuration >=
-                     pSO->opts_.lfExecutionDurationMaxForPerformanceWarning_ )
-                    pSO->logPerformanceWarning( lfExecutionDuration, ipVer,
-                        bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm, req.origin_.c_str(),
-                        strMethod.c_str(), joID );
-            }  // for( const nlohmann::json & joRequest : jarrRequest )
-            if ( isBatch ) {
-                std::string strResponse = jarrBatchAnswer.dump();
-                res.set_header( "access-control-allow-origin", "*" );
-                res.set_header( "vary", "Origin" );
-                res.set_content( strResponse.c_str(), "application/json" );
-            }
-            return true;
         } );
         // check if somebody is already listening
-        stat_check_port_availability_for_server_to_start_listen( ipVer, strAddr.c_str(), nPort, esm,
-            bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), this );
+        stat_check_port_availability_for_server_to_start_listen(
+            ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
             skutils::multithreading::threadNameAppender tn(
@@ -2649,23 +2684,23 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
         } )
             .detach();
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
-            cc::success( "OK, started " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::debug( "/" ) + cc::num10( pSrv->serverIndex() ) +
-                cc::success( " server on address " ) + cc::info( strAddr ) +
-                cc::success( " and port " ) + cc::c( nPort ) + cc::success( "/" ) +
-                cc::notice( esm2str( esm ) ) + " " );
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
+            cc::success( "OK, started " ) + cc::attention( "mini" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+                cc::num10( nServerIndex ) + cc::success( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::success( "/" ) + cc::notice( esm2str( esm ) ) + " " );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) +
-                cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) + cc::error( " server: " ) +
-                cc::warn( ex.what() ) );
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "mini" ) +
+                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) +
-                cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) + cc::error( " server: " ) +
-                cc::warn( "unknown exception" ) );
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "mini" ) +
+                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
     }
     try {
         implStopListening( pSrv, ipVer, bIsSSL, esm );
@@ -2673,10 +2708,12 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayHTTP >&
     }
     return false;
 }
+*/
 
-bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer,
-    const std::string& strAddr, int nPort, const std::string& strPathSslKey,
-    const std::string& strPathSslCert, int nServerIndex, e_server_mode_t esm ) {
+bool SkaleServerOverride::implStartListening(  // web socket
+    std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
+    const std::string& strPathSslKey, const std::string& strPathSslCert,
+    const std::string& /*strPathSslCA*/, int nServerIndex, e_server_mode_t esm ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -2723,8 +2760,67 @@ bool SkaleServerOverride::implStartListening( std::shared_ptr< SkaleRelayWS >& p
     return false;
 }
 
-bool SkaleServerOverride::implStopListening(
-    std::shared_ptr< SkaleRelayHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
+bool SkaleServerOverride::implStartListening(  // proxygen HTTP
+    std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const std::string& strAddr,
+    int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
+    const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads,
+    int32_t threads_limit ) {
+    bool bIsSSL = false;
+    SkaleServerOverride* pSO = this;
+    if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
+        bIsSSL = true;
+    try {
+        implStopListening( pSrv, ipVer, bIsSSL, esm );
+        if ( strAddr.empty() || nPort <= 0 )
+            return true;
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", -1, esm,
+            cc::debug( "starting " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+                cc::num10( nServerIndex ) + cc::debug( "/" ) + cc::notice( esm2str( esm ) ) +
+                cc::debug( " server on address " ) + cc::info( strAddr ) +
+                cc::debug( " and port " ) + cc::c( nPort ) + cc::debug( "..." ) );
+
+
+        // check if somebody is already listening
+        stat_check_port_availability_for_server_to_start_listen(
+            ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
+        //
+        pSrv.reset( new SkaleRelayProxygenHTTP( pSO, ipVer, strAddr.c_str(), nPort,
+            strPathSslCert.c_str(), strPathSslKey.c_str(), strPathSslCA.c_str(), nServerIndex, esm,
+            threads, threads_limit ) );
+        // cher server listen in its dedicated thread(s)
+        if ( pSrv->is_running() )
+            stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
+        else
+            throw std::runtime_error( "failed to start proxygen server instance" );
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+            cc::success( "OK, started " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::debug( "/" ) +
+                cc::num10( pSrv->serverIndex() ) + cc::success( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::success( "/" ) + cc::notice( esm2str( esm ) ) + " " );
+        return true;
+    } catch ( const std::exception& ex ) {
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
+                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( ex.what() ) );
+    } catch ( ... ) {
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
+                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
+                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+    }
+    try {
+        implStopListening( pSrv, ipVer, bIsSSL, esm );
+    } catch ( ... ) {
+    }
+    return false;
+}
+
+/*
+bool SkaleServerOverride::implStopListening(  // mini HTTP
+    std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
     try {
         if ( !pSrv )
             return true;
@@ -2732,32 +2828,35 @@ bool SkaleServerOverride::implStopListening(
                                         opts_.netOpts_.bindOptsStandard_ :
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
-                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
-        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
-                                       ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
-                    nServerIndex;
+        std::string strAddr = ( ipVer == 4 ) ?
+                                  ( bIsSSL ? bo.strAddrMiniHTTPS4_ : bo.strAddrMiniHTTP4_ ) :
+                                  ( bIsSSL ? bo.strAddrMiniHTTPS6_ : bo.strAddrMiniHTTP6_ );
+        int nPort =
+            ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortMiniHTTPS4_ : bo.nBasePortMiniHTTP4_ ) :
+                               ( bIsSSL ? bo.nBasePortMiniHTTPS6_ : bo.nBasePortMiniHTTP6_ ) ) +
+            nServerIndex;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
-            cc::notice( "Will stop " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::notice( " server on address " ) + cc::info( strAddr ) +
-                cc::success( " and port " ) + cc::c( nPort ) + cc::debug( "/" ) +
-                cc::notice( esm2str( esm ) ) + cc::notice( "..." ) );
+            cc::notice( "Will stop " ) + cc::attention( "mini" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::notice( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) + cc::notice( "..." ) );
         if ( pSrv->m_pServer && pSrv->m_pServer->is_running() ) {
             pSrv->m_pServer->stop();
             stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "STOP" );
         }
         pSrv.reset();
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
-            cc::success( "OK, stopped " ) + cc::info( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::success( " server on address " ) + cc::info( strAddr ) +
-                cc::success( " and port " ) + cc::c( nPort ) + cc::debug( "/" ) +
-                cc::notice( esm2str( esm ) ) );
+            cc::success( "OK, stopped " ) + cc::attention( "mini" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::success( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) );
     } catch ( ... ) {
     }
     return true;
 }
+*/
 
-bool SkaleServerOverride::implStopListening(
+bool SkaleServerOverride::implStopListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
     try {
         if ( !pSrv )
@@ -2789,76 +2888,127 @@ bool SkaleServerOverride::implStopListening(
     return true;
 }
 
+bool SkaleServerOverride::implStopListening(  // proxygen HTTP
+    std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm ) {
+    try {
+        if ( !pSrv )
+            return true;
+        if ( !pSrv->is_running() )
+            return true;
+        const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
+                                        opts_.netOpts_.bindOptsStandard_ :
+                                        opts_.netOpts_.bindOptsInformational_;
+        int nServerIndex = pSrv->serverIndex();
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
+                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
+                                       ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
+                    nServerIndex;
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
+            cc::notice( "Will stop " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::notice( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) + cc::notice( "..." ) );
+        pSrv->stop();
+        stats::register_stats_message( bIsSSL ? "HTTPS" : "HTTP", "STOP" );
+        pSrv.reset();
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
+            cc::success( "OK, stopped " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
+                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::success( " server on address " ) +
+                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
+                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) );
+    } catch ( ... ) {
+    }
+    return true;
+}
+
 bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     m_bShutdownMode = false;
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP4std_ : serversHTTP4nfo_;
     size_t nServerIndex;
-    if ( 0 <= bo.nBasePortHTTP4_ && bo.nBasePortHTTP4_ <= 65535 ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrHTTP4_,
-                     bo.nBasePortHTTP4_ + nServerIndex, "", "", nServerIndex, esm,
-                     max_http_handler_queues_, is_async_http_transfer_mode_ ) )
-                return false;
-            serversHTTP4.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP6std_ : serversHTTP6nfo_;
-    if ( 0 <= bo.nBasePortHTTP6_ && bo.nBasePortHTTP6_ <= 65535 ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrHTTP6_,
-                     bo.nBasePortHTTP6_ + nServerIndex, "", "", nServerIndex, esm,
-                     max_http_handler_queues_, is_async_http_transfer_mode_ ) )
-                return false;
-            serversHTTP6.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS4std_ : serversHTTPS4nfo_;
-    if ( 0 <= bo.nBasePortHTTPS4_ && bo.nBasePortHTTPS4_ <= 65535 &&
-         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
-         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortHTTPS4_ != bo.nBasePortHTTP4_ ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrHTTPS4_,
-                     bo.nBasePortHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversHTTPS4.push_back( pServer );
-        }
-    }
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS6std_ : serversHTTPS6nfo_;
-    if ( 0 <= bo.nBasePortHTTPS6_ && bo.nBasePortHTTPS6_ <= 65535 &&
-         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
-         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
-         bo.nBasePortHTTPS6_ != bo.nBasePortHTTP6_ ) {
-        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
-            std::shared_ptr< SkaleRelayHTTP > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrHTTPS6_,
-                     bo.nBasePortHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, nServerIndex, esm, max_http_handler_queues_,
-                     is_async_http_transfer_mode_ ) )
-                return false;
-            serversHTTPS6.push_back( pServer );
-        }
-    }
+    //
+    //
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ :
+    //        serversMiniHTTP4nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTP4_ && bo.nBasePortMiniHTTP4_ <= 65535 ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 4, bo.strAddrMiniHTTP4_, bo.nBasePortMiniHTTP4_ + nServerIndex,
+    //                     "",
+    //                     "", "", nServerIndex, esm, max_http_handler_queues_,
+    //                     is_async_http_transfer_mode_ ) )
+    //                return false;
+    //            serversMiniHTTP4.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ :
+    //        serversMiniHTTP6nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTP6_ && bo.nBasePortMiniHTTP6_ <= 65535 ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 6, bo.strAddrMiniHTTP6_, bo.nBasePortMiniHTTP6_ + nServerIndex,
+    //                     "",
+    //                     "", "", nServerIndex, esm, max_http_handler_queues_,
+    //                     is_async_http_transfer_mode_ ) )
+    //                return false;
+    //            serversMiniHTTP6.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ :
+    //        serversMiniHTTPS4nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTPS4_ && bo.nBasePortMiniHTTPS4_ <= 65535 &&
+    //         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+    //         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+    //         bo.nBasePortMiniHTTPS4_ != bo.nBasePortMiniHTTP4_ ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 4, bo.strAddrMiniHTTPS4_, bo.nBasePortMiniHTTPS4_ +
+    //                     nServerIndex, opts_.netOpts_.strPathSslKey_,
+    //                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_,
+    //                     nServerIndex, esm, max_http_handler_queues_, is_async_http_transfer_mode_
+    //                     ) )
+    //                return false;
+    //            serversMiniHTTPS4.push_back( pServer );
+    //        }
+    //    }
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ :
+    //        serversMiniHTTPS6nfo_;
+    //    if ( 0 <= bo.nBasePortMiniHTTPS6_ && bo.nBasePortMiniHTTPS6_ <= 65535 &&
+    //         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+    //         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+    //         bo.nBasePortMiniHTTPS6_ != bo.nBasePortMiniHTTP6_ ) {
+    //        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+    //            std::shared_ptr< SkaleRelayMiniHTTP > pServer;
+    //            if ( !implStartListening(  // mini HTTP
+    //                     pServer, 6, bo.strAddrMiniHTTPS6_, bo.nBasePortMiniHTTPS6_ +
+    //                     nServerIndex, opts_.netOpts_.strPathSslKey_,
+    //                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_,
+    //                     nServerIndex, esm, max_http_handler_queues_, is_async_http_transfer_mode_
+    //                     ) )
+    //                return false;
+    //            serversMiniHTTPS6.push_back( pServer );
+    //        }
+    //    }
+    //
+    //
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
     if ( 0 <= bo.nBasePortWS4_ && bo.nBasePortWS4_ <= 65535 &&
          bo.nBasePortWS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrWS4_, bo.nBasePortWS4_ + nServerIndex,
-                     "", "", nServerIndex, esm ) )
+            if ( !implStartListening(  // web socket
+                     pServer, 4, bo.strAddrWS4_, bo.nBasePortWS4_ + nServerIndex, "", "", "",
+                     nServerIndex, esm ) )
                 return false;
             serversWS4.push_back( pServer );
         }
@@ -2869,8 +3019,9 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
          bo.nBasePortWS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrWS6_, bo.nBasePortWS6_ + nServerIndex,
-                     "", "", nServerIndex, esm ) )
+            if ( !implStartListening(  // web socket
+                     pServer, 6, bo.strAddrWS6_, bo.nBasePortWS6_ + nServerIndex, "", "", "",
+                     nServerIndex, esm ) )
                 return false;
             serversWS6.push_back( pServer );
         }
@@ -2883,9 +3034,10 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
          bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening( pServer, 4, bo.strAddrWSS4_, bo.nBasePortWSS4_ + nServerIndex,
-                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_, nServerIndex,
-                     esm ) )
+            if ( !implStartListening(  // web socket
+                     pServer, 4, bo.strAddrWSS4_, bo.nBasePortWSS4_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm ) )
                 return false;
             serversWSS4.push_back( pServer );
         }
@@ -2898,54 +3050,211 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
          bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
-            if ( !implStartListening( pServer, 6, bo.strAddrWSS6_, bo.nBasePortWSS6_ + nServerIndex,
-                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_, nServerIndex,
-                     esm ) )
+            if ( !implStartListening(  // web socket
+                     pServer, 6, bo.strAddrWSS6_, bo.nBasePortWSS6_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm ) )
                 return false;
             serversWSS6.push_back( pServer );
         }
     }
+    //
+    //
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP4std_ :
+                                                   serversProxygenHTTP4nfo_;
+    if ( 0 <= bo.nBasePortHTTP4_ && bo.nBasePortHTTP4_ <= 65535 ) {
+        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
+            if ( !implStartListening(  // proxygen HTTP
+                     pServer, 4, bo.strAddrHTTP4_, bo.nBasePortHTTP4_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
+                return false;
+            serversProxygenHTTP4.push_back( pServer );
+        }
+    }
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP6std_ :
+                                                   serversProxygenHTTP6nfo_;
+    if ( 0 <= bo.nBasePortHTTP6_ && bo.nBasePortHTTP6_ <= 65535 ) {
+        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
+            if ( !implStartListening(  // proxygen HTTP
+                     pServer, 6, bo.strAddrHTTP6_, bo.nBasePortHTTP6_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
+                return false;
+            serversProxygenHTTP6.push_back( pServer );
+        }
+    }
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS4std_ :
+                                                   serversProxygenHTTPS4nfo_;
+    if ( 0 <= bo.nBasePortHTTPS4_ && bo.nBasePortHTTPS4_ <= 65535 &&
+         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+         bo.nBasePortHTTPS4_ != bo.nBasePortHTTP4_ ) {
+        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
+            if ( !implStartListening(  // proxygen HTTP
+                     pServer, 4, bo.strAddrHTTPS4_, bo.nBasePortHTTPS4_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
+                return false;
+            serversProxygenHTTPS4.push_back( pServer );
+        }
+    }
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS6std_ :
+                                                   serversProxygenHTTPS6nfo_;
+    if ( 0 <= bo.nBasePortHTTPS6_ && bo.nBasePortHTTPS6_ <= 65535 &&
+         ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
+         ( !opts_.netOpts_.strPathSslCert_.empty() ) &&
+         bo.nBasePortHTTPS6_ != bo.nBasePortHTTP6_ ) {
+        for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
+            std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
+            if ( !implStartListening(  // proxygen HTTP
+                     pServer, 6, bo.strAddrHTTPS6_, bo.nBasePortHTTPS6_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
+                return false;
+            serversProxygenHTTPS6.push_back( pServer );
+        }
+    }
+    //
+    //
     return true;
+}
+
+e_server_mode_t SkaleServerOverride::implGuessProxygenRequestESM(
+    const std::string& strDstAddress, int nDstPort ) {
+    e_server_mode_t esm = e_server_mode_t::esm_standard;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTP4std_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTP6std_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTPS4std_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTPS6std_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTP4nfo_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTP6nfo_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTPS4nfo_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    if ( implGuessProxygenRequestESM( serversProxygenHTTPS6nfo_, strDstAddress, nDstPort, esm ) )
+        return esm;
+    clog( dev::VerbosityWarning, cc::fatal( "WARNING:" ) )
+        << ( cc::warn( "Failed to lookup ESM for " ) + cc::attention( strDstAddress ) +
+               cc::warn( ":" ) + cc::num10( nDstPort ) );
+    return e_server_mode_t::esm_standard;
+}
+bool SkaleServerOverride::implGuessProxygenRequestESM(
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst, const std::string& strDstAddress,
+    int nDstPort, e_server_mode_t& esm ) {
+    auto itWalk = lst.cbegin(), itEnd = lst.cend();
+    for ( ; itWalk != itEnd; ++itWalk ) {
+        auto pServer = ( *itWalk );
+        if ( ( pServer->strBindAddr_ == strDstAddress || pServer->strBindAddr_ == "0.0.0.0" ||
+                 pServer->strBindAddr_ == "::" ) &&
+             pServer->nPort_ == nDstPort ) {
+            esm = pServer->esm_;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool SkaleServerOverride::StartListening() {
     if ( StartListening( e_server_mode_t::esm_standard ) &&
-         StartListening( e_server_mode_t::esm_informational ) )
+         StartListening( e_server_mode_t::esm_informational ) ) {
+        if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
+            skutils::http_pg::pg_on_request_handler_t fnHandler =
+                [=]( const nlohmann::json& joIn, const std::string& strOrigin, int ipVer,
+                    const std::string& strDstAddress,
+                    int nDstPort ) -> skutils::result_of_http_request {
+                if ( isShutdownMode() )
+                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+                skutils::url u( strOrigin );
+                std::string strSchemeUC =
+                    skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+                // std::string strAddress = skutils::tools::to_upper( skutils::tools::trim_copy(
+                // u.host() ) ); int ipVer = ( skutils::is_ipv6( strClientAddress ) &&
+                // skutils::is_valid_ipv6( strClientAddress ) ) ? 6 : 4;
+                std::string strPort = skutils::tools::trim_copy( u.port() );
+                int nPort = 0;
+                if ( strPort.empty() ) {
+                    if ( strSchemeUC == "HTTPS" )
+                        nPort = 443;
+                    else
+                        nPort = 80;
+                } else
+                    nPort = atoi( u.port().c_str() );
+                int nServerIndex = 0;  // TO-FIX: detect server index here
+                e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
+                skutils::result_of_http_request rslt = implHandleHttpRequest(
+                    joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
+                return rslt;
+            };
+            hProxygenServer_ =
+                skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
+            skutils::http_pg::pg_accumulate_clear();
+            if ( !hProxygenServer_ ) {
+                clog( dev::VerbosityError, cc::fatal( "PROXYGEN ERROR:" ) )
+                    << ( cc::error( "Failed to start server" ) );
+                return false;
+            }
+        }
         return true;
+    }
     return false;
 }
 
 bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
     bool bRetVal = true;
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP4std_ : serversHTTP4nfo_;
-    for ( auto pServer : serversHTTP4 ) {
-        if ( !implStopListening( pServer, 4, false, esm ) )
-            bRetVal = false;
+    if ( hProxygenServer_ ) {
+        skutils::http_pg::pg_stop( hProxygenServer_ );
+        hProxygenServer_ = nullptr;
     }
-    serversHTTP4.clear();
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP6std_ : serversHTTP6nfo_;
-    for ( auto pServer : serversHTTP6 ) {
-        if ( !implStopListening( pServer, 6, false, esm ) )
-            bRetVal = false;
-    }
-    serversHTTP6.clear();
     //
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS4std_ : serversHTTPS4nfo_;
-    for ( auto pServer : serversHTTPS4 ) {
-        if ( !implStopListening( pServer, 4, true, esm ) )
-            bRetVal = false;
-    }
-    serversHTTPS4.clear();
-    std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS6std_ : serversHTTPS6nfo_;
-    for ( auto pServer : serversHTTPS6 ) {
-        if ( !implStopListening( pServer, 6, true, esm ) )
-            bRetVal = false;
-    }
-    serversHTTPS6.clear();
+    //
+    //
+    //
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ :
+    //        serversMiniHTTP4nfo_;
+    //    for ( auto pServer : serversMiniHTTP4 ) {
+    //        if ( !implStopListening( pServer, 4, false, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTP4.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ :
+    //        serversMiniHTTP6nfo_;
+    //    for ( auto pServer : serversMiniHTTP6 ) {
+    //        if ( !implStopListening( pServer, 6, false, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTP6.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ :
+    //        serversMiniHTTPS4nfo_;
+    //    for ( auto pServer : serversMiniHTTPS4 ) {
+    //        if ( !implStopListening( pServer, 4, true, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTPS4.clear();
+    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
+    //        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ :
+    //        serversMiniHTTPS6nfo_;
+    //    for ( auto pServer : serversMiniHTTPS6 ) {
+    //        if ( !implStopListening( pServer, 6, true, esm ) )
+    //            bRetVal = false;
+    //    }
+    //    serversMiniHTTPS6.clear();
+    //
     //
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
@@ -2961,7 +3270,6 @@ bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
             bRetVal = false;
     }
     serversWS6.clear();
-    //
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWSS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWSS4std_ : serversWSS4nfo_;
     for ( auto pServer : serversWSS4 ) {
@@ -2976,6 +3284,42 @@ bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
             bRetVal = false;
     }
     serversWSS6.clear();
+    //
+    //
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP4std_ :
+                                                   serversProxygenHTTP4nfo_;
+    for ( auto pServer : serversProxygenHTTP4 ) {
+        if ( !implStopListening( pServer, 4, false, esm ) )
+            bRetVal = false;
+    }
+    serversProxygenHTTP4.clear();
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP6std_ :
+                                                   serversProxygenHTTP6nfo_;
+    for ( auto pServer : serversProxygenHTTP6 ) {
+        if ( !implStopListening( pServer, 6, false, esm ) )
+            bRetVal = false;
+    }
+    serversProxygenHTTP6.clear();
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS4std_ :
+                                                   serversProxygenHTTPS4nfo_;
+    for ( auto pServer : serversProxygenHTTPS4 ) {
+        if ( !implStopListening( pServer, 4, true, esm ) )
+            bRetVal = false;
+    }
+    serversProxygenHTTPS4.clear();
+    std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS6std_ :
+                                                   serversProxygenHTTPS6nfo_;
+    for ( auto pServer : serversProxygenHTTPS6 ) {
+        if ( !implStopListening( pServer, 6, true, esm ) )
+            bRetVal = false;
+    }
+    serversProxygenHTTPS6.clear();
+    //
+    //
     return bRetVal;
 }
 bool SkaleServerOverride::StopListening() {
@@ -2986,36 +3330,39 @@ bool SkaleServerOverride::StopListening() {
     return b;
 }
 
-int SkaleServerOverride::getServerPortStatusHTTP( int ipVer, e_server_mode_t esm ) const {
+/*
+int SkaleServerOverride::getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
-    const std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP4std_ : serversHTTP4nfo_;
-    const std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTP6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTP6std_ : serversHTTP6nfo_;
-    for ( auto pServer : ( ( ipVer == 4 ) ? serversHTTP4 : serversHTTP6 ) ) {
+    const std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP4std_ : serversMiniHTTP4nfo_;
+    const std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTP6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTP6std_ : serversMiniHTTP6nfo_;
+    for ( auto pServer : ( ( ipVer == 4 ) ? serversMiniHTTP4 : serversMiniHTTP6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortHTTP4_ : bo.nBasePortHTTP6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortMiniHTTP4_ : bo.nBasePortMiniHTTP6_ ) +
                    pServer->serverIndex();
     }
     return -1;
 }
-int SkaleServerOverride::getServerPortStatusHTTPS( int ipVer, e_server_mode_t esm ) const {
+int SkaleServerOverride::getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
                                     opts_.netOpts_.bindOptsInformational_;
-    const std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS4 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS4std_ : serversHTTPS4nfo_;
-    const std::list< std::shared_ptr< SkaleRelayHTTP > >& serversHTTPS6 =
-        ( esm == e_server_mode_t::esm_standard ) ? serversHTTPS6std_ : serversHTTPS6nfo_;
-    for ( auto pServer : ( ( ipVer == 4 ) ? serversHTTPS4 : serversHTTPS6 ) ) {
+    const std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS4std_ : serversMiniHTTPS4nfo_;
+    const std::list< std::shared_ptr< SkaleRelayMiniHTTP > >& serversMiniHTTPS6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversMiniHTTPS6std_ : serversMiniHTTPS6nfo_;
+    for ( auto pServer : ( ( ipVer == 4 ) ? serversMiniHTTPS4 : serversMiniHTTPS6 ) ) {
         if ( pServer && pServer->m_pServer && pServer->m_pServer->is_running() )
-            return ( ( ipVer == 4 ) ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTPS6_ ) +
+            return ( ( ipVer == 4 ) ? bo.nBasePortMiniHTTPS4_ : bo.nBasePortMiniHTTPS6_ ) +
                    pServer->serverIndex();
     }
     return -1;
 }
+*/
+
 int SkaleServerOverride::getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const {
     const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
                                     opts_.netOpts_.bindOptsStandard_ :
@@ -3042,6 +3389,41 @@ int SkaleServerOverride::getServerPortStatusWSS( int ipVer, e_server_mode_t esm 
     for ( auto pServer : ( ( ipVer == 4 ) ? serversWSS4 : serversWSS6 ) ) {
         if ( pServer && pServer->isRunning() )
             return ( ( ipVer == 4 ) ? bo.nBasePortWSS4_ : bo.nBasePortWSS6_ ) +
+                   pServer->serverIndex();
+    }
+    return -1;
+}
+
+int SkaleServerOverride::getServerPortStatusProxygenHTTP( int ipVer, e_server_mode_t esm ) const {
+    const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
+                                    opts_.netOpts_.bindOptsStandard_ :
+                                    opts_.netOpts_.bindOptsInformational_;
+    const std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP4std_ :
+                                                   serversProxygenHTTP4nfo_;
+    const std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTP6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTP6std_ :
+                                                   serversProxygenHTTP6nfo_;
+    for ( auto pServer : ( ( ipVer == 4 ) ? serversProxygenHTTP4 : serversProxygenHTTP6 ) ) {
+        if ( pServer && pServer->is_running() )
+            return ( ( ipVer == 4 ) ? bo.nBasePortHTTP4_ : bo.nBasePortHTTP6_ ) +
+                   pServer->serverIndex();
+    }
+    return -1;
+}
+int SkaleServerOverride::getServerPortStatusProxygenHTTPS( int ipVer, e_server_mode_t esm ) const {
+    const net_bind_opts_t& bo = ( esm == e_server_mode_t::esm_standard ) ?
+                                    opts_.netOpts_.bindOptsStandard_ :
+                                    opts_.netOpts_.bindOptsInformational_;
+    const std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS4 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS4std_ :
+                                                   serversProxygenHTTPS4nfo_;
+    const std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& serversProxygenHTTPS6 =
+        ( esm == e_server_mode_t::esm_standard ) ? serversProxygenHTTPS6std_ :
+                                                   serversProxygenHTTPS6nfo_;
+    for ( auto pServer : ( ( ipVer == 4 ) ? serversProxygenHTTPS4 : serversProxygenHTTPS6 ) ) {
+        if ( pServer && pServer->is_running() )
+            return ( ( ipVer == 4 ) ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTPS6_ ) +
                    pServer->serverIndex();
     }
     return -1;
@@ -3099,11 +3481,15 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
         skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();
     joStats["executionPerformance"] = joExecutionPerformance;
     joStats["protocols"]["http"]["listenerCount"] =
-        serversHTTP4std_.size() + serversHTTP4nfo_.size() + serversHTTP6std_.size() +
-        serversHTTP6nfo_.size();
+        // serversMiniHTTP4std_.size() + serversMiniHTTP4nfo_.size() +
+        // serversMiniHTTP6std_.size() + serversMiniHTTP6nfo_.size() +
+        serversProxygenHTTP4std_.size() + serversProxygenHTTP4nfo_.size() +
+        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size();
     joStats["protocols"]["https"]["listenerCount"] =
-        serversHTTPS4std_.size() + serversHTTPS4nfo_.size() + serversHTTPS6std_.size() +
-        serversHTTPS6nfo_.size();
+        // serversMiniHTTPS4std_.size() + serversMiniHTTPS4nfo_.size() +
+        // serversMiniHTTPS6std_.size() + serversMiniHTTPS6nfo_.size() +
+        serversProxygenHTTPS4std_.size() + serversProxygenHTTPS4nfo_.size() +
+        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size();
     joStats["protocols"]["wss"]["listenerCount"] = serversWSS4std_.size() + serversWSS4nfo_.size() +
                                                    serversWSS6std_.size() + serversWSS6nfo_.size();
     {  // block for subsystem stats using optimized locking only once
@@ -3281,14 +3667,13 @@ bool SkaleServerOverride::handleAdminOriginFilter(
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SkaleServerOverride::handleProtocolSpecificRequest( SkaleServerHelper& sse,
-    const std::string& strOrigin, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
+bool SkaleServerOverride::handleProtocolSpecificRequest( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     std::string strMethod = joRequest["method"].GetString();
     protocol_rpc_map_t::const_iterator itFind = g_protocol_rpc_map.find( strMethod );
     if ( itFind == g_protocol_rpc_map.end() )
         return false;
-    ( ( *this ).*( itFind->second ) )( sse, strOrigin, joRequest, joResponse );
+    ( ( *this ).*( itFind->second ) )( strOrigin, joRequest, joResponse );
     return true;
 }
 
@@ -3305,9 +3690,8 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
-    const std::string& strOrigin, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
+void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
         if ( !joRequest.HasMember( "params" ) ) {
@@ -3320,7 +3704,6 @@ bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
             joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-            return false;
         } else {
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
@@ -3333,7 +3716,6 @@ bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
                 v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
                 joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-                return false;
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
@@ -3398,7 +3780,6 @@ bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
-        return true;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3414,7 +3795,6 @@ bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
         v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3428,48 +3808,187 @@ bool SkaleServerOverride::setSchainExitTime( SkaleServerHelper& /*sse*/,
             "error in \"setSchainExitTime\" rpc method, unknown exception",
             joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     }
 }
 
-bool SkaleServerOverride::eth_sendRawTransaction( SkaleServerHelper& /*sse*/,
-    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
-}
-
-bool SkaleServerOverride::eth_getTransactionReceipt( SkaleServerHelper& /*sse*/,
-    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
-}
-
-bool SkaleServerOverride::eth_call( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_call_( joRequest, joResponse );
+    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getBalance( SkaleServerHelper& /*sse*/,
-    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getBalance_( joRequest, joResponse );
-}
-
-bool SkaleServerOverride::eth_getStorageAt( SkaleServerHelper& /*sse*/,
-    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getStorageAt_( joRequest, joResponse );
-}
-
-bool SkaleServerOverride::eth_getTransactionCount( SkaleServerHelper& /*sse*/,
-    const std::string& /*strOrigin*/, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
-}
-
-bool SkaleServerOverride::eth_getCode( SkaleServerHelper& /*sse*/, const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getCode_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_call_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getBalance_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getCode_( joRequest, joResponse );
+}
+
+bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,
+    e_server_mode_t esm, const std::string& strRequest, std::string& strResponse ) {
+    strResponse.clear();
+    rapidjson::Document joRequest;
+    joRequest.SetObject();
+    try {
+        joRequest.Parse( strRequest.data() );
+    } catch ( ... ) {
+        return false;
+    }
+    rapidjson::Document joResponse;
+    joResponse.SetObject();
+    joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
+    if ( joRequest.HasMember( "id" ) ) {
+        joResponse.AddMember( "id", rapidjson::Value(), joResponse.GetAllocator() );
+        joResponse["id"] = joRequest["id"];
+    }
+    rapidjson::Value d;
+    d.SetObject();
+    joResponse.AddMember( "result", d, joResponse.GetAllocator() );
+    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joRequest.Accept( writer );
+        std::string strRequest = buffer.GetString();
+        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+
+        rapidjson::StringBuffer bufferResponse;
+        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
+        joResponse.Accept( writerResponse );
+        std::string strResponseCopy = bufferResponse.GetString();
+        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
+        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
+            return false;
+        } else {
+            strResponse = joResponseObj.dump();
+        }
+    } else {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        joResponse.Accept( writer );
+        strResponse = buffer.GetString();
+    }
+    return true;
+}
+
+bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    if ( esm == e_server_mode_t::esm_informational &&
+         handleInformationalRequest( joRequest, joResponse ) )
+        return true;
+    std::string strMethod = joRequest["method"].get< std::string >();
+    http_rpc_map_t::const_iterator itFind = g_http_rpc_map.find( strMethod );
+    if ( itFind == g_http_rpc_map.end() )
+        return false;
+    ( ( *this ).*( itFind->second ) )( strOrigin, esm, joRequest, joResponse );
+    return true;
+}
+
+const SkaleServerOverride::http_rpc_map_t SkaleServerOverride::g_http_rpc_map = {};
+
+std::string SkaleServerOverride::implPreformatTrafficJsonMessage(
+    const std::string& strJSON, bool isRequest ) const {
+    try {
+        nlohmann::json jo = nlohmann::json::parse( strJSON );
+        return implPreformatTrafficJsonMessage( jo, isRequest );
+    } catch ( ... ) {
+    }
+    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
+           cc::warn( strJSON );
+}
+
+std::string SkaleServerOverride::implPreformatTrafficJsonMessage(
+    const nlohmann::json& jo, bool isRequest ) const {
+    nlohmann::json jo2 = jo;
+    SkaleServerOverride::stat_transformJsonForLogOutput( jo2, isRequest,
+        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs,
+        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams );
+    return cc::j( jo2 );
+}
+
+size_t SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = 1024 * 32;
+size_t SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = 64;
+
+void SkaleServerOverride::stat_transformJsonForLogOutput( nlohmann::json& jo, bool isRequest,
+    size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
+    size_t nCallIndent ) {
+    if ( ( nMaxStringValueLengthForJsonLogs == 0 ||
+             nMaxStringValueLengthForJsonLogs == std::string::npos ) &&
+         ( nMaxStringValueLengthForTransactionParams == 0 ||
+             nMaxStringValueLengthForTransactionParams == std::string::npos ) )
+        return;
+    if ( jo.is_string() ) {
+        std::string strValue = jo.get< std::string >();
+        if ( strValue.size() > nMaxStringValueLengthForJsonLogs )
+            jo = strValue.substr( 0, nMaxStringValueLengthForJsonLogs ) + "...";
+        return;
+    }
+    if ( jo.is_array() ) {
+        if ( nMaxStringValueLengthForJsonLogs == 0 ||
+             nMaxStringValueLengthForJsonLogs == std::string::npos ) {
+            ++nCallIndent;
+            size_t cnt = jo.size();
+            for ( size_t i = 0; i < cnt; ++i )
+                stat_transformJsonForLogOutput( jo.at( i ), isRequest,
+                    nMaxStringValueLengthForJsonLogs, nMaxStringValueLengthForTransactionParams,
+                    nCallIndent );
+        }
+        return;
+    }
+    if ( !jo.is_object() )
+        return;
+    ++nCallIndent;
+    bool bSkipParams = false;
+    if ( ( !( nMaxStringValueLengthForTransactionParams == 0 ||
+              nMaxStringValueLengthForTransactionParams == std::string::npos ) ) &&
+         nCallIndent == 1 && isRequest && jo.count( "method" ) > 0 && jo["method"].is_string() &&
+         jo["method"].get< std::string >() == "eth_sendRawTransaction" &&
+         jo.count( "params" ) > 0 && jo["params"].is_array() ) {
+        bSkipParams = true;
+        nlohmann::json jarrNewParams = nlohmann::json::array();
+        for ( auto it : jo["params"].items() ) {
+            if ( it.value().is_string() ) {
+                std::string strValue = it.value().get< std::string >();
+                if ( strValue.size() > nMaxStringValueLengthForTransactionParams )
+                    jarrNewParams.push_back(
+                        strValue.substr( 0, nMaxStringValueLengthForTransactionParams ) + "..." );
+                else
+                    jarrNewParams.push_back( strValue );
+            } else
+                jarrNewParams.push_back( it.value() );
+        }
+        jo["params"] = jarrNewParams;
+    }
+    if ( nMaxStringValueLengthForJsonLogs == 0 ||
+         nMaxStringValueLengthForJsonLogs == std::string::npos ) {
+        for ( auto it : jo.items() ) {
+            if ( bSkipParams && it.key() == "params" )
+                continue;
+            stat_transformJsonForLogOutput( it.value(), isRequest, nMaxStringValueLengthForJsonLogs,
+                nMaxStringValueLengthForTransactionParams, nCallIndent );
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

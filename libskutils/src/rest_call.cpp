@@ -217,7 +217,8 @@ static void stat_params_trick( nlohmann::json& jo ) {
     }
 }
 
-nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout ) {
+nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExceptionOnTimeout,
+    size_t cntAttempts, size_t timeoutMilliseconds ) {
     if ( is_sign() )
         joRequest["cert"] = cert_;  // skutils::tools::replace_all_copy( cert_, "\n", "" );
     stat_params_trick( joRequest );
@@ -229,33 +230,38 @@ nlohmann::json sz_cli::stat_sendMessage( nlohmann::json& joRequest, bool bExcept
         stat_append_msgSig( reqStr, sig );
     }
     // reqStr = joRequest.dump();
-    auto resultStr = stat_sendMessageZMQ( reqStr, bExceptionOnTimeout );
+    auto resultStr =
+        stat_sendMessageZMQ( reqStr, bExceptionOnTimeout, cntAttempts, timeoutMilliseconds );
     try {
         nlohmann::json joAnswer = nlohmann::json::parse( resultStr );
         return joAnswer;
     } catch ( std::exception& e ) {
         throw std::runtime_error(
-            std::string( "sz_cli: stat_sendMessage() failed, exception is: " ) + e.what() );
+            std::string( "sz_cli: ZMQ message sending failed, exception is: " ) + e.what() );
     } catch ( ... ) {
-        throw std::runtime_error( "sz_cli: stat_sendMessage() failed, unknown exception" );
+        throw std::runtime_error( "sz_cli: ZMQ message sending failed, unknown exception" );
     }
 }  // namespace rest
 
-std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bExceptionOnTimeout ) {
+std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bExceptionOnTimeout,
+    size_t cntAttempts, size_t timeoutMilliseconds ) {
+    reconnect();
+    size_t idxAttempt = 0;
     std::stringstream request;
     s_send( *pClientSocket_, jvRequest );
+    ++idxAttempt;
     while ( true ) {
         zmq::pollitem_t items[] = {{static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0}};
-        const int REQUEST_TIMEOUT = 10000;
-        zmq::poll( &items[0], 1, REQUEST_TIMEOUT );
+        zmq::poll( &items[0], 1, timeoutMilliseconds );
         if ( items[0].revents & ZMQ_POLLIN ) {
             std::string reply = s_recv( *pClientSocket_ );
             return reply;
         } else {
-            if ( bExceptionOnTimeout )
+            if ( bExceptionOnTimeout && ( idxAttempt >= cntAttempts ) )
                 throw std::runtime_error( "sz_cli: no response from sgx server" );
             reconnect();
             s_send( *pClientSocket_, jvRequest );  // send again
+            ++idxAttempt;
         }
     }
 }
@@ -271,15 +277,20 @@ std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
     mdctx = EVP_MD_CTX_create();
     assert( mdctx );
     auto rv1 = EVP_DigestSignInit( mdctx, NULL, EVP_sha256(), NULL, pKey );
-    assert( rv1 == 1 );
+    if ( rv1 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 1" );
     auto rv2 = EVP_DigestSignUpdate( mdctx, msgToSign.c_str(), msgToSign.size() );
-    assert( rv2 == 1 );
+    if ( rv2 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 2" );
     auto rv3 = EVP_DigestSignFinal( mdctx, NULL, &slen );
-    assert( rv3 == 1 );
+    if ( rv3 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 3" );
     signature = ( unsigned char* ) OPENSSL_malloc( sizeof( unsigned char ) * slen );
-    assert( signature );
+    if ( !signature )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 5" );
     auto rv4 = EVP_DigestSignFinal( mdctx, signature, &slen );
-    assert( rv4 == 1 );
+    if ( rv4 != 1 )
+        throw std::runtime_error( "sz_cli::stat_sign() failure 4" );
     auto hexSig = stat_a2h( signature, slen );
     std::string hexStringSig( hexSig.begin(), hexSig.end() );
     // cleanup
@@ -315,13 +326,14 @@ bool sz_cli::is_ssl() const {
 }
 
 bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer ) {
-    if ( !isConnected() ) {
-        reconnect();
-        if ( !isConnected() )
-            return false;
-    }
+    // if ( !isConnected() ) {
+    //     reconnect();
+    //     if ( !isConnected() )
+    //         return false;
+    // }
     nlohmann::json joMessage = nlohmann::json::parse( strMessage );
-    nlohmann::json joAnswer = stat_sendMessage( joMessage, true );
+    nlohmann::json joAnswer =
+        stat_sendMessage( joMessage, true, cntAttemptsToSendMessage_, timeoutMilliseconds_ );
     strAnswer = joAnswer.dump();
     return true;
 }
@@ -380,11 +392,21 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         //
         if ( strScheme == "http" ) {
             close();
-            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort ) );
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, nullptr ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "https" ) {
             close();
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http_curl::client( u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
                 __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             close();
             cw_.reset( new skutils::ws::client );
@@ -609,6 +631,25 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            std::string strOutData, strOutContentType;
+            skutils::http::common_network_exception::error_info ei;
+            bool ret = ch_->query(
+               strJsonIn.c_str(), "application/json",
+               strOutData, strOutContentType,
+               ei
+               );
+            d.ei_ = ei;
+            if( ( ! ret ) || strOutData.empty() ) {
+                d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
+                return d;  // data_t();
+            }
+            d.s_ = strOutData;
+            std::string h;
+            if( ! strOutContentType.empty() )
+                h = stat_extract_short_content_type_string( strOutContentType );
+            d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp = ch_->Post(
                 strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
@@ -626,9 +667,9 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
             d.s_ = resp->body_;
             std::string h;
             if ( resp->has_header( "Content-Type" ) )
-                h = stat_extract_short_content_type_string(
-                    resp->get_header_value( "Content-Type" ) );
+                h = stat_extract_short_content_type_string( resp->get_header_value( "Content-Type" ) );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             handle_data_arrived( d );
         }
     } else if ( cw_ ) {
@@ -750,6 +791,26 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            std::string strOutData, strOutContentType;
+            skutils::http::common_network_exception::error_info ei;
+            bool ret = ch_->query(
+               strJsonIn.c_str(), "application/json",
+               strOutData, strOutContentType,
+               ei
+               );
+            d.ei_ = ei;
+            if( ( ! ret ) || strOutData.empty() ) {
+                d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
+                onError( jo, d.err_s_.c_str() );
+                return;
+            }
+            d.s_ = strOutData;
+            std::string h;
+            if( ! strOutContentType.empty() )
+                h = stat_extract_short_content_type_string( strOutContentType );
+            d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
                 ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );
@@ -768,6 +829,7 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
                 h = stat_extract_short_content_type_string(
                     resp->get_header_value( "Content-Type" ) );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
+#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             handle_data_arrived( d );
             data_t dataOut = fetch_data_with_strategy( edfs );
             onData( jo, dataOut );

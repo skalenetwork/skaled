@@ -36,10 +36,18 @@
 #include <skutils/multithreading.h>
 #include <skutils/utils.h>
 
+class SkaleHost;
+
+namespace skale {
+class State;
+}
+
 namespace dev {
 namespace eth {
 
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
+extern std::shared_ptr< SkaleHost > g_skaleHost;
+extern skale::State g_state;
 
 struct ChainOperationParams;
 
@@ -101,7 +109,6 @@ private:
             #Name, &__eth_registerPricerFunction##Name );                                        \
     static bigint __eth_registerPricerFunction##Name
 
-static constexpr size_t FILE_MAX_SIZE = 100000000;
 static constexpr size_t UINT256_SIZE = 32;
 
 }  // namespace eth

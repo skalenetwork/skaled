@@ -67,6 +67,8 @@ public:
     // method must return immediately.
     virtual void forEach( std::function< bool( Slice, Slice ) > f ) const = 0;
     virtual h256 hashBase() const = 0;
+
+    virtual bool discardCreatedBatches() { return false; }
 };
 
 DEV_SIMPLE_EXCEPTION( DatabaseError );

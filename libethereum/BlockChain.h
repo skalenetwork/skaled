@@ -28,8 +28,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <time.h>
+
 #include <boost/filesystem/path.hpp>
 
+#include <libbatched-io/batched_db.h>
+#include <libbatched-io/batched_rotating_db_io.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
@@ -109,9 +113,11 @@ public:
  * @threadsafe
  */
 class BlockChain {
+    clock_t clockLastDbRotation_ = 0;  // 0 means never was initialized, DB was not open yet
 public:
-    uint64_t getTotalCacheMemory();
+    clock_t clockDbRotationPeriod_ = 0;  // 0 means disabled
 
+    uint64_t getTotalCacheMemory();
 
     class CreationException : public std::exception {
         virtual const char* what() const noexcept { return "Error creating blockchain"; }
@@ -152,16 +158,6 @@ public:
     ImportRoute import(
         VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
     ImportRoute import( Block const& _block );
-
-    /// Import data into disk-backed DB.
-    /// This will not execute the block and populate the state trie, but rather will simply add the
-    /// block/header and receipts directly into the databases.
-    void insert( bytes const& _block, bytesConstRef _receipts, bool _mustBeNew = true );
-    void insert( VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew = true );
-    /// Insert that doesn't require parent to be imported, useful when we don't have the full
-    /// blockchain (like restoring from partial snapshot).
-    ImportRoute insertWithoutParent(
-        bytes const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty );
 
     /// Returns true if the given block is known (though not necessarily a part of the canon chain).
     bool isKnown( h256 const& _hash, bool _isCurrent = true ) const;
@@ -353,7 +349,7 @@ public:
     /// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent,
     /// parent + 1, ... parent + @a _generations).
     /// @returns set including the header-hash of every parent (including @a _parent) up to and
-    /// including generation + @a _generations togther with all their quoted uncles.
+    /// including generation + @a _generations together with all their quoted uncles.
     h256Hash allKinFrom( h256 const& _parent, unsigned _generations ) const;
 
     /// Alter the head of the chain to some prior block along it.
@@ -446,15 +442,13 @@ public:
     /// @returns first block number of the chain, non-zero when we have partial chain e.g. after
     /// snapshot import.
     unsigned chainStartBlockNumber() const;
-    /// Change the chain start block.
-    void setChainStartBlockNumber( unsigned _number );
 
 private:
     static h256 chunkId( unsigned _level, unsigned _index ) {
         return h256( _index * 0xff + _level );
     }
 
-    /// Initialise everything and ready for openning the database.
+    /// Initialise everything and ready for opening the database.
     void init( ChainParams const& _p );
     /// Open the database.
 public:
@@ -466,10 +460,8 @@ private:
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
 
     // auxiliary method for insertBlockAndExtras
-    void prepareDbWriteBatches( VerifiedBlockRef const& _block, bytesConstRef _receipts,
+    size_t prepareDbDataAndReturnSize( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
-        db::WriteBatchFace& _blocksWriteBatch, db::WriteBatchFace& _extrasWriteBatch,
-        size_t& _blocksBatchSize, size_t& _extrasBatchSize,
         ImportPerformanceLogger& _performanceLogger );
 
     // auxiliary method for recomputing blocks inserted earlier
@@ -483,7 +475,7 @@ private:
 
     template < class T, class K, unsigned N >
     T queryExtras( K const& _h, std::unordered_map< K, T >& _m, boost::shared_mutex& _x,
-        T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+        T const& _n, batched_io::db_face* _extrasDB = nullptr ) const {
         {
             ReadGuard l( _x );
             auto it = _m.find( _h );
@@ -504,7 +496,7 @@ private:
 
     template < class T, class K, unsigned N >
     T queryExtras( K const& _h, std::map< K, T >& _m, boost::shared_mutex& _x, T const& _n,
-        db::DatabaseFace* _extrasDB = nullptr ) const {
+        batched_io::db_face* _extrasDB = nullptr ) const {
         {
             ReadGuard l( _x );
             auto it = _m.find( _h );
@@ -526,13 +518,13 @@ private:
 
     template < class T, unsigned N >
     T queryExtras( h256 const& _h, std::unordered_map< h256, T >& _m, boost::shared_mutex& _x,
-        T const& _n, db::DatabaseFace* _extrasDB = nullptr ) const {
+        T const& _n, batched_io::db_face* _extrasDB = nullptr ) const {
         return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
     }
 
     template < class T, unsigned N >
     T queryExtras( h256 const& _h, std::map< h256, T >& _m, boost::shared_mutex& _x, T const& _n,
-        db::DatabaseFace* _extrasDB = nullptr ) const {
+        batched_io::db_face* _extrasDB = nullptr ) const {
         return queryExtras< T, h256, N >( _h, _m, _x, _n, _extrasDB );
     }
 
@@ -580,14 +572,12 @@ private:
     uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
-    std::unique_ptr< db::SplitDB > m_split_db;
-    std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;
-    db::DatabaseFace* m_blocksDB;
-    db::DatabaseFace* m_extrasDB;
-
-public:
-    std::shared_ptr< dev::db::DatabaseFace > m_stateDB;  // initialized in Client class, than
-                                                         // assigned here later in Client::init()
+    std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;  // rotate()
+    std::shared_ptr< batched_io::db_face > m_db;                   // insert()/commit()
+    std::unique_ptr< batched_io::db_splitter > m_db_splitter;      // new_interface()
+    batched_io::db_operations_face* m_blocksDB;                    // working horse 1!
+    batched_io::db_operations_face* m_extrasDB;                    // working horse 2!
+                                                 // assigned here later in Client::init()
 private:
     /// Hash of the last (valid) block on the longest chain.
     mutable boost::shared_mutex x_lastBlockHash;  // should protect both m_lastBlockHash and

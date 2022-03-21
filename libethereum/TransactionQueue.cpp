@@ -88,10 +88,11 @@ void TransactionQueue::HandleDestruction() {
     }
 }
 
-ImportResult TransactionQueue::import( bytesConstRef _transactionRLP, IfDropped _ik ) {
+ImportResult TransactionQueue::import(
+    bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything );
-        return import( t, _ik );
+        return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
     }
@@ -107,7 +108,8 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
     return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::import( Transaction const& _transaction, IfDropped _ik ) {
+ImportResult TransactionQueue::import(
+    Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
     if ( _transaction.hasZeroSignature() )
         return ImportResult::ZeroSignature;
     // Check if we already know this transaction.
@@ -118,14 +120,39 @@ ImportResult TransactionQueue::import( Transaction const& _transaction, IfDroppe
         MICROPROFILE_SCOPEI( "TransactionQueue", "import", MP_THISTLE );
         // WriteGuard l2( m_lock );
         UpgradableGuard l( m_lock );
+
+        // HACK remove it from future and re-insert (allows to "push" stuck transaction)
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+
+            // if transaction found:
+            if ( t != fs->second.end() ) {
+                //                if( t == fs->second.begin() ){
+                UpgradeGuard ul( l );
+                --m_futureSize;
+                auto erasedHash = t->second.transaction.sha3();
+                LOG( m_loggerDetail ) << "Re-inserting future transaction " << erasedHash;
+                m_known.erase( erasedHash );
+                fs->second.erase( t->second.transaction.nonce() );
+                if ( fs->second.empty() )
+                    m_future.erase( fs );
+                //                }
+            }  // if found
+        }      // if fs->second
+
         auto ir = check_WITH_LOCK( h, _ik );
         if ( ir != ImportResult::Success )
             return ir;
 
         {
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
+
             UpgradeGuard ul( l );
             ret = manageImport_WITH_LOCK( h, _transaction );
+
+            if ( _isFuture )
+                setFuture_WITH_LOCK( h );
         }
     }
     return ret;
@@ -202,13 +229,15 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
                 return ImportResult::SameNonceAlreadyInQueue;
             }
         }
+
         auto fs = m_future.find( _transaction.from() );
         if ( fs != m_future.end() ) {
             auto t = fs->second.find( _transaction.nonce() );
             if ( t != fs->second.end() ) {
                 return ImportResult::SameNonceAlreadyInQueue;
-            }
-        }
+            }  // if found
+        }      // if fs->second
+
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
         LOG( m_loggerDetail ) << "Queued vaguely legit-looking transaction " << _h;
@@ -235,6 +264,11 @@ u256 TransactionQueue::maxNonce( Address const& _a ) const {
     return maxNonce_WITH_LOCK( _a );
 }
 
+u256 TransactionQueue::maxCurrentNonce( Address const& _a ) const {
+    ReadGuard l( m_lock );
+    return maxCurrentNonce_WITH_LOCK( _a );
+}
+
 u256 TransactionQueue::maxNonce_WITH_LOCK( Address const& _a ) const {
     u256 ret = 0;
     auto cs = m_currentByAddressAndNonce.find( _a );
@@ -243,6 +277,14 @@ u256 TransactionQueue::maxNonce_WITH_LOCK( Address const& _a ) const {
     auto fs = m_future.find( _a );
     if ( fs != m_future.end() && !fs->second.empty() )
         ret = std::max( ret, fs->second.rbegin()->first + 1 );
+    return ret;
+}
+
+u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
+    u256 ret = 0;
+    auto cs = m_currentByAddressAndNonce.find( _a );
+    if ( cs != m_currentByAddressAndNonce.end() && !cs->second.empty() )
+        ret = cs->second.rbegin()->first + 1;
     return ret;
 }
 
@@ -296,8 +338,7 @@ unsigned TransactionQueue::waiting( Address const& _a ) const {
     return ret;
 }
 
-void TransactionQueue::setFuture( h256 const& _txHash ) {
-    WriteGuard l( m_lock );
+void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     auto it = m_currentByHash.find( _txHash );
     if ( it == m_currentByHash.end() )
         return;
@@ -320,6 +361,23 @@ void TransactionQueue::setFuture( h256 const& _txHash ) {
     queue.erase( cutoff, queue.end() );
     if ( queue.empty() )
         m_currentByAddressAndNonce.erase( from );
+
+    while ( m_futureSize > m_futureLimit ) {
+        // TODO: priority queue for future transactions
+        // For now just drop random chain end
+        --m_futureSize;
+        auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
+        LOG( m_loggerDetail ) << "Dropping out of bounds future transaction " << erasedHash;
+        m_known.erase( erasedHash );
+        m_future.begin()->second.erase( --m_future.begin()->second.end() );
+        if ( m_future.begin()->second.empty() )
+            m_future.erase( m_future.begin() );
+    }
+}
+
+void TransactionQueue::setFuture( h256 const& _txHash ) {
+    WriteGuard l( m_lock );
+    return setFuture_WITH_LOCK( _txHash );
 }
 
 void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
@@ -347,17 +405,6 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
             if ( fs->second.empty() )
                 m_future.erase( _t.from() );
         }
-    }
-
-    while ( m_futureSize > m_futureLimit ) {
-        // TODO: priority queue for future transactions
-        // For now just drop random chain end
-        --m_futureSize;
-        LOG( m_loggerDetail ) << "Dropping out of bounds future transaction "
-                              << m_future.begin()->second.rbegin()->second.transaction.sha3();
-        m_future.begin()->second.erase( --m_future.begin()->second.end() );
-        if ( m_future.begin()->second.empty() )
-            m_future.erase( m_future.begin() );
     }
 
     if ( newCurrent )

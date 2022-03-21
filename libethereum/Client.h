@@ -34,6 +34,8 @@
 #include <string>
 #include <thread>
 
+#include <time.h>
+
 #include <boost/filesystem/path.hpp>
 
 #include <libdevcore/Common.h>
@@ -46,7 +48,6 @@
 
 #include "Block.h"
 #include "BlockChain.h"
-#include "BlockChainImporter.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
 #include "InstanceMonitor.h"
@@ -95,6 +96,9 @@ public:
 
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
+
+    clock_t dbRotationPeriod() const { return bc().clockDbRotationPeriod_; }
+    void dbRotationPeriod( clock_t clockPeriod ) { bc().clockDbRotationPeriod_ = clockPeriod; }
 
     /// Resets the gas pricer to some other object.
     void setGasPricer( std::shared_ptr< GasPricer > _gp ) { m_gp = _gp; }
@@ -230,9 +234,6 @@ public:
         throw std::logic_error( "createStateImporter is not implemented" );
         //        return dev::eth::createStateImporter(m_state);
     }
-    std::unique_ptr< BlockChainImporterFace > createBlockChainImporter() {
-        return dev::eth::createBlockChainImporter( m_bc );
-    }
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
@@ -288,6 +289,10 @@ public:
         // fall through other exceptions
     }
 
+    uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const {
+        return this->m_snapshotManager->getBlockTimestamp( _blockNumber, chainParams() );
+    }
+
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
 
     uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }
@@ -296,6 +301,13 @@ public:
         return this->snapshot_hash_calculation_time_ms;
     }
 
+    std::array< std::string, 4 > getIMABLSPublicKey() const {
+        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+    }
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
@@ -303,8 +315,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime(), bool isSaveLastTxHash = false,
-        TransactionReceipts* accumulatedTransactionReceipts = nullptr,
+        uint64_t _timestamp = ( uint64_t ) utcTime(),
         Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
     );
 
@@ -345,7 +356,7 @@ protected:
     void appendFromBlock( h256 const& _blockHash, BlockPolarity _polarity, h256Hash& io_changed );
 
     /// Record that the set of filters @a _filters have changed.
-    /// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
+    /// This doesn't actually make any callbacks, but increments some counters in m_watches.
     void noteChanged( h256Hash const& _filters );
 
     /// Submit
@@ -414,6 +425,7 @@ protected:
 
     /// Executes the pending functions in m_functionQueue
     void callQueuedFunctions();
+
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
@@ -506,6 +518,11 @@ private:
 
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
+
+    void initIMABLSPublicKey();
+    void updateIMABLSPublicKey();
+
+    unsigned imaBLSPublicKeyGroupIndex = 0;
 
 public:
     FILE* performance_fd;

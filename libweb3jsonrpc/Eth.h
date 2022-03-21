@@ -33,6 +33,7 @@
 #include <iosfwd>
 #include <memory>
 
+#include <skutils/utils.h>
 
 namespace dev {
 class NetworkFace;
@@ -55,13 +56,15 @@ std::string exceptionToErrorMessage();
 /**
  * @brief JSON-RPC api implementation
  */
-class Eth : public dev::rpc::EthFace {
+class Eth : public dev::rpc::EthFace, public skutils::json_config_file_accessor {
 public:
-    Eth( eth::Interface& _eth, eth::AccountHolder& _ethAccounts );
+    Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{RPCModule{"eth", "1.0"}};
     }
+
+    bool isEnabledTransactionSending() const;
 
     eth::AccountHolder const& ethAccounts() const { return m_ethAccounts; }
 

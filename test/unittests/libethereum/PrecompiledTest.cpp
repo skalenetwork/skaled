@@ -22,7 +22,7 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcrypto/Hash.h>
-#include <libethcore/Precompiled.h>
+#include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -1587,7 +1587,11 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
     }
 
-    ~FilestorageFixture() override { remove( pathToFile.c_str() ); }
+    ~FilestorageFixture() override {
+        std::string pathToHashFile = pathToFile.string() + "._hash";
+        remove( pathToFile.c_str() );
+        remove( pathToHashFile.c_str() );
+    }
 
     Address ownerAddress;
     std::string hexAddress;
@@ -1669,8 +1673,16 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
-    BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
+    PrecompiledExecutor execCreate = PrecompiledRegistrar::executor( "createFile" );
+    bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                            numberToHex( fileSize ) );
+    execCreate( bytesConstRef( inCreate.data(), inCreate.size() ) );
+    PrecompiledExecutor execHash = PrecompiledRegistrar::executor( "calculateFileHash" );
+    bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( fileSize ) );
+    execHash( bytesConstRef( inHash.data(), inHash.size() ) );
 
+    BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
@@ -1713,8 +1725,12 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     std::string fileHashName = pathToFile.string() + "._hash";
 
+    std::ofstream fileHash( fileHashName );
     std::string relativePath = pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
     dev::h256 hash = dev::sha256( relativePath );
+    fileHash << hash;
+
+    fileHash.close();
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
@@ -1750,7 +1766,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     BOOST_REQUIRE( calculatedHash == commonFileHash );
     BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
-    remove( fileHashName.c_str() );
+    remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

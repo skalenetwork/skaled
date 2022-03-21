@@ -26,6 +26,7 @@
 #define SNAPSHOTAGENT_H
 
 #include <libdevcore/FixedHash.h>
+#include <libethereum/BlockChain.h>
 #include <secp256k1_sha256.h>
 
 #include <boost/filesystem.hpp>
@@ -156,6 +157,9 @@ public:
     std::pair< int, int > getLatestSnasphots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
+
+    uint64_t getBlockTimestamp(
+        unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const;
 
 private:
     boost::filesystem::path data_dir;

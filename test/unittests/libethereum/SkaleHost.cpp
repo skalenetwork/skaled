@@ -39,7 +39,7 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
+    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
@@ -64,12 +64,24 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
+    u256 getRandomForBlockId( uint64_t _blockId ) const override {
+        return 0;
+    }
+
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )
             block_gas_prices.push_back( _gasPrice );
         else
             block_gas_prices[_blockId] = _gasPrice;
+    }
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
+        return 0;
+    }
+
+    uint64_t checkOracleResult( const string& _receipt, string& _result) {
+        return 0;
     }
 };
 
@@ -85,8 +97,9 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture() {
+    SkaleHostFixture( const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
         dev::p2p::NetworkPreferences nprefs;
+
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -97,12 +110,18 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
+        chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+
+        if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
+            chainParams.sChain.multiTransactionMode = true;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
         auto monitor = make_shared< InstanceMonitor >("test");
+
+        setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
@@ -123,6 +142,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // and will take all transaction fee after execution so we can't check money spent
         // for senderAddress correctly.
         client->setAuthor( Address( 5 ) );
+        dev::eth::g_skaleHost = skaleHost;
     }
 
     Transaction tx_from_json( const Json::Value& json ) {
@@ -233,7 +253,9 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
 // 1 Small amount of random bytes
 // 2 110 random bytes
 // 3 110 bytes of semi-correct RLP
-BOOST_AUTO_TEST_CASE( transactionRlpBad ) {
+BOOST_AUTO_TEST_CASE( transactionRlpBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
 
     bytes small_tx1 = bytes();
@@ -303,7 +325,9 @@ public:
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // zero signature
-BOOST_AUTO_TEST_CASE( transactionSigZero ) {
+BOOST_AUTO_TEST_CASE( transactionSigZero
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -345,7 +369,9 @@ BOOST_AUTO_TEST_CASE( transactionSigZero ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // corrupted signature
-BOOST_AUTO_TEST_CASE( transactionSigBad ) {
+BOOST_AUTO_TEST_CASE( transactionSigBad
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -386,7 +412,9 @@ BOOST_AUTO_TEST_CASE( transactionSigBad ) {
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // gas < min_gas
-BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
+BOOST_AUTO_TEST_CASE( transactionGasIncorrect
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -425,7 +453,9 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect ) {
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_AUTO_TEST_CASE( transactionGasNotEnough ) {
+BOOST_AUTO_TEST_CASE( transactionGasNotEnough
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -519,7 +549,9 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall ) {
+BOOST_AUTO_TEST_CASE( transactionNonceSmall
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -610,7 +642,9 @@ BOOST_AUTO_TEST_CASE( transactionBalanceBad,
 // Transaction should be IGNORED during execution
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
+BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -659,7 +693,9 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded ) {
 }
 
 // positive test for 4 next ones
-BOOST_AUTO_TEST_CASE( transactionDropReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropReceive
+                      //, *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -770,8 +806,9 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -826,7 +863,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice,
 }
 
 // TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
+BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -890,7 +929,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive ) {
     BOOST_REQUIRE_EQUAL( txns.size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionRace ) {
+BOOST_AUTO_TEST_CASE( transactionRace
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -938,6 +979,169 @@ BOOST_AUTO_TEST_CASE( transactionRace ) {
     Transaction tx2 = tx_from_json( json );
 
     client->importTransaction( tx2 );
+}
+
+// test two blocks with overlapping transactions :)
+BOOST_AUTO_TEST_CASE( partialCatchUp
+                      // , *boost::unit_test::precondition( dev::test::run_not_express )
+                      ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // create 1 txns in 1 block
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    // now 2 txns
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 txHash = tx2.sha3();
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out(), stream2.out()}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 2, 2 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 1, txHash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 0 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+}
+
+BOOST_AUTO_TEST_CASE( getBlockRandom ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+    auto res = exec( bytesConstRef() );
+    u256 blockRandom = skaleHost->getBlockRandom();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
+    auto res = exec( bytesConstRef() );
+    std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
+}
+
+struct dummy{};
+
+// Test behavior of MTM if tx with big nonce was already mined as erroneous
+BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"multiTransactionMode", "1"}} ) );
+
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& accountHolder = fixture.accountHolder;
+    auto& skaleHost = fixture.skaleHost;
+    auto& stub = fixture.stub;
+
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // 1 tx nonce = 1
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+
+    // future nonce
+    json["nonce"] = 1;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    h256 tx1Hash = tx1.sha3();
+
+    // it will be put to "future" queue
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    sleep( 1 );
+    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    // and not proposed
+    BOOST_REQUIRE_EQUAL(proposal.size(), 0);
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    // simulate it coming from another node
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+
+    // 2 tx nonce = 0
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 tx2Hash = tx2.sha3();
+
+    // post it to queue for "realism"
+    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 2);
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 2 );
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, tx2Hash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+
+    // 3 submit nonce = 1 again!
+    // it should go to proposal
+    BOOST_REQUIRE_THROW(
+        skaleHost->receiveTransaction( toJS( stream1.out() ) ),
+        dev::eth::PendingTransactionAlreadyExists
+    );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 1);
+
+    // submit it for sure
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 3U ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

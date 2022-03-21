@@ -7,10 +7,14 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <curl/curl.h>
 
 #endif  // (!defined _WIN32)
 
@@ -129,7 +133,17 @@ bool poll_write( socket_t sock, int timeout_milliseconds ) {
     return ( poll_impl( sock, POLLOUT, timeout_milliseconds ) > 0 ) ? true : false;
 }
 
+bool is_handle_a_socket( socket_t fd ) {
+    struct stat statbuf;
+    fstat(fd, &statbuf);
+    bool bIsSocket = ( S_ISSOCK(statbuf.st_mode) ) ? true : false;
+    return bIsSocket;
+}
+
 bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds ) {
+    if( ! is_handle_a_socket( sock ) )
+        return false;
+
     //
     // TO-DO: l_sergiy: switch HTTP/client to poll() later
     //
@@ -145,24 +159,46 @@ bool wait_until_socket_is_ready_client( socket_t sock, int timeout_milliseconds 
     //        return false;
     //    return true;
 
-    fd_set fdsr;
-    FD_ZERO( &fdsr );
-    FD_SET( sock, &fdsr );
-    auto fdsw = fdsr;
-    auto fdse = fdsr;
-    timeval tv;
-    tv.tv_sec = static_cast< long >( timeout_milliseconds / 1000 );
-    tv.tv_usec = static_cast< long >( ( timeout_milliseconds % 1000 ) * 1000 );
-    if ( select( static_cast< int >( sock + 1 ), &fdsr, &fdsw, &fdse, &tv ) < 0 )
-        return false;
-    if ( FD_ISSET( sock, &fdsr ) || FD_ISSET( sock, &fdsw ) ) {
-        int error = 0;
-        socklen_t len = sizeof( error );
-        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
-            return false;
-    } else
-        return false;
-    return true;
+    //    fd_set fdsr;
+    //    FD_ZERO( &fdsr );
+    //    FD_SET( sock, &fdsr );
+    //    auto fdsw = fdsr;
+    //    auto fdse = fdsr;
+    //    timeval tv;
+    //    tv.tv_sec = static_cast< long >( timeout_milliseconds / 1000 );
+    //    tv.tv_usec = static_cast< long >( ( timeout_milliseconds % 1000 ) * 1000 );
+    //    if ( select( static_cast< int >( sock + 1 ), &fdsr, &fdsw, &fdse, &tv ) < 0 )
+    //        return false;
+    //    if ( FD_ISSET( sock, &fdsr ) || FD_ISSET( sock, &fdsw ) ) {
+    //        int error = 0;
+    //        socklen_t len = sizeof( error );
+    //        if ( getsockopt( sock, SOL_SOCKET, SO_ERROR, ( char* ) &error, &len ) < 0 || error )
+    //            return false;
+    //    } else
+    //        return false;
+    //    return true;
+
+    struct pollfd fds;
+    fds.fd = sock;
+    fds.events = POLLIN | POLLOUT;
+    for( ; true; ) {
+        int r = poll( &fds, 1, timeout_milliseconds );
+        if( r == -1 ) {
+            if( errno == EINTR )
+                continue;
+            // call to poll() failed
+            break;
+        } else if( r == 0 ) {
+            // timeout expired
+            break;
+        } else if( fds.revents & ( POLLIN | POLLOUT ) ) {
+            return true;
+        } else if( fds.revents & ( POLLERR | POLLNVAL ) ) {
+            // socket error
+            break;
+        }
+    } // for( ; true; )
+    return false;
 }
 
 template < typename T >
@@ -171,9 +207,13 @@ bool read_and_close_socket( socket_t sock, size_t keep_alive_max_count, T callba
     ei.clear();
     bool ret = false;
     try {
+        if( ! detail::is_handle_a_socket( sock ) )
+            throw std::runtime_error( "cannot read(and close) broken socket handle(1)" );
         if ( keep_alive_max_count > 0 ) {
             size_t cnt = keep_alive_max_count;
             for ( ; cnt > 0; --cnt ) {
+                if( ! detail::is_handle_a_socket( sock ) )
+                    throw std::runtime_error( "cannot read(and close) broken socket handle(2)" );
                 if ( !detail::poll_read( sock, __SKUTILS_HTTP_KEEPALIVE_TIMEOUT_MILLISECONDS__ ) )
                     continue;
                 socket_stream strm( sock );
@@ -298,6 +338,8 @@ socket_t create_socket6( const char* host, int port, Fn fn, int socket_flags = 0
 }
 
 void set_nonblocking( socket_t sock, bool nonblocking ) {
+    if( ! is_handle_a_socket( sock ) )
+        return;
 #ifdef _WIN32
     auto flags = nonblocking ? 1UL : 0UL;
     ioctlsocket( sock, FIONBIO, &flags );
@@ -1336,6 +1378,7 @@ async_query_handler::~async_query_handler() {
     std::cout << skutils::tools::format( "http task dtor %p\n", this );
     std::cout.flush();
 #endif
+    remove_this_task();
 }
 
 void async_query_handler::was_added() {
@@ -1480,7 +1523,12 @@ bool async_read_and_close_socket::step() {
         if ( retry_index_ > retry_count_ )
             throw std::runtime_error( "max attempt count done" );
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ > retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             socket_stream strm( socket_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1502,6 +1550,10 @@ bool async_read_and_close_socket::step() {
         }
         schedule_next_step();
         return true;
+    } catch ( const common_network_exception& nx ) {
+        if ( nx.what() && nx.what()[0] )
+            strErrorDescription =
+                std::string( nx.what() ) + " (errcode=" + std::to_string( nx.ei_.ec_ ) + ")";
     } catch ( std::exception& ex ) {
         strErrorDescription = ex.what();
     } catch ( ... ) {
@@ -1571,7 +1623,12 @@ bool async_read_and_close_socket_SSL::step() {
                 detail::SSL_accept_wrapper( ssl_ );
         }
         ++retry_index_;
-        if ( retry_index_ >= retry_count_ || detail::poll_read( socket_, poll_ms_ ) ) {
+        if ( retry_index_ >= retry_count_ ) {
+            call_fail_handler( "transfer timeout", false, false );
+            close_socket();
+            remove_this_task();
+            return false;
+        } else if ( detail::poll_read( socket_, poll_ms_ ) ) {
             SSL_socket_stream strm( socket_, ssl_ );
             bool connection_close = false;
             if ( callback_success_ ) {
@@ -1651,6 +1708,7 @@ server::server( size_t a_max_handler_queues, bool is_async_http_transfer_mode )
 }
 
 server::~server() {
+    remove_all_tasks();
     close_all_handler_queues();
 }
 
@@ -2153,7 +2211,7 @@ void server::read_and_close_socket_async( socket_t sock ) {
             throw std::runtime_error( "failed to process request" );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket " << sock
+        std::cout << "failed to process http request from socket " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )
@@ -2227,7 +2285,7 @@ void SSL_server::read_and_close_socket_async( socket_t sock ) {
         return process_request( origin, strm, last_connection, connection_close );
     };
     pRT->callback_fail_ = [this, sock]( const char* strErrorDescription ) {
-        std::cout << "failed to process http reqiest from socket(SSL) " << sock
+        std::cout << "failed to process http request from socket(SSL) " << sock
                   << ", error description: "
                   << ( ( strErrorDescription && strErrorDescription[0] ) ? strErrorDescription :
                                                                            "unkknown error" )
@@ -2620,4 +2678,213 @@ bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& r
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace http
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace http_curl {
+
+client::client( const skutils::url& u,
+        int timeout_milliseconds, // = __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__
+        skutils::http::SSL_client_options* pOptsSSL // = nullptr
+        )
+        : u_( u )
+        , timeout_milliseconds_( timeout_milliseconds )
+{
+    if( pOptsSSL )
+        optsSSL = (*pOptsSSL);
+}
+
+client::~client() {
+
+}
+
+bool client::is_valid() const {
+    if( u_.host().empty() )
+        return false;
+const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u_.scheme() ) );
+    if( !( strScheme == "http" || strScheme == "https" ) )
+        return false;
+    return true;
+}
+
+bool client::is_ssl() const {
+const std::string strScheme = skutils::tools::to_lower( skutils::tools::trim_copy( u_.scheme() ) );
+    if( strScheme != "https" )
+        return false;
+    return true;
+}
+
+bool client::is_ssl_with_explicit_cert_key() const {
+    if( ! is_ssl() )
+        return false;
+    //if ( optsSSL.ca_file.empty() )
+    //    return false;
+    //if ( optsSSL.ca_path.empty() )
+    //    return false;
+    if ( optsSSL.client_cert.empty() )
+        return false;
+    if ( optsSSL.client_key.empty() )
+        return false;
+    return true;
+}
+
+size_t client::stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp ) {
+    size_t realsize = size * nmemb;
+    struct MemoryStruct *mem = (struct MemoryStruct *) userp;
+    char *ptr = (char *) realloc(mem->memory, mem->size + realsize + 1);
+    if( ! ptr )
+        return 0;
+    mem->memory = ptr;
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+    return realsize;
+}
+
+bool client::query(
+        const char * strInData,
+        const char * strInContentType, // i.e. "application/json"
+        std::string & strOutData,
+        std::string & strOutContentType,
+        skutils::http::common_network_exception::error_info& ei
+        ) {
+    ei.clear();
+    strOutData.clear();
+    strOutContentType.clear();
+    bool ret = false;
+    // curl_global_init( CURL_GLOBAL_DEFAULT );
+    CURL * curl = nullptr;
+    struct curl_slist * headers = nullptr;
+    // char errbuf[CURL_ERROR_SIZE] = { 0, };
+    //
+    struct MemoryStruct chunk;
+    chunk.memory = (char *) malloc( 1 );
+    chunk.size = 0;
+    try {
+        if( ! chunk.memory )
+            throw std::runtime_error( "CURL failed to alloc initial memory chunk" );
+        curl = curl_easy_init();
+        if( ! curl )
+            throw std::runtime_error( "CURL easy init failed" );
+        //
+        std::string strHeaderContentType = skutils::tools::format(
+                    "Content-Type: %s",
+                    strInContentType ? strInContentType : "application/json"
+                    );
+        headers = curl_slist_append( headers, "Expect:" );
+        headers = curl_slist_append( headers, strHeaderContentType.c_str() );
+        //
+        std::string strURL = u_.str();
+        curl_easy_setopt( curl, CURLOPT_URL, strURL.c_str() );
+        // FILE * headerfile = stdout; // fopen( "dumpit.txt", "wb");
+        // curl_easy_setopt( curl, CURLOPT_HEADERDATA, headerfile );
+        if( ! strUserAgent_.empty() )
+            curl_easy_setopt( curl, CURLOPT_USERAGENT, strUserAgent_.c_str() );
+        if( ! strDnsServers_.empty() )
+            curl_easy_setopt( curl, CURLOPT_DNS_SERVERS, strDnsServers_.c_str() );
+        curl_easy_setopt( curl, CURLOPT_COOKIEFILE, "" );
+        curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, timeout_milliseconds_ );
+        curl_easy_setopt( curl, CURLOPT_POST, 1L );
+        curl_easy_setopt( curl, CURLOPT_HTTPHEADER, headers );
+        curl_easy_setopt( curl, CURLOPT_POSTFIELDS, strInData );
+        curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE, -1L );
+        curl_easy_setopt( curl, CURLOPT_VERBOSE, isVerboseInsideCURL_ ? 1L : 0L );
+        // curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errbuf );
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, stat_WriteMemoryCallback );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *) &chunk );
+        //
+        if( is_ssl_with_explicit_cert_key() ) {
+            if( pCurlCryptoEngine_ ) {
+                // use crypto engine
+                if( curl_easy_setopt( curl, CURLOPT_SSLENGINE, pCurlCryptoEngine_ ) != CURLE_OK )
+                    throw std::runtime_error( "CURL cannot set crypto engine" );
+                // set the crypto engine as default, only needed for the first time you load a engine in a curl object
+                if( curl_easy_setopt( curl, CURLOPT_SSLENGINE_DEFAULT, 1L ) != CURLE_OK )
+                    throw std::runtime_error( "CURL cannot set crypto engine as default" );
+            } // if( pCurlCryptoEngine_ )
+            // cert is stored PEM coded in file... since PEM is default, we needn't set it for PEM
+            curl_easy_setopt( curl, CURLOPT_SSLCERTTYPE, "PEM" );
+            // set the cert for client authentication
+            curl_easy_setopt( curl, CURLOPT_SSLCERT, optsSSL.client_cert.c_str() ); // like "cert.pem"
+            // for engine we must set the passphrase (if the key has one...)
+            if( pCryptoEnginePassphrase_ )
+                curl_easy_setopt( curl, CURLOPT_KEYPASSWD, pCryptoEnginePassphrase_ );
+            // if we use a key stored in a crypto engine, we must set the key type to "ENG"
+            if( ! strKeyType_.empty() )
+                curl_easy_setopt( curl, CURLOPT_SSLKEYTYPE, strKeyType_.c_str() );
+            // set the private key (file or ID in engine)
+            curl_easy_setopt( curl, CURLOPT_SSLKEY, optsSSL.client_key.c_str() ); // like "key.pem"
+            // set the file with the certs vaildating the server
+            if ( ! optsSSL.ca_path.empty() )
+                curl_easy_setopt( curl, CURLOPT_CAINFO, optsSSL.ca_path.c_str() );
+        } // if( is_ssl_with_explicit_cert_key() )
+        if( is_ssl() ) {
+            // disconnect if we cannot validate server's cert?
+            curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, isSslVerifyPeer_ ? 1L : 0L );
+            curl_easy_setopt( curl, CURLOPT_SSL_VERIFYHOST, isSslVerifyHost_ ? 1L : 0L );
+        } // if( is_ssl() )
+        CURLcode curl_code = curl_easy_perform( curl );
+        if( curl_code != CURLE_OK )
+            throw std::runtime_error(
+                    std::string( "CURL easy perform failed: " ) +
+                    curl_easy_strerror( curl_code )
+                    );
+        long http_code;
+        curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &http_code );
+        if( !( http_code == 200 && curl_code != CURLE_ABORTED_BY_CALLBACK ) ) {
+            throw std::runtime_error(
+                    skutils::tools::format( "CURL failed with code %d=0x%X, HTTP status is  %d=0x%X",
+                                            int(curl_code), int(curl_code),
+                                            int(http_code), int(http_code)
+                                            )
+                    );
+        }
+        char * ct = nullptr;
+        curl_easy_getinfo( curl, CURLINFO_CONTENT_TYPE, &ct );
+        strOutContentType = ct ? ct : ( strInContentType ? strInContentType : "application/json" );
+        strOutData = std::string( chunk.memory, chunk.size );
+        //
+        ret = true;
+    } catch ( skutils::http::common_network_exception& ex ) {
+        ei = ex.ei_;
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(1): " << ei.strError_ << "\n";
+std::cout.flush();
+    } catch ( std::exception& ex ) {
+        ei.strError_ = ex.what();
+        if ( ei.strError_.empty() )
+            ei.strError_ = "exception without description";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(2): " << ei.strError_ << "\n";
+std::cout.flush();
+    } catch ( ... ) {
+        ei.strError_ = "unknown exception";
+        if ( ei.et_ == skutils::http::common_network_exception::error_type::et_no_error )
+            ei.et_ = skutils::http::common_network_exception::error_type::et_unknown;
+std::cout << "HTTP/CURL got exception(3): " << ei.strError_ << "\n";
+std::cout.flush();
+    }
+    if( headers ) {
+        curl_slist_free_all( headers );
+        headers = nullptr;
+    }
+    if( curl ) {
+        curl_easy_cleanup( curl );
+        curl = nullptr;
+    }
+    if( chunk.memory ) {
+        free( chunk.memory );
+        chunk.memory = nullptr;
+    }
+    // curl_global_cleanup();
+    return ret;
+}
+
+}; // namespace http_curl
+
 };  // namespace skutils

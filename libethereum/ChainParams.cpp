@@ -34,8 +34,8 @@
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/CommonJS.h>
-#include <libethcore/Precompiled.h>
 #include <libethcore/SealEngine.h>
+#include <libethereum/Precompiled.h>
 
 #include "Account.h"
 #include "GenesisInfo.h"
@@ -179,8 +179,12 @@ ChainParams ChainParams::loadConfig(
         s.name = sChainObj.at( "schainName" ).get_str();
         s.id = sChainObj.at( "schainID" ).get_uint64();
         s.t = t;
-        if ( sChainObj.count( "schainOwner" ) )
+        if ( sChainObj.count( "schainOwner" ) ) {
             s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+            s.blockAuthor = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+        }
+        if ( sChainObj.count( "blockAuthor" ) )
+            s.blockAuthor = dev::jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
 
         s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
@@ -197,8 +201,57 @@ ChainParams ChainParams::loadConfig(
         s.dbStorageLimit =
             sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
 
+
+        if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
+            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
+        }
+
         if ( sChainObj.count( "freeContractDeployment" ) )
             s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
+
+        if ( sChainObj.count( "multiTransactionMode" ) )
+            s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+        if ( sChainObj.count( "nodeGroups" ) ) {
+            std::vector< NodeGroup > nodeGroups;
+            for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
+                NodeGroup nodeGroup;
+                auto nodeGroupObj = nodeGroupConf.second.get_obj();
+                if ( nodeGroupObj["bls_public_key"].is_null() )
+                    // failed dkg, skip it
+                    continue;
+
+                std::vector< GroupNode > groupNodes;
+                auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
+                for ( const auto& groupNodeConf : groupNodesObj ) {
+                    auto groupNodeConfObj = groupNodeConf.second.get_array();
+                    u256 id = groupNodeConfObj[0].get_uint64();
+                    u256 sChainIndex = groupNodeConfObj[1].get_uint64();
+                    std::string publicKey = groupNodeConfObj[2].get_str();
+                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                }
+                nodeGroup.nodes = groupNodes;
+
+                std::array< std::string, 4 > nodeGroupBlsPublicKey;
+                auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
+                nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
+                nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
+                nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
+                nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
+                nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
+
+                if ( !nodeGroupObj["finish_ts"].is_null() )
+                    nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
+                else
+                    nodeGroup.finishTs = uint64_t( -1 );
+                nodeGroups.push_back( nodeGroup );
+            }
+            std::sort( nodeGroups.begin(), nodeGroups.end(),
+                []( const NodeGroup& lhs, const NodeGroup& rhs ) {
+                    return lhs.finishTs < rhs.finishTs;
+                } );
+            s.nodeGroups = nodeGroups;
+        }
 
         for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
             auto nodeConfObj = nodeConf.get_obj();
@@ -430,6 +483,15 @@ const std::string& ChainParams::getOriginalJson() const {
     params[c_difficultyBoundDivisor] = toHex( toBigEndian( difficultyBoundDivisor ) );
     params[c_durationLimit] = toHex( toBigEndian( durationLimit ) );
 
+    params[c_skale16ForkBlock] = toHex( toBigEndian( skale16ForkBlock ) );
+    params[c_skale32ForkBlock] = toHex( toBigEndian( skale32ForkBlock ) );
+    params[c_skale64ForkBlock] = toHex( toBigEndian( skale64ForkBlock ) );
+    params[c_skale128ForkBlock] = toHex( toBigEndian( skale128ForkBlock ) );
+    params[c_skale256ForkBlock] = toHex( toBigEndian( skale256ForkBlock ) );
+    params[c_skale512ForkBlock] = toHex( toBigEndian( skale512ForkBlock ) );
+    params[c_skale1024ForkBlock] = toHex( toBigEndian( skale1024ForkBlock ) );
+    params[c_skaleUnlimitedForkBlock] = toHex( toBigEndian( skaleUnlimitedForkBlock ) );
+
     params[c_chainID] = toHex( toBigEndian( u256( chainID ) ) );
     params[c_networkID] = toHex( toBigEndian( u256( networkID ) ) );
     params[c_allowFutureBlocks] = allowFutureBlocks;
@@ -461,6 +523,7 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
+    sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 

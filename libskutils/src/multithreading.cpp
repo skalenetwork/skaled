@@ -16,13 +16,16 @@ std::string getThreadName() {
 }
 void setThreadName( const char* name ) {
     // should be not more then 15!!
-    if ( strlen( name ) > 15 )
-        name += strlen( name ) - 15;
-
+    // if ( strlen( name ) > 15 )
+    //    name += strlen( name ) - 15;
+    std::string effective_name( name );
+    size_t len = effective_name.length();
+    if( len > 15 )
+        effective_name = effective_name.substr( len-15 );
 #if defined( __APPLE__ )
-    pthread_setname_np( name );
+    pthread_setname_np( effective_name.c_str() );
 #else
-    pthread_setname_np( pthread_self(), name );
+    pthread_setname_np( pthread_self(), effective_name.c_str() );
 #endif
 }
 void setThreadName( const std::string& name ) {
