@@ -17,10 +17,35 @@ SKALE Chains have several predeployed contracts.
 * Owner address
 
 | `0xD2002000000000000000000000000000000000D2`
-| DeploymentController
+| Config Controller
 | Allows owner to:
 
-* add and remove addresses from the deployment whitelist,
-* to check whether an address is on the whitelist.
+* add and remove addresses from the deployment whitelist
+* to check whether an address is on the whitelist
+* enable/disable Free Contract Deployment mode - allow any account to deploy contracts on the SKALE Chain
+* enable/disable Multi Transaction Mode (MTM) multiple transactions from the same account been included in the one block 
+
+NOTE: currently, when MTM set, it’s always enabled
+
+| `0xd2bA3e0000000000000000000000000000000000`
+| Etherbase
+| Allows owner to send skFUEL to any address. Etherbase collecting skFuel from all transactions. 
+
+| `0xD2c0DeFACe000000000000000000000000000000`
+| Marionette
+| Predeployed smart contract on Skale chain that is controlled by external entity. Marionette executes commands that come from the mainnet if the chain owner is a mainnet contract.
+
+| `0xD244519000000000000000000000000000000000`
+| MultiSigWallet
+| Increases security by requiring multiple parties to agree on transactions before execution.
+  Allows owner to: 
+
+* add and delete other wallet owners 
+* add new transactions to the pending queue 
+* change the number of required confirmations from other owners
+
+|`0xD1000000000000000000000000000000000000D1`
+| ProxyAdminPredeployed
+| Allow owner to change implementations of predeployed contracts
 
 |===
