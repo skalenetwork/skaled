@@ -29,7 +29,7 @@ NOTE: currently, when MTM set, it’s always enabled
 
 | `0xd2bA3e0000000000000000000000000000000000`
 | Etherbase
-| Allows owner to send skFUEL to any address. Etherbase collecting skFuel from all transactions. 
+| Allows owner to send sFUEL to any address. Etherbase collects sFUEL from all spent transactions.
 
 | `0xD2c0DeFACe000000000000000000000000000000`
 | Marionette
