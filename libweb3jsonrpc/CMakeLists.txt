@@ -51,6 +51,8 @@ set(sources
 
     SkaleNetworkBrowser.h
     SkaleNetworkBrowser.cpp
+
+    rapidjson_handlers.cpp
 )
 
 if(WIN32)

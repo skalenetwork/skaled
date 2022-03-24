@@ -312,32 +312,6 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     return res;
 }
 
-void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
-    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse ) {
-    if ( joResponse.HasMember( "result" ) ) {
-        joResponse.RemoveMember( "result" );
-    }
-
-    rapidjson::Value joError;
-    joError.SetObject();
-
-    joError.AddMember( "code", exception.GetCode(), joResponse.GetAllocator() );
-
-    std::string message = exception.GetMessage();
-    joError.AddMember( "message", rapidjson::Value(), joResponse.GetAllocator() );
-    joError["message"].SetString( message.c_str(), message.size(), joResponse.GetAllocator() );
-
-    Json::Value joData = exception.GetData();
-    joError.AddMember( "data", rapidjson::Value(), joResponse.GetAllocator() );
-    if ( joData != Json::nullValue ) {
-        Json::FastWriter fastWriter;
-        std::string data = fastWriter.write( joData );
-        joError["data"].SetString( data.c_str(), data.size(), joResponse.GetAllocator() );
-    }
-
-    joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-}
-
 Json::Value toJson( dev::eth::Transaction const& _t ) {
     Json::Value res;
     if ( _t ) {
