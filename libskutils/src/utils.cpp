@@ -1,5 +1,6 @@
 #include <skutils/console_colors.h>
 #include <skutils/utils.h>
+#include <skutils/multithreading.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -168,6 +169,15 @@ std::string ensure_no_slash_at_end_copy( const char* s ) {
 }
 std::string ensure_no_slash_at_end_copy( const std::string& s ) {
     return ensure_no_slash_at_end_copy( s.c_str() );
+}
+
+// kills everything beyond plain old ASCII
+std::string safe_ascii( const std::string& in ) {
+    std::stringstream sout;
+    for ( char c : in ) {
+        sout.put( c & 0x80 ? '?' : c );
+    }
+    return sout.str();
 }
 
 std::string get_tmp_folder_path() {  // without slash at end
@@ -727,7 +737,10 @@ load_monitor::load_monitor( size_t
       cpu_load_( 0.0 ),
       nSleepMillisecondsBetweenCpuLoadMeasurements_(
           nSleepMillisecondsBetweenCpuLoadMeasurements ) {
-    thread_ = std::thread( [this]() { thread_proc(); } );
+    thread_ = std::thread( [this]() {
+        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        thread_proc();
+    } );
 }
 load_monitor::~load_monitor() {
     try {

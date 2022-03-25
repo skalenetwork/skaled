@@ -1,4 +1,4 @@
-/*
+﻿/*
     Copyright (C) 2018-present, SKALE Labs
 
     This file is part of skaled.
@@ -82,6 +82,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+    this->fillRotationHistory( *consensus_engine_ptr );
+
     return consensus_engine_ptr;
 #else
     unsigned block_number = m_client.number();
@@ -92,7 +94,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 }
 
 #if CONSENSUS
-void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
+void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const try {
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
@@ -120,6 +122,15 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
 
     std::string blsKeyName = m_client.chainParams().nodeInfo.keyShareName;
+
+    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+        blsKeyName);
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+}
+
+void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) const try {
+    const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
@@ -153,14 +164,24 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const {
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    try {
-        consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-            ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
-    } catch ( const std::exception& ex ) {
-        std::throw_with_nested( ex.what() );
-    } catch ( const boost::exception& ex ) {
-        std::throw_with_nested( boost::diagnostic_information( ex ) );
+    consensus.setPublicKeyInfo(
+        ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+}
+
+
+void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
+    std::map< uint64_t, std::vector< std::string > > rh;
+    for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
+        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        rh[nodeGroup.finishTs] = commonBLSPublicKey;
     }
+    consensus.setRotationHistory(
+        std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
 #endif
 
@@ -200,7 +221,7 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -240,7 +261,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     else
         m_consensus = _consFactory->create( *m_extFace );
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson() );
+    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
 } catch ( const std::exception& ) {
     std::throw_with_nested( CreationException() );
 }
@@ -305,40 +326,6 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
-template < class M >
-class timed_guard_4_try_lock {
-private:
-    M& mtx_;
-    std::atomic_bool was_locked_;
-    bool try_lock( const size_t nNumberOfMilliseconds ) {
-        auto now = std::chrono::steady_clock::now();
-        if ( mtx_.try_lock_until( now + std::chrono::milliseconds( nNumberOfMilliseconds ) ) )
-            return true;  // was locked
-        return false;
-    }
-
-public:
-    explicit timed_guard_4_try_lock( M& mtx, const size_t nNumberOfMilliseconds = 1000 )
-        : mtx_( mtx ), was_locked_( false ) {
-        was_locked_ = try_lock( nNumberOfMilliseconds );
-    }
-    ~timed_guard_4_try_lock() {
-        if ( was_locked_ )
-            mtx_.unlock();
-    }
-    bool was_locked() const { return was_locked_; }
-};
-
-bool SkaleHost::lock_timed_mutex_with_exit_check(
-    std::timed_mutex& mtx, const size_t nNumberOfMilliseconds ) {
-    if ( m_exitNeeded )
-        return false;
-    auto now = std::chrono::steady_clock::now();
-    if ( mtx.try_lock_until( now + std::chrono::milliseconds( nNumberOfMilliseconds ) ) )
-        return true;  // was locked
-    return false;
-}
-
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
@@ -352,25 +339,20 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     // HACK this should be field (or better do it another way)
     static bool first_run = true;
     if ( first_run ) {
-        // m_consensusWorkingMutex.lock();
-        if ( !lock_timed_mutex_with_exit_check( m_consensusWorkingMutex ) )
-            return out_vector;
+        m_consensusWorkingMutex.lock();
         first_run = false;
     }
     if ( m_exitNeeded )
         return out_vector;
 
-    // std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
-    timed_guard_4_try_lock< std::timed_mutex > pauseLock( m_consensusPauseMutex );
-    if ( !pauseLock.was_locked() )
-        return out_vector;
+    std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
     if ( m_exitNeeded )
         return out_vector;
 
     unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
 
-    if ( m_exitNeeded ){
+    if ( m_exitNeeded ) {
         unlocker.will_exit();
         return out_vector;
     }
@@ -415,9 +397,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
             if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
                 try {
+                    bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
                     Executive::verifyTransaction( tx,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0, getGasPrice() );
+                        m_client.state().startRead(), *m_client.sealEngine(), 0, getGasPrice(),
+                        isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
                         clog( VerbosityInfo, "skale-host" )
@@ -894,6 +878,18 @@ u256 SkaleHost::getGasPrice() const {
 
 u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
+}
+
+std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
+    return m_client.getIMABLSPublicKey();
+}
+
+uint64_t SkaleHost::submitOracleRequest( const string& _spec, string& _receipt ) {
+    return m_consensus->submitOracleRequest( _spec, _receipt );
+}
+
+uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
+    return m_consensus->checkOracleResult( _receipt, _result );
 }
 
 void SkaleHost::forceEmptyBlock() {

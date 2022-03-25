@@ -80,6 +80,8 @@ private:
     const dev::eth::Client& m_client;
 #if CONSENSUS
     void fillSgxInfo( ConsensusEngine& consensus ) const;
+    void fillPublicKeyInfo( ConsensusEngine& consensus ) const;
+    void fillRotationHistory( ConsensusEngine& consensus ) const;
 #endif
 };
 
@@ -105,7 +107,8 @@ public:
     };
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
-        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr );
+        std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
+        const std::string& _gethURL = "" );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -121,6 +124,10 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    std::array< std::string, 4 > getIMABLSPublicKey() const;
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
@@ -147,9 +154,6 @@ private:
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
-    bool lock_timed_mutex_with_exit_check(
-        std::timed_mutex& mtx, const size_t nNumberOfMilliseconds = 1000 );
-
     virtual ConsensusExtFace::transactions_vector pendingTransactions(
         size_t _limit, u256& _stateRoot );
     virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
@@ -177,7 +181,7 @@ private:
 
     std::atomic_bool m_exitNeeded = false;
 
-    std::timed_mutex m_consensusPauseMutex;
+    std::mutex m_consensusPauseMutex;
     std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 

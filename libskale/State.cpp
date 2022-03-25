@@ -170,6 +170,11 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
     return partialTransactionReceipts;
 }
 
+void State::clearPartialTransactionReceipts() {
+    dev::eth::BlockReceipts blockReceipts;
+    m_db_ptr->setPartialTransactionReceipts( blockReceipts.rlp() );
+}
+
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
@@ -376,8 +381,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit();
-        ++*m_storedVersion;
+        m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
         m_currentVersion = *m_storedVersion;
     }
 
@@ -402,13 +406,6 @@ bool State::addressHasCode( Address const& _id ) const {
         return a->codeHash() != EmptySHA3;
     else
         return false;
-}
-
-void State::clearAllCaches() {
-    m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
-    m_nonExistingAccountsCache.clear();
 }
 
 u256 State::balance( Address const& _id ) const {

@@ -48,6 +48,11 @@ set(sources
     SkaleStats.cpp
     SkaleStatsFace.h
     SkaleStatsSite.h
+
+    SkaleNetworkBrowser.h
+    SkaleNetworkBrowser.cpp
+
+    rapidjson_handlers.cpp
 )
 
 if(WIN32)

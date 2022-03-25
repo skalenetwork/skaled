@@ -27,15 +27,15 @@
 #include <json.hpp>
 
 #include <libdevcore/Common.h>
+#include <libdevcore/StatusAndControl.h>
 
 using namespace dev;
 namespace fs = boost::filesystem;
 
 const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
-const std::string InstanceMonitor::rotation_flag_file_name = ".rotation";
 
 void InstanceMonitor::prepareRotation() {
-    createFlagFile();
+    reportExitTimeReached( true );
     fs::remove( m_rotationInfoFilePath );
 }
 
@@ -65,14 +65,10 @@ void InstanceMonitor::restoreRotationParams() {
     }
 }
 
-void InstanceMonitor::createFlagFile() {
-    LOG( m_logger ) << "Creating flag file " << m_rotationFlagFilePath.string();
-    std::ofstream( m_rotationFlagFilePath.string() );
-}
-
-void InstanceMonitor::removeFlagFile() {
-    LOG( m_logger ) << "Removing flag file " << m_rotationFlagFilePath.string();
-    if ( fs::exists( m_rotationFlagFilePath ) ) {
-        fs::remove( m_rotationFlagFilePath );
-    }
+void InstanceMonitor::reportExitTimeReached( bool _reached ) {
+    if ( m_statusAndControl ) {
+        LOG( m_logger ) << "Setting ExitTimeReached = " << _reached;
+        m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, _reached );
+    } else
+        LOG( m_logger ) << "Simulating setting ExitTimeReached = " << _reached;
 }

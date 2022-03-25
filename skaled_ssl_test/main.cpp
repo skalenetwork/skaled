@@ -1007,7 +1007,7 @@ void with_client(
         }
         if ( clientThread.joinable() ) {
             std::cerr << ( cc::fatal( "Client thread is still running" ) + "\n" );
-            throw new std::runtime_error( "Client thread is still running" );
+            throw std::runtime_error( "Client thread is still running" );
         }
         std::cout << ( cc::success( "Done" ) + cc::debug( ",  client " ) +
                        cc::info( strClientName ) + cc::debug( " thread is finished" ) + "\n" );

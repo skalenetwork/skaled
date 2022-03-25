@@ -301,6 +301,13 @@ public:
         return this->snapshot_hash_calculation_time_ms;
     }
 
+    std::array< std::string, 4 > getIMABLSPublicKey() const {
+        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+    }
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt );
+    uint64_t checkOracleResult( const string& _receipt, string& _result );
+
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 protected:
@@ -419,6 +426,7 @@ protected:
     /// Executes the pending functions in m_functionQueue
     void callQueuedFunctions();
 
+
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
                       ///< imported).
@@ -510,6 +518,11 @@ private:
 
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
+
+    void initIMABLSPublicKey();
+    void updateIMABLSPublicKey();
+
+    unsigned imaBLSPublicKeyGroupIndex = 0;
 
 public:
     FILE* performance_fd;

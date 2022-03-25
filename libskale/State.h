@@ -199,6 +199,7 @@ public:
 
     dev::h256 safeLastExecutedTransactionHash();
     dev::eth::TransactionReceipts safePartialTransactionReceipts();
+    void clearPartialTransactionReceipts();
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -222,8 +223,6 @@ public:
 
     /// Check if the address contains executable code.
     bool addressHasCode( dev::Address const& _address ) const;
-
-    void clearAllCaches();
 
     /// Get an account's balance.
     /// @returns 0 if the address has never been used.

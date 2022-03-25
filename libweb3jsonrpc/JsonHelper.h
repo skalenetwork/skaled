@@ -84,9 +84,6 @@ rapidjson::Document toRapidJson(
 bool validateEIP1898Json( const rapidjson::Value& jo );
 std::string getBlockFromEIP1898Json( const rapidjson::Value& jo );
 
-void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
-    const jsonrpc::JsonRpcException& exception, rapidjson::Document& joResponse );
-
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );

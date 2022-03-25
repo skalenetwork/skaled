@@ -39,7 +39,7 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig ) override {}
+    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
@@ -75,6 +75,14 @@ public:
         else
             block_gas_prices[_blockId] = _gasPrice;
     }
+
+    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
+        return 0;
+    }
+
+    uint64_t checkOracleResult( const string& _receipt, string& _result) {
+        return 0;
+    }
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -89,7 +97,7 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture() {
+    SkaleHostFixture( const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
         dev::p2p::NetworkPreferences nprefs;
 
         ChainParams chainParams;
@@ -102,6 +110,10 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
+        chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+
+        if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
+            chainParams.sChain.multiTransactionMode = true;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );
@@ -166,25 +178,12 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define REQUIRE_BLOCK_INCREASE( increase ) \
     auto blockAfter = client->number();    \
     BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase )
-#define REQUIRE_BLOCK_INCREASE_THROW( increase, strErrorDescription ) \
-    {                                                                 \
-        auto blockAfter = client->number();                           \
-        if( ( blockAfter - blockBefore ) != increase )                \
-            throw std::runtime_error( strErrorDescription );          \
-    }
 
 #define REQUIRE_BLOCK_SIZE( number, s )                                             \
     {                                                                               \
         TransactionHashes blockTransactions =                                       \
             static_cast< Interface* >( client.get() )->transactionHashes( number ); \
         BOOST_REQUIRE_EQUAL( blockTransactions.size(), s );                         \
-    }
-#define REQUIRE_BLOCK_SIZE_THROW( number, s, strErrorDescription )                  \
-    {                                                                               \
-        TransactionHashes blockTransactions =                                       \
-            static_cast< Interface* >( client.get() )->transactionHashes( number ); \
-        if( blockTransactions.size() != s )                                         \
-            throw std::runtime_error( strErrorDescription );                        \
     }
 
 #define REQUIRE_BLOCK_TRANSACTION( blockNumber, txNumber, txHash )                       \
@@ -193,37 +192,18 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
             static_cast< Interface* >( client.get() )->transactionHashes( blockNumber ); \
         BOOST_REQUIRE_EQUAL( blockTransactions[txNumber], txHash );                      \
     }
-#define REQUIRE_BLOCK_TRANSACTION_THROW( blockNumber, txNumber, txHash, strErrorDescription ) \
-    {                                                                                         \
-        TransactionHashes blockTransactions =                                                 \
-            static_cast< Interface* >( client.get() )->transactionHashes( blockNumber );      \
-        if( blockTransactions[txNumber] != txHash )                                           \
-            throw std::runtime_error( strErrorDescription );                                  \
-    }
 
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
 
 #define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
     u256 nonceAfter = client->countAt( senderAddress );   \
     BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase )
-#define REQUIRE_NONCE_INCREASE_THROW( senderAddress, increase, strErrorDescription ) \
-    {                                                                                \
-        u256 nonceAfter = client->countAt( senderAddress );                          \
-        if( ( nonceAfter - nonceBefore ) != increase )                               \
-            throw std::runtime_error( strErrorDescription );                         \
-    }
 
 #define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
 
 #define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
     u256 balanceAfter = client->balanceAt( senderAddress ); \
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
-#define REQUIRE_BALANCE_DECREASE_THROW( senderAddress, decrease, strErrorDescription ) \
-    {                                                                                  \
-        u256 balanceAfter = client->balanceAt( senderAddress );                        \
-        if( ( balanceBefore - balanceAfter) != decrease )                              \
-            throw std::runtime_error( strErrorDescription );                           \
-    }
 
 #define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
     u256 balanceAfter = client->balanceAt( senderAddress );    \
@@ -231,72 +211,41 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
 
-static bool stat_impl_validTransaction(
-    const size_t idxAttempt,
-    size_t const cntAttempts,
-    dev::KeyPair & coinbase,
-    unique_ptr< Client > & client,
-    unique_ptr< FixedAccountHolder > & accountHolder,
-    ConsensusTestStub* stub
-    ) {
-std::string strTestDesc = cc::info( "validTransaction" ) + cc::debug( " test attempt " ) + cc::size10( idxAttempt ) + cc::debug( " of " ) + cc::size10( cntAttempts );
-    try {
-        auto senderAddress = coinbase.address();
-        auto receiver = KeyPair::create();
+BOOST_AUTO_TEST_CASE( validTransaction ) {
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
 
-        Json::Value json;
-        u256 gasPrice = 100 * dev::eth::shannon;  // 100b
-        u256 value = 10000 * dev::eth::szabo;
-        json["from"] = toJS( senderAddress );
-        json["to"] = toJS( receiver.address() );
-        json["value"] = jsToDecimal( toJS( value ) );
-        json["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
+    Json::Value json;
+    u256 gasPrice = 100 * dev::eth::shannon;  // 100b
+    u256 value = 10000 * dev::eth::szabo;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( value ) );
+    json["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
 
-        TransactionSkeleton ts = toTransactionSkeleton( json );
-        ts = client->populateTransactionWithDefaults( ts );
-        pair< bool, Secret > ar = accountHolder->authenticate( ts );
-        Transaction tx( ts, ar.second );
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
 
-        RLPStream stream;
-        tx.streamRLP( stream );
+    RLPStream stream;
+    tx.streamRLP( stream );
 
-        h256 txHash = tx.sha3();
+    h256 txHash = tx.sha3();
 
-        CHECK_NONCE_BEGIN( senderAddress );
-        CHECK_BALANCE_BEGIN( senderAddress );
-        CHECK_BLOCK_BEGIN;
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
 
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U );
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
 
-        REQUIRE_BLOCK_INCREASE_THROW( 1, "TEST validTransaction has failed check 1" );
-        REQUIRE_BLOCK_SIZE_THROW( 1, 1, "TEST validTransaction has failed check 2" );
-        REQUIRE_BLOCK_TRANSACTION_THROW( 1, 0, txHash, "TEST validTransaction has failed check 3" );
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
 
-        REQUIRE_NONCE_INCREASE_THROW( senderAddress, 1, "TEST validTransaction has failed check 4" );
-        REQUIRE_BALANCE_DECREASE_THROW( senderAddress, value + gasPrice * 21000, "TEST validTransaction has failed check 5" );
-        return true;
-    } catch ( std::exception & ex ) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test exception:" ) + cc::warn( ex.what() ) );
-        return false;
-    } catch (...) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test unknown exception" ) );
-        return false;
-    }
-}
-
-BOOST_AUTO_TEST_CASE( validTransaction
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-    bool bSuccess = false;
-    size_t const cntAttempts = 10;
-    for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
-        bSuccess = stat_impl_validTransaction( idxAttempt, cntAttempts, coinbase, client, accountHolder, stub );
-        if( bSuccess )
-            break;
-    }
-    BOOST_CHECK( bSuccess );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 }
 
 // Transaction should be IGNORED during execution
@@ -1090,6 +1039,109 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     u256 blockRandom = skaleHost->getBlockRandom();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
+    auto res = exec( bytesConstRef() );
+    std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
+}
+
+struct dummy{};
+
+// Test behavior of MTM if tx with big nonce was already mined as erroneous
+BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
+                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"multiTransactionMode", "1"}} ) );
+
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& accountHolder = fixture.accountHolder;
+    auto& skaleHost = fixture.skaleHost;
+    auto& stub = fixture.stub;
+
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    // 1 tx nonce = 1
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+
+    // future nonce
+    json["nonce"] = 1;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction tx1( ts, ar.second );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    h256 tx1Hash = tx1.sha3();
+
+    // it will be put to "future" queue
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    sleep( 1 );
+    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    // and not proposed
+    BOOST_REQUIRE_EQUAL(proposal.size(), 0);
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    // simulate it coming from another node
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+
+    REQUIRE_BLOCK_SIZE( 1, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+
+    // 2 tx nonce = 0
+    json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction tx2( ts, ar.second );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    h256 tx2Hash = tx2.sha3();
+
+    // post it to queue for "realism"
+    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 2);
+
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 2U ) );
+
+    REQUIRE_BLOCK_INCREASE( 2 );
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, tx2Hash );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+
+    // 3 submit nonce = 1 again!
+    // it should go to proposal
+    BOOST_REQUIRE_THROW(
+        skaleHost->receiveTransaction( toJS( stream1.out() ) ),
+        dev::eth::PendingTransactionAlreadyExists
+    );
+    sleep( 1 );
+    proposal = stub->pendingTransactions( 100 );
+    BOOST_REQUIRE_EQUAL(proposal.size(), 1);
+
+    // submit it for sure
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 3U ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

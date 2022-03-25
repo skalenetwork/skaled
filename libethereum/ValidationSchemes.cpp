@@ -196,9 +196,10 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"log-tx-params-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"no-txn-sending", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"no-ima-signing", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"skale-manager", {{js::obj_type}, JsonFieldPresence::Optional}},
+            {"skale-network-browser-refresh", {{js::int_type}, JsonFieldPresence::Optional}},
+            {"skale-network-browser-verbose", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"imaMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
-            {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
-            {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxySChain", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaCallerAddressSChain", {{js::str_type}, JsonFieldPresence::Optional}},
@@ -241,7 +242,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"maxFileStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxReservedStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
             {"maxSkaledLeveldbStorageBytes", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}}} );
+            {"freeContractDeployment", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"multiTransactionMode", {{js::bool_type}, JsonFieldPresence::Optional}},
+            {"nodeGroups", {{js::obj_type}, JsonFieldPresence::Optional}}} );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {

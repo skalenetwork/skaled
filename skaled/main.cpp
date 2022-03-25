@@ -47,6 +47,7 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libdevcore/SharedSpace.h>
+#include <libdevcore/StatusAndControl.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethcore/KeyManager.h>
@@ -69,10 +70,12 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
+#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
+#include <libweb3jsonrpc/rapidjson_handlers.h>
 
 #include <jsonrpccpp/server/connectors/httpserver.h>
 
@@ -130,20 +133,27 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    cout << "Skaled............................" << ver << "\n";
-    if ( !commit.empty() ) {
-        cout << "Commit............................" << commit << "\n";
-    }
-    cout << "Skale network protocol version...." << dev::eth::c_protocolVersion << "\n";
-    cout << "Client database version..........." << dev::eth::c_databaseVersion << "\n";
-    cout << "Build............................." << buildinfo->system_name << "/"
-         << buildinfo->build_type << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" ) << cc::attention( ver ) << "\n";
+    if ( !commit.empty() )
+        cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
+    std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug(".") << cc::num10( c_minorProtocolVersion ) << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) <<cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::attention( buildinfo->build_type ) << "\n";
+    std::cout.flush();
 }
 
 static std::string clientVersion() {
     const auto* buildinfo = skale_get_buildinfo();
     return std::string( "skaled/" ) + buildinfo->project_version + "/" + buildinfo->system_name +
            "/" + buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
+}
+
+static std::string clientVersionColorized() {
+    const auto* buildinfo = skale_get_buildinfo();
+    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) + cc::debug( "/" ) + cc::attention( buildinfo->system_name ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) + cc::debug( "/" ) + cc::attention( buildinfo->build_type );
 }
 
 /*
@@ -195,7 +205,8 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
     const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
-        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors", "info-acceptors"};
+        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
+        "info-acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -231,18 +242,20 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     fs::path saveTo;
     try {
-        std::cout << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 )
-                  << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" )
+            << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 ) << std::endl;
+        ;
 
         try {
             bool isBinaryDownload = true;
             std::string strErrorDescription;
             saveTo = snapshotManager->getDiffPath( block_number );
-            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+            bool bOK = dev::rpc::snapshot::download(
+                strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-                    std::cout << cc::normal( "... download progress ... " )
-                              << cc::size10( idxChunck ) << cc::normal( " of " )
-                              << cc::size10( cntChunks ) << "\r";
+                    clog( VerbosityInfo, "downloadSnapshot" )
+                        << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
+                        << cc::normal( " of " ) << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
                 isBinaryDownload, &strErrorDescription );
@@ -258,8 +271,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
-        std::cout << cc::success( "Snapshot download success for block " )
-                  << cc::u( to_string( block_number ) ) << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" )
+            << cc::success( "Snapshot download success for block " )
+            << cc::u( to_string( block_number ) ) << std::endl;
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
@@ -329,6 +343,7 @@ static void stat_handle_stop_actions() {
         return;
     g_bStopActionsStarted = true;
     std::thread( [&]() {
+        skale::network::browser::refreshing_stop();
         /*
         if ( g_jsonrpcIpcServer.get() ) {
             std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
@@ -347,8 +362,7 @@ static void stat_handle_stop_actions() {
                            cc::error( "Did stopped client" ) + "\n\n" );
         }
         g_bStopActionsComplete = true;
-    } )
-        .detach();
+    } ).detach();
 }
 
 static void stat_wait_stop_actions_complete() {
@@ -429,8 +443,7 @@ static void stat_init_common_signal_handling() {
                     }
 
                     _exit( ec );
-                } )
-                    .detach();
+                } ).detach();
             }  // if( ! g_bSelfKillStarted )
         }      // if ( !skutils::signal::g_bStop )
 
@@ -457,6 +470,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
 
@@ -706,6 +720,9 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
+    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -920,11 +937,16 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
-    cout << std::endl << "skaled " << Version << std::endl << std::endl;
+    std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
+              << cc::bright( "client " ) << clientVersionColorized() << "\n"
+              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+    std::cout.flush();
+    version();
 
     pid_t this_process_pid = getpid();
     std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
-              << cc::size10( size_t( this_process_pid ) ) << std::endl;
+              << cc::size10( size_t( this_process_pid ) ) << "\n";
+    std::cout.flush();
 
     setupLogging( loggingOptions );
 
@@ -990,6 +1012,12 @@ int main( int argc, char** argv ) try {
             return EX_CONFIG;
         }
     }
+
+    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
+        boost::filesystem::path( configPath ).remove_filename() );
+    ExitHandler::statusAndControl = statusAndControl;
+    // for now, leave previous values in file (for case of crash)
+
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
             cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
@@ -1294,6 +1322,7 @@ int main( int argc, char** argv ) try {
     extern unsigned c_minCacheSize;
 
     unsigned c_transactionQueueSize = 100000;
+    unsigned c_futureTransactionQueueSize = 16000;
 
     if ( chainConfigParsed ) {
         try {
@@ -1328,6 +1357,14 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSize" ) )
                 c_transactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSize"].get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueSize" ) )
+                c_futureTransactionQueueSize =
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueSize"]
+                        .get< unsigned >();
         } catch ( ... ) {
         }
 
@@ -1417,9 +1454,22 @@ int main( int argc, char** argv ) try {
         isDisableZMQ = true;
     }
 
+    if ( vm.count( "skale-network-browser-verbose" ) ) {
+        skale::network::browser::g_bVerboseLogging = true;
+    }
+    if ( vm.count( "skale-network-browser-refresh" ) ) {
+        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
+    }
+
     std::shared_ptr< SharedSpace > shared_space;
-    if ( vm.count( "shared-space-path" ) )
+    if ( vm.count( "shared-space-path" ) ) {
+        try {
+            fs::create_directory( vm["shared-space-path"].as< string >() );
+        } catch ( const fs::filesystem_error& ex ) {
+        }
+
         shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
+    }
 
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
@@ -1431,6 +1481,10 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "download-snapshot" ) ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
+        statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
@@ -1580,6 +1634,11 @@ int main( int argc, char** argv ) try {
         }
     }  // if --download-snapshot
 
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+
+    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
+
     // it was needed for snapshot downloading
     if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
         snapshotManager = nullptr;
@@ -1591,10 +1650,12 @@ int main( int argc, char** argv ) try {
     }
 
     if ( time( NULL ) < startTimestamp ) {
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
         std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, false );
     }
 
     if ( loggingOptions.verbosity > 0 )
@@ -1654,7 +1715,7 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< GasPricer > gasPricer;
 
     auto rotationFlagDirPath = configPath.parent_path();
-    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath );
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
     SkaleDebugInterface debugInterface;
 
     if ( getDataDir().size() )
@@ -1666,11 +1727,15 @@ int main( int argc, char** argv ) try {
         if ( chainParams.sealEngineName == Ethash::name() ) {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{
+                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                withExisting, TransactionQueue::Limits{c_transactionQueueSize, 1024} ) );
+                withExisting,
+                TransactionQueue::Limits{
+                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1691,8 +1756,8 @@ int main( int argc, char** argv ) try {
         DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
-        std::shared_ptr< SkaleHost > skaleHost =
-            std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor );
+        std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();
@@ -1713,6 +1778,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
 
         dev::eth::g_skaleHost = skaleHost;
     }
@@ -1806,7 +1872,8 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable( isProxy,
+                _t.userReadable(
+                    isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = g_client->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )
@@ -2243,255 +2310,11 @@ int main( int argc, char** argv ) try {
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return pSkaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
             };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_sendRawTransaction =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
 
-                        if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string strResponse = pEthFace->eth_sendRawTransaction(
-                            joRequest["params"].GetArray()[0].GetString() );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( const dev::Exception& ) {
-                        wrapJsonRpcException( joRequest,
-                            jsonrpc::JsonRpcException( dev::rpc::exceptionToErrorMessage() ),
-                            joResponse );
-                        return true;
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionReceipt =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        dev::eth::LocalisedTransactionReceipt _t =
-                            pEthFace->eth_getTransactionReceipt(
-                                joRequest["params"].GetArray()[0].GetString() );
-
-                        rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
-                        rapidjson::Document d = dev::eth::toRapidJson( _t, allocator );
-                        joResponse.EraseMember( "result" );
-                        joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::invalid_argument& ex ) {
-                        // not known transaction - skip exception
-                        joResponse.AddMember(
-                            "result", rapidjson::Value(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( ... ) {
-                        wrapJsonRpcException( joRequest,
-                            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ),
-                            joResponse );
-                        return true;
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_call =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        // validate params
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-                        auto paramsArray = joRequest["params"].GetArray();
-
-                        if ( paramsArray.Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-                        if ( !paramsArray[0].IsObject() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string block = dev::eth::getBlockFromEIP1898Json( paramsArray[1] );
-
-                        dev::eth::TransactionSkeleton _t =
-                            dev::eth::rapidJsonToTransactionSkeleton( paramsArray[0] );
-                        std::string strResponse = pEthFace->eth_call( _t, block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getBalance =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( joRequest["params"].GetArray().Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string block =
-                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
-
-                        std::string strResponse = pEthFace->eth_getBalance(
-                            joRequest["params"].GetArray()[0].GetString(), block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getStorageAt =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( joRequest["params"].GetArray().Size() != 3 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( !joRequest["params"].GetArray()[0].IsString() ||
-                             !joRequest["params"].GetArray()[1].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string block =
-                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[2] );
-
-                        std::string strResponse = pEthFace->eth_getStorageAt(
-                            joRequest["params"].GetArray()[0].GetString(),
-                            joRequest["params"].GetArray()[1].GetString(), block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getTransactionCount =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( joRequest["params"].GetArray().Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string block =
-                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
-
-                        std::string strResponse = pEthFace->eth_getTransactionCount(
-                            joRequest["params"].GetArray()[0].GetString(), block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
-            SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getCode =
-                [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-                    try {
-                        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( joRequest["params"].GetArray().Size() != 2 ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        if ( !joRequest["params"].GetArray()[0].IsString() ) {
-                            throw jsonrpc::JsonRpcException(
-                                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-                        }
-
-                        std::string block =
-                            dev::eth::getBlockFromEIP1898Json( joRequest["params"].GetArray()[1] );
-
-                        std::string strResponse = pEthFace->eth_getCode(
-                            joRequest["params"].GetArray()[0].GetString(), block );
-
-                        rapidjson::Value& v = joResponse["result"];
-                        v.SetString(
-                            strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
-                        return true;
-                    } catch ( std::exception const& ex ) {
-                        throw jsonrpc::JsonRpcException( ex.what() );
-                    } catch ( ... ) {
-                        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-                    }
-                };
             //
             SkaleServerOverride::opts_t serverOpts;
+            inject_rapidjson_handlers( serverOpts, pEthFace );
             serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
-            serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
-            serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
-            serverOpts.fn_eth_call_ = fn_eth_call;
-            serverOpts.fn_eth_getBalance_ = fn_eth_getBalance;
-            serverOpts.fn_eth_getStorageAt_ = fn_eth_getStorageAt;
-            serverOpts.fn_eth_getTransactionCount_ = fn_eth_getTransactionCount;
-            serverOpts.fn_eth_getCode_ = fn_eth_getCode;
             serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
             serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
             serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
@@ -2872,12 +2695,14 @@ int main( int argc, char** argv ) try {
             fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
         }  // if ( nExplicitPort ......
 
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, true );
+
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
-                sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+                sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
         else
             sessionManager->addSession(
-                strJsonAdminSessionKey, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+                strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
         clog( VerbosityInfo, "main" )
             << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
@@ -2899,13 +2724,9 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    dev::setThreadName( "main" );
+    skale::network::browser::refreshing_start( configPath.string() );
 
-    std::thread( []() {
-        std::this_thread::sleep_for( chrono::seconds( 10 ) );
-        stat_init_common_signal_handling();  // ensure initialized
-    } )
-        .detach();
+    dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
@@ -2915,12 +2736,17 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
+
+    skale::network::browser::refreshing_stop();
+
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
         g_jsonrpcIpcServer.reset( nullptr );
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
     }
     if ( g_client ) {
         g_client->stopWorking();
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
         g_client.reset( nullptr );
     }
 
@@ -2938,11 +2764,6 @@ int main( int argc, char** argv ) try {
     //    skutils::dispatch::shutdown();
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-    if ( ec == ExitHandler::ec_success ) {
-        int sig_no = ExitHandler::getSignal();
-        if ( sig_no != SIGINT && sig_no != SIGTERM )
-            ec = ExitHandler::ec_failure;
-    }
     if ( ec != ExitHandler::ec_success ) {
         std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
                   << cc::error( "...\n" );

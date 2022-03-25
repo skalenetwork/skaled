@@ -1,8 +1,11 @@
 [
 { "name": "skale_stats", "params": [], "order": [], "returns": {}},
 { "name": "skale_nodesRpcInfo", "params": [], "order": [], "returns": {}},
+{ "name": "skale_browseEntireNetwork", "params": [], "order": [], "returns": {}},
+{ "name": "skale_cachedEntireNetwork", "params": [], "order": [], "returns": {}},
 { "name": "skale_imaInfo", "params": [], "order": [], "returns": {}},
 { "name": "skale_imaVerifyAndSign", "params": [], "order": [], "returns": {}},
+{ "name": "skale_imaBSU256", "params": [], "order": [], "returns": {}},
 { "name": "skale_imaBroadcastTxnInsert", "params": [], "order": [], "returns": {}},
 { "name": "skale_imaBroadcastTxnErase", "params": [], "order": [], "returns": {}},
 { "name": "skale_imaTxnInsert", "params": [], "order": [], "returns": {}},

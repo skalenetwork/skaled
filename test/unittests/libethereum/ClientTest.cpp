@@ -152,8 +152,6 @@ public:
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase} );
-
-        dev::eth::simulateMining( *( m_ethereum ), 10 );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -437,6 +435,8 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -474,6 +474,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
 
@@ -509,6 +511,8 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -548,6 +552,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xd40B3c51D0ECED279b1697DbdF45d4D19b872164
 
@@ -578,157 +584,108 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
     BOOST_CHECK_EQUAL( estimate, u256( 41684 ) );
 }
 
-static bool stat_impl_consumptionWithRefunds( const size_t idxAttempt, size_t const cntAttempts ) {
-std::string strTestDesc = cc::info( "consumptionWithRefunds" ) + cc::debug( " test attempt " ) + cc::size10( idxAttempt ) + cc::debug( " of " ) + cc::size10( cntAttempts );
-    try {
-        TestClientFixture fixture( c_genesisInfoSkaleTest );
-        ClientTest* testClient = asClientTest( fixture.ethereum() );
-
-        //    This contract is predeployed on SKALE test network
-        //    on address 0xD2001300000000000000000000000000000000D3
-
-        //    pragma solidity 0.6.0;
-        //    contract Test {
-        //            mapping (uint => bool) public a;
-        //
-        //            function setA(uint x) public {
-        //                a[x] = true;
-        //                a[x] = false;
-        //            }
-        //    }
-
-        Address from = fixture.coinbase.address();
-        Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
-
-        // data to call method setA(0)
-        bytes data =
-                jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
-
-        int64_t maxGas = 100000;
-        u256 estimate = testClient
-                ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                               GasEstimationCallback() )
-                .first;
-
-        Json::Value estimateTransaction;
-        estimateTransaction["from"] = toJS(from );
-        estimateTransaction["to"] = toJS (contractAddress);
-        estimateTransaction["data"] = toJS (data);
-
-        estimateTransaction["gas"] = toJS(estimate - 1);
-        const bool bCheck1 = ( !fixture.getTransactionStatus(estimateTransaction) ) ? true : false;
-        if( ! bCheck1 )
-            throw new std::runtime_error( "consumptionWithRefunds check 1 failed" );
-
-        estimateTransaction["gas"] = toJS(estimate);
-        const bool bCheck2 = ( fixture.getTransactionStatus(estimateTransaction) ) ? true : false;
-        if( ! bCheck2 )
-            throw new std::runtime_error( "consumptionWithRefunds check 2 failed" );
-        return true;
-    } catch ( std::exception & ex ) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test exception:" ) + cc::warn( ex.what() ) );
-        return false;
-    } catch (...) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test unknown exception" ) );
-        return false;
-    }
-}
-
-static bool stat_impl_consumptionWithRefunds2( const size_t idxAttempt, size_t const cntAttempts ) {
-std::string strTestDesc = cc::info( "consumptionWithRefunds2" ) + cc::debug( " test attempt " ) + cc::size10( idxAttempt ) + cc::debug( " of " ) + cc::size10( cntAttempts );
-    try {
-        TestClientFixture fixture( c_genesisInfoSkaleTest );
-        ClientTest* testClient = asClientTest( fixture.ethereum() );
-
-        //    This contract is listed in c_genesisInfoSkaleTest, address:
-        //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
-
-        //    pragma solidity 0.6.0;
-        //    contract Test {
-        //        mapping (uint => bool)
-        //        public a;
-        //        uint public b;
-
-        //        function setA(uint x) public {
-        //            a[x] = true;
-        //        }
-
-        //        function getA(uint x) public {
-        //            if (true == a[x]){
-        //                a[x] = false;
-        //                b = b + 1;
-        //            }
-        //        }
-        //    }
-
-        Address from = fixture.coinbase.address();
-        Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
-
-        // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
-        // data to call getA(3)
-        bytes data =
-        jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
-
-        int64_t maxGas = 100000;
-        u256 estimate = testClient
-        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                       GasEstimationCallback() )
-        .first;
-
-        Json::Value estimateTransaction;
-        estimateTransaction["from"] = toJS(from);
-        estimateTransaction["to"] = toJS(contractAddress);
-        estimateTransaction["data"] = toJS (data);
-
-        estimateTransaction["gas"] = toJS(estimate - 1);
-        const bool bCheck1 = ( !fixture.getTransactionStatus(estimateTransaction) ) ? true : false;
-        if( ! bCheck1 )
-            throw new std::runtime_error( "consumptionWithRefunds2 check 1 failed" );
-
-        estimateTransaction["gas"] = toJS(estimate);
-        const bool bCheck2 = ( fixture.getTransactionStatus(estimateTransaction) ) ? true : false;
-        if( ! bCheck2 )
-            throw new std::runtime_error( "consumptionWithRefunds2 check 2 failed" );
-        return true;
-    } catch ( std::exception & ex ) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test exception:" ) + cc::warn( ex.what() ) );
-        return false;
-    } catch (...) {
-        clog( VerbosityError, "TEST ATTEMPT" ) <<
-            ( cc::fatal( "ERROR:" ) + " " + strTestDesc + cc::error( " test unknown exception" ) );
-        return false;
-    }
-}
-
-
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
-    bool bSuccess = false;
-    size_t const cntAttempts = 10;
-    for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
-        bSuccess = stat_impl_consumptionWithRefunds( idxAttempt, cntAttempts );
-        if( bSuccess )
-            break;
-    }
-    BOOST_CHECK( bSuccess );
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
+    //    This contract is predeployed on SKALE test network
+    //    on address 0xD2001300000000000000000000000000000000D3
+
+    //    pragma solidity 0.6.0;
+    //    contract Test {
+    //            mapping (uint => bool) public a;
+    //
+    //            function setA(uint x) public {
+    //                a[x] = true;
+    //                a[x] = false;
+    //            }
+    //    }
+
+    Address from = fixture.coinbase.address();
+    Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
+
+    // data to call method setA(0)
+    bytes data =
+            jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
+
+    int64_t maxGas = 100000;
+    u256 estimate = testClient
+            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                           GasEstimationCallback() )
+            .first;
+
+    Json::Value estimateTransaction;
+    estimateTransaction["from"] = toJS(from );
+    estimateTransaction["to"] = toJS (contractAddress);
+    estimateTransaction["data"] = toJS (data);
+
+    estimateTransaction["gas"] = toJS(estimate - 1);
+    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate);
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
-    bool bSuccess = false;
-    size_t const cntAttempts = 10;
-    for( size_t idxAttempt = 0; idxAttempt < cntAttempts; ++ idxAttempt ) {
-        bSuccess = stat_impl_consumptionWithRefunds2( idxAttempt, cntAttempts );
-        if( bSuccess )
-            break;
-    }
-    BOOST_CHECK( bSuccess );
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
+    //    This contract is listed in c_genesisInfoSkaleTest, address:
+    //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
+
+    //    pragma solidity 0.6.0;
+    //    contract Test {
+    //        mapping (uint => bool)
+    //        public a;
+    //        uint public b;
+
+    //        function setA(uint x) public {
+    //            a[x] = true;
+    //        }
+
+    //        function getA(uint x) public {
+    //            if (true == a[x]){
+    //                a[x] = false;
+    //                b = b + 1;
+    //            }
+    //        }
+    //    }
+
+    Address from = fixture.coinbase.address();
+    Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
+
+    // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
+    // data to call getA(3)
+    bytes data =
+            jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
+
+    int64_t maxGas = 100000;
+    u256 estimate = testClient
+            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                           GasEstimationCallback() )
+            .first;
+
+    Json::Value estimateTransaction;
+    estimateTransaction["from"] = toJS(from);
+    estimateTransaction["to"] = toJS(contractAddress);
+    estimateTransaction["data"] = toJS (data);
+
+    estimateTransaction["gas"] = toJS(estimate - 1);
+    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+
+    estimateTransaction["gas"] = toJS(estimate);
+    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
@@ -779,6 +736,8 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
@@ -844,6 +803,129 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
             .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( 121944 ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE( IMABLSPublicKey )
+
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
+                                                  R"E(
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "networkID" : "12313219",
+        "chainID": "0x01",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0x1388",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x020000",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0x47E7C4"
+    },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": 1231,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "ecdsaKeyName": "NEK:fa112"
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "1": {
+                "nodes": {
+                    "30": [
+                        0,
+                        30,
+                        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+                    "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+                    "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+                    "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+                }
+            },
+            "0": {
+                "nodes": {
+                    "26": [
+                        3,
+                        26,
+                        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
+                    ]
+                },
+                "finish_ts": 4294967290,
+                "bls_public_key": {
+                    "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+                    "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+                    "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+                    "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+                }
+            }
+        },
+        "nodes": [
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
+        ]
+    }
+  },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "modexp", "startingBlock" : "0x2dc6c0" } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "alt_bn128_G1_add", "startingBlock" : "0x2dc6c0", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } }
+    }
+}
+)E";
+
+BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
+    TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
+
+    std::cout << "HERE\n";
+    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
+    std::cout << "HERE\n";
+
+    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
+
+    testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
+
+    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = { "10860211539819517237363395256510340030868592687836950245163587507107792195621", "2419969454136313127863904023626922181546178935031521540751337209075607503568", "3399776985251727272800732947224655319335094876742988846345707000254666193993", "16982202412630419037827505223148517434545454619191931299977913428346639096984" };
+
+    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyAfterBlock );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

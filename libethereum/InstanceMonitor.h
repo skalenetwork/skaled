@@ -30,14 +30,17 @@
 
 namespace fs = boost::filesystem;
 
+class StatusAndControl;
+
 class InstanceMonitor {
 public:
-    explicit InstanceMonitor( const boost::filesystem::path& _rotationFlagFileDirPath )
+    explicit InstanceMonitor( const boost::filesystem::path& _rotationInfoFileDirPath,
+        std::shared_ptr< StatusAndControl > _statusAndControl = nullptr )
         : m_finishTimestamp( 0 ),
-          m_rotationInfoFilePath( dev::getDataDir() / rotation_info_file_name ),
-          m_rotationFlagFilePath( _rotationFlagFileDirPath / rotation_flag_file_name ) {
+          m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
+          m_statusAndControl( _statusAndControl ) {
         restoreRotationParams();
-        removeFlagFile();
+        reportExitTimeReached( false );
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
@@ -53,13 +56,11 @@ protected:
 
     uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;
-    const fs::path m_rotationFlagFilePath;
+    std::shared_ptr< StatusAndControl > m_statusAndControl;
 
     static const std::string rotation_info_file_name;
-    static const std::string rotation_flag_file_name;
 
-    void createFlagFile();
-    void removeFlagFile();
+    void reportExitTimeReached( bool _reached );
 
 private:
     dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};

@@ -152,6 +152,8 @@ extern std::string ensure_slash_at_end_copy( const std::string& s );
 extern std::string ensure_no_slash_at_end_copy( const char* s );
 extern std::string ensure_no_slash_at_end_copy( const std::string& s );
 
+extern std::string safe_ascii( const std::string& in );
+
 extern std::string get_tmp_folder_path();  // without slash at end
 extern std::string get_tmp_file_path(
     size_t cntCharactersInFileName = 16 );  // uses get_tmp_folder_path() and generates tmp file

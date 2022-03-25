@@ -4,6 +4,7 @@
 #include <proxygen/httpserver/ResponseBuilder.h>
 
 #include <skutils/console_colors.h>
+#include <skutils/multithreading.h>
 
 #include <glog/logging.h>
 
@@ -187,6 +188,7 @@ void request_site::onEOM() noexcept {
     bldr.header( "access-control-allow-origin", "*" );
     if ( rslt.isBinary_ ) {
         bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
+        bldr.header( "Content-Type", "application/octet-stream" );
         std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
         bldr.body( buffer );
     } else {
@@ -246,7 +248,7 @@ nlohmann::json server_side_request_handler::json_from_error_text(
     if ( strErrorDescription == nullptr || ( *strErrorDescription ) == '\0' )
         strErrorDescription = "unknown error";
     nlohmann::json jo = nlohmann::json::object();
-    jo["error"] = strErrorDescription;
+    jo["error"] = skutils::tools::safe_ascii( strErrorDescription );
     jo["id"] = joID;
     return jo;
 }
@@ -359,7 +361,8 @@ bool server::start() {
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
     options.idleTimeout = std::chrono::milliseconds( 60000 );
-    options.shutdownOn = {SIGINT, SIGTERM};
+    // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
+    // here
     options.enableContentCompression = false;
     options.handlerFactories =
         proxygen::RequestHandlerChain().addThen< request_site_factory >( this ).build();
@@ -372,7 +375,10 @@ bool server::start() {
     server_.reset( new proxygen::HTTPServer( std::move( options ) ) );
     server_->bind( IPs );
     // start HTTPServer main loop in a separate thread
-    thread_ = std::move( std::thread( [&]() { server_->start(); } ) );
+    thread_ = std::move( std::thread( [&]() {
+        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        server_->start();
+    } ) );
 
     pg_log( strLogPrefix_ + cc::debug( "did started server thread" ) + "\n" );
     return true;

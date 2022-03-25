@@ -836,8 +836,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -875,8 +877,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
-        joErrorResponce["result"] = "error";
-        joErrorResponce["error"] = std::string( e );
+        nlohmann::json joErrorObj;
+        joErrorObj["code"] = -32000;
+        joErrorObj["message"] = std::string( e );
+        joErrorResponce["error"] = joErrorObj;
         std::string strResponse = joErrorResponce.dump();
         stats::register_stats_exception(
             ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "messages" );
@@ -964,8 +968,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( ex.what() );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( ex.what() );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(), "" );
@@ -987,8 +993,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
-                joErrorResponce["result"] = "error";
-                joErrorResponce["error"] = std::string( e );
+                nlohmann::json joErrorObj;
+                joErrorObj["code"] = -32000;
+                joErrorObj["message"] = std::string( e );
+                joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
                 stats::register_stats_exception(
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
@@ -1954,7 +1962,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     }
     std::thread( [pThis]() {
         pThis->m_isRunning = true;
-        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
+        skutils::multithreading::setThreadName( pThis->m_strSchemeUC + "-listener" );
         try {
             pThis->run( [pThis]() -> bool {
                 if ( !pThis->m_isRunning )
@@ -2500,8 +2508,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( ex.what() );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( ex.what() );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
@@ -2520,8 +2530,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
-            joErrorResponce["result"] = "error";
-            joErrorResponce["error"] = std::string( e );
+            nlohmann::json joErrorObj;
+            joErrorObj["code"] = -32000;
+            joErrorObj["message"] = std::string( e );
+            joErrorResponce["error"] = joErrorObj;
             strResponse = joErrorResponce.dump();
             stats::register_stats_exception( strProtocol.c_str(), "POST" );
             if ( !strMethod.empty() ) {
@@ -2663,8 +2675,7 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::threadNameAppender tn(
-                "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
+            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
             if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
@@ -2887,14 +2898,11 @@ bool SkaleServerOverride::implStopListening(  // proxygen HTTP
                                         opts_.netOpts_.bindOptsStandard_ :
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
-        std::string strAddr =
-            ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
-                             ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
-        int nPort =
-            ( ( ipVer == 4 ) ?
-                    ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
-                    ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
-            nServerIndex;
+        std::string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
+                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
+        int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
+                                       ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
+                    nServerIndex;
         logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
             cc::notice( "Will stop " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
                 cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::notice( " server on address " ) +
@@ -2994,8 +3002,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS4std_ : serversWS4nfo_;
     if ( 0 <= bo.nBasePortWS4_ && bo.nBasePortWS4_ <= 65535 &&
-         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ &&
-         bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3008,8 +3015,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS6 =
         ( esm == e_server_mode_t::esm_standard ) ? serversWS6std_ : serversWS6nfo_;
     if ( 0 <= bo.nBasePortWS6_ && bo.nBasePortWS6_ <= 65535 &&
-         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ &&
-         bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3024,8 +3030,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS4_ && bo.nBasePortWSS4_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS4_ != bo.nBasePortWS4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ &&
-         bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
+         bo.nBasePortWSS4_ != bo.nBasePortHTTP4_ && bo.nBasePortWSS4_ != bo.nBasePortHTTPS4_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3041,8 +3046,7 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
     if ( 0 <= bo.nBasePortWSS6_ && bo.nBasePortWSS6_ <= 65535 &&
          ( !opts_.netOpts_.strPathSslKey_.empty() ) &&
          ( !opts_.netOpts_.strPathSslCert_.empty() ) && bo.nBasePortWSS6_ != bo.nBasePortWS6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ &&
-         bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
+         bo.nBasePortWSS6_ != bo.nBasePortHTTP6_ && bo.nBasePortWSS6_ != bo.nBasePortHTTPS6_ ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayWS > pServer;
             if ( !implStartListening(  // web socket
@@ -3062,9 +3066,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrHTTP4_,
-                     bo.nBasePortHTTP4_ + nServerIndex, "", "", "", nServerIndex, esm,
-                     pg_threads_, pg_threads_limit_ ) )
+                     pServer, 4, bo.strAddrHTTP4_, bo.nBasePortHTTP4_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP4.push_back( pServer );
         }
@@ -3076,9 +3079,8 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrHTTP6_,
-                     bo.nBasePortHTTP6_ + nServerIndex, "", "", "", nServerIndex, esm,
-                     pg_threads_, pg_threads_limit_ ) )
+                     pServer, 6, bo.strAddrHTTP6_, bo.nBasePortHTTP6_ + nServerIndex, "", "", "",
+                     nServerIndex, esm, pg_threads_, pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTP6.push_back( pServer );
         }
@@ -3093,10 +3095,10 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 4, bo.strAddrHTTPS4_,
-                     bo.nBasePortHTTPS4_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
-                     esm, pg_threads_, pg_threads_limit_ ) )
+                     pServer, 4, bo.strAddrHTTPS4_, bo.nBasePortHTTPS4_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTPS4.push_back( pServer );
         }
@@ -3111,10 +3113,10 @@ bool SkaleServerOverride::StartListening( e_server_mode_t esm ) {
         for ( nServerIndex = 0; nServerIndex < bo.cntServers_; ++nServerIndex ) {
             std::shared_ptr< SkaleRelayProxygenHTTP > pServer;
             if ( !implStartListening(  // proxygen HTTP
-                     pServer, 6, bo.strAddrHTTPS6_,
-                     bo.nBasePortHTTPS6_ + nServerIndex, opts_.netOpts_.strPathSslKey_,
-                     opts_.netOpts_.strPathSslCert_, opts_.netOpts_.strPathSslCA_, nServerIndex,
-                     esm, pg_threads_, pg_threads_limit_ ) )
+                     pServer, 6, bo.strAddrHTTPS6_, bo.nBasePortHTTPS6_ + nServerIndex,
+                     opts_.netOpts_.strPathSslKey_, opts_.netOpts_.strPathSslCert_,
+                     opts_.netOpts_.strPathSslCA_, nServerIndex, esm, pg_threads_,
+                     pg_threads_limit_ ) )
                 return false;
             serversProxygenHTTPS6.push_back( pServer );
         }
@@ -3481,14 +3483,12 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
         // serversMiniHTTP4std_.size() + serversMiniHTTP4nfo_.size() +
         // serversMiniHTTP6std_.size() + serversMiniHTTP6nfo_.size() +
         serversProxygenHTTP4std_.size() + serversProxygenHTTP4nfo_.size() +
-        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size()
-        ;
+        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size();
     joStats["protocols"]["https"]["listenerCount"] =
         // serversMiniHTTPS4std_.size() + serversMiniHTTPS4nfo_.size() +
         // serversMiniHTTPS6std_.size() + serversMiniHTTPS6nfo_.size() +
         serversProxygenHTTPS4std_.size() + serversProxygenHTTPS4nfo_.size() +
-        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size()
-        ;
+        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size();
     joStats["protocols"]["wss"]["listenerCount"] = serversWSS4std_.size() + serversWSS4nfo_.size() +
                                                    serversWSS6std_.size() + serversWSS6nfo_.size();
     {  // block for subsystem stats using optimized locking only once
@@ -3689,7 +3689,7 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
+void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
@@ -3703,7 +3703,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
             joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-            return false;
         } else {
             const rapidjson::Value& param = joRequest["params"];
             if ( !param.IsObject() ) {
@@ -3716,7 +3715,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
                 joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-                return false;
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
@@ -3781,7 +3779,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             throw std::runtime_error( "internal error, no client interface found" );
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
-        return true;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3797,7 +3794,6 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
         v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
@@ -3811,43 +3807,42 @@ bool SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
             "error in \"setSchainExitTime\" rpc method, unknown exception",
             joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        return false;
     }
 }
 
-bool SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_call_( joRequest, joResponse );
+    opts_.fn_eth_call_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getBalance_( joRequest, joResponse );
+    opts_.fn_eth_getBalance_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    return opts_.fn_eth_getCode_( joRequest, joResponse );
+    opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,

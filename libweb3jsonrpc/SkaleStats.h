@@ -202,6 +202,7 @@ public:
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;
     virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
+    virtual Json::Value skale_imaBSU256( const Json::Value& request ) override;
     virtual Json::Value skale_imaBroadcastTxnInsert( const Json::Value& request ) override;
     virtual Json::Value skale_imaBroadcastTxnErase( const Json::Value& request ) override;
     virtual Json::Value skale_imaTxnInsert( const Json::Value& request ) override;
@@ -209,6 +210,9 @@ public:
     virtual Json::Value skale_imaTxnClear( const Json::Value& request ) override;
     virtual Json::Value skale_imaTxnFind( const Json::Value& request ) override;
     virtual Json::Value skale_imaTxnListAll( const Json::Value& request ) override;
+
+    virtual Json::Value skale_browseEntireNetwork( const Json::Value& request ) override;
+    virtual Json::Value skale_cachedEntireNetwork( const Json::Value& request ) override;
 
 protected:
     eth::Interface* client() const { return &m_eth; }

@@ -48,6 +48,7 @@
 
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
+#include <libconsensus/exceptions/InvalidStateException.h>
 
 #include <exception>
 #include <fstream>
@@ -292,6 +293,12 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::vector< uint8_t > buffer =
         Skale::ll_impl_skale_downloadSnapshotFragment( fp, idxFrom, sizeOfChunk );
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
+
+    if ( sizeOfChunk + idxFrom == sizeOfFile )
+        clog( VerbosityInfo, "skale_downloadSnapshotFragment" )
+            << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
+            << "\n";
+
     nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -444,6 +451,47 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+std::string Skale::oracle_submitRequest( std::string& request ) {
+    try {
+        std::string receipt;
+        uint64_t status = this->m_client.submitOracleRequest( request, receipt );
+        if ( status != 0 ) {
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return receipt;
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( InvalidStateException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+    }
+}
+
+std::string Skale::oracle_checkResult( std::string& receipt ) {
+    try {
+        std::string result;
+        uint64_t status = this->m_client.checkOracleResult( receipt, result );
+        switch ( status ) {
+        case 0:
+            break;
+        case 5:
+            throw jsonrpc::JsonRpcException( status, "Oracle result is not ready" );
+        default:
+            throw jsonrpc::JsonRpcException(
+                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
+        }
+        return result;
+    } catch ( jsonrpc::JsonRpcException const& e ) {
+        throw e;
+    } catch ( InvalidStateException const& e ) {
+        throw e;
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+    }
+}
+
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
@@ -521,6 +569,10 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             std::string s;
             s += "skale_getSnapshot error: ";
             s += joSnapshotInfo["error"].get< std::string >();
+            if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
+                s += "; Invalid time to download snapshot. Valid time is ";
+                s += joSnapshotInfo["timeValid"].get< time_t >();
+            }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
             std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";

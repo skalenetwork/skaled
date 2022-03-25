@@ -36,6 +36,7 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
 #include <libethereum/SkaleHost.h>
+#include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
 
 #include <mutex>
@@ -55,6 +56,7 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
+skale::State g_state;
 
 };  // namespace eth
 };  // namespace dev
@@ -1000,6 +1002,59 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
             << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/getBlockRandom()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
+    try {
+        auto rawAddress = _in.cropped( 0, 20 ).toBytes();
+        std::string address;
+        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+        auto add = parseBigEndianRightPadded( _in, 20, 32 );
+
+        auto value = u256( add );
+
+        g_state.addBalance( Address( address ), value );
+
+        dev::u256 code = 1;
+        bytes response = toBigEndian( code );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/addBalance(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return {false, response};  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
+    try {
+        if ( !g_skaleHost )
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        auto imaBLSPublicKey = g_skaleHost->getIMABLSPublicKey();
+        bytes response = toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
+                         toBigEndian( dev::u256( imaBLSPublicKey[3] ) );
+        return {true, response};
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getIMABLSPublicKey(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getIMABLSPublicKey()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );

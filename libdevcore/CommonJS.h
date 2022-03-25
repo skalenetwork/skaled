@@ -70,6 +70,29 @@ std::string toJS( T const& _i ) {
     return stream.str();
 }
 
+template < typename T >
+std::string value_to_js( T const& _x, size_t nCharactersCount ) {
+    std::string s = toJS<T>( _x );
+    size_t n = s.length();
+    if( n >= ( nCharactersCount + 2 ) ) // +2 is "0x"
+        return s;
+    if ( n > 2 && ( s[0] == '0' && s[1] == 'x' ) )
+        s = s.substr( 2, n - 2 );
+    while ( s.length() < nCharactersCount )
+        s = "0" + s;
+    return "0x" + s;
+}
+
+template < typename T >
+std::string address_to_js( T const& _x ) {
+    return value_to_js < T > ( _x, 40 );
+}
+
+template < typename T >
+std::string u256_to_js( T const& _x ) {
+    return value_to_js < T > ( _x, 64 );
+}
+
 enum class OnFailed { InterpretRaw, Empty, Throw };
 
 /// Convert string to byte array. Input parameter is hex, optionally prefixed by "0x".

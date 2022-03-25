@@ -415,7 +415,7 @@ public:
     bool wait( duration_t timeout = duration_t( 0 ),  // zero means no timeout
         duration_t step = duration_t( 10 * 1000 * 1000 ) );
     void run();
-    void on_idle();
+    // void on_idle();
     void on_state_check();
     bool on_check_cancel_mode();
     void on_check_jobs();

@@ -189,7 +189,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
     const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
-    const u256& _gasPrice ) {
+    const u256& _gasPrice, const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
@@ -207,7 +207,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
             // Avoid invalid transactions.
             u256 nonceReq;
             nonceReq = _state.getNonce( _transaction.sender() );
-            if ( _transaction.nonce() != nonceReq ) {
+            if ( ( _transaction.nonce() != nonceReq && !_allowFuture ) ||
+                 ( _transaction.nonce() < nonceReq && _allowFuture ) ) {
                 std::cout << "WARNING: Transaction " << _transaction.sha3() << " nonce "
                           << _transaction.nonce() << " is not equal to required nonce " << nonceReq
                           << "\n";
@@ -325,8 +326,10 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            // dev::eth::g_state = m_s.delegateWrite();
             tie( success, output ) =
                 m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+            // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{std::move( output ), 0, outputSize};
             if ( !success ) {
@@ -460,10 +463,10 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-                bytes in = getDeploymentControllerCallData( m_ext->caller );
+                bytes in = isAddressWhitelistedCallData( m_ext->caller );
                 unique_ptr< CallParameters > deploymentCallParams(
-                    new CallParameters( SystemAddress, c_deploymentControllerContractAddress,
-                        c_deploymentControllerContractAddress, 0, 0, m_gas,
+                    new CallParameters( SystemAddress, c_configControllerContractAddress,
+                        c_configControllerContractAddress, 0, 0, m_gas,
                         bytesConstRef( in.data(), in.size() ), {} ) );
                 auto deploymentCallResult = m_ext->call( *deploymentCallParams );
                 auto deploymentCallOutput = dev::toHex( deploymentCallResult.output );
