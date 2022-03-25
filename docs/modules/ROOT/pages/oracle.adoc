@@ -1,0 +1,152 @@
+= Oracle
+:stem: latexmath
+
+The SKALE Oracle allows developers to access any external data source using the decentralized power of your SKALE Chain. If your dApp needs market data, weather temperatures, or Ethereum data, the SKALE Oracle provides a simple way to deliver this data to your Dapp.
+
+== How it works
+
+1. A client submits a JSON RPC `oracle_submitRequest` GET or POST request to the SKALE chain containing the request specification.
+2. The SKALE daemon (skaled) distributes the request to all other nodes in the SKALE Chain and the client is presented with a receipt.
+3. Each of the 16 SKALE nodes performs the request, retrieves the data, and signs the result with it's ECDSA key.
+4. The Oracle result is returned when stem:[t+1] nodes sign the same result, where stem:[t] is the maximum number of untruthful nodes. On SKALE Chains stem:[t] is stem:[\left\lfloor n\left( \frac{1}{3} \right) \right\rfloor].
+
+== Oracle Methods
+
+* <<oracle_submitRequest>>
+* <<oracle_checkResult>>
+
+== Request Formatting
+
+To make a JSON-RPC request, send an HTTP POST request with a `Content-Type: application/json`` header. The JSON request data should contain 4 fields:
+
+* `jsonrpc: <string>`, set to `"2.0"`
+* `id: <number>`, a unique client-generated identifying integer
+* `method: <string>`, a string containing the method to be invoked
+* `params: <array>`, a JSON array of ordered parameter values
+
+The response output will be a JSON object with the following fields:
+
+* `jsonrpc: <string>`, matching the request specification
+* `id: <number>`, matching the request identifier
+* `result: <array|number|object|string>`, requested data or success confirmation
+
+Requests can be sent in batches by sending an array of JSON-RPC request objects as the data for a single POST.
+
+== Proof of Work
+
+The proof of work is an integer value that is selected by iterating from 0 until the following pseudocode returns true. 
+
+IMPORTANT: The params passed into the PoW are sensitive to spaces and <CR>, therefore all spaces and <CR>s should be removed.
+
+[source,c++]
+----
+bool verifyPow() {
+   auto hash = SHA3_256(paramsString);
+   return ~u256(0) / hash > u256(10000); <1>
+}
+----
+<1> ~ is bitwise NOT and u256 is unsigned 256 bit number. 
+
+== Supported Geth Endpoints
+
+Besides any http/https endpoint, the Oracle supports the following Geth JSON RPC endpoints for retrieving Ethereum network data:
+
+* `geth://eth_call`
+* `geth://eth_gasPrice`
+* `geth://eth_blockNumber`
+* `geth://eth_getBlockByNumber`
+* `geth://eth_getBlockByHash`
+
+== JSON RPC API Reference
+
+=== oracle_submitRequest
+
+Submits an Oracle request and returns a message receipt.
+
+*Parameters:*
+
+* `cid: <uint64>` - chain ID
+* `uri: <string>` - Oracle http|https endpoint
+* `time: <uint64>`- Linux time of request in ms
+* `jsps: <array>` - list of JSON pointer to the data elements to be picked from the server response.
+* `pow: <string>` - uint64 proof of work used to protect against DoS attacks.
+* (optional) `trims: <uint64>` - an array of trim values used to trim endings of strings in the Oracle result. If `trims` array is provided, it must provide trim values for each JSON pointer requested.
+* (optional) `post: <string>` - if provided, the Oracle will use POST instead of GET (default). The value will be posted to the endpoint.
+
+*Results:*
+
+The result will be an RpcResponse JSON object with result equal to:
+
+* `<string>` - a message receipt used to check later if the result is ready
+
+*Example:*
+
+[source]
+----
+// Request
+{'id': 83, 'jsonrpc': '2.0', 'method': 'oracle_submitRequest', 'params': ['{"cid":1,"uri":"http://worldtimeapi.org/api/timezone/Europe/Kiev","jsps":["/unixtime","/day_of_year"],"trims":[1,1],"time":1648180246000,"pow":10013}']}
+
+// Result
+{'id': 83, 'jsonrpc': '2.0', 'result': '000487bbc41b34ae50f65deccde7089faf2b8d51c25d8bce618339e214cabea4'}
+
+// Request
+{'id': 83, 'jsonrpc': '2.0', 'method': 'oracle_submitRequest', 'params': ['{"cid":1,"uri":"geth://","jsps":["/result"],"post":"{\\"jsonrpc\\":\\"2.0\\",\\"method\\":\\"eth_gasPrice\\",\\"params\\":[],\\"id\\":1}","time":1648182393000,"pow":20233}']}
+
+// Result
+{'id': 83, 'jsonrpc': '2.0', 'result': '000260ba22f0a63234feeb712f34df3854b1a34f7933fa1e1097aced3e57c8c0'}
+----
+
+=== oracle_checkResult
+
+Checks whether an Oracle result has been derived. By default the result is signed by stem:[t+1] nodes, where stem:[t] is the maximum number of untruthful nodes. Each node signs using its ETH wallet ECDSA key.
+
+If no result has been derived, `ORACLE_RESULT_NOT_READY` is returned.
+
+The client is supposed to wait 1 second and try again.
+
+*Parameters:*
+
+* `receipt: <string>` - message receipt, returned by a call to `oracle_submitRequest`
+
+*Results:*
+
+The result repeats JSON elements from the corresponding Oracle request, plus includes a set of additional elements:
+
+* `rslts: <array>`- string results
+* `sigs : <array>`- ECDSA signatures where stem:[t] signatures are not null.
+
+*Example:*
+
+[source]
+----
+// Request
+{'id': 83, 'jsonrpc': '2.0', 'method': 'oracle_checkResult', 'params': ['000487bbc41b34ae50f65deccde7089faf2b8d51c25d8bce618339e214cabea4']}
+
+// Result
+{"cid":1,
+ "uri":"http://worldtimeapi.org/api/timezone/Europe/Kiev",
+  "jsps":["/unixtime", "/day_of_year", "/xxx"],
+  "trims":[1,1,1],"time":1642521456593,
+  "rslts":["164252145","1",null],
+   "sigs":["6d50daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+           "7d50daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+           "8d50daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+           "9d50daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+           "1050daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+           "6d50daf908d97d947fdcd387ed4bdc76149b11766f455b31c86d5734f4422c8f",
+          null,null,null,null,null,null,null,null,null,null]}
+----
+
+== List of Error Codes
+
+```
+#define ORACLE_UNKNOWN_RECEIPT  1
+#define ORACLE_TIMEOUT 2
+#define ORACLE_NO_CONSENSUS  3
+#define ORACLE_UNKNOWN_ERROR  4
+#define ORACLE_RESULT_NOT_READY 5
+#define ORACLE_DUPLICATE_REQUEST 6
+#define ORACLE_COULD_NOT_CONNECT_TO_ENDPOINT 7
+#define ORACLE_INVALID_JSON_RESPONSE 8
+#define ORACLE_REQUEST_TIMESTAMP_IN_THE_FUTURE 9
+```
