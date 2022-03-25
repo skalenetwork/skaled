@@ -80,6 +80,7 @@ private:
     const dev::eth::Client& m_client;
 #if CONSENSUS
     void fillSgxInfo( ConsensusEngine& consensus ) const;
+    void fillPublicKeyInfo( ConsensusEngine& consensus ) const;
     void fillRotationHistory( ConsensusEngine& consensus ) const;
 #endif
 };
