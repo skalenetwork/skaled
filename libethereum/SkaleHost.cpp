@@ -693,22 +693,26 @@ void SkaleHost::startWorking() {
     working = true;
     m_exitedForcefully = false;
 
-    try {
-        m_broadcaster->startService();
-    } catch ( const Broadcaster::StartupException& ) {
-        working = false;
-        std::throw_with_nested( SkaleHost::CreationException() );
-    }
+    if ( m_broadcastEnabled ) {
+        try {
+            m_broadcaster->startService();
+        } catch ( const Broadcaster::StartupException& ) {
+            working = false;
+            std::throw_with_nested( SkaleHost::CreationException() );
+        }
 
-    auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
-    m_broadcastThread = std::thread( bcast_func );
+        auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
+        m_broadcastThread = std::thread( bcast_func );
+    }
 
     try {
         m_consensus->startAll();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        m_broadcastThread.join();
+        if ( m_broadcastEnabled ) {
+            m_broadcastThread.join();
+        }
         throw;
     }
 
