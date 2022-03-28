@@ -60,6 +60,12 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        if ( joSkaleConfig_nodeInfo.count( "syncNode" ) != 0) {
+            const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
+            if (joSkaleConfig_nodeInfo_syncNode.get< bool >()) {
+                return true;
+            }
+        }
         if ( joSkaleConfig_nodeInfo.count( "no-txn-sending" ) == 0 )
             throw std::runtime_error(
                 "error config.json file, cannot find "
