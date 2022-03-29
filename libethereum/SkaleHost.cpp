@@ -171,8 +171,9 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    consensus.setPublicKeyInfo(
-        ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
+    if(ecdsaPublicKeys->size() && ecdsaPublicKeys->at(0).size() && blsPublicKeys.size() && blsPublicKeys[0]->at(0).size())
+        consensus.setPublicKeyInfo(
+            ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
