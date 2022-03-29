@@ -82,6 +82,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+
+    this->fillPublicKeyInfo(*consensus_engine_ptr);
+
+
     this->fillRotationHistory( *consensus_engine_ptr );
 
     return consensus_engine_ptr;
@@ -125,6 +129,9 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 
     consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
         blsKeyName);
+
+
+
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
