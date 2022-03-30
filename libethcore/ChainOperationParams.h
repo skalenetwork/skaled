@@ -83,13 +83,15 @@ public:
     std::string ecdsaKeyName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
+    bool syncNode;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
         std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
         std::string _keyShareName = "",
         const std::array< std::string, 4 >& _BLSPublicKeys = {"0", "1", "0", "1"},
-        const std::array< std::string, 4 >& _commonBLSPublicKeys = {"0", "1", "0", "1"} ) {
+        const std::array< std::string, 4 >& _commonBLSPublicKeys = {"0", "1", "0", "1"}, 
+        bool _syncNode = false ) {
         name = _name;
         id = _id;
         ip = _ip;
@@ -101,6 +103,7 @@ public:
         keyShareName = _keyShareName;
         BLSPublicKeys = _BLSPublicKeys;
         commonBLSPublicKeys = _commonBLSPublicKeys;
+        syncNode = _syncNode;
     }
 };
 
