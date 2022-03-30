@@ -1,0 +1,7 @@
+= What's New in SKALE Chains 3.14 (v2 Network)
+
+* Added SKALE Oracle APIs
+* Added RNG endpoint based on BLS
+* Added new precompile for RNG endpoint support
+* Added new predeploys for multisig support
+* Added Multitransaction mode

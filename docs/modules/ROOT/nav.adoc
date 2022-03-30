@@ -1,4 +1,5 @@
 * xref:index.adoc[Overview]
+* xref:whats-new.adoc[What’s New in SKALE Chains 3.14]
 * xref:skale-chain-fuel.adoc[SKALE Chain FUEL]
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
 * xref:contract-code-size-limits.adoc[Contract Code Size Limits]
