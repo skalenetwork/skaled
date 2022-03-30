@@ -107,10 +107,12 @@ public:
         BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const;
 
     /// Install, uninstall and query watches.
-    unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+    unsigned installWatch( LogFilter const& _filter, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
-    unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    unsigned installWatch( h256 _filterId, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
     bool uninstallWatch( unsigned _watchId ) override;

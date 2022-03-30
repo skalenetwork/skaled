@@ -251,8 +251,8 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     }
 }
 
-unsigned ClientBase::installWatch(
-    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+unsigned ClientBase::installWatch( LogFilter const& _f, const std::string& _strOrigin, Reaping _r,
+    fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     h256 h = _f.sha3();
     {
         Guard l( x_filtersWatches );
@@ -261,11 +261,11 @@ unsigned ClientBase::installWatch(
             m_filters.insert( make_pair( h, _f ) );
         }
     }
-    return installWatch( h, _r, fnOnNewChanges, isWS );
+    return installWatch( h, _strOrigin, _r, fnOnNewChanges, isWS );
 }
 
-unsigned ClientBase::installWatch(
-    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+unsigned ClientBase::installWatch( h256 _h, const std::string& _strOrigin, Reaping _r,
+    fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );

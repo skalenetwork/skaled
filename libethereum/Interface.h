@@ -124,10 +124,12 @@ public:
     virtual LocalisedLogEntries logs( LogFilter const& _filter ) const = 0;
 
     /// Install, uninstall and query watches.
-    virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( LogFilter const& _filter, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( h256 _filterId, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
     virtual bool uninstallWatch( unsigned _watchId ) = 0;
