@@ -82,6 +82,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+
+    this->fillPublicKeyInfo(*consensus_engine_ptr);
+
+
     this->fillRotationHistory( *consensus_engine_ptr );
 
     return consensus_engine_ptr;
@@ -123,9 +127,23 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 
     std::string blsKeyName = m_client.chainParams().nodeInfo.keyShareName;
 
+    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
+        blsKeyName);
+
+
+
+} catch ( ... ) {
+    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+}
+
+void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) const try {
+    const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
+
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        if(node.publicKey.size() == 0)
+            return;         //just don't do anything
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
@@ -155,11 +173,13 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
-        ecdsaPublicKeys, blsKeyName, blsPublicKeysPtr, t, n );
+    if(ecdsaPublicKeys->size() && ecdsaPublicKeys->at(0).size() && blsPublicKeys.size() && blsPublicKeys[0]->at(0).size())
+        consensus.setPublicKeyInfo(
+            ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
+
 
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
     std::map< uint64_t, std::vector< std::string > > rh;

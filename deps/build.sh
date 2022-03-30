@@ -783,7 +783,7 @@ then
 			#eval git checkout OpenSSL_1_0_2-stable
 			#eval git checkout OpenSSL_1_0_2g
 			#eval git checkout OpenSSL_1_1_0-stable
-			eval git checkout OpenSSL_1_1_1-stable
+			eval git checkout OpenSSL_1_1_1n
 			if [ "$ARCH" = "x86_or_x64" ];
 			then
 				if [ "$UNIX_SYSTEM_NAME" = "Darwin" ];
