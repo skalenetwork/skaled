@@ -277,6 +277,91 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
         }
     };
 
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_newFilter =
+        [=]( const std::string& strOrigin, const rapidjson::Document& joRequest,
+            rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() != 1 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( !joRequest["params"].GetArray()[0].IsObject() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            dev::eth::LogFilter filter =
+                dev::eth::rapidjsonToLogFilter( joRequest["params"].GetArray()[0] );
+
+            std::string strResponse = pEthFace->eth_newFilter( filter, strOrigin );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_newBlockFilter =
+        [=]( const std::string& strOrigin, const rapidjson::Document& joRequest,
+            rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() > 0 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string strResponse = pEthFace->eth_newBlockFilter( strOrigin );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_newPendingTransactionFilter =
+        [=]( const std::string& strOrigin, const rapidjson::Document& joRequest,
+            rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() > 0 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string strResponse = pEthFace->eth_newPendingTransactionFilter( strOrigin );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
     serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
     serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
     serverOpts.fn_eth_call_ = fn_eth_call;
@@ -284,4 +369,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
     serverOpts.fn_eth_getStorageAt_ = fn_eth_getStorageAt;
     serverOpts.fn_eth_getTransactionCount_ = fn_eth_getTransactionCount;
     serverOpts.fn_eth_getCode_ = fn_eth_getCode;
+    serverOpts.fn_eth_newFilter_ = fn_eth_newFilter;
+    serverOpts.fn_eth_newBlockFilter_ = fn_eth_newBlockFilter;
+    serverOpts.fn_eth_newPendingTransactionFilter_ = fn_eth_newPendingTransactionFilter;
 }

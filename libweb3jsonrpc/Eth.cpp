@@ -464,9 +464,9 @@ Json::Value Eth::eth_getUncleByBlockNumberAndIndex(
     }
 }
 
-string Eth::eth_newFilter( Json::Value const& _json ) {
+string Eth::eth_newFilter( const dev::eth::LogFilter& _filter, const std::string& _strOrigin ) {
     try {
-        return toJS( client()->installWatch( toLogFilter( _json ) ) );
+        return toJS( client()->installWatch( _filter, _strOrigin ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -480,14 +480,14 @@ string Eth::eth_newFilter( Json::Value const& _json ) {
 //    }
 //}
 
-string Eth::eth_newBlockFilter() {
+string Eth::eth_newBlockFilter( const std::string& strOrigin ) {
     h256 filter = dev::eth::ChainChangedFilter;
-    return toJS( client()->installWatch( filter ) );
+    return toJS( client()->installWatch( filter, strOrigin ) );
 }
 
-string Eth::eth_newPendingTransactionFilter() {
+string Eth::eth_newPendingTransactionFilter( const std::string& strOrigin ) {
     h256 filter = dev::eth::PendingChangedFilter;
-    return toJS( client()->installWatch( filter ) );
+    return toJS( client()->installWatch( filter, strOrigin ) );
 }
 
 bool Eth::eth_uninstallFilter( string const& _filterId ) {

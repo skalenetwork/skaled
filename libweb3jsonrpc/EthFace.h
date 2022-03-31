@@ -333,7 +333,8 @@ public:
             request[0u].asString(), request[1u].asString() );
     }
     inline virtual void eth_newFilterI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_newFilter( request[0u] );
+        dev::eth::LogFilter filter = dev::eth::toLogFilter( request[0u] );
+        response = this->eth_newFilter( filter );
     }
     //    inline virtual void eth_newFilterExI( const Json::Value& request, Json::Value& response )
     //    {
@@ -463,10 +464,11 @@ public:
         const std::string& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_getUncleByBlockNumberAndIndex(
         const std::string& param1, const std::string& param2 ) = 0;
-    virtual std::string eth_newFilter( const Json::Value& param1 ) = 0;
+    virtual std::string eth_newFilter(
+        const dev::eth::LogFilter& filter, const std::string& strOrigin = "" ) = 0;
     //    virtual std::string eth_newFilterEx( const Json::Value& param1 ) = 0;
-    virtual std::string eth_newBlockFilter() = 0;
-    virtual std::string eth_newPendingTransactionFilter() = 0;
+    virtual std::string eth_newBlockFilter( const std::string& strOrigin = "" ) = 0;
+    virtual std::string eth_newPendingTransactionFilter( const std::string& strOrigin = "" ) = 0;
     virtual bool eth_uninstallFilter( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChanges( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChangesEx( const std::string& param1 ) = 0;

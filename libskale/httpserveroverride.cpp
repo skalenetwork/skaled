@@ -3684,7 +3684,10 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
     {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
     {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
-    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
+    {"eth_getCode", &SkaleServerOverride::eth_getCode},
+    {"eth_newFilter", &SkaleServerOverride::eth_newFilter},
+    {"eth_newBlockFilter", &SkaleServerOverride::eth_newBlockFilter},
+    {"eth_newPendingTransactionFilter", &SkaleServerOverride::eth_newPendingTransactionFilter}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3843,6 +3846,21 @@ void SkaleServerOverride::eth_getTransactionCount( const std::string& strOrigin,
 void SkaleServerOverride::eth_getCode( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getCode_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newBlockFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newBlockFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newPendingTransactionFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newPendingTransactionFilter_( strOrigin, joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,
