@@ -332,8 +332,8 @@ public:
 
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
-    typedef std::function< void(
-        const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) >
+    typedef std::function< void( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse ) >
         fn_jsonrpc_call_t;
 
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,

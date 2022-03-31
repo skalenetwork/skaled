@@ -3810,39 +3810,39 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
     }
 }
 
-void SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_sendRawTransaction( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+    opts_.fn_eth_sendRawTransaction_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionReceipt( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionReceipt_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_call( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_call_( joRequest, joResponse );
+    opts_.fn_eth_call_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getBalance( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getBalance_( joRequest, joResponse );
+    opts_.fn_eth_getBalance_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getStorageAt( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+    opts_.fn_eth_getStorageAt_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionCount( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionCount_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getCode( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getCode_( joRequest, joResponse );
+    opts_.fn_eth_getCode_( strOrigin, joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,

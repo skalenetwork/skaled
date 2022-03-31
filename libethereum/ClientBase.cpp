@@ -254,7 +254,7 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
 
 unsigned ClientBase::installWatch( LogFilter const& _f, const std::string& _strOrigin, Reaping _r,
     fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
-    if ( m_filtersByIp[ _strOrigin ] == MAX_FILTERS_PER_IP_COUNT )
+    if ( m_filtersByIp[_strOrigin] == MAX_FILTERS_PER_IP_COUNT )
         return -1;
     h256 h = _f.sha3();
     {
@@ -262,7 +262,8 @@ unsigned ClientBase::installWatch( LogFilter const& _f, const std::string& _strO
         if ( !m_filters.count( h ) ) {
             LOG( m_loggerWatch ) << "FFF" << _f << h;
             m_filters.insert( make_pair( h, _f ) );
-            m_filtersByIp[ _strOrigin ] += 1;
+            if ( !_strOrigin.empty() )
+                m_filtersByIp[_strOrigin] += 1;
         }
     }
     return installWatch( h, _strOrigin, _r, fnOnNewChanges, isWS );

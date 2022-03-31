@@ -209,7 +209,8 @@ protected:
     std::unordered_map< h256, InstalledFilter > m_filters;  ///< The dictionary of filters that are
                                                             ///< active.
 
-    std::unordered_map< std::string, size_t > m_filtersByIp; ///< How many filters that are active created by per ip
+    std::unordered_map< std::string, size_t > m_filtersByIp;  ///< How many filters that are active
+                                                              ///< created by per ip
 
     std::unordered_map< h256, h256s > m_specialFilters =
         std::unordered_map< h256, std::vector< h256 > >{
