@@ -194,7 +194,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"log-value-size-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"log-json-string-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"log-tx-params-limit", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"no-txn-sending", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"no-ima-signing", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"skale-manager", {{js::obj_type}, JsonFieldPresence::Optional}},
             {"skale-network-browser-refresh", {{js::int_type}, JsonFieldPresence::Optional}},
