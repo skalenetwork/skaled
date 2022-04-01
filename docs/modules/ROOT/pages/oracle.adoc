@@ -150,3 +150,9 @@ The result repeats JSON elements from the corresponding Oracle request, plus inc
 #define ORACLE_INVALID_JSON_RESPONSE 8
 #define ORACLE_REQUEST_TIMESTAMP_IN_THE_FUTURE 9
 ```
+
+== Demo script
+
+You can use the following python script to send example requests to your SKALE chain. Replace the URL in line 8 with your SKALE Chain endpoint.
+
+https://github.com/skalenetwork/oracle-demo
