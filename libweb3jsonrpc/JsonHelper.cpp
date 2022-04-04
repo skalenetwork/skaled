@@ -612,6 +612,53 @@ dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avo
     return filter;
 }
 
+dev::eth::LogFilter rapidjsonToLogFilter( rapidjson::Value const& _json ) {
+    dev::eth::LogFilter filter;
+    if ( !_json.IsObject() || !_json.MemberCount() )
+        return filter;
+
+    if ( _json.HasMember( "fromBlock" ) ) {
+        if ( !_json["fromBlock"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].GetString() ) );
+    }
+    if ( _json.HasMember( "toBlock" ) ) {
+        if ( !_json["toBlock"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].GetString() ) );
+    }
+    if ( _json.HasMember( "address" ) ) {
+        if ( !_json["address"].IsArray() && !_json["address"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        if ( _json["address"].IsArray() )
+            for ( size_t i = 0; i < _json["address"].Size(); ++i )
+                filter.address( jsToAddress( _json["address"][i].GetString() ) );
+        else
+            filter.address( jsToAddress( _json["address"].GetString() ) );
+    }
+    if ( _json.HasMember( "topics" ) ) {
+        if ( !_json["topics"].IsArray() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        for ( unsigned i = 0; i < _json["topics"].Size(); i++ ) {
+            if ( !_json["topics"][i].IsArray() && !_json["topics"][i].IsString() )
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            if ( _json["topics"][i].IsArray() ) {
+                for ( size_t j = 0; j < _json["topics"][i].Size(); ++j ) {
+                    if ( !_json["topics"][i][j].IsString() )
+                        throw jsonrpc::JsonRpcException(
+                            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                    filter.topic( i, jsToFixed< 32 >( _json["topics"][i][j].GetString() ) );
+                }
+            } else {
+                if ( !_json["topics"][i].IsString() )
+                    throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+                filter.topic( i, jsToFixed< 32 >( _json["topics"][i].GetString() ) );
+            }
+        }
+    }
+    return filter;
+}
+
 bool validateEIP1898Json( const rapidjson::Value& jo ) {
     if ( !jo.IsObject() )
         return false;
