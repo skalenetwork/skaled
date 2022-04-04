@@ -142,6 +142,8 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        if(node.publicKey.size() == 0)
+            return;         //just don't do anything
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
@@ -171,8 +173,9 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    consensus.setPublicKeyInfo(
-        ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
+    if(ecdsaPublicKeys->size() && ecdsaPublicKeys->at(0).size() && blsPublicKeys.size() && blsPublicKeys[0]->at(0).size())
+        consensus.setPublicKeyInfo(
+            ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
@@ -228,10 +231,12 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL, 
+    bool _broadcastEnabled ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      m_broadcastEnabled( _broadcastEnabled ),
       total_sent( 0 ),
       total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -703,22 +708,26 @@ void SkaleHost::startWorking() {
     working = true;
     m_exitedForcefully = false;
 
-    try {
-        m_broadcaster->startService();
-    } catch ( const Broadcaster::StartupException& ) {
-        working = false;
-        std::throw_with_nested( SkaleHost::CreationException() );
-    }
+    if ( m_broadcastEnabled ) {
+        try {
+            m_broadcaster->startService();
+        } catch ( const Broadcaster::StartupException& ) {
+            working = false;
+            std::throw_with_nested( SkaleHost::CreationException() );
+        }
 
-    auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
-    m_broadcastThread = std::thread( bcast_func );
+        auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
+        m_broadcastThread = std::thread( bcast_func );
+    }
 
     try {
         m_consensus->startAll();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        m_broadcastThread.join();
+        if ( m_broadcastEnabled ) {
+            m_broadcastThread.join();
+        }
         throw;
     }
 
