@@ -264,21 +264,23 @@ public:
 
 public:
     // new block watch
-    virtual unsigned installNewBlockWatch(
-        std::function< void( const unsigned&, const Block& ) >& ) {  // not implemented here
+    virtual unsigned installNewBlockWatch( std::function< void( const unsigned&, const Block& ) >&,
+        const std::string& ) {  // not implemented here
         return unsigned( -1 );
     }
-    virtual bool uninstallNewBlockWatch( const unsigned& ) {  // not implemented here
+    virtual bool uninstallNewBlockWatch( const unsigned&, const std::string& ) {  // not implemented
+                                                                                  // here
         return false;
     }
 
     // new pending transation watch
     virtual unsigned installNewPendingTransactionWatch(  // not implemented here
-        std::function< void( const unsigned&, const Transaction& ) >& ) {
+        std::function< void( const unsigned&, const Transaction& ) >&, const std::string& ) {
         return unsigned( -1 );
     }
-    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) {  // not implemented
-                                                                           // here
+    virtual bool uninstallNewPendingTransactionWatch(
+        const unsigned&, const std::string& ) {  // not implemented
+                                                 // here
         return false;
     }
 };

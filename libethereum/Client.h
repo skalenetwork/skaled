@@ -599,13 +599,15 @@ protected:
 public:
     // new block watch
     virtual unsigned installNewBlockWatch(
-        std::function< void( const unsigned&, const Block& ) >& ) override;
-    virtual bool uninstallNewBlockWatch( const unsigned& ) override;
+        std::function< void( const unsigned&, const Block& ) >&, const std::string& ) override;
+    virtual bool uninstallNewBlockWatch( const unsigned&, const std::string& ) override;
 
     // new pending transation watch
     virtual unsigned installNewPendingTransactionWatch(
-        std::function< void( const unsigned&, const Transaction& ) >& ) override;
-    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
+        std::function< void( const unsigned&, const Transaction& ) >&,
+        const std::string& ) override;
+    virtual bool uninstallNewPendingTransactionWatch(
+        const unsigned&, const std::string& ) override;
 };
 
 }  // namespace eth

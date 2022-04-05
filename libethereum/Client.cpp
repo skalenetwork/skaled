@@ -1320,19 +1320,29 @@ void Client::updateIMABLSPublicKey() {
 
 // new block watch
 unsigned Client::installNewBlockWatch(
-    std::function< void( const unsigned&, const Block& ) >& fn ) {
+    std::function< void( const unsigned&, const Block& ) >& fn, const std::string& strOrigin ) {
+    if ( m_filtersByIp[strOrigin] == MAX_FILTERS_PER_IP_COUNT )
+        throw std::invalid_argument( "Too many filters created from " + strOrigin );
+    m_filtersByIp[strOrigin] += 1;
     return m_new_block_watch.install( fn );
 }
-bool Client::uninstallNewBlockWatch( const unsigned& k ) {
+bool Client::uninstallNewBlockWatch( const unsigned& k, const std::string& strOrigin ) {
+    m_filtersByIp[strOrigin] -= 1;
     return m_new_block_watch.uninstall( k );
 }
 
 // new pending transation watch
 unsigned Client::installNewPendingTransactionWatch(
-    std::function< void( const unsigned&, const Transaction& ) >& fn ) {
+    std::function< void( const unsigned&, const Transaction& ) >& fn,
+    const std::string& strOrigin ) {
+    if ( m_filtersByIp[strOrigin] == MAX_FILTERS_PER_IP_COUNT )
+        throw std::invalid_argument( "Too many filters created from " + strOrigin );
+    m_filtersByIp[strOrigin] += 1;
     return m_new_pending_transaction_watch.install( fn );
 }
-bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
+bool Client::uninstallNewPendingTransactionWatch(
+    const unsigned& k, const std::string& strOrigin ) {
+    m_filtersByIp[strOrigin] -= 1;
     return m_new_pending_transaction_watch.uninstall( k );
 }
 

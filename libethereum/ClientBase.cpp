@@ -307,6 +307,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
             LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
+    m_filtersByIp[""] -= 1;
     return true;
 }
 

@@ -1106,7 +1106,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     setInstalledWatchesNewPendingTransactions_.clear();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallNewPendingTransactionWatch( iw );
+            pEthereum->uninstallNewPendingTransactionWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1115,7 +1115,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     setInstalledWatchesNewBlocks_.clear();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallNewBlockWatch( iw );
+            pEthereum->uninstallNewBlockWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1467,12 +1467,14 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                         ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                         "eth_subscription/newPendingTransactions" );
                     stats::register_stats_error( "RPC", "eth_subscription/newPendingTransactions" );
-                    pThis->ethereum()->uninstallNewPendingTransactionWatch( iw );
+                    pThis->ethereum()->uninstallNewPendingTransactionWatch(
+                        iw, pThis->m_strUnDdosOrigin );
                 }
                 //} );
             } );
         };
-        unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+        unsigned iw = ethereum()->installNewPendingTransactionWatch(
+            fnOnSunscriptionEvent, m_strUnDdosOrigin );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION;
         std::string strIW = dev::toJS( iw );
@@ -1593,12 +1595,12 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                         ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                         "eth_subscription/newHeads" );
                     stats::register_stats_error( "RPC", "eth_subscription/newHeads" );
-                    pThis->ethereum()->uninstallNewBlockWatch( iw );
+                    pThis->ethereum()->uninstallNewBlockWatch( iw, pThis->m_strUnDdosOrigin );
                 }
                 //} );
             } );
         };
-        unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+        unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent, m_strUnDdosOrigin );
         setInstalledWatchesNewBlocks_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK;
         std::string strIW = dev::toJS( iw );
@@ -1747,7 +1749,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallNewPendingTransactionWatch( iw );
+            ethereum()->uninstallNewPendingTransactionWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesNewPendingTransactions_.erase(
                 iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK ) {
@@ -1770,7 +1772,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallNewBlockWatch( iw );
+            ethereum()->uninstallNewBlockWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesNewBlocks_.erase( iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) {
             SkaleStatsSubscriptionManager::subscription_id_t idSubscription =
@@ -2100,7 +2102,7 @@ SkaleServerOverride::SkaleServerOverride(
         statsTransactions_.event_queue_add( "transactions",
             0  // stats::g_nSizeDefaultOnQueueAdd
         );
-        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent, "0.0.0.0" );
     }  // block
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
@@ -2113,17 +2115,17 @@ SkaleServerOverride::SkaleServerOverride(
             0  // stats::g_nSizeDefaultOnQueueAdd
         );
         iwPendingTransactionStats_ =
-            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent, "0.0.0.0" );
     }  // block
 }
 
 SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
+        ethereum()->uninstallNewBlockWatch( iwBlockStats_, "0.0.0.0" );
         iwBlockStats_ = unsigned( -1 );
     }
     if ( iwPendingTransactionStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_ );
+        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_, "0.0.0.0" );
         iwPendingTransactionStats_ = unsigned( -1 );
     }
     StopListening();
