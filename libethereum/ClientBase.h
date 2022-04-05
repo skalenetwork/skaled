@@ -115,7 +115,7 @@ public:
         Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
-    bool uninstallWatch( unsigned _watchId ) override;
+    bool uninstallWatch( unsigned _watchId, const std::string& strOrigin = "" ) override;
     LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 

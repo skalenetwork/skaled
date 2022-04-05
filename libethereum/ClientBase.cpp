@@ -290,7 +290,7 @@ unsigned ClientBase::installWatch( h256 _h, const std::string& _strOrigin, Reapi
     return ret;
 }
 
-bool ClientBase::uninstallWatch( unsigned _i ) {
+bool ClientBase::uninstallWatch( unsigned _i, const std::string& _strOrigin ) {
     LOG( m_loggerWatch ) << "XXX" << _i;
 
     Guard l( x_filtersWatches );
@@ -307,7 +307,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
             LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
-    m_filtersByIp[""] -= 1;
+    m_filtersByIp[_strOrigin] -= 1;
     return true;
 }
 

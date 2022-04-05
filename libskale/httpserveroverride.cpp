@@ -1097,7 +1097,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     auto pEthereum = ethereum();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallWatch( iw );
+            pEthereum->uninstallWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1352,7 +1352,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                 "eth_subscription/logs" );
                                             stats::register_stats_error(
                                                 "RPC", "eth_subscription/logs" );
-                                            pThis->ethereum()->uninstallWatch( iw );
+                                            pThis->ethereum()->uninstallWatch(
+                                                iw, pThis->m_strUnDdosOrigin );
                                         }
                                         //    } );
                                     }  // for ( const auto& joWalk : joResultLogs )
@@ -1815,7 +1816,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallWatch( iw );
+            ethereum()->uninstallWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesLogs_.erase( iw );
         }
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )

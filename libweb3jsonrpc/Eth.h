@@ -118,7 +118,8 @@ public:
     virtual std::string eth_newBlockFilter( const std::string& strOrigin = "" ) override;
     virtual std::string eth_newPendingTransactionFilter(
         const std::string& strOrigin = "" ) override;
-    virtual bool eth_uninstallFilter( std::string const& _filterId ) override;
+    virtual bool eth_uninstallFilter(
+        std::string const& _filterId, const std::string& strOrigin = "" ) override;
     virtual Json::Value eth_getFilterChanges( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChangesEx( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterLogs( std::string const& _filterId ) override;

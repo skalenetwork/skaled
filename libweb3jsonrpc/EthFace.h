@@ -469,7 +469,8 @@ public:
     //    virtual std::string eth_newFilterEx( const Json::Value& param1 ) = 0;
     virtual std::string eth_newBlockFilter( const std::string& strOrigin = "" ) = 0;
     virtual std::string eth_newPendingTransactionFilter( const std::string& strOrigin = "" ) = 0;
-    virtual bool eth_uninstallFilter( const std::string& param1 ) = 0;
+    virtual bool eth_uninstallFilter(
+        const std::string& param1, const std::string& strOrigin = "" ) = 0;
     virtual Json::Value eth_getFilterChanges( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChangesEx( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterLogs( const std::string& param1 ) = 0;

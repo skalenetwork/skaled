@@ -64,8 +64,7 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode =
-            joSkaleConfig_nodeInfo["syncNode"];
+        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
         isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
     } catch ( ... ) {
     }
@@ -490,9 +489,10 @@ string Eth::eth_newPendingTransactionFilter( const std::string& strOrigin ) {
     return toJS( client()->installWatch( filter, strOrigin ) );
 }
 
-bool Eth::eth_uninstallFilter( string const& _filterId ) {
+bool Eth::eth_uninstallFilter( string const& _filterId, const std::string& _strOrigin ) {
     try {
-        return client()->uninstallWatch( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        return client()->uninstallWatch(
+            static_cast< unsigned int >( jsToInt( _filterId ) ), _strOrigin );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

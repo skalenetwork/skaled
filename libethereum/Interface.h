@@ -132,7 +132,7 @@ public:
         Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual bool uninstallWatch( unsigned _watchId ) = 0;
+    virtual bool uninstallWatch( unsigned _watchId, const std::string& strOrigin = "" ) = 0;
     LocalisedLogEntries peekWatchSafe( unsigned _watchId ) const {
         try {
             return peekWatch( _watchId );
