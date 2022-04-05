@@ -3690,7 +3690,8 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"eth_getCode", &SkaleServerOverride::eth_getCode},
     {"eth_newFilter", &SkaleServerOverride::eth_newFilter},
     {"eth_newBlockFilter", &SkaleServerOverride::eth_newBlockFilter},
-    {"eth_newPendingTransactionFilter", &SkaleServerOverride::eth_newPendingTransactionFilter}};
+    {"eth_newPendingTransactionFilter", &SkaleServerOverride::eth_newPendingTransactionFilter},
+    {"eth_uninstallFilter", &SkaleServerOverride::eth_uninstallFilter}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3864,6 +3865,11 @@ void SkaleServerOverride::eth_newBlockFilter( const std::string& strOrigin,
 void SkaleServerOverride::eth_newPendingTransactionFilter( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_newPendingTransactionFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_uninstallFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_uninstallFilter_( strOrigin, joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,

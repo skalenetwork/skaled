@@ -426,6 +426,7 @@ public:
         fn_jsonrpc_call_t fn_eth_newFilter_;
         fn_jsonrpc_call_t fn_eth_newBlockFilter_;
         fn_jsonrpc_call_t fn_eth_newPendingTransactionFilter_;
+        fn_jsonrpc_call_t fn_eth_uninstallFilter_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -446,6 +447,7 @@ public:
             fn_eth_newFilter_ = other.fn_eth_newFilter_;
             fn_eth_newBlockFilter_ = other.fn_eth_newBlockFilter_;
             fn_eth_newPendingTransactionFilter_ = other.fn_eth_newPendingTransactionFilter_;
+            fn_eth_uninstallFilter_ = other.fn_eth_uninstallFilter_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -621,6 +623,9 @@ protected:
 
     void eth_newPendingTransactionFilter( const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_uninstallFilter( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;

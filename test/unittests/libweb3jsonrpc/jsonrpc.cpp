@@ -967,11 +967,29 @@ BOOST_AUTO_TEST_CASE( create_filters ) {
         string filterId = fixture.rpcClient->eth_newFilter( filterObj );
     }
 
-    Json::Value filterObj;
-    filterObj["address"] = contractAddress;
-    filterObj["fromBlock"] = "0x1";
+    Json::Value filterObjFail;
+    filterObjFail["address"] = contractAddress;
+    filterObjFail["fromBlock"] = "0x1";
 
-    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_newFilter( filterObj ), jsonrpc::JsonRpcException );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_newFilter( filterObjFail ), jsonrpc::JsonRpcException );
+
+    for (size_t i = 0; i < 100; ++i) {
+        BOOST_REQUIRE( fixture.rpcClient->eth_uninstallFilter( std::to_string( i ) ) );
+    }
+
+    std::cout << "HERE\n";
+
+    for (size_t i = 0; i < 100; ++i) {
+        Json::Value filterObj;
+        filterObj["address"] = contractAddress;
+        filterObj["fromBlock"] = "0x1";
+        string filterId = fixture.rpcClient->eth_newFilter( filterObj );
+    }
+
+    filterObjFail["address"] = contractAddress;
+    filterObjFail["fromBlock"] = "0x1";
+
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_newFilter( filterObjFail ), jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {

@@ -318,7 +318,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
-            if ( joRequest["params"].GetArray().Size() > 0 ) {
+            if ( joRequest["params"].GetArray().Size() != 0 ) {
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
@@ -344,7 +344,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
-            if ( joRequest["params"].GetArray().Size() > 0 ) {
+            if ( joRequest["params"].GetArray().Size() != 0 ) {
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
@@ -352,6 +352,38 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
             rapidjson::Value& v = joResponse["result"];
             v.SetString( strResponse.c_str(), strResponse.size(), joResponse.GetAllocator() );
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_uninstallFilter =
+        [=]( const std::string& strOrigin, const rapidjson::Document& joRequest,
+            rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() != 1 ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            std::string filterId = joRequest["params"].GetArray()[0].GetString();
+
+            bool response = pEthFace->eth_uninstallFilter( filterId, strOrigin );
+
+            rapidjson::Value& v = joResponse["result"];
+            v.SetBool( response ) /*joResponse.GetAllocator() )*/;
         } catch ( const jsonrpc::JsonRpcException& ex ) {
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
@@ -372,4 +404,5 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
     serverOpts.fn_eth_newFilter_ = fn_eth_newFilter;
     serverOpts.fn_eth_newBlockFilter_ = fn_eth_newBlockFilter;
     serverOpts.fn_eth_newPendingTransactionFilter_ = fn_eth_newPendingTransactionFilter;
+    serverOpts.fn_eth_uninstallFilter_ = fn_eth_uninstallFilter;
 }
