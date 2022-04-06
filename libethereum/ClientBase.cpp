@@ -40,6 +40,7 @@ using skale::Permanence;
 using skale::State;
 
 static const int64_t c_maxGasEstimate = 50000000;
+const size_t ClientBase::MAX_FILTERS_PER_IP_COUNT = 100;
 
 ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
 
@@ -251,8 +252,10 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     }
 }
 
-unsigned ClientBase::installWatch(
-    LogFilter const& _f, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+unsigned ClientBase::installWatch( LogFilter const& _f, const std::string& _strOrigin, Reaping _r,
+    fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+    if ( m_filtersByIp[_strOrigin] == MAX_FILTERS_PER_IP_COUNT )
+        throw std::invalid_argument( "Too many filters created from " + _strOrigin );
     h256 h = _f.sha3();
     {
         Guard l( x_filtersWatches );
@@ -260,12 +263,14 @@ unsigned ClientBase::installWatch(
             LOG( m_loggerWatch ) << "FFF" << _f << h;
             m_filters.insert( make_pair( h, _f ) );
         }
+        if ( !_strOrigin.empty() )
+            m_filtersByIp[_strOrigin] += 1;
     }
-    return installWatch( h, _r, fnOnNewChanges, isWS );
+    return installWatch( h, _strOrigin, _r, fnOnNewChanges, isWS );
 }
 
-unsigned ClientBase::installWatch(
-    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+unsigned ClientBase::installWatch( h256 _h, const std::string& _strOrigin, Reaping _r,
+    fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );
@@ -285,7 +290,7 @@ unsigned ClientBase::installWatch(
     return ret;
 }
 
-bool ClientBase::uninstallWatch( unsigned _i ) {
+bool ClientBase::uninstallWatch( unsigned _i, const std::string& _strOrigin ) {
     LOG( m_loggerWatch ) << "XXX" << _i;
 
     Guard l( x_filtersWatches );
@@ -302,6 +307,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
             LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
+    m_filtersByIp[_strOrigin] -= 1;
     return true;
 }
 

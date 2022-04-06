@@ -1097,7 +1097,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     auto pEthereum = ethereum();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallWatch( iw );
+            pEthereum->uninstallWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1106,7 +1106,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     setInstalledWatchesNewPendingTransactions_.clear();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallNewPendingTransactionWatch( iw );
+            pEthereum->uninstallNewPendingTransactionWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1115,7 +1115,7 @@ void SkaleWsPeer::uninstallAllWatches() {
     setInstalledWatchesNewBlocks_.clear();
     for ( auto iw : sw ) {
         try {
-            pEthereum->uninstallNewBlockWatch( iw );
+            pEthereum->uninstallNewBlockWatch( iw, m_strUnDdosOrigin );
         } catch ( ... ) {
         }
     }
@@ -1352,7 +1352,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                 "eth_subscription/logs" );
                                             stats::register_stats_error(
                                                 "RPC", "eth_subscription/logs" );
-                                            pThis->ethereum()->uninstallWatch( iw );
+                                            pThis->ethereum()->uninstallWatch(
+                                                iw, pThis->m_strUnDdosOrigin );
                                         }
                                         //    } );
                                     }  // for ( const auto& joWalk : joResultLogs )
@@ -1363,8 +1364,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                 } );
             } );
         };
-        unsigned iw = ethereum()->installWatch(
-            logFilter, dev::eth::Reaping::Automatic, fnOnSunscriptionEvent, true );  // isWS = true
+        unsigned iw = ethereum()->installWatch( logFilter, m_strUnDdosOrigin,
+            dev::eth::Reaping::Automatic, fnOnSunscriptionEvent, true );  // isWS = true
         setInstalledWatchesLogs_.insert( iw );
         std::string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
@@ -1467,12 +1468,14 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                         ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                         "eth_subscription/newPendingTransactions" );
                     stats::register_stats_error( "RPC", "eth_subscription/newPendingTransactions" );
-                    pThis->ethereum()->uninstallNewPendingTransactionWatch( iw );
+                    pThis->ethereum()->uninstallNewPendingTransactionWatch(
+                        iw, pThis->m_strUnDdosOrigin );
                 }
                 //} );
             } );
         };
-        unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+        unsigned iw = ethereum()->installNewPendingTransactionWatch(
+            fnOnSunscriptionEvent, m_strUnDdosOrigin );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION;
         std::string strIW = dev::toJS( iw );
@@ -1593,12 +1596,12 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                         ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                         "eth_subscription/newHeads" );
                     stats::register_stats_error( "RPC", "eth_subscription/newHeads" );
-                    pThis->ethereum()->uninstallNewBlockWatch( iw );
+                    pThis->ethereum()->uninstallNewBlockWatch( iw, pThis->m_strUnDdosOrigin );
                 }
                 //} );
             } );
         };
-        unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+        unsigned iw = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent, m_strUnDdosOrigin );
         setInstalledWatchesNewBlocks_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK;
         std::string strIW = dev::toJS( iw );
@@ -1747,7 +1750,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallNewPendingTransactionWatch( iw );
+            ethereum()->uninstallNewPendingTransactionWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesNewPendingTransactions_.erase(
                 iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_NEW_BLOCK ) {
@@ -1770,7 +1773,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallNewBlockWatch( iw );
+            ethereum()->uninstallNewBlockWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesNewBlocks_.erase( iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) );
         } else if ( x == SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS ) {
             SkaleStatsSubscriptionManager::subscription_id_t idSubscription =
@@ -1813,7 +1816,7 @@ void SkaleWsPeer::eth_unsubscribe(
                 joResponse["error"] = joError;
                 return;
             }
-            ethereum()->uninstallWatch( iw );
+            ethereum()->uninstallWatch( iw, m_strUnDdosOrigin );
             setInstalledWatchesLogs_.erase( iw );
         }
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
@@ -2100,7 +2103,7 @@ SkaleServerOverride::SkaleServerOverride(
         statsTransactions_.event_queue_add( "transactions",
             0  // stats::g_nSizeDefaultOnQueueAdd
         );
-        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
+        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent, "0.0.0.0" );
     }  // block
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
@@ -2113,17 +2116,17 @@ SkaleServerOverride::SkaleServerOverride(
             0  // stats::g_nSizeDefaultOnQueueAdd
         );
         iwPendingTransactionStats_ =
-            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
+            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent, "0.0.0.0" );
     }  // block
 }
 
 SkaleServerOverride::~SkaleServerOverride() {
     if ( iwBlockStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
+        ethereum()->uninstallNewBlockWatch( iwBlockStats_, "0.0.0.0" );
         iwBlockStats_ = unsigned( -1 );
     }
     if ( iwPendingTransactionStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_ );
+        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_, "0.0.0.0" );
         iwPendingTransactionStats_ = unsigned( -1 );
     }
     StopListening();
@@ -2675,8 +2678,8 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
-            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
+            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) +
+"-listener" ); if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
@@ -3684,7 +3687,11 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
     {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
     {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
-    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
+    {"eth_getCode", &SkaleServerOverride::eth_getCode},
+    {"eth_newFilter", &SkaleServerOverride::eth_newFilter},
+    {"eth_newBlockFilter", &SkaleServerOverride::eth_newBlockFilter},
+    {"eth_newPendingTransactionFilter", &SkaleServerOverride::eth_newPendingTransactionFilter},
+    {"eth_uninstallFilter", &SkaleServerOverride::eth_uninstallFilter}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3810,39 +3817,59 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
     }
 }
 
-void SkaleServerOverride::eth_sendRawTransaction( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_sendRawTransaction( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_sendRawTransaction_( joRequest, joResponse );
+    opts_.fn_eth_sendRawTransaction_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getTransactionReceipt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionReceipt( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getTransactionReceipt_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionReceipt_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_call( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_call( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_call_( joRequest, joResponse );
+    opts_.fn_eth_call_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getBalance( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getBalance( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getBalance_( joRequest, joResponse );
+    opts_.fn_eth_getBalance_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getStorageAt( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getStorageAt( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getStorageAt_( joRequest, joResponse );
+    opts_.fn_eth_getStorageAt_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getTransactionCount( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getTransactionCount( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getTransactionCount_( joRequest, joResponse );
+    opts_.fn_eth_getTransactionCount_( strOrigin, joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getCode( const std::string& /*strOrigin*/,
+void SkaleServerOverride::eth_getCode( const std::string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    opts_.fn_eth_getCode_( joRequest, joResponse );
+    opts_.fn_eth_getCode_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newBlockFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newBlockFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_newPendingTransactionFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_newPendingTransactionFilter_( strOrigin, joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_uninstallFilter( const std::string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_uninstallFilter_( strOrigin, joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigin,

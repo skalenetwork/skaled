@@ -107,13 +107,15 @@ public:
         BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const;
 
     /// Install, uninstall and query watches.
-    unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+    unsigned installWatch( LogFilter const& _filter, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
-    unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    unsigned installWatch( h256 _filterId, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
-    bool uninstallWatch( unsigned _watchId ) override;
+    bool uninstallWatch( unsigned _watchId, const std::string& strOrigin = "" ) override;
     LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 
@@ -206,6 +208,10 @@ protected:
     mutable Mutex x_filtersWatches;                         ///< Our lock.
     std::unordered_map< h256, InstalledFilter > m_filters;  ///< The dictionary of filters that are
                                                             ///< active.
+
+    std::unordered_map< std::string, size_t > m_filtersByIp;  ///< How many filters that are active
+                                                              ///< created by per ip
+
     std::unordered_map< h256, h256s > m_specialFilters =
         std::unordered_map< h256, std::vector< h256 > >{
             {PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
@@ -214,6 +220,8 @@ protected:
                                                   ///< filter.
 
     Logger m_loggerWatch{createLogger( VerbosityDebug, "watch" )};
+
+    static const size_t MAX_FILTERS_PER_IP_COUNT;
 
 private:
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,

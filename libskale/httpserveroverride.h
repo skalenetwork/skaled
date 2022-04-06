@@ -332,8 +332,8 @@ public:
 
     typedef std::function< std::vector< uint8_t >( const nlohmann::json& joRequest ) >
         fn_binary_snapshot_download_t;
-    typedef std::function< void(
-        const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) >
+    typedef std::function< void( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse ) >
         fn_jsonrpc_call_t;
 
     static const double g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds,
@@ -423,6 +423,10 @@ public:
         fn_jsonrpc_call_t fn_eth_getStorageAt_;
         fn_jsonrpc_call_t fn_eth_getTransactionCount_;
         fn_jsonrpc_call_t fn_eth_getCode_;
+        fn_jsonrpc_call_t fn_eth_newFilter_;
+        fn_jsonrpc_call_t fn_eth_newBlockFilter_;
+        fn_jsonrpc_call_t fn_eth_newPendingTransactionFilter_;
+        fn_jsonrpc_call_t fn_eth_uninstallFilter_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -440,6 +444,10 @@ public:
             fn_eth_getStorageAt_ = other.fn_eth_getStorageAt_;
             fn_eth_getTransactionCount_ = other.fn_eth_getTransactionCount_;
             fn_eth_getCode_ = other.fn_eth_getCode_;
+            fn_eth_newFilter_ = other.fn_eth_newFilter_;
+            fn_eth_newBlockFilter_ = other.fn_eth_newBlockFilter_;
+            fn_eth_newPendingTransactionFilter_ = other.fn_eth_newPendingTransactionFilter_;
+            fn_eth_uninstallFilter_ = other.fn_eth_uninstallFilter_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -605,6 +613,18 @@ protected:
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
     void eth_getCode( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
+    void eth_newFilter( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
+    void eth_newBlockFilter( const std::string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
+    void eth_newPendingTransactionFilter( const std::string& strOrigin,
+        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+
+    void eth_uninstallFilter( const std::string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );

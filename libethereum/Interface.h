@@ -124,13 +124,15 @@ public:
     virtual LocalisedLogEntries logs( LogFilter const& _filter ) const = 0;
 
     /// Install, uninstall and query watches.
-    virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( LogFilter const& _filter, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( h256 _filterId, const std::string& _strOrigin = "",
+        Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual bool uninstallWatch( unsigned _watchId ) = 0;
+    virtual bool uninstallWatch( unsigned _watchId, const std::string& strOrigin = "" ) = 0;
     LocalisedLogEntries peekWatchSafe( unsigned _watchId ) const {
         try {
             return peekWatch( _watchId );
@@ -262,21 +264,23 @@ public:
 
 public:
     // new block watch
-    virtual unsigned installNewBlockWatch(
-        std::function< void( const unsigned&, const Block& ) >& ) {  // not implemented here
+    virtual unsigned installNewBlockWatch( std::function< void( const unsigned&, const Block& ) >&,
+        const std::string& ) {  // not implemented here
         return unsigned( -1 );
     }
-    virtual bool uninstallNewBlockWatch( const unsigned& ) {  // not implemented here
+    virtual bool uninstallNewBlockWatch( const unsigned&, const std::string& ) {  // not implemented
+                                                                                  // here
         return false;
     }
 
     // new pending transation watch
     virtual unsigned installNewPendingTransactionWatch(  // not implemented here
-        std::function< void( const unsigned&, const Transaction& ) >& ) {
+        std::function< void( const unsigned&, const Transaction& ) >&, const std::string& ) {
         return unsigned( -1 );
     }
-    virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) {  // not implemented
-                                                                           // here
+    virtual bool uninstallNewPendingTransactionWatch(
+        const unsigned&, const std::string& ) {  // not implemented
+                                                 // here
         return false;
     }
 };

@@ -64,8 +64,7 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode =
-            joSkaleConfig_nodeInfo["syncNode"];
+        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
         isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
     } catch ( ... ) {
     }
@@ -464,9 +463,9 @@ Json::Value Eth::eth_getUncleByBlockNumberAndIndex(
     }
 }
 
-string Eth::eth_newFilter( Json::Value const& _json ) {
+string Eth::eth_newFilter( const dev::eth::LogFilter& _filter, const std::string& _strOrigin ) {
     try {
-        return toJS( client()->installWatch( toLogFilter( _json ) ) );
+        return toJS( client()->installWatch( _filter, _strOrigin ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -480,19 +479,20 @@ string Eth::eth_newFilter( Json::Value const& _json ) {
 //    }
 //}
 
-string Eth::eth_newBlockFilter() {
+string Eth::eth_newBlockFilter( const std::string& strOrigin ) {
     h256 filter = dev::eth::ChainChangedFilter;
-    return toJS( client()->installWatch( filter ) );
+    return toJS( client()->installWatch( filter, strOrigin ) );
 }
 
-string Eth::eth_newPendingTransactionFilter() {
+string Eth::eth_newPendingTransactionFilter( const std::string& strOrigin ) {
     h256 filter = dev::eth::PendingChangedFilter;
-    return toJS( client()->installWatch( filter ) );
+    return toJS( client()->installWatch( filter, strOrigin ) );
 }
 
-bool Eth::eth_uninstallFilter( string const& _filterId ) {
+bool Eth::eth_uninstallFilter( string const& _filterId, const std::string& _strOrigin ) {
     try {
-        return client()->uninstallWatch( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        return client()->uninstallWatch(
+            static_cast< unsigned int >( jsToInt( _filterId ) ), _strOrigin );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
