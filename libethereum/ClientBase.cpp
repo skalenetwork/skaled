@@ -248,7 +248,7 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
         for ( unsigned j = 0; j < le.size(); ++j )
             io_logs.insert( io_logs.begin(),
                 LocalisedLogEntry( le[j], _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                    i, 0, _polarity ) );
+                    i, j, _polarity ) );
     }
 }
 
