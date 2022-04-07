@@ -1653,7 +1653,6 @@ contract Logger{
     t["topics"][2] = u256_to_js(dev::u256(2));
 
     logs = fixture.rpcClient->eth_getLogs(t);
-    cerr << logs << endl;
 
     BOOST_REQUIRE(logs.isArray());
     BOOST_REQUIRE_EQUAL(logs.size(), 1);
@@ -1665,10 +1664,19 @@ contract Logger{
     t["topics"][1][1] = u256_to_js(dev::u256(2));
 
     logs = fixture.rpcClient->eth_getLogs(t);
-    cerr << logs << endl;
 
     BOOST_REQUIRE(logs.isArray());
     BOOST_REQUIRE_EQUAL(logs.size(), 10+4);
+
+    // 6 topics = [a,a]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][1] = u256_to_js(dev::u256(1));
+    t["topics"][2] = u256_to_js(dev::u256(1));
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 1);
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
