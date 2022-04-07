@@ -1556,6 +1556,123 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx2["raw"].asString() ), "Transaction gas price lower than current eth_gasPrice." );
 }
 
+// different ways to ask for topic(s)
+BOOST_AUTO_TEST_CASE( logs ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // will generate topics [0xxxx, 0, 0], [0xxx, 0, 1] etc
+/*
+pragma solidity >=0.4.10 <0.7.0;
+
+contract Logger{
+
+    uint256 i;
+    uint256 j;
+
+    event Data(uint256 indexed a, uint256 indexed b);
+
+
+    receive() external payable {
+        emit Data(i, j);
+        j++;
+        if(j==10){
+            j = 0;
+            i++;
+        }// j overflow
+    }
+}
+*/
+    string bytecode = "608060405234801561001057600080fd5b5060ad8061001f6000396000f3fe6080604052366072576001546000547fdeceb300b46c4bcd559f1a5206ed749c73f30312ec5a675a828ab0d7ec1bcb1860405160405180910390a3600160008154809291906001019190505550600a6001541415607057600060018190555060008081548092919060010191905055505b005b600080fdfea264697066735822122077bacf990302a7053c6f1ba7ba788d934236f6fe9cda765edaaa17156b61753e64736f6c634300060c0033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    for(int i=0; i<=23; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
+
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
+
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    }
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 26);     // block 1 - bootstrapAll, block 2 - deploy
+
+    // ask for logs
+    Json::Value t;
+    t["fromBlock"] = 3;
+    t["toBlock"] = 26;
+    t["address"] = contractAddress;
+    t["topics"] = Json::Value(Json::arrayValue);
+
+    // 1 topics = []
+    Json::Value logs = fixture.rpcClient->eth_getLogs(t);
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 24);
+    u256 t1 = dev::jsToU256( logs[12]["topics"][1].asString() );
+    BOOST_REQUIRE_EQUAL(t1, 1);
+    u256 t2 = dev::jsToU256( logs[12]["topics"][2].asString() );
+    BOOST_REQUIRE_EQUAL(t2, 2);
+
+    // 2 topics = [a]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][1] = u256_to_js(dev::u256(2));
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 4);
+    t1 = dev::jsToU256( logs[0]["topics"][1].asString() );
+    BOOST_REQUIRE_EQUAL(t1, 2);
+    t2 = dev::jsToU256( logs[0]["topics"][2].asString() );
+    BOOST_REQUIRE_EQUAL(t2, 0);
+
+    // 3 topics = [null, a]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][2] = u256_to_js(dev::u256(1));      // 01,11,21 but not 1x
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 3);
+
+    // 4 topics = [a,b]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][1] = u256_to_js(dev::u256(1));
+    t["topics"][2] = u256_to_js(dev::u256(2));
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+    cerr << logs << endl;
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 1);
+
+    // 5 topics = [[a,b]]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][1] = Json::Value(Json::arrayValue);
+    t["topics"][1][0] = u256_to_js(dev::u256(1));
+    t["topics"][1][1] = u256_to_js(dev::u256(2));
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+    cerr << logs << endl;
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 10+4);
+}
+
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 10 );
