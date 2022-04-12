@@ -1679,6 +1679,45 @@ contract Logger{
 
     BOOST_REQUIRE(logs.isArray());
     BOOST_REQUIRE_EQUAL(logs.size(), 1);
+
+    // 7 topics = [[a,b], c]
+    t["topics"] = Json::Value(Json::arrayValue);
+    t["topics"][1] = Json::Value(Json::arrayValue);
+    t["topics"][1][0] = u256_to_js(dev::u256(1));
+    t["topics"][1][1] = u256_to_js(dev::u256(2));
+    t["topics"][2] = u256_to_js(dev::u256(1));           // 11, 21
+
+    logs = fixture.rpcClient->eth_getLogs(t);
+
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 2);
+    t1 = dev::jsToU256( logs[0]["topics"][1].asString() );
+    BOOST_REQUIRE_EQUAL(t1, 1);
+    t2 = dev::jsToU256( logs[0]["topics"][2].asString() );
+    BOOST_REQUIRE_EQUAL(t2, 1);
+    t1 = dev::jsToU256( logs[1]["topics"][1].asString() );
+    BOOST_REQUIRE_EQUAL(t1, 2);
+    t2 = dev::jsToU256( logs[1]["topics"][2].asString() );
+    BOOST_REQUIRE_EQUAL(t2, 1);
+
+    // 8 repeat #7 without address
+    auto logs7 = logs;
+    t["address"] = Json::Value(Json::arrayValue);
+    logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE_EQUAL(logs7, logs);
+
+    // 9 repeat #7 with 2 addresses
+    t["address"] = Json::Value(Json::arrayValue);
+    t["address"][0] = contractAddress;
+    t["address"][1] = "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba";         // dummy
+    logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE_EQUAL(logs7, logs);
+
+    // 10 request address only
+    t["topics"] = Json::Value(Json::arrayValue);
+    logs = fixture.rpcClient->eth_getLogs(t);
+    BOOST_REQUIRE(logs.isArray());
+    BOOST_REQUIRE_EQUAL(logs.size(), 24);
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
