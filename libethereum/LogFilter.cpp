@@ -89,7 +89,7 @@ vector< LogBloom > LogFilter::bloomPossibilities() const {
 
     // true if success, false if overflow
     auto inc_iter = [&]() -> bool {
-        for ( size_t pos = iter.size() - 1;; --pos ) {
+        for ( size_t pos = iter.size() - 1; pos != ( size_t ) -1; --pos ) {
             size_t overflow = pos == 0 ? m_addresses.size() : m_topics[pos - 1].size();
 
             if ( overflow == 0 )  // skip empty dimensions
@@ -134,7 +134,8 @@ LogEntries LogFilter::matches( TransactionReceipt const& _m ) const {
     LogEntries ret;
     if ( matches( _m.bloom() ) )
         for ( LogEntry const& e : _m.log() ) {
-            if ( find( m_addresses.begin(), m_addresses.end(), e.address ) == m_addresses.end() )
+            if ( !m_addresses.empty() &&
+                 find( m_addresses.begin(), m_addresses.end(), e.address ) == m_addresses.end() )
                 goto continue2;
             for ( unsigned i = 0; i < 4; ++i )
                 if ( !m_topics[i].empty() &&
