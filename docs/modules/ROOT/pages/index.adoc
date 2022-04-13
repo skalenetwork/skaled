@@ -1,12 +1,12 @@
 = SKALE Chains
 
-A SKALE Chain is a Web3 Ethereum compatible elastic blockchain designed to make Web3 cloud computing easier for dApp developers. SKALE Chains provide EVM compute power, decentralized database storage, and other functionality to help not only power your dApps but allow them to scale in a cost-efficient manner. 
+A SKALE Chain is a Web3 Ethereum compatible elastic blockchain designed to make Web3 cloud computing easier for dApp developers. SKALE Chains provide EVM compute power, decentralized database storage, and other functionality to help not only power your dApps but allow them to scale in a cost-effective manner. 
 
 == What makes a SKALE Chain
 
-SKALE Chains are powered by 16 out of more than 150 nodes run by over 45 SKALE Network validators. Each SKALE Chain is secured by Proof-of-Stake from the validator and delegator communities.
+SKALE Chains are powered by dockerized containers provisioned across 16 randomly selected nodes from a network of >150 nodes. Nodes are operated by over 45 independent validator organizations. Each node supporting SKALE Chains is secured by Proof-of-Stake from the validator and delegator communities.
 
-Every node in the SKALE Network dynamically supplies containerized Web3 compute resources that work in concert with other nodes. A SKALE Chain involves 16 randomly chosen nodes that each run a containerized network client with EVM (skaled). All 16 of these skaled containers broadcast network messages, share transactions and blocks, and other cryptographic data with each other. Think of these containers as powerful instances of an Ethereum network, receiving Web3 transactional messages from clients and end-users, organizing them into blocks using an ultra-fast mathematically proven consensus called Asynchronous Binary Byzantine Agreement.
+Every node in the SKALE Network dynamically supplies containerized Web3 compute resources that work in concert with other nodes. A SKALE Chain involves 16 randomly chosen nodes that each run containerized network clients with EVM (skaled) and other functions. All 16 of these skaled containers broadcast network messages, share transactions and blocks, and other cryptographic data with each other. These containers represent powerful and scalable instances of an Ethereum network, receiving Web3 transactional messages from clients and end-users, organizing them into blocks using an ultra-fast mathematically proven consensus called Asynchronous Binary Byzantine Agreement.
 
 == How to work with a SKALE Chain
 
@@ -16,7 +16,7 @@ Using SKALE is easy! Don't worry about https://github.com/skalenetwork/SGXWallet
 
 You use your SKALE Chain as you work with Ethereum. SKALE Chain owners have a set of 16 available endpoints to receive Web3 transactions and data. Plug an endpoint into your Web3 client or Truffle config, and you are using SKALE.
 
-To work with other blockchains like Ethereum Testnets or Mainnet, you can use xref:ima::index.adoc[a bridge called Interchain Messaging Agent (IMA)]. IMA allows the transfer of ETH, ERC20, ERC721, ERC1155, and other arbitrary messages between Ethereum and your SKALE Chain.
+To work with other blockchains like Ethereum Testnets or Mainnet, you can use xref:ima::index.adoc[a bridge called Interchain Messaging Agent (IMA)]. IMA allows the transfer of ETH, ERC20, ERC721, ERC1155, and other arbitrary messages between Ethereum and SKALE Chains.
 
 == How to stake/create a SKALE Chain
 
@@ -38,7 +38,7 @@ SKALE Chains operate like Ethereum, and there are a few other features and diffe
 
 === Gas-free transactions
 
-Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on SKALE Chains just like on Ethereum, but it's powered by what's called SKALE FUEL (sFUEL), which has no monetary value. In this way,executing transactions and state changes don't incur costs, but require consuming gas in sFUEL, which is value-less. SKALE Chain gas provides a way to meter or limit transactions on the SKALE Chain to prevent malicious execution.
+Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on SKALE Chains just like on Ethereum, but it's powered by what's called SKALE FUEL (sFUEL), which has no monetary value. In this way, executing transactions and state changes don't incur costs but require consuming gas in sFUEL, which is value-less. SKALE Chain gas provides a way to meter or limit transactions on the SKALE Chain to prevent malicious execution.
 
 === Empty Block Intervals
 

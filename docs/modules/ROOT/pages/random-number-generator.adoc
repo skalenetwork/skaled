@@ -1,8 +1,10 @@
 = SKALE RNG Endpoint
 
-Each SKALE Chain supports a special random number generator (RNG) precompile. This RNG is based on the threshold signature shares of at least 11/16 SKALE nodes supporting any given SKALE Chain.
+:stem: asciimath
 
-Each block in SKALE chains is signed by at least 11/16 nodes. Each signature is glued together, such that no single party can influence the resulting signature.
+Each SKALE Chain supports a special random number generator (RNG) precompile. This RNG is generated for every block and is based on the current block's threshold signature shares of at least latexmath:[\frac{11}{16}] SKALE nodes supporting any given SKALE Chain.
+
+Each SKALE chain block is signed by at least latexmath:[\frac{11}{16}] nodes. Each signature is glued together such that no single party can influence the resulting signature.
 
 General steps:
 
@@ -31,7 +33,7 @@ contract A {
 }
 ----
 
-Running getRandom() from Remix several times will return the following example output for each new block:
+Running `getRandom()` from Remix several times will return the following example output for each new block:
 
 ```
 0:bytes32: addr 0xb01da4532b80108eee3d00d48d6c617869eabfa39acbb58b7fd44e8369331501
