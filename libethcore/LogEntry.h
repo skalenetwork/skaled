@@ -61,6 +61,9 @@ struct LocalisedLogEntry : public LogEntry {
     LocalisedLogEntry( LogEntry const& _le, h256 _special )
         : LogEntry( _le ), isSpecial( true ), special( _special ) {}
 
+    LocalisedLogEntry( LogEntry const& _le, unsigned _logIndex )
+        : LogEntry( _le ), logIndex( _logIndex ) {}
+
     LocalisedLogEntry( LogEntry const& _le, h256 const& _blockHash, BlockNumber _blockNumber,
         h256 const& _transactionHash, unsigned _transactionIndex, unsigned _logIndex,
         BlockPolarity _polarity = BlockPolarity::Unknown )
