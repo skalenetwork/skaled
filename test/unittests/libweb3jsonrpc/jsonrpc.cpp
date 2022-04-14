@@ -260,7 +260,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.allowFutureBlocks = true;
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
-            chainParams.byzantiumForkBlock = 0;
+            chainParams.constantinopleForkBlock = 0;
             chainParams.EIP158ForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
@@ -1577,11 +1577,8 @@ contract Logger{
     uint256 i;
     uint256 j;
 
-    event Data(uint256 indexed a, uint256 indexed b);
-
-
-    receive() external payable {
-        emit Data(i, j);
+    fallback() external payable {
+        log3(bytes32(block.number), bytes32(block.number), bytes32(i), bytes32(j));
         j++;
         if(j==10){
             j = 0;
@@ -1589,8 +1586,9 @@ contract Logger{
         }// j overflow
     }
 }
-*/
-    string bytecode = "608060405234801561001057600080fd5b5060ad8061001f6000396000f3fe6080604052366072576001546000547fdeceb300b46c4bcd559f1a5206ed749c73f30312ec5a675a828ab0d7ec1bcb1860405160405180910390a3600160008154809291906001019190505550600a6001541415607057600060018190555060008081548092919060010191905055505b005b600080fdfea264697066735822122077bacf990302a7053c6f1ba7ba788d934236f6fe9cda765edaaa17156b61753e64736f6c634300060c0033";
+*/    
+
+    string bytecode = "6080604052348015600f57600080fd5b50609b8061001e6000396000f3fe608060405260015460001b60005460001b4360001b4360001b6040518082815260200191505060405180910390a3600160008154809291906001019190505550600a6001541415606357600060018190555060008081548092919060010191905055505b00fea2646970667358221220fdf2f98961b803b6b32dfc9be766990cbdb17559d9a03724d12fc672e33804b164736f6c634300060c0033";
 
     Json::Value create;
     create["code"] = bytecode;
