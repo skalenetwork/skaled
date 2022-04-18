@@ -74,12 +74,14 @@ public:
     LogEntries matches( TransactionReceipt const& _r ) const;
 
     LogFilter address( Address _a ) {
-        m_addresses.insert( _a );
+        if ( std::find( m_addresses.begin(), m_addresses.end(), _a ) == m_addresses.end() )
+            m_addresses.push_back( _a );
         return *this;
     }
     LogFilter topic( unsigned _index, h256 const& _t ) {
-        if ( _index < 4 )
-            m_topics[_index].insert( _t );
+        if ( _index < 4 && std::find( m_topics[_index].begin(), m_topics[_index].end(), _t ) ==
+                               m_topics[_index].end() )
+            m_topics[_index].push_back( _t );
         return *this;
     }
     LogFilter withEarliest( BlockNumber _e ) {
@@ -94,8 +96,8 @@ public:
     friend std::ostream& dev::eth::operator<<( std::ostream& _out, dev::eth::LogFilter const& _s );
 
 private:
-    AddressHash m_addresses;
-    std::array< h256Hash, 4 > m_topics;
+    std::vector< Address > m_addresses;
+    std::array< std::vector< h256 >, 4 > m_topics;
     BlockNumber m_earliest = 0;
     BlockNumber m_latest = PendingBlock;
 };
