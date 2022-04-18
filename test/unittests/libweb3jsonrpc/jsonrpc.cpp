@@ -259,6 +259,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.allowFutureBlocks = true;
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
+            chainParams.byzantiumForkBlock = 0;
             chainParams.constantinopleForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
@@ -562,7 +563,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const u256 blockReward = 3 * dev::eth::ether;
+    const u256 blockReward = 2 * dev::eth::ether;
     cerr << "Reward: " << blockReward << endl;
     cerr << "Balance before: " << fixture.client->balanceAt( senderAddress ) << endl;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
@@ -604,7 +605,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const u256 blockReward = 3 * dev::eth::ether;
+    const u256 blockReward = 2 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -640,7 +641,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const u256 blockReward = 3 * dev::eth::ether;
+    const u256 blockReward = 2 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -666,7 +667,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const u256 blockReward = 3 * dev::eth::ether;
+    const u256 blockReward = 2 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -1218,6 +1219,8 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
+    cerr << receipt << endl;
+
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
 }
@@ -1530,7 +1533,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-    const u256 blockReward = 3 * dev::eth::ether;
+    const u256 blockReward = 2 * dev::eth::ether;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
