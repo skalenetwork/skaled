@@ -214,7 +214,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
             TransactionReceipt const& tr = temp.receipt( i );
             LogEntries le = _f.matches( tr );
             for ( unsigned j = 0; j < le.size(); ++j )
-                ret.insert( ret.begin(), LocalisedLogEntry( le[j], ret.size() ) );
+                ret.insert( ret.begin(), LocalisedLogEntry( le[j] ) );
         }
         begin = bc().number();
     }
@@ -244,11 +244,33 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     for ( size_t i = 0; i < receipts.size(); i++ ) {
         TransactionReceipt receipt = receipts[i];
         auto th = transaction( _blockHash, i ).sha3();
-        LogEntries le = _f.matches( receipt );
-        for ( unsigned j = 0; j < le.size(); ++j )
-            io_logs.insert( io_logs.begin(),
-                LocalisedLogEntry( le[j], _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                    i, io_logs.size(), _polarity ) );
+        if ( _f.isRangeFilter() ) {
+            for ( size_t j = 0; j < receipt.log().size(); ++j ) {
+                io_logs.insert( io_logs.begin(),
+                    LocalisedLogEntry( receipt.log()[i], _blockHash,
+                        ( BlockNumber ) bc().number( _blockHash ), th, i, j, _polarity ) );
+            }
+            return;
+        }
+
+        if ( _f.matches( receipt.bloom() ) )
+            for ( size_t k = 0; k < receipt.log().size(); ++k ) {
+                LogEntry e = receipt.log()[k];
+                if ( _f.getAddresses().empty() || _f.getAddresses().count( e.address ) ) {
+                    bool isGood = true;
+                    for ( unsigned j = 0; j < 4; ++j ) {
+                        if ( !_f.getTopics()[j].empty() &&
+                             ( e.topics.size() < j || !_f.getTopics()[j].count( e.topics[j] ) ) ) {
+                            isGood = false;
+                            break;
+                        }
+                    }
+                    if ( isGood )
+                        io_logs.insert( io_logs.begin(),
+                            LocalisedLogEntry( e, _blockHash,
+                                ( BlockNumber ) bc().number( _blockHash ), th, i, k, _polarity ) );
+                }
+            }
     }
 }
 

@@ -78,12 +78,14 @@ public:
             m_addresses.push_back( _a );
         return *this;
     }
+    AddressHash getAddresses() const { return m_addresses; }
     LogFilter topic( unsigned _index, h256 const& _t ) {
         if ( _index < 4 && std::find( m_topics[_index].begin(), m_topics[_index].end(), _t ) ==
                                m_topics[_index].end() )
             m_topics[_index].push_back( _t );
         return *this;
     }
+    std::array< h256Hash, 4 > getTopics() const { return m_topics; }
     LogFilter withEarliest( BlockNumber _e ) {
         m_earliest = _e;
         return *this;
