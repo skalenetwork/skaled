@@ -77,11 +77,13 @@ public:
         m_addresses.insert( _a );
         return *this;
     }
+    AddressHash getAddresses() const { return m_addresses; }
     LogFilter topic( unsigned _index, h256 const& _t ) {
         if ( _index < 4 )
             m_topics[_index].insert( _t );
         return *this;
     }
+    std::array< h256Hash, 4 > getTopics() const { return m_topics; }
     LogFilter withEarliest( BlockNumber _e ) {
         m_earliest = _e;
         return *this;
