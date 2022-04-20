@@ -1,6 +1,6 @@
 #include <skutils/console_colors.h>
-#include <skutils/utils.h>
 #include <skutils/multithreading.h>
+#include <skutils/utils.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -738,7 +738,8 @@ load_monitor::load_monitor( size_t
       nSleepMillisecondsBetweenCpuLoadMeasurements_(
           nSleepMillisecondsBetweenCpuLoadMeasurements ) {
     thread_ = std::thread( [this]() {
-        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        skutils::multithreading::setThreadName(
+            skutils::tools::format( "sklm-%p", ( void* ) this ) );
         thread_proc();
     } );
 }

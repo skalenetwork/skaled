@@ -46,9 +46,9 @@
 //#include <jsonrpccpp/client.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
+#include <libconsensus/exceptions/InvalidStateException.h>
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
-#include <libconsensus/exceptions/InvalidStateException.h>
 
 #include <exception>
 #include <fstream>

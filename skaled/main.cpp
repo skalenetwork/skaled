@@ -133,13 +133,18 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" ) << cc::attention( ver ) << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
+              << cc::attention( ver ) << "\n";
     if ( !commit.empty() )
-        cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
+        cout << cc::info( "Commit" ) << cc::debug( "............................" )
+             << cc::attention( commit ) << "\n";
     std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug(".") << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) <<cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
+              << cc::num10( c_minorProtocolVersion ) << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
+              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
+              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
               << cc::attention( buildinfo->build_type ) << "\n";
     std::cout.flush();
 }
@@ -152,8 +157,10 @@ static std::string clientVersion() {
 
 static std::string clientVersionColorized() {
     const auto* buildinfo = skale_get_buildinfo();
-    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) + cc::debug( "/" ) + cc::attention( buildinfo->system_name ) +
-           cc::debug( "/" ) + cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) + cc::debug( "/" ) + cc::attention( buildinfo->build_type );
+    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->system_name ) + cc::debug( "/" ) +
+           cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->build_type );
 }
 
 /*
@@ -205,8 +212,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
     const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
-        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
-        "info-acceptors"};
+        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors", "info-acceptors"};
     const set< string > emptyValues = {"NULL", "null", "None"};
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
@@ -250,8 +256,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             bool isBinaryDownload = true;
             std::string strErrorDescription;
             saveTo = snapshotManager->getDiffPath( block_number );
-            bool bOK = dev::rpc::snapshot::download(
-                strURLWeb3, block_number, saveTo,
+            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     clog( VerbosityInfo, "downloadSnapshot" )
                         << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
@@ -362,7 +367,8 @@ static void stat_handle_stop_actions() {
                            cc::error( "Did stopped client" ) + "\n\n" );
         }
         g_bStopActionsComplete = true;
-    } ).detach();
+    } )
+        .detach();
 }
 
 static void stat_wait_stop_actions_complete() {
@@ -443,7 +449,8 @@ static void stat_init_common_signal_handling() {
                     }
 
                     _exit( ec );
-                } ).detach();
+                } )
+                    .detach();
             }  // if( ! g_bSelfKillStarted )
         }      // if ( !skutils::signal::g_bStop )
 
@@ -720,8 +727,12 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
-    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
-    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+    addClientOption( "skale-network-browser-verbose",
+        "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh",
+        po::value< size_t >()->value_name( "<seconds>" ),
+        "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain "
+        "descriptions from Skale Manager" );
 
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
@@ -939,7 +950,8 @@ int main( int argc, char** argv ) try {
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
               << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::debug( "Recent build intent is " )
+              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
     std::cout.flush();
     version();
 
@@ -1458,7 +1470,8 @@ int main( int argc, char** argv ) try {
         skale::network::browser::g_bVerboseLogging = true;
     }
     if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
+        skale::network::browser::g_nRefreshIntervalInSeconds =
+            vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > shared_space;
@@ -1728,14 +1741,12 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1757,7 +1768,7 @@ int main( int argc, char** argv ) try {
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL, 
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
             !chainParams.nodeInfo.syncNode );
 
         // XXX nested lambdas and strlen hacks..
@@ -1873,8 +1884,7 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable(
-                    isProxy,
+                _t.userReadable( isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = g_client->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )
@@ -2700,10 +2710,10 @@ int main( int argc, char** argv ) try {
 
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
-                sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
+                sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
         else
             sessionManager->addSession(
-                strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
+                strJsonAdminSessionKey, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
 
         clog( VerbosityInfo, "main" )
             << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );

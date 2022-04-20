@@ -8,8 +8,8 @@
 #include <sstream>
 
 #include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <skutils/console_colors.h>
 #include <skutils/dispatch.h>
@@ -238,9 +238,8 @@ static int stat_get_schain_index_in_node(
                    cc::error( " failed to find S-Chain index on node for S-Chain ID: " ) +
                    cc::normal( strFindWhat ) );
     }
-    throw std::runtime_error(
-        "S-Chain " + dev::toJS( schain_id ) +
-        " is not found in the list: " + stat_list_ids( schains_ids_on_node ) );
+    throw std::runtime_error( "S-Chain " + dev::toJS( schain_id ) + " is not found in the list: " +
+                              stat_list_ids( schains_ids_on_node ) );
 }
 
 static int stat_get_schain_base_port_on_node(
@@ -337,7 +336,7 @@ dev::u256 get_schains_count(
                    cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
                    cc::j( d.s_ ) );
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-    if( joAnswer.count( "result" ) == 0 ) {
+    if ( joAnswer.count( "result" ) == 0 ) {
         if ( g_bVerboseLogging )
             clog( dev::VerbosityTrace, "snb" )
                 << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
@@ -347,29 +346,30 @@ dev::u256 get_schains_count(
                                   "\", no \"result\" field provided" );
     }
     const nlohmann::json& joResult_numberOfSchains = joAnswer["result"];
-    if( joResult_numberOfSchains.is_null() ) {
+    if ( joResult_numberOfSchains.is_null() ) {
         if ( g_bVerboseLogging )
             clog( dev::VerbosityTrace, "snb" )
-                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                         cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                         cc::warn( "result" ) + cc::error( " field is null, will return zero value" ) );
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                       cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                       cc::warn( "result" ) +
+                       cc::error( " field is null, will return zero value" ) );
         dev::u256 cntSChains( 0 );
         return cntSChains;
     }
-    if( joResult_numberOfSchains.is_number() ) {
+    if ( joResult_numberOfSchains.is_number() ) {
         dev::u256 cntSChains( joResult_numberOfSchains.get< int >() );
         return cntSChains;
     }
-    if( joResult_numberOfSchains.is_string() ) {
+    if ( joResult_numberOfSchains.is_string() ) {
         dev::u256 cntSChains( joResult_numberOfSchains.get< std::string >() );
         return cntSChains;
     }
     // error, final
     if ( g_bVerboseLogging )
         clog( dev::VerbosityTrace, "snb" )
-                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                     cc::warn( "result" ) + cc::error( " field is not string or number type" ) );
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                   cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                   cc::warn( "result" ) + cc::error( " field is not string or number type" ) );
     throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                               "\", provided \"result\" field is not string or number type" );
 }
@@ -378,9 +378,9 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& idxSChain, const dev::u256& /*cntSChains*/,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     if ( g_bVerboseLogging ) {
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " will load S-Chain #" ) + cc::info( dev::toJS( idxSChain ) ) +
-                                                cc::debug( " from URL " ) + cc::u( u ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will load S-Chain #" ) +
+                   cc::info( dev::toJS( idxSChain ) ) + cc::debug( " from URL " ) + cc::u( u ) );
     }
     //
     // load s-chain
@@ -433,22 +433,22 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                        cc::info( g_strContractMethodName ) + cc::debug( " with answer " ) +
                        cc::j( d.s_ ) );
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-        if( joAnswer.count( "result" ) == 0 ) {
+        if ( joAnswer.count( "result" ) == 0 ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                             cc::warn( "result" ) + cc::error( " field provided" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                           cc::warn( "result" ) + cc::error( " field provided" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", no \"result\" field provided" );
         }
         const nlohmann::json& joResult = joAnswer["result"];
-        if( ! joResult.is_string() ) {
+        if ( !joResult.is_string() ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                           cc::warn( "result" ) + cc::error( " field is not string type" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", provided \"result\" field is not string type" );
         }
@@ -535,22 +535,22 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                        cc::j( d.s_ ) );
         }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-        if( joAnswer.count( "result" ) == 0 ) {
+        if ( joAnswer.count( "result" ) == 0 ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                             cc::warn( "result" ) + cc::error( " field provided" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                           cc::warn( "result" ) + cc::error( " field provided" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", no \"result\" field provided" );
         }
         const nlohmann::json& joResult = joAnswer["result"];
-        if( ! joResult.is_string() ) {
+        if ( !joResult.is_string() ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                           cc::warn( "result" ) + cc::error( " field is not string type" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", provided \"result\" field is not string type" );
         }
@@ -628,22 +628,22 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                        cc::j( d.s_ ) );
         }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-        if( joAnswer.count( "result" ) == 0 ) {
+        if ( joAnswer.count( "result" ) == 0 ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                             cc::warn( "result" ) + cc::error( " field provided" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                           cc::warn( "result" ) + cc::error( " field provided" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", no \"result\" field provided" );
         }
         const nlohmann::json& joResult = joAnswer["result"];
-        if( ! joResult.is_string() ) {
+        if ( !joResult.is_string() ) {
             if ( g_bVerboseLogging )
                 clog( dev::VerbosityTrace, "snb" )
-                        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                             cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                             cc::warn( "result" ) + cc::error( " field is not string type" ) );
+                    << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
+                           cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
+                           cc::warn( "result" ) + cc::error( " field is not string type" ) );
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", provided \"result\" field is not string type" );
         }
@@ -734,23 +734,28 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-                if( joAnswer.count( "result" ) == 0 ) {
+                if ( joAnswer.count( "result" ) == 0 ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                                     cc::warn( "result" ) + cc::error( " field provided" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                   cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", no \"result\" field provided" );
                 }
                 const nlohmann::json& joResult = joAnswer["result"];
-                if( ! joResult.is_string() ) {
+                if ( !joResult.is_string() ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", provided " ) + cc::warn( "result" ) +
+                                   cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", provided \"result\" field is not string type" );
                 }
                 std::string strResult = joResult.get< std::string >();
@@ -819,23 +824,28 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-                if( joAnswer.count( "result" ) == 0 ) {
+                if ( joAnswer.count( "result" ) == 0 ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                                     cc::warn( "result" ) + cc::error( " field provided" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                   cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", no \"result\" field provided" );
                 }
                 const nlohmann::json& joResult = joAnswer["result"];
-                if( ! joResult.is_string() ) {
+                if ( !joResult.is_string() ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", provided " ) + cc::warn( "result" ) +
+                                   cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", provided \"result\" field is not string type" );
                 }
                 std::string strResult = joResult.get< std::string >();
@@ -897,23 +907,28 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-                if( joAnswer.count( "result" ) == 0 ) {
+                if ( joAnswer.count( "result" ) == 0 ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                                     cc::warn( "result" ) + cc::error( " field provided" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                   cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", no \"result\" field provided" );
                 }
                 const nlohmann::json& joResult = joAnswer["result"];
-                if( ! joResult.is_string() ) {
+                if ( !joResult.is_string() ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", provided " ) + cc::warn( "result" ) +
+                                   cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", provided \"result\" field is not string type" );
                 }
                 std::string strResult = joResult.get< std::string >();
@@ -979,23 +994,28 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                                cc::j( d.s_ ) );
                 }
                 nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-                if( joAnswer.count( "result" ) == 0 ) {
+                if ( joAnswer.count( "result" ) == 0 ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
-                                     cc::warn( "result" ) + cc::error( " field provided" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) + cc::error( ", no " ) +
+                                   cc::warn( "result" ) + cc::error( " field provided" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", no \"result\" field provided" );
                 }
                 const nlohmann::json& joResult = joAnswer["result"];
-                if( ! joResult.is_string() ) {
+                if ( !joResult.is_string() ) {
                     if ( g_bVerboseLogging )
                         clog( dev::VerbosityTrace, "snb" )
-                                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::error( " failed to call " ) +
-                                     cc::info( g_strContractMethodName ) + cc::error( ", provided " ) +
-                                     cc::warn( "result" ) + cc::error( " field is not string type" ) );
-                    throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
+                            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                   cc::error( " failed to call " ) +
+                                   cc::info( g_strContractMethodName ) +
+                                   cc::error( ", provided " ) + cc::warn( "result" ) +
+                                   cc::error( " field is not string type" ) );
+                    throw std::runtime_error( std::string( "Failed call to \"" ) +
+                                              g_strContractMethodName +
                                               "\", provided \"result\" field is not string type" );
                 }
                 std::string strResult = joResult.get< std::string >();
@@ -1030,7 +1050,7 @@ vec_s_chains_t load_schains( const skutils::url& u, const dev::u256& addressFrom
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     if ( g_bVerboseLogging ) {
         clog( dev::VerbosityTrace, "snb" )
-                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will load all S-Chains" ) );
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will load all S-Chains" ) );
     }
     vec_s_chains_t vec;
     dev::u256 cntSChains = get_schains_count( u, addressFrom, addressSchainsInternal );
@@ -1041,7 +1061,7 @@ vec_s_chains_t load_schains( const skutils::url& u, const dev::u256& addressFrom
     }
     if ( g_bVerboseLogging ) {
         clog( dev::VerbosityTrace, "snb" )
-                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did loaded all S-Chains" ) );
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " did loaded all S-Chains" ) );
     }
     return vec;
 }
@@ -1129,7 +1149,8 @@ bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     try {
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will perform cache refreshing" ) );
+            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                                                    cc::debug( " will perform cache refreshing" ) );
         }
         vec_s_chains_t vec = load_schains( u, addressFrom, addressSchainsInternal, addressNodes );
         nlohmann::json jarr = to_json( vec );
@@ -1158,8 +1179,9 @@ bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
 bool refreshing_start( const std::string& configPath ) {
     std::lock_guard lock( g_mtx );
     refreshing_stop();
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) will prepare data to run..." ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+               cc::debug( " refreshing(start) will prepare data to run..." ) );
     g_json_config_file_accessor.reset( new skutils::json_config_file_accessor( configPath ) );
     //
     nlohmann::json joConfig = g_json_config_file_accessor->getConfigJSON();
@@ -1180,10 +1202,9 @@ bool refreshing_start( const std::string& configPath ) {
         return false;
     }
     const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) have " ) +
-                                            cc::notice( "nodeInfo" ) +
-                                            cc::debug( " in config" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+               cc::notice( "nodeInfo" ) + cc::debug( " in config" ) );
     //
     if ( joSkaleConfig_nodeInfo.count( "skale-manager" ) == 0 ) {
         clog( dev::VerbosityError, "snb" )
@@ -1193,10 +1214,10 @@ bool refreshing_start( const std::string& configPath ) {
         return false;
     }
     const nlohmann::json& joSkaleConfig_nodeInfo_sm = joSkaleConfig_nodeInfo["skale-manager"];
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) have " ) +
-                                            cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) +
-                                            cc::debug( " in config" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+               cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) +
+               cc::debug( " in config" ) );
     //
     if ( joSkaleConfig_nodeInfo_sm.count( "SchainsInternal" ) == 0 ) {
         clog( dev::VerbosityError, "snb" )
@@ -1208,10 +1229,10 @@ bool refreshing_start( const std::string& configPath ) {
     }
     const nlohmann::json& joSkaleConfig_nodeInfo_sm_SchainsInternal =
         joSkaleConfig_nodeInfo_sm["SchainsInternal"];
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) have " ) +
-                                            cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) + cc::debug( "/" ) + cc::notice( "SchainsInternal" ) +
-                                            cc::debug( " in config" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+               cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) +
+               cc::debug( "/" ) + cc::notice( "SchainsInternal" ) + cc::debug( " in config" ) );
     if ( !joSkaleConfig_nodeInfo_sm_SchainsInternal.is_string() ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
@@ -1228,12 +1249,11 @@ bool refreshing_start( const std::string& configPath ) {
                               "\"skaleConfig\"/\"nodeInfo\"/\"skale-manager\"/\"Nodes\"" ) );
         return false;
     }
-    const nlohmann::json& joSkaleConfig_nodeInfo_sm_Nodes =
-        joSkaleConfig_nodeInfo_sm["Nodes"];
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) have " ) +
-                                            cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) + cc::debug( "/" ) + cc::notice( "Nodes" ) +
-                                            cc::debug( " in config" ) );
+    const nlohmann::json& joSkaleConfig_nodeInfo_sm_Nodes = joSkaleConfig_nodeInfo_sm["Nodes"];
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+               cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-manager" ) +
+               cc::debug( "/" ) + cc::notice( "Nodes" ) + cc::debug( " in config" ) );
     if ( !joSkaleConfig_nodeInfo_sm_Nodes.is_string() ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
@@ -1251,88 +1271,101 @@ bool refreshing_start( const std::string& configPath ) {
         return false;
     }
     const nlohmann::json& joSkaleConfig_sChain = joSkaleConfig["sChain"];
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) have " ) +
-                                            cc::notice( "sChain" ) +
-                                            cc::debug( " in config" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+               cc::notice( "sChain" ) + cc::debug( " in config" ) );
     //
     std::string strAddressFrom;
     if ( joSkaleConfig_sChain.count( "schainOwner" ) != 0 ) {
         const nlohmann::json& joSkaleConfig_sChain_schainOwner =
             joSkaleConfig_sChain["schainOwner"];
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "sChain" ) + cc::debug( "/" ) + cc::notice( "schainOwner" ) +
-                                                cc::debug( " in config" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                   cc::notice( "sChain" ) + cc::debug( "/" ) + cc::notice( "schainOwner" ) +
+                   cc::debug( " in config" ) );
         if ( joSkaleConfig_sChain_schainOwner.is_string() ) {
-            strAddressFrom = skutils::tools::trim_copy( joSkaleConfig_sChain_schainOwner.get< std::string >() );
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "sChain" ) + cc::debug( "/" ) + cc::notice( "schainOwner" ) +
-                                                    cc::debug( " value " ) + cc::attention( strAddressFrom ) );
+            strAddressFrom =
+                skutils::tools::trim_copy( joSkaleConfig_sChain_schainOwner.get< std::string >() );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                       cc::notice( "sChain" ) + cc::debug( "/" ) + cc::notice( "schainOwner" ) +
+                       cc::debug( " value " ) + cc::attention( strAddressFrom ) );
         }
     }
     size_t nIntervalSeconds = g_nRefreshIntervalInSeconds;
     if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-refresh" ) > 0 ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_refresh =
             joSkaleConfig_nodeInfo["skale-network-browser-refresh"];
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-refresh" ) +
-                                                cc::debug( " in config" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                   cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                   cc::notice( "skale-network-browser-refresh" ) + cc::debug( " in config" ) );
         if ( joSkaleConfig_nodeInfo_refresh.is_number() ) {
-            nIntervalSeconds = g_nRefreshIntervalInSeconds = joSkaleConfig_nodeInfo_refresh.get< size_t >();
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-refresh" ) +
-                                                    cc::debug( " value " ) + cc::num10( nIntervalSeconds ) + cc::debug( "(in seconds)" ) );
+            nIntervalSeconds = g_nRefreshIntervalInSeconds =
+                joSkaleConfig_nodeInfo_refresh.get< size_t >();
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                       cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                       cc::notice( "skale-network-browser-refresh" ) + cc::debug( " value " ) +
+                       cc::num10( nIntervalSeconds ) + cc::debug( "(in seconds)" ) );
         }
     }
     if ( joSkaleConfig_nodeInfo.count( "skale-network-browser-verbose" ) > 0 ) {
         const nlohmann::json& joSkaleConfig_nodeInfo_verbose =
-                joSkaleConfig_nodeInfo["skale-network-browser-verbose"];
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                cc::debug( " in config" ) );
+            joSkaleConfig_nodeInfo["skale-network-browser-verbose"];
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                   cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                   cc::notice( "skale-network-browser-verbose" ) + cc::debug( " in config" ) );
         if ( joSkaleConfig_nodeInfo_verbose.is_boolean() ) {
             g_bVerboseLogging = joSkaleConfig_nodeInfo_verbose.get< bool >();
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bVerboseLogging ) + cc::debug( "(as boolean)" ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                       cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                       cc::notice( "skale-network-browser-verbose" ) + cc::debug( " value " ) +
+                       cc::flag( g_bVerboseLogging ) + cc::debug( "(as boolean)" ) );
         } else if ( joSkaleConfig_nodeInfo_verbose.is_number() ) {
             g_bVerboseLogging =
-                    ( joSkaleConfig_nodeInfo_verbose.get< size_t >() != 0 ) ? true : false;
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bVerboseLogging ) + cc::debug( "(as number)" ) );
+                ( joSkaleConfig_nodeInfo_verbose.get< size_t >() != 0 ) ? true : false;
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                       cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                       cc::notice( "skale-network-browser-verbose" ) + cc::debug( " value " ) +
+                       cc::flag( g_bVerboseLogging ) + cc::debug( "(as number)" ) );
         } else {
             // g_bVerboseLogging = false;
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(start) have " ) +
-                                                    cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                    cc::debug( " value " ) + cc::flag( g_bVerboseLogging ) + cc::debug( "(as unparsed, left previous)" ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                       cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                       cc::notice( "skale-network-browser-verbose" ) + cc::debug( " value " ) +
+                       cc::flag( g_bVerboseLogging ) +
+                       cc::debug( "(as unparsed, left previous)" ) );
         }
     } else {
         // g_bVerboseLogging = false;
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(start) have " ) +
-                                                cc::notice( "nodeInfo" ) + cc::debug( "/" ) + cc::notice( "skale-network-browser-verbose" ) +
-                                                cc::debug( " value " ) + cc::flag( g_bVerboseLogging ) + cc::debug( "(as absent, left previous)" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " refreshing(start) have " ) +
+                   cc::notice( "nodeInfo" ) + cc::debug( "/" ) +
+                   cc::notice( "skale-network-browser-verbose" ) + cc::debug( " value " ) +
+                   cc::flag( g_bVerboseLogging ) + cc::debug( "(as absent, left previous)" ) );
     }
     std::string strAddressSchainsInternal, strAddressNodes;
     try {
-        strAddressSchainsInternal = skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
-    } catch( ... ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to get \"SchainsInternal\" contract address" ) );
+        strAddressSchainsInternal = skutils::tools::trim_copy(
+            joSkaleConfig_nodeInfo_sm_SchainsInternal.get< std::string >() );
+    } catch ( ... ) {
+        clog( dev::VerbosityError, "snb" )
+            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                   cc::error( " failed to get \"SchainsInternal\" contract address" ) );
         return false;
     }
     try {
-        strAddressNodes = skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_Nodes.get< std::string >() );
-    } catch( ... ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to get \"Nodes\" contract address" ) );
+        strAddressNodes =
+            skutils::tools::trim_copy( joSkaleConfig_nodeInfo_sm_Nodes.get< std::string >() );
+    } catch ( ... ) {
+        clog( dev::VerbosityError, "snb" )
+            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                   cc::error( " failed to get \"Nodes\" contract address" ) );
         return false;
     }
     if ( strAddressFrom.empty() ) {
@@ -1365,10 +1398,13 @@ bool refreshing_start( const std::string& configPath ) {
     try {
         u = g_json_config_file_accessor->getImaMainNetURL();
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use Main Net URL " ) + cc::u( u ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use Main Net URL " ) +
+                       cc::u( u ) );
         }
-    } catch( ... ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " Main Net URL is unknown" ) );
+    } catch ( ... ) {
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                cc::error( " Main Net URL is unknown" ) );
         return false;
     }
     //
@@ -1376,18 +1412,29 @@ bool refreshing_start( const std::string& configPath ) {
     try {
         addressFrom = dev::u256( strAddressFrom );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"from\" call address " ) + cc::info( dev::address_to_js( addressFrom ) ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                       cc::debug( " will use \"from\" call address " ) +
+                       cc::info( dev::address_to_js( addressFrom ) ) );
         }
         addressSchainsInternal = dev::u256( strAddressSchainsInternal );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"SchainsInternal\" contract address " ) + cc::info( dev::address_to_js( addressSchainsInternal ) ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                       cc::debug( " will use \"SchainsInternal\" contract address " ) +
+                       cc::info( dev::address_to_js( addressSchainsInternal ) ) );
         }
         addressNodes = dev::u256( strAddressNodes );
         if ( g_bVerboseLogging ) {
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) + cc::debug( " will use \"Nodes\" contract address " ) + cc::info( dev::address_to_js( addressNodes ) ) );
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                       cc::debug( " will use \"Nodes\" contract address " ) +
+                       cc::info( dev::address_to_js( addressNodes ) ) );
         }
-    } catch( ... ) {
-        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) + cc::error( " failed to construct needed addresses" ) );
+    } catch ( ... ) {
+        clog( dev::VerbosityError, "snb" )
+            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                   cc::error( " failed to construct needed addresses" ) );
         return false;
     }
     try {
@@ -1396,79 +1443,89 @@ bool refreshing_start( const std::string& configPath ) {
         clock_t tt = clock();
         stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
         tt = clock() - tt;
-        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(initial) did finished, " ) +
-                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                cc::debug( " second(s) spent" ) );
+        double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(initial) did finished, " ) +
+                   cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                   cc::debug( " second(s) spent" ) );
     } catch ( std::exception& ex ) {
         std::string strErrorDescription = ex.what();
-        clog( dev::VerbosityError, "snb" )
-                << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                     cc::error( " refreshing(initial) exception: " ) + cc::warn( strErrorDescription ) );
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                cc::error( " refreshing(initial) exception: " ) +
+                                                cc::warn( strErrorDescription ) );
     } catch ( ... ) {
         std::string strErrorDescription = "unknown exception";
-        clog( dev::VerbosityError, "snb" )
-                << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                     cc::error( " refreshing(initial) exception: " ) + cc::warn( strErrorDescription ) );
+        clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                cc::error( " refreshing(initial) exception: " ) +
+                                                cc::warn( strErrorDescription ) );
     }
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) will register dispatch/job..." ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+               cc::debug( " refreshing(start) will register dispatch/job..." ) );
     g_dispatch_job = [=]() -> void {
         stat_refresh_now( u, addressFrom, addressSchainsInternal, addressNodes );
     };
     skutils::dispatch::repeat( g_queue_id, g_dispatch_job,
         skutils::dispatch::duration_from_seconds( nIntervalSeconds ), &g_idDispatchJob );
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(start) did registered dispatch/job" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+               cc::debug( " refreshing(start) did registered dispatch/job" ) );
     return true;
 }
 
 void refreshing_stop() {
     std::lock_guard lock( g_mtx );
     if ( !g_idDispatchJob.empty() ) {
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(stop) will stop existing dispatch/job..." ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(stop) will stop existing dispatch/job..." ) );
         skutils::dispatch::stop( g_idDispatchJob );
         g_idDispatchJob.clear();
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(stop) did stopped existing dispatch/job" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(stop) did stopped existing dispatch/job" ) );
     }
     if ( g_json_config_file_accessor )
         g_json_config_file_accessor.reset();
     g_dispatch_job = skutils::dispatch::job_t();  // clear
-    clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                            cc::debug( " refreshing(stop) did cleared/forgot dispatch/job" ) );
+    clog( dev::VerbosityTrace, "snb" )
+        << ( cc::info( "SKALE NETWORK BROWSER" ) +
+               cc::debug( " refreshing(stop) did cleared/forgot dispatch/job" ) );
 }
 
 vec_s_chains_t refreshing_do_now() {
     std::lock_guard lock( g_mtx );
     if ( ( !g_idDispatchJob.empty() ) && g_json_config_file_accessor && g_dispatch_job ) {
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) will invoke existing dispatch/job..." ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(now) will invoke existing dispatch/job..." ) );
         try {
             clock_t tt = clock();
             g_dispatch_job();
             tt = clock() - tt;
-            double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
-            clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
-                                                    cc::debug( " refreshing(now) did invoked existing dispatch/job, " ) +
-                                                    cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                    cc::debug( " second(s) spent" ) );
+            double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
+            clog( dev::VerbosityTrace, "snb" )
+                << ( cc::info( "SKALE NETWORK BROWSER" ) +
+                       cc::debug( " refreshing(now) did invoked existing dispatch/job, " ) +
+                       cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                       cc::debug( " second(s) spent" ) );
         } catch ( std::exception& ex ) {
             std::string strErrorDescription = ex.what();
-            clog( dev::VerbosityError, "snb" )
-                    << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                         cc::error( " refreshing(now) exception: " ) + cc::warn( strErrorDescription ) );
+            clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                    cc::error( " refreshing(now) exception: " ) +
+                                                    cc::warn( strErrorDescription ) );
         } catch ( ... ) {
             std::string strErrorDescription = "unknown exception";
-            clog( dev::VerbosityError, "snb" )
-                    << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
-                         cc::error( " refreshing(now) exception: " ) + cc::warn( strErrorDescription ) );
+            clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
+                                                    cc::error( " refreshing(now) exception: " ) +
+                                                    cc::warn( strErrorDescription ) );
         }
     } else {
-        clog( dev::VerbosityTrace, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE: " ) +
-                                                cc::error( " refreshing(now) did skipped invoking existing dispatch/job, old cached data will be returned and used" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE: " ) +
+                   cc::error( " refreshing(now) did skipped invoking existing dispatch/job, old "
+                              "cached data will be returned and used" ) );
     }
     return refreshing_cached();
 }

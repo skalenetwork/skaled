@@ -376,7 +376,8 @@ bool server::start() {
     server_->bind( IPs );
     // start HTTPServer main loop in a separate thread
     thread_ = std::move( std::thread( [&]() {
-        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        skutils::multithreading::setThreadName(
+            skutils::tools::format( "sklm-%p", ( void* ) this ) );
         server_->start();
     } ) );
 

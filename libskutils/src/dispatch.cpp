@@ -292,17 +292,17 @@ void loop::run() {
     //
     bool bHaveTimerStateCheck = false;
     uv_timer_t uvTimerStateCheck;
-    auto fnCleanupHere = [&]() ->void {
+    auto fnCleanupHere = [&]() -> void {
         lock_type lock( loop_mtx() );
         // if( bHaveIdler ) {
         //     bHaveIdler = false;
         //     uv_idle_stop( &uvIdler );
         // }
-        if( bHaveTimerStateCheck ) {
+        if ( bHaveTimerStateCheck ) {
             bHaveTimerStateCheck = false;
             uv_timer_stop( &uvTimerStateCheck );
         }
-        if( bHaveLoop ) {
+        if ( bHaveLoop ) {
             bHaveLoop = false;
             uv_loop_close( &uvLoop );
         }
@@ -310,7 +310,8 @@ void loop::run() {
     {  // block
         lock_type lock( loop_mtx() );
         if ( is_running() )
-            throw std::runtime_error( skutils::tools::format( "loop %p is already running", this ) );
+            throw std::runtime_error(
+                skutils::tools::format( "loop %p is already running", this ) );
         isAlive_ = false;
         try {
             uv_loop_init( &uvLoop );
@@ -336,8 +337,8 @@ void loop::run() {
                     loop* pLoop = ( loop* ) ( p_uvTimer->data );
                     pLoop->on_state_check();
                 },
-                100, // 200,  // timeout milliseconds
-                100  // 200   // repeat milliseconds
+                100,  // 200,  // timeout milliseconds
+                100   // 200   // repeat milliseconds
             );
             bHaveTimerStateCheck = true;
             //
@@ -346,13 +347,15 @@ void loop::run() {
                 uv_async_t* p_uvAsyncInit = ( uv_async_t* ) p_uvAsyncInitForTimers_;
                 p_uvAsyncInit->data = ( void* ) this;
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-                std::cout << skutils::tools::format( "dispatch loop initiate pending timer init %p\n", this );
+                std::cout << skutils::tools::format(
+                    "dispatch loop initiate pending timer init %p\n", this );
                 std::cout.flush();
 #endif
                 uv_async_init( &uvLoop, p_uvAsyncInit, []( uv_async_t* h ) -> void {
                     loop* pLoop = ( loop* ) ( h->data );
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-                    std::cout << skutils::tools::format( "dispatch loop pending timer callback %p\n", pLoop );
+                    std::cout << skutils::tools::format(
+                        "dispatch loop pending timer callback %p\n", pLoop );
                     std::cout.flush();
 #endif
                     if ( pLoop )
@@ -377,10 +380,19 @@ void loop::run() {
         p_uvLoop_ = nullptr;
         fnCleanupHere();
         cancelMode_ = false;
-    } catch ( ... ) {
+    } catch ( std::exception& e ) {
+        std::cout << skutils::tools::format(
+                         "dispatch loop %p was stopped unknown exception: ", this ) +
+                         e.what() + "\n";
+        std::cout.flush();
         p_uvLoop_ = nullptr;
         fnCleanupHere();
-        throw;
+    } catch ( ... ) {
+        std::cout << skutils::tools::format(
+            "dispatch loop %p was stopped unknown exception\n", this );
+        std::cout.flush();
+        p_uvLoop_ = nullptr;
+        fnCleanupHere();
     }
     p_uvLoop_ = nullptr;
     pending_timer_remove_all();
@@ -462,7 +474,7 @@ void loop::pending_timer_init() {
     pending_timer_list_.clear();
 }
 
-//void loop::on_idle() {
+// void loop::on_idle() {
 //    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
 //    //    std::cout << skutils::tools::format( "dispatch loop idle %p\n", this );
 //    //    std::cout.flush();
@@ -482,7 +494,7 @@ void loop::on_state_check() {
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
-    pending_timer_init(); // l_sergiy: we need this called here because on_idle() was removed
+    pending_timer_init();  // l_sergiy: we need this called here because on_idle() was removed
     on_check_jobs();
 }
 

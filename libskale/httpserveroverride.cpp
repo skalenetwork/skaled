@@ -2675,8 +2675,8 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
-            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
+            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) +
+"-listener" ); if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
