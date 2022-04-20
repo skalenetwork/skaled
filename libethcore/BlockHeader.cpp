@@ -225,9 +225,9 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
         RLP root( _block );
 
         auto txList = root[1];
-        auto expectedRoot =
-            trieRootOver( txList.itemCount(), [&]( unsigned i ) { return rlp( i ); },
-                [&]( unsigned i ) { return txList[i].data().toBytes(); } );
+        auto expectedRoot = trieRootOver(
+            txList.itemCount(), [&]( unsigned i ) { return rlp( i ); },
+            [&]( unsigned i ) { return txList[i].data().toBytes(); } );
 
         LOG( m_logger ) << "Expected trie root: " << toString( expectedRoot );
         if ( m_transactionsRoot != expectedRoot ) {

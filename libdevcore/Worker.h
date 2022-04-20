@@ -101,7 +101,7 @@ private:
     mutable Mutex x_work;  ///< Lock for the network existance and m_state_notifier.
     std::unique_ptr< std::thread > m_work;             ///< The network thread.
     mutable std::condition_variable m_state_notifier;  //< Notification when m_state changes.
-    std::atomic< WorkerState > m_state = {WorkerState::Starting};
+    std::atomic< WorkerState > m_state = { WorkerState::Starting };
 };
 
 }  // namespace dev

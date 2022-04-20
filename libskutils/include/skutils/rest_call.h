@@ -120,11 +120,11 @@ public:
 class client {
 private:
     skutils::url u_;
-#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
     std::unique_ptr< skutils::http_curl::client > ch_;
-#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::http::client > ch_;
-#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::ws::client > cw_;
     std::unique_ptr< sz_cli > cz_;
 

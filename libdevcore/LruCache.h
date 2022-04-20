@@ -25,7 +25,7 @@ public:
                 m_index.erase( m_data.back().first );
                 m_data.pop_back();
             }
-            m_data.push_front( {_key, _val} );
+            m_data.push_front( { _key, _val } );
             m_index[_key] = m_data.begin();
         } else
             m_data.splice( m_data.begin(), m_data, cIter->second );

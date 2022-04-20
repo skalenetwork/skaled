@@ -171,7 +171,7 @@ struct CallResult {
     owning_bytes_ref output;
 
     CallResult( evmc_status_code status, owning_bytes_ref&& output )
-        : status{status}, output{std::move( output )} {}
+        : status{ status }, output{ std::move( output ) } {}
 };
 
 /// Represents a CREATE result.
@@ -183,7 +183,7 @@ struct CreateResult {
     h160 address;
 
     CreateResult( evmc_status_code status, owning_bytes_ref&& output, h160 const& address )
-        : status{status}, output{std::move( output )}, address{address} {}
+        : status{ status }, output{ std::move( output ) }, address{ address } {}
 };
 
 /**
@@ -272,7 +272,7 @@ public:
 
 class EvmCHost : public evmc::Host {
 public:
-    explicit EvmCHost( ExtVMFace& _extVM ) : m_extVM{_extVM} {}
+    explicit EvmCHost( ExtVMFace& _extVM ) : m_extVM{ _extVM } {}
 
     bool account_exists( const evmc::address& addr ) noexcept override;
 
