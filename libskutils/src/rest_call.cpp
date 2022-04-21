@@ -197,7 +197,7 @@ std::pair< EVP_PKEY*, X509* > sz_cli::stat_cert_2_public_key( const std::string&
     BIO_free( bo );
     if ( !key )
         throw std::runtime_error( "sz_cli: X509_get_pubkey() failed(2)" );
-    return {key, cert};
+    return { key, cert };
 }
 
 static void stat_append_msgSig( std::string& src, const std::string& sig ) {
@@ -251,7 +251,7 @@ std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bException
     s_send( *pClientSocket_, jvRequest );
     ++idxAttempt;
     while ( true ) {
-        zmq::pollitem_t items[] = {{static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0}};
+        zmq::pollitem_t items[] = { { static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0 } };
         zmq::poll( &items[0], 1, timeoutMilliseconds );
         if ( items[0].revents & ZMQ_POLLIN ) {
             std::string reply = s_recv( *pClientSocket_ );
@@ -304,7 +304,7 @@ std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
 std::string sz_cli::stat_a2h( const uint8_t* ptr, size_t cnt ) {
     char hex[2 * cnt];
     static char hexval[16] = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     for ( size_t i = 0; i < cnt; ++i ) {
         hex[i * 2] = hexval[( ( ptr[i] >> 4 ) & 0xF )];
         hex[( i * 2 ) + 1] = hexval[( ptr[i] ) & 0x0F];

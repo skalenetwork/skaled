@@ -896,7 +896,8 @@ void pending_ima_txns::tracking_start() {
     lock_type lock( mtx() );
     if ( is_tracking() )
         return;
-    skutils::dispatch::repeat( g_strDispatchQueueID, [=]() -> void { tracking_step(); },
+    skutils::dispatch::repeat(
+        g_strDispatchQueueID, [=]() -> void { tracking_step(); },
         skutils::dispatch::duration_from_seconds( tracking_interval_in_seconds() ),
         &tracking_job_id_ );
     isTracking_ = true;
@@ -1322,10 +1323,10 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
         // validate wallet description
-        static const char* g_arrMustHaveWalletFields[] = {// "url",
+        static const char* g_arrMustHaveWalletFields[] = { // "url",
             "keyShareName", "t", "n", "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
             "BLSPublicKey3", "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
-            "commonBLSPublicKey3"};
+            "commonBLSPublicKey3" };
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
         for ( i = 0; i < cnt; ++i ) {

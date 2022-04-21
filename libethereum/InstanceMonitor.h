@@ -50,9 +50,7 @@ protected:
     void restoreRotationParams();
     [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
 
-        [[nodiscard]] fs::path rotationInfoFilePath() const {
-        return m_rotationInfoFilePath;
-    }
+    [[nodiscard]] fs::path rotationInfoFilePath() const { return m_rotationInfoFilePath; }
 
     uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;
@@ -63,5 +61,5 @@ protected:
     void reportExitTimeReached( bool _reached );
 
 private:
-    dev::Logger m_logger{createLogger( dev::VerbosityInfo, "instance-monitor" )};
+    dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
 };

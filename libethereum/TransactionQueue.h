@@ -156,7 +156,7 @@ public:
     }
 
     /// @returns the transaction limits on current/future.
-    Limits limits() const { return Limits{m_limit, m_futureLimit}; }
+    Limits limits() const { return Limits{ m_limit, m_futureLimit }; }
 
     /// @returns the number of tx in future queue.
     size_t futureSize() const { return m_futureSize; }
@@ -327,8 +327,8 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-    Logger m_logger{createLogger( VerbosityInfo, "tq" )};
-    Logger m_loggerDetail{createLogger( VerbosityDebug, "tq" )};
+    Logger m_logger{ createLogger( VerbosityInfo, "tq" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityDebug, "tq" ) };
 };
 
 template < class... Args >

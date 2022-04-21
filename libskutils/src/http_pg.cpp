@@ -458,8 +458,8 @@ size_t pg_accumulate_size() {
 
 void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
     const char* private_key_path, const char* ca_path ) {
-    pg_accumulate_entry pge = {ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
-        private_key_path ? private_key_path : "", ca_path ? ca_path : ""};
+    pg_accumulate_entry pge = { ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
+        private_key_path ? private_key_path : "", ca_path ? ca_path : "" };
     pg_accumulate_add( pge );
 }
 

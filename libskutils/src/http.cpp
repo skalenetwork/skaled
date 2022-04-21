@@ -1940,13 +1940,14 @@ socket_t server::create_server_socket( int ipVer, const char* host, int port, in
     bool is_reuse_address, bool is_reuse_port ) const {
     detail::auto_detect_ipVer( ipVer, host );
     ipVer_ = ipVer;
-    return detail::create_socket( ipVer, host, port,
+    return detail::create_socket(
+        ipVer, host, port,
         [this, port]( socket_t sock, struct addrinfo& ai ) -> bool {
-            if (::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
+            if ( ::bind( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) ) ) {
                 return false;
             }
             boundToPort_ = port;
-            if (::listen( sock, 5 ) ) {  // listen through 5 channels
+            if ( ::listen( sock, 5 ) ) {  // listen through 5 channels
                 return false;
             }
             return true;
@@ -2187,7 +2188,8 @@ bool server::is_valid() const {
 bool server::read_and_close_socket_sync( socket_t sock ) {
     eiLast_.clear();
     common_network_exception::error_info ei;
-    if ( !detail::read_and_close_socket( sock, get_keep_alive_max_count(),
+    if ( !detail::read_and_close_socket(
+             sock, get_keep_alive_max_count(),
              [this, sock]( stream& strm, bool last_connection, bool& connection_close ) {
                  std::string origin = skutils::network::get_fd_name_as_url(
                      sock, is_ssl() ? "HTTPS" : "HTTP", true );
@@ -2261,8 +2263,8 @@ bool SSL_server::read_and_close_socket_sync( socket_t sock ) {
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", true );
     eiLast_.clear();
     common_network_exception::error_info ei;
-    if ( !detail::read_and_close_socket_ssl( sock, get_keep_alive_max_count(), ctx_, ctx_mutex_,
-             detail::SSL_accept_wrapper,
+    if ( !detail::read_and_close_socket_ssl(
+             sock, get_keep_alive_max_count(), ctx_, ctx_mutex_, detail::SSL_accept_wrapper,
              [origin]( SSL*  // ssl
              ) {},
              [this, origin]( stream& strm, bool last_connection, bool& connection_close ) {
@@ -2315,7 +2317,8 @@ socket_t client::create_client_socket(
     int ipVer, int socket_flags, bool is_reuse_address, bool is_reuse_port ) const {
     detail::auto_detect_ipVer( ipVer, host_.c_str() );
     ipVer_ = ipVer;
-    return detail::create_socket( ipVer, host_.c_str(), port_,
+    return detail::create_socket(
+        ipVer, host_.c_str(), port_,
         [=]( socket_t sock, struct addrinfo& ai ) -> bool {
             detail::set_nonblocking( sock, true );
             auto ret = connect( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) );
@@ -2467,7 +2470,8 @@ bool client::read_and_close_socket( socket_t sock, request& req, response& res )
         skutils::network::get_fd_name_as_url( sock, is_ssl() ? "HTTPS" : "HTTP", false );
     eiLast_.clear();
     common_network_exception::error_info ei;
-    if ( !detail::read_and_close_socket( sock, 0,
+    if ( !detail::read_and_close_socket(
+             sock, 0,
              [&, origin]( stream& strm, bool,  // last_connection
                  bool& connection_close ) {
                  return process_request( origin, strm, req, res, connection_close );
@@ -2661,7 +2665,8 @@ bool SSL_client::read_and_close_socket( socket_t sock, request& req, response& r
         return false;
     eiLast_.clear();
     common_network_exception::error_info ei;
-    if ( !detail::read_and_close_socket_ssl( sock, 0, ctx_, ctx_mutex_, detail::SSL_connect_wrapper,
+    if ( !detail::read_and_close_socket_ssl(
+             sock, 0, ctx_, ctx_mutex_, detail::SSL_connect_wrapper,
              [&]( SSL* ssl ) { SSL_set_tlsext_host_name( ssl, host_.c_str() ); },
              [&, origin]( stream& strm, bool,  // last_connection
                  bool& connection_close ) {

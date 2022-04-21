@@ -178,7 +178,7 @@ private:
     std::vector< std::shared_ptr< Miner > > m_miners;
     WorkPackage m_work;
 
-    std::atomic< bool > m_isMining = {false};
+    std::atomic< bool > m_isMining = { false };
 
     mutable SharedMutex x_progress;
     mutable WorkingProgress m_progress;

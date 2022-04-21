@@ -2253,14 +2253,14 @@ void MicroProfileFlip( void* pContext ) {
                         continue;
 
                     uint8_t* pGroupStackPos = &pLog->nGroupStackPos[0];
-                    int64_t nGroupTicks[MICROPROFILE_MAX_GROUPS] = {0};
+                    int64_t nGroupTicks[MICROPROFILE_MAX_GROUPS] = { 0 };
 
 
                     uint32_t nPut = pFrameNext->nLogStart[i];
                     uint32_t nGet = pFrameCurrent->nLogStart[i];
                     uint32_t nRange[2][2] = {
-                        {0, 0},
-                        {0, 0},
+                        { 0, 0 },
+                        { 0, 0 },
                     };
                     MicroProfileGetRange( nPut, nGet, nRange );
 
@@ -2726,7 +2726,7 @@ int MicroProfileFormatCounter( int eFormat, int64_t nCounter, char* pOut, uint32
         }
     } break;
     case MICROPROFILE_COUNTER_FORMAT_BYTES: {
-        const char* pExt[] = {"b", "kb", "mb", "gb", "tb", "pb", "eb", "zb", "yb"};
+        const char* pExt[] = { "b", "kb", "mb", "gb", "tb", "pb", "eb", "zb", "yb" };
         size_t nNumExt = sizeof( pExt ) / sizeof( pExt[0] );
         int64_t nShift = 0;
         int64_t nDivisor = 1;
@@ -5475,7 +5475,7 @@ void MicroProfileStopContextSwitchTrace() {
 
 
 static GUID g_MicroProfileThreadClassGuid = {
-    0x3d6fa8d1, 0xfe05, 0x11d0, 0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c};
+    0x3d6fa8d1, 0xfe05, 0x11d0, 0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c };
 
 struct MicroProfileSCSwitch {
     uint32_t NewThreadId;
@@ -5998,7 +5998,7 @@ void* MicroProfileTraceThread( void* unused ) {
     uint64_t nsSinceEpoch =
         ( ( uint64_t )( tv.tv_sec ) * 1000000 + ( uint64_t )( tv.tv_usec ) ) * 1000;
     uint64_t nTickEpoch = MP_TICK();
-    uint32_t nLastThread[MICROPROFILE_MAX_CONTEXT_SWITCH_THREADS] = {0};
+    uint32_t nLastThread[MICROPROFILE_MAX_CONTEXT_SWITCH_THREADS] = { 0 };
     mach_timebase_info_data_t sTimebaseInfo;
     mach_timebase_info( &sTimebaseInfo );
     S.bContextSwitchRunning = true;
@@ -6293,7 +6293,7 @@ void MicroProfileGpuFetchRange(
         return;
     void* pData = 0;
     // uprintf("fetch [%d-%d]\n", nBegin, nBegin + nCount);
-    D3D12_RANGE Range = {sizeof( uint64_t ) * nBegin, sizeof( uint64_t ) * ( nBegin + nCount )};
+    D3D12_RANGE Range = { sizeof( uint64_t ) * nBegin, sizeof( uint64_t ) * ( nBegin + nCount ) };
     S.pGPU->pBuffer->Map( 0, &Range, &pData );
     memcpy( &S.pGPU->nResults[nBegin], nBegin + ( uint64_t* ) pData, nCount * sizeof( uint64_t ) );
     for ( int i = 0; i < nCount; ++i ) {

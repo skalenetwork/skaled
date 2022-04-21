@@ -183,8 +183,8 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
     std::map< uint64_t, std::vector< std::string > > rh;
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
-        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
-            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
         rh[nodeGroup.finishTs] = commonBLSPublicKey;
     }
     consensus.setRotationHistory(
@@ -796,7 +796,7 @@ void SkaleHost::stopWorking() {
     std::cerr << "2 after exitGracefully()" << std::endl;
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
-        timespec ms100{0, 100000000};
+        timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 

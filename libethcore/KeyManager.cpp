@@ -61,7 +61,8 @@ bool KeyManager::recode( Address const& _address, string const& _newPass, string
     function< string() > const& _pass, KDF _kdf ) {
     noteHint( _newPass, _hint );
     h128 u = uuid( _address );
-    if ( !store().recode( u, _newPass, [&]() { return getPassword( u, _pass ); }, _kdf ) )
+    if ( !store().recode(
+             u, _newPass, [&]() { return getPassword( u, _pass ); }, _kdf ) )
         return false;
 
     m_keyInfo[_address].passHash = hashPassword( _newPass );
@@ -182,7 +183,7 @@ h128 KeyManager::import( Secret const& _s, string const& _accountName, string co
     cachePassword( _pass );
     m_passwordHint[passHash] = _passwordHint;
     auto uuid = m_store.importSecret( _s.asBytesSec(), _pass );
-    m_keyInfo[addr] = KeyInfo{passHash, _accountName, ""};
+    m_keyInfo[addr] = KeyInfo{ passHash, _accountName, "" };
     m_addrLookup[addr] = uuid;
     m_uuidLookup[uuid] = addr;
     write( m_keysFile );
@@ -254,7 +255,7 @@ Addresses KeyManager::accounts() const {
     for ( auto const& key : m_store.keys() )
         addresses.insert( m_store.address( key ) );
     // Remove the zero address if present
-    return Addresses{addresses.upper_bound( Address() ), addresses.end()};
+    return Addresses{ addresses.upper_bound( Address() ), addresses.end() };
 }
 
 bool KeyManager::hasAccount( Address const& _address ) const {

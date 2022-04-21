@@ -41,8 +41,8 @@ constexpr size_t c_maxDroppedTransactionCount = 1024;
 }  // namespace
 
 TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit )
-    : m_dropped{c_maxDroppedTransactionCount},
-      m_current( PriorityCompare{*this} ),
+    : m_dropped{ c_maxDroppedTransactionCount },
+      m_current( PriorityCompare{ *this } ),
       m_limit( _limit ),
       m_futureLimit( _futureLimit ),
       m_aborting( false ) {

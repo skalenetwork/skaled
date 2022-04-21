@@ -120,7 +120,7 @@ extern unsigned c_maxOpenLeveldbFiles;
 }  // namespace dev
 
 namespace {
-std::atomic< bool > g_silence = {false};
+std::atomic< bool > g_silence = { false };
 unsigned const c_lineWidth = 160;
 
 static void version() {
@@ -209,11 +209,12 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
+    const set< string > filteredOptions = { "http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
-        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors", "info-acceptors"};
-    const set< string > emptyValues = {"NULL", "null", "None"};
+        "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
+        "info-acceptors" };
+    const set< string > emptyValues = { "NULL", "null", "None" };
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
                               [&filteredOptions, &emptyValues]( const auto& option ) -> bool {
@@ -256,7 +257,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             bool isBinaryDownload = true;
             std::string strErrorDescription;
             saveTo = snapshotManager->getDiffPath( block_number );
-            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+            bool bOK = dev::rpc::snapshot::download(
+                strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     clog( VerbosityInfo, "downloadSnapshot" )
                         << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
@@ -288,7 +290,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        vector< string > prefixes{"prices_", "blocks_"};
+        vector< string > prefixes{ "prices_", "blocks_" };
         for ( const string& prefix : prefixes ) {
             fs::path db_path;
             for ( auto& f :
@@ -367,8 +369,7 @@ static void stat_handle_stop_actions() {
                            cc::error( "Did stopped client" ) + "\n\n" );
         }
         g_bStopActionsComplete = true;
-    } )
-        .detach();
+    } ).detach();
 }
 
 static void stat_wait_stop_actions_complete() {
@@ -449,8 +450,7 @@ static void stat_init_common_signal_handling() {
                     }
 
                     _exit( ec );
-                } )
-                    .detach();
+                } ).detach();
             }  // if( ! g_bSelfKillStarted )
         }      // if ( !skutils::signal::g_bStop )
 
@@ -1487,9 +1487,9 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
-            {BlockChain::getChainDirName( chainParams ), "filestorage",
+            { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
             shared_space ? shared_space->getPath() : std::string() ) );
     }
 
@@ -1718,7 +1718,7 @@ int main( int argc, char** argv ) try {
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-    auto caps = set< string >{"eth"};
+    auto caps = set< string >{ "eth" };
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1741,12 +1741,14 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
+                TransactionQueue::Limits{
+                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{c_transactionQueueSize, c_futureTransactionQueueSize} ) );
+                TransactionQueue::Limits{
+                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1786,7 +1788,7 @@ int main( int argc, char** argv ) try {
         g_client->injectSkaleHost( skaleHost );
 
         skale_get_buildinfo();
-        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
+        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
@@ -1884,7 +1886,8 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable( isProxy,
+                _t.userReadable(
+                    isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = g_client->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )
@@ -1895,7 +1898,7 @@ int main( int argc, char** argv ) try {
                     },
                     [&]( Address const& _a ) { return _a.hex(); } ) +
                     "\nEnter yes/no/always (always to this address): ",
-                {"yes", "n", "N", "no", "NO", "always"} );
+                { "yes", "n", "N", "no", "NO", "always" } );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
@@ -2710,10 +2713,10 @@ int main( int argc, char** argv ) try {
 
         if ( strJsonAdminSessionKey.empty() )
             strJsonAdminSessionKey =
-                sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+                sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
         else
             sessionManager->addSession(
-                strJsonAdminSessionKey, rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+                strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
         clog( VerbosityInfo, "main" )
             << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );

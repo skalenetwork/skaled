@@ -37,7 +37,7 @@ class Test : public TestFace {
 public:
     Test( eth::Client& _eth );
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"test", "1.0"}};
+        return RPCModules{ RPCModule{ "test", "1.0" } };
     }
     virtual std::string test_getLogHash( std::string const& _param1 ) override;
     virtual std::string test_importRawBlock( std::string const& _blockRLP ) override;

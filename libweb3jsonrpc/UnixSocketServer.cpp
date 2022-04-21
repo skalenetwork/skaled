@@ -115,7 +115,7 @@ void UnixDomainSocketServer::Listen() {
             m_sockets.insert( connection );
 
             // Handle the request in a new detached thread.
-            std::thread{[this, connection] {
+            std::thread{ [this, connection] {
                 try {
                     setThreadName( "UDSocketSrv" );
                     GenerateResponse( connection );
@@ -127,8 +127,7 @@ void UnixDomainSocketServer::Listen() {
                     cerror << "CRITICAL unknown exception in UnixDomainSocketServer";
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 }  // catch
-            }}
-                .detach();
+            } }.detach();
         }
     }
 }
