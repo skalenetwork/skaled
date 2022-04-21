@@ -54,6 +54,13 @@ struct TransactionSkeleton;
 class Interface;
 };  // namespace eth
 
+// if following is defined then pending IMA transactions will be tracked in dispatch timer based job
+//#define __IMA_PTX_ENABLE_TRACKING_PARALLEL 1
+
+// if following is defined then pending IMA transactions will be tracked on-the-fly during
+// insert/erase
+#define __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY 1
+
 namespace tracking {
 
 class txn_entry {
@@ -125,10 +132,10 @@ public:
     virtual size_t max_txns() const;
 
 private:
-    void adjust_limits_impl( bool isEnableBroadcast );
+    size_t adjust_limits_impl( bool isEnableBroadcast );
 
 public:
-    void adjust_limits( bool isEnableBroadcast );
+    size_t adjust_limits( bool isEnableBroadcast );
     bool insert( txn_entry& txe, bool isEnableBroadcast );
     bool insert( dev::u256 hash, bool isEnableBroadcast );
     bool erase( txn_entry& txe, bool isEnableBroadcast );
@@ -166,6 +173,7 @@ public:
     size_t tracking_interval_in_seconds() const;
     bool is_tracking() const;
     void tracking_auto_start_stop();
+    void tracking_step();
     void tracking_start();
     void tracking_stop();
     //

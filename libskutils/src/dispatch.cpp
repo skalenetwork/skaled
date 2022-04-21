@@ -381,10 +381,19 @@ void loop::run() {
         p_uvLoop_ = nullptr;
         fnCleanupHere();
         cancelMode_ = false;
-    } catch ( ... ) {
+    } catch ( std::exception& e ) {
+        std::cout << skutils::tools::format(
+                         "dispatch loop %p was stopped unknown exception: ", this ) +
+                         e.what() + "\n";
+        std::cout.flush();
         p_uvLoop_ = nullptr;
         fnCleanupHere();
-        throw;
+    } catch ( ... ) {
+        std::cout << skutils::tools::format(
+            "dispatch loop %p was stopped unknown exception\n", this );
+        std::cout.flush();
+        p_uvLoop_ = nullptr;
+        fnCleanupHere();
     }
     p_uvLoop_ = nullptr;
     pending_timer_remove_all();

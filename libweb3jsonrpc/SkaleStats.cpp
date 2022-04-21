@@ -202,7 +202,7 @@ int txn_entry::compare( dev::u256 hash ) const {
     if ( hash_ < hash )
         return -1;
     if ( hash_ > hash )
-        return 0;
+        return 1;
     return 0;
 }
 
@@ -239,7 +239,8 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
         if ( jo.count( "hash" ) > 0 && jo["hash"].is_string() )
             strHash = jo["hash"].get< std::string >();
         else
-            throw std::runtime_error( "\"hash\" is must-have field of tracked TXN" );
+            throw std::runtime_error(
+                "txn_entry::fromJSON() failed because \"hash\" is must-have field of tracked TXN" );
         dev::u256 h = stat_s2a( strHash );
         int ts = 0;
         try {
@@ -282,13 +283,14 @@ void pending_ima_txns::clear() {
 }
 
 size_t pending_ima_txns::max_txns() const {
-    return size_t( g_nMaxPendingTxns );
+    size_t cnt = g_nMaxPendingTxns;
+    return cnt;
 }
 
-void pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
+size_t pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
     const size_t nMax = max_txns();
     if ( nMax < 1 )
-        return;  // no limits
+        return nMax;  // no limits
     size_t cnt = list_txns_.size();
     while ( cnt > nMax ) {
         txn_entry txe = list_txns_.front();
@@ -297,14 +299,20 @@ void pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
         cnt = list_txns_.size();
     }
     tracking_auto_start_stop();
+    cnt = list_txns_.size();
+    return cnt;
 }
-void pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
+size_t pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
     lock_type lock( mtx() );
-    adjust_limits_impl( isEnableBroadcast );
+    size_t cnt = adjust_limits_impl( isEnableBroadcast );
+    return cnt;
 }
 
 bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     set_txns_t::iterator itFindS = set_txns_.find( txe ), itEndS = set_txns_.end();
     if ( itFindS != itEndS )
         return false;
@@ -329,9 +337,13 @@ bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
         return false;
     txn_entry txe = ( *itFindS );
     set_txns_.erase( itFindS );
-    list_txns_t::iterator ifFindL = std::find( list_txns_.begin(), list_txns_.end(), hash );
-    list_txns_.erase( ifFindL );
+    list_txns_t::iterator itFindL = std::find( list_txns_.begin(), list_txns_.end(), hash );
+    if ( itFindL != list_txns_.end() )
+        list_txns_.erase( itFindL );
     on_txn_erase( txe, isEnableBroadcast );
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     return true;
 }
 
@@ -340,7 +352,10 @@ bool pending_ima_txns::find( txn_entry& txe ) const {
 }
 bool pending_ima_txns::find( dev::u256 hash ) const {
     lock_type lock( mtx() );
-    set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
+    //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+    //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
+    set_txns_t::const_iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.cend();
     if ( itFindS == itEndS )
         return false;
     return true;
@@ -348,6 +363,9 @@ bool pending_ima_txns::find( dev::u256 hash ) const {
 
 void pending_ima_txns::list_all( list_txns_t& lst ) const {
     lst.clear();
+    //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+    //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     lock_type lock( mtx() );
     lst = list_txns_;
 }
@@ -860,36 +878,47 @@ void pending_ima_txns::tracking_auto_start_stop() {
     }
 }
 
+void pending_ima_txns::tracking_step() {
+    try {
+        list_txns_t lst, lstMined;
+        list_all( lst );
+        for ( const dev::tracking::txn_entry& txe : lst ) {
+            if ( !check_txn_is_mined( txe ) )
+                break;
+            lstMined.push_back( txe );
+        }
+        for ( const dev::tracking::txn_entry& txe : lstMined ) {
+            erase( txe.hash_, true );
+        }
+    } catch ( std::exception const& ex ) {
+        std::cout << "pending_ima_txns::tracking_step() exception: " << ex.what() << "\n";
+    } catch ( ... ) {
+        std::cout << "pending_ima_txns::tracking_step() unknown exception\n";
+    }
+}
+
 void pending_ima_txns::tracking_start() {
+#if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( is_tracking() )
         return;
     skutils::dispatch::repeat(
-        g_strDispatchQueueID,
-        [=]() -> void {
-            list_txns_t lst, lstMined;
-            list_all( lst );
-            for ( const dev::tracking::txn_entry& txe : lst ) {
-                if ( !check_txn_is_mined( txe ) )
-                    break;
-                lstMined.push_back( txe );
-            }
-            for ( const dev::tracking::txn_entry& txe : lstMined ) {
-                erase( txe.hash_, true );
-            }
-        },
+        g_strDispatchQueueID, [=]() -> void { tracking_step(); },
         skutils::dispatch::duration_from_seconds( tracking_interval_in_seconds() ),
         &tracking_job_id_ );
     isTracking_ = true;
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
 void pending_ima_txns::tracking_stop() {
+#if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( !is_tracking() )
         return;
     skutils::dispatch::stop( tracking_job_id_ );
     tracking_job_id_.clear();
     isTracking_ = false;
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
 bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
@@ -925,10 +954,12 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
         if ( joReceipt.is_object() && joReceipt.count( "transactionHash" ) > 0 &&
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
-        return false;
+    } catch ( std::exception const& ex ) {
+        std::cout << "pending_ima_txns::check_txn_is_mined() exception: " << ex.what() << "\n";
     } catch ( ... ) {
-        return false;
+        std::cout << "pending_ima_txns::check_txn_is_mined() unknown exception\n";
     }
+    return false;
 }
 
 
