@@ -100,7 +100,7 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
 
-      - name Test clang-format
+      - name: Test clang-format
         run: |
           clang-format --help
           clang-format --version
