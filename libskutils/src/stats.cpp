@@ -309,7 +309,7 @@ nlohmann::json named_event_stats::toJSON( bool bSkipEmptyStats /*= false*/ ) con
 
 std::set< std::string > named_event_stats::all_queue_names() const {
     std::set< std::string > setNames;
-    named_event_stats copy_of_this{*this};  // lock-free copy of this
+    named_event_stats copy_of_this{ *this };  // lock-free copy of this
     for ( const auto& itName : copy_of_this.m_Events ) {
         setNames.insert( itName.first );
     }

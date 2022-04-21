@@ -93,7 +93,7 @@ BOOST_LOG_ATTRIBUTE_KEYWORD( timestamp, "TimeStamp", std::string )
 void setupLogging( LoggingOptions const& _options ) {
     auto sink = boost::make_shared< log_sink< boost::log::sinks::text_ostream_backend > >();
 
-    boost::shared_ptr< std::ostream > stream{&std::cout, boost::null_deleter{}};
+    boost::shared_ptr< std::ostream > stream{ &std::cout, boost::null_deleter{} };
     sink->locked_backend()->add_stream( stream );
     sink->set_filter( [_options]( boost::log::attribute_value_set const& _set ) {
         if ( _set["Severity"].extract< int >() > _options.verbosity )

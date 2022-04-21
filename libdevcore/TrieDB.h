@@ -525,16 +525,16 @@ namespace dev {
 template < class DB >
 GenericTrieDB< DB >::iterator::iterator( GenericTrieDB const* _db ) {
     m_that = _db;
-    m_trail.push_back( {_db->node( _db->m_root ), std::string( 1, '\0' ),
-        255} );  // one null byte is the HPE for the empty key.
+    m_trail.push_back( { _db->node( _db->m_root ), std::string( 1, '\0' ),
+        255 } );  // one null byte is the HPE for the empty key.
     next();
 }
 
 template < class DB >
 GenericTrieDB< DB >::iterator::iterator( GenericTrieDB const* _db, bytesConstRef _fullKey ) {
     m_that = _db;
-    m_trail.push_back( {_db->node( _db->m_root ), std::string( 1, '\0' ),
-        255} );  // one null byte is the HPE for the empty key.
+    m_trail.push_back( { _db->node( _db->m_root ), std::string( 1, '\0' ),
+        255 } );  // one null byte is the HPE for the empty key.
     next( _fullKey );
 }
 
@@ -657,10 +657,10 @@ void GenericTrieDB< DB >::iterator::next( NibbleSlice _key ) {
                     // fixed so that Node passed into push_back is constructed *before* m_trail is
                     // potentially resized (which invalidates back and rlp)
                     Node const& back = m_trail.back();
-                    m_trail.push_back( Node{m_that->deref( rlp[back.child] ),
+                    m_trail.push_back( Node{ m_that->deref( rlp[back.child] ),
                         hexPrefixEncode( keyOf( back.key ),
                             NibbleSlice( bytesConstRef( &back.child, 1 ), 1 ), false ),
-                        255} );
+                        255 } );
                     break;
                 }
             } else
@@ -742,10 +742,10 @@ void GenericTrieDB< DB >::iterator::next() {
                     // fixed so that Node passed into push_back is constructed *before* m_trail is
                     // potentially resized (which invalidates back and rlp)
                     Node const& back = m_trail.back();
-                    m_trail.push_back( Node{m_that->deref( rlp[back.child] ),
+                    m_trail.push_back( Node{ m_that->deref( rlp[back.child] ),
                         hexPrefixEncode( keyOf( back.key ),
                             NibbleSlice( bytesConstRef( &back.child, 1 ), 1 ), false ),
-                        255} );
+                        255 } );
                     break;
                 }
             }

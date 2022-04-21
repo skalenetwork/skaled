@@ -16,7 +16,7 @@ public:
     Personal( dev::eth::KeyManager& _keyManager, dev::eth::AccountHolder& _accountHolder,
         eth::Interface& _eth );
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"personal", "1.0"}};
+        return RPCModules{ RPCModule{ "personal", "1.0" } };
     }
     virtual std::string personal_newAccount( std::string const& _password ) override;
     virtual bool personal_unlockAccount(

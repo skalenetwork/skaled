@@ -193,8 +193,8 @@ private:
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     bool m_broadcastEnabled;
 
-    dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
-    dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};
+    dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
+    dev::Logger m_traceLogger{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
     void logState();
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
