@@ -36,8 +36,8 @@ void Ethash::init() {
 
 Ethash::Ethash() {
     map< string, GenericFarm< EthashProofOfWork >::SealerDescriptor > sealers;
-    sealers["cpu"] = GenericFarm< EthashProofOfWork >::SealerDescriptor{
-        &EthashCPUMiner::instances, []( GenericMiner< EthashProofOfWork >::ConstructionInfo ci ) {
+    sealers["cpu"] = GenericFarm< EthashProofOfWork >::SealerDescriptor{ &EthashCPUMiner::instances,
+        []( GenericMiner< EthashProofOfWork >::ConstructionInfo ci ) {
             return new EthashCPUMiner( ci );
         } };
     m_farm.setSealers( sealers );

@@ -76,8 +76,8 @@ std::string smtp_security_type_2_str( smtp_security_type sst ) {
     }  // switch( sst )
 }
 
-command_entry command_list[] = {
-    { command_INIT, 0, 5 * 60, 220, smtp_error_info::SERVER_NOT_RESPONDING },
+command_entry command_list[] = { { command_INIT, 0, 5 * 60, 220,
+                                     smtp_error_info::SERVER_NOT_RESPONDING },
     { command_EHLO, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_EHLO },
     { command_AUTHPLAIN, 5 * 60, 5 * 60, 235, smtp_error_info::COMMAND_AUTH_PLAIN },
     { command_AUTHLOGIN, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_LOGIN },
@@ -933,8 +933,8 @@ int client::smtpXYZdigits() {
 }
 
 void client::formatHeader( char* header ) {
-    char month[][4] = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    char month[][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+        "Dec" };
     size_t i;
     std::string to;
     std::string cc;

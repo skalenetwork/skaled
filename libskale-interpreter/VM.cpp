@@ -478,8 +478,8 @@ void VM::interpretCases() {
             uint8_t const* data = m_mem.data() + size_t( m_SP[0] );
             size_t dataSize = size_t( m_SP[1] );
 
-            evmc_uint256be topics[] = {
-                toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] ), toEvmC( m_SP[5] ) };
+            evmc_uint256be topics[] = { toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] ),
+                toEvmC( m_SP[5] ) };
             size_t numTopics = sizeof( topics ) / sizeof( topics[0] );
 
             m_context->host->emit_log(

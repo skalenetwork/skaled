@@ -303,8 +303,8 @@ std::string sz_cli::stat_sign( EVP_PKEY* pKey, const std::string& s ) {
 
 std::string sz_cli::stat_a2h( const uint8_t* ptr, size_t cnt ) {
     char hex[2 * cnt];
-    static char hexval[16] = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    static char hexval[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd',
+        'e', 'f' };
     for ( size_t i = 0; i < cnt; ++i ) {
         hex[i * 2] = hexval[( ( ptr[i] >> 4 ) & 0xF )];
         hex[( i * 2 ) + 1] = hexval[( ptr[i] ) & 0x0F];

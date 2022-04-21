@@ -3648,8 +3648,8 @@ bool SkaleServerOverride::handleAdminOriginFilter(
     // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) <<
     // cc::attention( "
     // ------------> " ) << cc::info( strMethod ) << "\n";
-    static const std::set< std::string > g_setAdminMethods = {
-        "skale_getSnapshot", "skale_downloadSnapshotFragment" };
+    static const std::set< std::string > g_setAdminMethods = { "skale_getSnapshot",
+        "skale_downloadSnapshotFragment" };
     if ( g_setAdminMethods.find( strMethod ) == g_setAdminMethods.end() )
         return true;  // not an admin methhod
     std::string origin = strOriginURL;
@@ -3684,7 +3684,8 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     { "eth_getBalance", &SkaleServerOverride::eth_getBalance },
     { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
     { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
-    { "eth_getCode", &SkaleServerOverride::eth_getCode } };
+    { "eth_getCode", &SkaleServerOverride::eth_getCode }
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

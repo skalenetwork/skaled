@@ -795,8 +795,8 @@ ExecutionResult Block::execute(
             TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
             TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{
-        ExecutionResult(), null_receipt };
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ ExecutionResult(),
+        null_receipt };
 
     try {
         if ( _t.isInvalid() )
