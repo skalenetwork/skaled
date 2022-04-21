@@ -352,6 +352,9 @@ bool pending_ima_txns::find( txn_entry& txe ) const {
 }
 bool pending_ima_txns::find( dev::u256 hash ) const {
     lock_type lock( mtx() );
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     set_txns_t::const_iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.cend();
     if ( itFindS == itEndS )
         return false;
@@ -360,6 +363,9 @@ bool pending_ima_txns::find( dev::u256 hash ) const {
 
 void pending_ima_txns::list_all( list_txns_t& lst ) const {
     lst.clear();
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     lock_type lock( mtx() );
     lst = list_txns_;
 }

@@ -451,8 +451,8 @@ protected:
 
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
-    std::atomic< bool > m_needStateReset = { false };  ///< Need reset working state to premin on
-                                                       ///< next sync
+    std::atomic< bool > m_needStateReset = { false };     ///< Need reset working state to premin on
+                                                          ///< next sync
     std::chrono::system_clock::time_point m_lastGetWork;  ///< Is there an active and valid remote
                                                           ///< worker?
 
