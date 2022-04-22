@@ -178,7 +178,7 @@ inline bytes toCompactBigEndian( T _val, unsigned _min = 0 ) {
     return ret;
 }
 inline bytes toCompactBigEndian( _byte_ _val, unsigned _min = 0 ) {
-    return ( _min || _val ) ? bytes{_val} : bytes{};
+    return ( _min || _val ) ? bytes{ _val } : bytes{};
 }
 
 /// Convenience function for toBigEndian.

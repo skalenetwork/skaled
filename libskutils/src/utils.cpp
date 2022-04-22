@@ -1,6 +1,6 @@
 #include <skutils/console_colors.h>
-#include <skutils/utils.h>
 #include <skutils/multithreading.h>
+#include <skutils/utils.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -233,7 +233,7 @@ string_list_t enum_dir( const char* strDirPath, bool bDirs, bool bFiles ) {
     while ( ( entry = ::readdir( dir ) ) != nullptr ) {
         if ( entry->d_type == DT_DIR ) {
             // char path[1024];
-            if (::strcmp( entry->d_name, "." ) == 0 || ::strcmp( entry->d_name, ".." ) == 0 )
+            if ( ::strcmp( entry->d_name, "." ) == 0 || ::strcmp( entry->d_name, ".." ) == 0 )
                 continue;
             //::snprintf( path, sizeof(path), "%s/%s", strDirPath, entry->d_name );
             //::printf( "%*s[%s]\n", indent, "", entry->d_name );
@@ -258,18 +258,18 @@ bool is_file( const char* s, bool isCheckReadable  // = false
 ) {
     if ( s == nullptr || s[0] == '\0' )
         return false;
-    if (::access( s, F_OK ) == -1 )
+    if ( ::access( s, F_OK ) == -1 )
         return false;
     if ( isCheckReadable ) {
-        if (::access( s, R_OK ) == -1 )
+        if ( ::access( s, R_OK ) == -1 )
             return false;
     }
     if ( isCheckWritable ) {
-        if (::access( s, W_OK ) == -1 )
+        if ( ::access( s, W_OK ) == -1 )
             return false;
     }
     if ( isCheckExecutable ) {
-        if (::access( s, X_OK ) == -1 )
+        if ( ::access( s, X_OK ) == -1 )
             return false;
     }
     return true;
@@ -311,7 +311,7 @@ bool file_exists( const std::string& filename,
     ::memset( &st, 0, sizeof( struct stat ) );
     if ( p_size != nullptr )
         ( *p_size ) = 0;
-    if (::stat( filename.c_str(), &st ) != -1 ) {
+    if ( ::stat( filename.c_str(), &st ) != -1 ) {
         if ( p_size != nullptr )
             ( *p_size ) = st.st_size;
         return true;
@@ -561,7 +561,7 @@ bool convert_json_string_value_to_boolean( const std::string& r ) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 size_t cpu_count() {
-    static const size_t g_cntCPUs = size_t(::sysconf( _SC_NPROCESSORS_ONLN ) );
+    static const size_t g_cntCPUs = size_t( ::sysconf( _SC_NPROCESSORS_ONLN ) );
     return g_cntCPUs;
 }
 #if ( defined __BUILDING_4_MAC_OS_X__ )
@@ -738,7 +738,8 @@ load_monitor::load_monitor( size_t
       nSleepMillisecondsBetweenCpuLoadMeasurements_(
           nSleepMillisecondsBetweenCpuLoadMeasurements ) {
     thread_ = std::thread( [this]() {
-        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        skutils::multithreading::setThreadName(
+            skutils::tools::format( "sklm-%p", ( void* ) this ) );
         thread_proc();
     } );
 }
@@ -757,7 +758,7 @@ double load_monitor::last_cpu_load() const {
 
 nlohmann::json load_monitor::last_disk_load() const {
 #if ( !defined __BUILDING_4_MAC_OS_X__ )
-    std::lock_guard< std::mutex > lock{diskLoadMutex_};
+    std::lock_guard< std::mutex > lock{ diskLoadMutex_ };
     return diskLoad_;
 #else
     nlohmann::json jo = nullptr;
@@ -792,7 +793,7 @@ void load_monitor::calculate_load( size_t nSleep ) {
     const auto currentDiskLoad = disk_load();
     auto res = calculate_load_interval( prevDiskLoad, currentDiskLoad, nSleepMilliseconds );
     {
-        std::lock_guard< std::mutex > lock{diskLoadMutex_};
+        std::lock_guard< std::mutex > lock{ diskLoadMutex_ };
         diskLoad_ = res;
     }
     const auto cpuCurrentLoad = cpu_load();
@@ -811,10 +812,10 @@ double mem_usage() {  // 0.0...1.0
         return 0.0;
     return double( f );
 #else
-    double lfTotalPages = double(::sysconf( _SC_PHYS_PAGES ) );
+    double lfTotalPages = double( ::sysconf( _SC_PHYS_PAGES ) );
     if ( lfTotalPages == 0.0 )
         return 0.0;
-    double lfFreePages = double(::sysconf( _SC_AVPHYS_PAGES ) );
+    double lfFreePages = double( ::sysconf( _SC_AVPHYS_PAGES ) );
     double lfPercentAvail =
         double( lfTotalPages - lfFreePages ) / double( lfTotalPages );  // 0.0...1.0
     return lfPercentAvail;
@@ -1029,9 +1030,9 @@ void md5::finalize() {
     // zeroizing the context.
     unsigned char bits[8];
     unsigned int index, padLen;
-    static uint1 PADDING[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    static uint1 PADDING[64] = { 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     if ( finalized )
         throw std::runtime_error( "md5::finalize: already finalized this digest" );
     // save number of bits
@@ -1299,8 +1300,8 @@ char getch_no_wait() {
 
 namespace signal {
 
-std::atomic_int g_nStopSignal{0};
-std::atomic_bool g_bStop{false};
+std::atomic_int g_nStopSignal{ 0 };
+std::atomic_bool g_bStop{ false };
 
 bool get_signal_description( int nSignalNo, std::string& strSignalName,
     std::string& strSignalDescription ) {  // returns true if signal name is known
@@ -1310,116 +1311,116 @@ bool get_signal_description( int nSignalNo, std::string& strSignalName,
         const char* strSignalDescription;
     };  /// struct sig_desc_t
     static const sig_desc_t g_arr[] = {
-        {SIGINT, "SIGINT",
+        { SIGINT, "SIGINT",
             "This signal is the same as pressing ctrl-c. On some systems, \"delete\" + \"break\" "
             "sends the same signal to the process. The process is interrupted and stopped. "
-            "However, the process can ignore this signal."},
-        {SIGTERM, "SIGTERM",
+            "However, the process can ignore this signal." },
+        { SIGTERM, "SIGTERM",
             "Requests a process to stop running. This signal can be ignored. The process is given "
             "time to gracefully shutdown. When a program gracefully shuts down, that means it is "
             "given time to save its progress and release resources. In other words, it is not "
-            "forced to stop. SIGINT is very similar to SIGTERM."},
-        {SIGKILL, "SIGKILL",
+            "forced to stop. SIGINT is very similar to SIGTERM." },
+        { SIGKILL, "SIGKILL",
             "Forces the process to stop executing immediately. The program cannot ignore this "
-            "signal. This process does not get to clean-up either."},
-        {SIGHUP, "SIGHUP",
+            "signal. This process does not get to clean-up either." },
+        { SIGHUP, "SIGHUP",
             "Disconnects a process from the parent process. This an also be used to restart "
             "processes. For example, \"killall -SIGUP compiz\" will restart Compiz. This is useful "
-            "for daemons with memory leaks."},
-        {SIGQUIT, "SIGQUIT",
+            "for daemons with memory leaks." },
+        { SIGQUIT, "SIGQUIT",
             "The SIGQUIT sigma; is like SIGINT with the ability to make the process produce a core "
-            "dump."},
-        {SIGILL, "SIGILL",
+            "dump." },
+        { SIGILL, "SIGILL",
             "When a process performs a faulty, forbidden, or unknown function, the system sends "
-            "the SIGILL signal to the process. This is the ILLegal SIGnal."},
-        {SIGABRT, "SIGABRT",
+            "the SIGILL signal to the process. This is the ILLegal SIGnal." },
+        { SIGABRT, "SIGABRT",
             "This is the abort signal. Typically, a process will initiate this kill signal on "
-            "itself."},
-        {SIGSTOP, "SIGSTOP",
+            "itself." },
+        { SIGSTOP, "SIGSTOP",
             "This signal makes the operating system pause a process's execution. The process "
-            "cannot ignore the signal."},
-        {SIGFPE, "SIGFPE",
+            "cannot ignore the signal." },
+        { SIGFPE, "SIGFPE",
             "Processes that divide by zero are killed using SIGFPE. Imagine if humans got the "
             "death penalty for such math. NOTE: The author of this article was recently drug out "
-            "to the street and shot for dividing by zero."},
-        {SIGSEGV, "SIGSEGV",
+            "to the street and shot for dividing by zero." },
+        { SIGSEGV, "SIGSEGV",
             "When an application has a segmentation violation, this signal is sent to the "
-            "process."},
-        {SIGTSTP, "SIGTSTP",
+            "process." },
+        { SIGTSTP, "SIGTSTP",
             "This signal is like pressing ctrl-z. This makes a request to the terminal containing "
             "the process to ask the process to stop temporarily. The process can ignore the "
-            "request."},
-        {SIGCONT, "SIGCONT",
+            "request." },
+        { SIGCONT, "SIGCONT",
             "To make processes continue executing after being paused by the SIGTSTP or SIGSTOP "
             "signal, send the SIGCONT signal to the paused process. This is the CONTinue SIGnal. "
-            "This signal is beneficial to Unix job control (executing background tasks)."},
-        {SIGALRM, "SIGALRM", "Sent when the real time or clock time timer expires."},
-        {SIGTRAP, "SIGTRAP",
+            "This signal is beneficial to Unix job control (executing background tasks)." },
+        { SIGALRM, "SIGALRM", "Sent when the real time or clock time timer expires." },
+        { SIGTRAP, "SIGTRAP",
             "This signal is used for debugging purposes. When a process has performed an action or "
             "a condition is met that a debugger is waiting for, this signal will be sent to the "
-            "process."},
-        {SIGBUS, "SIGBUS",
+            "process." },
+        { SIGBUS, "SIGBUS",
             "When a process is sent the SIGBUS signal, it is because the process caused a bus "
             "error. Commonly, these bus errors are due to a process trying to use fake physical "
-            "addresses or the process has its memory alignment set incorrectly."},
-        {SIGUSR1, "SIGUSR1",
+            "addresses or the process has its memory alignment set incorrectly." },
+        { SIGUSR1, "SIGUSR1",
             "This indicates a user-defined condition. This signal can be set by the user by "
-            "programming the commands in sigusr1.c. This requires the programmer to know C/C++."},
-        {SIGUSR2, "SIGUSR2", "This indicates a user-defined condition."},
-        {SIGPIPE, "SIGPIPE",
+            "programming the commands in sigusr1.c. This requires the programmer to know C/C++." },
+        { SIGUSR2, "SIGUSR2", "This indicates a user-defined condition." },
+        { SIGPIPE, "SIGPIPE",
             "When a process tries to write to a pipe that lacks an end connected to a reader, this "
             "signal is sent to the process. A reader is a process that reads data at the end of a "
-            "pipe."},
-        {SIGCHLD, "SIGCHLD",
+            "pipe." },
+        { SIGCHLD, "SIGCHLD",
             "When a parent process loses its child process, the parent process is sent the SIGCHLD "
             "signal. This cleans up resources used by the child process. In computers, a child "
-            "process is a process started by another process know as a parent."},
-        {SIGTTIN, "SIGTTIN",
+            "process is a process started by another process know as a parent." },
+        { SIGTTIN, "SIGTTIN",
             "When a process attempts to read from a tty (computer terminal), the process receives "
-            "this signal."},
-        {SIGTTOU, "SIGTTOU",
+            "this signal." },
+        { SIGTTOU, "SIGTTOU",
             "When a process attempts to write from a tty (computer terminal), the process receives "
-            "this signal."},
-        {SIGURG, "SIGURG",
+            "this signal." },
+        { SIGURG, "SIGURG",
             "When a process has urgent data to be read or the data is very large, the SIGURG "
-            "signal is sent to the process."},
-        {SIGXCPU, "SIGXCPU",
+            "signal is sent to the process." },
+        { SIGXCPU, "SIGXCPU",
             "When a process uses the CPU past the allotted time, the system sends the process this "
             "signal. SIGXCPU acts like a warning; the process has time to save the progress (if "
-            "possible) and close before the system kills the process with SIGKILL."},
-        {SIGXFSZ, "SIGXFSZ",
+            "possible) and close before the system kills the process with SIGKILL." },
+        { SIGXFSZ, "SIGXFSZ",
             "Filesystems have a limit to how large a file can be made. When a program tries to "
-            "violate this limit, the system will send that process the SIGXFSZ signal."},
-        {SIGVTALRM, "SIGVTALRM", "Sent when CPU time used by the process elapses."},
-        {SIGPROF, "SIGPROF",
+            "violate this limit, the system will send that process the SIGXFSZ signal." },
+        { SIGVTALRM, "SIGVTALRM", "Sent when CPU time used by the process elapses." },
+        { SIGPROF, "SIGPROF",
             "Sent when CPU time used by the process and by the system on behalf of the process "
-            "elapses."},
-        {SIGWINCH, "SIGWINCH",
+            "elapses." },
+        { SIGWINCH, "SIGWINCH",
             "When a process is in a terminal that changes its size, the process receives this "
-            "signal."},
-        {SIGIO, "SIGIO", "Alias to SIGPOLL or at least behaves much like SIGPOLL."},
+            "signal." },
+        { SIGIO, "SIGIO", "Alias to SIGPOLL or at least behaves much like SIGPOLL." },
 #if ( defined SIGPWR )
-        {SIGPWR, "SIGPWR",
+        { SIGPWR, "SIGPWR",
             "Power failures will cause the system to send this signal to processes (if the system "
-            "is still on)."},
+            "is still on)." },
 #endif
-        {SIGSYS, "SIGSYS",
-            "Processes that give a system call an invalid parameter will receive this signal."},
+        { SIGSYS, "SIGSYS",
+            "Processes that give a system call an invalid parameter will receive this signal." },
 #if ( defined SIGEMT )
-        {SIGEMT, "SIGEMT", "Processes receive this signal when an emulator trap occurs."},
+        { SIGEMT, "SIGEMT", "Processes receive this signal when an emulator trap occurs." },
 #endif
 #if ( defined SIGINFO )
-        {SIGINFO, "SIGINFO",
+        { SIGINFO, "SIGINFO",
             "Terminals may sometimes send status requests to processes. When this happens, "
-            "processes will also receive this signal."},
+            "processes will also receive this signal." },
 #endif
 #if ( defined SIGLOST )
-        {SIGLOST, "SIGLOST", "Processes trying to access locked files will get this signal."},
+        { SIGLOST, "SIGLOST", "Processes trying to access locked files will get this signal." },
 #endif
 #if ( defined SIGPOLL )
-        {SIGPOLL, "",
+        { SIGPOLL, "",
             "When a process causes an asynchronous I/O event, that process is sent the SIGPOLL "
-            "signal."},
+            "signal." },
 #endif
     };
     for ( size_t i = 0; i < ( sizeof( g_arr ) / sizeof( g_arr[0] ) ); ++i ) {
@@ -1704,7 +1705,7 @@ nlohmann::json json_config_file_accessor::stat_extract_at_path(
             skutils::tools::replace_all( strIndex, "]", "" );
             skutils::tools::replace_all( strIndex, "\t", "" );
             char* ep = nullptr;
-            size_t nIndex = size_t(::strtoul( strIndex.c_str(), &ep, 10 ) );
+            size_t nIndex = size_t( ::strtoul( strIndex.c_str(), &ep, 10 ) );
             if ( nIndex > joWalk.size() )
                 throw std::runtime_error( "JSON array index is out of range" );
             joWalk = joWalk[nIndex];

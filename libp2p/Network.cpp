@@ -174,9 +174,10 @@ bool p2p::isPrivateAddress( std::string const& _addressToCheck ) {
 // Helper function to determine if an address is localhost
 bool p2p::isLocalHostAddress( bi::address const& _addressToCheck ) {
     // @todo: ivp6 link-local adresses (macos), ex: fe80::1%lo0
-    static const set< bi::address > c_rejectAddresses = {
-        {bi::address_v4::from_string( "127.0.0.1" )}, {bi::address_v4::from_string( "0.0.0.0" )},
-        {bi::address_v6::from_string( "::1" )}, {bi::address_v6::from_string( "::" )}};
+    static const set< bi::address > c_rejectAddresses = { { bi::address_v4::from_string(
+                                                              "127.0.0.1" ) },
+        { bi::address_v4::from_string( "0.0.0.0" ) }, { bi::address_v6::from_string( "::1" ) },
+        { bi::address_v6::from_string( "::" ) } };
 
     return find( c_rejectAddresses.begin(), c_rejectAddresses.end(), _addressToCheck ) !=
            c_rejectAddresses.end();
@@ -304,7 +305,7 @@ bi::tcp::endpoint Network::resolveHost( string const& _addr ) {
         boost::system::error_code ec;
         // resolve returns an iterator (host can resolve to multiple addresses)
         bi::tcp::resolver r( s_resolverIoService );
-        auto it = r.resolve( {bi::tcp::v4(), split[0], toString( port )}, ec );
+        auto it = r.resolve( { bi::tcp::v4(), split[0], toString( port ) }, ec );
         if ( ec ) {
             cnetlog << "Error resolving host address... " << _addr << " : " << ec.message();
             return bi::tcp::endpoint();

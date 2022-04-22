@@ -69,14 +69,14 @@ owning_bytes_ref EVMC::exec( u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onO
     evmc_call_kind kind = _ext.isCreate ? EVMC_CREATE : EVMC_CALL;
     uint32_t flags = _ext.staticCall ? EVMC_STATIC : 0;
     assert( flags != EVMC_STATIC || kind == EVMC_CALL );  // STATIC implies a CALL.
-    evmc_message msg = {kind, flags, static_cast< int32_t >( _ext.depth ), gas,
+    evmc_message msg = { kind, flags, static_cast< int32_t >( _ext.depth ), gas,
         toEvmC( _ext.myAddress ), toEvmC( _ext.caller ), _ext.data.data(), _ext.data.size(),
-        toEvmC( _ext.value ), toEvmC( 0x0_cppui256 )};
-    EvmCHost host{_ext};
+        toEvmC( _ext.value ), toEvmC( 0x0_cppui256 ) };
+    EvmCHost host{ _ext };
     auto r = execute( host, mode, msg, _ext.code.data(), _ext.code.size() );
     // FIXME: Copy the output for now, but copyless version possible.
     auto output =
-        owning_bytes_ref{{&r.output_data[0], &r.output_data[r.output_size]}, 0, r.output_size};
+        owning_bytes_ref{ { &r.output_data[0], &r.output_data[r.output_size] }, 0, r.output_size };
 
     switch ( r.status_code ) {
     case EVMC_SUCCESS:
@@ -85,7 +85,7 @@ owning_bytes_ref EVMC::exec( u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onO
 
     case EVMC_REVERT:
         io_gas = r.gas_left;
-        throw RevertInstruction{std::move( output )};
+        throw RevertInstruction{ std::move( output ) };
 
     case EVMC_OUT_OF_GAS:
     case EVMC_FAILURE:

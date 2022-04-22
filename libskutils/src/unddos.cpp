@@ -90,11 +90,11 @@ void origin_entry_setting::load_custom_method_as_multiplier_of_default(
 
 void origin_entry_setting::load_recommended_custom_methods_as_multiplier_of_default(
     double lfMultiplier ) {
-    static const char* g_arr[] = {"web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
+    static const char* g_arr[] = { "web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
         "eth_protocolVersion", "eth_gasPrice", "eth_blockNumber", "eth_getBalance",
         "eth_getBlockByHash", "eth_getBlockByNumber", "eth_getTransactionCount",
         "eth_getTransactionReceipt", "eth_getTransactionByHash",
-        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex"};
+        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex" };
     for ( size_t i = 0; i < sizeof( g_arr ) / sizeof( g_arr[0] ); ++i )
         load_custom_method_as_multiplier_of_default( g_arr[i], lfMultiplier );
 }

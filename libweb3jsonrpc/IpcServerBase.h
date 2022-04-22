@@ -53,7 +53,7 @@ protected:
                                                                           // new json-rpc-cpp
 
 protected:
-    std::atomic< bool > m_running{false};
+    std::atomic< bool > m_running{ false };
     std::string m_path;
     std::unordered_set< S > m_sockets;
     std::mutex x_sockets;
