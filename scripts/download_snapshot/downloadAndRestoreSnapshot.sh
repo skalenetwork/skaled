@@ -10,6 +10,5 @@ FILE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 python3 "$FILE_PATH"/skaledDownaloadSnapshot.py "$URL" "$BLOCK" "$NODE_ID" "$DIFF_PATH"
 
-sudo bash btrfs_helper.sh
-sudo mkdir -p /home/oleh/work/data_dir/bad_snapshot/189/
+sudo mkdir -p "$SNAPSHOT_PATH"
 sudo btrfs receive -f "$DIFF_PATH" "$SNAPSHOT_PATH"
