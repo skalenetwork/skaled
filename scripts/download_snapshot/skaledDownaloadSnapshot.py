@@ -1,26 +1,13 @@
 from web3 import Web3
 import json
 import requests
-import os
 import sys
-# from dotenv import load_dotenv
-# import base64
-# import btrfs
 
-# load_dotenv()
+skaled_url = sys.argv[1]
+block_number = int(sys.argv[2])
+node_id = int(sys.argv[3])
+diff_path = sys.argv[4]
 
-# skaled_url = os.environ['URL']
-# block_number = int(os.environ['BLOCK'])
-# node_id = int(os.environ['NODE_ID'])
-# diff_path = os.environ['DIFF_PATH'] + '/' + str(node_id)
-# print(sys.argv)
-skaled_url = sys.argv[1] #os.environ['URL']
-block_number = int(sys.argv[2]) #int(os.environ['BLOCK'])
-node_id = int(sys.argv[3]) #int(os.environ['NODE_ID'])
-diff_path = sys.argv[4] #os.environ['DIFF_PATH'] + '/' + str(node_id)
-
-# print("AAAAAA", skaled_url, block_number, node_id, diff_path)
-# assert False
 my_provider = Web3.HTTPProvider(skaled_url)
 skaled = Web3(my_provider)
 assert(skaled.isConnected())
@@ -54,7 +41,3 @@ for i in range(cnt_chunks):
     f.write(buffer)
     f.close()
     print(i)
-
-# with open(diff_path, "rb") as f:
-#     data = f.readlines()
-#     print(data)
