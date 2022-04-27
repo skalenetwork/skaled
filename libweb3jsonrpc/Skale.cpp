@@ -46,9 +46,9 @@
 //#include <jsonrpccpp/client.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
+#include <libconsensus/exceptions/InvalidStateException.h>
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
-#include <libconsensus/exceptions/InvalidStateException.h>
 
 #include <exception>
 #include <fstream>
@@ -188,7 +188,8 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
     // TODO mutex here!!
-    skutils::dispatch::once( "dummy-queue-for-snapshot",
+    skutils::dispatch::once(
+        "dummy-queue-for-snapshot",
         [this]() {
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
@@ -453,6 +454,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
+        if ( this->m_client.chainParams().nodeInfo.syncNode )
+            throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         uint64_t status = this->m_client.submitOracleRequest( request, receipt );
         if ( status != 0 ) {
@@ -471,6 +474,8 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
+        if ( this->m_client.chainParams().nodeInfo.syncNode )
+            throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
         uint64_t status = this->m_client.checkOracleResult( receipt, result );
         switch ( status ) {

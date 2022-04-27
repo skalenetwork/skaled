@@ -49,8 +49,8 @@ bool dev::isHex( string const& _s ) noexcept {
 }
 
 std::string dev::escaped( std::string const& _s, bool _all ) {
-    static const map< char, char > prettyEscapes{
-        {'\r', 'r'}, {'\n', 'n'}, {'\t', 't'}, {'\v', 'v'}};
+    static const map< char, char > prettyEscapes{ { '\r', 'r' }, { '\n', 'n' }, { '\t', 't' },
+        { '\v', 'v' } };
     std::string ret;
     ret.reserve( _s.size() + 2 );
     ret.push_back( '"' );

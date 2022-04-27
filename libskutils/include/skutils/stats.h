@@ -57,21 +57,21 @@ typedef skutils::with_summary< size_t, skutils::round_queue< event_record_item_t
 
 struct UnitsPerSecond {
     UnitsPerSecond( time_point time )
-        : m_startTime{clock::now()},
-          m_prevTime{time},
-          m_lastTime{std::move( time )},
-          m_prevPerSec{1},
-          m_total{1},
-          m_total1{1},
-          m_prevUnitsPerSecond{0.0} {}
+        : m_startTime{ clock::now() },
+          m_prevTime{ time },
+          m_lastTime{ std::move( time ) },
+          m_prevPerSec{ 1 },
+          m_total{ 1 },
+          m_total1{ 1 },
+          m_prevUnitsPerSecond{ 0.0 } {}
     UnitsPerSecond( time_point time, size_t prevCount, size_t totalCount )
-        : m_startTime{clock::now()},
-          m_prevTime{time},
-          m_lastTime{std::move( time )},
-          m_prevPerSec{prevCount},
-          m_total{totalCount},
-          m_total1{1},
-          m_prevUnitsPerSecond{0.0} {}
+        : m_startTime{ clock::now() },
+          m_prevTime{ time },
+          m_lastTime{ std::move( time ) },
+          m_prevPerSec{ prevCount },
+          m_total{ totalCount },
+          m_total1{ 1 },
+          m_prevUnitsPerSecond{ 0.0 } {}
 
     bool operator<( const UnitsPerSecond& unit1 ) const {
         return std::tie( m_startTime, m_prevTime, m_lastTime, m_prevPerSec, m_total, m_total1 ) <

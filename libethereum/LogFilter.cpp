@@ -84,53 +84,44 @@ vector< LogBloom > LogFilter::bloomPossibilities() const {
     // return combination of each of the addresses/topics
     vector< LogBloom > ret;
 
-    // | every address with every topic
-    for ( auto const& i : m_addresses ) {
-        // 1st case, there are addresses and topics
-        //
-        // m_addresses = [a0, a1];
-        // m_topics = [[t0], [t1a, t1b], [], []];
-        //
-        // blooms = [
-        // a0 | t0, a0 | t1a | t1b,
-        // a1 | t0, a1 | t1a | t1b
-        // ]
-        //
-        for ( auto const& t : m_topics )
-            if ( t.size() ) {
-                LogBloom b = LogBloom().shiftBloom< 3 >( dev::sha3( i ) );
-                for ( auto const& j : t )
-                    b = b.shiftBloom< 3 >( dev::sha3( j ) );
-                ret.push_back( b );
-            }
-    }
+    // [a, t0, t1...]
+    std::vector< size_t > iter( m_topics.size() + 1 );  // every address + every topic OR
 
-    // 2nd case, there are no topics
-    //
-    // m_addresses = [a0, a1];
-    // m_topics = [[t0], [t1a, t1b], [], []];
-    //
-    // blooms = [a0, a1];
-    //
-    if ( !ret.size() )
-        for ( auto const& i : m_addresses )
-            ret.push_back( LogBloom().shiftBloom< 3 >( dev::sha3( i ) ) );
+    // true if success, false if overflow
+    auto inc_iter = [&]() -> bool {
+        for ( size_t pos = iter.size() - 1; pos != ( size_t ) -1; --pos ) {
+            size_t overflow = pos == 0 ? m_addresses.size() : m_topics[pos - 1].size();
 
-    // 3rd case, there are no addresses, at least create blooms from topics
-    //
-    // m_addresses = [];
-    // m_topics = [[t0], [t1a, t1b], [], []];
-    //
-    // blooms = [t0, t1a | t1b];
-    //
-    if ( !m_addresses.size() )
-        for ( auto const& t : m_topics )
-            if ( t.size() ) {
-                LogBloom b;
-                for ( auto const& j : t )
-                    b = b.shiftBloom< 3 >( dev::sha3( j ) );
-                ret.push_back( b );
-            }
+            if ( overflow == 0 )  // skip empty dimensions
+                continue;
+
+            iter[pos]++;
+            if ( iter[pos] == overflow ) {
+                iter[pos] = 0;
+                continue;  // to pos-1
+            } else
+                return true;
+        }  // for pos
+
+        return false;
+    };
+
+    // for all combinations!
+    for ( ;; ) {
+        LogBloom b;
+        for ( size_t i = 0; i < iter.size(); ++i ) {
+            if ( i == 0 && m_addresses.size() )
+                b.shiftBloom< 3 >( dev::sha3( m_addresses[iter[0]] ) );
+            else if ( i > 0 && m_topics[i - 1].size() )
+                b.shiftBloom< 3 >( dev::sha3( m_topics[i - 1][iter[i]] ) );
+        }  // for item in iter
+
+        if ( b != LogBloom() )
+            ret.push_back( b );
+
+        if ( !inc_iter() )
+            break;
+    }  // for
 
     return ret;
 }
@@ -143,11 +134,13 @@ LogEntries LogFilter::matches( TransactionReceipt const& _m ) const {
     LogEntries ret;
     if ( matches( _m.bloom() ) )
         for ( LogEntry const& e : _m.log() ) {
-            if ( !m_addresses.empty() && !m_addresses.count( e.address ) )
+            if ( !m_addresses.empty() &&
+                 find( m_addresses.begin(), m_addresses.end(), e.address ) == m_addresses.end() )
                 goto continue2;
             for ( unsigned i = 0; i < 4; ++i )
                 if ( !m_topics[i].empty() &&
-                     ( e.topics.size() < i || !m_topics[i].count( e.topics[i] ) ) )
+                     ( e.topics.size() < i || find( m_topics[i].begin(), m_topics[i].end(),
+                                                  e.topics[i] ) == m_topics[i].end() ) )
                     goto continue2;
             ret.push_back( e );
         continue2:;
