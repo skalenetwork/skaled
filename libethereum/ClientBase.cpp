@@ -256,11 +256,15 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
         if ( _f.matches( receipt.bloom() ) )
             for ( size_t k = 0; k < receipt.log().size(); ++k ) {
                 LogEntry e = receipt.log()[k];
-                if ( _f.getAddresses().empty() || _f.getAddresses().count( e.address ) ) {
+                if ( _f.getAddresses().empty() ||
+                     ( std::find( _f.getAddresses().begin(), _f.getAddresses().end(), e.address ) !=
+                         _f.getAddresses().end() ) ) {
                     bool isGood = true;
                     for ( unsigned j = 0; j < 4; ++j ) {
                         if ( !_f.getTopics()[j].empty() &&
-                             ( e.topics.size() < j || !_f.getTopics()[j].count( e.topics[j] ) ) ) {
+                             ( e.topics.size() < j ||
+                                 ( std::find( _f.getTopics()[j].begin(), _f.getTopics()[j].end(),
+                                       e.topics[j] ) == _f.getTopics()[j].end() ) ) ) {
                             isGood = false;
                             break;
                         }
