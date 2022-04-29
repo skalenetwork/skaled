@@ -1186,8 +1186,9 @@ then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
                 eval git clone https://github.com/warmcat/libwebsockets.git
 				eval cd libwebsockets
-				eval git checkout v4.1-stable
-				eval git pull
+                # eval git checkout v4.1-stable
+                eval git checkout v4.3-stable
+                eval git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf libwebsockets-from-git.tar.gz ./libwebsockets
@@ -2288,9 +2289,9 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/proxygen.git --recursive
-				cd proxygen
+                cd proxygen
                 eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
-				cd ..
+                cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf proxygen-from-git.tar.gz ./proxygen
 			else
@@ -2302,7 +2303,7 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
 			cd ..
 		else
 			cd proxygen
