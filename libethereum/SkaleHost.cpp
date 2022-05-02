@@ -552,8 +552,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-            _exit( int( ExitHandler::ec_state_root_mismatch ) );
+            if ( m_client.chainParams().chainID != 0xd2ba743e9fef4 &&
+                 m_client.chainParams().chainID != 0x292a2c91ca6a3 &&
+                 m_client.chainParams().chainID != 0x1c6fa7f59eeac &&
+                 m_client.chainParams().chainID != 0x4b127e9c2f7de ) {
+                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
+                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+            }
         }
 
         // WARN if default but non-zero
