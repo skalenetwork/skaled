@@ -932,7 +932,7 @@ then
 			if [ ! -f "libiconv-1.15.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				eval "$WGET" http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz
+				eval "$WGET" --no-check-certificate https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz
 			fi
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 			eval tar -xzf libiconv-1.15.tar.gz
