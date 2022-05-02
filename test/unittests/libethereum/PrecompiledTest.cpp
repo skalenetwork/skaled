@@ -1684,6 +1684,16 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ) );
 }
 
+BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
+
+    fileName = "../../test";
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( !res.first );
+}
+
 BOOST_AUTO_TEST_CASE( deleteFile ) {
     PrecompiledExecutor execCreate = PrecompiledRegistrar::executor( "createFile" );
     bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +

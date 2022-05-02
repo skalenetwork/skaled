@@ -431,6 +431,12 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, filename, filenameLength );
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+        const fs::path canonicalPath = fs::canonical(filePath);
+        if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0) != 0) {
+            throw std::runtime_error(
+                "getFileSize() failed because file couldn't be read" );
+        }
+
         size_t const fileSize = stat_compute_file_size( filePath.c_str() );
         bytes response = toBigEndian( static_cast< u256 >( fileSize ) );
         return {true, response};
