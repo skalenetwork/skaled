@@ -241,21 +241,22 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
 void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
     auto receipts = bc().receipts( _blockHash ).receipts;
+    unsigned logIndex = 0;
     for ( size_t i = 0; i < receipts.size(); i++ ) {
+        //        logIndex = logIndex ? logIndex + 1 : logIndex;
         TransactionReceipt receipt = receipts[i];
         auto th = transaction( _blockHash, i ).sha3();
         if ( _f.isRangeFilter() ) {
             for ( size_t j = 0; j < receipt.log().size(); ++j ) {
                 io_logs.insert( io_logs.begin(),
                     LocalisedLogEntry( receipt.log()[i], _blockHash,
-                        ( BlockNumber ) bc().number( _blockHash ), th, i, j, _polarity ) );
+                        ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++, _polarity ) );
             }
             return;
         }
 
         if ( _f.matches( receipt.bloom() ) )
-            for ( size_t k = 0; k < receipt.log().size(); ++k ) {
-                LogEntry e = receipt.log()[k];
+            for ( const auto& e : receipt.log() ) {
                 if ( _f.getAddresses().empty() ||
                      ( std::find( _f.getAddresses().begin(), _f.getAddresses().end(), e.address ) !=
                          _f.getAddresses().end() ) ) {
@@ -266,15 +267,18 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
                                  ( std::find( _f.getTopics()[j].begin(), _f.getTopics()[j].end(),
                                        e.topics[j] ) == _f.getTopics()[j].end() ) ) ) {
                             isGood = false;
-                            break;
                         }
                     }
                     if ( isGood )
-                        io_logs.insert( io_logs.begin(),
-                            LocalisedLogEntry( e, _blockHash,
-                                ( BlockNumber ) bc().number( _blockHash ), th, i, k, _polarity ) );
-                }
+                        io_logs.insert(
+                            io_logs.begin(), LocalisedLogEntry( e, _blockHash,
+                                                 ( BlockNumber ) bc().number( _blockHash ), th, i,
+                                                 logIndex++, _polarity ) );
+                } else
+                    ++logIndex;
             }
+        else
+            logIndex += receipt.log().size();
     }
 }
 
