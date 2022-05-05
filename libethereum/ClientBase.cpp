@@ -243,29 +243,28 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     auto receipts = bc().receipts( _blockHash ).receipts;
     unsigned logIndex = 0;
     for ( size_t i = 0; i < receipts.size(); i++ ) {
-        //        logIndex = logIndex ? logIndex + 1 : logIndex;
         TransactionReceipt receipt = receipts[i];
         auto th = transaction( _blockHash, i ).sha3();
         if ( _f.isRangeFilter() ) {
-            for ( size_t j = 0; j < receipt.log().size(); ++j ) {
+            for ( const auto& e : receipt.log() ) {
                 io_logs.insert( io_logs.begin(),
-                    LocalisedLogEntry( receipt.log()[i], _blockHash,
-                        ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++, _polarity ) );
+                    LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
+                        i, logIndex++, _polarity ) );
             }
-            return;
+            continue;
         }
 
         if ( _f.matches( receipt.bloom() ) )
             for ( const auto& e : receipt.log() ) {
-                if ( _f.getAddresses().empty() ||
-                     ( std::find( _f.getAddresses().begin(), _f.getAddresses().end(), e.address ) !=
-                         _f.getAddresses().end() ) ) {
+                auto addresses = _f.getAddresses();
+                if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
+                                              e.address ) != addresses.end() ) {
                     bool isGood = true;
                     for ( unsigned j = 0; j < 4; ++j ) {
-                        if ( !_f.getTopics()[j].empty() &&
-                             ( e.topics.size() < j ||
-                                 ( std::find( _f.getTopics()[j].begin(), _f.getTopics()[j].end(),
-                                       e.topics[j] ) == _f.getTopics()[j].end() ) ) ) {
+                        auto topics = _f.getTopics()[j];
+                        if ( !topics.empty() &&
+                             ( e.topics.size() < j || ( std::find( topics.begin(), topics.end(),
+                                                            e.topics[j] ) == topics.end() ) ) ) {
                             isGood = false;
                         }
                     }
