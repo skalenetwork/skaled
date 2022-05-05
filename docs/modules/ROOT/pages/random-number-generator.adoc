@@ -17,7 +17,7 @@ To use the RNG precompile, you can use the following code example to access the 
 
 [source, javascript]
 ----
-pragma solidity ^0.5.3;
+pragma solidity ^0.8.13;
 
 contract A {
 
@@ -25,7 +25,7 @@ contract A {
         assembly {
             let freemem := mload(0x40)
             let start_addr := add(freemem, 0)
-            if iszero(staticcall(gas, 0x18, 0, 0, start_addr, 32)) {
+            if iszero(staticcall(gas(), 0x18, 0, 0, start_addr, 32)) {
               invalid()
             }
             addr := mload(freemem)
