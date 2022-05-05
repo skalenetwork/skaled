@@ -1,0 +1,25 @@
+= Owner and administrative functions
+
+== SKALE Chain
+
+* manage sFUEL
+* deploy contracts
+* change whitelist for contract deployment
+
+== Filestorage
+
+* allocate space for end-users
+* upgrade filestorage predeployed contracts
+
+== IMA Bridge
+
+* upgrade SKALE Chain IMA predeployed contracts
+* register/map tokens
+* set IMA permissions
+** enableAutoDeploy
+** whitelist tokens
+** >>>
+* register extra contracts
+* add SKALE Chain connection to IMA
+* killing IMA (dependant on 2nd key)
+

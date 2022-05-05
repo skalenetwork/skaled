@@ -1,4 +1,5 @@
 = SKALE RNG Endpoint
+:page-aliases: 3.8.x@skaled:ROOT:random-number-generator.adoc
 
 :stem: asciimath
 
