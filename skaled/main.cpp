@@ -462,7 +462,11 @@ static void stat_init_common_signal_handling() {
     } );
 }
 
+void repair_blocks_and_extras_db( boost::filesystem::path const& _path );
 int main( int argc, char** argv ) try {
+
+    repair_blocks_and_extras_db( "/home/dimalit/Downloads/208/28e07f34/blocks_and_extras" );
+
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );

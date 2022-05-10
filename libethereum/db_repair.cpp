@@ -26,11 +26,12 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
     // TODO catch
 
-    size_t last_good_block = 1000;
+    size_t last_good_block = 1800000;
     size_t start_block = last_good_block;
     h256 new_state_root_for_all;  // = get it from block
 
     h256 prev_hash;
+    BlockDetails prev_details;
 
     for ( size_t bn = start_block;; ++bn ) {
         // read block
@@ -57,6 +58,10 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
         BlockHeader new_header( block_rlp.data() );
         h256 new_hash = new_header.hash();
+        if ( bn == start_block ) {
+            assert( new_hash == old_hash );
+        }
+        cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
 
         // write block
 
@@ -64,8 +69,6 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
         blocksDB->insert( toSlice( new_hash ), db::Slice( block_rlp.data() ) );
 
         // update extras
-        // parent! extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
-        //     ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
         string details_binary = extrasDB->lookup( toSlice( old_hash, ExtraDetails ) );
         BlockDetails block_details = BlockDetails( RLP( details_binary ) );
@@ -75,6 +78,12 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
         extrasDB->kill( toSlice( old_hash, ExtraDetails ) );
         extrasDB->insert(
             toSlice( new_hash, ExtraDetails ), ( db::Slice ) dev::ref( block_details.rlp() ) );
+
+        // same for parent details
+        if ( bn != start_block )
+            prev_details.children = h256s( { new_hash } );
+        extrasDB->insert(
+            toSlice( prev_hash, ExtraDetails ), ( db::Slice ) dev::ref( prev_details.rlp() ) );
 
         string log_blooms = extrasDB->lookup( toSlice( old_hash, ExtraLogBlooms ) );
         extrasDB->kill( toSlice( old_hash, ExtraLogBlooms ) );
@@ -88,9 +97,21 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
             ( db::Slice ) dev::ref( BlockHash( new_hash ).rlp() ) );
 
         // update block hashes for transaction locations
+        RLPs transactions = block_rlp[1].toList();
+
+        TransactionAddress ta;
+        ta.blockHash = new_hash;
+        ta.index = 0;
+
+        for ( size_t i = 0; i < transactions.size(); ++i ) {
+            h256 hash = sha3( transactions[i].payload() );
+            extrasDB->insert(
+                toSlice( hash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
+        }  // for
 
         db->commit( "repair_block" );
 
-        prev_hash = new_header.hash();
+        prev_hash = new_hash;
+        prev_details = block_details;
     }  // for
 }
