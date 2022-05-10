@@ -553,7 +553,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        if ( _winningNodeIndex != 0 && 
+            dev::h256::Arith( stCurrent ) != _stateRoot && 
+            m_broadcastEnabled ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -574,7 +576,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
 
         // WARN if default but non-zero
-        if ( _winningNodeIndex == 0 && _stateRoot != u256() )
+        if ( _winningNodeIndex == 0 && _stateRoot != u256() && m_broadcastEnabled )
             clog( VerbosityWarning, "skale-host" )
                 << cc::warn( "WARNING: STATE ROOT MISMATCH!" )
                 << cc::warn( " Current block is DEFAULT BUT arrived state root is " )
