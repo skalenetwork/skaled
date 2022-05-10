@@ -1758,7 +1758,7 @@ int main( int argc, char** argv ) try {
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
             &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL, 
-            !chainParams.nodeInfo.syncNode );
+            chainParams.nodeInfo.syncNode );
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();
