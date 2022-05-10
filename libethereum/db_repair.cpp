@@ -14,8 +14,8 @@ dev::h256 numberHash( batched_io::db_operations_face* _db, unsigned _i ) {
     return h256( RLP( s ) );
 }
 
-void repair_blocks_and_extras_db(boost::filesystem::path const& _path){
-    // TODO do we have anough classes for batched and non-batched access?
+void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
+    // TODO do we have enough classes for batched and non-batched access?
     auto rotator = std::make_shared< batched_io::rotating_db_io >( _path, 5 );
     auto rotating_db = std::make_shared< dev::db::ManuallyRotatingLevelDB >( rotator );
     auto db = std::make_shared< batched_io::batched_db >();
@@ -26,63 +26,71 @@ void repair_blocks_and_extras_db(boost::filesystem::path const& _path){
 
     // TODO catch
 
-    size_t start_block = 1000;
-    h256 new_state_root_for_all; // = get it from block
+    size_t last_good_block = 1000;
+    size_t start_block = last_good_block;
+    h256 new_state_root_for_all;  // = get it from block
 
     h256 prev_hash;
 
-    for( size_t bn = start_block;; ++bn ){
-
+    for ( size_t bn = start_block;; ++bn ) {
         // read block
 
-        h256 block_hash = numberHash( extrasDB, bn );
+        h256 old_hash = numberHash( extrasDB, bn );
 
-        string block_binary = blocksDB->lookup( toSlice( block_hash ) );
+        string block_binary = blocksDB->lookup( toSlice( old_hash ) );
 
         RLP block_rlp( block_binary );
 
         // 1 update parent
 
-        block_rlp[0][0] = RLP( RLPStream().append( prev_hash ).out() );
+        if ( bn != start_block )
+            block_rlp[0][0] = RLP( RLPStream().append( prev_hash ).out() );
 
         // 2 update stateRoot
 
-        block_rlp[0][3] = RLP( RLPStream().append( prev_hash ).out() );
+        if ( bn == last_good_block )
+            new_state_root_for_all = block_rlp[0][3].toHash< h256 >();
+        else
+            block_rlp[0][3] = RLP( RLPStream().append( new_state_root_for_all ).out() );
 
         // 3 recompute hash
 
         BlockHeader new_header( block_rlp.data() );
+        h256 new_hash = new_header.hash();
 
         // write block
 
-        blocksDB->kill( toSlice( block_hash ) );
-        blocksDB->insert( toSlice( new_header.hash() ), db::Slice( block_rlp.data() ) );
+        blocksDB->kill( toSlice( old_hash ) );
+        blocksDB->insert( toSlice( new_hash ), db::Slice( block_rlp.data() ) );
 
         // update extras
         // parent! extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
         //     ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
 
-        string details_binary = extrasDB->lookup( toSlice( block_hash, ExtraDetails ) );
-        BlockDetails block_details( RLP( details_binary ) );
+        string details_binary = extrasDB->lookup( toSlice( old_hash, ExtraDetails ) );
+        BlockDetails block_details = BlockDetails( RLP( details_binary ) );
+        if ( bn != start_block )
+            block_details.parent = prev_hash;
 
+        extrasDB->kill( toSlice( old_hash, ExtraDetails ) );
+        extrasDB->insert(
+            toSlice( new_hash, ExtraDetails ), ( db::Slice ) dev::ref( block_details.rlp() ) );
 
-        extrasWriteBatch.insert(
-            toSlice( new_header.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
+        string log_blooms = extrasDB->lookup( toSlice( old_hash, ExtraLogBlooms ) );
+        extrasDB->kill( toSlice( old_hash, ExtraLogBlooms ) );
+        extrasDB->insert( toSlice( new_hash, ExtraLogBlooms ), db::Slice( log_blooms ) );
 
-        BlockLogBlooms blb;
-        for ( auto i : RLP( _receipts ) )
-            blb.blooms.push_back( TransactionReceipt( i.data() ).bloom() );
-        extrasWriteBatch.insert(
-            toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
+        string receipts = extrasDB->lookup( toSlice( old_hash, ExtraReceipts ) );
+        extrasDB->kill( toSlice( old_hash, ExtraReceipts ) );
+        extrasDB->insert( toSlice( new_hash, ExtraReceipts ), db::Slice( receipts ) );
 
-        extrasWriteBatch.insert(
-            toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
-
+        extrasDB->insert( toSlice( h256( bn ), ExtraBlockHash ),
+            ( db::Slice ) dev::ref( BlockHash( new_hash ).rlp() ) );
 
         // update block hashes for transaction locations
 
-        db->commit("repair_block");
+        db->commit( "repair_block" );
 
         prev_hash = new_header.hash();
-    }// for
+    }  // for
 }
