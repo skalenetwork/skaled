@@ -221,12 +221,10 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL, 
-    bool _readOnly ) try
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
-      m_readOnly( _readOnly ),
       total_sent( 0 ),
       total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -555,7 +553,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         // FATAL if mismatch in non-default
         if ( _winningNodeIndex != 0 && 
             dev::h256::Arith( stCurrent ) != _stateRoot && 
-            !m_readOnly ) {
+            !this->m_client.chainParams().nodeInfo.syncNode ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -576,7 +574,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
 
         // WARN if default but non-zero
-        if ( _winningNodeIndex == 0 && _stateRoot != u256() && !m_readOnly )
+        if ( _winningNodeIndex == 0 && _stateRoot != u256() 
+            && !this->m_client.chainParams().nodeInfo.syncNode )
             clog( VerbosityWarning, "skale-host" )
                 << cc::warn( "WARNING: STATE ROOT MISMATCH!" )
                 << cc::warn( " Current block is DEFAULT BUT arrived state root is " )
@@ -705,7 +704,7 @@ void SkaleHost::startWorking() {
     working = true;
     m_exitedForcefully = false;
 
-    if ( !m_readOnly ) {
+    if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
         try {
             m_broadcaster->startService();
         } catch ( const Broadcaster::StartupException& ) {
@@ -722,7 +721,7 @@ void SkaleHost::startWorking() {
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        if ( !m_readOnly ) {
+        if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
             m_broadcastThread.join();
         }
         throw;
