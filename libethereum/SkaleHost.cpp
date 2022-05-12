@@ -574,8 +574,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         }
 
         // WARN if default but non-zero
-        if ( _winningNodeIndex == 0 && _stateRoot != u256() 
-            && !this->m_client.chainParams().nodeInfo.syncNode )
+        if ( _winningNodeIndex == 0 && _stateRoot != u256() )
             clog( VerbosityWarning, "skale-host" )
                 << cc::warn( "WARNING: STATE ROOT MISMATCH!" )
                 << cc::warn( " Current block is DEFAULT BUT arrived state root is " )
