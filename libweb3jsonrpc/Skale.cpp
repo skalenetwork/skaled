@@ -453,6 +453,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
+        if ( this->m_client.chainParams().nodeInfo.syncNode )
+            throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         uint64_t status = this->m_client.submitOracleRequest( request, receipt );
         if ( status != 0 ) {
@@ -471,6 +473,8 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
+        if ( this->m_client.chainParams().nodeInfo.syncNode )
+            throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
         uint64_t status = this->m_client.checkOracleResult( receipt, result );
         switch ( status ) {
