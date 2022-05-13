@@ -1,4 +1,5 @@
 #include "BlockChain.h"
+#include <libweb3jsonrpc/JsonHelper.h>
 
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
@@ -25,6 +26,8 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
     auto extrasDB = db_splitter->new_interface();
 
     // TODO catch
+
+    h256 best_hash = h256( RLP( extrasDB->lookup( toSlice( _i, ExtraBlockHash ) ) ) );
 
     size_t last_good_block = 1800000;
     size_t start_block = last_good_block;
@@ -111,7 +114,51 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
         db->commit( "repair_block" );
 
+        if( old_hash == best_hash ){
+            // update latest
+            extrasDB->kill( db::Slice( "best" ) );
+            extrasDB->insert( db::Slice( "best" ), toSlice( new_hash ) );
+            break;
+        }
+
         prev_hash = new_hash;
         prev_details = block_details;
+    }  // for
+}
+
+void dump_blocks_and_extras_db(
+    boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
+    BlockChain bc( _chainParams, _path, WithExisting::Trust );
+
+    for ( size_t bn = _startBlock; bn != bc.number(); ++bn ) {
+        h256 hash = bc.numberHash( bn );
+        bytes block_binary = bc.block( hash );
+        BlockHeader header( block_binary );
+        BlockDetails details = bc.details( hash );
+        TransactionHashes transaction_hashes = bc.transactionHashes( hash );
+
+        Json::Value block_json = toJson( header, details, UncleHashes(), transaction_hashes );
+
+        LogBloom bloom = bc.blockBloom( bn );
+
+        block_json["hash"] = "suppressed";
+        block_json["parentHash"] = "suppressed";
+        block_json["stateRoot"] = "suppressed";
+
+        cout << "Block " << bn << "\n";
+        if ( transaction_hashes.size() || header.stateRoot() == u256() ) {
+            cout << block_json << "\n";
+            cout << "Transactions: "
+                 << "\n";
+            for ( size_t i = 0; i < transaction_hashes.size(); ++i ) {
+                h256 tx_hash = transaction_hashes[i];
+                pair< h256, int > loc = bc.transactionLocation( tx_hash );
+                cout << tx_hash << " -> " << (loc.first==header.hash() ? "block hash ok" : "block hash error!") << " " << loc.second << "\n";
+            }  // for t
+            cout << "Bloom:"
+                 << "\n";
+            cout << bloom.hex() << endl;
+        }  // if
+
     }  // for
 }
