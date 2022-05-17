@@ -1471,8 +1471,19 @@ int main( int argc, char** argv ) try {
         shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
     }
 
+    bool downloadSnapshotFlag = false;
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
+
+    if ( vm.count( "download-snapshot" ) ) {
+        downloadSnapshotFlag = true;
+    } else if ( chainParams.nodeInfo.syncNode ) {
+        auto bc = BlockChain(chainParams, getDataDir());
+        if ( bc.number() == 0 ) {
+            downloadSnapshotFlag = true;
+        }
+    }
+
+    if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
             {BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
@@ -1480,7 +1491,7 @@ int main( int argc, char** argv ) try {
             shared_space ? shared_space->getPath() : std::string() ) );
     }
 
-    if ( vm.count( "download-snapshot" ) ) {
+    if ( downloadSnapshotFlag ) {
         statusAndControl->setExitState( StatusAndControl::StartAgain, true );
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
