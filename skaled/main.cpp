@@ -1447,7 +1447,16 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "sgx-url" ) ) {
-        chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
+        std::string strURL = vm["sgx-url"].as< string >();
+        // chainParams.nodeInfo.sgxServerUrl = strURL;
+        skutils::url u( strURL );
+        u.user_info( "" );
+        u.user_name_and_password( "", "", true );
+        u.path( "" );
+        u.fragment( "" );
+        u.set_query();
+        strURL = u.str();
+        chainParams.nodeInfo.sgxServerUrl = strURL;
     }
     bool isDisableZMQ = false;
     if ( vm.count( "sgx-url-no-zmq" ) ) {
