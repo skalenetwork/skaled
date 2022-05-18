@@ -27,7 +27,10 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
     // TODO catch
 
-    h256 best_hash = h256( RLP( extrasDB->lookup( toSlice( _i, ExtraBlockHash ) ) ) );
+    h256 best_hash = h256( RLP( extrasDB->lookup( db::Slice( "best" ) ) ) );
+    // string best_binary = blocksDB->lookup( toSlice( best_hash ) );
+    // BlockHeader best_header( best_binary );
+    // uint64_t best_number = best_header.number();
 
     size_t last_good_block = 1800000;
     size_t start_block = last_good_block;
@@ -114,7 +117,7 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
         db->commit( "repair_block" );
 
-        if( old_hash == best_hash ){
+        if ( old_hash == best_hash ) {
             // update latest
             extrasDB->kill( db::Slice( "best" ) );
             extrasDB->insert( db::Slice( "best" ), toSlice( new_hash ) );
@@ -153,7 +156,9 @@ void dump_blocks_and_extras_db(
             for ( size_t i = 0; i < transaction_hashes.size(); ++i ) {
                 h256 tx_hash = transaction_hashes[i];
                 pair< h256, int > loc = bc.transactionLocation( tx_hash );
-                cout << tx_hash << " -> " << (loc.first==header.hash() ? "block hash ok" : "block hash error!") << " " << loc.second << "\n";
+                cout << tx_hash << " -> "
+                     << ( loc.first == header.hash() ? "block hash ok" : "block hash error!" )
+                     << " " << loc.second << "\n";
             }  // for t
             cout << "Bloom:"
                  << "\n";

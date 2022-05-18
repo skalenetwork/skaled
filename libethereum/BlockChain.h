@@ -61,6 +61,8 @@ struct hash< pair< dev::h256, unsigned > > {
 };
 }  // namespace std
 
+class TotalStorageUsedPatch;
+
 namespace skale {
 class State;
 }
@@ -113,6 +115,8 @@ public:
  * @threadsafe
  */
 class BlockChain {
+    friend class ::TotalStorageUsedPatch;
+
     clock_t clockLastDbRotation_ = 0;  // 0 means never was initialized, DB was not open yet
 public:
     clock_t clockDbRotationPeriod_ = 0;  // 0 means disabled
@@ -600,9 +604,9 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-    mutable Logger m_logger{createLogger( VerbosityDebug, "chain" )};
-    mutable Logger m_loggerDetail{createLogger( VerbosityTrace, "chain" )};
-    mutable Logger m_loggerError{createLogger( VerbosityError, "chain" )};
+    mutable Logger m_logger{ createLogger( VerbosityDebug, "chain" ) };
+    mutable Logger m_loggerDetail{ createLogger( VerbosityTrace, "chain" ) };
+    mutable Logger m_loggerError{ createLogger( VerbosityError, "chain" ) };
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };

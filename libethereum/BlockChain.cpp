@@ -43,6 +43,8 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
+#include <libskale/TotalStorageUsedPatch.h>
+
 #include "Block.h"
 #include "Defaults.h"
 #include "GenesisInfo.h"
@@ -295,8 +297,8 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    if ( !this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
-        recomputeExistingOccupiedSpaceForBlockRotation();
+    if ( TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
+        TotalStorageUsedPatch::initOnChain( *this );
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -770,6 +772,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 }
 
 // TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
+// TODO move it to TotalStorageUsedPatch!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
 
@@ -939,9 +942,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                 db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
             // HACK This is for backward compatibility
             // update totalStorageUsed only if schain already had it!
-            if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
-                m_db->insert( db::Slice( "\x0totalStorageUsed" ),
-                    db::Slice( to_string( _block.info.number() * 32 ) ) );
+            if ( TotalStorageUsedPatch::isEnabled( *m_db ) )
+                TotalStorageUsedPatch::onProgress( *m_db, _block.info.number() );
 
             m_db->insert( db::Slice( "\x1"
                                      "best" ),
