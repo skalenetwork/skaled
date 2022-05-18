@@ -477,6 +477,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+    bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -670,6 +671,8 @@ int main( int argc, char** argv ) try {
         "Limit number of proxygen threads, zero means no limit" );
     addClientOption( "pg-trace", "Log low level proxygen information" );
 
+    addClientOption( "expose-all-debug-info", "Expose extra detailed debug info into log output" );
+
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
         "default and minimal)" );
@@ -787,7 +790,6 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
     po::options_description vmOptions = vmProgramOptions( c_lineWidth );
-
 
     po::options_description allowedOptions( "Allowed options" );
     allowedOptions.add( clientDefaultMode )
@@ -1959,6 +1961,7 @@ int main( int argc, char** argv ) try {
         auto pSkaleFace = new rpc::Skale( *g_client, shared_space );
         auto pSkaleStatsFace =
             new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
+        pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
                                  nullptr;
@@ -2223,6 +2226,16 @@ int main( int argc, char** argv ) try {
                 pg_threads_limit = vm["pg-threads-limit"].as< int32_t >();
             if ( vm.count( "pg-trace" ) )
                 skutils::http_pg::pg_logging_set( true );
+
+            if ( chainConfigParsed ) {
+                try {
+                    isExposeAllDebugInfo =
+                        joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
+                } catch ( ... ) {
+                }
+            }
+            if ( vm.count( "expose-all-debug-info" ) )
+                isExposeAllDebugInfo = true;
 
             // First, get "acceptors"/"info-acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
