@@ -1955,6 +1955,17 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }  // block
 
+        if ( chainConfigParsed ) {
+            try {
+                isExposeAllDebugInfo =
+                    joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
+            } catch ( ... ) {
+            }
+        }
+        if ( vm.count( "expose-all-debug-info" ) )
+            isExposeAllDebugInfo = true;
+
+
         auto pNetFace = new rpc::Net( chainParams );
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
@@ -2226,16 +2237,6 @@ int main( int argc, char** argv ) try {
                 pg_threads_limit = vm["pg-threads-limit"].as< int32_t >();
             if ( vm.count( "pg-trace" ) )
                 skutils::http_pg::pg_logging_set( true );
-
-            if ( chainConfigParsed ) {
-                try {
-                    isExposeAllDebugInfo =
-                        joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
-                } catch ( ... ) {
-                }
-            }
-            if ( vm.count( "expose-all-debug-info" ) )
-                isExposeAllDebugInfo = true;
 
             // First, get "acceptors"/"info-acceptors" true/false from config.json
             // Second, get it from command line parameter (higher priority source)
