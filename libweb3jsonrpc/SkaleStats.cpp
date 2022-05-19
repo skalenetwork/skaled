@@ -1492,8 +1492,11 @@ static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::strin
 
 static dev::bytes& stat_append_u256_2_vec( dev::bytes& vec, const dev::u256& val ) {
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_array_align_right( v, 32 );
-    stat_array_invert( v.data(), v.size() );
+
+    //    stat_array_align_right( v, 32 );
+    //    stat_array_invert( v.data(), v.size() );
+    stat_bytes_align_left( v, 32 );
+
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
@@ -3483,3 +3486,74 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";
 //}
+
+// void ttt123() {
+//    const char strLogPrefix[] = "----------- ";
+//    dev::bytes vecComputeMessagesHash;
+//
+//    std::string strFromChainName( "Artem" );
+//    std::string sxx_FromChainName = dev::sha3( strFromChainName ).hex();
+//    std::string sh = dev::rpc::stat_ensure_have_0x_at_start( sxx_FromChainName );
+//    dev::rpc::stat_append_hash_str_2_vec( vecComputeMessagesHash, sh );
+//    std::cout << ( strLogPrefix + cc::debug( "s0 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 uStartMessageIdx( 789 );
+//    dev::rpc::stat_append_u256_2_vec(vecComputeMessagesHash, uStartMessageIdx );
+//    std::cout << ( strLogPrefix + cc::debug( "s1 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s2 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 sender1( "0x0000000000000000000000000000000000000001" );
+//    dev::u256 dstContract1( "0x0000000000000000000000000000000000000001" );
+//    dev::bytes v1 = dev::fromHex( "010203", dev::WhenError::DontThrow );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender1 );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract1 );
+//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v1.begin(), v1.end() );
+//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 sender2( "0x0000000000000000000000000000000000000002" );
+//    dev::u256 dstContract2( "0x0000000000000000000000000000000000000002" );
+//    dev::bytes v2 = dev::fromHex( "040506", dev::WhenError::DontThrow );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender2 );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract2 );
+//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v2.begin(), v2.end() );
+//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    std::cout << ( strLogPrefix + cc::debug( " Resulting verctor is " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//}
+// // NODE JS:
+// const strHashComputed = keccak256_message(
+//     [ {
+//         "sender": "0x0000000000000000000000000000000000000001",
+//         "destinationContract": "0x0000000000000000000000000000000000000001",
+//         "data": "0x010203"
+//     }, {
+//         "sender": "0x0000000000000000000000000000000000000002",
+//         "destinationContract": "0x0000000000000000000000000000000000000002",
+//         "data": "0x040506"
+//     } ],
+//     789,
+//     "Artem"
+// ).toLowerCase();
+// console.log( "----------------- computed.....", strHashComputed );
+// process.exit( 0 );
