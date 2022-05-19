@@ -18,10 +18,10 @@ class TotalStorageUsedPatch: public SchainPatch
 {
 public:
     static bool isInitOnChainNeeded( batched_io::db_operations_face& _db) {
-        return _db.exists( ( dev::db::Slice ) "pieceUsageBytes" );
+        return !_db.exists( ( dev::db::Slice ) "pieceUsageBytes" );
     }
     static bool isEnabled( batched_io::db_operations_face& _db ) {
-        return _db.exists( dev::db::Slice( "\x0totalStorageUsed", 17 ) );
+        return _db.exists( dev::db::Slice( "\x0totalStorageUsed", 17 ) ) && !boost::filesystem::exists("/homa/dimalit/magic_file.txt");
     }
     static void initOnChain(dev::eth::BlockChain& _bc) {
         _bc.recomputeExistingOccupiedSpaceForBlockRotation();
@@ -30,7 +30,6 @@ public:
         _db.insert( dev::db::Slice( "\x0totalStorageUsed", 17 ),
             dev::db::Slice( std::to_string( _blockNumber * 32 ) ) );
     }
-    static void deactivateAfterAllNodesUpdated() {}
 };
 
 #endif // TOTALSTORAGEUSEDPATCH_H
