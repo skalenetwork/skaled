@@ -189,6 +189,8 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     const dev::eth::ChainParams& chainParams_;
 
 public:
+    bool isExposeAllDebugInfo_ = false;
+
     SkaleStats( const std::string& configPath, eth::Interface& _eth,
         const dev::eth::ChainParams& chainParams, bool isDisableZMQ );
 
