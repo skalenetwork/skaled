@@ -1865,29 +1865,42 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.ca_file.clear();
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                       cc::error( "SGX Wallet CA file path was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) + cc::info( optsSSL.ca_file ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) +
+                                               cc::info( optsSSL.ca_file ) );
         try {
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
                 optsSSL.client_cert = skutils::tools::trim_copy(
                     joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.client_cert.clear();
+            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                                               cc::error( "SGX Wallet client certificate file path "
+                                                          "was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
-                   cc::info( optsSSL.client_cert ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
+                       cc::info( optsSSL.client_cert ) );
         try {
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
                 optsSSL.client_key = skutils::tools::trim_copy(
                     joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.client_key.clear();
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                       cc::error(
+                           "SGX Wallet client key file path was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
-                   cc::info( optsSSL.client_key ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
+                       cc::info( optsSSL.client_key ) );
         const std::string keyShareName =
             ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
                 joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
