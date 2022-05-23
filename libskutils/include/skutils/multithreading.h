@@ -165,15 +165,42 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef pthread_mutex mutex_type;  // typedef std::mutex mutex_type;
-                                   //		typedef std::lock_guard  < mutex_type > lock_type;
-                                   //		typedef std::unique_lock < mutex_type >
-                                   // unique_lock_type;
+class standard_mutex : public std::mutex {
+public:
+    standard_mutex() {}
+    standard_mutex( const char* ) {}
+    standard_mutex( const std::string& ) {}
+    standard_mutex( const standard_mutex& ) = delete;
+    standard_mutex( standard_mutex&& ) = delete;
+    ~standard_mutex() {}
+    standard_mutex& operator=( const standard_mutex& ) = delete;
+    standard_mutex& operator=( standard_mutex&& ) = delete;
+};
 
-typedef pthread_recursive_mutex recursive_mutex_type;  // typedef std::recursive_mutex
-                                                       // recursive_mutex_type;
-//		typedef std::lock_guard  < recursive_mutex_type > recursive_lock_type;
-//		typedef std::unique_lock < recursive_mutex_type > unique_recursive_lock_type;
+class standard_recursive_mutex : public std::recursive_mutex {
+public:
+    standard_recursive_mutex() {}
+    standard_recursive_mutex( const char* ) {}
+    standard_recursive_mutex( const std::string& ) {}
+    standard_recursive_mutex( const standard_recursive_mutex& ) = delete;
+    standard_recursive_mutex( standard_recursive_mutex&& ) = delete;
+    ~standard_recursive_mutex() {}
+    standard_recursive_mutex& operator=( const standard_recursive_mutex& ) = delete;
+    standard_recursive_mutex& operator=( standard_recursive_mutex&& ) = delete;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// typedef pthread_mutex mutex_type;
+typedef standard_mutex mutex_type;
+// typedef std::lock_guard  < mutex_type > lock_type;
+// typedef std::unique_lock < mutex_type > unique_lock_type;
+
+// typedef pthread_recursive_mutex recursive_mutex_type;
+typedef standard_recursive_mutex recursive_mutex_type;
+// typedef std::lock_guard  < recursive_mutex_type > recursive_lock_type;
+// typedef std::unique_lock < recursive_mutex_type > unique_recursive_lock_type;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

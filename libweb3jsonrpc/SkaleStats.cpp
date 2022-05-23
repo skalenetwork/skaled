@@ -64,6 +64,16 @@
 
 namespace dev {
 
+static dev::u256 stat_str2u256( const std::string& saIn ) {
+    std::string sa;
+    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
+        sa = "0x" + saIn;
+    else
+        sa = saIn;
+    dev::u256 u( sa.c_str() );
+    return u;
+}
+
 static nlohmann::json stat_parse_json_with_error_conversion(
     const std::string& s, bool isThrowException = false ) {
     nlohmann::json joAnswer;
@@ -117,7 +127,7 @@ txn_entry::txn_entry() {
     clear();
 }
 
-txn_entry::txn_entry( dev::u256 hash ) {
+txn_entry::txn_entry( const dev::u256& hash ) {
     clear();
     hash_ = hash;
     setNowTimeStamp();
@@ -162,22 +172,22 @@ bool txn_entry::operator>=( const txn_entry& other ) const {
     return ( compare( other ) >= 0 ) ? true : false;
 }
 
-bool txn_entry::operator==( dev::u256 hash ) const {
+bool txn_entry::operator==( const dev::u256& hash ) const {
     return ( compare( hash ) == 0 ) ? true : false;
 }
-bool txn_entry::operator!=( dev::u256 hash ) const {
+bool txn_entry::operator!=( const dev::u256& hash ) const {
     return ( compare( hash ) != 0 ) ? true : false;
 }
-bool txn_entry::operator<( dev::u256 hash ) const {
+bool txn_entry::operator<( const dev::u256& hash ) const {
     return ( compare( hash ) < 0 ) ? true : false;
 }
-bool txn_entry::operator<=( dev::u256 hash ) const {
+bool txn_entry::operator<=( const dev::u256& hash ) const {
     return ( compare( hash ) <= 0 ) ? true : false;
 }
-bool txn_entry::operator>( dev::u256 hash ) const {
+bool txn_entry::operator>( const dev::u256& hash ) const {
     return ( compare( hash ) > 0 ) ? true : false;
 }
-bool txn_entry::operator>=( dev::u256 hash ) const {
+bool txn_entry::operator>=( const dev::u256& hash ) const {
     return ( compare( hash ) >= 0 ) ? true : false;
 }
 
@@ -198,7 +208,7 @@ txn_entry& txn_entry::assign( const txn_entry& other ) {
     return ( *this );
 }
 
-int txn_entry::compare( dev::u256 hash ) const {
+int txn_entry::compare( const dev::u256& hash ) const {
     if ( hash_ < hash )
         return -1;
     if ( hash_ > hash )
@@ -212,16 +222,6 @@ int txn_entry::compare( const txn_entry& other ) const {
 
 void txn_entry::setNowTimeStamp() {
     ts_ = ::time( nullptr );
-}
-
-static dev::u256 stat_s2a( const std::string& saIn ) {
-    std::string sa;
-    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
-        sa = "0x" + saIn;
-    else
-        sa = saIn;
-    dev::u256 u( sa.c_str() );
-    return u;
 }
 
 nlohmann::json txn_entry::toJSON() const {
@@ -241,7 +241,7 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
         else
             throw std::runtime_error(
                 "txn_entry::fromJSON() failed because \"hash\" is must-have field of tracked TXN" );
-        dev::u256 h = stat_s2a( strHash );
+        dev::u256 h = stat_str2u256( strHash );
         int ts = 0;
         try {
             if ( jo.count( "timestamp" ) > 0 && jo["timestamp"].is_number() )
@@ -350,7 +350,7 @@ bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
 bool pending_ima_txns::find( txn_entry& txe ) const {
     return find( txe.hash_ );
 }
-bool pending_ima_txns::find( dev::u256 hash ) const {
+bool pending_ima_txns::find( const dev::u256& hash ) const {
     lock_type lock( mtx() );
     //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
     //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
@@ -925,7 +925,7 @@ bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
     return check_txn_is_mined( txe.hash_ );
 }
 
-bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
+bool pending_ima_txns::check_txn_is_mined( const dev::u256& hash ) {
     try {
         skutils::url urlMainNet = getImaMainNetURL();
         //

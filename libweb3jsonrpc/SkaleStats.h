@@ -46,11 +46,15 @@
 #include <set>
 
 namespace dev {
+
 class NetworkFace;
 class KeyPair;
+
 namespace eth {
+
 class AccountHolder;
 struct TransactionSkeleton;
+
 class Interface;
 };  // namespace eth
 
@@ -68,7 +72,7 @@ public:
     dev::u256 hash_;
     time_t ts_;  // second accuracy used here
     txn_entry();
-    txn_entry( dev::u256 hash );
+    txn_entry( const dev::u256& hash );
     txn_entry( const txn_entry& other );
     txn_entry( txn_entry&& other );
     ~txn_entry();
@@ -80,16 +84,16 @@ public:
     bool operator<=( const txn_entry& other ) const;
     bool operator>( const txn_entry& other ) const;
     bool operator>=( const txn_entry& other ) const;
-    bool operator==( dev::u256 hash ) const;
-    bool operator!=( dev::u256 hash ) const;
-    bool operator<( dev::u256 hash ) const;
-    bool operator<=( dev::u256 hash ) const;
-    bool operator>( dev::u256 hash ) const;
-    bool operator>=( dev::u256 hash ) const;
+    bool operator==( const dev::u256& hash ) const;
+    bool operator!=( const dev::u256& hash ) const;
+    bool operator<( const dev::u256& hash ) const;
+    bool operator<=( const dev::u256& hash ) const;
+    bool operator>( const dev::u256& hash ) const;
+    bool operator>=( const dev::u256& hash ) const;
     bool empty() const;
     void clear();
     txn_entry& assign( const txn_entry& other );
-    int compare( dev::u256 hash ) const;
+    int compare( const dev::u256& hash ) const;
     int compare( const txn_entry& other ) const;
     void setNowTimeStamp();
     nlohmann::json toJSON() const;
@@ -141,7 +145,7 @@ public:
     bool erase( txn_entry& txe, bool isEnableBroadcast );
     bool erase( dev::u256 hash, bool isEnableBroadcast );
     bool find( txn_entry& txe ) const;
-    bool find( dev::u256 hash ) const;
+    bool find( const dev::u256& hash ) const;
     void list_all( list_txns_t& lst ) const;
     //
     virtual void on_txn_insert( const txn_entry& txe, bool isEnableBroadcast );
@@ -178,7 +182,7 @@ public:
     void tracking_stop();
     //
     bool check_txn_is_mined( const txn_entry& txe );
-    bool check_txn_is_mined( dev::u256 hash );
+    bool check_txn_is_mined( const dev::u256& hash );
 };  /// class pending_ima_txns
 
 };  // namespace tracking
