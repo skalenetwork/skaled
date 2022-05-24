@@ -181,21 +181,23 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
     std::map< uint64_t, std::vector< std::string > > previousBLSKeys;
     std::map< uint64_t, std::string > historicECDSAKeys;
+    std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
+    auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
         std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
             nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
         previousBLSKeys[nodeGroup.finishTs] = commonBLSPublicKey;
-        if ( nodeGroup.finishTs != uint64_t( -1 ) ) {
-            // not current group, add ecdsa keys info
-            for ( const auto& node : nodeGroup.nodes ) {
-                auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
-                historicECDSAKeys[u256toUint64( node.id )] = node.publicKey;
-            }
+        std::vector< uint64_t > nodes;
+        // add ecdsa keys info and historic groups info
+        for ( const auto& node : nodeGroup.nodes ) {
+            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey;
+            nodes.push_back( u256toUint64( node.id ) );
         }
+        historicNodeGroups[nodeGroup.finishTs] = nodes;
     }
     consensus.setRotationHistory(
         std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
-        std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ) );
+        std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ), nullptr );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
