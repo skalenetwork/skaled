@@ -1743,9 +1743,11 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         //dump_blocks_and_extras_db( "/home/dimalit/Downloads/208", chainParams, 1774414 );
-        dump_blocks_and_extras_db( "/home/dimalit/.ethereum", chainParams, 1 );
+        dump_blocks_and_extras_db( getDataDir(), chainParams, 1 );
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
+            //if( chainParams.sealEngineName == Ethash::name() )
+            //    return 0;
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
@@ -2757,6 +2759,8 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
+
+    dump_blocks_and_extras_db( getDataDir(), chainParams, 1 );
 
     skale::network::browser::refreshing_stop();
 

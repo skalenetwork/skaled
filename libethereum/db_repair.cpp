@@ -32,7 +32,7 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
     // BlockHeader best_header( best_binary );
     // uint64_t best_number = best_header.number();
 
-    size_t last_good_block = 1800000;
+    size_t last_good_block = 52;
     size_t start_block = last_good_block;
     h256 new_state_root_for_all;  // = get it from block
 
@@ -135,6 +135,7 @@ void dump_blocks_and_extras_db(
 
     for ( size_t bn = _startBlock; bn != bc.number(); ++bn ) {
         h256 hash = bc.numberHash( bn );
+        assert( hash != h256() );
         bytes block_binary = bc.block( hash );
         BlockHeader header( block_binary );
         BlockDetails details = bc.details( hash );
@@ -144,9 +145,9 @@ void dump_blocks_and_extras_db(
 
         LogBloom bloom = bc.blockBloom( bn );
 
-        block_json["hash"] = "suppressed";
-        block_json["parentHash"] = "suppressed";
-        block_json["stateRoot"] = "suppressed";
+//        block_json["hash"] = "suppressed";
+//        block_json["parentHash"] = "suppressed";
+//        block_json["stateRoot"] = "suppressed";
 
         cout << "Block " << bn << "\n";
         if ( transaction_hashes.size() || header.stateRoot() == u256() ) {
