@@ -728,9 +728,6 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
-    addClientOption( "public-key",
-        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
-        "Collects old common public key from chain to verify snapshot before starts from it" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
@@ -1499,12 +1496,24 @@ int main( int argc, char** argv ) try {
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
-        std::string commonPublicKey = "";
-        if ( !vm.count( "public-key" ) ) {
-            throw std::runtime_error(
-                cc::error( "Missing --public-key option - cannot download snapshot" ) );
+
+        std::array< std::string, 4 > arrayCommonPublicKey;
+        bool isRotationtrigger = true;
+        if ( chainParams.sChain.nodeGroups.size() > 1 ) {
+            if ( time( NULL ) >=
+                 chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
+                     .finishTs ) {
+                isRotationtrigger = false;
+            }
         } else {
-            commonPublicKey = vm["public-key"].as< std::string >();
+            isRotationtrigger = false;
+        }
+        if ( isRotationtrigger ) {
+            arrayCommonPublicKey =
+                chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
+                    .blsPublicKey;
+        } else {
+            arrayCommonPublicKey = chainParams.sChain.nodeGroups.back().blsPublicKey;
         }
 
         bool successfullDownload = false;
@@ -1530,7 +1539,7 @@ int main( int argc, char** argv ) try {
                     << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url
                     << ")";
 
-                SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
+                SnapshotHashAgent snapshotHashAgent( chainParams, arrayCommonPublicKey );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
