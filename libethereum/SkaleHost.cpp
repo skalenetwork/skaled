@@ -198,7 +198,8 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
     }
     consensus.setRotationHistory(
         std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
-        std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ), nullptr );
+        std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ),
+        std::make_shared< std::map< uint64_t, std::vector< uint64_t > > >( historicNodeGroups ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
