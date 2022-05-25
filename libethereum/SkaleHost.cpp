@@ -82,9 +82,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
-
-    this->fillPublicKeyInfo(*consensus_engine_ptr);
-
+    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ||
+        m_client.chainParams().nodeInfo.syncNode ) {
+        this->fillPublicKeyInfo( *consensus_engine_ptr );
+    }
 
     this->fillRotationHistory( *consensus_engine_ptr );
 
