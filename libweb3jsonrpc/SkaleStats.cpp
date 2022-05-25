@@ -1491,10 +1491,7 @@ static dev::bytes& stat_remove_leading_zeros( dev::bytes& vec ) {
 static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::string& s ) {
     dev::u256 val( s );
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-
-    // stat_array_align_right( v, 32 );
     stat_array_align_left( v, 32 );
-
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
