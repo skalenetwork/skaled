@@ -1423,6 +1423,12 @@ static dev::bytes& stat_bytes_align_left( dev::bytes& vec, size_t cnt ) {
     return vec;
 }
 
+static bytes& stat_array_align_left( bytes& vec, size_t cnt ) {
+    while ( vec.size() < cnt )
+        vec.insert( vec.begin(), 0 );
+    return vec;
+}
+
 static bytes& stat_array_align_right( bytes& vec, size_t cnt ) {
     while ( vec.size() < cnt )
         vec.push_back( 0 );
@@ -1485,7 +1491,10 @@ static dev::bytes& stat_remove_leading_zeros( dev::bytes& vec ) {
 static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::string& s ) {
     dev::u256 val( s );
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_array_align_right( v, 32 );
+
+    // stat_array_align_right( v, 32 );
+    stat_array_align_left( v, 32 );
+
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
