@@ -932,7 +932,7 @@ then
 			if [ ! -f "libiconv-1.15.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				eval "$WGET" https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz
+				eval "$WGET" --no-check-certificate https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz
 			fi
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 			eval tar -xzf libiconv-1.15.tar.gz
@@ -1081,6 +1081,8 @@ then
 	then
 		env_restore
 		cd "$SOURCES_ROOT"
+		export PKG_CONFIG_PATH_SAVED=$PKG_CONFIG_PATH
+		export PKG_CONFIG_PATH=/$INSTALL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH
 		if [ ! -d "libevent" ];
 		then
 			if [ ! -f "libevent-from-git.tar.gz" ];
@@ -1095,29 +1097,31 @@ then
 			fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libevent
-            #eval mkdir -p build
-            #cd build
-            #OS_SPECIFIC_LIB_EVENT_FLAGS=""
-            #if [ ${ARCH} = "arm" ]
-            #then
-            #    OS_SPECIFIC_LIB_EVENT_FLAGS="-DEVENT__DISABLE_SAMPLES=ON -DEVENT__DISABLE_TESTS=ON -DEVENT__DISABLE_BENCHMARK=ON -DEVENT__DISABLE_REGRESS=ON"
-            #fi
-            #eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" "${OS_SPECIFIC_LIB_EVENT_FLAGS}" \
-            #	-DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-            #        -DEVENT__DISABLE_MBEDTLS=ON \
-            #		..
-            #cd ../..
-            eval ./autogen.sh
-            eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
-            cd ..
-        fi
-        #cd libevent/build
-        cd libevent
-        eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+			#eval mkdir -p build
+			#cd build
+			#OS_SPECIFIC_LIB_EVENT_FLAGS=""
+			#if [ ${ARCH} = "arm" ]
+			#then
+			#    OS_SPECIFIC_LIB_EVENT_FLAGS="-DEVENT__DISABLE_SAMPLES=ON -DEVENT__DISABLE_TESTS=ON -DEVENT__DISABLE_BENCHMARK=ON -DEVENT__DISABLE_REGRESS=ON"
+			#fi
+			#eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" "${OS_SPECIFIC_LIB_EVENT_FLAGS}" \
+			#	-DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+			#        -DEVENT__DISABLE_MBEDTLS=ON \
+			#		..
+			#cd ../..
+			eval ./autogen.sh
+			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
+			cd ..
+		fi
+		#cd libevent/build
+		cd libevent
+		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
-        cd ..
-        #cd ../..
-        cd "$SOURCES_ROOT"
+		cd ..
+		#cd ../..
+		cd "$SOURCES_ROOT"
+		export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_SAVED
+		export PKG_CONFIG_PATH_SAVED=
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
@@ -1186,8 +1190,9 @@ then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
                 eval git clone https://github.com/warmcat/libwebsockets.git
 				eval cd libwebsockets
-				eval git checkout v4.1-stable
-				eval git pull
+                # eval git checkout v4.1-stable
+                eval git checkout v4.3-stable
+                eval git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf libwebsockets-from-git.tar.gz ./libwebsockets
@@ -2085,6 +2090,8 @@ then
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
                 -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
+				-DBUILD_SHARED_LIBS=OFF \
+				-DBUILD_TESTS=OFF -DBUILD_BROKEN_TESTS=OFF -DBUILD_HANGING_TESTS=OFF -DBUILD_SLOW_TESTS=OFF \
 				..
 			cd ..
 		else
@@ -2288,9 +2295,9 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/proxygen.git --recursive
-				cd proxygen
+                cd proxygen
                 eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
-				cd ..
+                cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf proxygen-from-git.tar.gz ./proxygen
 			else
@@ -2302,7 +2309,7 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
 			cd ..
 		else
 			cd proxygen
