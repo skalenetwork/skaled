@@ -82,6 +82,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
+
+    this->fillPublicKeyInfo(*consensus_engine_ptr);
+
+
     this->fillRotationHistory( *consensus_engine_ptr );
 
     return consensus_engine_ptr;
@@ -125,6 +129,9 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 
     consensus.setSGXKeyInfo( sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName,
         blsKeyName);
+
+
+
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
@@ -135,6 +142,8 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+        if(node.publicKey.size() == 0)
+            return;         //just don't do anything
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
@@ -164,22 +173,35 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    consensus.setPublicKeyInfo(
-        ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
+    if(ecdsaPublicKeys->size() && ecdsaPublicKeys->at(0).size() && blsPublicKeys.size() && blsPublicKeys[0]->at(0).size())
+        consensus.setPublicKeyInfo(
+            ecdsaPublicKeys,  blsPublicKeysPtr, t, n );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
 
 
 void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) const try {
-    std::map< uint64_t, std::vector< std::string > > rh;
+    std::map< uint64_t, std::vector< std::string > > previousBLSKeys;
+    std::map< uint64_t, std::string > historicECDSAKeys;
+    std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
+    auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
-        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
-            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
-        rh[nodeGroup.finishTs] = commonBLSPublicKey;
+        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
+        previousBLSKeys[nodeGroup.finishTs] = commonBLSPublicKey;
+        std::vector< uint64_t > nodes;
+        // add ecdsa keys info and historic groups info
+        for ( const auto& node : nodeGroup.nodes ) {
+            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey;
+            nodes.push_back( u256toUint64( node.id ) );
+        }
+        historicNodeGroups[nodeGroup.finishTs] = nodes;
     }
     consensus.setRotationHistory(
-        std::make_shared< std::map< uint64_t, std::vector< std::string > > >( rh ) );
+        std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
+        std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ),
+        std::make_shared< std::map< uint64_t, std::vector< uint64_t > > >( historicNodeGroups ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
