@@ -45,6 +45,8 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <set>
 
 #include <stdio.h>
@@ -62,28 +64,43 @@
 
 #include <libweb3jsonrpc/SkaleNetworkBrowser.h>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace dev {
 
-static nlohmann::json stat_parse_json_with_error_conversion( const std::string & s, bool isThrowException = false ) {
+static dev::u256 stat_str2u256( const std::string& saIn ) {
+    std::string sa;
+    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
+        sa = "0x" + saIn;
+    else
+        sa = saIn;
+    dev::u256 u( sa.c_str() );
+    return u;
+}
+
+static nlohmann::json stat_parse_json_with_error_conversion(
+    const std::string& s, bool isThrowException = false ) {
     nlohmann::json joAnswer;
     std::string strError;
     try {
         joAnswer = nlohmann::json::parse( s );
         return joAnswer;
-    } catch ( std::exception const & ex ) {
+    } catch ( std::exception const& ex ) {
         strError = ex.what();
-        if( strError.empty() )
+        if ( strError.empty() )
             strError = "exception without description";
     } catch ( ... ) {
         strError = "unknown exception";
     }
-    if( strError.empty() )
+    if ( strError.empty() )
         strError = "unknown error";
-    std::string strErrorDescription = "JSON parser error \"" + strError + "\" while parsing JSON text \"" + s + "\"";
-    if( isThrowException )
+    std::string strErrorDescription =
+        "JSON parser error \"" + strError + "\" while parsing JSON text \"" + s + "\"";
+    if ( isThrowException )
         throw std::runtime_error( strErrorDescription );
     joAnswer = nlohmann::json::object();
-    joAnswer[ "error" ] = strErrorDescription;
+    joAnswer["error"] = strErrorDescription;
     return joAnswer;
 }
 
@@ -91,20 +108,26 @@ static bool stat_trim_func_with_quotes( unsigned char ch ) {
     return skutils::tools::default_trim_what( ch ) || ch == '\"' || ch == '\'';
 }
 
-static void stat_check_rpc_call_error_and_throw( const nlohmann::json & joAnswer, const std::string & strMethodName ) {
-    if( joAnswer.count( "error" ) > 0 ) {
-        std::string strError = joAnswer[ "error" ].dump();
+static void stat_check_rpc_call_error_and_throw(
+    const nlohmann::json& joAnswer, const std::string& strMethodName ) {
+    if ( joAnswer.count( "error" ) > 0 ) {
+        std::string strError = joAnswer["error"].dump();
         strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if( ! strError.empty() )
-            throw std::runtime_error( "Got \"" + strMethodName +  "\" call error \"" + strError + "\"" );
+        if ( !strError.empty() )
+            throw std::runtime_error(
+                "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
     }
-    if( joAnswer.count( "errorMessage" ) > 0 ) {
-        std::string strError = joAnswer[ "errorMessage" ].dump();
+    if ( joAnswer.count( "errorMessage" ) > 0 ) {
+        std::string strError = joAnswer["errorMessage"].dump();
         strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if( ! strError.empty() )
-            throw std::runtime_error( "Got \"" + strMethodName +  "\" call error \"" + strError + "\"" );
+        if ( !strError.empty() )
+            throw std::runtime_error(
+                "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
     }
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace tracking {
 
@@ -112,7 +135,7 @@ txn_entry::txn_entry() {
     clear();
 }
 
-txn_entry::txn_entry( dev::u256 hash ) {
+txn_entry::txn_entry( const dev::u256& hash ) {
     clear();
     hash_ = hash;
     setNowTimeStamp();
@@ -157,22 +180,22 @@ bool txn_entry::operator>=( const txn_entry& other ) const {
     return ( compare( other ) >= 0 ) ? true : false;
 }
 
-bool txn_entry::operator==( dev::u256 hash ) const {
+bool txn_entry::operator==( const dev::u256& hash ) const {
     return ( compare( hash ) == 0 ) ? true : false;
 }
-bool txn_entry::operator!=( dev::u256 hash ) const {
+bool txn_entry::operator!=( const dev::u256& hash ) const {
     return ( compare( hash ) != 0 ) ? true : false;
 }
-bool txn_entry::operator<( dev::u256 hash ) const {
+bool txn_entry::operator<( const dev::u256& hash ) const {
     return ( compare( hash ) < 0 ) ? true : false;
 }
-bool txn_entry::operator<=( dev::u256 hash ) const {
+bool txn_entry::operator<=( const dev::u256& hash ) const {
     return ( compare( hash ) <= 0 ) ? true : false;
 }
-bool txn_entry::operator>( dev::u256 hash ) const {
+bool txn_entry::operator>( const dev::u256& hash ) const {
     return ( compare( hash ) > 0 ) ? true : false;
 }
-bool txn_entry::operator>=( dev::u256 hash ) const {
+bool txn_entry::operator>=( const dev::u256& hash ) const {
     return ( compare( hash ) >= 0 ) ? true : false;
 }
 
@@ -193,11 +216,11 @@ txn_entry& txn_entry::assign( const txn_entry& other ) {
     return ( *this );
 }
 
-int txn_entry::compare( dev::u256 hash ) const {
+int txn_entry::compare( const dev::u256& hash ) const {
     if ( hash_ < hash )
         return -1;
     if ( hash_ > hash )
-        return 0;
+        return 1;
     return 0;
 }
 
@@ -207,16 +230,6 @@ int txn_entry::compare( const txn_entry& other ) const {
 
 void txn_entry::setNowTimeStamp() {
     ts_ = ::time( nullptr );
-}
-
-static dev::u256 stat_s2a( const std::string& saIn ) {
-    std::string sa;
-    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
-        sa = "0x" + saIn;
-    else
-        sa = saIn;
-    dev::u256 u( sa.c_str() );
-    return u;
 }
 
 nlohmann::json txn_entry::toJSON() const {
@@ -234,8 +247,9 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
         if ( jo.count( "hash" ) > 0 && jo["hash"].is_string() )
             strHash = jo["hash"].get< std::string >();
         else
-            throw std::runtime_error( "\"hash\" is must-have field of tracked TXN" );
-        dev::u256 h = stat_s2a( strHash );
+            throw std::runtime_error(
+                "txn_entry::fromJSON() failed because \"hash\" is must-have field of tracked TXN" );
+        dev::u256 h = stat_str2u256( strHash );
         int ts = 0;
         try {
             if ( jo.count( "timestamp" ) > 0 && jo["timestamp"].is_number() )
@@ -251,39 +265,43 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
     }
 }
 
-std::atomic_size_t pending_ima_txns::g_nMaxPendingTxns = 512;
-std::string pending_ima_txns::g_strDispatchQueueID = "IMA-txn-tracker";
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pending_ima_txns::pending_ima_txns(
+std::atomic_size_t txn_pending_tracker_system_impl::g_nMaxPendingTxns = 512;
+std::string txn_pending_tracker_system_impl::g_strDispatchQueueID = "IMA-txn-tracker";
+
+txn_pending_tracker_system_impl::txn_pending_tracker_system_impl(
     const std::string& configPath, const std::string& strSgxWalletURL )
     : skutils::json_config_file_accessor( configPath ), strSgxWalletURL_( strSgxWalletURL ) {}
 
-pending_ima_txns::~pending_ima_txns() {
+txn_pending_tracker_system_impl::~txn_pending_tracker_system_impl() {
     tracking_stop();
     clear();
 }
 
-bool pending_ima_txns::empty() const {
+bool txn_pending_tracker_system_impl::empty() const {
     lock_type lock( mtx() );
     if ( !set_txns_.empty() )
         return false;
     return true;
 }
-void pending_ima_txns::clear() {
+void txn_pending_tracker_system_impl::clear() {
     lock_type lock( mtx() );
     set_txns_.clear();
     list_txns_.clear();
     tracking_auto_start_stop();
 }
 
-size_t pending_ima_txns::max_txns() const {
-    return size_t( g_nMaxPendingTxns );
+size_t txn_pending_tracker_system_impl::max_txns() const {
+    size_t cnt = g_nMaxPendingTxns;
+    return cnt;
 }
 
-void pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
+size_t txn_pending_tracker_system_impl::adjust_limits_impl( bool isEnableBroadcast ) {
     const size_t nMax = max_txns();
     if ( nMax < 1 )
-        return;  // no limits
+        return nMax;  // no limits
     size_t cnt = list_txns_.size();
     while ( cnt > nMax ) {
         txn_entry txe = list_txns_.front();
@@ -292,14 +310,20 @@ void pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
         cnt = list_txns_.size();
     }
     tracking_auto_start_stop();
+    cnt = list_txns_.size();
+    return cnt;
 }
-void pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
+size_t txn_pending_tracker_system_impl::adjust_limits( bool isEnableBroadcast ) {
     lock_type lock( mtx() );
-    adjust_limits_impl( isEnableBroadcast );
+    size_t cnt = adjust_limits_impl( isEnableBroadcast );
+    return cnt;
 }
 
-bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::insert( txn_entry& txe, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     set_txns_t::iterator itFindS = set_txns_.find( txe ), itEndS = set_txns_.end();
     if ( itFindS != itEndS )
         return false;
@@ -309,56 +333,68 @@ bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
     adjust_limits_impl( isEnableBroadcast );
     return true;
 }
-bool pending_ima_txns::insert( dev::u256 hash, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::insert( dev::u256 hash, bool isEnableBroadcast ) {
     txn_entry txe( hash );
     return insert( txe, isEnableBroadcast );
 }
 
-bool pending_ima_txns::erase( txn_entry& txe, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::erase( txn_entry& txe, bool isEnableBroadcast ) {
     return erase( txe.hash_, isEnableBroadcast );
 }
-bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::erase( dev::u256 hash, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
     set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
     if ( itFindS == itEndS )
         return false;
     txn_entry txe = ( *itFindS );
     set_txns_.erase( itFindS );
-    list_txns_t::iterator ifFindL = std::find( list_txns_.begin(), list_txns_.end(), hash );
-    list_txns_.erase( ifFindL );
+    list_txns_t::iterator itFindL = std::find( list_txns_.begin(), list_txns_.end(), hash );
+    if ( itFindL != list_txns_.end() )
+        list_txns_.erase( itFindL );
     on_txn_erase( txe, isEnableBroadcast );
+#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    tracking_step();
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     return true;
 }
 
-bool pending_ima_txns::find( txn_entry& txe ) const {
+bool txn_pending_tracker_system_impl::find( txn_entry& txe ) const {
     return find( txe.hash_ );
 }
-bool pending_ima_txns::find( dev::u256 hash ) const {
+bool txn_pending_tracker_system_impl::find( const dev::u256& hash ) const {
     lock_type lock( mtx() );
-    set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
+    //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
+    //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
+    set_txns_t::const_iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.cend();
     if ( itFindS == itEndS )
         return false;
     return true;
 }
 
-void pending_ima_txns::list_all( list_txns_t& lst ) const {
+void txn_pending_tracker_system_impl::list_all( list_txns_t& lst ) const {
     lst.clear();
+    //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
+    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
+    //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     lock_type lock( mtx() );
     lst = list_txns_;
 }
 
-void pending_ima_txns::on_txn_insert( const txn_entry& txe, bool isEnableBroadcast ) {
+void txn_pending_tracker_system_impl::on_txn_insert(
+    const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_insert( txe );
 }
-void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
+void txn_pending_tracker_system_impl::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_erase( txe );
 }
 
-bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWalletURL ) {
+bool txn_pending_tracker_system_impl::broadcast_txn_sign_is_enabled(
+    const std::string& strWalletURL ) {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
@@ -382,7 +418,7 @@ bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWall
     return false;
 }
 
-std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign ) {
+std::string txn_pending_tracker_system_impl::broadcast_txn_sign_string( const char* strToSign ) {
     std::string strBroadcastSignature;
     try {
         //
@@ -477,19 +513,22 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() )
-            throw std::runtime_error( "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
+            throw std::runtime_error(
+                "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
         if ( d.empty() )
             throw std::runtime_error(
-                "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet, EMPTY data received" );
+                "failed to \"ecdsaSignMessageHash\" sign message(s) with wallet, EMPTY data "
+                "received" );
         const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
         dev::stat_check_rpc_call_error_and_throw( joAnswer, "ecdsaSignMessageHash" );
         nlohmann::json joSignResult =
             ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
-        if( joSignResult.count( "signature_r" ) == 0
-            || joSignResult.count( "signature_v" ) == 0
-            || joSignResult.count( "signature_s" ) == 0
-            ) {
-            throw std::runtime_error( "Got \"ecdsaSignMessageHash\" bad answer without \"signature_r\"+\"signature_s\"+\"signature_v\" fields, answer is \"" + joAnswer.dump() + "\"" );
+        if ( joSignResult.count( "signature_r" ) == 0 || joSignResult.count( "signature_v" ) == 0 ||
+             joSignResult.count( "signature_s" ) == 0 ) {
+            throw std::runtime_error(
+                "Got \"ecdsaSignMessageHash\" bad answer without "
+                "\"signature_r\"+\"signature_s\"+\"signature_v\" fields, answer is \"" +
+                joAnswer.dump() + "\"" );
         }
         clog( VerbosityTrace, "IMA" ) << ( cc::debug( " Got " ) + cc::notice( "ECDSA sign query" ) +
                                            cc::debug( " result: " ) + cc::j( joSignResult ) );
@@ -509,7 +548,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
     return strBroadcastSignature;
 }
 
-std::string pending_ima_txns::broadcast_txn_compose_string(
+std::string txn_pending_tracker_system_impl::broadcast_txn_compose_string(
     const char* strActionName, const dev::u256& tx_hash ) {
     std::string strToSign;
     strToSign += strActionName ? strActionName : "N/A";
@@ -518,7 +557,7 @@ std::string pending_ima_txns::broadcast_txn_compose_string(
     return strToSign;
 }
 
-std::string pending_ima_txns::broadcast_txn_sign(
+std::string txn_pending_tracker_system_impl::broadcast_txn_sign(
     const char* strActionName, const dev::u256& tx_hash ) {
     clog( VerbosityTrace, "IMA" ) << ( cc::debug(
                                            "Will compose IMA broadcast message to sign from TX " ) +
@@ -534,7 +573,7 @@ std::string pending_ima_txns::broadcast_txn_sign(
     return strBroadcastSignature;
 }
 
-std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) {
+std::string txn_pending_tracker_system_impl::broadcast_txn_get_ecdsa_public_key( int node_id ) {
     std::string strEcdsaPublicKey;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -579,7 +618,7 @@ std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) 
     return strEcdsaPublicKey;
 }
 
-int pending_ima_txns::broadcast_txn_get_node_id() {
+int txn_pending_tracker_system_impl::broadcast_txn_get_node_id() {
     int node_id = 0;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -603,7 +642,7 @@ int pending_ima_txns::broadcast_txn_get_node_id() {
     return node_id;
 }
 
-bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
+bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char* strActionName,
     const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
     bool isSignatureOK = false;
     std::string strNextErrorType = "", strEcdsaPublicKey = "<null-key>",
@@ -671,7 +710,7 @@ bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName
     return isSignatureOK;
 }
 
-void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
+void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -716,7 +755,8 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                         throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
-                    nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_, true );
+                    nlohmann::json joAnswer =
+                        dev::stat_parse_json_with_error_conversion( d.s_, true );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
                     clog( VerbosityTrace, "IMA" )
@@ -750,7 +790,7 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                    cc::warn( "unknown exception" ) );
     }
 }
-void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
+void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -795,7 +835,8 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                         throw std::runtime_error( "empty broadcast answer, error is: " + d.err_s_ );
                     if ( d.empty() )
                         throw std::runtime_error( "empty broadcast answer, EMPTY data received" );
-                    nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_, true );
+                    nlohmann::json joAnswer =
+                        dev::stat_parse_json_with_error_conversion( d.s_, true );
                     if ( !joAnswer.is_object() )
                         throw std::runtime_error( "malformed non-JSON-object broadcast answer" );
                     clog( VerbosityTrace, "IMA" )
@@ -831,17 +872,17 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
     }
 }
 
-std::atomic_size_t pending_ima_txns::g_nTrackingIntervalInSeconds = 90;
+std::atomic_size_t txn_pending_tracker_system_impl::g_nTrackingIntervalInSeconds = 90;
 
-size_t pending_ima_txns::tracking_interval_in_seconds() const {
+size_t txn_pending_tracker_system_impl::tracking_interval_in_seconds() const {
     return size_t( g_nTrackingIntervalInSeconds );
 }
 
-bool pending_ima_txns::is_tracking() const {
+bool txn_pending_tracker_system_impl::is_tracking() const {
     return bool( isTracking_ );
 }
 
-void pending_ima_txns::tracking_auto_start_stop() {
+void txn_pending_tracker_system_impl::tracking_auto_start_stop() {
     lock_type lock( mtx() );
     if ( list_txns_.size() == 0 ) {
         tracking_stop();
@@ -850,42 +891,55 @@ void pending_ima_txns::tracking_auto_start_stop() {
     }
 }
 
-void pending_ima_txns::tracking_start() {
+void txn_pending_tracker_system_impl::tracking_step() {
+    try {
+        list_txns_t lst, lstMined;
+        list_all( lst );
+        for ( const dev::tracking::txn_entry& txe : lst ) {
+            if ( !check_txn_is_mined( txe ) )
+                break;
+            lstMined.push_back( txe );
+        }
+        for ( const dev::tracking::txn_entry& txe : lstMined ) {
+            erase( txe.hash_, true );
+        }
+    } catch ( std::exception const& ex ) {
+        std::cout << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
+                  << "\n";
+    } catch ( ... ) {
+        std::cout << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+    }
+}
+
+void txn_pending_tracker_system_impl::tracking_start() {
+#if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( is_tracking() )
         return;
-    skutils::dispatch::repeat( g_strDispatchQueueID,
-        [=]() -> void {
-            list_txns_t lst, lstMined;
-            list_all( lst );
-            for ( const dev::tracking::txn_entry& txe : lst ) {
-                if ( !check_txn_is_mined( txe ) )
-                    break;
-                lstMined.push_back( txe );
-            }
-            for ( const dev::tracking::txn_entry& txe : lstMined ) {
-                erase( txe.hash_, true );
-            }
-        },
+    skutils::dispatch::repeat(
+        g_strDispatchQueueID, [=]() -> void { tracking_step(); },
         skutils::dispatch::duration_from_seconds( tracking_interval_in_seconds() ),
         &tracking_job_id_ );
     isTracking_ = true;
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-void pending_ima_txns::tracking_stop() {
+void txn_pending_tracker_system_impl::tracking_stop() {
+#if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( !is_tracking() )
         return;
     skutils::dispatch::stop( tracking_job_id_ );
     tracking_job_id_.clear();
     isTracking_ = false;
+#endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
+bool txn_pending_tracker_system_impl::check_txn_is_mined( const txn_entry& txe ) {
     return check_txn_is_mined( txe.hash_ );
 }
 
-bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
+bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash ) {
     try {
         skutils::url urlMainNet = getImaMainNetURL();
         //
@@ -898,26 +952,58 @@ bool pending_ima_txns::check_txn_is_mined( dev::u256 hash ) {
         skutils::rest::client cli( urlMainNet );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() )
-            throw std::runtime_error( "Main Net call to \"eth_getTransactionReceipt\" failed: " + d.err_s_ );
+            throw std::runtime_error(
+                "Main Net call to \"eth_getTransactionReceipt\" failed: " + d.err_s_ );
         if ( d.empty() )
-            throw std::runtime_error( "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data received" );
+            throw std::runtime_error(
+                "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data received" );
         const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
         dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionReceipt" );
-        if( joAnswer.count( "result" ) == 0 )
-            throw std::runtime_error( "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+        if ( joAnswer.count( "result" ) == 0 )
+            throw std::runtime_error(
+                "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is "
+                "\"" +
+                joAnswer.dump() + "\"" );
         nlohmann::json joReceipt = joAnswer["result"];
         if ( joReceipt.is_object() && joReceipt.count( "transactionHash" ) > 0 &&
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
-        return false;
+    } catch ( std::exception const& ex ) {
+        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: "
+                  << ex.what() << "\n";
     } catch ( ... ) {
-        return false;
+        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
     }
+    return false;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr< txn_pending_tracker_system > txn_pending_tracker_system::g_ptr;
+
+txn_pending_tracker_system::txn_pending_tracker_system(
+    const std::string& configPath, const std::string& strSgxWalletURL )
+    : txn_pending_tracker_system_impl( configPath, strSgxWalletURL ) {}
+
+txn_pending_tracker_system::~txn_pending_tracker_system() {}
+
+txn_pending_tracker_system& txn_pending_tracker_system::init(
+    const std::string& configPath, const std::string& strSgxWalletURL ) {
+    if ( !g_ptr )
+        g_ptr = std::make_unique< txn_pending_tracker_system >( configPath, strSgxWalletURL );
+    return ( *( g_ptr.get() ) );
+}
+txn_pending_tracker_system& txn_pending_tracker_system::instance() {
+    if ( g_ptr )
+        return ( *( g_ptr.get() ) );
+    throw std::runtime_error( "no global instance for IMA pending TXN tracker initialized yet" );
+}
 
 };  // namespace tracking
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace rpc {
 
@@ -934,10 +1020,7 @@ static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isD
 
 SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
-    : pending_ima_txns(
-          configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
-      chainParams_( chainParams ),
-      m_eth( _eth ) {
+    : skutils::json_config_file_accessor( configPath ), chainParams_( chainParams ), m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
     //
     try {
@@ -945,6 +1028,8 @@ SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
+    dev::tracking::txn_pending_tracker_system::init(
+        configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) );
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -1282,10 +1367,11 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
         // validate wallet description
-        static const char* g_arrMustHaveWalletFields[] = {// "url",
+        static const char* g_arrMustHaveWalletFields[] = { // "url",
             "keyShareName", "t", "n", "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
             "BLSPublicKey3", "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
-            "commonBLSPublicKey3"};
+            "commonBLSPublicKey3"
+        };
         size_t i, cnt =
                       sizeof( g_arrMustHaveWalletFields ) / sizeof( g_arrMustHaveWalletFields[0] );
         for ( i = 0; i < cnt; ++i ) {
@@ -1492,11 +1578,7 @@ static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::strin
 
 static dev::bytes& stat_append_u256_2_vec( dev::bytes& vec, const dev::u256& val ) {
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-
-    //    stat_array_align_right( v, 32 );
-    //    stat_array_invert( v.data(), v.size() );
     stat_bytes_align_left( v, 32 );
-
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
@@ -1526,13 +1608,16 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
 
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         if ( !isEnabledImaMessageSigning() )
             throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
         nlohmann::json joConfig = getConfigJSON();
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         strLogPrefix = cc::bright( "Startup" ) + " " + cc::deep_info( "IMA Verify+Sign" );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "IMA Verify and Sign" ) +
@@ -1807,7 +1892,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL_;
+        const std::string strWalletURL = strSgxWalletURL;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -1980,10 +2065,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 throw std::runtime_error(
                                     "Main Net call to \"eth_blockNumber\" failed, EMPTY data "
                                     "received" );
-                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                            const nlohmann::json joAnswer =
+                                dev::stat_parse_json_with_error_conversion( d.s_ );
                             dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_blockNumber" );
-                            if( joAnswer.count( "result" ) == 0 )
-                                throw std::runtime_error( "Got \"eth_blockNumber\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            if ( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error(
+                                    "Got \"eth_blockNumber\" bad answer without \"result\" field, "
+                                    "answer is \"" +
+                                    joAnswer.dump() + "\"" );
                             nlohmann::json joMainNetBlockNumber = joAnswer["result"];
                             if ( joMainNetBlockNumber.is_string() ) {
                                 dev::u256 uBN =
@@ -2062,10 +2151,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         if ( d.empty() )
                             throw std::runtime_error(
                                 "Main Net call to \"eth_getLogs\" failed, EMPTY data received" );
-                        const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
+                        const nlohmann::json joAnswer =
+                            dev::stat_parse_json_with_error_conversion( d.s_ );
                         dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getLogs" );
-                        if( joAnswer.count( "result" ) == 0 )
-                            throw std::runtime_error( "Got \"eth_getLogs\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                        if ( joAnswer.count( "result" ) == 0 )
+                            throw std::runtime_error(
+                                "Got \"eth_getLogs\" bad answer without \"result\" field, answer "
+                                "is \"" +
+                                joAnswer.dump() + "\"" );
                         jarrFoundLogRecords = joAnswer["result"];
                     }  // if ( strDirection == "M2S" || strDirection == "S2S" )
                     else {
@@ -2073,7 +2166,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         Json::Reader().parse( joLogsQuery.dump(), jvLogsQuery );
                         Json::Value jvLogs = dev::toJson(
                             this->client()->logs( dev::eth::toLogFilter( jvLogsQuery ) ) );
-                        jarrFoundLogRecords = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvLogs ), true );
+                        jarrFoundLogRecords = dev::stat_parse_json_with_error_conversion(
+                            Json::FastWriter().write( jvLogs ), true );
                     }  // else from if ( strDirection == "M2S" || strDirection == "S2S" )
                     clog( VerbosityDebug, "IMA" )
                         << ( strLogPrefix + cc::debug( " Got " ) +
@@ -2347,12 +2441,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                     d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to \"eth_getTransactionByHash\" failed, EMPTY data "
+                                    "Main Net call to \"eth_getTransactionByHash\" failed, EMPTY "
+                                    "data "
                                     "received" );
-                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
-                            dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionByHash" );
-                            if( joAnswer.count( "result" ) == 0 )
-                                throw std::runtime_error( "Got \"eth_getTransactionByHash\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            const nlohmann::json joAnswer =
+                                dev::stat_parse_json_with_error_conversion( d.s_ );
+                            dev::stat_check_rpc_call_error_and_throw(
+                                joAnswer, "eth_getTransactionByHash" );
+                            if ( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error(
+                                    "Got \"eth_getTransactionByHash\" bad answer without "
+                                    "\"result\" field, answer is \"" +
+                                    joAnswer.dump() + "\"" );
                             joTransaction = joAnswer["result"];
                         } else {
                             Json::Value jvTransaction;
@@ -2361,7 +2461,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 jvTransaction = Json::Value( Json::nullValue );
                             else
                                 jvTransaction = toJson( this->client()->localisedTransaction( h ) );
-                            joTransaction = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvTransaction ), true );
+                            joTransaction = dev::stat_parse_json_with_error_conversion(
+                                Json::FastWriter().write( jvTransaction ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
                         clog( VerbosityError, "IMA" )
@@ -2459,12 +2560,18 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                     d.err_s_ );
                             if ( d.empty() )
                                 throw std::runtime_error(
-                                    "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data "
+                                    "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY "
+                                    "data "
                                     "received" );
-                            const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
-                            dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionReceipt" );
-                            if( joAnswer.count( "result" ) == 0 )
-                                throw std::runtime_error( "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is \"" + joAnswer.dump() + "\"" );
+                            const nlohmann::json joAnswer =
+                                dev::stat_parse_json_with_error_conversion( d.s_ );
+                            dev::stat_check_rpc_call_error_and_throw(
+                                joAnswer, "eth_getTransactionReceipt" );
+                            if ( joAnswer.count( "result" ) == 0 )
+                                throw std::runtime_error(
+                                    "Got \"eth_getTransactionReceipt\" bad answer without "
+                                    "\"result\" field, answer is \"" +
+                                    joAnswer.dump() + "\"" );
                             joTransactionReceipt = joAnswer["result"];
                         } else {
                             Json::Value jvTransactionReceipt;
@@ -2474,7 +2581,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             else
                                 jvTransactionReceipt = dev::eth::toJson(
                                     this->client()->localisedTransactionReceipt( h ) );
-                            joTransactionReceipt = dev::stat_parse_json_with_error_conversion( Json::FastWriter().write( jvTransactionReceipt ), true );
+                            joTransactionReceipt = dev::stat_parse_json_with_error_conversion(
+                                Json::FastWriter().write( jvTransactionReceipt ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
                         clog( VerbosityError, "IMA" )
@@ -2769,10 +2877,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             cli.open( u );
             skutils::rest::data_t d = cli.call( joCall );
             if ( !d.err_s_.empty() )
-                throw std::runtime_error( "failed to \"blsSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
+                throw std::runtime_error(
+                    "failed to \"blsSignMessageHash\" sign message(s) with wallet: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error(
-                    "failed to \"blsSignMessageHash\" sign message(s) with wallet, EMPTY data received" );
+                    "failed to \"blsSignMessageHash\" sign message(s) with wallet, EMPTY data "
+                    "received" );
             const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
             dev::stat_check_rpc_call_error_and_throw( joAnswer, "blsSignMessageHash" );
             nlohmann::json joSignResult =
@@ -2823,13 +2933,16 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA BLS Sign U256" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         // if ( !isEnabledImaMessageSigning() )
         //     throw std::runtime_error( "IMA message signing feature is disabled on this instance"
         //     );
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "sign" ) +
                    cc::debug( " request: " ) + cc::j( joRequest ) );
@@ -2886,7 +2999,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL_;
+        const std::string strWalletURL = strSgxWalletURL;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -2964,7 +3077,8 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         cli.open( u );
         skutils::rest::data_t d = cli.call( joCall );
         if ( !d.err_s_.empty() )
-            throw std::runtime_error( "failed to \"blsSignMessageHash\"/u256 value with wallet: " + d.err_s_ );
+            throw std::runtime_error(
+                "failed to \"blsSignMessageHash\"/u256 value with wallet: " + d.err_s_ );
         if ( d.empty() )
             throw std::runtime_error(
                 "failed to \"blsSignMessageHash\"/u256 value with wallet, EMPTY data received" );
@@ -3008,10 +3122,13 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Got external broadcast/insert request " ) +
                    cc::j( joRequest ) );
@@ -3021,7 +3138,8 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
+        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
+                 strSgxWalletURL ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/insert call without \"broadcastSignature\" field specified" );
@@ -3031,11 +3149,13 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !broadcast_txn_verify_signature(
-                     "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !dev::tracking::txn_pending_tracker_system::instance()
+                      .broadcast_txn_verify_signature(
+                          "insert", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/insert signature verification failed" );
         }
-        bool wasInserted = insert( txe, false );
+        bool wasInserted =
+            dev::tracking::txn_pending_tracker_system::instance().insert( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3074,10 +3194,13 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
 
 Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + " " + cc::debug( "Got external broadcast/erase request " ) +
                    cc::j( joRequest ) );
@@ -3087,7 +3210,8 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
+        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
+                 strSgxWalletURL ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/erase call without \"broadcastSignature\" field specified" );
@@ -3097,11 +3221,12 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !broadcast_txn_verify_signature(
-                     "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !dev::tracking::txn_pending_tracker_system::instance()
+                      .broadcast_txn_verify_signature(
+                          "erase", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/erase signature verification failed" );
         }
-        bool wasErased = erase( txe, false );
+        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3144,14 +3269,16 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasInserted = insert( txe, true );
+        bool wasInserted =
+            dev::tracking::txn_pending_tracker_system::instance().insert( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3190,14 +3317,15 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasErased = erase( txe, true );
+        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3235,7 +3363,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN clear" );
     try {
-        clear();
+        dev::tracking::txn_pending_tracker_system::instance().clear();
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
@@ -3271,14 +3399,15 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
-        const nlohmann::json joRequest = dev::stat_parse_json_with_error_conversion( strRequest, true );
+        const nlohmann::json joRequest =
+            dev::stat_parse_json_with_error_conversion( strRequest, true );
         //
         dev::tracking::txn_entry txe;
         if ( !txe.fromJSON( joRequest ) )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasFound = find( txe );
+        bool wasFound = dev::tracking::txn_pending_tracker_system::instance().find( txe );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasFound;
@@ -3314,8 +3443,8 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN list-all" );
     try {
-        dev::tracking::pending_ima_txns::list_txns_t lst;
-        list_all( lst );
+        dev::tracking::txn_pending_tracker_system_impl::list_txns_t lst;
+        dev::tracking::txn_pending_tracker_system::instance().list_all( lst );
         nlohmann::json jarr = nlohmann::json::array();
         for ( const dev::tracking::txn_entry& txe : lst ) {
             jarr.push_back( txe.toJSON() );
@@ -3354,31 +3483,29 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
 Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "BROWSE/NOW SKALE NETWORK" );
     try {
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " incoming refreshing(now) call to " ) +
-                                                cc::bright( "skale_browseEntireNetwork" ) +
-                                                cc::debug( "..." ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " incoming refreshing(now) call to " ) +
+                   cc::bright( "skale_browseEntireNetwork" ) + cc::debug( "..." ) );
         clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_do_now();
         tt = clock() - tt;
-        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) done, " ) +
-                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                cc::debug( " second(s) spent" ) );
+        double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(now) done, " ) +
+                   cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                   cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) result is: " ) +
-                                                cc::j( jo ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(now) result is: " ) + cc::j( jo ) );
         std::string s = jo.dump();
         Json::Value ret;
         Json::Reader().parse( s, ret );
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
         return ret;
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3407,31 +3534,30 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
 Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "CACHED/FETCH SKALE NETWORK" );
     try {
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " incoming refreshing(cached) call to " ) +
-                                                cc::bright( "skale_cachedEntireNetwork" ) +
-                                                cc::debug( "..." ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " incoming refreshing(cached) call to " ) +
+                   cc::bright( "skale_cachedEntireNetwork" ) + cc::debug( "..." ) );
         clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_cached();
         tt = clock() - tt;
-        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(cached) done, " ) +
-                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                cc::debug( " second(s) spent" ) );
+        double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(cached) done, " ) +
+                   cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                   cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(cached) result is: " ) +
-                                                cc::j( jo ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug( " refreshing(cached) result is: " ) + cc::j( jo ) );
         std::string s = jo.dump();
         Json::Value ret;
         Json::Reader().parse( s, ret );
-        clog( dev::VerbosityTrace, "snb" ) << ( strLogPrefix + " " +
-                                                cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(cached) result is ready to sent back to client/caller" ) );
+        clog( dev::VerbosityTrace, "snb" )
+            << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
+                   cc::debug(
+                       " refreshing(cached) result is ready to sent back to client/caller" ) );
         return ret;
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3460,6 +3586,9 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 };  // namespace rpc
 };  // namespace dev
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // void ttt123() {
 //    const char strLogPrefix[] = "----------- ";
 //    dev::bytes vecComputeMessagesHash;
@@ -3482,6 +3611,9 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 //    // we should get 8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26
 //}
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // void ttt123() {
 //    const char strLogPrefix[] = "----------- ";
 //    dev::bytes vecComputeMessagesHash;
@@ -3500,73 +3632,5 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 //              << "\n";
 //}
 
-// void ttt123() {
-//    const char strLogPrefix[] = "----------- ";
-//    dev::bytes vecComputeMessagesHash;
-//
-//    std::string strFromChainName( "Artem" );
-//    std::string sxx_FromChainName = dev::sha3( strFromChainName ).hex();
-//    std::string sh = dev::rpc::stat_ensure_have_0x_at_start( sxx_FromChainName );
-//    dev::rpc::stat_append_hash_str_2_vec( vecComputeMessagesHash, sh );
-//    std::cout << ( strLogPrefix + cc::debug( "s0 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//
-//    dev::u256 uStartMessageIdx( 789 );
-//    dev::rpc::stat_append_u256_2_vec(vecComputeMessagesHash, uStartMessageIdx );
-//    std::cout << ( strLogPrefix + cc::debug( "s1 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
-//    std::cout << ( strLogPrefix + cc::debug( "s2 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//
-//    dev::u256 sender1( "0x0000000000000000000000000000000000000001" );
-//    dev::u256 dstContract1( "0x0000000000000000000000000000000000000001" );
-//    dev::bytes v1 = dev::fromHex( "010203", dev::WhenError::DontThrow );
-//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender1 );
-//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract1 );
-//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v1.begin(), v1.end() );
-//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
-//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//
-//    dev::u256 sender2( "0x0000000000000000000000000000000000000002" );
-//    dev::u256 dstContract2( "0x0000000000000000000000000000000000000002" );
-//    dev::bytes v2 = dev::fromHex( "040506", dev::WhenError::DontThrow );
-//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender2 );
-//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract2 );
-//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v2.begin(), v2.end() );
-//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
-//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//
-//    std::cout << ( strLogPrefix + cc::debug( " Resulting verctor is " ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
-//}
-// // NODE JS:
-// const strHashComputed = keccak256_message(
-//     [ {
-//         "sender": "0x0000000000000000000000000000000000000001",
-//         "destinationContract": "0x0000000000000000000000000000000000000001",
-//         "data": "0x010203"
-//     }, {
-//         "sender": "0x0000000000000000000000000000000000000002",
-//         "destinationContract": "0x0000000000000000000000000000000000000002",
-//         "data": "0x040506"
-//     } ],
-//     789,
-//     "Artem"
-// ).toLowerCase();
-// console.log( "----------------- computed.....", strHashComputed );
-// process.exit( 0 );
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
