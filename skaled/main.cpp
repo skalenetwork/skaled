@@ -1758,6 +1758,7 @@ int main( int argc, char** argv ) try {
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
             &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
+        dev::eth::g_skaleHost = skaleHost;
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();
@@ -1779,8 +1780,6 @@ int main( int argc, char** argv ) try {
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
         statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
-
-        dev::eth::g_skaleHost = skaleHost;
     }
 
     try {
