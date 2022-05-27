@@ -22,7 +22,7 @@ class AmsterdamFixPatch : public SchainPatch
 public:
     static bool isInitOnChainNeeded( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB);
     static bool isEnabled( dev::eth::Client& _client );
-    static void initOnChain( boost::filesystem::path const& _path );
+    static void initOnChain( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db );
     static bool stateRootCheckingEnabled( dev::eth::Client& _client );
 };
 

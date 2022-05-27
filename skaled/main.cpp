@@ -469,9 +469,6 @@ static void stat_init_common_signal_handling() {
     } );
 }
 
-void repair_blocks_and_extras_db( boost::filesystem::path const& _path );
-void dump_blocks_and_extras_db(
-    boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock );
 int main( int argc, char** argv ) try {
     // repair_blocks_and_extras_db( "/home/dimalit/Downloads/208/28e07f34/blocks_and_extras" );
 
@@ -1742,9 +1739,6 @@ int main( int argc, char** argv ) try {
         Ethash::init();
         NoProof::init();
 
-        //dump_blocks_and_extras_db( "/home/dimalit/Downloads/208", chainParams, 1774414 );
-        dump_blocks_and_extras_db( getDataDir(), chainParams, 1 );
-
         if ( chainParams.sealEngineName == Ethash::name() ) {
             //if( chainParams.sealEngineName == Ethash::name() )
             //    return 0;
@@ -2759,8 +2753,6 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
-
-    dump_blocks_and_extras_db( getDataDir(), chainParams, 1 );
 
     skale::network::browser::refreshing_stop();
 

@@ -44,6 +44,7 @@
 #include <libethcore/Exceptions.h>
 
 #include <libskale/TotalStorageUsedPatch.h>
+#include <libskale/AmsterdamFixPatch.h>
 
 #include "Block.h"
 #include "Defaults.h"
@@ -51,6 +52,8 @@
 #include "ImportPerformanceLogger.h"
 
 #include <skutils/console_colors.h>
+
+extern void dump_blocks_and_extras_db( const dev::eth::BlockChain& _bc, size_t _startBlock );
 
 using namespace std;
 using namespace dev;
@@ -297,8 +300,12 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
+    dump_blocks_and_extras_db( *this, 0 );
+
     if ( TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
+    if ( AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
+        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db );
 }
 
 void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
@@ -314,6 +321,8 @@ void BlockChain::close() {
     m_blocksDB = nullptr;
     m_db_splitter.reset();
     m_db.reset();
+    m_rotating_db.reset();
+
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;

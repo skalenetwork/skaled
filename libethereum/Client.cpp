@@ -138,6 +138,8 @@ Client::~Client() {
     stopWorking();
 }
 
+extern void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock );
+
 void Client::stopWorking() {
     Worker::stopWorking();
 
@@ -162,6 +164,8 @@ void Client::stopWorking() {
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
+
+    dump_blocks_and_extras_db( m_bc, 0 );
 
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );

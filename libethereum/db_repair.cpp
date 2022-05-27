@@ -2,6 +2,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 
 #include <libdevcore/ManuallyRotatingLevelDB.h>
+#include <libdevcore/Log.h>
 
 using namespace std;
 using namespace dev;
@@ -27,17 +28,19 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
     // TODO catch
 
-    h256 best_hash = h256( RLP( extrasDB->lookup( db::Slice( "best" ) ) ) );
+    h256 best_hash =  h256( extrasDB->lookup( db::Slice( "best" ) ), h256::FromBinary );
     // string best_binary = blocksDB->lookup( toSlice( best_hash ) );
     // BlockHeader best_header( best_binary );
     // uint64_t best_number = best_header.number();
 
-    size_t last_good_block = 52;
+    size_t last_good_block = 110;
     size_t start_block = last_good_block;
     h256 new_state_root_for_all;  // = get it from block
 
     h256 prev_hash;
     BlockDetails prev_details;
+
+    clog(VerbosityInfo, "AmsterdamFixPatch") << "Repairing stateRoots using base block " << start_block;
 
     for ( size_t bn = start_block;; ++bn ) {
         // read block
@@ -121,6 +124,8 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
             // update latest
             extrasDB->kill( db::Slice( "best" ) );
             extrasDB->insert( db::Slice( "best" ), toSlice( new_hash ) );
+            db->commit( "repair_best" );
+            clog(VerbosityInfo, "AmsterdamFixPatch") << "Repaired till block " << bn;
             break;
         }
 
@@ -130,33 +135,34 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 }
 
 void dump_blocks_and_extras_db(
-    boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
-    BlockChain bc( _chainParams, _path, WithExisting::Trust );
+    const BlockChain& _bc, size_t _startBlock ) {
 
-    for ( size_t bn = _startBlock; bn != bc.number(); ++bn ) {
-        h256 hash = bc.numberHash( bn );
+    int64_t prev_ts = -1;
+
+    for ( size_t bn = _startBlock; bn <= _bc.number(); ++bn ) {
+        h256 hash = _bc.numberHash( bn );
         assert( hash != h256() );
-        bytes block_binary = bc.block( hash );
+        bytes block_binary = _bc.block( hash );
         BlockHeader header( block_binary );
-        BlockDetails details = bc.details( hash );
-        TransactionHashes transaction_hashes = bc.transactionHashes( hash );
+        BlockDetails details = _bc.details( hash );
+        TransactionHashes transaction_hashes = _bc.transactionHashes( hash );
 
         Json::Value block_json = toJson( header, details, UncleHashes(), transaction_hashes );
 
-        LogBloom bloom = bc.blockBloom( bn );
+        LogBloom bloom = _bc.blockBloom( bn );
 
 //        block_json["hash"] = "suppressed";
 //        block_json["parentHash"] = "suppressed";
 //        block_json["stateRoot"] = "suppressed";
 
         cout << "Block " << bn << "\n";
-        if ( transaction_hashes.size() || header.stateRoot() == u256() ) {
+        if ( true || transaction_hashes.size() || header.timestamp() == prev_ts ) {
             cout << block_json << "\n";
             cout << "Transactions: "
                  << "\n";
             for ( size_t i = 0; i < transaction_hashes.size(); ++i ) {
                 h256 tx_hash = transaction_hashes[i];
-                pair< h256, int > loc = bc.transactionLocation( tx_hash );
+                pair< h256, int > loc = _bc.transactionLocation( tx_hash );
                 cout << tx_hash << " -> "
                      << ( loc.first == header.hash() ? "block hash ok" : "block hash error!" )
                      << " " << loc.second << "\n";
@@ -166,5 +172,12 @@ void dump_blocks_and_extras_db(
             cout << bloom.hex() << endl;
         }  // if
 
+        prev_ts = header.timestamp();
+
     }  // for
+}
+
+void dump_blocks_and_extras_db( boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
+     BlockChain bc( _chainParams, _path, WithExisting::Trust );
+     dump_blocks_and_extras_db( bc, _startBlock );
 }
