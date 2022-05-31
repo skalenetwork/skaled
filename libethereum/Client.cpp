@@ -31,6 +31,8 @@
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
+#include <libskale/AmsterdamFixPatch.h>
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -108,7 +110,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
-      m_bc( _params, _dbPath, _forceAction ),
+      m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
@@ -141,6 +143,10 @@ Client::~Client() {
 extern void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock );
 
 void Client::stopWorking() {
+
+    if( !Worker::isWorking() )
+        return;
+
     Worker::stopWorking();
 
     if ( m_skaleHost )
@@ -165,7 +171,10 @@ void Client::stopWorking() {
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
-    dump_blocks_and_extras_db( m_bc, 0 );
+    // HACK This func is called twice, and can be called on closed blockchain
+    // TODO implement BlockChain::isOpen()?
+    if( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock)
+        dump_blocks_and_extras_db( m_bc, AmsterdamFixPatch::lastGoodBlock );
 
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );
@@ -915,6 +924,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         } else {
             stateRootToSet = Client::empty_str_hash;
         }
+
+        stateRootToSet = AmsterdamFixPatch::overrideStateRoot( *this ) != dev::h256() ? AmsterdamFixPatch::overrideStateRoot( *this ): stateRootToSet;
 
         m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }

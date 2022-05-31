@@ -176,11 +176,11 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we ) try
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
     : m_lastBlockHashes( new LastBlockHashes( *this ) ),
       m_dbPath( _dbPath ) {
     init( _p );
-    open( _dbPath, _we );
+    open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
     std::throw_with_nested( CreationException() );
 }
@@ -214,7 +214,7 @@ void BlockChain::init( ChainParams const& _p ) {
     genesis();
 }
 
-void BlockChain::open( fs::path const& _path, WithExisting _we ) {
+void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
     fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
@@ -259,6 +259,9 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
         }
     }
 
+    if ( _applyPatches && AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
+        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db );
+
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
         // Insert details of genesis block.
@@ -300,18 +303,16 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    dump_blocks_and_extras_db( *this, 0 );
+//    dump_blocks_and_extras_db( *this, 0 );
 
-    if ( TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
+    if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
-    if ( AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
-        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db );
 }
 
-void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
+void BlockChain::reopen( ChainParams const& _p, bool _applyPatches, WithExisting _we ) {
     close();
     init( _p );
-    open( m_dbPath, _we );
+    open( m_dbPath, _applyPatches, _we );
 }
 
 void BlockChain::close() {

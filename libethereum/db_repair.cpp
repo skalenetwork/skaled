@@ -156,7 +156,7 @@ void dump_blocks_and_extras_db(
 //        block_json["stateRoot"] = "suppressed";
 
         cout << "Block " << bn << "\n";
-        if ( true || transaction_hashes.size() || header.timestamp() == prev_ts ) {
+        if ( transaction_hashes.size() || header.timestamp() == prev_ts ) {
             cout << block_json << "\n";
             cout << "Transactions: "
                  << "\n";
@@ -178,6 +178,6 @@ void dump_blocks_and_extras_db(
 }
 
 void dump_blocks_and_extras_db( boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
-     BlockChain bc( _chainParams, _path, WithExisting::Trust );
+     BlockChain bc( _chainParams, _path, false, WithExisting::Trust );
      dump_blocks_and_extras_db( bc, _startBlock );
 }

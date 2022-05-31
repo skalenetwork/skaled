@@ -131,13 +131,13 @@ public:
 
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain( ChainParams const& _p, boost::filesystem::path const& _path,
+    BlockChain( ChainParams const& _p, boost::filesystem::path const& _path, bool _applyPatches = false,
         WithExisting _we = WithExisting::Trust );
     ~BlockChain();
 
     /// Reopen everything.
-    void reopen( WithExisting _we = WithExisting::Trust ) { reopen( m_params, _we ); }
-    void reopen( ChainParams const& _p, WithExisting _we = WithExisting::Trust );
+    void reopen( bool _applyPatches = false, WithExisting _we = WithExisting::Trust ) { reopen( m_params, _applyPatches, _we ); }
+    void reopen( ChainParams const& _p, bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.
@@ -456,7 +456,7 @@ private:
     void init( ChainParams const& _p );
     /// Open the database.
 public:
-    void open( boost::filesystem::path const& _path, WithExisting _we );
+    void open( boost::filesystem::path const& _path, bool _applyPatches, WithExisting _we );
     /// Finalise everything and close the database.
     void close();
 

@@ -24,6 +24,7 @@ public:
         return _db.exists( dev::db::Slice( "\x0totalStorageUsed", 17 ) ) && !boost::filesystem::exists("/homa/dimalit/magic_file.txt");
     }
     static void initOnChain(dev::eth::BlockChain& _bc) {
+        // TODO move it here, as bc can be unitialized yet!
         _bc.recomputeExistingOccupiedSpaceForBlockRotation();
     }
     static void onProgress(batched_io::db_operations_face& _db, size_t _blockNumber){

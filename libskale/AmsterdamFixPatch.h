@@ -15,15 +15,18 @@
  *                     TBD (stateRoot check reintroducing)
  */
 
-void repair_blocks_and_extras_db( boost::filesystem::path const& _path );
-
 class AmsterdamFixPatch : public SchainPatch
 {
 public:
     static bool isInitOnChainNeeded( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB);
-    static bool isEnabled( dev::eth::Client& _client );
+    static bool isEnabled( const dev::eth::Client& _client );
     static void initOnChain( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db );
     static bool stateRootCheckingEnabled( dev::eth::Client& _client );
+    static dev::h256 overrideStateRoot( const dev::eth::Client& _client );
+
+    static size_t lastGoodBlock;
+    static dev::h256 newStateRootForAll;
+    static size_t lastBlockToModify;
 };
 
 #endif // AMSTERDAMFIXPATCH_H
