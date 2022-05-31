@@ -143,8 +143,7 @@ Client::~Client() {
 extern void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock );
 
 void Client::stopWorking() {
-
-    if( !Worker::isWorking() )
+    if ( !Worker::isWorking() )
         return;
 
     Worker::stopWorking();
@@ -173,7 +172,7 @@ void Client::stopWorking() {
 
     // HACK This func is called twice, and can be called on closed blockchain
     // TODO implement BlockChain::isOpen()?
-    if( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock)
+    if ( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock )
         dump_blocks_and_extras_db( m_bc, AmsterdamFixPatch::lastGoodBlock );
 
     m_bc.close();
@@ -925,7 +924,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             stateRootToSet = Client::empty_str_hash;
         }
 
-        stateRootToSet = AmsterdamFixPatch::overrideStateRoot( *this ) != dev::h256() ? AmsterdamFixPatch::overrideStateRoot( *this ): stateRootToSet;
+        stateRootToSet = AmsterdamFixPatch::overrideStateRoot( *this ) != dev::h256() ?
+                             AmsterdamFixPatch::overrideStateRoot( *this ) :
+                             stateRootToSet;
 
         m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }

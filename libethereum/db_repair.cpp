@@ -1,8 +1,8 @@
 #include "BlockChain.h"
 #include <libweb3jsonrpc/JsonHelper.h>
 
-#include <libdevcore/ManuallyRotatingLevelDB.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/ManuallyRotatingLevelDB.h>
 
 using namespace std;
 using namespace dev;
@@ -28,7 +28,7 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
 
     // TODO catch
 
-    h256 best_hash =  h256( extrasDB->lookup( db::Slice( "best" ) ), h256::FromBinary );
+    h256 best_hash = h256( extrasDB->lookup( db::Slice( "best" ) ), h256::FromBinary );
     // string best_binary = blocksDB->lookup( toSlice( best_hash ) );
     // BlockHeader best_header( best_binary );
     // uint64_t best_number = best_header.number();
@@ -40,7 +40,8 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
     h256 prev_hash;
     BlockDetails prev_details;
 
-    clog(VerbosityInfo, "AmsterdamFixPatch") << "Repairing stateRoots using base block " << start_block;
+    clog( VerbosityInfo, "AmsterdamFixPatch" )
+        << "Repairing stateRoots using base block " << start_block;
 
     for ( size_t bn = start_block;; ++bn ) {
         // read block
@@ -125,7 +126,7 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
             extrasDB->kill( db::Slice( "best" ) );
             extrasDB->insert( db::Slice( "best" ), toSlice( new_hash ) );
             db->commit( "repair_best" );
-            clog(VerbosityInfo, "AmsterdamFixPatch") << "Repaired till block " << bn;
+            clog( VerbosityInfo, "AmsterdamFixPatch" ) << "Repaired till block " << bn;
             break;
         }
 
@@ -134,9 +135,7 @@ void repair_blocks_and_extras_db( boost::filesystem::path const& _path ) {
     }  // for
 }
 
-void dump_blocks_and_extras_db(
-    const BlockChain& _bc, size_t _startBlock ) {
-
+void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
     int64_t prev_ts = -1;
 
     for ( size_t bn = _startBlock; bn <= _bc.number(); ++bn ) {
@@ -151,9 +150,9 @@ void dump_blocks_and_extras_db(
 
         LogBloom bloom = _bc.blockBloom( bn );
 
-//        block_json["hash"] = "suppressed";
-//        block_json["parentHash"] = "suppressed";
-//        block_json["stateRoot"] = "suppressed";
+        //        block_json["hash"] = "suppressed";
+        //        block_json["parentHash"] = "suppressed";
+        //        block_json["stateRoot"] = "suppressed";
 
         cout << "Block " << bn << "\n";
         if ( transaction_hashes.size() || header.timestamp() == prev_ts ) {
@@ -177,7 +176,8 @@ void dump_blocks_and_extras_db(
     }  // for
 }
 
-void dump_blocks_and_extras_db( boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
-     BlockChain bc( _chainParams, _path, false, WithExisting::Trust );
-     dump_blocks_and_extras_db( bc, _startBlock );
+void dump_blocks_and_extras_db(
+    boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
+    BlockChain bc( _chainParams, _path, false, WithExisting::Trust );
+    dump_blocks_and_extras_db( bc, _startBlock );
 }

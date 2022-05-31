@@ -10,8 +10,9 @@ size_t AmsterdamFixPatch::lastGoodBlock = 69;
 dev::h256 AmsterdamFixPatch::newStateRootForAll;
 size_t AmsterdamFixPatch::lastBlockToModify = AmsterdamFixPatch::lastGoodBlock + 60;
 
-bool AmsterdamFixPatch::isInitOnChainNeeded( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB ) try {
-    h256 best_hash =  h256( _extrasDB.lookup( db::Slice( "best" ) ), h256::FromBinary );
+bool AmsterdamFixPatch::isInitOnChainNeeded(
+    batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB ) try {
+    h256 best_hash = h256( _extrasDB.lookup( db::Slice( "best" ) ), h256::FromBinary );
     std::string best_binary = _blocksDB.lookup( toSlice( best_hash ) );
     BlockHeader best_header( best_binary );
     uint64_t best_number = best_header.number();
@@ -20,11 +21,12 @@ bool AmsterdamFixPatch::isInitOnChainNeeded( batched_io::db_operations_face& _bl
     std::string totalStorageUsedStr = _blocksDB.lookup( db::Slice( "totalStorageUsed" ) );
     totalStorageUsed = std::stoull( totalStorageUsedStr );
 
-    if( totalStorageUsed != best_number * 32 )
-        clog(VerbosityInfo, "AmsterdamFixPatch") << "Will fix old stateRoots because totalStorageUsed = " << totalStorageUsed;
+    if ( totalStorageUsed != best_number * 32 )
+        clog( VerbosityInfo, "AmsterdamFixPatch" )
+            << "Will fix old stateRoots because totalStorageUsed = " << totalStorageUsed;
 
     return totalStorageUsed != best_number * 32;
-} catch(...) {
+} catch ( ... ) {
     // return false if clean DB or no totalStorageUsed
     return false;
 }
@@ -43,8 +45,7 @@ static dev::h256 numberHash( batched_io::db_operations_face& _db, unsigned _i ) 
     return h256( RLP( s ) );
 }
 
-static RLPStream assemble_new_block(const RLP& old_block_rlp, const BlockHeader& header ){
-
+static RLPStream assemble_new_block( const RLP& old_block_rlp, const BlockHeader& header ) {
     // see Client::sealUnconditionally
     RLPStream header_rlp;
     header.streamRLP( header_rlp );
@@ -59,8 +60,8 @@ static RLPStream assemble_new_block(const RLP& old_block_rlp, const BlockHeader&
     return ret;
 }
 
-void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db ) {
-
+void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
+    batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db ) {
     // TODO catch
 
     h256 best_hash = h256( _extrasDB.lookup( db::Slice( "best" ) ), h256::FromBinary );
@@ -73,7 +74,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
     h256 prev_hash;
     BlockDetails prev_details;
 
-    clog(VerbosityInfo, "AmsterdamFixPatch") << "Repairing stateRoots using base block " << start_block;
+    clog( VerbosityInfo, "AmsterdamFixPatch" )
+        << "Repairing stateRoots using base block " << start_block;
 
     for ( size_t bn = start_block;; ++bn ) {
         // read block
@@ -87,7 +89,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
         string details_binary = _extrasDB.lookup( toSlice( old_hash, ExtraDetails ) );
         BlockDetails block_details = BlockDetails( RLP( details_binary ) );
 
-        if ( bn == lastGoodBlock ){
+        if ( bn == lastGoodBlock ) {
             newStateRootForAll = old_block_rlp[0][3].toHash< h256 >();
             prev_hash = old_hash;
             prev_details = block_details;
@@ -100,13 +102,14 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
         header.setParentHash( prev_hash );
 
         // 2 update stateRoot
-        header.setRoots( header.transactionsRoot(), header.receiptsRoot(), header.sha3Uncles(), newStateRootForAll );
+        header.setRoots( header.transactionsRoot(), header.receiptsRoot(), header.sha3Uncles(),
+            newStateRootForAll );
 
         RLPStream new_block_rlp;
-        new_block_rlp = assemble_new_block(old_block_rlp, header);
+        new_block_rlp = assemble_new_block( old_block_rlp, header );
 
         bytes new_binary = new_block_rlp.out();
-        //assert( new_binary != old_block_rlp.data().toVector() );
+        // assert( new_binary != old_block_rlp.data().toVector() );
 
         // 3 recompute hash
         h256 new_hash = header.hash();
@@ -150,7 +153,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
 
         for ( size_t i = 0; i < transactions.size(); ++i ) {
             h256 hash = sha3( transactions[i].data() );
-            cout << "Updating transaction " << hash << " location "  << old_hash << " -> " << new_hash << " " << i << endl;
+            cout << "Updating transaction " << hash << " location " << old_hash << " -> "
+                 << new_hash << " " << i << endl;
             _extrasDB.insert(
                 toSlice( hash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
         }  // for
@@ -160,9 +164,10 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
         if ( old_hash == best_hash ) {
             // update latest
             _extrasDB.kill( db::Slice( "best" ) );
-            _extrasDB.insert( db::Slice( "best" ), db::Slice( (const char*) new_hash.data(), 32 ) );
+            _extrasDB.insert(
+                db::Slice( "best" ), db::Slice( ( const char* ) new_hash.data(), 32 ) );
             _db.commit( "repair_best" );
-            clog(VerbosityInfo, "AmsterdamFixPatch") << "Repaired till block " << bn;
+            clog( VerbosityInfo, "AmsterdamFixPatch" ) << "Repaired till block " << bn;
             break;
         }
 
@@ -170,24 +175,24 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB, 
         prev_details = block_details;
     }  // for
 }
-bool AmsterdamFixPatch::stateRootCheckingEnabled( Client& _client ){
+bool AmsterdamFixPatch::stateRootCheckingEnabled( Client& _client ) {
     uint64_t chainID = _client.chainParams().chainID;
-    if( !isEnabled( _client ) )
+    if ( !isEnabled( _client ) )
         return true;
     // NEXT same change should be in consensus!
-    if ( true || chainID == 0xd2ba743e9fef4 ||
-         chainID == 0x292a2c91ca6a3 ||
-         chainID == 0x1c6fa7f59eeac ||
-         chainID == 0x4b127e9c2f7de)
+    if ( true || chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 ||
+         chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de )
         return false;
     else
         return true;
 }
 
-h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ){
-    if( !isEnabled( _client ) )
-        return h256();          // do not override
-    if( newStateRootForAll == h256() && lastGoodBlock <= _client.blockChain().number() )
-        newStateRootForAll = _client.blockChain().info( _client.blockChain().numberHash( lastGoodBlock ) ).stateRoot();
+h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
+    if ( !isEnabled( _client ) )
+        return h256();  // do not override
+    if ( newStateRootForAll == h256() && lastGoodBlock <= _client.blockChain().number() )
+        newStateRootForAll = _client.blockChain()
+                                 .info( _client.blockChain().numberHash( lastGoodBlock ) )
+                                 .stateRoot();
     return newStateRootForAll;
 }
