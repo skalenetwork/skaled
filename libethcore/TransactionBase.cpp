@@ -92,6 +92,8 @@ TransactionBase::TransactionBase(
                 } else if ( v != 27 && v != 28 )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 // else leave m_chainId as is (unitialized)
+                else BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                                "no chainId provided" ) );
 
                 auto const recoveryID = m_chainId.has_value() ?
                                             _byte_{v - ( u256{*m_chainId} * 2 + 35 )} :
