@@ -150,9 +150,9 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
 
         LogBloom bloom = _bc.blockBloom( bn );
 
-        //        block_json["hash"] = "suppressed";
-        //        block_json["parentHash"] = "suppressed";
-        //        block_json["stateRoot"] = "suppressed";
+        block_json["hash"] = "suppressed";
+        block_json["parentHash"] = "suppressed";
+        block_json["stateRoot"] = "suppressed";
 
         cout << "Block " << bn << "\n";
         if ( transaction_hashes.size() || header.timestamp() == prev_ts ) {
@@ -177,7 +177,9 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
 }
 
 void dump_blocks_and_extras_db(
-    boost::filesystem::path const& _path, ChainParams const& _chainParams, size_t _startBlock ) {
-    BlockChain bc( _chainParams, _path, false, WithExisting::Trust );
+    boost::filesystem::path const& _path, size_t _startBlock ) {
+    ChainParams dummy_cp;
+    dummy_cp.sealEngineName = NoProof::name();
+    BlockChain bc( dummy_cp, _path, false, WithExisting::Trust );
     dump_blocks_and_extras_db( bc, _startBlock );
 }

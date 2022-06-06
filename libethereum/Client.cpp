@@ -172,8 +172,8 @@ void Client::stopWorking() {
 
     // HACK This func is called twice, and can be called on closed blockchain
     // TODO implement BlockChain::isOpen()?
-    if ( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock )
-        dump_blocks_and_extras_db( m_bc, AmsterdamFixPatch::lastGoodBlock );
+    if ( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock( chainParams() ) )
+        dump_blocks_and_extras_db( m_bc, AmsterdamFixPatch::lastGoodBlock( chainParams() ) );
 
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );

@@ -469,6 +469,9 @@ static void stat_init_common_signal_handling() {
     } );
 }
 
+void dump_blocks_and_extras_db(
+    boost::filesystem::path const& _path, size_t _startBlock );
+
 int main( int argc, char** argv ) try {
     // repair_blocks_and_extras_db( "/home/dimalit/Downloads/208/28e07f34/blocks_and_extras" );
 
@@ -487,6 +490,11 @@ int main( int argc, char** argv ) try {
     Defaults::get();
     Ethash::init();
     NoProof::init();
+
+//    dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
+//    //dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
+//    if( 1==1 )
+//        return 0;
 
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;

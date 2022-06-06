@@ -260,7 +260,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     }
 
     if ( _applyPatches && AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
-        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db );
+        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db, chainParams() );
 
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );

@@ -21,11 +21,11 @@ public:
         batched_io::db_operations_face& _blocksDB, batched_io::db_operations_face& _extrasDB );
     static bool isEnabled( const dev::eth::Client& _client );
     static void initOnChain( batched_io::db_operations_face& _blocksDB,
-        batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db );
-    static bool stateRootCheckingEnabled( dev::eth::Client& _client );
+        batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db, const dev::eth::ChainParams& _chainParams );
+    static bool stateRootCheckingEnabled( const dev::eth::Client& _client );
     static dev::h256 overrideStateRoot( const dev::eth::Client& _client );
 
-    static size_t lastGoodBlock;
+    static size_t lastGoodBlock( const dev::eth::ChainParams& _chainParams );
     static dev::h256 newStateRootForAll;
     static size_t lastBlockToModify;
 };
