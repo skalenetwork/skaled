@@ -22,7 +22,7 @@ size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
     case 0x4b127e9c2f7de:
         return 15564;
     default:
-        assert( false && "lastGoodBlock requeste in a non-affected schain!" );
+        assert( false && "lastGoodBlock requested in a non-affected schain!" );
     }// switch
 
     return 0;
@@ -53,7 +53,14 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
 bool AmsterdamFixPatch::isEnabled( const Client& _client ) {
     //_client.call();
     //return _client.number() < lastBlockToModify;
-    return _client.countAt( magicAddress ) == 0;
+    bool res = _client.countAt( magicAddress ) == 0;
+
+    if( res )
+        setenv( "CONSENSUS_USE_STATEROOT_PATCH", "1", 1 );
+    else
+        unsetenv( "CONSENSUS_USE_STATEROOT_PATCH" );
+
+    return res;
 }
 
 static dev::h256 numberHash( batched_io::db_operations_face& _db, unsigned _i ) {
@@ -211,7 +218,7 @@ bool AmsterdamFixPatch::stateRootCheckingEnabled( const Client& _client ) {
 h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
     if ( !isEnabled( _client ) )
         return h256();  // do not override
-    if ( newStateRootForAll == h256() && lastGoodBlock( _client.chainParams() ) <= _client.blockChain().number() )
+    if ( newStateRootForAll == h256() && _client.blockChain().number() >= lastGoodBlock( _client.chainParams() ) )
         newStateRootForAll = _client.blockChain()
                                  .info( _client.blockChain().numberHash( lastGoodBlock( _client.chainParams() ) ) )
                                  .stateRoot();

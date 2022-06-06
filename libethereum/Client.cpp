@@ -265,6 +265,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
 
+    // HACK Needed to set env var for consensus
+    AmsterdamFixPatch::isEnabled( *this );
+
     doWork( false );
 }
 
