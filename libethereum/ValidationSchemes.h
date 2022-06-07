@@ -69,6 +69,7 @@ extern std::string const c_skale256ForkBlock;
 extern std::string const c_skale512ForkBlock;
 extern std::string const c_skale1024ForkBlock;
 extern std::string const c_skaleUnlimitedForkBlock;
+extern std::string const c_skaleDisableChainIdCheck;
 
 extern std::string const c_accountStartNonce;
 extern std::string const c_maximumExtraDataSize;

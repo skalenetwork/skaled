@@ -73,6 +73,7 @@ string const c_skale256ForkBlock = "skale256ForkBlock";
 string const c_skale512ForkBlock = "skale512ForkBlock";
 string const c_skale1024ForkBlock = "skale1024ForkBlock";
 string const c_skaleUnlimitedForkBlock = "skaleUnlimitedForkBlock";
+string const c_skaleDisableChainIdCheck = "skaleDisableChainIdCheck";
 
 string const c_accountStartNonce = "accountStartNonce";
 string const c_maximumExtraDataSize = "maximumExtraDataSize";
