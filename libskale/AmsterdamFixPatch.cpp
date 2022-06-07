@@ -87,7 +87,7 @@ static RLPStream assemble_new_block( const RLP& old_block_rlp, const BlockHeader
 }
 
 void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
-    batched_io::db_operations_face& _extrasDB, batched_io::batched_face& _db, ChainParams const& _chainParams ) {
+    batched_io::db_operations_face& _extrasDB, batched_io::db_face& _db, ChainParams const& _chainParams ) {
     // TODO catch
 
     h256 best_hash = h256( _extrasDB.lookup( db::Slice( "best" ) ), h256::FromBinary );
@@ -189,6 +189,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
         _db.commit( "repair_block" );
 
         if ( old_hash == best_hash ) {
+            // fix "" key
+            _db.kill( db::Slice( "\x0") );
             // update latest
             _extrasDB.kill( db::Slice( "best" ) );
             _extrasDB.insert(
