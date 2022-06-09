@@ -3,6 +3,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include <array>
+#include <iostream>
 #include <map>
 
 class StatusAndControl {
@@ -18,9 +20,14 @@ public:
     enum ExitState { ClearDataDir, StartAgain, StartFromSnapshot, ExitTimeReached };
     enum ConsensusRunningState { None, WaitingForPeers, Bootstrapping, Operation };
 
+    std::array< std::string, 6 > subsystemString = { "SnapshotDownloader", "Blockchain", "Rpc", "Consensus", "Snapshotting", "WaitingForTimestamp" };
+    std::array< std::string, 4 > exitStateString = { "ClearDataDir", "StartAgain", "StartFromSnapshot", "ExitTimeReached" };
+    std::array< std::string, 4 > consensusRunningStateString = { "None", "WaitingForPeers", "Bootstrapping", "Operation" };
+
     virtual ~StatusAndControl();
 
     void setSubsystemRunning( Subsystem _ss, bool _run ) {
+        std::cout << "Skaled status: setSubsystemRunning: " << subsystemString[ _ss ] << " to " << ( _run ? "true\n" : "false\n" );
         subsystemRunning[_ss] = _run;
         on_change();
     }
@@ -28,12 +35,14 @@ public:
         return subsystemRunning.count( _ss ) && subsystemRunning.at( _ss );
     }
     void setConsensusRunningState( ConsensusRunningState _state ) {
+        std::cout << "Skaled status: setConsensusRunningState to " << consensusRunningStateString[ _state ] << '\n';
         consensusRunningState = _state;
         on_change();
     }
     ConsensusRunningState getConsensusRunningState() const { return consensusRunningState; }
 
     void setExitState( ExitState _key, bool _val ) {
+        std::cout << "Skaled status: setExitState: " << exitStateString[ _key ] << " to " << ( _val ? "true" : "false" ) << '\n';
         exitState[_key] = _val;
         on_change();
     }
