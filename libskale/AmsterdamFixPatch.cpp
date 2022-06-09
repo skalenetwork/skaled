@@ -11,16 +11,23 @@ dev::h256 AmsterdamFixPatch::newStateRootForAll;
 //size_t AmsterdamFixPatch::lastBlockToModify = 2247863;
 dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5936dC6019898e6C8") );
 
+/* Test net:
+ * 0xd2ba743e9fef4 // rhythmic-tegmen -- 15713
+ * 0x292a2c91ca6a3 // squeaking-nash --15596
+ * 0x1c6fa7f59eeac // chubby-sadr --15479
+ * 0x4b127e9c2f7de // tinkling-kaffaljidhma -- 15564
+*/
+
 size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
     switch( _chainParams.chainID ){
     case 0xd2ba743e9fef4:
-        return 15713;
+        return 1981742;
     case 0x292a2c91ca6a3:
-        return 15596;
+        return 1861279;
     case 0x1c6fa7f59eeac:
-        return 15479;
+        return 1854549;
     case 0x4b127e9c2f7de:
-        return 15564;
+        return 1989445;
     default:
         assert( false && "lastGoodBlock requested in a non-affected schain!" );
     }// switch
@@ -139,7 +146,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         // 3 recompute hash
         h256 new_hash = header.hash();
-        cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
+        if( bn == start_block || old_hash == best_hash || bn % 1000 == 0 )
+            cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
 
         // write block
 

@@ -491,8 +491,8 @@ int main( int argc, char** argv ) try {
     Ethash::init();
     NoProof::init();
 
-//    dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
-//    //dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
+    //dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
+//    dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
 //    if( 1==1 )
 //        return 0;
 
