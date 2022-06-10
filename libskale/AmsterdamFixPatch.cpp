@@ -8,8 +8,7 @@ using namespace dev::eth;
 using namespace std;
 
 dev::h256 AmsterdamFixPatch::newStateRootForAll;
-//size_t AmsterdamFixPatch::lastBlockToModify = 2247863;
-dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5936dC6019898e6C8") );
+const dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5936dC6019898e6C8") );
 
 /* Test net:
  * 0xd2ba743e9fef4 // rhythmic-tegmen -- 15713
@@ -18,16 +17,26 @@ dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5936dC6
  * 0x4b127e9c2f7de // tinkling-kaffaljidhma -- 15564
 */
 
+//Main net:
+//    case 0xd2ba743e9fef4:
+//        return 1981742;
+//    case 0x292a2c91ca6a3:
+//        return 1861279;
+//    case 0x1c6fa7f59eeac:
+//        return 1854549;
+//    case 0x4b127e9c2f7de:
+//        return 1989445;
+
 size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
     switch( _chainParams.chainID ){
     case 0xd2ba743e9fef4:
-        return 1981742;
+        return 15713;
     case 0x292a2c91ca6a3:
-        return 1861279;
+        return 15596;
     case 0x1c6fa7f59eeac:
-        return 1854549;
+        return 15479;
     case 0x4b127e9c2f7de:
-        return 1989445;
+        return 15564;
     default:
         assert( false && "lastGoodBlock requested in a non-affected schain!" );
     }// switch

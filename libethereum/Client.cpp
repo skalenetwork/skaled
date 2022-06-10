@@ -42,6 +42,7 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libskale/UnsafeRegion.h>
+#include <libskale/TotalStorageUsedPatch.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -134,6 +135,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
+
+    TotalStorageUsedPatch::g_client = this;
 }
 
 Client::~Client() {
