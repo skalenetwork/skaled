@@ -69,7 +69,10 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
 bool AmsterdamFixPatch::isEnabled( const Client& _client ) {
     //_client.call();
     //return _client.number() < lastBlockToModify;
-    bool res = _client.countAt( magicAddress ) == 0;
+    auto chainID = _client.chainParams().chainID;
+    bool res = ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3   ||
+                 chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de ) &&
+                 _client.countAt( magicAddress ) == 0;
 
     if( res )
         setenv( "CONSENSUS_USE_STATEROOT_PATCH", "1", 1 );
