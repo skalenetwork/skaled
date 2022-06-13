@@ -1,7 +1,7 @@
 #ifndef STATUSANDCONTROL_H
 #define STATUSANDCONTROL_H
 
-#include <libconsensus/spdlog/include/spdlog/spdlog.h>
+#include <spdlog/spdlog.h>
 
 #include <boost/filesystem.hpp>
 
