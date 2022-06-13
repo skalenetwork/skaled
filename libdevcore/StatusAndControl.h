@@ -1,6 +1,8 @@
 #ifndef STATUSANDCONTROL_H
 #define STATUSANDCONTROL_H
 
+#include <libconsensus/spdlog/include/spdlog/spdlog.h>
+
 #include <boost/filesystem.hpp>
 
 #include <array>
@@ -27,7 +29,7 @@ public:
     virtual ~StatusAndControl();
 
     void setSubsystemRunning( Subsystem _ss, bool _run ) {
-        std::cout << "Skaled status: setSubsystemRunning: " << subsystemString[ _ss ] << " to " << ( _run ? "true\n" : "false\n" );
+        spdlog::info("Skaled status: setSubsystemRunning: {} to {}", subsystemString[ _ss ], ( _run ? "true\n" : "false\n" ));
         subsystemRunning[_ss] = _run;
         on_change();
     }
@@ -35,14 +37,14 @@ public:
         return subsystemRunning.count( _ss ) && subsystemRunning.at( _ss );
     }
     void setConsensusRunningState( ConsensusRunningState _state ) {
-        std::cout << "Skaled status: setConsensusRunningState to " << consensusRunningStateString[ _state ] << '\n';
+        spdlog::info("Skaled status: setConsensusRunningState to {}", consensusRunningStateString[ _state ]);
         consensusRunningState = _state;
         on_change();
     }
     ConsensusRunningState getConsensusRunningState() const { return consensusRunningState; }
 
     void setExitState( ExitState _key, bool _val ) {
-        std::cout << "Skaled status: setExitState: " << exitStateString[ _key ] << " to " << ( _val ? "true" : "false" ) << '\n';
+        spdlog::info("Skaled status: setExitState: {} to {}", exitStateString[ _key ], ( _val ? "true" : "false" ));
         exitState[_key] = _val;
         on_change();
     }
