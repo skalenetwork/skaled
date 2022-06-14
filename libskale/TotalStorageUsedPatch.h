@@ -25,15 +25,11 @@ public:
     static bool isInitOnChainNeeded( batched_io::db_operations_face& _db ) {
         return !_db.exists( ( dev::db::Slice ) "pieceUsageBytes" );
     }
-    static bool isEnabled( batched_io::db_operations_face& _db );
     static void initOnChain( dev::eth::BlockChain& _bc ) {
         // TODO move it here, as bc can be unitialized yet!
         _bc.recomputeExistingOccupiedSpaceForBlockRotation();
     }
-    static void onProgress( batched_io::db_operations_face& _db, size_t _blockNumber ) {
-        _db.insert( dev::db::Slice( "\x0totalStorageUsed", 17 ),
-            dev::db::Slice( std::to_string( _blockNumber * 32 ) ) );
-    }
+    static void onProgress( batched_io::db_operations_face& _db, size_t _blockNumber );
 private:
     friend class dev::eth::Client;
     static dev::eth::Client* g_client;

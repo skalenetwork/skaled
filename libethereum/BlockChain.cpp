@@ -950,10 +950,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             // update storage usage
             m_db->insert(
                 db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
-            // HACK This is for backward compatibility
-            // update totalStorageUsed only if schain already had it!
-            if ( TotalStorageUsedPatch::isEnabled( *m_db ) )
-                TotalStorageUsedPatch::onProgress( *m_db, _block.info.number() );
+
+            TotalStorageUsedPatch::onProgress( *m_db, _block.info.number() );
 
             m_db->insert( db::Slice( "\x1"
                                      "best" ),
