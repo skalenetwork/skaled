@@ -143,11 +143,10 @@ Client::~Client() {
     stopWorking();
 }
 
-extern void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock );
-
 void Client::stopWorking() {
-    if ( !Worker::isWorking() )
-        return;
+// TODO Try this in develop. For hotfix we will keep as is
+//    if ( !Worker::isWorking() )
+//        return;
 
     Worker::stopWorking();
 
@@ -172,11 +171,6 @@ void Client::stopWorking() {
 
     m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
     m_bq.stop();               // l_sergiy: added to stop block queue processing
-
-    // HACK This func is called twice, and can be called on closed blockchain
-    // TODO implement BlockChain::isOpen()?
-//    if ( m_bc.number() >= AmsterdamFixPatch::lastGoodBlock( chainParams() ) )
-//        dump_blocks_and_extras_db( m_bc, AmsterdamFixPatch::lastGoodBlock( chainParams() ) );
 
     m_bc.close();
     LOG( m_logger ) << cc::success( "Blockchain is closed" );
