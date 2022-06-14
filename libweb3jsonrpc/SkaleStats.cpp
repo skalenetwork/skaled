@@ -640,7 +640,12 @@ bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName
         strNextErrorType = "encode TX hash";
         bytes v = dev::BMPBN::encode2vec< dev::u256 >( hashToSign, true );
         strNextErrorType = "do ECDSA signature verification";
-        isSignatureOK = key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+        try{
+            key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
+            isSignatureOK = true;
+        } catch (...) {
+            isSignatureOK = false;
+        }
         clog( VerbosityTrace, "IMA" )
             << ( cc::debug( "IMA broadcast ECDSA signature " ) + cc::info( strBroadcastSignature ) +
                    cc::debug( " verification from node ID " ) + cc::num10( node_id ) +
@@ -1423,7 +1428,7 @@ static dev::bytes& stat_bytes_align_left( dev::bytes& vec, size_t cnt ) {
     return vec;
 }
 
-static bytes& stat_array_align_right( bytes& vec, size_t cnt ) {
+static dev::bytes& stat_array_align_right( dev::bytes& vec, size_t cnt ) {
     while ( vec.size() < cnt )
         vec.push_back( 0 );
     return vec;
@@ -1485,15 +1490,18 @@ static dev::bytes& stat_remove_leading_zeros( dev::bytes& vec ) {
 static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::string& s ) {
     dev::u256 val( s );
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_array_align_right( v, 32 );
+    stat_bytes_align_left( v, 32 );
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
 
 static dev::bytes& stat_append_u256_2_vec( dev::bytes& vec, const dev::u256& val ) {
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_array_align_right( v, 32 );
-    stat_array_invert( v.data(), v.size() );
+
+    //    stat_array_align_right( v, 32 );
+    //    stat_array_invert( v.data(), v.size() );
+    stat_bytes_align_left( v, 32 );
+
     vec.insert( vec.end(), v.begin(), v.end() );
     return vec;
 }
@@ -1816,29 +1824,42 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     joSkaleConfig_nodeInfo_wallets_ima["caFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.ca_file.clear();
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                       cc::error( "SGX Wallet CA file path was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) + cc::info( optsSSL.ca_file ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::debug( " SGX Wallet CA file " ) +
+                                               cc::info( optsSSL.ca_file ) );
         try {
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( "certFile" ) > 0 )
                 optsSSL.client_cert = skutils::tools::trim_copy(
                     joSkaleConfig_nodeInfo_wallets_ima["certFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.client_cert.clear();
+            clog( VerbosityDebug, "IMA" ) << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                                               cc::error( "SGX Wallet client certificate file path "
+                                                          "was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
-                   cc::info( optsSSL.client_cert ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
+                       cc::info( optsSSL.client_cert ) );
         try {
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
                 optsSSL.client_key = skutils::tools::trim_copy(
                     joSkaleConfig_nodeInfo_wallets_ima["keyFile"].get< std::string >() );
         } catch ( ... ) {
             optsSSL.client_key.clear();
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::fatal( "CRICICAL ERROR:" ) + " " +
+                       cc::error(
+                           "SGX Wallet client key file path was not loaded from settings" ) );
         }
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
-                   cc::info( optsSSL.client_key ) );
+        if ( isExposeAllDebugInfo_ )
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
+                       cc::info( optsSSL.client_key ) );
         const std::string keyShareName =
             ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
                 joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
@@ -3483,3 +3504,74 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";
 //}
+
+// void ttt123() {
+//    const char strLogPrefix[] = "----------- ";
+//    dev::bytes vecComputeMessagesHash;
+//
+//    std::string strFromChainName( "Artem" );
+//    std::string sxx_FromChainName = dev::sha3( strFromChainName ).hex();
+//    std::string sh = dev::rpc::stat_ensure_have_0x_at_start( sxx_FromChainName );
+//    dev::rpc::stat_append_hash_str_2_vec( vecComputeMessagesHash, sh );
+//    std::cout << ( strLogPrefix + cc::debug( "s0 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 uStartMessageIdx( 789 );
+//    dev::rpc::stat_append_u256_2_vec(vecComputeMessagesHash, uStartMessageIdx );
+//    std::cout << ( strLogPrefix + cc::debug( "s1 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s2 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 sender1( "0x0000000000000000000000000000000000000001" );
+//    dev::u256 dstContract1( "0x0000000000000000000000000000000000000001" );
+//    dev::bytes v1 = dev::fromHex( "010203", dev::WhenError::DontThrow );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender1 );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract1 );
+//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v1.begin(), v1.end() );
+//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    dev::u256 sender2( "0x0000000000000000000000000000000000000002" );
+//    dev::u256 dstContract2( "0x0000000000000000000000000000000000000002" );
+//    dev::bytes v2 = dev::fromHex( "040506", dev::WhenError::DontThrow );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, sender2 );
+//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, dstContract2 );
+//    vecComputeMessagesHash.insert( vecComputeMessagesHash.end(), v2.begin(), v2.end() );
+//    std::cout << ( strLogPrefix + cc::debug( "s3 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
+//    std::cout << ( strLogPrefix + cc::debug( "s4 -- 0x" ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//
+//    std::cout << ( strLogPrefix + cc::debug( " Resulting verctor is " ) +
+//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
+//                     vecComputeMessagesHash.size(), "" ) ) << "\n";
+//}
+// // NODE JS:
+// const strHashComputed = keccak256_message(
+//     [ {
+//         "sender": "0x0000000000000000000000000000000000000001",
+//         "destinationContract": "0x0000000000000000000000000000000000000001",
+//         "data": "0x010203"
+//     }, {
+//         "sender": "0x0000000000000000000000000000000000000002",
+//         "destinationContract": "0x0000000000000000000000000000000000000002",
+//         "data": "0x040506"
+//     } ],
+//     789,
+//     "Artem"
+// ).toLowerCase();
+// console.log( "----------------- computed.....", strHashComputed );
+// process.exit( 0 );

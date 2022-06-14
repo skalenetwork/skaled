@@ -69,7 +69,8 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     if ( APPLE )
         set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl")
     else()
-        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+        #set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic -Wl,--no-as-needed -lSegFault")
+        set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g -DETH_DEBUG -rdynamic")
     endif()
 
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")

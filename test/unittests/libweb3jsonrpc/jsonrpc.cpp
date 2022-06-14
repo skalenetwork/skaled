@@ -75,7 +75,8 @@ static std::string const c_genesisConfigString =
          "EIP150ForkBlock": "0x00",
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
-         "constantinopleForkBlock": "0x00"
+         "constantinopleForkBlock": "0x00",
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
