@@ -945,8 +945,7 @@ int main( int argc, char** argv ) try {
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
               << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " )
-              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
     std::cout.flush();
     version();
 
@@ -1474,8 +1473,7 @@ int main( int argc, char** argv ) try {
         skale::network::browser::g_bVerboseLogging = true;
     }
     if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds =
-            vm["skale-network-browser-refresh"].as< size_t >();
+        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > shared_space;
@@ -1491,9 +1489,9 @@ int main( int argc, char** argv ) try {
     std::shared_ptr< SnapshotManager > snapshotManager;
     if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
-            { BlockChain::getChainDirName( chainParams ), "filestorage",
+            {BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
             shared_space ? shared_space->getPath() : std::string() ) );
     }
 
@@ -1722,7 +1720,7 @@ int main( int argc, char** argv ) try {
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-    auto caps = set< string >{ "eth" };
+    auto caps = set< string >{"eth"};
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1794,7 +1792,7 @@ int main( int argc, char** argv ) try {
         g_client->injectSkaleHost( skaleHost );
 
         skale_get_buildinfo();
-        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
+        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
