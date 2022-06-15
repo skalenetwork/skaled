@@ -261,6 +261,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
+            chainParams.EIP158ForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
