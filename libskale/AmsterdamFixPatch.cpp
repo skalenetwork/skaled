@@ -19,13 +19,13 @@ const dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5
 
 //Main net:
 //    case 0xd2ba743e9fef4:
-//        return 1981742;
+//        return 1981742; // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
 //    case 0x292a2c91ca6a3:
-//        return 1861279;
+//        return 1861279; // checked on http://185.144.83.169:10003 and http://95.217.227.165:10067
 //    case 0x1c6fa7f59eeac:
-//        return 1854549;
+//        return 1854549; // checked on http://52.229.104.190:10003 and http://185.56.139.86:10003
 //    case 0x4b127e9c2f7de:
-//        return 1989445;
+//        return 1989445; // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
 
 size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
     switch( _chainParams.chainID ){
