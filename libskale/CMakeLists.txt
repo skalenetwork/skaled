@@ -41,7 +41,6 @@ target_include_directories( skale PUBLIC
 		${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/src
 		${CMAKE_SOURCE_DIR}/libconsensus/libzmq/include
 		${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
-        ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
         )
 #target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
 target_link_libraries(skale PUBLIC ethereum web3jsonrpc skutils

@@ -21,7 +21,6 @@ target_compile_options( devcore PRIVATE
 # Needed to prevent including system-level boost headers:
 target_include_directories( devcore PUBLIC
         ${SKUTILS_INCLUDE_DIRS}
-        ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
         )
 target_include_directories(devcore SYSTEM PUBLIC ${Boost_INCLUDE_DIR} PRIVATE ../utils)
 target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::system Boost::log Boost::thread Threads::Threads PRIVATE ethash::ethash)

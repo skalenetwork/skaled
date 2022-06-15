@@ -27,9 +27,6 @@ add_library(skale-interpreter STATIC ${sources})
 target_compile_options( skale-interpreter PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
     )
-target_include_directories( skale-interpreter PUBLIC
-        ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
-        )
 target_link_libraries(skale-interpreter PRIVATE ${dependencies})
 
 if(EVM_OPTIMIZE)

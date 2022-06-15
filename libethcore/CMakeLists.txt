@@ -9,7 +9,6 @@ target_compile_options( ethcore PRIVATE
 target_include_directories( ethcore PRIVATE
 	"${UTILS_INCLUDE_DIR}"
 	${SKUTILS_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
     )
 
 target_link_libraries( ethcore PUBLIC
