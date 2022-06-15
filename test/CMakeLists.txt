@@ -70,10 +70,7 @@ target_compile_options( testeth PRIVATE
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
-target_include_directories(testeth PRIVATE
-    ${UTILS_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
-    )
+target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
 target_link_libraries(testeth PRIVATE
     ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
     skutils
