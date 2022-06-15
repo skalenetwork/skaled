@@ -1473,11 +1473,6 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "download-snapshot" ) ) {
         downloadSnapshotFlag = true;
-    } else if ( chainParams.nodeInfo.syncNode ) {
-        auto bc = BlockChain(chainParams, getDataDir());
-        if ( bc.number() == 0 ) {
-            downloadSnapshotFlag = true;
-        }
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
@@ -1486,6 +1481,13 @@ int main( int argc, char** argv ) try {
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
             shared_space ? shared_space->getPath() : std::string() ) );
+    }
+    
+    if ( chainParams.nodeInfo.syncNode ) {
+        auto bc = BlockChain(chainParams, getDataDir());
+        if ( bc.number() == 0 ) {
+            downloadSnapshotFlag = true;
+        }
     }
 
     if ( downloadSnapshotFlag ) {
