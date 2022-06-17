@@ -158,8 +158,6 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         // 3 recompute hash
         h256 new_hash = header.hash();
-        if( bn == start_block || old_hash == best_hash || bn % 1000 == 0 )
-            cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
 
         // write block
 
@@ -192,6 +190,9 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         // update block hashes for transaction locations
         RLPs transactions = old_block_rlp[1].toList();
+
+        if( bn == start_block + 1 || old_hash == best_hash || transactions.size() || bn % 1000 == 0 )
+            cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
 
         TransactionAddress ta;
         ta.blockHash = new_hash;
