@@ -126,6 +126,9 @@ public:
     /// Force the sender to a particular value. This will result in an invalid transaction RLP.
     void forceSender( Address const& _a ) { m_sender = _a; }
 
+    /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
+    void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
