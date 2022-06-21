@@ -1615,6 +1615,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     std::string strSgxWalletURL =
         dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
+    bool bHaveQaInRequest = false;
+    nlohmann::json joQA = nlohmann::json::object();
     try {
         if ( !isEnabledImaMessageSigning() )
             throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
@@ -1627,6 +1629,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         clog( VerbosityDebug, "IMA" )
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "IMA Verify and Sign" ) +
                    cc::debug( " request: " ) + cc::j( joRequest ) );
+        //
+        if ( joRequest.count( "qa" ) > 0 ) {
+            bHaveQaInRequest = true;
+            joQA = joRequest[ "qa" ];
+        }
         //
         if ( joRequest.count( "direction" ) == 0 )
             throw std::runtime_error( "missing \"params\"/\"direction\" in call parameters" );
@@ -2896,6 +2903,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             // Done, provide result to caller
             //
+            if( bHaveQaInRequest )
+                jo[ "qa" ] = joQA;
             std::string s = jo.dump();
             clog( VerbosityDebug, "IMA" )
                 << ( strLogPrefix + cc::success( " Success, got messages " ) +
