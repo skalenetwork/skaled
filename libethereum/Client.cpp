@@ -577,7 +577,7 @@ size_t Client::importTransactionsAsBlock(
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
 
-        LOG( m_logger ) << "Block timestamp: " << _timestamp;
+        LOG( m_loggerDetail ) << "Block timestamp: " << _timestamp;
 
         if ( this->isTimeToDoSnapshot( _timestamp ) ) {
             try {
@@ -928,7 +928,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     BlockHeader header_struct( header, HeaderData );
     LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
                     << " (" << header_struct.hash() << ")";
-    LOG( m_logger ) << cc::success( "Block stats" ) << ":TXS:" << TransactionBase::howMany()
+    std::stringstream ssBlockStats;
+    ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
+                    << ":BTS:" << bc().info().timestamp()
+                    << ":TXS:" << TransactionBase::howMany()
                     << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
                     << ":SENGS:" << SealEngineBase::howMany()
                     << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
@@ -938,6 +941,11 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                     << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                     << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
                     << ":CMM:" << bc().getTotalCacheMemory();
+    if ( number() % 1000 ) {
+        ssBlockStats << ":RAM:" << getRAMUsage();
+        ssBlockStats << ":CPU:" << getCPUUsage();
+    }
+    LOG( m_logger ) << ssBlockStats.str();
 
 
     if ( submitToBlockChain ) {
