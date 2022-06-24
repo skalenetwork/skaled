@@ -941,7 +941,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                     << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                     << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
                     << ":CMM:" << bc().getTotalCacheMemory();
-    if ( number() % 1000 ) {
+    if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
     }
@@ -978,7 +978,7 @@ void Client::importWorkingBlock() {
 void Client::noteChanged( h256Hash const& _filters ) {
     Guard l( x_filtersWatches );
     if ( _filters.size() )
-        LOG( m_loggerWatch ) << cc::notice( "noteChanged: " ) << filtersToString( _filters );
+        LOG( m_loggerWatch ) << cc::notice( "noteChangedXXX: " ) << filtersToString( _filters );
     // accrue all changes left in each filter into the watches.
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {
