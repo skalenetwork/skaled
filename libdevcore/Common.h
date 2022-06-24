@@ -376,6 +376,7 @@ inline void initCPUUSage() {
 }
 
 inline double getCPUUsage() {
+    initCPUUSage();
     struct tms timeSample;
     clock_t now;
     double percent;
