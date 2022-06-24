@@ -978,7 +978,7 @@ void Client::importWorkingBlock() {
 void Client::noteChanged( h256Hash const& _filters ) {
     Guard l( x_filtersWatches );
     if ( _filters.size() )
-        LOG( m_loggerWatch ) << cc::notice( "noteChangedXXX: " ) << filtersToString( _filters );
+        LOG( m_loggerWatch ) << cc::notice( "noteChanged: " ) << filtersToString( _filters );
     // accrue all changes left in each filter into the watches.
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {
