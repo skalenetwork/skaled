@@ -28,6 +28,11 @@ const dev::Address magicAddress( dev::eth::toAddress("0xf15f970E370486d5137461c5
 //        return 1989445; // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
 
 size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
+
+    const char* lgb_str = getenv("SKALED_TEST_LAST_GOOD_BLOCK_FOR_AMSTERDAM_FIX");
+    if( lgb_str )
+        return strtoul(lgb_str, nullptr, 10);
+
     switch( _chainParams.chainID ){
     case 0xd2ba743e9fef4:
         return 15713;
@@ -229,6 +234,7 @@ bool AmsterdamFixPatch::stateRootCheckingEnabled( const Client& _client ) {
     uint64_t chainID = _client.chainParams().chainID;
     if ( !isEnabled( _client ) )
         return true;
+
     // NEXT same change should be in consensus!
     if ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 ||
          chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de )
