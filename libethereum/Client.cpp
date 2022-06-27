@@ -38,6 +38,7 @@
 
 #include <libdevcore/microprofile.h>
 
+#include <libdevcore/system_usage.h>
 #include <libdevcore/FileSystem.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
