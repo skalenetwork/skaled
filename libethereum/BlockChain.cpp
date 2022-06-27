@@ -886,8 +886,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize;
-    LOG( m_loggerInfo ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize << ". Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
