@@ -44,3 +44,35 @@ Running `getRandom()` from Remix several times will return the following example
 0:bytes32: addr 0xfd66a3c359c1c73f285f881105bb8ef5185cc04d5c8c7360c4386f0673ecc98b
 0:bytes32: addr 0xb95f1c2be3b13371115b8e6431461a24e960f0bb9881420993528ce68b019f75
 ```
+
+== Frequently Asked Questions
+
+.How do I generate different random numbers within the same block?
+
+There are a few ways to do this.
+
+* Concatenate a counter: in your dApp you may create a counter `i` then do:
++
+```javascript
+NEW_RANDOM = KECCACK_HASH(OLD_RANDOM || i)
+i++
+```
+
+* Iterate through each byte of the resulting hash.
+
+.How do I generate an integer from the result?
+
+There are a few ways to do this:
+
+
+```javascript
+getRandom()%10    // integer between 0 - 10
+getRandom()%100   // integer between 0 - 100
+getRandom()%1000  // integer between 0 - 1000
+```
+
+.Can I see example projects that use this?
+
+Here is an example from a Hacker submission to EthPortland. This example uses getRandom to finalize any unsettled simple majority DAO vote.
+
+https://github.com/OllieMurray/SKALErngDAOScaffold-Eth/blob/63ff248ca180e4f3a4bae01ed4bef1b2bda69d92/packages/hardhat/contracts/PowDAO.sol#L537-L549
