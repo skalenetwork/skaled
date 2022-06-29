@@ -35,13 +35,13 @@ size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
 
     switch( _chainParams.chainID ){
     case 0xd2ba743e9fef4:
-        return 15713;
+        return 1981742; // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
     case 0x292a2c91ca6a3:
-        return 15596;
+        return 1861279; // checked on http://185.144.83.169:10003 and http://95.217.227.165:10067
     case 0x1c6fa7f59eeac:
-        return 15479;
+        return 1854549; // checked on http://52.229.104.190:10003 and http://185.56.139.86:10003
     case 0x4b127e9c2f7de:
-        return 15564;
+        return 1989445; // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
     default:
         assert( false && "lastGoodBlock requested in a non-affected schain!" );
     }// switch
