@@ -679,10 +679,10 @@ bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char
         strNextErrorType = "encode TX hash";
         bytes v = dev::BMPBN::encode2vec< dev::u256 >( hashToSign, true );
         strNextErrorType = "do ECDSA signature verification";
-        try{
+        try {
             key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
             isSignatureOK = true;
-        } catch (...) {
+        } catch ( ... ) {
             isSignatureOK = false;
         }
         clog( VerbosityTrace, "IMA" )
@@ -1632,7 +1632,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         if ( joRequest.count( "qa" ) > 0 ) {
             bHaveQaInRequest = true;
-            joQA = joRequest[ "qa" ];
+            joQA = joRequest["qa"];
         }
         //
         if ( joRequest.count( "direction" ) == 0 )
@@ -2903,8 +2903,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             // Done, provide result to caller
             //
-            if( bHaveQaInRequest )
-                jo[ "qa" ] = joQA;
+            if ( bHaveQaInRequest )
+                jo["qa"] = joQA;
             std::string s = jo.dump();
             clog( VerbosityDebug, "IMA" )
                 << ( strLogPrefix + cc::success( " Success, got messages " ) +
