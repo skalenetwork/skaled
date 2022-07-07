@@ -268,37 +268,37 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::atomic_size_t txn_pending_tracker_system_impl::g_nMaxPendingTxns = 512;
-std::string txn_pending_tracker_system_impl::g_strDispatchQueueID = "IMA-txn-tracker";
+std::atomic_size_t pending_ima_txns::g_nMaxPendingTxns = 512;
+std::string pending_ima_txns::g_strDispatchQueueID = "IMA-txn-tracker";
 
-txn_pending_tracker_system_impl::txn_pending_tracker_system_impl(
+pending_ima_txns::pending_ima_txns(
     const std::string& configPath, const std::string& strSgxWalletURL )
     : skutils::json_config_file_accessor( configPath ), strSgxWalletURL_( strSgxWalletURL ) {}
 
-txn_pending_tracker_system_impl::~txn_pending_tracker_system_impl() {
+pending_ima_txns::~pending_ima_txns() {
     tracking_stop();
     clear();
 }
 
-bool txn_pending_tracker_system_impl::empty() const {
+bool pending_ima_txns::empty() const {
     lock_type lock( mtx() );
     if ( !set_txns_.empty() )
         return false;
     return true;
 }
-void txn_pending_tracker_system_impl::clear() {
+void pending_ima_txns::clear() {
     lock_type lock( mtx() );
     set_txns_.clear();
     list_txns_.clear();
     tracking_auto_start_stop();
 }
 
-size_t txn_pending_tracker_system_impl::max_txns() const {
+size_t pending_ima_txns::max_txns() const {
     size_t cnt = g_nMaxPendingTxns;
     return cnt;
 }
 
-size_t txn_pending_tracker_system_impl::adjust_limits_impl( bool isEnableBroadcast ) {
+size_t pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
     const size_t nMax = max_txns();
     if ( nMax < 1 )
         return nMax;  // no limits
@@ -313,13 +313,13 @@ size_t txn_pending_tracker_system_impl::adjust_limits_impl( bool isEnableBroadca
     cnt = list_txns_.size();
     return cnt;
 }
-size_t txn_pending_tracker_system_impl::adjust_limits( bool isEnableBroadcast ) {
+size_t pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
     lock_type lock( mtx() );
     size_t cnt = adjust_limits_impl( isEnableBroadcast );
     return cnt;
 }
 
-bool txn_pending_tracker_system_impl::insert( txn_entry& txe, bool isEnableBroadcast ) {
+bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
 #if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
     tracking_step();
@@ -333,15 +333,15 @@ bool txn_pending_tracker_system_impl::insert( txn_entry& txe, bool isEnableBroad
     adjust_limits_impl( isEnableBroadcast );
     return true;
 }
-bool txn_pending_tracker_system_impl::insert( dev::u256 hash, bool isEnableBroadcast ) {
+bool pending_ima_txns::insert( dev::u256 hash, bool isEnableBroadcast ) {
     txn_entry txe( hash );
     return insert( txe, isEnableBroadcast );
 }
 
-bool txn_pending_tracker_system_impl::erase( txn_entry& txe, bool isEnableBroadcast ) {
+bool pending_ima_txns::erase( txn_entry& txe, bool isEnableBroadcast ) {
     return erase( txe.hash_, isEnableBroadcast );
 }
-bool txn_pending_tracker_system_impl::erase( dev::u256 hash, bool isEnableBroadcast ) {
+bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
     set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
     if ( itFindS == itEndS )
@@ -358,13 +358,13 @@ bool txn_pending_tracker_system_impl::erase( dev::u256 hash, bool isEnableBroadc
     return true;
 }
 
-bool txn_pending_tracker_system_impl::find( txn_entry& txe ) const {
+bool pending_ima_txns::find( txn_entry& txe ) const {
     return find( txe.hash_ );
 }
-bool txn_pending_tracker_system_impl::find( const dev::u256& hash ) const {
+bool pending_ima_txns::find( const dev::u256& hash ) const {
     lock_type lock( mtx() );
     //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
-    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
+    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
     //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     set_txns_t::const_iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.cend();
     if ( itFindS == itEndS )
@@ -372,29 +372,27 @@ bool txn_pending_tracker_system_impl::find( const dev::u256& hash ) const {
     return true;
 }
 
-void txn_pending_tracker_system_impl::list_all( list_txns_t& lst ) const {
+void pending_ima_txns::list_all( list_txns_t& lst ) const {
     lst.clear();
     //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
-    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
+    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
     //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     lock_type lock( mtx() );
     lst = list_txns_;
 }
 
-void txn_pending_tracker_system_impl::on_txn_insert(
-    const txn_entry& txe, bool isEnableBroadcast ) {
+void pending_ima_txns::on_txn_insert( const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_insert( txe );
 }
-void txn_pending_tracker_system_impl::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
+void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_erase( txe );
 }
 
-bool txn_pending_tracker_system_impl::broadcast_txn_sign_is_enabled(
-    const std::string& strWalletURL ) {
+bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWalletURL ) {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
@@ -418,7 +416,7 @@ bool txn_pending_tracker_system_impl::broadcast_txn_sign_is_enabled(
     return false;
 }
 
-std::string txn_pending_tracker_system_impl::broadcast_txn_sign_string( const char* strToSign ) {
+std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign ) {
     std::string strBroadcastSignature;
     try {
         //
@@ -548,7 +546,7 @@ std::string txn_pending_tracker_system_impl::broadcast_txn_sign_string( const ch
     return strBroadcastSignature;
 }
 
-std::string txn_pending_tracker_system_impl::broadcast_txn_compose_string(
+std::string pending_ima_txns::broadcast_txn_compose_string(
     const char* strActionName, const dev::u256& tx_hash ) {
     std::string strToSign;
     strToSign += strActionName ? strActionName : "N/A";
@@ -557,7 +555,7 @@ std::string txn_pending_tracker_system_impl::broadcast_txn_compose_string(
     return strToSign;
 }
 
-std::string txn_pending_tracker_system_impl::broadcast_txn_sign(
+std::string pending_ima_txns::broadcast_txn_sign(
     const char* strActionName, const dev::u256& tx_hash ) {
     clog( VerbosityTrace, "IMA" ) << ( cc::debug(
                                            "Will compose IMA broadcast message to sign from TX " ) +
@@ -573,7 +571,7 @@ std::string txn_pending_tracker_system_impl::broadcast_txn_sign(
     return strBroadcastSignature;
 }
 
-std::string txn_pending_tracker_system_impl::broadcast_txn_get_ecdsa_public_key( int node_id ) {
+std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) {
     std::string strEcdsaPublicKey;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -618,7 +616,7 @@ std::string txn_pending_tracker_system_impl::broadcast_txn_get_ecdsa_public_key(
     return strEcdsaPublicKey;
 }
 
-int txn_pending_tracker_system_impl::broadcast_txn_get_node_id() {
+int pending_ima_txns::broadcast_txn_get_node_id() {
     int node_id = 0;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -642,7 +640,7 @@ int txn_pending_tracker_system_impl::broadcast_txn_get_node_id() {
     return node_id;
 }
 
-bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char* strActionName,
+bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
     const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
     bool isSignatureOK = false;
     std::string strNextErrorType = "", strEcdsaPublicKey = "<null-key>",
@@ -715,7 +713,7 @@ bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char
     return isSignatureOK;
 }
 
-void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe ) {
+void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -795,7 +793,7 @@ void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe
                    cc::warn( "unknown exception" ) );
     }
 }
-void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe ) {
+void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -877,17 +875,17 @@ void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe 
     }
 }
 
-std::atomic_size_t txn_pending_tracker_system_impl::g_nTrackingIntervalInSeconds = 90;
+std::atomic_size_t pending_ima_txns::g_nTrackingIntervalInSeconds = 90;
 
-size_t txn_pending_tracker_system_impl::tracking_interval_in_seconds() const {
+size_t pending_ima_txns::tracking_interval_in_seconds() const {
     return size_t( g_nTrackingIntervalInSeconds );
 }
 
-bool txn_pending_tracker_system_impl::is_tracking() const {
+bool pending_ima_txns::is_tracking() const {
     return bool( isTracking_ );
 }
 
-void txn_pending_tracker_system_impl::tracking_auto_start_stop() {
+void pending_ima_txns::tracking_auto_start_stop() {
     lock_type lock( mtx() );
     if ( list_txns_.size() == 0 ) {
         tracking_stop();
@@ -896,7 +894,7 @@ void txn_pending_tracker_system_impl::tracking_auto_start_stop() {
     }
 }
 
-void txn_pending_tracker_system_impl::tracking_step() {
+void pending_ima_txns::tracking_step() {
     try {
         list_txns_t lst, lstMined;
         list_all( lst );
@@ -909,14 +907,13 @@ void txn_pending_tracker_system_impl::tracking_step() {
             erase( txe.hash_, true );
         }
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
-                  << "\n";
+        std::cout << "pending_ima_txns::tracking_step() exception: " << ex.what() << "\n";
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+        std::cout << "pending_ima_txns::tracking_step() unknown exception\n";
     }
 }
 
-void txn_pending_tracker_system_impl::tracking_start() {
+void pending_ima_txns::tracking_start() {
 #if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( is_tracking() )
@@ -929,7 +926,7 @@ void txn_pending_tracker_system_impl::tracking_start() {
 #endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-void txn_pending_tracker_system_impl::tracking_stop() {
+void pending_ima_txns::tracking_stop() {
 #if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( !is_tracking() )
@@ -940,11 +937,11 @@ void txn_pending_tracker_system_impl::tracking_stop() {
 #endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-bool txn_pending_tracker_system_impl::check_txn_is_mined( const txn_entry& txe ) {
+bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
     return check_txn_is_mined( txe.hash_ );
 }
 
-bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash ) {
+bool pending_ima_txns::check_txn_is_mined( const dev::u256 & hash ) {
     try {
         skutils::url urlMainNet = getImaMainNetURL();
         //
@@ -974,36 +971,13 @@ bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash 
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: "
-                  << ex.what() << "\n";
+        std::cout << "pending_ima_txns::check_txn_is_mined() exception: " << ex.what() << "\n";
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
+        std::cout << "pending_ima_txns::check_txn_is_mined() unknown exception\n";
     }
     return false;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr< txn_pending_tracker_system > txn_pending_tracker_system::g_ptr;
-
-txn_pending_tracker_system::txn_pending_tracker_system(
-    const std::string& configPath, const std::string& strSgxWalletURL )
-    : txn_pending_tracker_system_impl( configPath, strSgxWalletURL ) {}
-
-txn_pending_tracker_system::~txn_pending_tracker_system() {}
-
-txn_pending_tracker_system& txn_pending_tracker_system::init(
-    const std::string& configPath, const std::string& strSgxWalletURL ) {
-    if ( !g_ptr )
-        g_ptr = std::make_unique< txn_pending_tracker_system >( configPath, strSgxWalletURL );
-    return ( *( g_ptr.get() ) );
-}
-txn_pending_tracker_system& txn_pending_tracker_system::instance() {
-    if ( g_ptr )
-        return ( *( g_ptr.get() ) );
-    throw std::runtime_error( "no global instance for IMA pending TXN tracker initialized yet" );
-}
 
 };  // namespace tracking
 
@@ -1025,7 +999,10 @@ static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isD
 
 SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
-    : skutils::json_config_file_accessor( configPath ), chainParams_( chainParams ), m_eth( _eth ) {
+    : pending_ima_txns(
+          configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
+      chainParams_( chainParams ),
+      m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
     //
     try {
@@ -1033,8 +1010,6 @@ SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
-    dev::tracking::txn_pending_tracker_system::init(
-        configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) );
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -1613,10 +1588,6 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
 
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
-    std::string strSgxWalletURL =
-        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
-    bool bHaveQaInRequest = false;
-    nlohmann::json joQA = nlohmann::json::object();
     try {
         if ( !isEnabledImaMessageSigning() )
             throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
@@ -1630,6 +1601,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "IMA Verify and Sign" ) +
                    cc::debug( " request: " ) + cc::j( joRequest ) );
         //
+        bool bHaveQaInRequest = false;
+        nlohmann::json joQA = nlohmann::json::object();
         if ( joRequest.count( "qa" ) > 0 ) {
             bHaveQaInRequest = true;
             joQA = joRequest[ "qa" ];
@@ -1904,7 +1877,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL;
+        const std::string strWalletURL = strSgxWalletURL_;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -2947,8 +2920,6 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA BLS Sign U256" );
-    std::string strSgxWalletURL =
-        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         // if ( !isEnabledImaMessageSigning() )
         //     throw std::runtime_error( "IMA message signing feature is disabled on this instance"
@@ -3013,7 +2984,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL;
+        const std::string strWalletURL = strSgxWalletURL_;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -3136,8 +3107,6 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
-    std::string strSgxWalletURL =
-        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -3152,8 +3121,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
-                 strSgxWalletURL ) ) {
+        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/insert call without \"broadcastSignature\" field specified" );
@@ -3163,13 +3131,11 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !dev::tracking::txn_pending_tracker_system::instance()
-                      .broadcast_txn_verify_signature(
-                          "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !broadcast_txn_verify_signature(
+                     "insert", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/insert signature verification failed" );
         }
-        bool wasInserted =
-            dev::tracking::txn_pending_tracker_system::instance().insert( txe, false );
+        bool wasInserted = insert( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3208,8 +3174,6 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
 
 Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
-    std::string strSgxWalletURL =
-        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -3224,8 +3188,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
-                 strSgxWalletURL ) ) {
+        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/erase call without \"broadcastSignature\" field specified" );
@@ -3235,12 +3198,11 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !dev::tracking::txn_pending_tracker_system::instance()
-                      .broadcast_txn_verify_signature(
-                          "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !broadcast_txn_verify_signature(
+                     "erase", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/erase signature verification failed" );
         }
-        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, false );
+        bool wasErased = erase( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3291,8 +3253,7 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasInserted =
-            dev::tracking::txn_pending_tracker_system::instance().insert( txe, true );
+        bool wasInserted = insert( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3339,7 +3300,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, true );
+        bool wasErased = erase( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3377,7 +3338,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN clear" );
     try {
-        dev::tracking::txn_pending_tracker_system::instance().clear();
+        clear();
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
@@ -3421,7 +3382,7 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasFound = dev::tracking::txn_pending_tracker_system::instance().find( txe );
+        bool wasFound = find( txe );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasFound;
@@ -3457,8 +3418,8 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN list-all" );
     try {
-        dev::tracking::txn_pending_tracker_system_impl::list_txns_t lst;
-        dev::tracking::txn_pending_tracker_system::instance().list_all( lst );
+        dev::tracking::pending_ima_txns::list_txns_t lst;
+        list_all( lst );
         nlohmann::json jarr = nlohmann::json::array();
         for ( const dev::tracking::txn_entry& txe : lst ) {
             jarr.push_back( txe.toJSON() );
