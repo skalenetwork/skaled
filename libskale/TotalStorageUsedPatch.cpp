@@ -7,7 +7,7 @@
 using namespace dev;
 using namespace dev::eth;
 
-const Address magicAddress( toAddress("0xf15f970E370486d5137461c5936dC6019898e6C8") );
+const Address magicAddress( toAddress("0xE8E4Ea98530Bfe86f841E258fd6F3FD5c210c68f") );
 dev::eth::Client* TotalStorageUsedPatch::g_client;
 
 void TotalStorageUsedPatch::onProgress( batched_io::db_operations_face& _db, size_t _blockNumber ) {
