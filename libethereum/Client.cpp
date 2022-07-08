@@ -31,6 +31,8 @@
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
+#include <libskale/AmsterdamFixPatch.h>
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -41,6 +43,7 @@
 #include <libdevcore/system_usage.h>
 #include <libdevcore/FileSystem.h>
 #include <libskale/UnsafeRegion.h>
+#include <libskale/TotalStorageUsedPatch.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -109,7 +112,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
-      m_bc( _params, _dbPath, _forceAction ),
+      m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
@@ -133,6 +136,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
+
+    TotalStorageUsedPatch::g_client = this;
 }
 
 Client::~Client() {
@@ -140,6 +145,10 @@ Client::~Client() {
 }
 
 void Client::stopWorking() {
+// TODO Try this in develop. For hotfix we will keep as is
+//    if ( !Worker::isWorking() )
+//        return;
+
     Worker::stopWorking();
 
     if ( m_skaleHost )
@@ -253,6 +262,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
+
+    // HACK Needed to set env var for consensus
+    AmsterdamFixPatch::isEnabled( *this );
 
     doWork( false );
 }
@@ -912,6 +924,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         } else {
             stateRootToSet = Client::empty_str_hash;
         }
+
+        stateRootToSet = AmsterdamFixPatch::overrideStateRoot( *this ) != dev::h256() ?
+                             AmsterdamFixPatch::overrideStateRoot( *this ) :
+                             stateRootToSet;
 
         m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }

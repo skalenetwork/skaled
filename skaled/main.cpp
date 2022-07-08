@@ -137,10 +137,9 @@ static void version() {
     if ( !commit.empty() )
         cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
     std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug(".") << cc::num10( c_minorProtocolVersion ) << "\n";
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." ) << cc::num10( c_minorProtocolVersion ) << "\n";
     std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) <<cc::attention( buildinfo->system_name ) << cc::debug( "/" )
-              << cc::attention( buildinfo->build_type ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) << cc::attention( buildinfo->system_name ) << cc::debug( "/" ) << cc::attention( buildinfo->build_type ) << "\n";
     std::cout.flush();
 }
 
@@ -479,6 +478,11 @@ int main( int argc, char** argv ) try {
     Defaults::get();
     Ethash::init();
     NoProof::init();
+
+    //dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
+//    dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
+//    if( 1==1 )
+//        return 0;
 
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
@@ -1736,6 +1740,8 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
+            //if( chainParams.sealEngineName == Ethash::name() )
+            //    return 0;
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
@@ -1894,7 +1900,7 @@ int main( int argc, char** argv ) try {
                     },
                     [&]( Address const& _a ) { return _a.hex(); } ) +
                     "\nEnter yes/no/always (always to this address): ",
-                {"yes", "n", "N", "no", "NO", "always"} );
+                { "yes", "n", "N", "no", "NO", "always" } );
             if ( r == "always" )
                 allowedDestinations.insert( _t.to );
             return r == "yes" || r == "always";
