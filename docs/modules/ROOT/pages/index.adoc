@@ -46,7 +46,7 @@ Your SKALE Chain will continue to mine blocks in the absence of transactions. Em
 
 === Block Gas Limit
 
-SKALE Chains have a block gas limit of 160 million.
+SKALE Chains have a block gas limit of 268,435,455.
 
 === Contract Code Size Limit
 
