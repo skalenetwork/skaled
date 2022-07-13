@@ -2377,8 +2377,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     return jarrFoundLogRecords;
                 };  /// do_logs_search_progressive()
 
-                nlohmann::json jarrFoundLogRecords =
-                    do_logs_search_progressive( do_getBlockNumber() );
+                bool isDefaultProgressiveLogsSearchNeeded = true, haveEffectiveBlockNo = false;
+                dev::u256 uBlockOptimized( 0 );
+                nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
+                if ( joMessageToSign.count( "savedBlockNumberForOptimizations" ) > 0 ) {
+                    if ( joMessageToSign["savedBlockNumberForOptimizations"].is_string() ) {
+                        uBlockOptimized =
+                            dev::u256( joMessageToSign["savedBlockNumberForOptimizations"]
+                                           .get< std::string >() );
+                        haveEffectiveBlockNo = true;
+                    } else if ( joMessageToSign["savedBlockNumberForOptimizations"].is_number() ) {
+                        uBlockOptimized = dev::u256(
+                            joMessageToSign["savedBlockNumberForOptimizations"].get< uint64_t >() );
+                        haveEffectiveBlockNo = true;
+                    }
+                }
+                if ( haveEffectiveBlockNo ) {
+                    jarrFoundLogRecords = do_logs_search( uBlockOptimized, uBlockOptimized );
+                    if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 ) {
+                        isDefaultProgressiveLogsSearchNeeded = false;
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::success( "Result of " ) +
+                                   cc::attention( "successful effective scan" ) +
+                                   cc::success( " in block " ) +
+                                   cc::info( dev::toJS( uBlockOptimized ) ) +
+                                   cc::success( " is: " ) + cc::j( jarrFoundLogRecords ) );
+                    } else {
+                        isDefaultProgressiveLogsSearchNeeded = true;
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::warn( "Nothing was found using " ) +
+                                   cc::attention( "effective scan" ) + cc::warn( " in block " ) +
+                                   cc::info( dev::toJS( uBlockOptimized ) ) +
+                                   cc::warn( ", will use default progressive search algorithm" ) );
+                    }
+                }  // if( haveEffectiveBlockNo )
+                else {
+                    isDefaultProgressiveLogsSearchNeeded = true;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( cc::warn( "Skipped " ) + cc::attention( "effective scan" ) +
+                               cc::warn( ", will use default progressive search algorithm" ) );
+                }  // else from if( haveEffectiveBlockNo )
+                if ( isDefaultProgressiveLogsSearchNeeded )
+                    jarrFoundLogRecords = do_logs_search_progressive( do_getBlockNumber() );
 
                 /* example of jarrFoundLogRecords value:
                     [{
