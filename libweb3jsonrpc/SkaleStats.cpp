@@ -1621,57 +1621,68 @@ std::string SkaleStats::pick_own_s_chain_url_s() {
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
         //
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
-            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+            throw std::runtime_error(
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
         //
         if ( joSkaleConfig_nodeInfo.count( "bindIP" ) > 0 ) {
-            std::string strIpAddress = skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
             if ( !strIpAddress.empty() ) {
                 if ( joSkaleConfig_nodeInfo.count( "httpRpcPort" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["httpRpcPort"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "http://" ) + strIpAddress + ":" + skutils::tools::format( "%d", nPort );
+                        return std::string( "http://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "wsRpcPort" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["wsRpcPort"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "ws://" ) + strIpAddress + ":" + skutils::tools::format( "%d", nPort );
+                        return std::string( "ws://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["httpsRpcPort"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "https://" ) + strIpAddress + ":" + skutils::tools::format( "%d", nPort );
+                        return std::string( "https://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "wssRpcPort" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["wssRpcPort"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "wss://" ) + strIpAddress + ":" + skutils::tools::format( "%d", nPort );
+                        return std::string( "wss://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
                 }
-            } // if ( !strIpAddress.empty() )
+            }  // if ( !strIpAddress.empty() )
         } else if ( joSkaleConfig_nodeInfo.count( "bindIP6" ) > 0 ) {
-            std::string strIpAddress = skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
             if ( !strIpAddress.empty() ) {
                 if ( joSkaleConfig_nodeInfo.count( "httpRpcPort6" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["httpRpcPort6"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "http://[" ) + strIpAddress + "]:" + skutils::tools::format( "%d", nPort );
+                        return std::string( "http://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "wsRpcPort6" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["wsRpcPort6"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "ws://[" ) + strIpAddress + "]:" + skutils::tools::format( "%d", nPort );
+                        return std::string( "ws://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort6" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["httpsRpcPort6"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "https://[" ) + strIpAddress + "]:" + skutils::tools::format( "%d", nPort );
+                        return std::string( "https://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
                 }
                 if ( joSkaleConfig_nodeInfo.count( "wssRpcPort6" ) > 0 ) {
                     int nPort = joSkaleConfig_nodeInfo["wssRpcPort6"].get< int >();
                     if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "wss://[" ) + strIpAddress + "]:" + skutils::tools::format( "%d", nPort );
+                        return std::string( "wss://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
                 }
-            } // if ( !strIpAddress.empty() )
+            }  // if ( !strIpAddress.empty() )
         }
     } catch ( ... ) {
     }
@@ -1834,7 +1845,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         if ( strDirection == "M2S" )
             urlSourceChain = urlMainNet;
         else if ( strDirection == "S2M" ) {
-            // urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url( strSChainName );
+            // urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url( strSChainName
+            // );
             urlSourceChain = pick_own_s_chain_url();
         } else if ( strDirection == "S2S" )
             urlSourceChain =
