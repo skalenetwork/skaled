@@ -253,3 +253,11 @@ h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
                                  .stateRoot();
     return newStateRootForAll;
 }
+
+bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::Client& _client) {
+    if( stateRootCheckingEnabled( _client ) )
+            return true;
+    return _client.chainParams().chainID != 0xd2ba743e9fef4;   // Covey
+}
+
+const std::vector<size_t> AmsterdamFixPatch::majorityNodesIds = {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};

@@ -28,10 +28,10 @@
 #include <libethcore/CommonJS.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
-
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libconsensus/libBLS/tools/utils.h>
 #include <libff/common/profiling.hpp>
+#include <libskale/AmsterdamFixPatch.h>
 
 SnapshotHashAgent::SnapshotHashAgent(
     const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
@@ -227,7 +227,7 @@ bool SnapshotHashAgent::voteForHash() {
 }
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
-    unsigned block_number ) {
+    unsigned block_number, dev::eth::Client* _HACKclient ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
@@ -323,7 +323,16 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     bool result = false;
 
-    if ( block_number == 0 )
+    if( _HACKclient && !AmsterdamFixPatch::snapshotHashCheckingEnabled( *_HACKclient ) ){
+        // keep only nodes from majorityNodesIds
+        for(size_t pos = 0; pos < nodes_to_download_snapshot_from_.size(); ++pos){
+            u256 id = _HACKclient->chainParams().sChain.nodes[nodes_to_download_snapshot_from_[pos]].id;
+            bool good = AmsterdamFixPatch::majorityNodesIds.end() != std::find( AmsterdamFixPatch::majorityNodesIds.begin(), AmsterdamFixPatch::majorityNodesIds.end(), id );
+            if(!good)
+                nodes_to_download_snapshot_from_.erase( nodes_to_download_snapshot_from_.begin()+(pos--) );
+        }// for i
+        result = this->nodes_to_download_snapshot_from_.size() > 0;
+    } else if ( block_number == 0 )
         result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
     else
         try {
