@@ -327,7 +327,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         // keep only nodes from majorityNodesIds
         for(size_t pos = 0; pos < nodes_to_download_snapshot_from_.size(); ++pos){
             u256 id = _HACKclient->chainParams().sChain.nodes[nodes_to_download_snapshot_from_[pos]].id;
-            bool good = AmsterdamFixPatch::majorityNodesIds.end() != std::find( AmsterdamFixPatch::majorityNodesIds.begin(), AmsterdamFixPatch::majorityNodesIds.end(), id );
+            auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
+            bool good = majorityNodesIds.end() != std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if(!good)
                 nodes_to_download_snapshot_from_.erase( nodes_to_download_snapshot_from_.begin()+(pos--) );
         }// for i

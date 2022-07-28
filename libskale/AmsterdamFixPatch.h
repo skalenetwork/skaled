@@ -30,7 +30,7 @@ public:
     static size_t lastGoodBlock( const dev::eth::ChainParams& _chainParams );
     static dev::h256 newStateRootForAll;
     static size_t lastBlockToModify;
-    static const std::vector<size_t> majorityNodesIds;
+    static std::vector<size_t> majorityNodesIds();
 };
 
 #endif  // AMSTERDAMFIXPATCH_H

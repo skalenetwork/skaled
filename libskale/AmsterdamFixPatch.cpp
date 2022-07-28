@@ -2,6 +2,7 @@
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include <boost/tokenizer.hpp>
 
 using namespace dev;
 using namespace dev::eth;
@@ -260,4 +261,15 @@ bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::Client& _cl
     return _client.chainParams().chainID != 0xd2ba743e9fef4;   // Covey
 }
 
-const std::vector<size_t> AmsterdamFixPatch::majorityNodesIds = {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};
+std::vector<size_t> AmsterdamFixPatch::majorityNodesIds(){
+    const char* str = getenv("SKALED_TEST_GOOD_NODES_IDS_FOR_AMSTERDAM_FIX");
+    if( !str )
+        return {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};
+    // else
+    boost::tokenizer< boost::char_separator<char> > tk( std::string( str ), boost::char_separator<char>( "," ) );
+    std::vector<size_t> ret;
+    std::for_each( tk.begin(), tk.end(), [&ret]( const string& arg ){
+        ret.push_back( stoul( arg ) );
+    } );
+    return ret;
+}
