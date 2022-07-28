@@ -3241,19 +3241,19 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
