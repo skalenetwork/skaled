@@ -234,8 +234,6 @@ void Eth::setTransactionDefaults( TransactionSkeleton& _t ) {
 
 string Eth::eth_sendTransaction( Json::Value const& _json ) {
     try {
-        if ( !isEnabledTransactionSending() )
-            throw std::runtime_error( "transacton sending feature is disabled on this instance" );
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         pair< bool, Secret > ar = m_ethAccounts.authenticate( t );
@@ -303,8 +301,6 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 // TODO Catch exceptions for all calls other eth_-calls in outer scope!
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    if ( !isEnabledTransactionSending() )
-        throw JsonRpcException( "transacton sending feature is disabled on this instance" );
     // Don't need to check the transaction signature (CheckTransaction::None) since it
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
