@@ -1803,8 +1803,7 @@ int main( int argc, char** argv ) try {
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
-            !chainParams.nodeInfo.syncNode );
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
         dev::eth::g_skaleHost = skaleHost;
 
         // XXX nested lambdas and strlen hacks..
