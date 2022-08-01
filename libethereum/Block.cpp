@@ -800,7 +800,7 @@ ExecutionResult Block::execute(
 
     try {
         if ( _t.isInvalid() )
-            throw -1;  // will catch below
+            throw - 1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 

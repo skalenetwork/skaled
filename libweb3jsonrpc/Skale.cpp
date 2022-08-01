@@ -188,8 +188,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
     // TODO mutex here!!
-    skutils::dispatch::once(
-        "dummy-queue-for-snapshot",
+    skutils::dispatch::once( "dummy-queue-for-snapshot",
         [this]() {
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {

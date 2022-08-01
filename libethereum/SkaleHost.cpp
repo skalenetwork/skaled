@@ -242,12 +242,12 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, 
-    const std::string& _gethURL ) try : m_client( _client ),
-                                   m_tq( _client.m_tq ),
-                                   m_instanceMonitor( _instanceMonitor ),
-                                   total_sent( 0 ),
-                                   total_arrived( 0 ) {
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
+    : m_client( _client ),
+      m_tq( _client.m_tq ),
+      m_instanceMonitor( _instanceMonitor ),
+      total_sent( 0 ),
+      total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
@@ -572,9 +572,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && 
-            dev::h256::Arith( stCurrent ) != _stateRoot && 
-            !this->m_client.chainParams().nodeInfo.syncNode ) {
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot &&
+             !this->m_client.chainParams().nodeInfo.syncNode ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )

@@ -558,8 +558,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
     subscriptionData.m_idSubscription = idSubscription;
     subscriptionData.m_pPeer = pPeer;
     subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
-    skutils::dispatch::repeat(
-        subscriptionData.m_pPeer->m_strPeerQueueID,
+    skutils::dispatch::repeat( subscriptionData.m_pPeer->m_strPeerQueueID,
         [=]() -> void {
             if ( subscriptionData.m_pPeer && subscriptionData.m_pPeer->isConnected() ) {
                 nlohmann::json joParams = nlohmann::json::object();
@@ -1976,7 +1975,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
         } catch ( ... ) {
         }
         // pThis->m_isRunning = false;
-    } ).detach();
+    } )
+        .detach();
     clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::success( "OK, server started on port " ) + cc::c( m_nPort ) );
     return true;
