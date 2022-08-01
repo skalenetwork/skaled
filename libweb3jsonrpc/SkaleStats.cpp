@@ -690,8 +690,7 @@ bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char
                    cc::debug( " verification from node ID " ) + cc::num10( node_id ) +
                    cc::debug( " using ECDSA public key " ) + cc::info( strEcdsaPublicKey ) +
                    cc::debug( " and message/hash " ) + cc::info( strHashToSign ) +
-                   cc::debug( " is " ) +
-                   ( isSignatureOK ? cc::success( "passed" ) : cc::fatal( "failed" ) ) );
+                   cc::debug( " is " ) + cc::success( "passed" ) );
     } catch ( const std::exception& ex ) {
         isSignatureOK = false;
         clog( VerbosityTrace, "IMA" )
