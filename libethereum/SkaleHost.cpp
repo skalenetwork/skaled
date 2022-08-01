@@ -723,26 +723,22 @@ void SkaleHost::startWorking() {
     working = true;
     m_exitedForcefully = false;
 
-    if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-        try {
-            m_broadcaster->startService();
-        } catch ( const Broadcaster::StartupException& ) {
-            working = false;
-            std::throw_with_nested( SkaleHost::CreationException() );
-        }
-
-        auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
-        m_broadcastThread = std::thread( bcast_func );
+    try {
+        m_broadcaster->startService();
+    } catch ( const Broadcaster::StartupException& ) {
+        working = false;
+        std::throw_with_nested( SkaleHost::CreationException() );
     }
+
+    auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
+    m_broadcastThread = std::thread( bcast_func );
 
     try {
         m_consensus->startAll();
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-            m_broadcastThread.join();
-        }
+        m_broadcastThread.join();
         throw;
     }
 
