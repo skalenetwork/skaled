@@ -166,7 +166,7 @@ VMPtr VMFactory::create() {
 }
 
 VMPtr VMFactory::create( VMKind _kind ) {
-    static const auto default_delete = []( VMFace * _vm ) noexcept { delete _vm; };
+    static const auto default_delete = []( VMFace* _vm ) noexcept { delete _vm; };
     static const auto null_delete = []( VMFace* ) noexcept {};
 
     switch ( _kind ) {

@@ -920,7 +920,8 @@ void txn_pending_tracker_system_impl::tracking_start() {
     lock_type lock( mtx() );
     if ( is_tracking() )
         return;
-    skutils::dispatch::repeat( g_strDispatchQueueID, [=]() -> void { tracking_step(); },
+    skutils::dispatch::repeat(
+        g_strDispatchQueueID, [=]() -> void { tracking_step(); },
         skutils::dispatch::duration_from_seconds( tracking_interval_in_seconds() ),
         &tracking_job_id_ );
     isTracking_ = true;

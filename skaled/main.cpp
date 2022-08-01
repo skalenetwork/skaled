@@ -257,7 +257,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             bool isBinaryDownload = true;
             std::string strErrorDescription;
             saveTo = snapshotManager->getDiffPath( block_number );
-            bool bOK = dev::rpc::snapshot::download( strURLWeb3, block_number, saveTo,
+            bool bOK = dev::rpc::snapshot::download(
+                strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     clog( VerbosityInfo, "downloadSnapshot" )
                         << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
@@ -368,8 +369,7 @@ static void stat_handle_stop_actions() {
                            cc::error( "Did stopped client" ) + "\n\n" );
         }
         g_bStopActionsComplete = true;
-    } )
-        .detach();
+    } ).detach();
 }
 
 static void stat_wait_stop_actions_complete() {
@@ -450,8 +450,7 @@ static void stat_init_common_signal_handling() {
                     }
 
                     _exit( ec );
-                } )
-                    .detach();
+                } ).detach();
             }  // if( ! g_bSelfKillStarted )
         }      // if ( !skutils::signal::g_bStop )
 
@@ -1918,7 +1917,8 @@ int main( int argc, char** argv ) try {
                 return true;
 
             string r = getResponse(
-                _t.userReadable( isProxy,
+                _t.userReadable(
+                    isProxy,
                     [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
                         h256 contractCodeHash = g_client->postState().codeHash( _t.to );
                         if ( contractCodeHash == EmptySHA3 )

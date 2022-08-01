@@ -233,7 +233,7 @@ string_list_t enum_dir( const char* strDirPath, bool bDirs, bool bFiles ) {
     while ( ( entry = ::readdir( dir ) ) != nullptr ) {
         if ( entry->d_type == DT_DIR ) {
             // char path[1024];
-            if (::strcmp( entry->d_name, "." ) == 0 || ::strcmp( entry->d_name, ".." ) == 0 )
+            if ( ::strcmp( entry->d_name, "." ) == 0 || ::strcmp( entry->d_name, ".." ) == 0 )
                 continue;
             //::snprintf( path, sizeof(path), "%s/%s", strDirPath, entry->d_name );
             //::printf( "%*s[%s]\n", indent, "", entry->d_name );
@@ -258,18 +258,18 @@ bool is_file( const char* s, bool isCheckReadable  // = false
 ) {
     if ( s == nullptr || s[0] == '\0' )
         return false;
-    if (::access( s, F_OK ) == -1 )
+    if ( ::access( s, F_OK ) == -1 )
         return false;
     if ( isCheckReadable ) {
-        if (::access( s, R_OK ) == -1 )
+        if ( ::access( s, R_OK ) == -1 )
             return false;
     }
     if ( isCheckWritable ) {
-        if (::access( s, W_OK ) == -1 )
+        if ( ::access( s, W_OK ) == -1 )
             return false;
     }
     if ( isCheckExecutable ) {
-        if (::access( s, X_OK ) == -1 )
+        if ( ::access( s, X_OK ) == -1 )
             return false;
     }
     return true;
@@ -311,7 +311,7 @@ bool file_exists( const std::string& filename,
     ::memset( &st, 0, sizeof( struct stat ) );
     if ( p_size != nullptr )
         ( *p_size ) = 0;
-    if (::stat( filename.c_str(), &st ) != -1 ) {
+    if ( ::stat( filename.c_str(), &st ) != -1 ) {
         if ( p_size != nullptr )
             ( *p_size ) = st.st_size;
         return true;
@@ -561,7 +561,7 @@ bool convert_json_string_value_to_boolean( const std::string& r ) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 size_t cpu_count() {
-    static const size_t g_cntCPUs = size_t(::sysconf( _SC_NPROCESSORS_ONLN ) );
+    static const size_t g_cntCPUs = size_t( ::sysconf( _SC_NPROCESSORS_ONLN ) );
     return g_cntCPUs;
 }
 #if ( defined __BUILDING_4_MAC_OS_X__ )
@@ -812,10 +812,10 @@ double mem_usage() {  // 0.0...1.0
         return 0.0;
     return double( f );
 #else
-    double lfTotalPages = double(::sysconf( _SC_PHYS_PAGES ) );
+    double lfTotalPages = double( ::sysconf( _SC_PHYS_PAGES ) );
     if ( lfTotalPages == 0.0 )
         return 0.0;
-    double lfFreePages = double(::sysconf( _SC_AVPHYS_PAGES ) );
+    double lfFreePages = double( ::sysconf( _SC_AVPHYS_PAGES ) );
     double lfPercentAvail =
         double( lfTotalPages - lfFreePages ) / double( lfTotalPages );  // 0.0...1.0
     return lfPercentAvail;
@@ -1705,7 +1705,7 @@ nlohmann::json json_config_file_accessor::stat_extract_at_path(
             skutils::tools::replace_all( strIndex, "]", "" );
             skutils::tools::replace_all( strIndex, "\t", "" );
             char* ep = nullptr;
-            size_t nIndex = size_t(::strtoul( strIndex.c_str(), &ep, 10 ) );
+            size_t nIndex = size_t( ::strtoul( strIndex.c_str(), &ep, 10 ) );
             if ( nIndex > joWalk.size() )
                 throw std::runtime_error( "JSON array index is out of range" );
             joWalk = joWalk[nIndex];

@@ -67,7 +67,8 @@ void goOnOffloadedStack( Executive& _e, OnOpFunc const& _onOp ) {
     // TODO: It is possible to switch the implementation to Boost.Context or similar when the API is
     // stable.
     boost::exception_ptr exception;
-    boost::thread{ attrs,
+    boost::thread{
+        attrs,
         [&] {
             try {
                 _e.go( _onOp );
@@ -75,8 +76,8 @@ void goOnOffloadedStack( Executive& _e, OnOpFunc const& _onOp ) {
                 exception = boost::current_exception();  // Catch all exceptions to be rethrown in
                                                          // parent thread.
             }
-        } }
-        .join();
+        }
+    }.join();
     if ( exception )
         boost::rethrow_exception( exception );
 }

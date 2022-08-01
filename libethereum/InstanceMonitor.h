@@ -50,9 +50,7 @@ protected:
     void restoreRotationParams();
     [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
 
-        [[nodiscard]] fs::path rotationInfoFilePath() const {
-        return m_rotationInfoFilePath;
-    }
+    [[nodiscard]] fs::path rotationInfoFilePath() const { return m_rotationInfoFilePath; }
 
     uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;

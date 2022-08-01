@@ -42,8 +42,7 @@ void initLibSnark() noexcept {
         libff::inhibit_profiling_counters = true;
         libff::alt_bn128_pp::init_public_params();
         return true;
-    }
-    ();
+    }();
     ( void ) s_initialized;
 }
 

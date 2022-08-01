@@ -127,8 +127,7 @@ void UnixDomainSocketServer::Listen() {
                     cerror << "CRITICAL unknown exception in UnixDomainSocketServer";
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 }  // catch
-            } }
-                .detach();
+            } }.detach();
         }
     }
 }
