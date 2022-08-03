@@ -255,10 +255,17 @@ h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
     return newStateRootForAll;
 }
 
-bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::Client& _client) {
-    if( stateRootCheckingEnabled( _client ) )
-            return true;
-    return _client.chainParams().chainID != 0xd2ba743e9fef4;   // Covey
+bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp ) {
+
+    if( _cp.chainID != 0xd2ba743e9fef4 ) {    // Covey
+        return true;
+    }
+
+    std::vector<size_t> majority = majorityNodesIds();
+    bool found = majority.end() != std::find(majority.begin(), majority.end(), _cp.nodeInfo.id);
+
+    // disable checking on minority
+    return found;
 }
 
 std::vector<size_t> AmsterdamFixPatch::majorityNodesIds(){

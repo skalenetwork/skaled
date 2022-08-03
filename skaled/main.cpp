@@ -1541,7 +1541,7 @@ int main( int argc, char** argv ) try {
                 std::vector< std::string > list_urls_to_download;
                 try {
                     list_urls_to_download =
-                        snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber, g_client.get() );
+                        snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
                     clog( VerbosityInfo, "main" )
                         << cc::notice( "Got urls to download snapshot from " )
                         << cc::p( std::to_string( list_urls_to_download.size() ) )

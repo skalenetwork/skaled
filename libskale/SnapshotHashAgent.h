@@ -68,7 +68,7 @@ public:
     SnapshotHashAgent(
         const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" );
 
-    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number, dev::eth::Client* _HACKclient = nullptr );
+    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 

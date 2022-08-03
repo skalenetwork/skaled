@@ -226,8 +226,7 @@ bool SnapshotHashAgent::voteForHash() {
     }
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
-    unsigned block_number, dev::eth::Client* _HACKclient ) {
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( unsigned block_number ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
@@ -323,10 +322,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     bool result = false;
 
-    if( _HACKclient && !AmsterdamFixPatch::snapshotHashCheckingEnabled( *_HACKclient ) ){
+    if( !AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ){
         // keep only nodes from majorityNodesIds
         for(size_t pos = 0; pos < nodes_to_download_snapshot_from_.size(); ++pos){
-            u256 id = _HACKclient->chainParams().sChain.nodes[nodes_to_download_snapshot_from_[pos]].id;
+            u256 id = this->chain_params_.sChain.nodes[nodes_to_download_snapshot_from_[pos]].id;
             auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
             bool good = majorityNodesIds.end() != std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if(!good)
