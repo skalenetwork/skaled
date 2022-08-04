@@ -257,9 +257,9 @@ h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
 
 bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp ) {
 
-    if( _cp.chainID != 0xd2ba743e9fef4 ) {    // Covey
+    if( _cp.chainID != 0xd2ba743e9fef4 && _cp.chainID != 0x292a2c91ca6a3   &&
+        _cp.chainID != 0x1c6fa7f59eeac && _cp.chainID != 0x4b127e9c2f7de )
         return true;
-    }
 
     std::vector<size_t> majority = majorityNodesIds();
     bool found = majority.end() != std::find(majority.begin(), majority.end(), _cp.nodeInfo.id);
