@@ -2,7 +2,7 @@
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
-#include <boost/tokenizer.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace dev;
 using namespace dev::eth;
@@ -273,10 +273,11 @@ std::vector<size_t> AmsterdamFixPatch::majorityNodesIds(){
     if( !str )
         return {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};
     // else
-    boost::tokenizer< boost::char_separator<char> > tk( std::string( str ), boost::char_separator<char>( "," ) );
+    std::vector<string> ret_str;
+    boost::split( ret_str, str, boost::is_any_of(",") );
     std::vector<size_t> ret;
-    std::for_each( tk.begin(), tk.end(), [&ret]( const string& arg ){
+    for_each(ret_str.begin(), ret_str.end(), [&ret]( const string& arg ){
         ret.push_back( stoul( arg ) );
-    } );
+    });
     return ret;
 }
