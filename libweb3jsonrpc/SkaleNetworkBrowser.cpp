@@ -937,10 +937,10 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
             }  // block
             vec256_t vecSChainIds;
             {  // block
-                static const char g_strContractMethodName[] = "getSchainIdsForNode(uint256)";
-                // function getSchainIdsForNode(uint nodeIndex)
-                // 0xe6695e68be45d5fd8ac911d1cca0faed4ebe398c5b26fdef14a65f9c2d91294d
-                // 0xe6695e68
+                static const char g_strContractMethodName[] = "getSchainHashesForNode(uint256)";
+                // function getSchainHashesForNode(uint nodeIndex)
+                // 0x46660419a40b36978f951f5d6d936a614248a2628f5d1f05abce867aa8d189db
+                // 0x46660419
                 // out:
                 // 0000 0000000000000000000000000000000000000000000000000000000000000020 // array
                 // offset 0020 0000000000000000000000000000000000000000000000000000000000000001 //
@@ -951,7 +951,7 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 nlohmann::json joParamsItem = nlohmann::json::object();
                 joParamsItem["from"] = dev::address_to_js( addressFrom );
                 joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
-                joParamsItem["data"] = "0xe6695e68" + stat_to_appendable_string( node_id.u256 );
+                joParamsItem["data"] = "0x46660419" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
