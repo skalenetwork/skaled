@@ -1673,7 +1673,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
-            std::string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
+            std::string( "error in \"eth_subscribe/SkaleStats(\" rpc method, exception: " ) +
             ex.what();
         joResponse["error"] = joError;
         return;
@@ -1687,7 +1687,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
                        cc::error( " rpc method, unknown exception " ) );
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
-        joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
+        joError["message"] = "error in \"eth_subscribe/SkaleStats(\" rpc method, unknown exception";
         joResponse["error"] = joError;
         return;
     }
