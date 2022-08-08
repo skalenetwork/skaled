@@ -25,9 +25,12 @@ public:
     static bool stateRootCheckingEnabled( const dev::eth::Client& _client );
     static dev::h256 overrideStateRoot( const dev::eth::Client& _client );
 
+    static bool snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp );
+
     static size_t lastGoodBlock( const dev::eth::ChainParams& _chainParams );
     static dev::h256 newStateRootForAll;
     static size_t lastBlockToModify;
+    static std::vector<size_t> majorityNodesIds();
 };
 
 #endif  // AMSTERDAMFIXPATCH_H

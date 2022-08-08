@@ -34,6 +34,9 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest;
 }
+namespace eth{
+class Client;
+}
 }  // namespace dev
 
 class SnapshotHashAgentException : public std::exception {

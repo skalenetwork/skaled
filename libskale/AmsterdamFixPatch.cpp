@@ -2,6 +2,7 @@
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include <boost/algorithm/string.hpp>
 
 using namespace dev;
 using namespace dev::eth;
@@ -252,4 +253,31 @@ h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
                                  .info( _client.blockChain().numberHash( lastGoodBlock( _client.chainParams() ) ) )
                                  .stateRoot();
     return newStateRootForAll;
+}
+
+bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp ) {
+
+    if( _cp.chainID != 0xd2ba743e9fef4 && _cp.chainID != 0x292a2c91ca6a3   &&
+        _cp.chainID != 0x1c6fa7f59eeac && _cp.chainID != 0x4b127e9c2f7de )
+        return true;
+
+    std::vector<size_t> majority = majorityNodesIds();
+    bool found = majority.end() != std::find(majority.begin(), majority.end(), _cp.nodeInfo.id);
+
+    // disable checking on minority
+    return found;
+}
+
+std::vector<size_t> AmsterdamFixPatch::majorityNodesIds(){
+    const char* str = getenv("SKALED_TEST_GOOD_NODES_IDS_FOR_AMSTERDAM_FIX");
+    if( !str )
+        return {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};
+    // else
+    std::vector<string> ret_str;
+    boost::split( ret_str, str, boost::is_any_of(",") );
+    std::vector<size_t> ret;
+    for_each(ret_str.begin(), ret_str.end(), [&ret]( const string& arg ){
+        ret.push_back( stoul( arg ) );
+    });
+    return ret;
 }
