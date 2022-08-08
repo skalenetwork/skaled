@@ -26,11 +26,11 @@ namespace dev {
 namespace eth {
 
 struct EVMSchedule {
-    EVMSchedule() : tierStepGas( std::array< unsigned, 8 >{{0, 2, 3, 5, 8, 10, 20, 0}} ) {}
+    EVMSchedule() : tierStepGas( std::array< unsigned, 8 >{ { 0, 2, 3, 5, 8, 10, 20, 0 } } ) {}
     EVMSchedule( bool _efcd, bool _hdc, unsigned const& _txCreateGas )
         : exceptionalFailedCodeDeposit( _efcd ),
           haveDelegateCall( _hdc ),
-          tierStepGas( std::array< unsigned, 8 >{{0, 2, 3, 5, 8, 10, 20, 0}} ),
+          tierStepGas( std::array< unsigned, 8 >{ { 0, 2, 3, 5, 8, 10, 20, 0 } } ),
           txCreateGas( _txCreateGas ) {}
     unsigned accountVersion = 0;
     bool exceptionalFailedCodeDeposit = true;
@@ -121,7 +121,7 @@ static const EVMSchedule ByzantiumSchedule = [] {
     schedule.haveRevert = true;
     schedule.haveReturnData = true;
     schedule.haveStaticCall = true;
-    schedule.blockRewardOverwrite = {3 * ether};
+    schedule.blockRewardOverwrite = { 3 * ether };
     return schedule;
 }();
 
@@ -137,7 +137,7 @@ static const EVMSchedule ConstantinopleSchedule = [] {
     schedule.haveBitwiseShifting = true;
     schedule.haveExtcodehash = true;
     schedule.eip1283Mode = true;
-    schedule.blockRewardOverwrite = {2 * ether};
+    schedule.blockRewardOverwrite = { 2 * ether };
     return schedule;
 }();
 

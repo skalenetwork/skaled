@@ -101,8 +101,9 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-    cp.skaleDisableChainIdCheck =
-        params.count( c_skaleDisableChainIdCheck ) ? params[c_skaleDisableChainIdCheck].get_bool() : false;
+    cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
+                                      params[c_skaleDisableChainIdCheck].get_bool() :
+                                      false;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
@@ -175,9 +176,9 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode};
+            BLSPublicKeys, commonBLSPublicKeys, syncNode };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -235,7 +236,7 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj[0].get_uint64();
                     u256 sChainIndex = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                    groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
                 nodeGroup.nodes = groupNodes;
 

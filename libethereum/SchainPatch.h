@@ -1,7 +1,6 @@
 #ifndef SCHAINPATCH_H
 #define SCHAINPATCH_H
 
-class SchainPatch {
-};
+class SchainPatch {};
 
-#endif // SCHAINPATCH_H
+#endif  // SCHAINPATCH_H

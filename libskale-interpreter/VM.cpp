@@ -37,7 +37,7 @@ void delete_output( const evmc_result* result ) {
 evmc_result execute( evmc_instance* _instance, evmc_context* _context, evmc_revision _rev,
     const evmc_message* _msg, uint8_t const* _code, size_t _codeSize ) noexcept {
     ( void ) _instance;
-    std::unique_ptr< dev::eth::VM > vm{new dev::eth::VM};
+    std::unique_ptr< dev::eth::VM > vm{ new dev::eth::VM };
 
     evmc_result result = {};
     dev::eth::owning_bytes_ref output;
@@ -292,7 +292,7 @@ void VM::interpretCases() {
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            m_output = owning_bytes_ref{std::move( m_mem ), b, s};
+            m_output = owning_bytes_ref{ std::move( m_mem ), b, s };
             m_bounce = 0;
         }
         BREAK
@@ -309,7 +309,7 @@ void VM::interpretCases() {
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            owning_bytes_ref output{std::move( m_mem ), b, s};
+            owning_bytes_ref output{ std::move( m_mem ), b, s };
             throwRevertInstruction( std::move( output ) );
         }
         BREAK;
@@ -390,7 +390,7 @@ void VM::interpretCases() {
             uint64_t inSize = ( uint64_t ) m_SP[1];
 
             const auto h = ethash::keccak256( m_mem.data() + inOff, inSize );
-            m_SPP[0] = static_cast< u256 >( h256{h.bytes, h256::ConstructFromPointer} );
+            m_SPP[0] = static_cast< u256 >( h256{ h.bytes, h256::ConstructFromPointer } );
         }
         NEXT
 
@@ -421,7 +421,7 @@ void VM::interpretCases() {
             uint8_t const* data = m_mem.data() + size_t( m_SP[0] );
             size_t dataSize = size_t( m_SP[1] );
 
-            evmc_uint256be topics[] = {toEvmC( m_SP[2] )};
+            evmc_uint256be topics[] = { toEvmC( m_SP[2] ) };
             size_t numTopics = sizeof( topics ) / sizeof( topics[0] );
 
             m_context->host->emit_log(
@@ -440,7 +440,7 @@ void VM::interpretCases() {
             uint8_t const* data = m_mem.data() + size_t( m_SP[0] );
             size_t dataSize = size_t( m_SP[1] );
 
-            evmc_uint256be topics[] = {toEvmC( m_SP[2] ), toEvmC( m_SP[3] )};
+            evmc_uint256be topics[] = { toEvmC( m_SP[2] ), toEvmC( m_SP[3] ) };
             size_t numTopics = sizeof( topics ) / sizeof( topics[0] );
 
             m_context->host->emit_log(
@@ -459,7 +459,7 @@ void VM::interpretCases() {
             uint8_t const* data = m_mem.data() + size_t( m_SP[0] );
             size_t dataSize = size_t( m_SP[1] );
 
-            evmc_uint256be topics[] = {toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] )};
+            evmc_uint256be topics[] = { toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] ) };
             size_t numTopics = sizeof( topics ) / sizeof( topics[0] );
 
             m_context->host->emit_log(
@@ -479,7 +479,7 @@ void VM::interpretCases() {
             size_t dataSize = size_t( m_SP[1] );
 
             evmc_uint256be topics[] = {
-                toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] ), toEvmC( m_SP[5] )};
+                toEvmC( m_SP[2] ), toEvmC( m_SP[3] ), toEvmC( m_SP[4] ), toEvmC( m_SP[5] ) };
             size_t numTopics = sizeof( topics ) / sizeof( topics[0] );
 
             m_context->host->emit_log(
@@ -891,7 +891,7 @@ void VM::interpretCases() {
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
             updateIOGas();
 
-            bytesConstRef data{m_message->input_data, m_message->input_size};
+            bytesConstRef data{ m_message->input_data, m_message->input_size };
             copyDataToMemory( data, m_SP );
         }
         NEXT
@@ -930,7 +930,7 @@ void VM::interpretCases() {
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
             updateIOGas();
 
-            copyDataToMemory( {m_pCode, m_codeSize}, m_SP );
+            copyDataToMemory( { m_pCode, m_codeSize }, m_SP );
         }
         NEXT
 

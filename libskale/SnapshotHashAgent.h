@@ -34,7 +34,7 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest;
 }
-namespace eth{
+namespace eth {
 class Client;
 }
 }  // namespace dev

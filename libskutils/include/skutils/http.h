@@ -781,14 +781,15 @@ class client {
     const skutils::url u_;
     int timeout_milliseconds_;
     skutils::http::SSL_client_options optsSSL;
-    const char * pCurlCryptoEngine_ = nullptr;
-    const char *pCryptoEnginePassphrase_ = nullptr;
+    const char* pCurlCryptoEngine_ = nullptr;
+    const char* pCryptoEnginePassphrase_ = nullptr;
     //
     struct MemoryStruct {
-        char * memory;
+        char* memory;
         size_t size;
     };
-    static size_t stat_WriteMemoryCallback( void * contents, size_t size, size_t nmemb, void * userp );
+    static size_t stat_WriteMemoryCallback(
+        void* contents, size_t size, size_t nmemb, void* userp );
     //
 public:
     bool isVerboseInsideCURL_ = false;
@@ -805,16 +806,13 @@ public:
     virtual bool is_valid() const;
     virtual bool is_ssl() const;
     virtual bool is_ssl_with_explicit_cert_key() const;
-    virtual bool query(
-            const char * strInData,
-            const char * strInContentType, // i.e. "application/json"
-            std::string & strOutData,
-            std::string & strOutContentType,
-            skutils::http::common_network_exception::error_info& ei
-            );
-}; // class client
+    virtual bool query( const char* strInData,
+        const char* strInContentType,  // i.e. "application/json"
+        std::string& strOutData, std::string& strOutContentType,
+        skutils::http::common_network_exception::error_info& ei );
+};  // class client
 
-}; // namespace http_curl
+};  // namespace http_curl
 
 };  // namespace skutils
 

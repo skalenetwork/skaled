@@ -11,7 +11,7 @@ namespace dev {
 namespace eth {
 class Client;
 }
-}
+}  // namespace dev
 
 /*
  * Context: totalStorageUsed field in DB was actually broken
@@ -30,6 +30,7 @@ public:
         _bc.recomputeExistingOccupiedSpaceForBlockRotation();
     }
     static void onProgress( batched_io::db_operations_face& _db, size_t _blockNumber );
+
 private:
     friend class dev::eth::Client;
     static dev::eth::Client* g_client;

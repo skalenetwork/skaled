@@ -9,16 +9,17 @@ using namespace dev::eth;
 using namespace std;
 
 dev::h256 AmsterdamFixPatch::newStateRootForAll;
-const dev::Address magicAddress( dev::eth::toAddress("0xE8E4Ea98530Bfe86f841E258fd6F3FD5c210c68f") );
+const dev::Address magicAddress(
+    dev::eth::toAddress( "0xE8E4Ea98530Bfe86f841E258fd6F3FD5c210c68f" ) );
 
 /* Test net:
  * 0xd2ba743e9fef4 // rhythmic-tegmen -- 15713
  * 0x292a2c91ca6a3 // squeaking-nash --15596
  * 0x1c6fa7f59eeac // chubby-sadr --15479
  * 0x4b127e9c2f7de // tinkling-kaffaljidhma -- 15564
-*/
+ */
 
-//Main net:
+// Main net:
 //    case 0xd2ba743e9fef4:
 //        return 1981742; // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
 //    case 0x292a2c91ca6a3:
@@ -29,23 +30,22 @@ const dev::Address magicAddress( dev::eth::toAddress("0xE8E4Ea98530Bfe86f841E258
 //        return 1989445; // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
 
 size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
+    const char* lgb_str = getenv( "SKALED_TEST_LAST_GOOD_BLOCK_FOR_AMSTERDAM_FIX" );
+    if ( lgb_str )
+        return strtoul( lgb_str, nullptr, 10 );
 
-    const char* lgb_str = getenv("SKALED_TEST_LAST_GOOD_BLOCK_FOR_AMSTERDAM_FIX");
-    if( lgb_str )
-        return strtoul(lgb_str, nullptr, 10);
-
-    switch( _chainParams.chainID ){
+    switch ( _chainParams.chainID ) {
     case 0xd2ba743e9fef4:
-        return 1981742; // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
+        return 1981742;  // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
     case 0x292a2c91ca6a3:
-        return 1861279; // checked on http://185.144.83.169:10003 and http://95.217.227.165:10067
+        return 1861279;  // checked on http://185.144.83.169:10003 and http://95.217.227.165:10067
     case 0x1c6fa7f59eeac:
-        return 1854549; // checked on http://52.229.104.190:10003 and http://185.56.139.86:10003
+        return 1854549;  // checked on http://52.229.104.190:10003 and http://185.56.139.86:10003
     case 0x4b127e9c2f7de:
-        return 1989445; // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
+        return 1989445;  // cheked on http://54.39.184.192:10003 and http://52.147.206.214:10003
     default:
         assert( false && "lastGoodBlock requested in a non-affected schain!" );
-    }// switch
+    }  // switch
 
     return 0;
 }
@@ -74,13 +74,13 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
 
 bool AmsterdamFixPatch::isEnabled( const Client& _client ) {
     //_client.call();
-    //return _client.number() < lastBlockToModify;
+    // return _client.number() < lastBlockToModify;
     auto chainID = _client.chainParams().chainID;
-    bool res = ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3   ||
-                 chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de ) &&
-                 _client.countAt( magicAddress ) == 0;
+    bool res = ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 ||
+                   chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de ) &&
+               _client.countAt( magicAddress ) == 0;
 
-    if( res )
+    if ( res )
         setenv( "CONSENSUS_USE_STATEROOT_PATCH", "1", 1 );
     else
         unsetenv( "CONSENSUS_USE_STATEROOT_PATCH" );
@@ -112,7 +112,8 @@ static RLPStream assemble_new_block( const RLP& old_block_rlp, const BlockHeader
 }
 
 void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
-    batched_io::db_operations_face& _extrasDB, batched_io::db_face& _db, ChainParams const& _chainParams ) {
+    batched_io::db_operations_face& _extrasDB, batched_io::db_face& _db,
+    ChainParams const& _chainParams ) {
     // TODO catch
 
     h256 best_hash = h256( _extrasDB.lookup( db::Slice( "best" ) ), h256::FromBinary );
@@ -197,7 +198,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
         // update block hashes for transaction locations
         RLPs transactions = old_block_rlp[1].toList();
 
-        if( bn == start_block + 1 || old_hash == best_hash || transactions.size() || bn % 1000 == 0 )
+        if ( bn == start_block + 1 || old_hash == best_hash || transactions.size() ||
+             bn % 1000 == 0 )
             cout << "Repairing block " << bn << " " << old_hash << " -> " << new_hash << endl;
 
         TransactionAddress ta;
@@ -217,7 +219,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         if ( old_hash == best_hash ) {
             // fix "" key
-            _db.kill( db::Slice( "\x0") );
+            _db.kill( db::Slice( "\x0" ) );
             // update latest
             _extrasDB.kill( db::Slice( "best" ) );
             _extrasDB.insert(
@@ -237,47 +239,46 @@ bool AmsterdamFixPatch::stateRootCheckingEnabled( const Client& _client ) {
         return true;
 
     // NEXT same change should be in consensus!
-    if ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 ||
-         chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de )
+    if ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 || chainID == 0x1c6fa7f59eeac ||
+         chainID == 0x4b127e9c2f7de )
         return false;
     else
         return true;
-
 }
 
 h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
     if ( !isEnabled( _client ) )
         return h256();  // do not override
-    if ( newStateRootForAll == h256() && _client.blockChain().number() >= lastGoodBlock( _client.chainParams() ) )
-        newStateRootForAll = _client.blockChain()
-                                 .info( _client.blockChain().numberHash( lastGoodBlock( _client.chainParams() ) ) )
-                                 .stateRoot();
+    if ( newStateRootForAll == h256() &&
+         _client.blockChain().number() >= lastGoodBlock( _client.chainParams() ) )
+        newStateRootForAll =
+            _client.blockChain()
+                .info( _client.blockChain().numberHash( lastGoodBlock( _client.chainParams() ) ) )
+                .stateRoot();
     return newStateRootForAll;
 }
 
 bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp ) {
-
-    if( _cp.chainID != 0xd2ba743e9fef4 && _cp.chainID != 0x292a2c91ca6a3   &&
-        _cp.chainID != 0x1c6fa7f59eeac && _cp.chainID != 0x4b127e9c2f7de )
+    if ( _cp.chainID != 0xd2ba743e9fef4 && _cp.chainID != 0x292a2c91ca6a3 &&
+         _cp.chainID != 0x1c6fa7f59eeac && _cp.chainID != 0x4b127e9c2f7de )
         return true;
 
-    std::vector<size_t> majority = majorityNodesIds();
-    bool found = majority.end() != std::find(majority.begin(), majority.end(), _cp.nodeInfo.id);
+    std::vector< size_t > majority = majorityNodesIds();
+    bool found = majority.end() != std::find( majority.begin(), majority.end(), _cp.nodeInfo.id );
 
     // disable checking on minority
     return found;
 }
 
-std::vector<size_t> AmsterdamFixPatch::majorityNodesIds(){
-    const char* str = getenv("SKALED_TEST_GOOD_NODES_IDS_FOR_AMSTERDAM_FIX");
-    if( !str )
-        return {90, 134, 162, 169, 177, 179, 183, 189, 192, 208};
+std::vector< size_t > AmsterdamFixPatch::majorityNodesIds() {
+    const char* str = getenv( "SKALED_TEST_GOOD_NODES_IDS_FOR_AMSTERDAM_FIX" );
+    if ( !str )
+        return { 90, 134, 162, 169, 177, 179, 183, 189, 192, 208 };
     // else
-    std::vector<string> ret_str;
-    boost::split( ret_str, str, boost::is_any_of(",") );
-    std::vector<size_t> ret;
-    for_each(ret_str.begin(), ret_str.end(), [&ret]( const string& arg ){
-        ret.push_back( stoul( arg ) );
-    });
+    std::vector< string > ret_str;
+    boost::split( ret_str, str, boost::is_any_of( "," ) );
+    std::vector< size_t > ret;
+    for_each( ret_str.begin(), ret_str.end(),
+        [&ret]( const string& arg ) { ret.push_back( stoul( arg ) ); } );
     return ret;
 }

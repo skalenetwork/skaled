@@ -278,7 +278,7 @@ int main( int argc, char** argv ) {
 
         try  // Try decoding from hex.
         {
-            std::string strCode{reinterpret_cast< char const* >( code.data() ), code.size()};
+            std::string strCode{ reinterpret_cast< char const* >( code.data() ), code.size() };
             strCode.erase( strCode.find_last_not_of( " \t\n\r" ) + 1 );  // Right trim.
             code = fromHex( strCode, WhenError::Throw );
         } catch ( BadHexCharacter const& ) {
@@ -296,7 +296,7 @@ int main( int argc, char** argv ) {
         // Deploy the code on some fake account to be called later.
         Account account( 0, 0 );
         auto const latestVersion = se->evmSchedule( envInfo.number() ).accountVersion;
-        account.setCode( bytes{code}, latestVersion );
+        account.setCode( bytes{ code }, latestVersion );
         std::unordered_map< Address, Account > map;
         map[contractDestination] = account;
         state.populateFrom( map );
@@ -361,9 +361,9 @@ int main( int argc, char** argv ) {
         cout << "Maximum memory usage: " << memTotal * 32 << " bytes\n";
         cout << "Expensive operations:\n";
         for ( auto const inst :
-            {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE,
+            { Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE,
                 Instruction::CALLCODE, Instruction::DELEGATECALL, Instruction::MSTORE8,
-                Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3} ) {
+                Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3 } ) {
             auto const& count = counts[static_cast< _byte_ >( inst )];
             if ( count.first != 0 )
                 cout << "  " << instructionInfo( inst ).name << " x " << count.first << " ("

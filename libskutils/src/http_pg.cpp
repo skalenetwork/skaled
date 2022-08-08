@@ -376,7 +376,8 @@ bool server::start() {
     server_->bind( IPs );
     // start HTTPServer main loop in a separate thread
     thread_ = std::move( std::thread( [&]() {
-        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        skutils::multithreading::setThreadName(
+            skutils::tools::format( "sklm-%p", ( void* ) this ) );
         server_->start();
     } ) );
 
@@ -457,8 +458,8 @@ size_t pg_accumulate_size() {
 
 void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
     const char* private_key_path, const char* ca_path ) {
-    pg_accumulate_entry pge = {ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
-        private_key_path ? private_key_path : "", ca_path ? ca_path : ""};
+    pg_accumulate_entry pge = { ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
+        private_key_path ? private_key_path : "", ca_path ? ca_path : "" };
     pg_accumulate_add( pge );
 }
 

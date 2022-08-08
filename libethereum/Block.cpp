@@ -180,7 +180,7 @@ PopulationStatistics Block::populateFromChain(
     BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir ) {
     noteChain( _bc );
 
-    PopulationStatistics ret{0.0, 0.0};
+    PopulationStatistics ret{ 0.0, 0.0 };
 
     if ( !_bc.isKnown( _h ) ) {
         // Might be worth throwing here.
@@ -795,11 +795,12 @@ ExecutionResult Block::execute(
             TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
             TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{
+        ExecutionResult(), null_receipt };
 
     try {
         if ( _t.isInvalid() )
-            throw - 1;  // will catch below
+            throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 
