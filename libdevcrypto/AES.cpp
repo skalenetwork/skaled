@@ -55,7 +55,7 @@ bytes dev::aesDecrypt(
         return asBytes( decrypted );
     } catch ( std::exception const& e ) {
         // FIXME: Handle this error better.
-        std::cerr << e.what() << '\n';
+        std::cerr << "Error in aesDecrypt()" << e.what() << '\n';
         return bytes();
     }
 }
