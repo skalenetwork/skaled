@@ -1575,6 +1575,8 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         fileName = "test_file";
         fileSize = 100;
         pathToFile = dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
+        boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
+        boost::filesystem::ofstream of( pathToTestFile );
 
         hexAddress = ownerAddress.hex();
         hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
@@ -1663,6 +1665,16 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     BOOST_REQUIRE( res.second == buffer );
 }
 
+BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "readChunk" );
+
+    fileName = "../../test";
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
+                        numberToHex( 0 ) + numberToHex( fileSize ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( res.first == false);
+}
+
 BOOST_AUTO_TEST_CASE( getFileSize ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
 
@@ -1670,6 +1682,16 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
+
+    fileName = "../../test";
+
+    bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    BOOST_REQUIRE( !res.first );
 }
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
