@@ -51,7 +51,7 @@ public:
     SkalePerformanceTracker( const std::string& configPath );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"SkalePerformanceTracker", "1.0"}};
+        return RPCModules{ RPCModule{ "SkalePerformanceTracker", "1.0" } };
     }
 
     virtual Json::Value skale_performanceTrackingStatus( const Json::Value& request ) override;

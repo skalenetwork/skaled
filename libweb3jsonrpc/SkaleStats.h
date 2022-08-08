@@ -45,14 +45,31 @@
 #include <list>
 #include <set>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace dev {
+
 class NetworkFace;
 class KeyPair;
+
 namespace eth {
+
 class AccountHolder;
 struct TransactionSkeleton;
+
 class Interface;
 };  // namespace eth
+
+// if following is defined then pending IMA transactions will be tracked in dispatch timer based job
+//#define __IMA_PTX_ENABLE_TRACKING_PARALLEL 1
+
+// if following is defined then pending IMA transactions will be tracked on-the-fly during
+// insert/erase
+//#define __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY 1
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace tracking {
 
@@ -61,7 +78,7 @@ public:
     dev::u256 hash_;
     time_t ts_;  // second accuracy used here
     txn_entry();
-    txn_entry( dev::u256 hash );
+    txn_entry( const dev::u256& hash );
     txn_entry( const txn_entry& other );
     txn_entry( txn_entry&& other );
     ~txn_entry();
@@ -73,21 +90,24 @@ public:
     bool operator<=( const txn_entry& other ) const;
     bool operator>( const txn_entry& other ) const;
     bool operator>=( const txn_entry& other ) const;
-    bool operator==( dev::u256 hash ) const;
-    bool operator!=( dev::u256 hash ) const;
-    bool operator<( dev::u256 hash ) const;
-    bool operator<=( dev::u256 hash ) const;
-    bool operator>( dev::u256 hash ) const;
-    bool operator>=( dev::u256 hash ) const;
+    bool operator==( const dev::u256& hash ) const;
+    bool operator!=( const dev::u256& hash ) const;
+    bool operator<( const dev::u256& hash ) const;
+    bool operator<=( const dev::u256& hash ) const;
+    bool operator>( const dev::u256& hash ) const;
+    bool operator>=( const dev::u256& hash ) const;
     bool empty() const;
     void clear();
     txn_entry& assign( const txn_entry& other );
-    int compare( dev::u256 hash ) const;
+    int compare( const dev::u256& hash ) const;
     int compare( const txn_entry& other ) const;
     void setNowTimeStamp();
     nlohmann::json toJSON() const;
     bool fromJSON( const nlohmann::json& jo );
 };  /// class txn_entry
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class pending_ima_txns : public skutils::json_config_file_accessor {
 public:
@@ -125,16 +145,16 @@ public:
     virtual size_t max_txns() const;
 
 private:
-    void adjust_limits_impl( bool isEnableBroadcast );
+    size_t adjust_limits_impl( bool isEnableBroadcast );
 
 public:
-    void adjust_limits( bool isEnableBroadcast );
+    size_t adjust_limits( bool isEnableBroadcast );
     bool insert( txn_entry& txe, bool isEnableBroadcast );
     bool insert( dev::u256 hash, bool isEnableBroadcast );
     bool erase( txn_entry& txe, bool isEnableBroadcast );
     bool erase( dev::u256 hash, bool isEnableBroadcast );
     bool find( txn_entry& txe ) const;
-    bool find( dev::u256 hash ) const;
+    bool find( const dev::u256& hash ) const;
     void list_all( list_txns_t& lst ) const;
     //
     virtual void on_txn_insert( const txn_entry& txe, bool isEnableBroadcast );
@@ -166,14 +186,21 @@ public:
     size_t tracking_interval_in_seconds() const;
     bool is_tracking() const;
     void tracking_auto_start_stop();
+    void tracking_step();
     void tracking_start();
     void tracking_stop();
     //
     bool check_txn_is_mined( const txn_entry& txe );
-    bool check_txn_is_mined( dev::u256 hash );
+    bool check_txn_is_mined( const dev::u256& hash );
 };  /// class pending_ima_txns
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 };  // namespace tracking
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace rpc {
 
@@ -189,11 +216,13 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     const dev::eth::ChainParams& chainParams_;
 
 public:
+    bool isExposeAllDebugInfo_ = false;
+
     SkaleStats( const std::string& configPath, eth::Interface& _eth,
         const dev::eth::ChainParams& chainParams, bool isDisableZMQ );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"skaleStats", "1.0"}};
+        return RPCModules{ RPCModule{ "skaleStats", "1.0" } };
     }
 
     bool isEnabledImaMessageSigning() const;
@@ -218,6 +247,9 @@ protected:
     eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
 };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace rpc
 };  // namespace dev

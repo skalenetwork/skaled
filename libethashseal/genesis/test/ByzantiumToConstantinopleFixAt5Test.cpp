@@ -39,7 +39,8 @@ static std::string const c_genesisInfoByzantiumToConstantinopleFixAt5Test = std:
 		"difficultyBoundDivisor": "0x0800",
 		"durationLimit": "0x0d",
 		"blockReward": "0x4563918244F40000",
-		"allowFutureBlocks" : true
+                "allowFutureBlocks" : true,
+                "skaleDisableChainIdCheck": true
 	},
 	"genesis": {
 		"nonce": "0x0000000000000042",

@@ -43,12 +43,17 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
+#include <libskale/TotalStorageUsedPatch.h>
+#include <libskale/AmsterdamFixPatch.h>
+
 #include "Block.h"
 #include "Defaults.h"
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 
 #include <skutils/console_colors.h>
+
+extern void dump_blocks_and_extras_db( const dev::eth::BlockChain& _bc, size_t _startBlock );
 
 using namespace std;
 using namespace dev;
@@ -171,11 +176,11 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we ) try
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
     : m_lastBlockHashes( new LastBlockHashes( *this ) ),
       m_dbPath( _dbPath ) {
     init( _p );
-    open( _dbPath, _we );
+    open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
     std::throw_with_nested( CreationException() );
 }
@@ -209,7 +214,7 @@ void BlockChain::init( ChainParams const& _p ) {
     genesis();
 }
 
-void BlockChain::open( fs::path const& _path, WithExisting _we ) {
+void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
     fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
@@ -254,6 +259,9 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
         }
     }
 
+    if ( _applyPatches && AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
+        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db, chainParams() );
+
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
         // Insert details of genesis block.
@@ -295,14 +303,16 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    if ( !this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
-        recomputeExistingOccupiedSpaceForBlockRotation();
+//    dump_blocks_and_extras_db( *this, 0 );
+
+    if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
+        TotalStorageUsedPatch::initOnChain( *this );
 }
 
-void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
+void BlockChain::reopen( ChainParams const& _p, bool _applyPatches, WithExisting _we ) {
     close();
     init( _p );
-    open( m_dbPath, _we );
+    open( m_dbPath, _applyPatches, _we );
 }
 
 void BlockChain::close() {
@@ -312,6 +322,8 @@ void BlockChain::close() {
     m_blocksDB = nullptr;
     m_db_splitter.reset();
     m_db.reset();
+    m_rotating_db.reset();
+
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
@@ -770,6 +782,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 }
 
 // TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
+// TODO move it to TotalStorageUsedPatch!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
 
@@ -886,8 +899,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_logger ) << "Block " << tbi.number() << " DB usage is " << writeSize;
-    LOG( m_logger ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize << ". Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
@@ -937,11 +949,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             // update storage usage
             m_db->insert(
                 db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
-            // HACK This is for backward compatibility
-            // update totalStorageUsed only if schain already had it!
-            if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
-                m_db->insert( db::Slice( "\x0totalStorageUsed" ),
-                    db::Slice( to_string( _block.info.number() * 32 ) ) );
+
+            TotalStorageUsedPatch::onProgress( *m_db, _block.info.number() );
 
             m_db->insert( db::Slice( "\x1"
                                      "best" ),

@@ -126,6 +126,9 @@ public:
     /// Force the sender to a particular value. This will result in an invalid transaction RLP.
     void forceSender( Address const& _a ) { m_sender = _a; }
 
+    /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
+    void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
@@ -133,7 +136,7 @@ public:
     /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
     /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
     /// after EIP155
-    void checkChainId( uint64_t chainId ) const;
+    void checkChainId( uint64_t chainId, bool disableChainIdCheck ) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction && m_type != Invalid; }

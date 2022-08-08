@@ -39,7 +39,7 @@ BlockChainLoader::BlockChainLoader( Json::Value const& _json, eth::Network _seal
     Json::FastWriter a;
     m_bc.reset( new BlockChain( ChainParams( genesisInfo( _sealEngineNetwork ), genesisBlock,
                                     jsonToAccountMap( a.write( _json["pre"] ) ) ),
-        m_dir.path(), WithExisting::Kill ) );
+        m_dir.path(), false, WithExisting::Kill ) );
 
     // load pre state
     m_block = m_bc->genesisBlock( m_dir.path(), m_bc->genesisHash() );
