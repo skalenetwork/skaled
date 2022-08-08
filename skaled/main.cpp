@@ -1506,9 +1506,9 @@ int main( int argc, char** argv ) try {
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
             shared_space ? shared_space->getPath() : std::string() ) );
     }
-    
+
     if ( chainParams.nodeInfo.syncNode ) {
-        auto bc = BlockChain(chainParams, getDataDir());
+        auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
         }

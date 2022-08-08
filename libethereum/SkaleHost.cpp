@@ -186,8 +186,8 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
     std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
     auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
-        std::vector< string > commonBLSPublicKey = {nodeGroup.blsPublicKey[0],
-            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3]};
+        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
+            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
         previousBLSKeys[nodeGroup.finishTs] = commonBLSPublicKey;
         std::vector< uint64_t > nodes;
         // add ecdsa keys info and historic groups info
@@ -242,12 +242,12 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL, bool _broadcastEnabled ) try
-    : m_client( _client ),
-      m_tq( _client.m_tq ),
-      m_instanceMonitor( _instanceMonitor ),
-      total_sent( 0 ),
-      total_arrived( 0 ) {
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    bool _broadcastEnabled ) try : m_client( _client ),
+                                   m_tq( _client.m_tq ),
+                                   m_instanceMonitor( _instanceMonitor ),
+                                   total_sent( 0 ),
+                                   total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
@@ -572,9 +572,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && 
-            dev::h256::Arith( stCurrent ) != _stateRoot && 
-            !this->m_client.chainParams().nodeInfo.syncNode ) {
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot &&
+             !this->m_client.chainParams().nodeInfo.syncNode ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -734,7 +733,7 @@ void SkaleHost::startWorking() {
 
         auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
         m_broadcastThread = std::thread( bcast_func );
-        }
+    }
 
     try {
         m_consensus->startAll();
@@ -814,7 +813,7 @@ void SkaleHost::stopWorking() {
     std::cerr << "2 after exitGracefully()" << std::endl;
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
-        timespec ms100{0, 100000000};
+        timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
