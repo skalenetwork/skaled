@@ -238,7 +238,7 @@ public:
         const dev::eth::ChainParams& chainParams, bool isDisableZMQ );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{ RPCModule{ "skaleStats", "1.0" } };
+        return RPCModules{RPCModule{"skaleStats", "1.0"}};
     }
 
     bool isEnabledImaMessageSigning() const;

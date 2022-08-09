@@ -1187,8 +1187,8 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 }
 
 const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
-    { "eth_subscribe", &SkaleWsPeer::eth_subscribe },
-    { "eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe },
+    {"eth_subscribe", &SkaleWsPeer::eth_subscribe},
+    {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
 };
 
 void SkaleWsPeer::eth_subscribe(
@@ -1963,7 +1963,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     }
     std::thread( [pThis]() {
         pThis->m_isRunning = true;
-        skutils::multithreading::setThreadName( pThis->m_strSchemeUC + "-listener" );
+        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
         try {
             pThis->run( [pThis]() -> bool {
                 if ( !pThis->m_isRunning )
@@ -1976,7 +1976,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
         } catch ( ... ) {
         }
         // pThis->m_isRunning = false;
-    } ).detach();
+    } )
+        .detach();
     clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::success( "OK, server started on port " ) + cc::c( m_nPort ) );
     return true;
@@ -2047,9 +2048,9 @@ SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ip
       ca_path_( ca_path ? ca_path : "" ),
       threads_( threads ),
       threads_limit_( threads_limit ) {
-    skutils::http_pg::pg_accumulate_entry pge = { ipVer_, strBindAddr_, nPort_,
+    skutils::http_pg::pg_accumulate_entry pge = {ipVer_, strBindAddr_, nPort_,
         m_bHelperIsSSL ? cert_path_.c_str() : "", m_bHelperIsSSL ? private_key_path_.c_str() : "",
-        m_bHelperIsSSL ? ca_path_.c_str() : "" };
+        m_bHelperIsSSL ? ca_path_.c_str() : ""};
     skutils::http_pg::pg_accumulate_add( pge );
 }
 
@@ -2675,8 +2676,9 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) +
-"-listener" ); if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
+            skutils::multithreading::threadNameAppender tn(
+                "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
+            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
@@ -3528,7 +3530,7 @@ bool SkaleServerOverride::handleInformationalRequest(
 }
 
 const SkaleServerOverride::informational_rpc_map_t SkaleServerOverride::g_informational_rpc_map = {
-    { "eth_getBalance", &SkaleServerOverride::informational_eth_getBalance },
+    {"eth_getBalance", &SkaleServerOverride::informational_eth_getBalance},
 };
 
 static std::string stat_prefix_align( const std::string& strSrc, size_t n, char ch ) {
@@ -3648,8 +3650,8 @@ bool SkaleServerOverride::handleAdminOriginFilter(
     // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) <<
     // cc::attention( "
     // ------------> " ) << cc::info( strMethod ) << "\n";
-    static const std::set< std::string > g_setAdminMethods = { "skale_getSnapshot",
-        "skale_downloadSnapshotFragment" };
+    static const std::set< std::string > g_setAdminMethods = {
+        "skale_getSnapshot", "skale_downloadSnapshotFragment"};
     if ( g_setAdminMethods.find( strMethod ) == g_setAdminMethods.end() )
         return true;  // not an admin methhod
     std::string origin = strOriginURL;
@@ -3677,15 +3679,14 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( const std::string& strO
 }
 
 const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
-    { "setSchainExitTime", &SkaleServerOverride::setSchainExitTime },
-    { "eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction },
-    { "eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt },
-    { "eth_call", &SkaleServerOverride::eth_call },
-    { "eth_getBalance", &SkaleServerOverride::eth_getBalance },
-    { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
-    { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
-    { "eth_getCode", &SkaleServerOverride::eth_getCode }
-};
+    {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
+    {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
+    {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
+    {"eth_call", &SkaleServerOverride::eth_call},
+    {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
+    {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
+    {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
+    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

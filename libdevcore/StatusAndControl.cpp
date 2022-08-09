@@ -1,12 +1,45 @@
 #include "StatusAndControl.h"
+#include "Log.h"
 
 #include <fstream>
+
+using namespace dev;
 
 StatusAndControl::~StatusAndControl() {}
 
 StatusAndControlFile::StatusAndControlFile(
     const boost::filesystem::path& _dirPath, const std::string& _statusFile )
     : statusFilePath( _dirPath / _statusFile ) {}
+
+void StatusAndControl::setSubsystemRunning( Subsystem _ss, bool _run ) {
+    cnote << "Skaled status: setSubsystemRunning: " << subsystemString[_ss] << " to "
+          << ( _run ? "true\n" : "false\n" );
+    subsystemRunning[_ss] = _run;
+    on_change();
+}
+bool StatusAndControl::isSubsystemRunning( Subsystem _ss ) const {
+    return subsystemRunning.count( _ss ) && subsystemRunning.at( _ss );
+}
+void StatusAndControl::setConsensusRunningState( ConsensusRunningState _state ) {
+    cnote << "Skaled status: setConsensusRunningState to " << consensusRunningStateString[_state];
+    consensusRunningState = _state;
+    on_change();
+}
+
+StatusAndControl::ConsensusRunningState StatusAndControl::getConsensusRunningState() const {
+    return consensusRunningState;
+}
+
+void StatusAndControl::setExitState( ExitState _key, bool _val ) {
+    cnote << "Skaled status: setExitState: " << exitStateString[_key] << " to "
+          << ( _val ? "true" : "false" );
+    exitState[_key] = _val;
+    on_change();
+}
+
+bool StatusAndControl::getExitState( ExitState _key ) const {
+    return exitState.count( _key ) && exitState.at( _key );
+}
 
 void StatusAndControlFile::on_change() {
     /* JSON:

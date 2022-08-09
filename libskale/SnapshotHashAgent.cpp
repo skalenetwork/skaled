@@ -25,12 +25,12 @@
 #include "SnapshotHashAgent.h"
 #include "SkaleClient.h"
 
-#include <libethcore/CommonJS.h>
-#include <libweb3jsonrpc/Skale.h>
-#include <skutils/rest_call.h>
-
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libconsensus/libBLS/tools/utils.h>
+#include <libethcore/CommonJS.h>
+#include <libskale/AmsterdamFixPatch.h>
+#include <libweb3jsonrpc/Skale.h>
+#include <skutils/rest_call.h>
 #include <libff/common/profiling.hpp>
 
 SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
@@ -317,7 +317,34 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     bool result = false;
 
-    if ( block_number == 0 )
+    if ( !AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+        // keep only nodes from majorityNodesIds
+        auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
+        dev::h256 common_hash;  // should be same everywhere!
+        for ( size_t pos = 0; pos < this->n_; ++pos ) {
+            if ( !this->is_received_[pos] )
+                continue;
+
+            u256 id = this->chain_params_.sChain.nodes[pos].id;
+            bool good = majorityNodesIds.end() !=
+                        std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
+            if ( !good )
+                continue;
+
+            if ( common_hash == dev::h256() ) {
+                common_hash = this->hashes_[pos];
+                this->voted_hash_.first = common_hash;
+                // .second will ne ignored!
+            } else if ( this->hashes_[pos] != common_hash ) {
+                result = false;
+                break;
+            }
+
+            nodes_to_download_snapshot_from_.push_back( pos );
+
+        }  // for i
+        result = this->nodes_to_download_snapshot_from_.size() > 0;
+    } else if ( block_number == 0 )
         result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
     else
         try {
@@ -355,9 +382,11 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() co
         throw std::invalid_argument( "Hash is empty" );
     }
 
-    if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
-         !this->voted_hash_.second.is_well_formed() ) {
-        throw std::invalid_argument( "Signature is not well formed" );
+    if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+        if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
+             !this->voted_hash_.second.is_well_formed() ) {
+            throw std::invalid_argument( "Signature is not well formed" );
+        }
     }
 
     return this->voted_hash_;

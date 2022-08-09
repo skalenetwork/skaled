@@ -461,7 +461,7 @@ void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
         _genesisBlock.bytes(), _genesisBlock.accountMap() );
 
     m_blockChain.reset(
-        new BlockChain( p, m_tempDirBlockchain.get()->path(), WithExisting::Kill ) );
+        new BlockChain( p, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
     if ( !m_blockChain->isKnown( BlockHeader::headerHashFromBlock( _genesisBlock.bytes() ) ) ) {
         cdebug << "Not known:" << BlockHeader::headerHashFromBlock( _genesisBlock.bytes() )
                << BlockHeader( p.genesisBlock() ).hash();
