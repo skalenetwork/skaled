@@ -62,7 +62,7 @@ struct ClientWatch {
 private:
     fnClientWatchHandlerMulti_t fnOnNewChanges_;
 #if INITIAL_STATE_AS_CHANGES
-    LocalisedLogEntries changes_ = LocalisedLogEntries{InitialChange};
+    LocalisedLogEntries changes_ = LocalisedLogEntries{ InitialChange };
 #else
     LocalisedLogEntries changes_;
 #endif
@@ -213,7 +213,7 @@ protected:
     std::map< unsigned, ClientWatch > m_watches;  ///< Each and every watch - these reference a
                                                   ///< filter.
 
-    Logger m_loggerWatch{createLogger( VerbosityDebug, "watch" )};
+    Logger m_loggerWatch{ createLogger( VerbosityDebug, "watch" ) };
 
 private:
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
