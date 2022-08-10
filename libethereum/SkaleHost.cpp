@@ -416,6 +416,22 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
+    // HACK For IS-348
+    auto saved_txns = txns;
+    std::sort( txns.begin(), txns.end(), TransactionQueue::PriorityCompare{ m_tq } );
+    bool found_difference = false;
+    for( size_t i = 0; i < txns.size(); ++i ){
+        if( txns[i].sha3() != saved_txns[i].sha3() )
+            found_difference = true;
+    }
+    if( found_difference ) {
+        clog(VerbosityError, "skale-host") << "Transaction order disorder detected!!";
+        for( size_t i = 0; i < txns.size(); ++i ){
+            clog(VerbosityError, "skale-host") << "<i> <old> <new>";
+            clog(VerbosityError, "skale-host") << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
+        }
+    }
+
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
     {
