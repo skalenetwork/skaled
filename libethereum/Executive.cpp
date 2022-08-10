@@ -209,10 +209,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
             nonceReq = _state.getNonce( _transaction.sender() );
             if ( ( _transaction.nonce() != nonceReq && !_allowFuture ) ||
                  ( _transaction.nonce() < nonceReq && _allowFuture ) ) {
-                std::cout << "WARNING: Transaction " << _transaction.sha3() << " nonce "
+                cwarn << "WARNING: Transaction " << _transaction.sha3() << " nonce "
                           << _transaction.nonce() << " is not equal to required nonce " << nonceReq
                           << "\n";
-                std::cout.flush();
                 BOOST_THROW_EXCEPTION(
                     InvalidNonce() << RequirementError( static_cast< bigint >( nonceReq ),
                         static_cast< bigint >( _transaction.nonce() ) ) );
@@ -227,10 +226,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
-            std::cout << "WARNING: Transaction " << _transaction.sha3() << " total cost "
+            cwarn << "WARNING: Transaction " << _transaction.sha3() << " total cost "
                       << totalCost << " is less than sender " << _transaction.sender()
                       << " ballance " << sender_ballance << "\n";
-            std::cout.flush();
             BOOST_THROW_EXCEPTION( NotEnoughCash()
                                    << RequirementError(
                                           totalCost, static_cast< bigint >(

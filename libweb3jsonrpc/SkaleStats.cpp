@@ -909,10 +909,10 @@ void txn_pending_tracker_system_impl::tracking_step() {
             erase( txe.hash_, true );
         }
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
+        cerror << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
                   << "\n";
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
     }
 }
 
@@ -974,10 +974,10 @@ bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash 
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: "
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: "
                   << ex.what() << "\n";
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
     }
     return false;
 }

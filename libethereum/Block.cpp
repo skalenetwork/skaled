@@ -640,7 +640,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
-                cerr << "Skale does not support state root in receipt" << endl;
+                cwarn << "Skale does not support state root in receipt";
                 break;
             }
         }

@@ -2164,7 +2164,7 @@ nlohmann::json SkaleServerOverride::generateBlocksStats() {
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
     if ( !pEth_ ) {
-        std::cerr << "SKALE server fatal error: no eth interface\n";
+        cerror << "SKALE server fatal error: no eth interface\n";
         std::cerr.flush();
         std::terminate();
     }

@@ -99,11 +99,11 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
                     if ( el.type() == json_spirit::str_type ) {
                         allowedAddresses.insert( Address( fromHex( el.get_str() ) ) );
                     } else
-                        cerr << "Error parsing access restrictions for precompiled " << n
+                        cerror << "Error parsing access restrictions for precompiled " << n
                              << "! It should contain strings!\n";
                 }  // for
             } else {
-                cerr << "Error parsing access restrictions for precompiled " << n
+                cerror << "Error parsing access restrictions for precompiled " << n
                      << "! It should be array!\n";
             }
         }  // restrictAccessIt
@@ -167,12 +167,12 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                 if ( codeObj.type() == json_spirit::str_type ) {
                     auto& codeStr = codeObj.get_str();
                     if ( codeStr.find( "0x" ) != 0 && !codeStr.empty() )
-                        cerr << "Error importing code of account " << a
+                        cerror << "Error importing code of account " << a
                              << "! Code needs to be hex bytecode prefixed by \"0x\".";
                     else
                         ret[a].setCode( fromHex( codeStr ), 0 );
                 } else
-                    cerr << "Error importing code of account " << a
+                    cerror << "Error importing code of account " << a
                          << "! Code field needs to be a string";
             }
 
@@ -186,11 +186,11 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                         codePath = _configPath.parent_path() / codePath;
                     bytes code = contents( codePath );
                     if ( code.empty() )
-                        cerr << "Error importing code of account " << a << "! Code file "
+                        cerror << "Error importing code of account " << a << "! Code file "
                              << codePath << " empty or does not exist.\n";
                     ret[a].setCode( std::move( code ), 0 );
                 } else
-                    cerr << "Error importing code of account " << a
+                    cerror << "Error importing code of account " << a
                          << "! Code file path must be a string\n";
             }
 

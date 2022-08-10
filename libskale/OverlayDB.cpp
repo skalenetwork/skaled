@@ -194,8 +194,8 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                     cwarn << "Fail(1) writing to state database. Bombing out. ";
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during DB commit): "
-                          << boost::diagnostic_information( ex ) << std::endl;
+                cerror << "Error(2) writing to state database (during DB commit): "
+                          << boost::diagnostic_information( ex );
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
@@ -204,8 +204,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                     cwarn << "Fail(2) writing to state database. Bombing out. ";
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during DB commit): " << ex.what()
-                          << std::endl;
+                cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
                 cwarn << "Error(2) writing to state database: " << ex.what();
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );

@@ -973,7 +973,7 @@ int main( int argc, char** argv ) try {
             n = nMin;
         nDispatchThreads = n;
     }
-    std::cout << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
+    clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
               << cc::debug( " threads in task dispatcher" ) << std::endl;
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
@@ -1007,22 +1007,22 @@ int main( int argc, char** argv ) try {
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
         } catch ( const char* str ) {
-            cerr << "Error: " << str << ": " << configPath << "\n";
+            clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath << "\n";
             return EX_USAGE;
         } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing config json:\n";
-            cerr << configJSON << endl;
-            cerr << err.reason_ << " line " << err.line_ << endl;
+            clog( VerbosityError, "main" ) << "error in parsing config json:\n";
+            clog( VerbosityError, "main" ) << configJSON;
+            clog( VerbosityError, "main" ) << err.reason_ << " line " << err.line_;
             return EX_CONFIG;
         } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is incorrect\n";
-            cerr << configJSON << endl;
-            cerr << nested_exception_what( ex ) << endl;
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
+            clog( VerbosityError, "main" ) << configJSON;
+            clog( VerbosityError, "main" ) << nested_exception_what( ex );
             return EX_CONFIG;
         } catch ( ... ) {
-            cerr << "provided configuration is incorrect\n";
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            cerr << configJSON << endl;
+            clog( VerbosityError, "main" ) << configJSON;
             return EX_CONFIG;
         }
     }
@@ -1034,15 +1034,14 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
-            cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
+            clog( VerbosityError, "main" ) << "config=<path> should be specified before --main-net-url=<url>\n";
             return EX_SOFTWARE;
         }
         skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
-            cerr << "bad --main-net-url=<url> parameter value: "
-                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n"
-                 << endl;
+            clog( VerbosityError, "main" ) << "bad --main-net-url=<url> parameter value: "
+                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
             return EX_SOFTWARE;
         }
         clog( VerbosityDebug, "main" )
@@ -1683,7 +1682,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( loggingOptions.verbosity > 0 )
-        cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
+        clog( VerbosityInfo, "main" ) << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
     m.execute();
 
@@ -1706,7 +1705,6 @@ int main( int argc, char** argv ) try {
     auto getResponse = [&]( string const& prompt, unordered_set< string > const& acceptable ) {
         bool s = g_silence;
         g_silence = true;
-        cout << "\n";
         string ret;
         while ( true ) {
             cout << prompt;
@@ -1870,7 +1868,7 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            cerr << "Bad "
+            clog( VerbosityError, "main" ) << "Bad "
                  << "--aa"
                  << " option: " << strAA << "\n";
             return EX_USAGE;
@@ -2801,9 +2799,8 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec != ExitHandler::ec_success ) {
-        std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
+        clog( VerbosityError, "main" ) << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
                   << cc::error( "...\n" );
-        std::cerr.flush();
     }
     return int( ec );
 } catch ( const Client::CreationException& ex ) {
