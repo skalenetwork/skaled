@@ -75,7 +75,8 @@ static std::string const c_genesisConfigString =
          "EIP150ForkBlock": "0x00",
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
-         "constantinopleForkBlock": "0x00"
+         "constantinopleForkBlock": "0x00",
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -260,6 +261,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.difficulty = chainParams.minimumDifficulty;
             chainParams.gasLimit = chainParams.maxGasLimit;
             chainParams.byzantiumForkBlock = 0;
+            chainParams.EIP158ForkBlock = 0;
             chainParams.constantinopleForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
@@ -870,7 +872,7 @@ contract Logger{
     ///////////////// OTHER CALLS //////////////////
     // HACK this may return DIFFERENT block! because of undeterministic block rotation!
     string existing = "0x1df"; string existing_hash = logs[256+64-1-1-32]["blockHash"].asString();
-    cerr << logs << endl;
+    //cerr << logs << endl;
 
     BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
     BOOST_REQUIRE_EQUAL(res["number"], existing);
@@ -1218,8 +1220,6 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
         fixture.rpcClient->eth_getBalance( toJS( fixture.coinbase.address() ), "latest" ) );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-
-    cerr << receipt << endl;
 
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
     BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, u256( gas ) * u256( gasPrice ) );
