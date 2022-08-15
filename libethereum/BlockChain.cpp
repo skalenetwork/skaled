@@ -389,7 +389,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 continue;
             } catch ( Exception& ex ) {
                 cerror << "Exception while importing block. Someone (Jeff? That you?) seems to be "
-                     << "giving us dodgy blocks !";
+                       << "giving us dodgy blocks !";
                 cerror << diagnostic_information( ex );
                 if ( m_onBad )
                     m_onBad( ex );
@@ -950,7 +950,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             cwarn << "Error writing to blocks_and_extras database: "
                   << boost::diagnostic_information( ex );
             cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to blocks_and_extras database. Bombing out.";
             exit( -1 );
         }
@@ -1041,7 +1041,8 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    clog( VerbosityInfo, "BlockChain" ) << cc::debug( "Finding last likely block number..." ) << endl;
+    clog( VerbosityInfo, "BlockChain" )
+        << cc::debug( "Finding last likely block number..." ) << endl;
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
         clog( VerbosityInfo, "BlockChain" ) << " " << m << flush;
@@ -1053,15 +1054,17 @@ void BlockChain::rescue( State const& /*_state*/ ) {
     clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l << endl;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        clog( VerbosityInfo, "BlockChain" ) << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
-             << cc::debug( ")..." ) << flush;
+        clog( VerbosityInfo, "BlockChain" )
+            << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
+            << cc::debug( ")..." ) << flush;
         try {
             clog( VerbosityInfo, "BlockChain" ) << cc::debug( "block..." ) << flush;
             BlockHeader bi( block( h ) );
             clog( VerbosityInfo, "BlockChain" ) << cc::debug( "extras..." ) << flush;
             details( h );
             clog( VerbosityInfo, "BlockChain" ) << cc::debug( "state..." ) << flush;
-            clog( VerbosityInfo, "BlockChain" ) << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
+            clog( VerbosityInfo, "BlockChain" )
+                << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
@@ -1084,7 +1087,7 @@ void BlockChain::rewind( unsigned _newHead ) {
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
             cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to extras database. Bombing out.";
             exit( -1 );
         }

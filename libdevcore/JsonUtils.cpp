@@ -64,7 +64,7 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
             std::string const comment =
                 "Unexpected field '" + field.first + "' in config: " + _config;
             cerror << comment << "\n"
-                      << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+                   << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
             BOOST_THROW_EXCEPTION( UnknownField() << errinfo_comment( comment ) );
         }
     }
@@ -79,7 +79,7 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
                 std::string const comment =
                     "Expected field '" + expectedFieldName + "' not found in config: " + _config;
                 cerror << comment << "\n"
-                          << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+                       << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
                 BOOST_THROW_EXCEPTION( MissingField() << errinfo_comment( comment ) );
             } else if ( expectedFieldPresence == JsonFieldPresence::Optional )
                 continue;
@@ -99,7 +99,7 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
                                         jsonTypeAsString( _o.at( expectedFieldName ).type() ) +
                                         " in " + _config;
             cerror << comment << "\n"
-                      << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+                   << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
             BOOST_THROW_EXCEPTION( WrongFieldType() << errinfo_comment( comment ) );
         }
     }

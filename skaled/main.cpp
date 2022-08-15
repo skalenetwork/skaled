@@ -974,7 +974,7 @@ int main( int argc, char** argv ) try {
         nDispatchThreads = n;
     }
     clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
-              << cc::debug( " threads in task dispatcher" ) << std::endl;
+                                  << cc::debug( " threads in task dispatcher" ) << std::endl;
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
@@ -1034,14 +1034,16 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
-            clog( VerbosityError, "main" ) << "config=<path> should be specified before --main-net-url=<url>\n";
+            clog( VerbosityError, "main" )
+                << "config=<path> should be specified before --main-net-url=<url>\n";
             return EX_SOFTWARE;
         }
         skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
-            clog( VerbosityError, "main" ) << "bad --main-net-url=<url> parameter value: "
-                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
+            clog( VerbosityError, "main" )
+                << "bad --main-net-url=<url> parameter value: "
+                << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
             return EX_SOFTWARE;
         }
         clog( VerbosityDebug, "main" )
@@ -1869,8 +1871,8 @@ int main( int argc, char** argv ) try {
             autoAuthAnswer = strAA;
         else {
             clog( VerbosityError, "main" ) << "Bad "
-                 << "--aa"
-                 << " option: " << strAA << "\n";
+                                           << "--aa"
+                                           << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         clog( VerbosityDebug, "main" )
@@ -2799,8 +2801,8 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec != ExitHandler::ec_success ) {
-        clog( VerbosityError, "main" ) << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
-                  << cc::error( "...\n" );
+        clog( VerbosityError, "main" ) << cc::error( "Exiting main with code " )
+                                       << cc::num10( int( ec ) ) << cc::error( "...\n" );
     }
     return int( ec );
 } catch ( const Client::CreationException& ex ) {

@@ -70,8 +70,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
-    clog( VerbosityInfo, "skale-host" ) << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() )
-              << "\n";
+    clog( VerbosityInfo, "skale-host" )
+        << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
     //
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >(
@@ -753,9 +753,12 @@ void SkaleHost::startWorking() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            clog( VerbosityError, "skale-host" ) << "Consensus thread in skale host will exit with exception: " << s << "\n";
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
-            clog( VerbosityError, "skale-host" ) << "Consensus thread in skale host will exit with unknown exception\n" << skutils::signal::generate_stack_trace() << "\n";
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with unknown exception\n"
+                << skutils::signal::generate_stack_trace() << "\n";
         }
 
         bootstrap_promise.set_value();
@@ -789,7 +792,7 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    cnote << "1 before exitGracefully()" << std::endl;
+    cnote << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
@@ -803,14 +806,14 @@ void SkaleHost::stopWorking() {
 
     m_consensus->exitGracefully();
 
-    cnote << "2 after exitGracefully()" << std::endl;
+    cnote << "2 after exitGracefully()";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    cnote << "3 after wait loop" << std::endl;
+    cnote << "3 after wait loop";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -820,7 +823,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    cnote << "4 before dtor" << std::endl;
+    cnote << "4 before dtor";
 }
 
 void SkaleHost::broadcastFunc() {

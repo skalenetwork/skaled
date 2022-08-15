@@ -195,7 +195,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
-                          << boost::diagnostic_information( ex );
+                       << boost::diagnostic_information( ex );
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );

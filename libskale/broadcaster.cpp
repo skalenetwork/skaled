@@ -56,7 +56,7 @@ void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo n
 std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     std::string url =
         "http://" + node.ip + ":" + ( node.port + 3 ).str();  // HACK +0 +1 +2 are used by consensus
-    clog( dev::VerbosityInfo, "broadcaster" ) << url;                            // todo
+    clog( dev::VerbosityInfo, "broadcaster" ) << url;         // todo
     return url;
 }
 

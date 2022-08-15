@@ -100,11 +100,11 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
                         allowedAddresses.insert( Address( fromHex( el.get_str() ) ) );
                     } else
                         cerror << "Error parsing access restrictions for precompiled " << n
-                             << "! It should contain strings!\n";
+                               << "! It should contain strings!\n";
                 }  // for
             } else {
                 cerror << "Error parsing access restrictions for precompiled " << n
-                     << "! It should be array!\n";
+                       << "! It should be array!\n";
             }
         }  // restrictAccessIt
 
@@ -168,12 +168,12 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                     auto& codeStr = codeObj.get_str();
                     if ( codeStr.find( "0x" ) != 0 && !codeStr.empty() )
                         cerror << "Error importing code of account " << a
-                             << "! Code needs to be hex bytecode prefixed by \"0x\".";
+                               << "! Code needs to be hex bytecode prefixed by \"0x\".";
                     else
                         ret[a].setCode( fromHex( codeStr ), 0 );
                 } else
                     cerror << "Error importing code of account " << a
-                         << "! Code field needs to be a string";
+                           << "! Code field needs to be a string";
             }
 
             auto codePathIt = accountMaskJson.find( c_codeFromFile );
@@ -187,11 +187,11 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                     bytes code = contents( codePath );
                     if ( code.empty() )
                         cerror << "Error importing code of account " << a << "! Code file "
-                             << codePath << " empty or does not exist.\n";
+                               << codePath << " empty or does not exist.\n";
                     ret[a].setCode( std::move( code ), 0 );
                 } else
                     cerror << "Error importing code of account " << a
-                         << "! Code file path must be a string\n";
+                           << "! Code file path must be a string\n";
             }
 
             if ( haveStorage )
