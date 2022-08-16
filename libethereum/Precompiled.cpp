@@ -411,9 +411,9 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in uploadChunk: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) ) << "Exception in readChunk: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in uploadChunk\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in readChunk\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -989,10 +989,10 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
         if ( strError.empty() )
             strError = "exception without description";
         LOG( getLogger( VerbosityError ) )
-            << "Exception in precompiled/getConfigVariableString(): " << strError << "\n";
+            << "Exception in precompiled/getConfigPermissionFlag(): " << strError << "\n";
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) )
-            << "Unknown exception in precompiled/getConfigVariableString()\n";
+            << "Unknown exception in precompiled/getConfigPermissionFlag()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );

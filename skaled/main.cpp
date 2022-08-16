@@ -376,11 +376,11 @@ static void stat_wait_stop_actions_complete() {
     if ( g_bStopActionsComplete )
         return;
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Will wait for stop actions compete..." ) + "\n\n" );
+                   cc::error( "Will wait for stop actions complete..." ) + "\n\n" );
     while ( !g_bStopActionsComplete )
         std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Done waiting for stop actions] compete" ) + "\n\n" );
+                   cc::error( "Done waiting for stop actions] complete" ) + "\n\n" );
 }
 
 static void stat_init_common_signal_handling() {

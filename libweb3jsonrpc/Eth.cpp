@@ -665,6 +665,8 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Unknown account.";
     } catch ( TransactionRefused const& ) {
         ret = "Transaction rejected by user.";
+    } catch ( InvalidTransactionFormat const& ) {
+        ret = "Invalid transaction format.";
     } catch ( ... ) {
         ret = "Invalid RPC parameters.";
     }

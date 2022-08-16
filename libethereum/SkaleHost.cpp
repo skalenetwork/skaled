@@ -33,6 +33,8 @@ using namespace std;
 
 #include <libconsensus/node/ConsensusEngine.h>
 
+#include <libskale/AmsterdamFixPatch.h>
+
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
@@ -584,10 +586,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
-            if ( m_client.chainParams().chainID != 0xd2ba743e9fef4 &&
-                 m_client.chainParams().chainID != 0x292a2c91ca6a3 &&
-                 m_client.chainParams().chainID != 0x1c6fa7f59eeac &&
-                 m_client.chainParams().chainID != 0x4b127e9c2f7de ) {
+            if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
                 ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
                 _exit( int( ExitHandler::ec_state_root_mismatch ) );
             }
@@ -755,9 +754,9 @@ void SkaleHost::startWorking() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
+            std::cout << "Consensus thread in skale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
-            std::cout << "Consensus thread in scale host will exit with unknown exception\n";
+            std::cout << "Consensus thread in skale host will exit with unknown exception\n";
             std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
         }
 

@@ -1610,6 +1610,91 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
 //     return stat_append_u256_2_vec( vec, stat_h256_2_u256( val ) );
 // }
 
+std::string SkaleStats::pick_own_s_chain_url_s() {
+    std::string strURL;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        //
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        if ( joSkaleConfig_nodeInfo.count( "bindIP" ) > 0 ) {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+            }  // if ( !strIpAddress.empty() )
+        } else if ( joSkaleConfig_nodeInfo.count( "bindIP6" ) > 0 ) {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+            }  // if ( !strIpAddress.empty() )
+        }
+    } catch ( ... ) {
+    }
+    strURL.clear();
+    return strURL;
+}
+
+skutils::url SkaleStats::pick_own_s_chain_url() {
+    std::string strURL = pick_own_s_chain_url_s();
+    skutils::url u( strURL );
+    return u;
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     std::string strSgxWalletURL =
@@ -1758,10 +1843,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         skutils::url urlSourceChain;
         if ( strDirection == "M2S" )
             urlSourceChain = urlMainNet;
-        else if ( strDirection == "S2M" )
-            urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url(
-                strSChainName );  // not used very much in "S2M" case
-        else if ( strDirection == "S2S" )
+        else if ( strDirection == "S2M" ) {
+            // urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url( strSChainName
+            // );
+            urlSourceChain = pick_own_s_chain_url();
+        } else if ( strDirection == "S2S" )
             urlSourceChain =
                 skale::network::browser::refreshing_pick_s_chain_url( strFromChainName );
         else
@@ -3154,19 +3240,19 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
