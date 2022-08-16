@@ -161,7 +161,7 @@ bytes dev::encryptAES128CTR( bytesConstRef _k, h128 const& _iv, bytesConstRef _p
         e.ProcessData( ret.data(), _plain.data(), _plain.size() );
         return ret;
     } catch ( CryptoPP::Exception& _e ) {
-        cerror << "Error in encryptAES128CTR()" <<_e.what() << endl;
+        cerror << "Error in encryptAES128CTR()" << _e.what() << endl;
         return bytes();
     }
 }
