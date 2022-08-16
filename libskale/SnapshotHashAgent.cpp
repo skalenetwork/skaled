@@ -25,16 +25,16 @@
 #include "SnapshotHashAgent.h"
 #include "SkaleClient.h"
 
-#include <libethcore/CommonJS.h>
-#include <libweb3jsonrpc/Skale.h>
-#include <skutils/rest_call.h>
-
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libconsensus/libBLS/tools/utils.h>
+#include <libethcore/CommonJS.h>
+#include <libskale/AmsterdamFixPatch.h>
+#include <libweb3jsonrpc/Skale.h>
+#include <skutils/rest_call.h>
 #include <libff/common/profiling.hpp>
 
-SnapshotHashAgent::SnapshotHashAgent(
-    const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
+SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
+    const std::array< std::string, 4 >& common_public_key )
     : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
@@ -45,22 +45,16 @@ SnapshotHashAgent::SnapshotHashAgent(
     }
 
     this->bls_.reset( new libBLS::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
-    if ( common_public_key == "" ) {
+    common_public_key_.X.c0 = libff::alt_bn128_Fq( common_public_key[0].c_str() );
+    common_public_key_.X.c1 = libff::alt_bn128_Fq( common_public_key[1].c_str() );
+    common_public_key_.Y.c0 = libff::alt_bn128_Fq( common_public_key[2].c_str() );
+    common_public_key_.Y.c1 = libff::alt_bn128_Fq( common_public_key[3].c_str() );
+    common_public_key_.Z = libff::alt_bn128_Fq2::one();
+    if ( ( common_public_key_.X == libff::alt_bn128_Fq2::zero() &&
+             common_public_key_.Y == libff::alt_bn128_Fq2::one() ) ||
+         !common_public_key_.is_well_formed() ) {
+        // zero or corrupted public key was provided in command line
         this->readPublicKeyFromConfig();
-    } else {
-        std::vector< std::string > coords;
-        boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
-        common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
-        common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
-        common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
-        common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
-        common_public_key_.Z = libff::alt_bn128_Fq2::one();
-        if ( ( common_public_key_.X == libff::alt_bn128_Fq2::zero() &&
-                 common_public_key_.Y == libff::alt_bn128_Fq2::one() ) ||
-             !common_public_key_.is_well_formed() ) {
-            // zero or corrupted public key was provided in command line
-            this->readPublicKeyFromConfig();
-        }
     }
 }
 
@@ -322,7 +316,34 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     bool result = false;
 
-    if ( block_number == 0 )
+    if ( !AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+        // keep only nodes from majorityNodesIds
+        auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
+        dev::h256 common_hash;  // should be same everywhere!
+        for ( size_t pos = 0; pos < this->n_; ++pos ) {
+            if ( !this->is_received_[pos] )
+                continue;
+
+            u256 id = this->chain_params_.sChain.nodes[pos].id;
+            bool good = majorityNodesIds.end() !=
+                        std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
+            if ( !good )
+                continue;
+
+            if ( common_hash == dev::h256() ) {
+                common_hash = this->hashes_[pos];
+                this->voted_hash_.first = common_hash;
+                // .second will ne ignored!
+            } else if ( this->hashes_[pos] != common_hash ) {
+                result = false;
+                break;
+            }
+
+            nodes_to_download_snapshot_from_.push_back( pos );
+
+        }  // for i
+        result = this->nodes_to_download_snapshot_from_.size() > 0;
+    } else if ( block_number == 0 )
         result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
     else
         try {
@@ -358,9 +379,11 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() co
         throw std::invalid_argument( "Hash is empty" );
     }
 
-    if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
-         !this->voted_hash_.second.is_well_formed() ) {
-        throw std::invalid_argument( "Signature is not well formed" );
+    if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+        if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
+             !this->voted_hash_.second.is_well_formed() ) {
+            throw std::invalid_argument( "Signature is not well formed" );
+        }
     }
 
     return this->voted_hash_;

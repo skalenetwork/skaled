@@ -34,6 +34,9 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest;
 }
+namespace eth {
+class Client;
+}
 }  // namespace dev
 
 class SnapshotHashAgentException : public std::exception {
@@ -62,8 +65,8 @@ public:
 
 class SnapshotHashAgent {
 public:
-    SnapshotHashAgent(
-        const dev::eth::ChainParams& chain_params, const std::string& common_public_key = "" );
+    SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
+        const std::array< std::string, 4 >& common_public_key );
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 

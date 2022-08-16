@@ -84,7 +84,7 @@ public:
 
         this->secret_as_is = keys.first;
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams ) );
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {

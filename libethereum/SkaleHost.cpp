@@ -33,6 +33,8 @@ using namespace std;
 
 #include <libconsensus/node/ConsensusEngine.h>
 
+#include <libskale/AmsterdamFixPatch.h>
+
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
@@ -245,7 +247,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     bool _broadcastEnabled ) try : m_client( _client ),
                                    m_tq( _client.m_tq ),
                                    m_instanceMonitor( _instanceMonitor ),
-                                   m_broadcastEnabled( _broadcastEnabled ),
                                    total_sent( 0 ),
                                    total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -572,7 +573,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << cc::debug( stCurrent.hex() ) << std::endl;
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot &&
+             !this->m_client.chainParams().nodeInfo.syncNode ) {
             clog( VerbosityError, "skale-host" )
                 << cc::fatal( "FATAL STATE ROOT MISMATCH ERROR:" )
                 << cc::error( " current state root " )
@@ -583,8 +585,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-            _exit( int( ExitHandler::ec_state_root_mismatch ) );
+            if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
+                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
+                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+            }
         }
 
         // WARN if default but non-zero
@@ -717,7 +721,7 @@ void SkaleHost::startWorking() {
     working = true;
     m_exitedForcefully = false;
 
-    if ( m_broadcastEnabled ) {
+    if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
         try {
             m_broadcaster->startService();
         } catch ( const Broadcaster::StartupException& ) {
@@ -734,7 +738,7 @@ void SkaleHost::startWorking() {
     } catch ( const std::exception& ) {
         // cleanup
         m_exitNeeded = true;
-        if ( m_broadcastEnabled ) {
+        if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
             m_broadcastThread.join();
         }
         throw;

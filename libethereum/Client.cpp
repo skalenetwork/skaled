@@ -31,6 +31,8 @@
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
+#include <libskale/AmsterdamFixPatch.h>
+
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -39,6 +41,8 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/system_usage.h>
+#include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
@@ -108,7 +112,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
-      m_bc( _params, _dbPath, _forceAction ),
+      m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
       m_preSeal( chainParams().accountStartNonce ),
@@ -132,6 +136,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
+
+    TotalStorageUsedPatch::g_client = this;
 }
 
 Client::~Client() {
@@ -139,6 +145,10 @@ Client::~Client() {
 }
 
 void Client::stopWorking() {
+    // TODO Try this in develop. For hotfix we will keep as is
+    //    if ( !Worker::isWorking() )
+    //        return;
+
     Worker::stopWorking();
 
     if ( m_skaleHost )
@@ -252,6 +262,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
+
+    // HACK Needed to set env var for consensus
+    AmsterdamFixPatch::isEnabled( *this );
 
     doWork( false );
 }
@@ -577,7 +590,7 @@ size_t Client::importTransactionsAsBlock(
     if ( snapshotIntervalSec > 0 ) {
         unsigned block_number = this->number();
 
-        LOG( m_logger ) << "Block timestamp: " << _timestamp;
+        LOG( m_loggerDetail ) << "Block timestamp: " << _timestamp;
 
         if ( this->isTimeToDoSnapshot( _timestamp ) ) {
             try {
@@ -912,6 +925,10 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             stateRootToSet = Client::empty_str_hash;
         }
 
+        stateRootToSet = AmsterdamFixPatch::overrideStateRoot( *this ) != dev::h256() ?
+                             AmsterdamFixPatch::overrideStateRoot( *this ) :
+                             stateRootToSet;
+
         m_working.commitToSeal( bc(), m_extraData, stateRootToSet );
     }
     DEV_READ_GUARDED( x_working ) {
@@ -928,16 +945,22 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     BlockHeader header_struct( header, HeaderData );
     LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
                     << " (" << header_struct.hash() << ")";
-    LOG( m_logger ) << cc::success( "Block stats" ) << ":TXS:" << TransactionBase::howMany()
-                    << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
-                    << ":SENGS:" << SealEngineBase::howMany()
-                    << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
-                    << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
-                    << ":BDS:" << BlockDetails::howMany()
-                    << ":TSS:" << TransactionSkeleton::howMany()
-                    << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                    << ":CMM:" << bc().getTotalCacheMemory();
+    std::stringstream ssBlockStats;
+    ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
+                 << ":BTS:" << bc().info().timestamp() << ":TXS:" << TransactionBase::howMany()
+                 << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
+                 << ":SENGS:" << SealEngineBase::howMany()
+                 << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
+                 << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
+                 << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
+                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                 << ":CMM:" << bc().getTotalCacheMemory();
+    if ( number() % 1000 == 0 ) {
+        ssBlockStats << ":RAM:" << getRAMUsage();
+        ssBlockStats << ":CPU:" << getCPUUsage();
+    }
+    LOG( m_logger ) << ssBlockStats.str();
 
 
     if ( submitToBlockChain ) {
@@ -1215,6 +1238,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
         t.forceSender( _from );
+        t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
