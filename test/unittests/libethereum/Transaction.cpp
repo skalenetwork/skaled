@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected,
         "1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3"
         "b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1234 );  // any chain ID is accepted for not replay protected tx
+    tx.checkChainId( 1234, false );  // any chain ID is accepted for not replay protected tx
 
     RLPStream txRlpStream;
     tx.streamRLP( txRlpStream );
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "0021a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
     Transaction tx1{txRlp1, CheckTransaction::None};
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
 
     // recoveryID = 1, v = 36893488147419103266
     auto txRlp2 = fromHex(
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "0022a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
     Transaction tx2{txRlp2, CheckTransaction::None};
-    tx2.checkChainId( std::numeric_limits< uint64_t >::max() );
+    tx2.checkChainId( std::numeric_limits< uint64_t >::max(), false );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
@@ -114,8 +114,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703"
         "304b3800ccf555c9f3dc64214b297fb1966a3b6d83" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1 );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
+    tx.checkChainId( 1, false );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
 
     RLPStream txRlpStream;
     tx.streamRLP( txRlpStream );

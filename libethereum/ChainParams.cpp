@@ -101,6 +101,8 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
+    cp.skaleDisableChainIdCheck =
+        params.count( c_skaleDisableChainIdCheck ) ? params[c_skaleDisableChainIdCheck].get_bool() : false;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
@@ -496,6 +498,7 @@ const std::string& ChainParams::getOriginalJson() const {
     params[c_skale512ForkBlock] = toHex( toBigEndian( skale512ForkBlock ) );
     params[c_skale1024ForkBlock] = toHex( toBigEndian( skale1024ForkBlock ) );
     params[c_skaleUnlimitedForkBlock] = toHex( toBigEndian( skaleUnlimitedForkBlock ) );
+    params[c_skaleDisableChainIdCheck] = skaleDisableChainIdCheck;
 
     params[c_chainID] = toHex( toBigEndian( u256( chainID ) ) );
     params[c_networkID] = toHex( toBigEndian( u256( networkID ) ) );
