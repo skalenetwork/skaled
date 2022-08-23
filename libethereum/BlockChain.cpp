@@ -473,7 +473,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
         LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
         LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-        exit( -1 );
+        cerror << DETAILED_ERROR exit( -1 );
     }
 
     checkBlockTimestamp( _block.info );
@@ -863,14 +863,16 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
         m_db->commit( "recompute_piece_usage" );
     } else {
-        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
+        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize || true ) {
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
                                     "should happen only if block rotation has occured!";
+        }
     }  // else
 } catch ( const std::exception& ex ) {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
+    cerror << DETAILED_ERROR
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,

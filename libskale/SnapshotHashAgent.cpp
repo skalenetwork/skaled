@@ -86,6 +86,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
                     this->signatures_[i], this->public_keys_[i] );
             } catch ( std::exception& ex ) {
                 cerror << ex.what();
+                cerror << DETAILED_ERROR
             }
 
             verified += is_verified;
@@ -254,7 +255,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     cerror << "WARNING "
                            << "Error while trying to get snapshot signature from "
                            << this->chain_params_.sChain.nodes[i].ip << " : " << ex.what();
-                    delete jsonRpcClient;
+                    cerror << DETAILED_ERROR delete jsonRpcClient;
                     return;
                 }
 
