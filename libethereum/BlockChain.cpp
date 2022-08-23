@@ -905,12 +905,12 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_logger ) << "Rotated out some blocks";
+        LOG( m_loggerInfo ) << "Rotated out some blocks";
         m_db->revert();
         writeSize = prepareDbDataAndReturnSize(
             _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
         pieceUsageBytes = writeSize;
-        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+        LOG( m_loggerInfo ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // FINALLY! change our best hash.
