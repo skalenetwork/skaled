@@ -257,11 +257,16 @@ public:
                 _second.transaction.nonce() -
                 queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
 
-            return cat1 > cat2 ||
-                   ( cat1 == cat2 &&
-                       ( height1 < height2 ||
-                           ( height1 == height2 &&
-                               _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
+            bool ret =  cat1 > cat2 ||
+                            ( cat1 == cat2 &&
+                                ( height1 < height2 ||
+                                    ( height1 == height2 &&
+                                        _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
+            if(_first.transaction.sender() == _second.transaction.sender() && (_first.transaction.nonce()<_second.transaction.nonce()) != ret ){
+
+            }// if print
+
+            return ret;
         }
     };
 
