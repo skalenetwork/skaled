@@ -3867,23 +3867,24 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     rapidjson::Value d;
     d.SetObject();
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joRequest.Accept( writer );
-        std::string strRequest = buffer.GetString();
-        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
 
-        rapidjson::StringBuffer bufferResponse;
-        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
-        joResponse.Accept( writerResponse );
-        std::string strResponseCopy = bufferResponse.GetString();
-        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
-        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
-            return false;
-        } else {
-            strResponse = joResponseObj.dump();
-        }
+//    rapidjson::StringBuffer buffer;
+//    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+//    joRequest.Accept( writer );
+//    std::string strRequest = buffer.GetString();
+
+    rapidjson::StringBuffer bufferResponse;
+    rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
+    joResponse.Accept( writerResponse );
+    std::string strResponseCopy = bufferResponse.GetString();
+    nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
+    nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+    if ( handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
+        strResponse = joResponseObj.dump();
+        return true;
+    }
+    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
+        return false;
     } else {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
