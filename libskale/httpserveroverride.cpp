@@ -3868,10 +3868,10 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     d.SetObject();
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
 
-//    rapidjson::StringBuffer buffer;
-//    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-//    joRequest.Accept( writer );
-//    std::string strRequest = buffer.GetString();
+    //    rapidjson::StringBuffer buffer;
+    //    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    //    joRequest.Accept( writer );
+    //    std::string strRequest = buffer.GetString();
 
     rapidjson::StringBuffer bufferResponse;
     rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );

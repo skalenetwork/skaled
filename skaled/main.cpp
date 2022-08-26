@@ -2416,18 +2416,20 @@ int main( int argc, char** argv ) try {
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
                 lfExecutionDurationMaxForPerformanceWarning;
             try {
-                static const char * g_arrVarNamesToTryEthERC20[] = {
+                static const char* g_arrVarNamesToTryEthERC20[] = {
                     "EthERC20",
                     "ethERC20Address",
                 };
-                for( size_t idxVar = 0; idxVar < sizeof(g_arrVarNamesToTryEthERC20) / sizeof(g_arrVarNamesToTryEthERC20[0]); ++ idxVar ) {
-                    const char * strVarName = g_arrVarNamesToTryEthERC20[ idxVar ];
+                for ( size_t idxVar = 0; idxVar < sizeof( g_arrVarNamesToTryEthERC20 ) /
+                                                      sizeof( g_arrVarNamesToTryEthERC20[0] );
+                      ++idxVar ) {
+                    const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
                     serverOpts.strEthErc20Address_ =
-                            joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
+                        joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
                             .get< std::string >();
                     serverOpts.strEthErc20Address_ =
-                            skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
-                    if ( ! serverOpts.strEthErc20Address_.empty() )
+                        skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                    if ( !serverOpts.strEthErc20Address_.empty() )
                         break;
                 }
                 if ( serverOpts.strEthErc20Address_.empty() )
