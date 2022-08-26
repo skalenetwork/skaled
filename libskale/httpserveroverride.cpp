@@ -1156,9 +1156,9 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     std::string strResponseCopy = joResponse.dump();
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
-    if ( !pso()->handleProtocolSpecificRequest(
-             getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
-        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
+    if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
+        if ( !pso()->handleProtocolSpecificRequest(
+                 getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
             strResponse = joResponse.dump();
             return false;
         }
@@ -3550,6 +3550,9 @@ static std::string stat_encode_eth_call_data_chunck_address(
 
 void SkaleServerOverride::informational_eth_getBalance(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::cout << ( cc::debug( "Got call to informational version of " ) +
+                   cc::info( "eth_getBalance" ) + cc::debug( " JSON RPC API with request as " ) +
+                   cc::j( joRequest ) + "\n" );
     auto pEthereum = ethereum();
     if ( !pEthereum )
         throw std::runtime_error( "internal error, no Ethereum interface found" );
@@ -3617,9 +3620,21 @@ void SkaleServerOverride::informational_eth_getBalance(
         std::string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
         joResponse["result"] = strBallance;
     } catch ( const std::exception& ex ) {
+        const char* strError = ex.what();
+        if ( strError == nullptr || strError[0] == '\0' )
+            strError = "Error without description in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
         throw ex;
     } catch ( ... ) {
-        throw std::runtime_error( "Unknown error in \"informational_eth_getBalance\"" );
+        const char* strError = "Unknown error in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
+        throw std::runtime_error( strError );
     }
 }
 
