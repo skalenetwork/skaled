@@ -70,6 +70,7 @@ void OverlayDB::commit() {
             } catch ( boost::exception const& ex ) {
                 if ( i == 9 ) {
                     cwarn << "Fail writing to state database. Bombing out.";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );

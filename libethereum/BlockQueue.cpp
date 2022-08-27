@@ -166,14 +166,12 @@ void BlockQueue::verifierBody() try {
     }
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what();
-    cerror << DETAILED_ERROR cerror << "\n"
-           << skutils::signal::generate_stack_trace() << "\n"
-           << std::endl;
+    cerror << DETAILED_ERROR;
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception";
-    cerror << DETAILED_ERROR cerror << "\n"
-           << skutils::signal::generate_stack_trace() << "\n"
-           << std::endl;
+    cerror << DETAILED_ERROR;
+    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
 void BlockQueue::drainVerified_WITH_BOTH_LOCKS() {

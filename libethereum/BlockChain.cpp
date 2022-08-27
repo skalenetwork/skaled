@@ -473,7 +473,8 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
         LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
         LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-        cerror << DETAILED_ERROR exit( -1 );
+        cerror << DETAILED_ERROR;
+        exit( -1 );
     }
 
     checkBlockTimestamp( _block.info );
@@ -872,7 +873,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
-    cerror << DETAILED_ERROR
+    cerror << DETAILED_ERROR;
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -964,6 +965,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                   << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to blocks_and_extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
     }
@@ -1101,6 +1103,7 @@ void BlockChain::rewind( unsigned _newHead ) {
             cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                   << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
         noteCanonChanged();
@@ -1280,6 +1283,7 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraBlockHash: {
                 // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
                 // second noteUsed() in BlockChain.h, which is a no-op.
+                cerror << DETAILED_ERROR;
                 assert( false );
                 break;
             }

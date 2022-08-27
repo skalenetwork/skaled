@@ -520,7 +520,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // throw;
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
-            cerror << DETAILED_ERROR
+            cerror << DETAILED_ERROR;
         }
     }
     m_state.stopWrite();
@@ -808,6 +808,7 @@ ExecutionResult Block::execute(
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
+        cerror << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );

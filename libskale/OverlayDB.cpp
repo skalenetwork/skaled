@@ -192,6 +192,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(1) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
@@ -202,6 +203,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(2) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): " << ex.what();

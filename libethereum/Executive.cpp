@@ -517,6 +517,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // does.
             cwarn << "Unexpected exception in VM. There may be a bug in this implementation. "
                   << diagnostic_information( _e );
+            cwarn << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -524,6 +525,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
             cwarn << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
+            cwarn << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.

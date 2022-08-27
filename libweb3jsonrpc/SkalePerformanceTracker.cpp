@@ -74,17 +74,20 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStatus(
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( ex.what() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                            cc::error( " Exception while processing request: " ) +
                                            cc::warn( "unknown exception" ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( "unknown exception" );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
@@ -121,17 +124,20 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStart( const Json:
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( ex.what() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                            cc::error( " Exception while processing request: " ) +
                                            cc::warn( "unknown exception" ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( "unknown exception" );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
@@ -161,17 +167,20 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStop(
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( ex.what() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                            cc::error( " Exception while processing request: " ) +
                                            cc::warn( "unknown exception" ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( "unknown exception" );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
@@ -207,17 +216,20 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingFetch( const Json:
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( ex.what() );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                            cc::error( " Exception while processing request: " ) +
                                            cc::warn( "unknown exception" ) );
-        cerror << DETAILED_ERROR throw jsonrpc::JsonRpcException( "unknown exception" );
+        cerror << DETAILED_ERROR;
+        throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 

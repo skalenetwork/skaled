@@ -608,7 +608,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                        cc::error( " will uninstall watcher callback because of "
                                                   "exception: " ) +
                                        cc::warn( ex.what() ) );
-                            cerror << DETAILED_ERROR
+                            cerror << DETAILED_ERROR;
                         } catch ( ... ) {
                             clog( dev::Verbosity::VerbosityError,
                                 cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) +
@@ -620,7 +620,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                        cc::warn( "eth_subscription/skaleStats" ) +
                                        cc::error( " will uninstall watcher callback because of "
                                                   "unknown exception" ) );
-                            cerror << DETAILED_ERROR
+                            cerror << DETAILED_ERROR;
                         }
                         if ( !bMessageSentOK ) {
                             stats::register_stats_error(
@@ -728,8 +728,8 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
                 << ( desc() + " " + cc::fatal( "UN-DDOS:" ) + " " +
                        cc::error( " cannot accept connection - UN-DDOS protection reported "
                                   "connection count overflow" ) );
-            cerror << DETAILED_ERROR close(
-                "UN-DDOS protection reported connection count overflow" );
+            cerror << DETAILED_ERROR;
+            close( "UN-DDOS protection reported connection count overflow" );
             throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
                                       " connection from " + url_unddos_origin.str() +
                                       " - UN-DDOS protection reported connection count overflow" );
@@ -838,7 +838,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
-        cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+        cerror << DETAILED_ERROR;
+        nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
         joErrorObj["code"] = -32000;
@@ -879,7 +880,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
-        cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+        cerror << DETAILED_ERROR;
+        nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
         joErrorObj["code"] = -32000;
@@ -970,7 +972,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
-                cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+                cerror << DETAILED_ERROR;
+                nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
                 joErrorObj["code"] = -32000;
@@ -995,7 +998,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
-                cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+                cerror << DETAILED_ERROR;
+                nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
                 joErrorObj["code"] = -32000;
@@ -1336,7 +1340,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                            " will uninstall watcher callback "
                                                            "because of exception: " ) +
                                                        cc::warn( ex.what() ) );
-                                            cerror << DETAILED_ERROR
+                                            cerror << DETAILED_ERROR;
                                         } catch ( ... ) {
                                             clog( dev::Verbosity::VerbosityError,
                                                 cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
@@ -1348,7 +1352,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                        cc::error(
                                                            " will uninstall watcher callback "
                                                            "because of unknown exception" ) );
-                                            cerror << DETAILED_ERROR
+                                            cerror << DETAILED_ERROR;
                                         }
                                         if ( !bMessageSentOK ) {
                                             stats::register_stats_error(
@@ -1387,7 +1391,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                       cc::num10( getRelay().serverIndex() ) )
                 << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
             std::string( "error in \"eth_subscribe/logs\" rpc method, exception: " ) + ex.what();
@@ -1400,7 +1405,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                       cc::num10( getRelay().serverIndex() ) )
                 << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/logs\" rpc method, unknown exception";
         joResponse["error"] = joError;
@@ -1459,7 +1465,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                                cc::error(
                                    " will uninstall watcher callback because of exception: " ) +
                                cc::warn( ex.what() ) );
-                    cerror << DETAILED_ERROR
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -1468,7 +1474,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                                cc::warn( "eth_subscription/newPendingTransactions" ) +
                                cc::error( " will uninstall watcher callback because of unknown "
                                           "exception" ) );
-                    cerror << DETAILED_ERROR
+                    cerror << DETAILED_ERROR;
                 }
                 if ( !bMessageSentOK ) {
                     stats::register_stats_error(
@@ -1499,7 +1505,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newPendingTransactions" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
             std::string(
@@ -1515,7 +1522,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newPendingTransactions" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
             "error in \"eth_subscribe/newPendingTransactions\" rpc method, unknown exception";
@@ -1587,7 +1595,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                                cc::error(
                                    " will uninstall watcher callback because of exception: " ) +
                                cc::warn( ex.what() ) );
-                    cerror << DETAILED_ERROR
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -1596,7 +1604,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                                cc::warn( "eth_subscription/newHeads" ) +
                                cc::error( " will uninstall watcher callback because of unknown "
                                           "exception" ) );
-                    cerror << DETAILED_ERROR
+                    cerror << DETAILED_ERROR;
                 }
                 if ( !bMessageSentOK ) {
                     stats::register_stats_error(
@@ -1627,7 +1635,8 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
             std::string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
@@ -1642,7 +1651,8 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
         joResponse["error"] = joError;
@@ -1679,7 +1689,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
             std::string( "error in \"eth_subscribe/SkaleStats(\" rpc method, exception: " ) +
@@ -1694,7 +1705,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        cerror << DETAILED_ERROR nlohmann::json joError = nlohmann::json::object();
+        cerror << DETAILED_ERROR;
+        nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/SkaleStats(\" rpc method, unknown exception";
         joResponse["error"] = joError;
@@ -2174,6 +2186,7 @@ nlohmann::json SkaleServerOverride::generateBlocksStats() {
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
     if ( !pEth_ ) {
         cerror << "SKALE server fatal error: no eth interface\n";
+        cerror << DETAILED_ERROR;
         std::cerr.flush();
         std::terminate();
     }
@@ -2515,7 +2528,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             rttElement->setError();
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
-            cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+            cerror << DETAILED_ERROR;
+            nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
             joErrorObj["code"] = -32000;
@@ -2537,7 +2551,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             const char* e = "unknown exception in SkaleServerOverride";
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
-            cerror << DETAILED_ERROR nlohmann::json joErrorResponce;
+            cerror << DETAILED_ERROR;
+            nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
             joErrorObj["code"] = -32000;
@@ -3213,7 +3228,8 @@ bool SkaleServerOverride::StartListening() {
             if ( !hProxygenServer_ ) {
                 clog( dev::VerbosityError, cc::fatal( "PROXYGEN ERROR:" ) )
                     << ( cc::error( "Failed to start server" ) );
-                cerror << DETAILED_ERROR return false;
+                cerror << DETAILED_ERROR;
+                return false;
             }
         }
         return true;
@@ -3620,7 +3636,8 @@ void SkaleServerOverride::informational_eth_getBalance(
                                  cc::error( ", and using " ) + cc::info( "blockNumber" ) +
                                  cc::error( "=" ) + cc::bright( blockNumber );
             cerror << strOut;
-            cerror << DETAILED_ERROR throw std::runtime_error( strRevertReason );
+            cerror << DETAILED_ERROR;
+            throw std::runtime_error( strRevertReason );
         }
 
         std::string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
@@ -3796,7 +3813,8 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
-        cerror << DETAILED_ERROR rapidjson::Value joError;
+        cerror << DETAILED_ERROR;
+        rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
         std::string errorMessage =
@@ -3811,7 +3829,8 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, unknown exception " ) );
-        cerror << DETAILED_ERROR rapidjson::Value joError;
+        cerror << DETAILED_ERROR;
+        rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
         joError.AddMember( "message",
