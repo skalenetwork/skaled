@@ -942,6 +942,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                     joRequest );
                 stats::register_stats_message( "RPC", joRequest );
+
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
                          pThis->getRelay().esm_, joRequest, strResponse ) ) {
                     jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
@@ -949,6 +950,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         throw std::runtime_error( "No client connection handler found" );
                     handler->HandleRequest( strRequest, strResponse );
                 }
+
                 nlohmann::json joResponse = nlohmann::json::parse( strResponse );
                 stats::register_stats_answer(
                     pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
@@ -1156,32 +1158,41 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     std::string strResponseCopy = joResponse.dump();
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
-    if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
-        if ( !pso()->handleProtocolSpecificRequest(
-                 getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
-            strResponse = joResponse.dump();
-            return false;
-        }
+    if ( handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
         strResponse = joResponse.dump();
-    } else {
+        return true;
+    }
+
+    bool isSkipProtocolSpecfic = false;
+    std::string strMethod = joRequest["method"].get< std::string >();
+
+    if ( esm == e_server_mode_t::esm_informational && strMethod == "eth_getBalance" )
+        isSkipProtocolSpecfic = true;
+
+    if ( ( !isSkipProtocolSpecfic ) && pso()->handleProtocolSpecificRequest( getRemoteIp(),
+                                           joRequestRapidjson, joResponseRapidjson ) ) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponseRapidjson.Accept( writer );
         strResponse = buffer.GetString();
+
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( esm == e_server_mode_t::esm_informational &&
-         pso()->handleInformationalRequest( joRequest, joResponse ) )
+         pso()->handleInformationalRequest( joRequest, joResponse ) ) {
         return true;
+    }
     std::string strMethod = joRequest["method"].get< std::string >();
     ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
-    if ( itFind == g_ws_rpc_map.end() )
+    if ( itFind == g_ws_rpc_map.end() ) {
         return false;
+    }
     ( ( *this ).*( itFind->second ) )( esm, joRequest, joResponse );
     return true;
 }
@@ -3522,8 +3533,10 @@ bool SkaleServerOverride::handleInformationalRequest(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     std::string strMethod = joRequest["method"].get< std::string >();
     informational_rpc_map_t::const_iterator itFind = g_informational_rpc_map.find( strMethod );
-    if ( itFind == g_informational_rpc_map.end() )
+    if ( itFind == g_informational_rpc_map.end() ) {
         return false;
+    }
+
     ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
     return true;
 }
