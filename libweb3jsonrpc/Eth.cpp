@@ -350,7 +350,7 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
             throw std::logic_error( strRevertReason );
-        } 
+        }
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
         throw error;
