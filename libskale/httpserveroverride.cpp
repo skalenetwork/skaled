@@ -942,6 +942,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                     joRequest );
                 stats::register_stats_message( "RPC", joRequest );
+
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
                          pThis->getRelay().esm_, joRequest, strResponse ) ) {
                     jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
@@ -949,6 +950,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         throw std::runtime_error( "No client connection handler found" );
                     handler->HandleRequest( strRequest, strResponse );
                 }
+
                 nlohmann::json joResponse = nlohmann::json::parse( strResponse );
                 stats::register_stats_answer(
                     pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
@@ -1156,32 +1158,41 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     std::string strResponseCopy = joResponse.dump();
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
-    if ( !pso()->handleProtocolSpecificRequest(
-             getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
-        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
-            strResponse = joResponse.dump();
-            return false;
-        }
+    if ( handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
         strResponse = joResponse.dump();
-    } else {
+        return true;
+    }
+
+    bool isSkipProtocolSpecfic = false;
+    std::string strMethod = joRequest["method"].get< std::string >();
+
+    if ( esm == e_server_mode_t::esm_informational && strMethod == "eth_getBalance" )
+        isSkipProtocolSpecfic = true;
+
+    if ( ( !isSkipProtocolSpecfic ) && pso()->handleProtocolSpecificRequest( getRemoteIp(),
+                                           joRequestRapidjson, joResponseRapidjson ) ) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponseRapidjson.Accept( writer );
         strResponse = buffer.GetString();
+
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( esm == e_server_mode_t::esm_informational &&
-         pso()->handleInformationalRequest( joRequest, joResponse ) )
+         pso()->handleInformationalRequest( joRequest, joResponse ) ) {
         return true;
+    }
     std::string strMethod = joRequest["method"].get< std::string >();
     ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
-    if ( itFind == g_ws_rpc_map.end() )
+    if ( itFind == g_ws_rpc_map.end() ) {
         return false;
+    }
     ( ( *this ).*( itFind->second ) )( esm, joRequest, joResponse );
     return true;
 }
@@ -3522,8 +3533,10 @@ bool SkaleServerOverride::handleInformationalRequest(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     std::string strMethod = joRequest["method"].get< std::string >();
     informational_rpc_map_t::const_iterator itFind = g_informational_rpc_map.find( strMethod );
-    if ( itFind == g_informational_rpc_map.end() )
+    if ( itFind == g_informational_rpc_map.end() ) {
         return false;
+    }
+
     ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
     return true;
 }
@@ -3550,6 +3563,9 @@ static std::string stat_encode_eth_call_data_chunck_address(
 
 void SkaleServerOverride::informational_eth_getBalance(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::cout << ( cc::debug( "Got call to informational version of " ) +
+                   cc::info( "eth_getBalance" ) + cc::debug( " JSON RPC API with request as " ) +
+                   cc::j( joRequest ) + "\n" );
     auto pEthereum = ethereum();
     if ( !pEthereum )
         throw std::runtime_error( "internal error, no Ethereum interface found" );
@@ -3617,9 +3633,21 @@ void SkaleServerOverride::informational_eth_getBalance(
         std::string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
         joResponse["result"] = strBallance;
     } catch ( const std::exception& ex ) {
+        const char* strError = ex.what();
+        if ( strError == nullptr || strError[0] == '\0' )
+            strError = "Error without description in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
         throw ex;
     } catch ( ... ) {
-        throw std::runtime_error( "Unknown error in \"informational_eth_getBalance\"" );
+        const char* strError = "Unknown error in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
+        throw std::runtime_error( strError );
     }
 }
 
@@ -3867,23 +3895,24 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     rapidjson::Value d;
     d.SetObject();
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joRequest.Accept( writer );
-        std::string strRequest = buffer.GetString();
-        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
 
-        rapidjson::StringBuffer bufferResponse;
-        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
-        joResponse.Accept( writerResponse );
-        std::string strResponseCopy = bufferResponse.GetString();
-        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
-        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
-            return false;
-        } else {
-            strResponse = joResponseObj.dump();
-        }
+    //    rapidjson::StringBuffer buffer;
+    //    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    //    joRequest.Accept( writer );
+    //    std::string strRequest = buffer.GetString();
+
+    rapidjson::StringBuffer bufferResponse;
+    rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
+    joResponse.Accept( writerResponse );
+    std::string strResponseCopy = bufferResponse.GetString();
+    nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
+    nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+    if ( handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
+        strResponse = joResponseObj.dump();
+        return true;
+    }
+    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
+        return false;
     } else {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
