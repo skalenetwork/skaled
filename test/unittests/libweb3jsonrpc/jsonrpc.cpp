@@ -1185,7 +1185,7 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     BOOST_CHECK( response2 != response1 );
 }
 
-BOOST_AUTO_TEST_CASE( eth_estimateGas_revert ) {
+BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     JsonRpcFixture fixture( c_genesisConfigString );
 
     //    This contract is predeployed on SKALE test network
@@ -1226,6 +1226,12 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas_revert ) {
     testRevert["data"] = "0x20987767000000000000000000000000000000000000000000000000000000000000c350";
     string response = fixture.estimateGasShouldFail( testRevert );
     BOOST_CHECK( response.find("EVM revert instruction without description message") != string::npos );
+
+    Json::Value testPositive;
+    testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
+    testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
+    response = fixture.rpcClient->eth_estimateGas( testPositive );
+    BOOST_CHECK( response == "0x1dc58" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
