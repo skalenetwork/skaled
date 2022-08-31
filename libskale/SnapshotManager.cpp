@@ -701,7 +701,7 @@ uint64_t SnapshotManager::getBlockTimestamp(
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
     }
 
-    dev::eth::BlockChain bc( chain_params, db_dir );
+    dev::eth::BlockChain bc( chain_params, db_dir, false );
     dev::h256 hash = bc.numberHash( _blockNumber );
     uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
 

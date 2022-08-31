@@ -88,6 +88,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     else
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
+    t.forceChainId( chainId() );
     t.checkOutExternalGas( ~u256( 0 ) );
     EnvInfo const env( _latestBlock.info(), bc().lastBlockHashes(), 0, _gas );
     // Make a copy of state!! It will be deleted after step!

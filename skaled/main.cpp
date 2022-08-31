@@ -376,11 +376,11 @@ static void stat_wait_stop_actions_complete() {
     if ( g_bStopActionsComplete )
         return;
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Will wait for stop actions compete..." ) + "\n\n" );
+                   cc::error( "Will wait for stop actions complete..." ) + "\n\n" );
     while ( !g_bStopActionsComplete )
         std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Done waiting for stop actions] compete" ) + "\n\n" );
+                   cc::error( "Done waiting for stop actions] complete" ) + "\n\n" );
 }
 
 static void stat_init_common_signal_handling() {
@@ -477,6 +477,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     stat_init_common_signal_handling();  // ensure initialized
+    bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -670,6 +671,8 @@ int main( int argc, char** argv ) try {
         "Limit number of proxygen threads, zero means no limit" );
     addClientOption( "pg-trace", "Log low level proxygen information" );
 
+    addClientOption( "expose-all-debug-info", "Expose extra detailed debug info into log output" );
+
     addClientOption( "acceptors", po::value< size_t >()->value_name( "<count>" ),
         "Number of parallel RPC connection(such as web3) acceptor threads per protocol(1 is "
         "default and minimal)" );
@@ -739,9 +742,6 @@ int main( int argc, char** argv ) try {
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
     // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
     //    "Path of file to save downloaded snapshot to" );
-    addClientOption( "public-key",
-        po::value< std::string >()->value_name( "<libff::alt_bn128_G2>" ),
-        "Collects old common public key from chain to verify snapshot before starts from it" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
@@ -787,7 +787,6 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
     po::options_description vmOptions = vmProgramOptions( c_lineWidth );
-
 
     po::options_description allowedOptions( "Allowed options" );
     allowedOptions.add( clientDefaultMode )
@@ -1459,7 +1458,16 @@ int main( int argc, char** argv ) try {
     }
 
     if ( vm.count( "sgx-url" ) ) {
-        chainParams.nodeInfo.sgxServerUrl = vm["sgx-url"].as< string >();
+        std::string strURL = vm["sgx-url"].as< string >();
+        // chainParams.nodeInfo.sgxServerUrl = strURL;
+        skutils::url u( strURL );
+        u.user_info( "" );
+        u.user_name_and_password( "", "", true );
+        u.path( "" );
+        u.fragment( "" );
+        u.set_query();
+        strURL = u.str();
+        chainParams.nodeInfo.sgxServerUrl = strURL;
     }
     bool isDisableZMQ = false;
     if ( vm.count( "sgx-url-no-zmq" ) ) {
@@ -1484,8 +1492,14 @@ int main( int argc, char** argv ) try {
         shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
     }
 
+    bool downloadSnapshotFlag = false;
     std::shared_ptr< SnapshotManager > snapshotManager;
-    if ( chainParams.sChain.snapshotIntervalSec > 0 || vm.count( "download-snapshot" ) ) {
+
+    if ( vm.count( "download-snapshot" ) ) {
+        downloadSnapshotFlag = true;
+    }
+
+    if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
@@ -1493,7 +1507,14 @@ int main( int argc, char** argv ) try {
             shared_space ? shared_space->getPath() : std::string() ) );
     }
 
-    if ( vm.count( "download-snapshot" ) ) {
+    if ( chainParams.nodeInfo.syncNode ) {
+        auto bc = BlockChain( chainParams, getDataDir() );
+        if ( bc.number() == 0 ) {
+            downloadSnapshotFlag = true;
+        }
+    }
+
+    if ( downloadSnapshotFlag ) {
         statusAndControl->setExitState( StatusAndControl::StartAgain, true );
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
@@ -1501,12 +1522,24 @@ int main( int argc, char** argv ) try {
         std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
         if ( shared_space )
             shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
-        std::string commonPublicKey = "";
-        if ( !vm.count( "public-key" ) ) {
-            throw std::runtime_error(
-                cc::error( "Missing --public-key option - cannot download snapshot" ) );
+
+        std::array< std::string, 4 > arrayCommonPublicKey;
+        bool isRotationtrigger = true;
+        if ( chainParams.sChain.nodeGroups.size() > 1 ) {
+            if ( time( NULL ) >=
+                 chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
+                     .finishTs ) {
+                isRotationtrigger = false;
+            }
         } else {
-            commonPublicKey = vm["public-key"].as< std::string >();
+            isRotationtrigger = false;
+        }
+        if ( isRotationtrigger ) {
+            arrayCommonPublicKey =
+                chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
+                    .blsPublicKey;
+        } else {
+            arrayCommonPublicKey = chainParams.sChain.nodeGroups.back().blsPublicKey;
         }
 
         bool successfullDownload = false;
@@ -1532,7 +1565,7 @@ int main( int argc, char** argv ) try {
                     << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url
                     << ")";
 
-                SnapshotHashAgent snapshotHashAgent( chainParams, commonPublicKey );
+                SnapshotHashAgent snapshotHashAgent( chainParams, arrayCommonPublicKey );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1772,6 +1805,7 @@ int main( int argc, char** argv ) try {
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
             &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
             !chainParams.nodeInfo.syncNode );
+        dev::eth::g_skaleHost = skaleHost;
 
         // XXX nested lambdas and strlen hacks..
         auto skaleHost_debug_handler = skaleHost->getDebugHandler();
@@ -1793,8 +1827,6 @@ int main( int argc, char** argv ) try {
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
         statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
-
-        dev::eth::g_skaleHost = skaleHost;
     }
 
     try {
@@ -1944,12 +1976,24 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }  // block
 
+        if ( chainConfigParsed ) {
+            try {
+                isExposeAllDebugInfo =
+                    joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
+            } catch ( ... ) {
+            }
+        }
+        if ( vm.count( "expose-all-debug-info" ) )
+            isExposeAllDebugInfo = true;
+
+
         auto pNetFace = new rpc::Net( chainParams );
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         auto pSkaleFace = new rpc::Skale( *g_client, shared_space );
         auto pSkaleStatsFace =
             new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
+        pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
                                  nullptr;
@@ -2372,11 +2416,22 @@ int main( int argc, char** argv ) try {
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
                 lfExecutionDurationMaxForPerformanceWarning;
             try {
-                serverOpts.strEthErc20Address_ =
-                    joConfig["skaleConfig"]["contractSettings"]["IMA"]["ethERC20Address"]
-                        .get< std::string >();
-                serverOpts.strEthErc20Address_ =
-                    skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                static const char* g_arrVarNamesToTryEthERC20[] = {
+                    "EthERC20",
+                    "ethERC20Address",
+                };
+                for ( size_t idxVar = 0; idxVar < sizeof( g_arrVarNamesToTryEthERC20 ) /
+                                                      sizeof( g_arrVarNamesToTryEthERC20[0] );
+                      ++idxVar ) {
+                    const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
+                    serverOpts.strEthErc20Address_ =
+                        joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
+                            .get< std::string >();
+                    serverOpts.strEthErc20Address_ =
+                        skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                    if ( !serverOpts.strEthErc20Address_.empty() )
+                        break;
+                }
                 if ( serverOpts.strEthErc20Address_.empty() )
                     throw std::runtime_error( "\"ethERC20Address\" was not found in config JSON" );
                 clog( VerbosityDebug, "main" ) << ( cc::debug( "\"ethERC20Address\" is" ) + " " +
