@@ -1284,8 +1284,11 @@ void SkaleWsPeer::eth_subscribe_logs(
                             if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
                                  joRW.count( "blockHash" ) > 0 &&
                                  joRW.count( "blockNumber" ) > 0 ) {
-                                std::string strBlockHash = joRW["blockHash"].get< std::string >();
-                                unsigned nBlockNumber = joRW["blockNumber"].get< unsigned >();
+                                const std::string strBlockHash =
+                                    joRW["blockHash"].get< std::string >();
+                                std::string strBlockNumber = joRW["blockNumber"].dump();
+                                const dev::u256 uBlockNumber( strBlockNumber.c_str() );
+                                strBlockNumber = dev::toJS( uBlockNumber );
                                 const nlohmann::json& joResultLogs = joRW["logs"];
                                 if ( joResultLogs.is_array() ) {
                                     for ( const auto& joWalk : joResultLogs ) {
@@ -1293,7 +1296,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                             continue;
                                         nlohmann::json joLog = joWalk;  // copy
                                         joLog["blockHash"] = strBlockHash;
-                                        joLog["blockNumber"] = nBlockNumber;
+                                        joLog["blockNumber"] = strBlockNumber;
                                         nlohmann::json joParams = nlohmann::json::object();
                                         joParams["subscription"] = dev::toJS( iw );
                                         joParams["result"] = joLog;
