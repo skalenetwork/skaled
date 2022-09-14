@@ -156,9 +156,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         throw std::runtime_error( "Snapshot for block 0 is absent" );
 
     // exit if too early
-    if ( ( currentSnapshotBlockNumber >= 0 &&
-             time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) ||
-         time( NULL ) - lastSnapshotDownloadFragmentTime < SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT ) {
+    if ( currentSnapshotBlockNumber >= 0 ) {
         joResponse["error"] =
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
@@ -194,22 +192,6 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
-    // TODO mutex here!!
-    //    skutils::dispatch::once(
-    //        "dummy-queue-for-snapshot",
-    //        [this]() {
-    //            std::lock_guard< std::mutex > lock( m_snapshot_mutex );
-    //            if ( currentSnapshotBlockNumber >= 0 ) {
-    //                try {
-    //                    fs::remove( currentSnapshotPath );
-    //                } catch ( ... ) {
-    //                }
-    //                currentSnapshotBlockNumber = -1;
-    //                if ( m_shared_space )
-    //                    m_shared_space->unlock();
-    //            }
-    //        },
-    //        skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
 
     if ( snapshotDownloadFragmentMonitorThread == nullptr ||
          !snapshotDownloadFragmentMonitorThread->joinable() ) {
