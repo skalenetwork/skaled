@@ -101,8 +101,8 @@ private:
     std::shared_ptr< SharedSpace > m_shared_space;
     int currentSnapshotBlockNumber = -1;
     fs::path currentSnapshotPath;
-    time_t currentSnapshotTime = 0;
-    static const time_t SNAPSHOT_DOWNLOAD_TIMEOUT;
+    std::atomic< time_t > currentSnapshotTime = 0;
+    static const std::atomic< time_t > SNAPSHOT_DOWNLOAD_TIMEOUT;
     static const std::atomic< time_t > SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT;
     std::atomic< time_t > lastSnapshotDownloadFragmentTime = 0;
     std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
