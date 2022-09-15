@@ -30,12 +30,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 
-namespace dev {
-namespace eth {
-class TransactionReceipt;
-}
-}  // namespace dev
-
 namespace skale {
 
 class OverlayFS {
@@ -54,6 +48,13 @@ public:
     void commit();
     void clearCache();
     bool empty() const;
+
+    void createFile( const std::string& filePath, const size_t fileSize );
+    void createDirectory( const std::string& path );
+    void writeChunk( const std::string& filePath, const size_t position, const size_t dataLength, const _byte_* data );
+    void deleteFile( const std::string& string );
+    void deleteDirectory( const std::string& string );
+    void writeHashFile( const std::string& string );
 };
 
 }  // namespace skale

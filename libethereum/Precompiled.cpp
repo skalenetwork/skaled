@@ -57,6 +57,7 @@ namespace eth {
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
 skale::State g_state;
+std::shared_ptr< skale::OverlayFS > g_overlayFS;
 
 };  // namespace eth
 };  // namespace dev
@@ -284,6 +285,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
             bool isCreated = fs::create_directories( fsDirectoryPath );
+            // g_overlayFS->createDirectory( fsDirectoryPath );
             if ( !isCreated ) {
                 throw std::runtime_error(
                     "createFile() failed because cannot create subdirectory" );
@@ -303,6 +305,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
             file.seekp( static_cast< long >( fileSize ) - 1 );
             file.write( "0", 1 );
         }
+        // g_overlayFS->createFile(( fsFilePath / filePath.filename() ).string(), fileSize);
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -352,6 +355,8 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
         file.seekp( static_cast< long >( position ) );
         file.write( ( char* ) data, dataLength );
 
+        // g_overlayFS->writeChunk( filePath.string(), position, dataLength, data );
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return { true, response };
@@ -368,7 +373,6 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
     return { false, response };
 }
 
-// TODO: Check vulnerabilities
 ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
@@ -467,6 +471,8 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
             throw std::runtime_error( "File cannot be deleted" );
         }
 
+        // g_overlayFS->deleteFile( filePath.string() );
+
         try {
             boost::filesystem::remove( filePath.string() + "._hash" );
         } catch ( std::exception& ex ) {
@@ -476,6 +482,8 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
             }
             LOG( getLogger( VerbosityError ) ) << "Exception in deleteFile: " << strError << "\n";
         }
+
+        // g_overlayFS->deleteFile( filePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -508,6 +516,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         if ( !isCreated ) {
             throw std::runtime_error( "createDirectory() failed because cannot create directory" );
         }
+        // g_overlayFS->createDirectories( absolutePath );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -543,6 +552,10 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         fs::remove( absolutePathStr + "._hash" );
 
         fs::remove_all( absolutePath );
+
+        // g_overlayFS->delete( absolutePathStr + "._hash" );
+        // g_overlayFS->deleteDirectory( absolutePath );
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return { true, response };
@@ -605,6 +618,8 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         fileHash.clear();
         fileHash << commonFileHash;
         fileHash.close();
+
+        // g_overlayFS->writeHashFile( fileHashName );
 
         u256 code = 1;
         bytes response = toBigEndian( code );

@@ -38,7 +38,7 @@
 #include <libethereum/TransactionReceipt.h>
 
 #include "OverlayDB.h"
-#include "FSHandler.h"
+#include "OverlayFS.h"
 
 
 namespace std {
@@ -459,6 +459,10 @@ public:
         if ( m_db_ptr )
             pDB = m_db_ptr->db();
         return pDB;
+    }
+
+    std::shared_ptr< OverlayFS > fs() {
+        return m_fs_ptr;
     }
 };
 
