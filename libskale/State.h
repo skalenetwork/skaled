@@ -38,6 +38,7 @@
 #include <libethereum/TransactionReceipt.h>
 
 #include "OverlayDB.h"
+#include "FSHandler.h"
 
 
 namespace std {
@@ -426,6 +427,7 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+    std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.

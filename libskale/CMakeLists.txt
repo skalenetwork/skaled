@@ -28,6 +28,7 @@ set(headers
     UnsafeRegion.h
     TotalStorageUsedPatch.h
     AmsterdamFixPatch.h
+    OverlayFS.h
 )
 
 add_library(skale ${sources} ${headers})
